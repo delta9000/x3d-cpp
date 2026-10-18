@@ -26,7 +26,7 @@ inline ProtoDeclarationResolver protoResolverFrom(
       return nullptr;
     };
   return asset_document_detail::makeResolvers(
-      {std::move(resolver), hint, {}, std::move(inlinePolicy)}).proto;
+      {std::move(resolver), hint, {}, std::move(inlinePolicy), {}}).proto;
 }
 
 } // namespace x3d::codec

@@ -67,6 +67,30 @@ auto resolver = x3d::ext::install();
 auto doc = x3d::sdk::parseDocument(text, x3d::sdk::Encoding::XML, "", resolver);
 ```
 
+### Installed extension layer
+
+With `X3D_CPP_BUILD_EXT=ON`, installation exports `x3d_cpp::ext` alongside
+`x3d_cpp::sdk`. Link both targets and include `<x3d/ext.hpp>`; no source-checkout
+include directories are needed. Headers install under `include/x3d_cpp/ext`,
+and the portable fallback installs at `share/x3d_cpp/ext/cave-fallbacks.x3d`
+under the default GNU install directories. Copy that file beside authored
+scenes when distributing them. With the option off, neither ext headers nor
+the ext target are installed.
+
+For a confined recursive loader, decorate the factory callback:
+
+```cpp
+#include <AssetDocumentResolvers.hpp>
+auto loaders = x3d::codec::assetResolversFrom(
+    assets, x3d::codec::Encoding::Unknown,
+    [](auto base) { return x3d::ext::install(std::move(base)); });
+auto doc = x3d::sdk::parseDocument(text, encoding, baseDirectory,
+                                 loaders.proto, loaders.inlineScene);
+```
+
+The decorator applies inside Inline and external PROTO documents as well as
+at the top level. It delegates unrecognized URLs to the same asset policy.
+
 ### Seam points
 
 - **`ProtoDeclarationResolver` seam** — `install(base)` wraps any existing `ProtoDeclarationResolver` (default: `x3d::codec::localFileProtoResolver`). The returned resolver intercepts the `kExternalGeometryUrn` and returns a cached `ProtoDeclaration` whose body is an `ExternalGeometry` node with four IS-wired fields (`url`, `bboxCenter`, `bboxSize`, `contentType`). All other URL lists are forwarded to `base`. No new parameters on `parseDocument` — the existing resolver argument is the exact opt-in gap.
@@ -269,8 +293,14 @@ ancestors count even when their current matrix is identity. Billboard,
 ScreenGroup, and Layout ancestors also violate this contract. A nested
 RoomGroup has a transforming ancestor and is invalid.
 
-`CaveInputSystem::warnings()` reports invalid placements after a tick. Each
-warning contains the affected primary node and a message. A shared group warns
+`CaveInputSystem::warnings()` reports invalid placements and rejected input
+after a tick. Placement warnings contain the affected primary node and a
+message. Input warnings identify the enabled device sensor and its device name;
+a null node identifies a rejected room frame. Reasons distinguish shear,
+non-uniform scale, non-finite or non-affine matrices, singularity, reflection,
+invalid host flags, unknown devices, invalid poses, and non-finite joysticks.
+Disabled sensors do not produce device warnings. Room input is diagnosed once
+per snapshot evaluation even when no room sensor is enabled. A shared group warns
 if any path has a transforming ancestor. Warnings refresh during system
 updates, including after child edits. Copy messages before the next update;
 node pointers are borrowed and must not survive scene topology edits. The
@@ -318,7 +348,13 @@ These describe assertions, not a claim that the cases have been executed.
 | `x3d_ext_cave_tracking_lifecycle` | Loss releases buttons and zeros the joystick while preserving pose; recovery republishes state through a ROUTE; disabled and unknown devices remain inactive; disabled room sensors, re-enabling, and detach/attach work. |
 | `x3d_ext_cave_invalid_room` | Shear, non-uniform or zero scale, reflection, perspective, NaN, infinity, and host-invalid frames deactivate the sensor; valid frames recover, and positive uniform scale produces reciprocal scale. |
 | `x3d_ext_cave_room_placement` | Structural groups are accepted; identity Transform and Billboard ancestors warn; enclosing PROTOs, child edits, and shared placement paths remain diagnosable. |
+| `x3d_ext_cave_recursive_resolver` | Native sensor declarations resolve inside an external PROTO loaded through an Inline; only document URLs reach the asset backend. |
+| `x3d_ext_cave_input_diagnostics` | Rejection messages identify room or device input, distinguish transform/sample failures, and clear on recovery. |
 | `x3d_ext_cave_fallback` | The normal file resolver reads fallback fragment URLs without ext interception; no native sensors appear, output ROUTEs remain legal, children extract at identity room placement, and fallback XML round-trip loads. |
+
+`x3d_install_embed_smoke` also builds an ext consumer when the producing build
+has ext enabled. It resolves a native declaration and reads the installed
+fallback before and after relocating the prefix. These additions are unrun.
 
 - **`stl_reader_test`** (`runtime/ext/tests/stl_reader_test.cpp`) — synthesizes a two-triangle binary STL in-memory and asserts: `vertex_count == 6`, `index_count == 0`, Position and Normal attributes present with correct per-vertex values, AABB computed correctly (`min=(0,0,0)`, `max=(3,1,0)`), and three malformed-input cases (buffer too short, truncated triangle data, null pointer) all return empty `PackedMesh` without crashing.
 

@@ -399,6 +399,41 @@ void materials_and_frame_deltas() {
           "material values and frame comparison outlive service authority");
 }
 
+void keyed_delta_payloads() {
+  auto world = take(native::make_presented_scene());
+  author_graph(world);
+  take(world.service->activate(world.scene));
+  auto frame = take(world.feed.snapshot(*world.service));
+  const auto upload = take(native::changes_between(nullptr, *frame));
+  require(upload.items.size() == frame->items.size(), "initial keyed payloads");
+  auto previous = *frame;
+  auto current = previous;
+  ++current.native_tick;
+  auto &changed = current.items.front();
+  changed.world_transform.m[12] += 1;
+  ++changed.material_revision;
+  ++changed.mesh_key;
+  const auto key = changed.placement_key;
+  auto delta = take(native::changes_between(&previous, current));
+  require(delta.items.size() == 1 && delta.items.at(key).mesh == changed.mesh &&
+              delta.items.at(key).world_transform.m == changed.world_transform.m &&
+              delta.items.at(key).material_revision == changed.material_revision &&
+              delta.updated_geometry == std::vector<std::uint64_t>{key} &&
+              delta.updated_material == std::vector<std::uint64_t>{key} &&
+              delta.updated_transform == std::vector<std::uint64_t>{key},
+          "overlapping buckets carry one complete current payload by key");
+  current.items.clear();
+  const auto removal = take(native::changes_between(&previous, current));
+  require(removal.items.empty() && removal.removed.size() == 2,
+          "removed keys have no current payload");
+  require(take(native::changes_between(&previous, previous)).items.empty(),
+          "unchanged placements have no payload");
+  frame.reset();
+  previous.items.clear();
+  world.service.reset();
+  require(bool(delta.items.at(key).mesh), "payload owns its mesh after frame/service release");
+}
+
 void repeated_identical_root_paths_follow_extractor_contract() {
   auto world = take(native::make_presented_scene());
   const auto g = author_graph(world, true);
@@ -610,6 +645,7 @@ int main() {
     immutable_frames_and_latest_full_snapshot();
     removal_readdition_and_empty_snapshot();
     materials_and_frame_deltas();
+    keyed_delta_payloads();
     repeated_identical_root_paths_follow_extractor_contract();
     frontend_notification_overflow_hides_native_candidate();
     truncated_native_walk_cannot_publish_complete_frame();

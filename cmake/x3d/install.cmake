@@ -47,7 +47,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp"
     FILES_MATCHING
         PATTERN "*.hpp"
-        ${_x3d_install_excludes})
+        ${_x3d_install_excludes}
+        PATTERN "ext.hpp" EXCLUDE)
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/x3d"
@@ -60,7 +61,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/"
 # to its matching include/x3d_cpp/<sub>/, mirroring the install-interface include
 # dirs above. Both are driven by the SAME X3D_CPP_RUNTIME_PUBLIC_SUBDIRS list, so
 # the include path and the shipped headers stay in lockstep — and the internal
-# backends (io/physics/ext, plus nested reference backends) are never installed.
+# backends (io/physics, plus nested reference backends) are never installed here.
+# ext has separate opt-in install rules in ext.cmake.
 file(GLOB _x3d_runtime_root_headers CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/*.hpp")
 install(FILES ${_x3d_runtime_root_headers}

@@ -59,13 +59,24 @@ fi
 # IO-free gate — kept in sync with _x3d_runtime_backend_excludes in CMakeLists.txt:
 # the SDK ships seam interfaces + core, never a concrete/reference backend.
 backends="$(find "$prefix/include/x3d_cpp" \( \
-    -type d \( -name miniaudio -o -name dsp -o -name io -o -name physics -o -name ext \) \
+    -type d \( -name miniaudio -o -name dsp -o -name io -o -name physics \) \
     -o -type f -name 'RecordingBackend.hpp' \
   \) -print)"
 if [ -n "$backends" ]; then
   echo "installed include tree contains reference/IO backends (SDK must be IO-free):" >&2
   echo "$backends" >&2
   exit 1
+fi
+
+ext_enabled=OFF
+if grep -q '^X3D_CPP_BUILD_EXT:BOOL=ON$' "$build_dir/CMakeCache.txt"; then
+  ext_enabled=ON
+  test -f "$prefix/include/x3d_cpp/ext/CaveInputSystem.hpp"
+  test -f "$prefix/include/x3d_cpp/x3d/ext.hpp"
+  test -f "$prefix/share/x3d_cpp/ext/cave-fallbacks.x3d"
+else
+  test ! -e "$prefix/include/x3d_cpp/ext"
+  test ! -e "$prefix/include/x3d_cpp/x3d/ext.hpp"
 fi
 
 # Contract: assert every documented imported target exists against the REAL
@@ -78,7 +89,7 @@ cmake -S "$targets_src" -B "$work_dir/installed-targets" -G "$generator" \
   -DCMAKE_PREFIX_PATH="$prefix" >/dev/null
 
 cmake -S "$product_src" -B "$product_build" -G "$generator" \
-  -DCMAKE_PREFIX_PATH="$prefix"
+  -DCMAKE_PREFIX_PATH="$prefix" -DX3D_EMBED_EXT="$ext_enabled"
 cmake --build "$product_build"
 # The two halves of the README quickstart, chained: the authoring hello world
 # writes hello.x3d into the scratch work dir, the consumer parses it back and
@@ -87,6 +98,7 @@ cmake --build "$product_build"
 [ -s "$work_dir/hello.x3d" ] || { echo "authoring example wrote no hello.x3d" >&2; exit 1; }
 (cd "$work_dir" && "$product_build/x3d_embed_minimal")
 "$product_build/x3d_embed_native_host"
+if [ "$ext_enabled" = ON ]; then "$product_build/x3d_embed_ext" "$prefix/share/x3d_cpp/ext"; fi
 
 # ── Relocatability: the package must work from a MOVED copy of the prefix ─────
 # Static half: no absolute source- or build-tree path may be baked into any
@@ -112,11 +124,12 @@ cp -R "$prefix" "$moved"
 mv "$prefix" "$prefix.hidden"
 trap 'mv -f "$prefix.hidden" "$prefix" 2>/dev/null || true' EXIT
 cmake -S "$product_src" -B "$moved_build" -G "$generator" \
-  -DCMAKE_PREFIX_PATH="$moved" >/dev/null
+  -DCMAKE_PREFIX_PATH="$moved" -DX3D_EMBED_EXT="$ext_enabled" >/dev/null
 cmake --build "$moved_build" >/dev/null
 (cd "$work_dir" && "$moved_build/x3d_embed_authoring")
 (cd "$work_dir" && "$moved_build/x3d_embed_minimal")
 "$moved_build/x3d_embed_native_host"
+if [ "$ext_enabled" = ON ]; then "$moved_build/x3d_embed_ext" "$moved/share/x3d_cpp/ext"; fi
 mv "$prefix.hidden" "$prefix"
 trap - EXIT
 echo "relocatable: embed consumers configured, built, and ran against a moved prefix with the original hidden"

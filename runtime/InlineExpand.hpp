@@ -161,7 +161,10 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     if (!readLoad(*inl)) return; // load=FALSE: leave node un-expanded (Tier 3)
     std::vector<std::string> urls = readUrl(*inl);
     const auto origin = scene.nodeBaseUrls.find(inl);
-    std::shared_ptr<Scene> child = resolver(
+    const auto retained = scene.deferredInlineResolvers.find(inl);
+    const auto &load = retained == scene.deferredInlineResolvers.end()
+        ? resolver : retained->second;
+    std::shared_ptr<Scene> child = load(
         urls, origin == scene.nodeBaseUrls.end() ? baseUrl : origin->second);
     if (!child) {
       warnings.push_back({InlineWarning::Kind::UnresolvedUrl, inl->getDEF(),
@@ -174,6 +177,8 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
     scene.nodeBaseUrls.insert(child->nodeBaseUrls.begin(), child->nodeBaseUrls.end());
+    scene.deferredInlineResolvers.insert(child->deferredInlineResolvers.begin(),
+                                        child->deferredInlineResolvers.end());
     for (const auto &[nestedGroup, nestedInline] : child->expandedInlines)
       scene.expandedInlines[nestedGroup] = nestedInline;
     for (const auto &[nestedInline, nestedScene] : child->expandedInlineScenes)

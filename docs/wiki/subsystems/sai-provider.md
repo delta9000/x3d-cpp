@@ -79,7 +79,15 @@ this adapter. The contract is experimental and has no stable binary ABI claim.
 The native feed keeps `snapshot(service)` for complete frames.
 `changes_between(previous.get(), *current)` compares retained frames by placement
 key, including skipped ticks; `nullptr` requests an initial upload. It returns
-added, removed, transform, geometry, and material update buckets. Material values
+added, removed, transform, geometry, and material update buckets. The additive
+`delta.items` map holds complete current payloads by placement key for the union
+of added and updated placements. Each changed key appears once, even when its
+geometry and material both change; unchanged and removed keys have no payload.
+For example, upload `delta.items.at(key)` for an added or geometry/material
+update key, or move using its `world_transform` for a transform-only update.
+These are owned values with shared immutable meshes, so you can release the
+input frames after comparison. `keyed_delta_payloads` in the existing
+`sai_provider_presentation` test checks these contracts; it has not been run. Material values
 come directly from extraction; the current slice has no Appearance authoring,
 so it carries the SDK's unlit-white fallback. Material revisions track extractor
 invalidations and can report equal values after a rebuild. Comparisons require

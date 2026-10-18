@@ -11,3 +11,9 @@ target_link_libraries(x3d_embed_authoring PRIVATE x3d_cpp::authoring)
 
 add_executable(x3d_embed_native_host native_host.cpp)
 target_link_libraries(x3d_embed_native_host PRIVATE x3d_cpp::sdk)
+
+option(X3D_EMBED_EXT "Consume the installed opt-in extension layer" OFF)
+if(X3D_EMBED_EXT)
+    add_executable(x3d_embed_ext ext.cpp)
+    target_link_libraries(x3d_embed_ext PRIVATE x3d_cpp::sdk x3d_cpp::ext)
+endif()

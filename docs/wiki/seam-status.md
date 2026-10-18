@@ -367,3 +367,18 @@ constructor-fixed context/session owner and requires explicit references in
 shared conversion helpers. Existing consumers must migrate and rebuild.
 World-isolation tests complement numerical backend parity; neither proof is a
 claim of complete Geospatial or SAI conformance.
+
+## Round-two CAVE host proposals
+
+These additions await maintainer builds and test execution. With ext enabled,
+the installed package exports `x3d_cpp::ext`, its headers, and the portable CAVE
+fallback; the existing install/embed smoke consumes them through a relocated
+prefix. `assetResolversFrom` accepts a recursive PROTO decorator and retains
+asset-loaded Inline ancestry across runtime loads
+([ADR-0064](decisions/0070-deferred-inline-loader-ancestry.md)). Custom and
+local-file resolvers still own their cycle policy. Ext `warnings()` now explains
+rejected room/device input. Native SAI deltas include owned `items` keyed by
+placement identity. Evidence additions: `x3d_ext_cave_recursive_resolver`,
+`x3d_ext_cave_input_diagnostics`, the deferred-cycle case in
+`x3d_extract_tests`, and `keyed_delta_payloads` in
+`sai_provider_presentation`. No stable seam status changes are claimed.

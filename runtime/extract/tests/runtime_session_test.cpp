@@ -9,6 +9,7 @@
 #include "RuntimeSession.hpp"
 
 #include "X3DParse.hpp"
+#include "AssetDocumentResolvers.hpp"
 #include "XmlWriter.hpp"
 #include "../../physics/PhysicsSystem.hpp"
 #include "x3d/nodes/LoadSensor.hpp"
@@ -591,4 +592,48 @@ TEST_CASE("Interchange: nested coordinate generator edits refresh material "
             .item(0)
             .material.textures.front()
             .generatedTransform.translationS == doctest::Approx(0.5f));
+}
+
+TEST_CASE("Session: deferred asset Inline cycles retain source ancestry") {
+  for (bool mutual : {false, true}) {
+    unsigned loads = 0;
+    const auto resolvers = x3d::codec::assetResolversFrom(
+        [&](const std::string &url, AssetKind) {
+          ++loads;
+          // Avoid making a broken implementation expensive in this test.
+          if (loads > 8) return AssetResult::makeFailed();
+          const auto target = mutual && url == "memory://cave/a.x3d"
+              ? "b.x3d" : "sub/../a.x3d";
+          const std::string body =
+              "<X3D profile='Full' version='4.0'><Scene>"
+              "<Shape><Box/></Shape><Inline DEF='Again' load='false' url='&quot;" +
+              std::string(target) + "&quot;'/></Scene></X3D>";
+          return AssetResult::makeReady({body.begin(), body.end()});
+        });
+    auto doc = x3d::codec::parseDocument(R"(
+      <X3D profile='Full' version='4.0'><Scene>
+        <Inline DEF='Start' load='false' url='"a.x3d"'/>
+        <Inline DEF='Sibling' load='false' url='"a.x3d"'/>
+      </Scene></X3D>)", x3d::codec::Encoding::XML, "memory://cave",
+      resolvers.proto, resolvers.inlineScene);
+    SessionOptions options;
+    options.inlineResolver = resolvers.inlineScene;
+    options.baseUrl = "memory://cave";
+    auto session = RuntimeSession::create(std::move(doc), options);
+    for (int tick = 0; tick < 6; ++tick) {
+      // Enable every newly arrived deferred Inline, including in child scenes.
+      x3d::runtime::detail::forEachNode(session->scene(), [&](X3DNode *node) {
+        if (node->nodeTypeName() == "Inline")
+          session->context().writeField(node, "load", true);
+      });
+      session->tick(tick);
+    }
+    CHECK(loads == (mutual ? 4 : 2)); // independent siblings both load normally
+    CHECK(session->fullSnapshot().added.size() == (mutual ? 4 : 2));
+    session->context().writeField(session->scene().resolve("Start").get(), "load", false);
+    session->tick(7);
+    session->context().writeField(session->scene().resolve("Start").get(), "load", true);
+    session->tick(8);
+    CHECK(loads == (mutual ? 5 : 3)); // unloading doesn't permanently blacklist a URL
+  }
 }

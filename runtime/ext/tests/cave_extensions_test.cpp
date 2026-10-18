@@ -2,6 +2,7 @@
 // Checks remain active in Release builds; no assertions with side effects.
 #include "x3d/ext.hpp"
 #include "SceneExtractor.hpp"
+#include "AssetDocumentResolvers.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DParse.hpp"
 #include "x3d/nodes/Transform.hpp"
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -87,6 +89,38 @@ RoomFrame frame() {
   f.devices.push_back({"WAND", true, {{1, 2, -3}, {0, 1, 0, 0.4f}},
                        MFBool{true, false, true}, {0.5f, -0.75f}});
   return f;
+}
+
+void recursive_resolver() {
+  const std::map<std::string, std::string> files{
+      {"memory://cave/child.x3d", xml(R"(
+        <ExternProtoDeclare name='Widget' url='"library.x3d#Widget"'/>
+        <ProtoInstance name='Widget'/>)")},
+      {"memory://cave/library.x3d", xml(R"(
+        <ProtoDeclare name='Widget'><ProtoBody>
+          <ProtoInstance name='Tracked' DEF='NestedWand'>
+            <fieldValue name='device' value='WAND'/>
+          </ProtoInstance>
+        </ProtoBody></ProtoDeclare>)")}};
+  std::vector<std::string> fetched;
+  extract::AssetResolver assets = [&](const std::string &url, auto) {
+    fetched.push_back(url);
+    const auto it = files.find(url);
+    if (it == files.end()) return extract::AssetResult::makeFailed();
+    return extract::AssetResult::makeReady({it->second.begin(), it->second.end()});
+  };
+  auto resolvers = assetResolversFrom(assets, Encoding::Unknown,
+      [](ProtoDeclarationResolver base) { return install(std::move(base)); });
+  auto doc = parseDocument(xml("<Inline url='&quot;child.x3d&quot;'/>") ,
+      Encoding::XML, "memory://cave", resolvers.proto, resolvers.inlineScene);
+  check(doc.inlineWarnings.empty(), "decorated Inline did not load");
+  std::size_t tracked = 0;
+  x3d::runtime::detail::forEachNode(doc.scene, [&](X3DNode *node) {
+    if (dynamic_cast<TrackedDeviceSensor *>(node)) ++tracked;
+  });
+  check(tracked == 1, "external PROTO body lost the recursive ext decorator");
+  check(fetched == std::vector<std::string>{"memory://cave/child.x3d",
+      "memory://cave/library.x3d"}, "ext URNs escaped to the confined byte loader");
 }
 
 void proto_routes() {
@@ -253,6 +287,43 @@ void tracking_lifecycle() {
   check(!unknown->getIsActive(), "unknown name did not stay inactive");
 }
 
+void input_diagnostics() {
+  auto doc = document(R"(
+    <ProtoInstance name='Tracked' DEF='Wand'><fieldValue name='device' value='WAND'/></ProtoInstance>
+    <ProtoInstance name='RoomFrame' DEF='Room'/>)");
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto system = setup(doc.scene, ctx);
+  auto f = frame();
+  int tick = 0;
+  auto expect = [&](const char *message, const X3DNode *node) {
+    system->submit(f); ctx.tick(tick++);
+    bool found = false;
+    for (const auto &warning : system->warnings())
+      if (warning.node == node && warning.message.find(message) != std::string::npos)
+        found = true;
+    check(found, message);
+  };
+  auto wand = doc.scene.resolve("Wand");
+  f.roomFromWorld.m[4] = 0.5f; expect("shear", nullptr);
+  f.roomFromWorld = Mat4::scale({1,2,1}); expect("non-uniform scale", nullptr);
+  f.roomFromWorld = Mat4::identity();
+  f.roomFromWorld.m[0] = std::numeric_limits<float>::quiet_NaN();
+  expect("non-finite matrix", nullptr);
+  f.roomFromWorld = Mat4::identity();
+  f.devices.clear(); expect("unknown device", wand.get());
+  f = frame(); f.devices[0].valid = false; expect("host marked sample invalid", wand.get());
+  f = frame(); f.devices[0].roomFromDevice.position.x = std::numeric_limits<float>::infinity();
+  expect("non-finite pose", wand.get());
+  f = frame(); f.devices[0].roomFromDevice.orientation = {0,0,0,1};
+  expect("zero rotation axis", wand.get());
+  f = frame(); f.devices[0].joystick.x = std::numeric_limits<float>::infinity();
+  expect("non-finite joystick", wand.get());
+  f = frame(); system->submit(f); ctx.tick(tick++);
+  check(system->warnings().empty(), "recovered input retained stale diagnostics");
+  check(std::dynamic_pointer_cast<TrackedDeviceSensor>(wand)->getIsActive(),
+        "diagnosed device did not recover");
+}
+
 void invalid_room() {
   auto doc = document("<ProtoInstance name='RoomFrame' DEF='Room'/>");
   X3DExecutionContext ctx(doc.scene.authorFields);
@@ -352,7 +423,9 @@ int main(int argc, char **argv) {
   try {
     check(argc == 2, "expected one case name");
     const std::string name = argv[1];
-    if (name == "proto_routes") proto_routes();
+    if (name == "recursive_resolver") recursive_resolver();
+    else if (name == "input_diagnostics") input_diagnostics();
+    else if (name == "proto_routes") proto_routes();
     else if (name == "room_same_tick") room_same_tick();
     else if (name == "tracking_lifecycle") tracking_lifecycle();
     else if (name == "invalid_room") invalid_room();

@@ -169,7 +169,29 @@ Failed/unparseable candidates remain lenient and try the next URL. A Pending
 asset result aborts the entire active recursive asset load, including parent
 candidate lists; the parser records its ordinary unresolved Inline/EXTERNPROTO
 warning. Backend exceptions are treated as failed candidates. Cross-kind
-cycles share an explicit per-call active-URL stack; a new call starts clean.
+cycles share an explicit active-URL stack; independent top-level calls start
+clean. Asset-loaded Inline nodes retain a value-owned loader seeded with their
+source ancestry. Deferred `load=TRUE` events therefore reject self and mutual
+cycles across ticks, including lexical dot-segment aliases. Siblings and reloads
+remain independent. This retained policy takes precedence over a session's
+fallback Inline resolver for those nodes; choose the asset policy when loading
+the world. Custom resolvers and the local-file loader do not acquire source
+identity from this helper. See [ADR-0064](../decisions/0070-deferred-inline-loader-ancestry.md).
+
+The additive three-argument overload accepts a `ProtoResolverDecorator`:
+`assetResolversFrom(assets, hint, [](auto base) { return decorate(base); })`.
+It wraps the asset-backed PROTO resolver at every parse boundary and also wraps
+the returned top-level `.proto` callback. The decorator must delegate to its
+supplied callback to retain the loader's confinement, Pending propagation, and
+cycle checks. Its base callback borrows synchronous invocation state: don't
+retain it outside the invocation. The factory retains the decorator by value;
+its captures must outlive use of the loaded world.
+
+`x3d_ext_cave_recursive_resolver` exercises ext declarations in nested files.
+The `x3d_extract_tests` case
+`Session: deferred asset Inline cycles retain source ancestry` checks self and
+mutual cycles, lexical aliases, independent siblings, and reload after unload.
+Both additions await maintainer execution.
 
 The front door also captures source-directory provenance separately from
 serialized values. `ProtoDeclaration::sourceBaseUrl` and

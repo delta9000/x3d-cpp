@@ -997,6 +997,7 @@ result<presentation_delta> changes_between(const presentation_frame *previous,
     const auto found = remaining.find(item.placement_key);
     if (found == remaining.end()) {
       delta.added.push_back(item.placement_key);
+      delta.items.emplace(item.placement_key, item);
       continue;
     }
     const auto &old = *found->second;
@@ -1006,6 +1007,10 @@ result<presentation_delta> changes_between(const presentation_frame *previous,
       delta.updated_geometry.push_back(item.placement_key);
     if (old.material_revision != item.material_revision)
       delta.updated_material.push_back(item.placement_key);
+    if (old.world_transform.m != item.world_transform.m ||
+        old.mesh_key != item.mesh_key || old.mesh != item.mesh ||
+        old.material_revision != item.material_revision)
+      delta.items.emplace(item.placement_key, item);
     remaining.erase(found);
   }
   for (const auto &[key, item] : remaining)

@@ -97,7 +97,9 @@ struct SessionOptions {
   /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
 
-  /// Resolver used when an Inline receives load=TRUE after parse.
+  /// Enable deferred Inline loading and supply its fallback resolver. Nodes
+  /// fetched by the asset-loader factory retain their source policy/ancestry
+  /// and use that loader instead of this fallback when activated after parse.
   InlineResolver inlineResolver = {};
   /// Fallback resolution directory for Inline, textures and watched assets.
   std::string baseUrl;

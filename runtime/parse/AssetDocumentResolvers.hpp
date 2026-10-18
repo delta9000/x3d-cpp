@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -21,6 +22,11 @@ struct AssetDocumentResolvers {
   ProtoDeclarationResolver proto;
   runtime::InlineResolver inlineScene;
 };
+
+/// Wraps the asset-backed PROTO callback at every document boundary. The
+/// supplied base is synchronous; decorators must not retain it after a call.
+using ProtoResolverDecorator =
+    std::function<ProtoDeclarationResolver(ProtoDeclarationResolver)>;
 
 namespace asset_document_detail {
 
@@ -130,6 +136,7 @@ struct Policy {
   // Empty means use the corresponding asset-backed loader, never a file loader.
   ProtoDeclarationResolver protoOverride;
   runtime::InlineResolver inlineOverride;
+  ProtoResolverDecorator decorateProto;
 };
 
 struct Context {
@@ -157,7 +164,7 @@ resolveInline(Context &, const std::vector<std::string> &, const std::string &);
 // refer to this invocation's context; no shared ownership cycle or hidden
 // thread-local/global loader policy is needed.
 inline AssetDocumentResolvers nestedResolvers(Context &context) {
-  return {
+  AssetDocumentResolvers result{
       context.policy.protoOverride ? context.policy.protoOverride
           : ProtoDeclarationResolver{[&context](const auto &urls, const auto &base) {
               return resolveProto(context, urls, base);
@@ -166,7 +173,13 @@ inline AssetDocumentResolvers nestedResolvers(Context &context) {
           : runtime::InlineResolver{[&context](const auto &urls, const auto &base) {
               return resolveInline(context, urls, base);
             }}};
+  if (context.policy.decorateProto)
+    result.proto = context.policy.decorateProto(std::move(result.proto));
+  return result;
 }
+
+inline AssetDocumentResolvers makeResolvers(Policy policy,
+                                           std::vector<std::string> active = {});
 
 template <typename Result, typename Select>
 std::shared_ptr<Result> resolveDocument(Context &context,
@@ -197,6 +210,12 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       auto doc = parseDocument(body, enc, documentBaseDir(url),
                                nested.proto, nested.inlineScene);
       if (context.pending) return nullptr;
+      const auto deferred = context.policy.inlineOverride
+          ? context.policy.inlineOverride
+          : makeResolvers(context.policy, context.active).inlineScene;
+      for (const auto &[node, base] : doc.scene.nodeBaseUrls)
+        if (auto owned = node.lock(); owned && owned->nodeTypeName() == "Inline")
+          doc.scene.deferredInlineResolvers.try_emplace(node, deferred);
       if (auto selected = select(std::move(doc), fragment)) return selected;
     } catch (const std::exception &) {
       // Missing/unparseable candidates and backend failures remain lenient.
@@ -229,15 +248,16 @@ resolveInline(Context &context, const std::vector<std::string> &urls,
       });
 }
 
-inline AssetDocumentResolvers makeResolvers(Policy policy) {
+inline AssetDocumentResolvers makeResolvers(Policy policy,
+                                           std::vector<std::string> active) {
   if (!policy.assets) policy.assets = runtime::extract::makeNullAssetResolver();
   return {
-      [policy](const auto &urls, const auto &base) {
-        Context context{policy, {}, false};
-        return resolveProto(context, urls, base);
+      [policy, active](const auto &urls, const auto &base) {
+        Context context{policy, active, false};
+        return nestedResolvers(context).proto(urls, base);
       },
-      [policy](const auto &urls, const auto &base) {
-        Context context{policy, {}, false};
+      [policy, active](const auto &urls, const auto &base) {
+        Context context{policy, active, false};
         return resolveInline(context, urls, base);
       }};
 }
@@ -249,8 +269,16 @@ inline AssetDocumentResolvers makeResolvers(Policy policy) {
 /// Failed candidates are skipped; Pending stops the entire recursive load.
 /// The policy is used for every nested Inline/EXTERNPROTO, with no I/O fallback.
 inline AssetDocumentResolvers assetResolversFrom(
+    runtime::extract::AssetResolver resolver, Encoding hint,
+    ProtoResolverDecorator decorateProto) {
+  return asset_document_detail::makeResolvers(
+      {std::move(resolver), hint, {}, {}, std::move(decorateProto)});
+}
+
+/// Existing callers need no decorator.
+inline AssetDocumentResolvers assetResolversFrom(
     runtime::extract::AssetResolver resolver, Encoding hint = Encoding::Unknown) {
-  return asset_document_detail::makeResolvers({std::move(resolver), hint, {}, {}});
+  return assetResolversFrom(std::move(resolver), hint, {});
 }
 
 } // namespace x3d::codec

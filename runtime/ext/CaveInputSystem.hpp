@@ -50,26 +50,32 @@ struct Similarity {
 };
 
 // Validate instead of silently removing shear/reflection/non-uniform scale.
-inline std::optional<Similarity> similarity(const Mat4 &matrix) {
-  for (float v : matrix.m) if (!std::isfinite(v)) return std::nullopt;
+inline std::optional<Similarity> similarity(const Mat4 &matrix,
+                                           std::string *reason = nullptr) {
+  auto reject = [&](const char *message) -> std::optional<Similarity> {
+    if (reason) *reason = message;
+    return std::nullopt;
+  };
+  for (float v : matrix.m) if (!std::isfinite(v)) return reject("non-finite matrix");
   if (std::fabs(matrix.m[3]) > 1e-6f || std::fabs(matrix.m[7]) > 1e-6f ||
       std::fabs(matrix.m[11]) > 1e-6f || std::fabs(matrix.m[15] - 1) > 1e-6f)
-    return std::nullopt;
+    return reject("non-affine matrix");
   double lengths[3];
   for (int c = 0; c < 3; ++c) {
     double sum = 0;
     for (int r = 0; r < 3; ++r) sum += double(matrix.m[c*4+r]) * matrix.m[c*4+r];
     lengths[c] = std::sqrt(sum);
-    if (!(lengths[c] > 0)) return std::nullopt;
+    if (!(lengths[c] > 0)) return reject("singular matrix");
   }
-  for (int c = 1; c < 3; ++c)
-    if (std::fabs(lengths[c] - lengths[0]) > 1e-5 * lengths[0]) return std::nullopt;
   for (int a = 0; a < 3; ++a)
     for (int b = a + 1; b < 3; ++b) {
       double dot = 0;
       for (int r = 0; r < 3; ++r) dot += double(matrix.m[a*4+r]) * matrix.m[b*4+r];
-      if (std::fabs(dot) > 1e-5 * lengths[a] * lengths[b]) return std::nullopt;
+      if (std::fabs(dot) > 1e-5 * lengths[a] * lengths[b]) return reject("shear");
     }
+  for (int c = 1; c < 3; ++c)
+    if (std::fabs(lengths[c] - lengths[0]) > 1e-5 * lengths[0])
+      return reject("non-uniform scale");
   Mat4 rotation = matrix;
   for (int c = 0; c < 3; ++c)
     for (int r = 0; r < 3; ++r) rotation.m[c*4+r] /= lengths[c];
@@ -77,20 +83,27 @@ inline std::optional<Similarity> similarity(const Mat4 &matrix) {
   const double det = double(m[0]) * (double(m[5])*m[10] - double(m[9])*m[6]) -
                      double(m[4]) * (double(m[1])*m[10] - double(m[9])*m[2]) +
                      double(m[8]) * (double(m[1])*m[6] - double(m[5])*m[2]);
-  if (!(det > 0)) return std::nullopt;
+  if (!(det > 0)) return reject("reflection");
   const float scale = static_cast<float>(lengths[0]);
-  if (!std::isfinite(scale) || !(scale > 0)) return std::nullopt;
+  if (!std::isfinite(scale) || !(scale > 0)) return reject("unrepresentable scale");
   return Similarity{{matrix.m[12], matrix.m[13], matrix.m[14]},
                     rotationFromMatrix(rotation), scale};
 }
 
-inline bool validPose(const DevicePose &pose) {
+inline bool validPose(const DevicePose &pose, std::string *reason = nullptr) {
   const auto &p = pose.position;
   const auto &o = pose.orientation;
-  return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z) &&
-         std::isfinite(o.x) && std::isfinite(o.y) && std::isfinite(o.z) &&
-         std::isfinite(o.angle) &&
-         (o.angle == 0 || double(o.x)*o.x + double(o.y)*o.y + double(o.z)*o.z > 0);
+  if (!std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z) ||
+      !std::isfinite(o.x) || !std::isfinite(o.y) || !std::isfinite(o.z) ||
+      !std::isfinite(o.angle)) {
+    if (reason) *reason = "non-finite pose";
+    return false;
+  }
+  if (o.angle != 0 && double(o.x)*o.x + double(o.y)*o.y + double(o.z)*o.z == 0) {
+    if (reason) *reason = "zero rotation axis";
+    return false;
+  }
+  return true;
 }
 
 template <class T>
@@ -114,7 +127,8 @@ public:
   }
   void detach(X3DNode *node, X3DExecutionContext &) override { nodes_.erase(node); }
 
-  // Current placement diagnostics, refreshed during update(). Identity Transform
+  // Current placement and input diagnostics, refreshed during update().
+  // A null node identifies the submitted room frame. Identity Transform
   // ancestors count too: their later animation would otherwise break anchoring.
   const std::vector<RoomGroupWarning> &warnings() const { return warnings_; }
 
@@ -122,10 +136,14 @@ public:
     diagnoseRoomGroups();
     std::optional<Mat4> worldFromRoom;
     std::optional<cave_detail::Similarity> room;
-    if (frame_.valid && cave_detail::similarity(frame_.roomFromWorld)) {
+    std::string roomReason;
+    if (!frame_.valid) roomReason = "host marked frame invalid (or no submission)";
+    if (frame_.valid && cave_detail::similarity(frame_.roomFromWorld, &roomReason)) {
       worldFromRoom = frame_.roomFromWorld.tryInverse();
-      if (worldFromRoom) room = cave_detail::similarity(*worldFromRoom);
+      if (worldFromRoom) room = cave_detail::similarity(*worldFromRoom, &roomReason);
+      else roomReason = "matrix inverse is not representable";
     }
+    if (!room) warnings_.push_back({nullptr, "room frame rejected: " + roomReason});
     using cave_detail::output;
     for (X3DNode *node : nodes_) {
       if (auto *sensor = dynamic_cast<RoomFrameSensor *>(node)) {
@@ -143,9 +161,15 @@ public:
       const DeviceSample *sample = nullptr;
       for (const auto &candidate : frame_.devices)
         if (candidate.name == sensor->getDevice()) { sample = &candidate; break; }
-      const bool active = sensor->getEnabled() && room && sample && sample->valid &&
-                          cave_detail::validPose(sample->roomFromDevice) &&
-                          std::isfinite(sample->joystick.x) && std::isfinite(sample->joystick.y);
+      std::string deviceReason;
+      if (!sample) deviceReason = "unknown device";
+      else if (!sample->valid) deviceReason = "host marked sample invalid";
+      else if (cave_detail::validPose(sample->roomFromDevice, &deviceReason) &&
+               (!std::isfinite(sample->joystick.x) || !std::isfinite(sample->joystick.y)))
+        deviceReason = "non-finite joystick";
+      if (sensor->getEnabled() && !deviceReason.empty())
+        warnings_.push_back({node, "device '" + sensor->getDevice() + "' rejected: " + deviceReason});
+      const bool active = sensor->getEnabled() && room && deviceReason.empty();
       const bool initial = active && !sensor->getIsActive();
       output(ctx, node, "isActive", sensor->getIsActive(), active);
       if (!active) {

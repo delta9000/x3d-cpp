@@ -4,6 +4,8 @@
 #include "Mat4.hpp"
 #include "RenderItem.hpp"
 
+#include <map>
+
 namespace x3d::sai::experimental::native {
 namespace detail {
 struct presentation_state;
@@ -29,6 +31,10 @@ struct presentation_frame {
 struct presentation_delta {
   std::vector<std::uint64_t> added, removed;
   std::vector<std::uint64_t> updated_transform, updated_geometry, updated_material;
+  // Complete current payloads, once per added/changed key. Owned copies retain
+  // immutable mesh references; removals have no payload. Existing buckets still
+  // describe which resources need uploading.
+  std::map<std::uint64_t, presentation_item> items;
 };
 // Compare provider-produced frames, including skipped ticks. Null previous
 // means initial upload (all current placements added). Keys in update buckets
