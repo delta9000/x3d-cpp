@@ -178,7 +178,7 @@ invalidation or placement rebuild, so `updated_material` can conservatively
 request a refresh of an equal value. Revisions survive unchanged turns and
 cannot be compared across scene identities. This is a net frame comparison,
 not a log of intermediate edits. See
-[ADR-0063](../../docs/wiki/decisions/0066-sai-presentation-materials-and-deltas.md).
+[ADR-0066](../../docs/wiki/decisions/0066-sai-presentation-materials-and-deltas.md).
 
 This retains the latest-full-snapshot policy: the backend keeps one current frame and
 current identity maps, with no historical frame queue. Slow hosts deliberately

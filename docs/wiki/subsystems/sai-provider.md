@@ -50,7 +50,7 @@ IDs; hosts need no parallel name table. Retained results own their strings, but
 node handles lose authority on retirement. These owner-thread operations are
 covered by the shared `check_provider_named_nodes` oracle in
 `sai_provider_native_runtime`; this proposal has not been built or tested.
-See [ADR-0063](../decisions/0067-provider-named-node-discovery.md).
+See [ADR-0067](../decisions/0067-provider-named-node-discovery.md).
 
 ## Own the host loop
 
@@ -92,7 +92,7 @@ come directly from extraction; the current slice has no Appearance authoring,
 so it carries the SDK's unlit-white fallback. Material revisions track extractor
 invalidations and can report equal values after a rebuild. Comparisons require
 the same scene and nondecreasing native ticks, and remain valid after service
-destruction. See [ADR-0063](../decisions/0066-sai-presentation-materials-and-deltas.md)
+destruction. See [ADR-0066](../decisions/0066-sai-presentation-materials-and-deltas.md)
 and the [feed contract](https://github.com/delta9000/x3d-cpp/tree/main/adapters/sai_provider#owned-presentation-feed).
 The `sai_provider_presentation` test includes `materials_and_frame_deltas` for
 this proposal; it requires the separate provider harness below.

@@ -138,7 +138,7 @@ X3D file
 The CAVE extensions expose host snapshots as ordinary X3D events. They do not
 own hardware, navigation, camera poses, wall projections, or input capture.
 NavigationInfo remains a host mapping. There is no new viewpoint node or
-RenderItem coordinate-space flag. See [ADR-0063](../decisions/0068-room-frame-sensor-composition.md).
+RenderItem coordinate-space flag. See [ADR-0068](../decisions/0068-room-frame-sensor-composition.md).
 
 ### Node interfaces
 

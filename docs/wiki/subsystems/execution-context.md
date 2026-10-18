@@ -273,7 +273,7 @@ void pushStringDeletion();
 void clearKeyEvents();
 const KeyState &keyState() const;
 
-// Absolute camera override (ADR-0063):
+// Absolute camera override (ADR-0065):
 void setViewerWorldPose(const Mat4 &cameraToWorld);
 void clearViewerWorldPose();
 

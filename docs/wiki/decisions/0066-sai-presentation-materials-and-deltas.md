@@ -7,7 +7,7 @@ related:
   - ../subsystems/sai-provider.md
 ---
 
-# ADR-0063: Native SAI presentation materials and frame deltas
+# ADR-0066: Native SAI presentation materials and frame deltas
 
 Proposed. CAVEOS currently invents a material for every native SAI placement and
 diffs snapshot placement keys, mesh identities, and matrices in its host adapter.

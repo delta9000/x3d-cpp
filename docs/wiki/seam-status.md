@@ -46,10 +46,10 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
 | GeoProjection | Mathematical interface FROZEN (ADR-0053); context ownership per ADR-0058 | BuiltinGeoProjection | PROJ (`X3D_CPP_BUILD_PROJ`) | `x3d_proj_geo_swap` (toleranced) | Geospatial |
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
-| Absolute viewer pose | EXPERIMENTAL proposal ([ADR-0063](decisions/0065-absolute-viewer-world-pose.md)) | Runtime camera queries | CAVEOS migration pending | `viewer_world_pose_test.cpp` added; not run | NOT-YET-PROVEN; rigid camera-to-world override and authored viewpoint query |
-| Portable SAI named-node discovery | EXPERIMENTAL proposal | Native scene DEF bindings | x3d-sai reference snapshot bindings | Shared `check_provider_named_nodes` in `sai_provider_reference` / `sai_provider_native_runtime` (not run for this proposal) | [Provider guide](subsystems/sai-provider.md); source interoperability only, no stable ABI |
+| Absolute viewer pose | EXPERIMENTAL proposal ([ADR-0065](decisions/0065-absolute-viewer-world-pose.md)) | Runtime camera queries | CAVEOS migration pending | `viewer_world_pose_test.cpp` | NOT-YET-PROVEN; rigid camera-to-world override and authored viewpoint query |
+| Portable SAI named-node discovery | EXPERIMENTAL proposal | Native scene DEF bindings | x3d-sai reference snapshot bindings | Shared `check_provider_named_nodes` in `sai_provider_reference` / `sai_provider_native_runtime` | [Provider guide](subsystems/sai-provider.md); source interoperability only, no stable ABI |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
-| Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` (new material/delta assertions not run for this proposal) | [ADR-0063](decisions/0066-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
+| Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` | [ADR-0066](decisions/0066-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
 
 The Consumer seam's [ADR-0063 proposal](decisions/0069-selection-deltas-and-cheap-ticks.md)
 retains unaffected IDs and mesh references across Switch/LOD selection changes
@@ -66,7 +66,7 @@ applicable.
 `SessionOptions::pointingSensors` and `RuntimeSession::pointingSensors(pick)`
 let a host install sensors independently and query the SDK's activation scope.
 See [the pointing subsystem](subsystems/system-pointing.md#host-owned-navigation)
-and [ADR-0063](decisions/0064-pointing-without-navigation.md). Focused cases are
+and [ADR-0064](decisions/0064-pointing-without-navigation.md). Focused cases are
 registered in `x3d_extract_tests` but unrun for this proposal. CAVEOS integration
 and compilation remain unverified; this addition does not promote a seam row.
 

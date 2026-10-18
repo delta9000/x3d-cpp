@@ -164,7 +164,7 @@ Inactive geometry caches are evicted with fresh content versions for later
 reactivation. Scoped light/fog index changes republish only records whose indices
 change; surviving external packed items receive geometry updates because the
 resolver is called again. See
-[ADR-0063](../decisions/0069-selection-deltas-and-cheap-ticks.md).
+[ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
 The node-level `level_changed` event alone cannot represent all USE placements.
 
 Billboard descendants recompute their per-path transforms from the current

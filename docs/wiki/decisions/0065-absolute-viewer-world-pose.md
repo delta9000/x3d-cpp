@@ -8,7 +8,7 @@ related:
   - ../guides/native-host.md
 ---
 
-# ADR-0063: Absolute viewer world pose
+# ADR-0065: Absolute viewer world pose
 
 Proposed. CAVEOS owns navigation and head tracking in world space. Its trial
 integration cancels the SDK's relative camera frame and decomposes the result

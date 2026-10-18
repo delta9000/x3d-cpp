@@ -7,7 +7,7 @@ related:
   - ../subsystems/parse-readers.md
 ---
 
-# ADR-0064: Deferred Inline loader ancestry
+# ADR-0070: Deferred Inline loader ancestry
 
 ## Status
 

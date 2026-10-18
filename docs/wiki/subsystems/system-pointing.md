@@ -113,7 +113,7 @@ and tick can change activation. Anchors aren't pointing sensors.
 Use a current pick from this session. Picks and returned node pointers borrow
 scene storage; discard them before removing their nodes or destroying the
 session. Re-pick after scene changes that affect the hit or path. See
-[ADR-0063](../decisions/0064-pointing-without-navigation.md).
+[ADR-0064](../decisions/0064-pointing-without-navigation.md).
 
 The focused cases in `runtime/extract/tests/pointing_without_navigation_test.cpp`
 are registered in `x3d_extract_tests`. They cover installation, opt-in defaults,

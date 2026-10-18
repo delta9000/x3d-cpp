@@ -9,7 +9,7 @@ related:
   - ../subsystems/dirty-bounds-transform.md
 ---
 
-# ADR-0063: Selection deltas and cheap ticks
+# ADR-0069: Selection deltas and cheap ticks
 
 Proposed; renumber on merge. Keep the existing host loop:
 

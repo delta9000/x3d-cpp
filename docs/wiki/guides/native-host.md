@@ -143,7 +143,7 @@ change also appear in both lists, with the same ID. External packed payloads are
 re-resolved and surviving packed placements receive `updatedGeometry`.
 Node-reference edits in the same tick still require the structural baseline.
 Selection refresh uses a bounded active-scene walk; it does not promise CPU cost
-proportional only to the changed subtree. See [ADR-0063](../decisions/0069-selection-deltas-and-cheap-ticks.md).
+proportional only to the changed subtree. See [ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
 
 `lightsChanged` compares the complete world-resolved light list with the last
 published list, including scope, attenuation, radius, and shadow controls. An

@@ -161,17 +161,13 @@ nav:
       - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
       - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
       - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
-      - "ADR-0070: Resolver base URLs": decisions/0063-resolver-base-urls.md
-      - "ADR-0070: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
+      - "ADR-0063: Resolver base URLs": decisions/0063-resolver-base-urls.md
+      - "ADR-0064: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
       - "ADR-0065: Absolute viewer world pose": decisions/0065-absolute-viewer-world-pose.md
       - "ADR-0066: Native SAI presentation materials and frame deltas": decisions/0066-sai-presentation-materials-and-deltas.md
+      - "ADR-0067: Provider named-node discovery": decisions/0067-provider-named-node-discovery.md
       - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
       - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
-      - "ADR-0063: Resolver base URLs": decisions/0063-resolver-base-urls.md
-      - "ADR-0063: Pointing sensors without navigation": decisions/0063-pointing-without-navigation.md
-      - "ADR-0063: Absolute viewer world pose": decisions/0063-absolute-viewer-world-pose.md
-      - "ADR-0063: Native SAI presentation materials and frame deltas": decisions/0063-sai-presentation-materials-and-deltas.md
-      - "ADR-0063: Room anchoring through sensor composition": decisions/0063-room-frame-sensor-composition.md
       - "ADR-0070: Deferred Inline loader ancestry": decisions/0070-deferred-inline-loader-ancestry.md
   - Guides:
       - Gate System: guides/gate-system.md

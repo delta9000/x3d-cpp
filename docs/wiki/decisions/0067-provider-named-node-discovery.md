@@ -7,7 +7,7 @@ related:
   - ../subsystems/sai-provider.md
 ---
 
-# ADR-0063: Provider named-node discovery
+# ADR-0067: Provider named-node discovery
 
 Proposed. CAVEOS retains an application name table to list SAI nodes and format
 node references. Name lookup already belongs to the provider backend, so add

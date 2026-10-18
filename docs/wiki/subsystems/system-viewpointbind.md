@@ -119,7 +119,7 @@ and bind transitions continue independently; clearing resumes their current stat
 `boundViewpointWorldPose()` includes the ancestor frame and authored pose (including
 GeoViewpoint conversion), excludes offsets/tracking/override, and returns identity
 without a bound viewpoint. Shared viewpoints keep first-path semantics. See
-[ADR-0063](../decisions/0065-absolute-viewer-world-pose.md).
+[ADR-0065](../decisions/0065-absolute-viewer-world-pose.md).
 
 **Head-pose seam (called by the CAVE consumer per frame):**
 

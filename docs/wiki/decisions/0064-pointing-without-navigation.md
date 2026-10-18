@@ -8,7 +8,7 @@ related:
   - ../seam-status.md
 ---
 
-# ADR-0063: Pointing sensors without navigation
+# ADR-0064: Pointing sensors without navigation
 
 ## Status
 

@@ -8,7 +8,7 @@ related:
   - ../subsystems/ext-firewall.md
 ---
 
-# ADR-0063: Room anchoring through sensor composition
+# ADR-0068: Room anchoring through sensor composition
 
 ## Status
 
