@@ -39,6 +39,11 @@ private:
 using scene = handle<object_kind::scene>;
 using context = handle<object_kind::context>;
 using node = handle<object_kind::node>;
+struct named_node {
+  std::string name;
+  node target;
+  friend bool operator==(const named_node &, const named_node &) = default;
+};
 // Only disengaged optionals mean X3D NULL. An engaged empty/disposed/expired
 // node remains an invalid reference; it never silently becomes NULL.
 using node_value = std::optional<node>;
@@ -213,6 +218,7 @@ class backend {
 public:
   using backend_value = experimental::value;
   struct address { std::uint64_t scene, context, node; std::string field; };
+  struct name_binding { std::string name; std::uint64_t node; };
   struct admitted_write { address target; backend_value value; };
   struct backend_failure { sai_error error; failure_effect effects; };
   using backend_result = tl::expected<void, backend_failure>;
@@ -232,6 +238,8 @@ protected:
   virtual result<void> do_define_name(const address &, std::string_view) = 0;
   virtual result<std::vector<std::uint64_t>> do_roots(std::uint64_t scene) const = 0;
   virtual result<std::uint64_t> do_named(std::uint64_t scene, std::string_view) const = 0;
+  // Optional discovery; default fails closed for existing backend subclasses.
+  virtual result<std::vector<name_binding>> do_named_nodes(std::uint64_t scene) const;
   virtual result<std::string> do_type_name(const address &) const = 0;
   virtual result<std::vector<field_info>> do_fields(const address &) const = 0;
   virtual result<backend_value> do_read(const address &) const = 0;
@@ -284,6 +292,12 @@ public:
   result<context> root_context(const scene &) const;
   result<std::vector<node>> roots(const context &) const;
   result<node> named(const context &, std::string_view) const;
+  // Owning snapshots in ascending name order, including detached named nodes.
+  // Discovery is allowed in setup, active and faulted scenes.
+  result<std::vector<named_node>> named_nodes(const context &) const;
+  // Names in the node's lexical context; empty for an unnamed node. The current
+  // setup contract permits at most one canonical DEF name per node.
+  result<std::vector<std::string>> names(const node &) const;
   result<std::string> type_name(const node &) const;
   result<std::vector<field_info>> fields(const node &) const;
   result<field> get_field(const node &, std::string_view) const;

@@ -26,7 +26,7 @@ an old handle. Consumer-held identity tokens retain no backend scene storage.
 | Operations | Allowed state / outcome | Classification |
 | --- | --- | --- |
 | create scene/node, name, root, author, add route | Setup only; exact kind/access/authority checks | Bounded portable setup contract |
-| roots, named lookup, type/field discovery, readable field values | Setup, active or faulted; inputOnly read denied | SAI-derived service semantics |
+| roots, named lookup/enumeration, reverse names, type/field discovery, readable field values | Setup, active or faulted; inputOnly read denied | SAI-derived service semantics |
 | activate | Ends setup for the scene's owned nodes; failure can leave it faulted | Explicit binding lifecycle policy |
 | connect, begin/end, enqueue | Active activation; per-client gate and owning requests | SAI-derived buffering plus explicit receipt policy |
 | pump | Active only, finite nondecreasing host time; no hidden scheduler | Host extension |
@@ -48,6 +48,34 @@ only weak frontend state. Teardown revokes authority before releasing applicatio
 captures. Application callbacks and capture destructors may reenter or destroy
 the service; dispatch pins detached state and does not resume through a destroyed
 owner. Native-only extraction/inspection remains a clearly separate extension.
+
+## Named-node discovery
+
+`named_nodes(context)` returns an owning vector of `named_node { name, target }`
+entries in ascending, case-sensitive name order. It includes every name in that
+lexical context, including named nodes detached from roots; unnamed nodes do not
+appear. `named(context, entry.name)` resolves to `entry.target`. The current
+provider contract has one root lexical context per scene; discovery does not
+flatten future nested contexts or enumerate IMPORT aliases.
+
+`names(node)` returns an owning vector of names bound to that node in its lexical
+context, in the same order. An unnamed node succeeds with an empty vector. The
+current setup contract still permits only one canonical DEF name per node;
+this query does not introduce alias authoring or rename operations.
+
+Both queries follow the discovery authority and owner-thread rules and work in
+setup, active, and faulted states. Disposed, foreign, and retired handles fail
+as they do for `named` and `type_name`. Returned strings and vectors survive
+later edits, retirement, and service destruction; retained node handles do not
+retain backend storage or authority after retirement.
+
+Backends implement `do_named_nodes(scene)` using their existing name bindings.
+The frontend sorts, rejects null identities, invalid names, and duplicate names
+with `invalid_descriptor`, and wraps IDs in provider-owned handles. Reverse
+lookup filters that same enumeration; it keeps no second name table. The default
+virtual returns `unsupported_operation`, preserving source compatibility for
+existing backend subclasses. As with other virtual additions, rebuild backend
+and frontend together; this experimental interface has no stable binary ABI.
 
 ## Scene units and metadata
 

@@ -278,6 +278,9 @@ result<void> backend::do_set_metadata(std::uint64_t, std::string_view,
                                       const std::optional<std::string> &) {
   return error(error_code::unsupported_operation, "provider.set_metadata", "backend does not provide scene metadata");
 }
+result<std::vector<backend::name_binding>> backend::do_named_nodes(std::uint64_t) const {
+  return error(error_code::unsupported_operation, "provider.named_nodes", "backend does not provide named-node enumeration");
+}
 result<void> service::check() const {
   if (p_->owner != thread_identity())
     return error(error_code::wrong_thread, "provider", "service belongs to another thread");
@@ -631,6 +634,30 @@ result<node> service::named(const context &c, std::string_view name) const {
   auto id = p_->implementation->do_named(c.scene_, name); if (!id) return failure(id.error());
   if (!*id) return error(error_code::invalid_descriptor, "provider.named", "backend returned a null named identity");
   return make<object_kind::node>(c.scene_, c.context_, *id);
+}
+result<std::vector<named_node>> service::named_nodes(const context &c) const {
+  if (auto ok = validate(c); !ok) return failure(ok.error());
+  auto bindings = p_->implementation->do_named_nodes(c.scene_);
+  if (!bindings) return failure(bindings.error());
+  std::sort(bindings->begin(), bindings->end(),
+            [](const auto &a, const auto &b) { return a.name < b.name; });
+  std::vector<named_node> result;
+  for (const auto &binding : *bindings) {
+    if (!binding.node || !valid_name(binding.name) ||
+        (!result.empty() && result.back().name == binding.name))
+      return error(error_code::invalid_descriptor, "provider.named_nodes", "backend returned an invalid or duplicate name binding");
+    result.push_back({binding.name, make<object_kind::node>(c.scene_, c.context_, binding.node)});
+  }
+  return result;
+}
+result<std::vector<std::string>> service::names(const node &n) const {
+  if (auto ok = validate(n); !ok) return failure(ok.error());
+  auto bindings = named_nodes(make<object_kind::context>(n.scene_, n.context_));
+  if (!bindings) return failure(bindings.error());
+  std::vector<std::string> result;
+  for (const auto &binding : *bindings)
+    if (binding.target == n) result.push_back(binding.name);
+  return result;
 }
 result<std::string> service::type_name(const node &n) const {
   if (auto ok = validate(n); !ok) return failure(ok.error());

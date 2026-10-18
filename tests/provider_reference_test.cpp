@@ -56,6 +56,8 @@ int check_creation_allocation_failures() {
 
 int main() {
   try {
+    x3d::sai::experimental::testing::check_provider_named_nodes(
+        [] { return x3d::sai::experimental::make_reference_provider(); });
     const auto failures = check_creation_allocation_failures();
     std::cout << "reference node creation: " << failures
               << " allocation failures preserved setup\n";

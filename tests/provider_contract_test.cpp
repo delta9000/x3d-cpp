@@ -523,3 +523,39 @@ TEST_CASE("scene information remains inspectable after a fault without permittin
   REQUIRE_FALSE(stale);
   CHECK(stale.error().code == s::error_code::stale_handle);
 }
+
+TEST_CASE("named-node discovery defaults fail closed and rejects malformed bindings") {
+  world legacy;
+  CHECK(legacy.service->named_nodes(legacy.context).error().code == s::error_code::unsupported_operation);
+  CHECK(legacy.service->names(legacy.node).error().code == s::error_code::unsupported_operation);
+  struct discovery_probe : probe {
+    std::vector<name_binding> bindings;
+    s::result<std::vector<name_binding>> do_named_nodes(std::uint64_t) const override {
+      return bindings;
+    }
+  };
+  auto implementation = std::make_unique<discovery_probe>();
+  auto &backend = *implementation;
+  p::service service(std::move(implementation));
+  const auto scene = service.create_scene().value();
+  const auto context = service.root_context(scene).value();
+  const auto node = service.create_node(context, "Transform").value();
+  backend.bindings = {{"Zulu", 1}, {"Alpha", 1}};
+  CHECK(service.names(node).value() == std::vector<std::string>{"Alpha", "Zulu"});
+  backend.bindings = {{"Duplicate", 1}, {"Duplicate", 2}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"Null", 0}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"bad name", 1}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"Named", 1}};
+  REQUIRE(service.define_name(node, "Named"));
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  backend.partial = true;
+  REQUIRE(service.enqueue(client, {{service.get_field(node, "x").value(), 1.f}}));
+  REQUIRE(service.pump(active, {0}));
+  REQUIRE(service.state(scene).value() == p::activation_state::faulted);
+  CHECK(service.named_nodes(context).value() == std::vector<p::named_node>{{"Named", node}});
+  CHECK(service.names(node).value() == std::vector<std::string>{"Named"});
+}

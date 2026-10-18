@@ -237,6 +237,16 @@ private:
     return found->id().value;
   }
 
+  result<std::vector<name_binding>> do_named_nodes(std::uint64_t id) const override {
+    auto stored = storage(id);
+    if (!stored) return failure(stored.error());
+    std::vector<name_binding> result;
+    const auto snapshot = (*stored)->scene.snapshot();
+    for (const auto &binding : snapshot.names())
+      result.push_back({binding.name, binding.node.value});
+    return result;
+  }
+
   result<std::string> do_type_name(const address &target) const override {
     auto owner = lookup_node(target);
     if (!owner) return failure(owner.error());
