@@ -16,6 +16,54 @@ those references. Only `nullopt` is NULL. Empty, disposed, foreign or expired
 engaged wrappers do not grant node authority. Raw numeric node IDs are an internal
 backend representation, not an application authoring capability.
 
+## Queued live ROUTE addition
+
+`service_id::live_routes` is an optional version-1 capability. With it,
+`enqueue_route(client, from, to)` returns an owning ticket using the same FIFO,
+update gate, cancellation, budgets, and retirement rules as field writes. The
+existing `add_route(context, from, to)` remains setup-only. Backends without the
+capability reject admission with `unsupported_operation`; the new backend
+virtual also defaults to unsupported without effects, so existing subclasses
+remain source compatible. Rebuild frontend and backend together; the added
+virtual has no stable binary ABI promise.
+
+Admission validates the client and canonical fields, service/scene authority,
+lexical context, exact portable kind, and ROUTE direction. Sources must be
+outputOnly or inputOutput; destinations must be inputOnly or inputOutput.
+Unsupported field services are refused. Backend-specific restrictions and
+existing duplicate routes are checked during installation at pump. Refusals
+then appear in the turn report and receipt, rather than the enqueue result.
+
+A route request consumes one ordinary FIFO submission when no update gate is
+open. It installs before that turn's backend evaluation. Earlier submissions
+run without the route, and installation does not replay previous outputs. An
+empty write vector still performs the route turn's ordinary backend tick.
+Within a released update gate, all route requests install in their relative
+order before evaluating all retained writes and input occurrences in that
+submission, even if a write was enqueued before a route. Every receipt in that
+gate shares its submission and outcome. Cancelling any one cancels the whole
+submission, as with grouped field writes.
+
+Admission counts each route call against `pending_requests` and accounts one
+`backend::admitted_route` object plus both canonical field-name byte counts
+against `payload_bytes`. It excludes allocator overhead and backend topology
+storage. Held calls retain that accounting until processing or cancellation.
+
+The backend implements `do_add_live_route(from, to)` and returns an explicit
+failure effect. A refusal before effects leaves the activation active. If any
+route in a submission was installed and a later installation or evaluation
+fails, the frontend reports `partial_or_unknown`, faults the activation, and
+cancels its later requests. No rollback of earlier installed routes is implied.
+Application callbacks remain deferred through explicit notification dispatch.
+
+The reference provider uses its existing scene-edit transaction to install the
+route. The native companion updates executable state and the retained native
+document, while refusing nested contexts and PROTO interface redirection. Route
+removal remains outside this capability. The own-suite `sai_provider_contract`
+cases cover FIFO ordering, gates, cancellation, authority/kind/direction,
+budgets, defaults, and partial installation. `sai_provider_reference` checks
+actual next-turn delivery. These additions have not been built or run here.
+
 ## Ownership and operation matrix
 
 `scene`, lexical `context`, `node` and canonical `field` handles carry provider
@@ -28,6 +76,7 @@ an old handle. Consumer-held identity tokens retain no backend scene storage.
 | create scene/node, name, root, author, add route | Setup only; exact kind/access/authority checks | Bounded portable setup contract |
 | roots, named lookup/enumeration, reverse names, type/field discovery, readable field values | Setup, active or faulted; inputOnly read denied | SAI-derived service semantics |
 | activate | Ends setup for the scene's owned nodes; failure can leave it faulted | Explicit binding lifecycle policy |
+| enqueue_route | Active, optional `live_routes`; installs at its FIFO turn | Portable optional capability |
 | connect, begin/end, enqueue | Active activation; per-client gate and owning requests | SAI-derived buffering plus explicit receipt policy |
 | pump | Active only, finite nondecreasing host time; no hidden scheduler | Host extension |
 | observe/drain | Deferred owning notifications; cancellation and callback affinity explicit | SAI-derived observation plus C++ scheduling policy |

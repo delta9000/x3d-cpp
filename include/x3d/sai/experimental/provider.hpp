@@ -134,11 +134,13 @@ private:
 };
 // Per-service admission budget, including held work; zero admits no work.
 // Payload accounting includes each public write object, canonical field bytes,
-// and logical dynamic payload bytes. It excludes allocator overhead, backend
-// state, callback captures and consumer-retained receipts.
+// and logical dynamic payload bytes. Route requests account one admitted_route
+// object and both canonical field names. It excludes allocator overhead,
+// backend state, callback captures and consumer-retained receipts.
 // Notifications separately account each stored notification object, canonical
 // field bytes and logical dynamic value bytes. Detached dispatch deliveries are
-// no longer queued. Counts are bounds on retained work, not total process memory.
+// no longer queued. Counts are bounds on retained work, not total process
+// memory.
 struct resource_limits {
   std::size_t pending_requests = 1024;
   std::size_t payload_bytes = 16 * 1024 * 1024;
@@ -179,9 +181,18 @@ private:
   friend class service;
 };
 enum class service_id {
-  scene_authoring, host_turns, notifications, node_values, indexed_writes,
-  user_data, reference_snapshots, reference_transactions, reference_checkpoints,
-  scene_units, scene_metadata
+  scene_authoring,
+  host_turns,
+  notifications,
+  node_values,
+  indexed_writes,
+  user_data,
+  reference_snapshots,
+  reference_transactions,
+  reference_checkpoints,
+  scene_units,
+  scene_metadata,
+  live_routes
 };
 struct service_capability {
   service_id id;
@@ -220,6 +231,9 @@ public:
   struct address { std::uint64_t scene, context, node; std::string field; };
   struct name_binding { std::string name; std::uint64_t node; };
   struct admitted_write { address target; backend_value value; };
+  struct admitted_route {
+    address from, to;
+  };
   struct backend_failure { sai_error error; failure_effect effects; };
   using backend_result = tl::expected<void, backend_failure>;
   virtual ~backend() = default;
@@ -245,6 +259,9 @@ protected:
   virtual result<backend_value> do_read(const address &) const = 0;
   virtual result<void> do_author(const address &, const backend_value &) = 0;
   virtual result<void> do_add_route(const address &, const address &) = 0;
+  // Optional live topology extension. Called at pump before do_turn; default
+  // refuses without effects. Partial installation must report honest effects.
+  virtual backend_result do_add_live_route(const address &, const address &);
   virtual result<void> do_validate_configuration(std::uint64_t scene,
       const std::vector<admitted_write> &) const = 0;
   virtual result<void> do_activate(std::uint64_t scene) = 0;
@@ -350,6 +367,10 @@ public:
   // coupled candidate before backend entry. This is explicit proposal policy.
   // Resource limits count calls and owning payload bytes, including held work.
   result<ticket> enqueue(const client &, std::vector<write>);
+  // Optional FIFO request. A released update gate installs all its routes
+  // before evaluating its retained writes and ordered input occurrences.
+  result<ticket> enqueue_route(const client &, const field &from,
+                               const field &to);
   template <class Owner, class T>
   result<ticket> enqueue(const client &c, const node &n,
                          const field_key<Owner, T> &key, semantic_value_t<T> v) {

@@ -70,7 +70,8 @@ public:
                        {provider::service_id::indexed_writes},
                        {provider::service_id::user_data},
                        {provider::service_id::scene_units},
-                       {provider::service_id::scene_metadata}};
+                       {provider::service_id::scene_metadata},
+                       {provider::service_id::live_routes}};
     for (const auto &type : registry_.node_types()) {
       if (type.abstract) continue;
       result.nodes.push_back({type.name, type.component,
@@ -302,6 +303,15 @@ private:
     auto edit = storage(source.scene).value()->scene.edit();
     if (auto added = edit.add_route(*from, *to); !added) return added;
     if (auto committed = edit.commit(); !committed) return failure(committed.error());
+    return {};
+  }
+
+  backend_result do_add_live_route(const address &from,
+                                   const address &to) override {
+    auto added = do_add_route(from, to);
+    if (!added)
+      return tl::unexpected{
+          backend_failure{added.error(), provider::failure_effect::none}};
     return {};
   }
 

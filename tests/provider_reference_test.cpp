@@ -52,10 +52,37 @@ int check_creation_allocation_failures() {
   }
   throw std::runtime_error("node creation allocation sweep never reached success");
 }
+void check_live_routes() {
+  namespace sai = x3d::sai::experimental;
+  auto service = sai::make_reference_provider().value();
+  const auto scene = service->create_scene().value();
+  const auto context = service->root_context(scene).value();
+  const auto source = service->create_node(context, "Transform").value();
+  const auto sink = service->create_node(context, "Transform").value();
+  const auto from = service->get_field(source, "translation").value();
+  const auto to = service->get_field(sink, "translation").value();
+  const auto active = service->activate(scene).value();
+  const auto client = service->connect(active).value();
+  service->enqueue(client, {{from, sai::vec3f{1, 2, 3}}}).value();
+  const auto route = service->enqueue_route(client, from, to).value();
+  service->pump(active, {0}).value();
+  if (std::get<sai::vec3f>(service->read(to).value()) != sai::vec3f{})
+    throw std::runtime_error("queued ROUTE affected an earlier FIFO turn");
+  service->pump(active, {1}).value();
+  if (route.status()->state != sai::provider::request_state::processed ||
+      std::get<sai::vec3f>(service->read(to).value()) != sai::vec3f{})
+    throw std::runtime_error("ROUTE installation replayed an earlier event");
+  service->enqueue(client, {{from, sai::vec3f{4, 5, 6}}}).value();
+  service->pump(active, {2}).value();
+  if (std::get<sai::vec3f>(service->read(to).value()) != sai::vec3f{4, 5, 6})
+    throw std::runtime_error(
+        "reference live ROUTE did not carry the next turn");
+}
 } // namespace
 
 int main() {
   try {
+    check_live_routes();
     x3d::sai::experimental::testing::check_provider_named_nodes(
         [] { return x3d::sai::experimental::make_reference_provider(); });
     const auto failures = check_creation_allocation_failures();

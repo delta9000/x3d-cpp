@@ -559,3 +559,174 @@ TEST_CASE("named-node discovery defaults fail closed and rejects malformed bindi
   CHECK(service.named_nodes(context).value() == std::vector<p::named_node>{{"Named", node}});
   CHECK(service.names(node).value() == std::vector<std::string>{"Named"});
 }
+
+namespace {
+struct route_probe : probe {
+  std::vector<admitted_route> installed;
+  std::vector<std::size_t> routes_at_turn;
+  bool implement = true;
+  p::capabilities supported() const override {
+    auto caps = probe::supported();
+    caps.services.push_back({p::service_id::live_routes});
+    return caps;
+  }
+  backend_result do_add_live_route(const address &from,
+                                   const address &to) override {
+    if (!implement)
+      return p::backend::do_add_live_route(from, to);
+    if (!installed.empty() && installed.back().from.field == from.field &&
+        installed.back().to.field == to.field)
+      return tl::unexpected{backend_failure{
+          error(s::error_code::invalid_route, "probe.live_route", "duplicate")
+              .value(),
+          p::failure_effect::none}};
+    installed.push_back({from, to});
+    return {};
+  }
+  backend_result do_turn(std::uint64_t scene, s::event_time time,
+                         const std::vector<admitted_write> &writes) override {
+    routes_at_turn.push_back(installed.size());
+    return probe::do_turn(scene, time, writes);
+  }
+};
+} // namespace
+TEST_CASE("optional queued ROUTEs share FIFO tickets gates and cancellation") {
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto context = service.root_context(scene).value();
+  const auto node = service.create_node(context, "Transform").value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  auto before = service.enqueue(client, {{x, 1.f}}).value();
+  auto route = service.enqueue_route(client, x, limit).value();
+  auto after = service.enqueue(client, {{x, 2.f}}).value();
+  REQUIRE(native.installed.empty());
+  REQUIRE(service.pump(active, {0}));
+  CHECK(before.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0});
+  REQUIRE(service.pump(active, {1}));
+  CHECK(route.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0, 1});
+  REQUIRE(service.pump(active, {2}));
+  CHECK(after.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0, 1, 1});
+  REQUIRE(service.begin_update(client));
+  auto held_write = service.enqueue(client, {{x, 2.f}}).value();
+  auto held_route = service.enqueue_route(client, limit, x).value();
+  CHECK(held_route.status()->state == p::request_state::accepted);
+  REQUIRE(service.end_update(client));
+  CHECK(held_route.status()->submission == held_write.status()->submission);
+  REQUIRE(service.pump(active, {3}));
+  CHECK(native.routes_at_turn.back() == 2);
+  CHECK(held_route.status()->state == p::request_state::processed);
+  auto cancelled = service.enqueue_route(client, x, limit).value();
+  REQUIRE(service.cancel(client, cancelled));
+  CHECK(cancelled.status()->state == p::request_state::cancelled);
+  REQUIRE(service.pump(active, {4}));
+  CHECK(native.installed.size() == 2);
+  REQUIRE(service.begin_update(client));
+  auto cancelled_route = service.enqueue_route(client, x, limit).value();
+  auto cancelled_write = service.enqueue(client, {{x, 1.f}}).value();
+  REQUIRE(service.end_update(client));
+  REQUIRE(service.cancel(client, cancelled_route));
+  CHECK(cancelled_write.status()->state == p::request_state::cancelled);
+  REQUIRE(service.pump(active, {5}));
+  CHECK(native.installed.size() == 2);
+  CHECK(std::get<float>(service.read(x).value()) == 2.f);
+  const auto input = service.get_field(node, "input").value();
+  const auto vector = service.get_field(node, "translation").value();
+  CHECK(service.enqueue_route(client, input, x).error().code ==
+        s::error_code::invalid_route);
+  CHECK(service.enqueue_route(client, x, vector).error().code ==
+        s::error_code::invalid_route);
+  const auto other_scene = service.create_scene().value();
+  const auto other_context = service.root_context(other_scene).value();
+  const auto other_node =
+      service.create_node(other_context, "Transform").value();
+  CHECK(
+      service
+          .enqueue_route(client, x, service.get_field(other_node, "x").value())
+          .error()
+          .code == s::error_code::invalid_context);
+  world foreign;
+  CHECK(service.enqueue_route(client, x, foreign.field("x")).error().code ==
+        s::error_code::invalid_context);
+  auto disposed = x;
+  disposed.dispose();
+  CHECK(service.enqueue_route(client, disposed, limit).error().code ==
+        s::error_code::disposed);
+}
+TEST_CASE("live ROUTE defaults fail closed and route requests obey budgets") {
+  world legacy;
+  const auto active = legacy.service->activate(legacy.scene).value();
+  const auto client = legacy.service->connect(active).value();
+  CHECK(legacy.service
+            ->enqueue_route(client, legacy.field("x"), legacy.field("limit"))
+            .error()
+            .code == s::error_code::unsupported_operation);
+  auto engine = std::make_unique<route_probe>();
+  engine->implement = false;
+  p::service service(std::move(engine), p::resource_limits{1, 4096});
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto a = service.activate(scene).value();
+  const auto c = service.connect(a).value();
+  auto route = service.enqueue_route(c, x, limit).value();
+  CHECK(service.enqueue(c, {{x, 1.f}}).error().code ==
+        s::error_code::resource_limit);
+  const auto report = service.pump(a, {0}).value();
+  REQUIRE(report.error);
+  CHECK(report.error->code == s::error_code::unsupported_operation);
+  CHECK(report.effects == p::failure_effect::none);
+  CHECK(report.state == p::activation_state::active);
+  CHECK(route.status()->state == p::request_state::failed);
+  REQUIRE(service.enqueue(c, {{x, 1.f}}));
+  REQUIRE(service.pump(a, {1}));
+  p::service no_bytes(std::make_unique<route_probe>(),
+                      p::resource_limits{1, 0});
+  const auto empty = no_bytes.create_scene().value();
+  const auto n =
+      no_bytes.create_node(no_bytes.root_context(empty).value(), "Transform")
+          .value();
+  const auto ca = no_bytes.connect(no_bytes.activate(empty).value()).value();
+  CHECK(no_bytes
+            .enqueue_route(ca, no_bytes.get_field(n, "x").value(),
+                           no_bytes.get_field(n, "limit").value())
+            .error()
+            .code == s::error_code::resource_limit);
+}
+TEST_CASE(
+    "a later ROUTE failure cannot claim an earlier installation rolled back") {
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  REQUIRE(service.begin_update(client));
+  auto first = service.enqueue_route(client, x, limit).value();
+  auto duplicate = service.enqueue_route(client, x, limit).value();
+  REQUIRE(service.end_update(client));
+  auto later = service.enqueue(client, {{x, 1.f}}).value();
+  const auto report = service.pump(active, {0}).value();
+  CHECK(report.state == p::activation_state::faulted);
+  CHECK(report.effects == p::failure_effect::partial_or_unknown);
+  CHECK(native.installed.size() == 1);
+  CHECK(native.turns == 0);
+  CHECK(first.status()->state == p::request_state::failed);
+  CHECK(duplicate.status()->effects == p::failure_effect::partial_or_unknown);
+  CHECK(later.status()->state == p::request_state::cancelled);
+}
