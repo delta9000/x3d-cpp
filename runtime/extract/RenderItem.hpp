@@ -419,6 +419,12 @@ struct TextureRef {
   // Decoded/structured descriptor — filled in by the consumer once it decodes
   // the buffer; empty until then.
   std::optional<TextureDesc> resolved_desc;
+
+  // URL provenance. SceneExtractor fills baseUrl from the originating node,
+  // falling back to its configured base. Movie consumers use it too. Neither
+  // field changes the authored url list; sourceNode does not retain the scene.
+  std::weak_ptr<X3DNode> sourceNode;
+  std::string baseUrl;
 };
 
 // ---------------------------------------------------------------------------

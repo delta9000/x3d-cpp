@@ -98,9 +98,12 @@ using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode *child, const Scene 
 
 class LoadSensorSystem : public System {
 public:
-  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr)
+  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr,
+                            extract::AssetResolverWithBase resolverWithBase = {},
+                            std::string baseUrl = {})
       : resolver_(resolver ? std::move(resolver)
-                           : extract::makeNullAssetResolver()) {}
+                           : extract::makeNullAssetResolver()),
+        resolverWithBase_(std::move(resolverWithBase)), baseUrl_(std::move(baseUrl)) {}
 
   void setScene(const Scene *s) { scene_ = s; }
   void setChildLoadPolicy(ChildLoadPolicy p) { policy_ = std::move(p); }
@@ -162,6 +165,8 @@ private:
   }
 
   extract::AssetResolver resolver_;
+  extract::AssetResolverWithBase resolverWithBase_;
+  std::string baseUrl_;
   const Scene *scene_ = nullptr;
   ChildLoadPolicy policy_;
   std::function<void(X3DNode *, bool, double)> sensorHook_;
@@ -304,6 +309,10 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       }
       cs.status = ChildStatus::Loading;
       const extract::AssetKind kind = detail_loadsensor::kindForNode(c);
+      std::string base = baseUrl_;
+      if (resolverWithBase_ && scene_)
+        for (const auto &[weak, origin] : scene_->nodeBaseUrls)
+          if (weak.lock().get() == c) { base = origin; break; }
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
@@ -317,16 +326,20 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
             break;
           }
         }
-        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
+        const std::string key = resolverWithBase_
+            ? std::to_string(static_cast<int>(kind)) + ":" +
+                  std::to_string(base.size()) + ":" + base + u : u;
+        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(key)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }
         if (called)
           break; // ≤1 resolver call/tick: remaining candidates wait for next tick
-        const extract::AssetResult r = resolver_(u, kind);
+        const extract::AssetResult r = resolverWithBase_
+            ? resolverWithBase_(u, kind, base) : resolver_(u, kind);
         called = true;
         if (r.ready()) {
-          readyMemo_.insert(u);
+          readyMemo_.insert(key);
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }

@@ -95,6 +95,12 @@ struct AssetResult {
 using AssetResolver =
     std::function<AssetResult(const std::string &url, AssetKind kind)>;
 
+// Contextual render-time variant, currently used by LoadSensor. Authored URL,
+// intent, and the watched node's source directory; the host owns resolution.
+// Parse-time loaders already pass resolved URLs to the legacy AssetResolver.
+using AssetResolverWithBase = std::function<AssetResult(
+    const std::string &url, AssetKind kind, const std::string &baseUrl)>;
+
 // DEFAULT STUB: makeNullAssetResolver() returns a callable that always answers
 // makeFailed() — the IO-free default, mirroring makeNullTextureResolver(). The
 // SDK ships no concrete backend (a local-file/HTTP/S3 resolver is a backend, kept

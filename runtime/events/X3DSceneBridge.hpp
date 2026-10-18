@@ -433,8 +433,11 @@ inline void attachKeyDeviceSensors(Scene &scene, X3DExecutionContext &ctx) {
  */
 inline std::shared_ptr<LoadSensorSystem>
 attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
-                  extract::AssetResolver resolver = nullptr) {
-  auto sys = std::make_shared<LoadSensorSystem>(std::move(resolver));
+                  extract::AssetResolver resolver = nullptr,
+                  extract::AssetResolverWithBase resolverWithBase = {},
+                  std::string baseUrl = {}) {
+  auto sys = std::make_shared<LoadSensorSystem>(
+      std::move(resolver), std::move(resolverWithBase), std::move(baseUrl));
   sys->setScene(&scene);
   detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
   ctx.addSystem(sys);
@@ -512,7 +515,8 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
                                   extract::AssetResolver assetResolver = nullptr,
                                   InlineResolver inlineResolver = {},
                                   std::string baseUrl = {},
-                                  extract::ShaderOptions shaderOptions = {}) {
+                                  extract::ShaderOptions shaderOptions = {},
+                                  extract::AssetResolverWithBase assetResolverWithBase = {}) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
@@ -533,7 +537,8 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   auto picks = std::make_shared<PickSensorSystem>(); // §38 pick sensors
   detail::forEachNode(scene, [&](X3DNode *n) { picks->attach(n, ctx); });
   ctx.addSystem(picks);
-  attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
+  attachLoadSensors(scene, ctx, std::move(assetResolver),
+                    std::move(assetResolverWithBase), baseUrl); // §9 LoadSensor
   attachShaders(scene, ctx, std::move(shaderOptions)); // §31 isSelected/isValid
   attachGeneratedCubeMaps(scene, ctx); // §34.4.2 NEXT_FRAME_ONLY reset
   attachTextureProjectors(scene, ctx); // §42 aspectRatio

@@ -22,6 +22,16 @@ it. **Two independent backends** (`HttpResolver` over libcurl, `S3Resolver` over
 AWS C++ SDK) plus a CI-gated swap-test prove the seam is generic ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md));
 the interface is frozen `[STABLE]` in [`include/x3d/sdk.hpp:50`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
 
+The proposed experimental `AssetResolverWithBase(url, kind, baseUrl)` callback
+is optional on `SessionOptions`, `attachLoadSensors`, and `LoadSensorSystem`.
+LoadSensor prefers it over the legacy resolver and supplies the watched node's
+source base, falling back to the configured base only when provenance is absent.
+Its Ready memo distinguishes base, URL, and asset kind. Movie URLs watched by a
+LoadSensor use the same path. Host-driven movie fetches can use
+`TextureRef::baseUrl`; no SDK movie fetch loop is added. The paired parse-time
+loaders already pass source-relative resolved URLs to the legacy callback and
+keep that contract. See [ADR-0063](../decisions/0063-resolver-base-urls.md).
+
 ## Purpose
 
 Answer one question per asset reference: "given a URL and an `AssetKind`, what are the

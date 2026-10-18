@@ -183,9 +183,13 @@ public:
   // so existing callers are source-compatible.
   SceneExtractor(const X3DExecutionContext &ctx, const Scene &scene,
                  MeshBuildOptions meshOptions = {},
-                 TextureResolver textureResolver = makeNullTextureResolver())
+                 TextureResolver textureResolver = makeNullTextureResolver(),
+                 TextureResolverWithBase textureResolverWithBase = {},
+                 std::string baseUrl = {})
       : ctx_(ctx), scene_(scene), meshOptions_(std::move(meshOptions)),
-        textureResolver_(std::move(textureResolver)) {}
+        textureResolver_(std::move(textureResolver)),
+        textureResolverWithBase_(std::move(textureResolverWithBase)),
+        baseUrl_(std::move(baseUrl)) {}
 
   // fullSnapshot — one full walk; (re)builds the PathIndex + per-item records +
   // the dependency indices + the entry-matrix cache and returns EVERY item in
@@ -608,7 +612,7 @@ public:
         scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition());
     for (ProjectorDesc &p : out) {
       std::vector<TextureRef> refs{std::move(p.texture)};
-      resolveTextureRefs(refs, textureResolver_, &textureMemo_);
+      resolveTextures(refs);
       p.texture = std::move(refs.front());
       if (p.texture.resolvedPixels.ready()) {
         const TexturePixels &px = *p.texture.resolvedPixels.pixels;
@@ -637,6 +641,10 @@ public:
       const bool textured = b->nodeTypeName() == "TextureBackground";
       TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
       const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
+      std::string backgroundBase = baseUrl_;
+      if (!textured)
+        for (const auto &[weak, base] : scene_.nodeBaseUrls)
+          if (weak.lock().get() == b) { backgroundBase = base; break; }
       for (int i = 0; i < 6; ++i) {
         if (textured) {
           *faces[i] = matsys::refOf(geombounds::getNode(*b, (std::string(names[i]) + "Texture").c_str()),
@@ -645,6 +653,8 @@ public:
           faces[i]->source = TextureRef::Source::Url;
           faces[i]->url = geombounds::getField<MFString>(*b, (std::string(names[i]) + "Url").c_str(), {});
         }
+        setTextureBase(*faces[i]);
+        if (!textured) faces[i]->baseUrl = backgroundBase;
       }
     }
     bg.backgroundChanged = true;
@@ -1010,7 +1020,7 @@ private:
     if (program)
       for (auto &f : program->fields)
         if (!f.textures.empty())
-          resolveTextureRefs(f.textures, textureResolver_, &textureMemo_);
+          resolveTextures(f.textures);
     return program;
   }
 
@@ -1043,7 +1053,7 @@ private:
     // still re-resolves, which is what this path exists to do. (Same-url content
     // changing underneath us does not dirty the node, so it would not re-resolve
     // here either way — the memo costs no freshness that was on offer.)
-    resolveTextureRefs(rec.material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(rec.material.textures);
   }
 
   // Resume the subtree walk under a grouping node G whose children changed,
@@ -1339,7 +1349,7 @@ private:
     // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
     // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
     // texture USE'd 200 times).
-    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(material.textures);
 
     const bool beyond = isBeyondVisibilityLimit(worldM, visibility_);
 
@@ -1411,7 +1421,7 @@ private:
     // ADR-0045: decode-once per URL. Without the memo the embedder's decoder was
     // invoked once per PLACEMENT (200 calls + 200 MiB retained for one 512x512
     // texture USE'd 200 times).
-    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(material.textures);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -1639,7 +1649,7 @@ private:
     MeshRef mesh = emptyMeshRef();
     bool recognized = false; // B2: memoized alongside, same cost to recompute.
   };
-  // Ready-only texture resolves, keyed by URL. Pending/Failed are deliberately
+  // Ready-only texture resolves, keyed by URL (and base for contextual callbacks). Pending/Failed are deliberately
   // NOT memoized so a not-yet-decoded texture keeps retrying (see
   // resolveTextureRefs). Cleared by fullSnapshot() alongside the mesh caches.
   std::unordered_map<std::string, TexturePixelResult> textureMemo_;
@@ -1797,7 +1807,23 @@ private:
 
   // Embedder-supplied texture decode seam (T-TEX), set once at construction.
   // Default = makeNullTextureResolver() (always Failed => PoC white-fallback).
+  // Read provenance live: runtime Inline expansion can add entries after build.
+  void setTextureBase(TextureRef &ref) const {
+    const auto origin = scene_.nodeBaseUrls.find(ref.sourceNode);
+    ref.baseUrl = origin == scene_.nodeBaseUrls.end() ? baseUrl_ : origin->second;
+    for (auto &stage : ref.multiStages) setTextureBase(stage);
+    for (auto &face : ref.cubeFaces) setTextureBase(face);
+    for (auto &slice : ref.tex3dSlices) setTextureBase(slice);
+  }
+
+  void resolveTextures(std::vector<TextureRef> &refs) {
+    for (auto &ref : refs) setTextureBase(ref);
+    resolveTextureRefs(refs, textureResolver_, &textureMemo_, textureResolverWithBase_);
+  }
+
   TextureResolver textureResolver_;
+  TextureResolverWithBase textureResolverWithBase_;
+  std::string baseUrl_;
 
   std::vector<RenderItem> items_; // dense, indexed by RenderItemId.
   std::unordered_set<RenderItemId> liveIds_;

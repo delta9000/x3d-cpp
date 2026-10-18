@@ -162,6 +162,8 @@ using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegment
 // Asset resolution seam (B8). One type, two invocation contracts:
 //   render-time may return Pending (retry next frame); parse-time (Inline/
 //   ExternProto) must return Ready/Failed synchronously.
+// [EXPERIMENTAL] Optional render-time source-base context (ADR-0063).
+using x3d::runtime::extract::AssetResolverWithBase; ///< function<AssetResult(url, kind, baseUrl)>
 using x3d::runtime::extract::AssetResolver;  ///< function<AssetResult(url, AssetKind)>
 using x3d::runtime::extract::AssetResult;    ///< { status, bytes } + makeReady/makePending/makeFailed
 using x3d::runtime::extract::AssetStatus;    ///< enum class { Ready, Pending, Failed }
@@ -171,6 +173,8 @@ using x3d::runtime::extract::AssetKind;      ///< enum class { Texture, Movie, I
 // byte-equal decode swap-test; ADR-0024). Embedder maps a url to decoded RGBA
 // pixels; the SDK threads the result onto TextureRef so a consumer binds without
 // re-resolving. makeMultiFormatTextureResolver composes per-format decoders.
+// [EXPERIMENTAL] Optional source-base context (ADR-0063).
+using x3d::runtime::extract::TextureResolverWithBase; ///< function<TexturePixelResult(url, baseUrl)>
 using x3d::runtime::extract::TextureResolver;      ///< function<TexturePixelResult(const std::string& url)>
 using x3d::runtime::extract::TexturePixelResult;   ///< { status, pixels }
 using x3d::runtime::extract::TexturePixels;        ///< { width, height, RGBA bytes }

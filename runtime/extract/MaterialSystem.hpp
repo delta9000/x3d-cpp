@@ -92,6 +92,7 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
   TextureRef ref;
   ref.slot = slot;
   if (!texNode) return ref;
+  ref.sourceNode = texNode;
   const std::string t = texNode->nodeTypeName();
   ref.sampler = samplerOf(texNode);
   ref.repeatS = ref.sampler.repeatS;

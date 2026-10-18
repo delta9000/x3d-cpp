@@ -13,7 +13,7 @@
 // bottom-left (GL convention — matches MeshData::texcoords; no V-flip here).
 //
 // URL SELECTION: the caller applies the MFString fallback order from TextureRef::url
-// and passes the single resolved URL to this resolver. URL selection (try-first,
+// and passes the single authored URL to this resolver. URL selection (try-first,
 // fall-through) is the caller's responsibility, exactly as in AssetResolver.
 //
 // DEFAULT STUB: makeNullTextureResolver() returns a callable that always returns
@@ -115,12 +115,18 @@ struct TexturePixelResult {
 // ---------------------------------------------------------------------------
 // TextureResolver — THE callback type.
 //
-// (url) -> TexturePixelResult. `url` is the single resolved URL — the caller
+// (url) -> TexturePixelResult. `url` is the single authored URL — the caller
 // has already applied the MFString fallback order from TextureRef::url.
 // Copyable value type (std::function) — same threading contract as AssetResolver:
 // owned by the CONSUMER; the SDK never calls it during scene build.
 // ---------------------------------------------------------------------------
 using TextureResolver = std::function<TexturePixelResult(const std::string& url)>;
+
+// Optional contextual callback. The URL stays authored; baseUrl is the source
+// node's resolution directory (or the session/extractor fallback). The host
+// owns URL joining, confinement and I/O. Takes precedence over TextureResolver.
+using TextureResolverWithBase = std::function<TexturePixelResult(
+    const std::string &url, const std::string &baseUrl)>;
 
 // ---------------------------------------------------------------------------
 // makeNullTextureResolver — default stub.

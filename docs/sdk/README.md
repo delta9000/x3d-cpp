@@ -203,6 +203,35 @@ sdk::SceneExtractor ex(ctx, doc.scene, /*meshOptions=*/{}, proc);
 // <ImageTexture url="proc:checker"/> now samples the generated checkerboard.
 ```
 
+For scene-relative resources, use the optional contextual callbacks:
+
+```cpp
+sdk::SessionOptions options;
+options.baseUrl = sceneDirectory;
+options.textureResolverWithBase = [](const std::string &url,
+                                     const std::string &baseUrl) {
+  return hostDecode(url, baseUrl); // host joins, confines, fetches, and decodes
+};
+options.assetResolverWithBase = [](const std::string &url, sdk::AssetKind kind,
+                                   const std::string &baseUrl) {
+  return hostFetch(url, kind, baseUrl); // LoadSensor, including movie URLs
+};
+```
+
+These callbacks take precedence over `textureResolver` and `assetResolver`.
+The URL stays authored. The base comes from the originating node's
+`Scene::nodeBaseUrls` entry (including Inline and PROTO origins), falling back
+to `options.baseUrl` only when no entry exists. An explicitly empty entry
+stays empty. Ready caches distinguish bases. Existing one-argument texture
+and two-argument asset callbacks keep their behavior.
+
+`TextureRef::baseUrl` also accompanies movie and background descriptors for
+host-driven loading. Movie decoding remains a consumer operation; pass the
+base when you fetch its bytes. Parse-time Inline/EXTERNPROTO loaders already
+resolve against their source directory before invoking `AssetResolver`.
+The contextual callbacks are experimental additions; see
+[ADR-0063](../wiki/decisions/0063-resolver-base-urls.md).
+
 The shipped defaults aren't inert: `makeMonospaceStub` produces real fixed-pitch
 Text layout (advanceEm = 0.6), and the geo seam flat-falls-back to a real planar
 (geographically unanchored) grid — basic but functional. Only the Texture and

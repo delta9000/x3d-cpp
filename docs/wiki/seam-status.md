@@ -140,6 +140,17 @@ findings currently note "Blocked on the asset-resolver/IO seam"):
 The AssetResolver card itself does **not** ship these — they become **workable** now that
 the IO seam is proven generic; each flips its own findings when its card ships.
 
+## Proposed resolver base context
+
+[ADR-0063](decisions/0063-resolver-base-urls.md) adds experimental optional
+`TextureResolverWithBase` and `AssetResolverWithBase` callbacks without changing
+the stable aliases or their backend swap contracts. The session/extractor pass
+node provenance to texture decoding and LoadSensor byte fetches;
+`TextureRef::baseUrl` also serves host-driven movie/background loading.
+`resolver_base_test.cpp` adds cases to `x3d_extract_tests`; these have not been
+built or run for this proposal. Existing GREEN rows describe the legacy seams,
+not a verified backend swap for the contextual additions.
+
 ## GREEN row: TextureResolver — Phase-2 proof
 
 The `TextureResolver` decode seam is the third row to go GREEN ([ADR-0024](decisions/0024-textureresolver-second-backend-swap-test.md)).

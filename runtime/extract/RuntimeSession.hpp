@@ -96,9 +96,15 @@ struct SessionOptions {
   /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
 
-  /// Resolver and base URL used when an Inline receives load=TRUE after parse.
+  /// Resolver used when an Inline receives load=TRUE after parse.
   InlineResolver inlineResolver = {};
+  /// Fallback resolution directory for Inline, textures and watched assets.
   std::string baseUrl;
+
+  /// Optional contextual callbacks, preferred over their legacy counterparts.
+  /// URL stays authored; base is Scene::nodeBaseUrls, or baseUrl if absent.
+  extract::TextureResolverWithBase textureResolverWithBase;
+  extract::AssetResolverWithBase assetResolverWithBase; // LoadSensor byte path
 };
 
 class RuntimeSession {
@@ -171,7 +177,8 @@ private:
       : doc_(std::move(doc)),
         ctx_(doc_.scene.authorFields, std::move(options.geoProjection)),
         extractor_(ctx_, doc_.scene, options.meshOptions,
-                   std::move(options.textureResolver)) {
+                   std::move(options.textureResolver),
+                   std::move(options.textureResolverWithBase), options.baseUrl) {
     ctx_.buildSceneGraph(doc_.scene);
     bridge_ = ctx_.buildFrom(doc_.scene);
     // Systems are attached AFTER both builds and BEFORE any tick(), which is the
@@ -184,7 +191,8 @@ private:
                             std::move(options.baseUrl),
                             // The extractor's copy selects the bound program;
                             // this one drives the matching §31 events.
-                            options.meshOptions.shaders);
+                            options.meshOptions.shaders,
+                            std::move(options.assetResolverWithBase));
     if (options.interactive)
       nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
   }

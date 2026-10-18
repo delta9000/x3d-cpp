@@ -389,11 +389,12 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
 // NEVER go through the resolver (Inline is decoded from inlinePixels; Movie is
 // descriptor-only) — their resolvedPixels stays makeFailed().
 //
-// `resolver` must be a valid callable (use makeNullTextureResolver() for the
-// default white-fallback PoC path; a null std::function is NOT legal to call).
+// At least one callback must be valid; resolverWithBase takes precedence.
+// The default makeNullTextureResolver() supplies the white-fallback PoC path.
 //
-// `memo` (optional, ADR-0045) de-duplicates resolves BY URL. Decoding is the most
-// expensive thing at this seam and one URL is routinely shared by many
+// `memo` (optional, ADR-0045) de-duplicates resolves by URL, plus baseUrl
+// when resolverWithBase is supplied. Decoding is the most expensive thing at
+// this seam and one URL is routinely shared by many
 // placements, so the extractor threads a per-snapshot memo through and N
 // placements of one textured DEF'd Shape cost ONE embedder call and ONE shared
 // buffer instead of N of each.
@@ -406,15 +407,16 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
 // ---------------------------------------------------------------------------
 inline void resolveTextureRefs(
     std::vector<TextureRef> &refs, const TextureResolver &resolver,
-    std::unordered_map<std::string, TexturePixelResult> *memo = nullptr) {
-  if (!resolver) return; // defensive: never call a null std::function.
+    std::unordered_map<std::string, TexturePixelResult> *memo = nullptr,
+    const TextureResolverWithBase &resolverWithBase = {}) {
+  if (!resolver && !resolverWithBase) return; // defensive: never call a null std::function.
   for (TextureRef &ref : refs) {
     if (ref.source == TextureRef::Source::Multi) {
-      resolveTextureRefs(ref.multiStages, resolver, memo);
+      resolveTextureRefs(ref.multiStages, resolver, memo, resolverWithBase);
       continue;
     }
     if (ref.source == TextureRef::Source::Cube && !ref.cubeFaces.empty()) {
-      resolveTextureRefs(ref.cubeFaces, resolver, memo); // each face (CMT-1)
+      resolveTextureRefs(ref.cubeFaces, resolver, memo, resolverWithBase); // each face (CMT-1)
       continue;
     }
     // Url, or an ImageCubeMapTexture's single six-face image (REQ-CUBE).
@@ -424,17 +426,22 @@ inline void resolveTextureRefs(
     TexturePixelResult result = TexturePixelResult::makeFailed();
     for (const std::string &url : ref.url) {
       if (url.empty()) continue;
+      // Length-prefix the base so even embedded separators cannot collide.
+      // Preserve the legacy key for callers using the one-argument resolver.
+      const std::string key = resolverWithBase
+          ? std::to_string(ref.baseUrl.size()) + ":" + ref.baseUrl + url : url;
       if (memo) {
-        auto hit = memo->find(url);
+        auto hit = memo->find(key);
         if (hit != memo->end()) {
           // Ready-only memo, so a hit always wins the MFString fallback race.
           result = hit->second; // shares the pixel buffer, copies no bytes.
           break;
         }
       }
-      TexturePixelResult r = resolver(url);
+      TexturePixelResult r = resolverWithBase
+          ? resolverWithBase(url, ref.baseUrl) : resolver(url);
       if (r.ready() || r.pending()) {
-        if (memo && r.ready()) memo->emplace(url, r);
+        if (memo && r.ready()) memo->emplace(key, r);
         result = std::move(r);
         break; // first non-failed URL wins (MFString fallback order).
       }
