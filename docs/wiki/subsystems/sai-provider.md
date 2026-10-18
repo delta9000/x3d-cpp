@@ -94,7 +94,7 @@ inputOnly is unreadable, outputOnly is unwritable, and initializeOnly is fixed
 at adoption. Before scalar ingress, disposable native storage checks generated
 range diagnostics and exact enum tokens; a custom type without a factory is
 refused for writes. This is a bounded value service, not complete reflection or
-component support. No live ROUTE addition is introduced.
+component support. Live ROUTE addition uses the separate optional capability below.
 
 Retained candidates enter the execution context together before systems run.
 Input occurrences, routed changes, and standard-system outputs share one tick's
@@ -111,6 +111,44 @@ the first fraction emitted in that same pump. The separate provider harness
 registers this test for source and relocated package consumers. These proposal
 assertions have not been built or run. See
 [ADR-0065](../decisions/0074-sai-adopt-session.md).
+
+## Add a live ROUTE
+
+Check `service.supported().supports(provider::service_id::live_routes)`, then
+submit `service.enqueue_route(client, from, to)`. It returns the ordinary ticket;
+check enqueue errors, the pump report, and the terminal receipt. The original
+setup-only `add_route` call is unchanged. The queued operation validates owner
+thread, client and endpoint authority, lexical context, supported fields, exact
+kind, and output-to-input direction.
+
+The native provider installs the route before evaluating that FIFO turn and
+performs one ordinary tick. Earlier queued events cannot traverse it, and
+installation does not replay stored output. For a released update gate, routes
+install in their relative order before all writes and input occurrences in the
+gate, including writes admitted before the route call. A route ticket shares
+cancellation, capacity accounting, and grouped outcomes with write tickets.
+
+The native installer refuses opaque PROTO/Inline/IMPORT/Script endpoints,
+PROTO interface redirection, cross-context routes, native kind mismatches, and
+duplicates. Adopted node-valued route destinations remain refused, so live
+routes cannot bypass the existing topology-write restriction. It adds a direct
+weak-identity entry to `Scene::routes` and installs
+the executable edge; field names are canonical. It prepares document storage
+before native graph mutation and removes that entry if graph insertion throws
+or refuses a detached endpoint. No extraction call is needed. The reference
+backend implements the portable capability through its scene-edit transaction.
+
+A failed duplicate leaves existing topology and the activation intact. If a
+submission already installed a route before a later operation fails, its effects
+are partial: the activation faults and later work is cancelled. Route removal,
+nested-context exposure, and PROTO redirection remain unsupported.
+
+`live_routes_on_adopted_session` in `sai_provider_adopt_session` checks earlier
+versus later FIFO events, same-submission installation, deferred observation,
+refusals, duplicates, and document/executable agreement. The existing source and
+relocated provider harness runs this test. New assertions have not been run.
+See [ADR-0066](../decisions/0075-sai-live-route-addition.md) and the portable
+contract's queued live ROUTE section in the x3d-sai checkout.
 
 ## Discover named nodes
 

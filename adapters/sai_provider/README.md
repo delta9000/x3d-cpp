@@ -75,13 +75,18 @@ outside the provider. Retire/close the service on its owner thread.
 Adopted scalar access extends beyond the creation whitelist. SFNode/MFNode reads
 preserve identity; node-valued writes remain refused. PROTO/Inline/IMPORT/Script
 interfaces remain opaque while native content continues to execute and render.
-No live ROUTE authoring or portable META projection is added. See the
+Portable META projection is unsupported. Live ROUTE addition is available
+through the optional `live_routes` capability: enqueue a route with
+`service.enqueue_route(client, from, to)` and process its ordinary FIFO ticket.
+Its pump installs the route before evaluating that turn; update gates install
+all their routes before inputs. Removal and PROTO interface redirection remain
+unsupported. See the
 [adoption contract](../../docs/wiki/subsystems/sai-provider.md#adopt-a-prepared-session)
 for the exact kind set and restrictions, and
 [ADR-0065](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
 ingress decisions. `sai_provider_adopt_session` is registered in the source and
-relocated provider harness, including the same-pump TimeSensor assertion. It
-has not been run for this proposal.
+relocated provider harness, including same-pump TimeSensor and live ROUTE
+assertions. The new live ROUTE assertions have not been run for this slice.
 
 ## Bounded capabilities
 

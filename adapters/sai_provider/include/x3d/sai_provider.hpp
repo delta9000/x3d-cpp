@@ -62,6 +62,7 @@ protected:
   result<backend_value> do_read(const address &) const override;
   result<void> do_author(const address &, const backend_value &) override;
   result<void> do_add_route(const address &, const address &) override;
+  backend_result do_add_live_route(const address &, const address &) override;
   result<void>
   do_validate_configuration(std::uint64_t,
                             const std::vector<admitted_write> &) const override;

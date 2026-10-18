@@ -253,9 +253,119 @@ void adoption_preconditions_and_opaque_content() {
           "provider leaves the first extraction untouched and opaque PROTO "
           "renders");
 }
+void live_routes_on_adopted_session() {
+  auto adopted = take(sai::native::adopt_session(sdk::RuntimeSession::create(
+      sdk::parseDocument(R"(<X3D profile='Immersive' version='4.0'><Scene>
+        <Transform DEF='Target'><Shape><Sphere/></Shape></Transform>
+        <PositionInterpolator DEF='Curve' key='0 1' keyValue='0 0 0 4 8 12'/>
+        <Inline DEF='Child' load='false'/>
+      </Scene></X3D>)"))));
+  auto &service = *adopted.service;
+  auto context = take(service.root_context(adopted.scene));
+  const auto client = take(service.connect(adopted.active));
+  const auto fraction = field(service, context, "Curve", "set_fraction");
+  const auto output = field(service, context, "Curve", "value_changed");
+  const auto translation = field(service, context, "Target", "translation");
+  std::vector<p::notification> notices;
+  auto subscription = take(
+      service.observe(adopted.active, translation,
+                      [&](const auto &notice) { notices.push_back(notice); }));
+  auto earlier = take(service.enqueue(client, {{fraction, .25f}}));
+  auto route = take(service.enqueue_route(client, output, translation));
+  auto later = take(service.enqueue(client, {{fraction, .5f}}));
+  require(take(adopted.host.session(service))->scene().routes.empty(),
+          "route admission does not mutate retained document");
+  take(service.pump(adopted.active, {0}));
+  require(take(earlier.status()).state == p::request_state::processed &&
+              std::get<sai::vec3f>(take(service.read(translation))) ==
+                  sai::vec3f{},
+          "an earlier queued event cannot use the future route");
+  auto report = take(service.pump(adopted.active, {1}));
+  require(!report.error &&
+              take(route.status()).state == p::request_state::processed,
+          "route installation is an ordinary processed FIFO ticket");
+  require(std::get<sai::vec3f>(take(service.read(translation))) == sai::vec3f{},
+          "route installation does not replay the previous output");
+  {
+    const auto *host = take(adopted.host.session(service));
+    const auto &routes = host->scene().routes;
+    require(
+        routes.size() == 1 && routes.front().fromField == "value_changed" &&
+            routes.front().toField == "translation" &&
+            routes.front().binding ==
+                x3d::runtime::Route::Binding::DirectNodes &&
+            routes.front().from.lock() == host->scene().resolve("Curve") &&
+            routes.front().to.lock() == host->scene().resolve("Target") &&
+            host->context().graph().routeCount() == 1,
+        "retained document and executable route agree on identity and fields");
+  }
+  report = take(service.pump(adopted.active, {2}));
+  require(!report.error &&
+              take(later.status()).state == p::request_state::processed &&
+              std::get<sai::vec3f>(take(service.read(translation))) ==
+                  sai::vec3f{2, 4, 6},
+          "the next queued turn executes the installed native route");
+  require(notices.empty(), "live-route observations remain deferred");
+  require(take(service.dispatch_notifications()) == 1 &&
+              std::get<sai::vec3f>(notices.front().value) ==
+                  sai::vec3f{2, 4, 6},
+          "deferred observation reports the live routed value");
+  require(service.enqueue_route(client, output, fraction).error().code ==
+              sai::error_code::invalid_route,
+          "live ROUTE refuses wrong exact kind");
+  require(service.enqueue_route(client, fraction, translation).error().code ==
+              sai::error_code::invalid_route,
+          "inputOnly is not a ROUTE source");
+  require(service.enqueue_route(client, output, output).error().code ==
+              sai::error_code::invalid_route,
+          "outputOnly is not a ROUTE destination");
+  const auto metadata = field(service, context, "Target", "metadata");
+  const auto topology = take(service.enqueue_route(client, metadata, metadata));
+  report = take(service.pump(adopted.active, {2.5}));
+  require(report.error &&
+              report.error->code == sai::error_code::unsupported_operation &&
+              report.effects == p::failure_effect::none &&
+              take(topology.status()).state == p::request_state::failed,
+          "live ROUTEs cannot bypass adopted node-valued write refusal");
+  const auto other = take(service.create_scene());
+  const auto other_context = take(service.root_context(other));
+  const auto node = take(service.create_node(other_context, "Transform"));
+  require(service.enqueue_route(client, output,
+                                take(service.get_field(node, "translation")))
+                  .error()
+                  .code == sai::error_code::invalid_context,
+          "live ROUTE refuses another scene's lexical context");
+  require(!service.get_field(take(service.named(context, "Child")), "load"),
+          "opaque nested contexts cannot supply a live ROUTE endpoint");
+  auto duplicate = take(service.enqueue_route(client, output, translation));
+  report = take(service.pump(adopted.active, {3}));
+  require(report.error &&
+              report.error->code == sai::error_code::invalid_route &&
+              report.effects == p::failure_effect::none &&
+              report.state == p::activation_state::active &&
+              take(duplicate.status()).state == p::request_state::failed,
+          "duplicate live ROUTE fails without disturbing active topology");
+  require(take(adopted.host.session(service))->scene().routes.size() == 1,
+          "failed duplicate does not leave a document-only route");
+  take(service.begin_update(client));
+  const auto scale = field(service, context, "Target", "scale");
+  auto held_input = take(service.enqueue(client, {{fraction, .75f}}));
+  auto held_route = take(service.enqueue_route(client, output, scale));
+  take(service.end_update(client));
+  report = take(service.pump(adopted.active, {4}));
+  require(!report.error &&
+              take(held_input.status()).submission ==
+                  take(held_route.status()).submission &&
+              std::get<sai::vec3f>(take(service.read(scale))) ==
+                  sai::vec3f{3, 6, 9},
+          "a released gate installs its routes before evaluating its inputs");
+  require(take(adopted.host.session(service))->scene().routes.size() == 2,
+          "each successfully installed route is retained in the document");
+}
 } // namespace
 int main() {
   try {
+    live_routes_on_adopted_session();
     adopted_graph_and_extraction();
     same_pump_time_sensor_ingress();
     adoption_preconditions_and_opaque_content();

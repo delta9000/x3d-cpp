@@ -569,7 +569,8 @@ p::capabilities backend::supported() const {
                         {S::indexed_writes},
                         {S::user_data},
                         {S::scene_units},
-                        {S::scene_metadata}},
+                        {S::scene_metadata},
+                        {S::live_routes}},
                        {{"Transform", "Grouping", 1},
                         {"PositionInterpolator", "Interpolation", 1},
                         {"Shape", "Shape", 1},
@@ -924,6 +925,77 @@ result<void> backend::do_add_route(const address &from, const address &to) {
   route.from = source->second;
   route.to = sink->second;
   f.scene().routes.push_back(std::move(route));
+  return {};
+}
+
+backend::backend_result backend::do_add_live_route(const address &from,
+                                                   const address &to) {
+  const auto fail = [](error_code code,
+                       std::string_view message) -> backend_result {
+    return tl::unexpected{
+        backend_failure{error(code, "native.live_route", message).value(),
+                        p::failure_effect::none}};
+  };
+  if (from.scene != to.scene || from.context != to.context || from.context != 1)
+    return fail(error_code::invalid_context, "ROUTE crosses lexical context");
+  auto &f = *state_->scenes.at(from.scene);
+  if (!f.session)
+    return fail(error_code::access_denied,
+                "live ROUTE requires an active session");
+  const auto source = f.nodes.find(from.node), sink = f.nodes.find(to.node);
+  if (source == f.nodes.end() || sink == f.nodes.end())
+    return fail(error_code::unknown_node, "unknown ROUTE endpoint");
+  for (auto *node : {source->second.get(), sink->second.get()}) {
+    if (const auto opaque = f.opaque.find(node); opaque != f.opaque.end())
+      return fail(error_code::unsupported_operation,
+                  opaque->second + " ROUTE redirection is unsupported");
+    if (f.scene().expandedSources.contains(node) ||
+        f.scene().protoRedirects.contains(node) ||
+        f.scene().instanceAtPlacement(node))
+      return fail(error_code::unsupported_operation,
+                  "PROTO interface ROUTE redirection is unsupported");
+  }
+  const auto *output = field_info(*source->second, from.field);
+  const auto *input = field_info(*sink->second, to.field);
+  using A = x3d::core::AccessType;
+  if (!output || !input || !f.supports(*source->second, *output) ||
+      !f.supports(*sink->second, *input))
+    return fail(error_code::unsupported_operation,
+                "unsupported ROUTE endpoint field");
+  if (f.adopted && input->isNode())
+    return fail(error_code::unsupported_operation,
+                "adopted node-valued ROUTE writes are unsupported");
+  if (output->type != input->type ||
+      (output->access != A::OutputOnly && output->access != A::InputOutput) ||
+      (input->access != A::InputOnly && input->access != A::InputOutput))
+    return fail(error_code::invalid_route,
+                "ROUTE requires exact native kind and compatible direction");
+  const x3d::runtime::FieldAddress native_from{source->second.get(),
+                                               from.field};
+  const x3d::runtime::FieldAddress native_to{sink->second.get(), to.field};
+  auto &context = f.session->context();
+  const auto &sinks = context.graph().sinks(native_from);
+  if (std::find(sinks.begin(), sinks.end(), native_to) != sinks.end())
+    return fail(error_code::invalid_route, "duplicate ROUTE");
+  // Prepare retained document storage before touching executable state. Native
+  // addRoute appends one edge or throws before that edge is present.
+  auto added = backend::do_add_route(from, to);
+  if (!added)
+    return tl::unexpected{
+        backend_failure{added.error(), p::failure_effect::none}};
+  try {
+    context.addRoute(native_from, native_to);
+  } catch (...) {
+    f.scene().routes.pop_back();
+    throw;
+  }
+  const auto &installed = context.graph().sinks(native_from);
+  if (std::find(installed.begin(), installed.end(), native_to) ==
+      installed.end()) {
+    f.scene().routes.pop_back();
+    return fail(error_code::invalid_context, "native endpoint was detached");
+  }
+  ++f.evidence.routes;
   return {};
 }
 
