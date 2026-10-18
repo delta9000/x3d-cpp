@@ -120,6 +120,7 @@ _x3d_classify_present_targets(opt-in
     x3d_ext_external_geometry_node
     x3d_ext_external_geometry_roundtrip
     x3d_ext_external_geometry_e2e
+    x3d_ext_cave_tests
     x3d_miniaudio
     x3d_sound_swaptest
     x3d_parse_fuzz)

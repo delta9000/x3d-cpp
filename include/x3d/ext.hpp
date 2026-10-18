@@ -20,9 +20,25 @@
 #include "ExternalGeometry.hpp"          // x3d::runtime::ext::ExternalGeometry
 #include "ExternalGeometryResolver.hpp"  // x3d::runtime::ext::makeExternalGeometryResolver()
 #include "ExtResolver.hpp"               // x3d::runtime::ext::install()
+#include "CaveInputSystem.hpp"
 
 /// The curated ext embedder surface.
 namespace x3d::ext {
+
+using x3d::runtime::ext::TrackedDeviceSensor;
+using x3d::runtime::ext::RoomFrameSensor;
+using x3d::runtime::ext::DevicePose;
+using x3d::runtime::ext::DeviceSample;
+using x3d::runtime::ext::RoomFrame;
+using x3d::runtime::ext::RoomGroupWarning;
+using x3d::runtime::ext::CaveInputSystem;
+using x3d::runtime::ext::installCaveInput;
+using x3d::runtime::ext::kTrackedDeviceSensorUrn;
+using x3d::runtime::ext::kRoomFrameSensorUrn;
+using x3d::runtime::ext::kRoomGroupUrn;
+using x3d::runtime::ext::makeTrackedDeviceSensorProto;
+using x3d::runtime::ext::makeRoomFrameSensorProto;
+using x3d::runtime::ext::makeRoomGroupProto;
 
 using x3d::runtime::ext::ExternalGeometry;             ///< the ExternalGeometry node class
 using x3d::runtime::ext::install;                      ///< install(base) → ProtoDeclarationResolver

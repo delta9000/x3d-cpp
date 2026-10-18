@@ -1,6 +1,6 @@
 // runtime/ext/ExtResolver.hpp
-// Factory for the ExternalGeometry EXTERNPROTO ProtoDeclaration + the install()
-// resolver seam. Namespace: x3d::runtime::ext.
+// Factories and opt-in EXTERNPROTO resolver for ExternalGeometry and the CAVE
+// sensors/composed RoomGroup. Namespace: x3d::runtime::ext.
 // Part of the runtime/ext/ quarantine (x3d_cpp_ext target, default OFF).
 // Core (x3d_cpp, sdk.hpp) MUST NEVER include this file.
 //
@@ -18,6 +18,7 @@
 #define X3D_RUNTIME_EXT_RESOLVER_HPP
 
 #include "ExternalGeometry.hpp"     // x3d::runtime::ext::ExternalGeometry
+#include "CaveProtos.hpp"
 #include "X3DProto.hpp"             // ProtoDeclaration, ProtoField, IsConnection, ProtoBody
 #include "X3DParse.hpp"             // x3d::codec::localFileProtoResolver, ProtoDeclarationResolver
 #include "X3DProtoClone.hpp"        // explicit CloneContext
@@ -116,21 +117,27 @@ makeExternalGeometryProto() {
     return decl;
 }
 
-/// Returns a ProtoDeclarationResolver that intercepts the ExternalGeometry URN
-/// and returns the factory ProtoDeclaration; delegates everything else to `base`.
+/// Intercepts supported ext URNs and returns resolver-local declarations;
+/// delegates other URL lists to `base`. CAVE URNs carry a :1 version suffix.
 ///
 /// Resolver-local declaration and clone services; there is no global installation.
 inline x3d::codec::ProtoDeclarationResolver
 install(x3d::codec::ProtoDeclarationResolver base =
             x3d::codec::localFileProtoResolver) {
     auto decl = makeExternalGeometryProto();
+    auto tracked = makeTrackedDeviceSensorProto();
+    auto room = makeRoomFrameSensorProto();
+    auto group = makeRoomGroupProto();
 
-    return [base, decl](const std::vector<std::string>& urls,
+    return [base, decl, tracked, room, group](const std::vector<std::string>& urls,
                         const std::string& baseUrl)
         -> std::shared_ptr<x3d::runtime::ProtoDeclaration> {
         // Check if any url matches our URN.
         for (const auto& u : urls) {
             if (u == kExternalGeometryUrn) return decl;
+            if (u == kTrackedDeviceSensorUrn) return tracked;
+            if (u == kRoomFrameSensorUrn) return room;
+            if (u == kRoomGroupUrn) return group;
         }
         // Otherwise delegate to the base resolver (file-local or embedder override).
         if (base) return base(urls, baseUrl);

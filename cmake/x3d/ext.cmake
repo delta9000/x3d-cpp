@@ -67,5 +67,14 @@ if(X3D_CPP_BUILD_EXT)
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_e2e_test.cpp")
         target_link_libraries(x3d_ext_external_geometry_e2e PRIVATE x3d_cpp::ext)
         add_test(NAME x3d_ext_external_geometry_e2e COMMAND x3d_ext_external_geometry_e2e)
+
+        add_executable(x3d_ext_cave_tests
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/cave_extensions_test.cpp")
+        target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext)
+        target_compile_definitions(x3d_ext_cave_tests PRIVATE
+            X3D_EXT_PROTO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos")
+        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement fallback)
+            add_test(NAME x3d_ext_cave_${_case} COMMAND x3d_ext_cave_tests ${_case})
+        endforeach()
     endif()
 endif()
