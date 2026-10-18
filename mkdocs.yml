@@ -166,6 +166,7 @@ nav:
       - "ADR-0065: Absolute viewer world pose": decisions/0065-absolute-viewer-world-pose.md
       - "ADR-0066: Native SAI presentation materials and frame deltas": decisions/0066-sai-presentation-materials-and-deltas.md
       - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
+      - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

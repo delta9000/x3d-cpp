@@ -85,6 +85,7 @@ _x3d_classify_present_targets(behavior
     x3d_fileresolver_test)
 
 _x3d_classify_present_targets(opt-in
+    x3d_runtime_tick_profile
     x3d_proj
     x3d_proj_geo_swap
     x3d_physics_jolt

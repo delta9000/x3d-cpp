@@ -51,6 +51,12 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 | Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` (new material/delta assertions not run for this proposal) | [ADR-0063](decisions/0066-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
 
+The Consumer seam's [ADR-0063 proposal](decisions/0069-selection-deltas-and-cheap-ticks.md)
+retains unaffected IDs and mesh references across Switch/LOD selection changes
+and suppresses unchanged light notifications. Its focused cases are registered in
+`x3d_extract_tests`; they have not been compiled or executed for this proposal.
+CAVEOS performance and renderer integration remain unverified.
+
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.
 **NOT-YET-PROVEN** = one backend (or pending second) and no swap-test gate. `—` = not yet
 applicable.

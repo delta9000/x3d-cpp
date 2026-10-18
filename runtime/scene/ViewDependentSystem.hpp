@@ -128,6 +128,7 @@ public:
         if (levelHook_) levelHook_(node, lvl);
       }
     }
+    if (sensorActive_.empty()) { budgetExceeded_ = false; return; }
     // ENV-06/SENSOR-SWITCH (ADR-0034): a sensor reachable only through a
     // non-selected Switch child or inactive LOD level is treated as removed from
     // the transformation hierarchy. Compute the active set once (roots -> active
@@ -139,7 +140,7 @@ public:
     if (gate) {
       bool structureDirty = false;
       for (const X3DNode *changed : ctx.dirtyTracker().changedNodes())
-        if (ctx.dirtyTracker().flags(changed) & DirtyChildren) { structureDirty = true; break; }
+        if (ctx.dirtyTracker().flags(changed) & (DirtyChildren | DirtyActiveChild)) { structureDirty = true; break; }
       if (!sensorBelowValid_ || cachedCtx_ != &ctx ||
           cachedTransformRevision_ != ctx.transformRevision() || structureDirty)
         rebuildSensorBelow(ctx);

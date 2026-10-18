@@ -58,8 +58,18 @@ public:
   // Recompute dirtied subtrees bottom-up; mark each recomputed node DirtyBounds.
   void propagate(DirtyTracker &dirty, const TransformSystem &ts) {
     // Snapshot the changed nodes (markDirty during the walk would mutate the list).
-    std::vector<const X3DNode *> seed(dirty.changedNodes().begin(),
-                                      dirty.changedNodes().end());
+    // World-only changes leave local boxes and parent-local unions unchanged.
+    // Keep generic field seeds: FontStyle and geometry fields also affect bounds.
+    std::vector<const X3DNode *> seed;
+    for (const X3DNode *n : dirty.changedNodes()) {
+      const unsigned flags = dirty.flags(n);
+      if (flags & (DirtyChildren | DirtyBounds | DirtyField)) seed.push_back(n);
+      else if (flags & DirtyLocalTransform) {
+        // Its own local box is unchanged; only its contribution to parents moves.
+        auto it = parents_.find(n);
+        if (it != parents_.end()) seed.insert(seed.end(), it->second.begin(), it->second.end());
+      }
+    }
     // A node-reference write can destroy the old child before this pass. Compare
     // identities without dereferencing cached pointers; rebuild only on an actual
     // edge change (including an expired old node at a reused address).
@@ -68,7 +78,10 @@ public:
       auto it = lifetime_.find(n);
       if (it == lifetime_.end()) continue;
       auto live = it->second.lock();
-      if (!live || childrenChanged(*live)) { topologyChanged = true; break; }
+      if (!live || ((dirty.flags(n) & DirtyChildren) && childrenChanged(*live))) {
+        topologyChanged = true;
+        break;
+      }
     }
     if (topologyChanged) {
       auto before = std::move(local_);

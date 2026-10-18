@@ -153,6 +153,7 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0061-texture-projectors-as-lights.md` | TextureProjector/TextureProjectorParallel surface as world-resolved `ProjectorDesc` values; both hosts light the scene through them as unattenuated lights filtered by the projected texel | `runtime/events/TextureProjectorSystem.hpp`; `runtime/extract/tests/texture_projector_test.cpp`; `examples/cpu_raster/tests/texture_projector_test.cpp` |
 | covered | `decisions/0062-classic-prototype-metadata-comments.md` | Versioned ClassicVRML comments preserve prototype declaration and interface-field appinfo/documentation across SDK conversions | `runtime/parse/VrmlTokenizer.hpp`; `runtime/parse/ClassicVrmlReader.cpp`; `runtime/codecs/VrmlWriter.cpp` |
 | proposed | `decisions/0065-absolute-viewer-world-pose.md` | Persistent absolute host camera override and independent authored viewpoint query; tests added, not run | `runtime/events/X3DExecutionContext.hpp`; `runtime/scene/tests/viewer_world_pose_test.cpp` |
+| proposed | `decisions/0069-selection-deltas-and-cheap-ticks.md` | Retain LOD/Switch placement IDs, separate local bounds from world motion, compare light notifications; unbuilt regressions | `runtime/extract/tests/scene_extractor_selection_delta_test.cpp`; `tools/runtime_tick_profile.cpp` |
 
 ## 3. Guides
 

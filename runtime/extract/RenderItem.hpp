@@ -670,6 +670,8 @@ struct LightDesc {
 
   bool global = false;                 // authored; carried not promoted.
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
+
+  bool operator==(const LightDesc &) const = default;
 };
 
 // ---------------------------------------------------------------------------
@@ -914,7 +916,9 @@ struct ClipPlaneList {
 // Structural/visibility and cached Shape/ClipPlane/LocalFog state changes remove
 // ALL previously live IDs and add the current snapshot. Indexed scoped ancestor
 // frame changes take the same conservative replacement path; unrelated TRS is
-// incremental. There is no implicit clip/shadow/local-fog-index update attached
+// incremental. Switch/LOD selection retains path IDs and mesh caches, publishing
+// only membership changes (and records whose scoped indices change).
+// There is no implicit clip/shadow/local-fog-index update attached
 // to updatedTransform or updatedMaterial.
 // Apply removed BEFORE added; the same dense ID may occur in both. Drop stale
 // content-cache entries when their last live placement is removed (defer actual
@@ -931,7 +935,7 @@ struct RenderDelta {
   bool cameraChanged = false;
   bool backgroundChanged = false;
   bool fogChanged = false;
-  bool lightsChanged = false;
+  bool lightsChanged = false; // actual rendered light-list change; snapshots initialize
 };
 
 } // namespace x3d::runtime::extract

@@ -130,17 +130,53 @@ host frame boundary. Do not replace `session.scene()` underneath live systems.
 If a callback throws midway through tick/extraction, do not assume rollback;
 discard/recreate the candidate or recover according to a host-owned policy.
 
-Structural SFNode/MFNode and active-child edits now take an authoritative
-remove-all/add-all extraction baseline in the next delta. This is a bounded
-full-scene walk, not an incremental subtree-cost promise. Ordinary scalar
-geometry/material/TRS changes remain incremental. **Switch/LOD activation changes
-also use this path**: head movement around an LOD boundary can cause full
-extraction and upload churn on successive frames. The example verifies TRS-only
-updates retain their mesh payload, whereas structural replacement reconstructs
-even unchanged meshes. Measure representative scenes on the actual host before
-setting frame budgets; no hardware throughput or hard real-time bound is claimed.
-The host does not need to
-mark extraction topology itself for these supported writes.
+Structural SFNode/MFNode edits and `visible` changes take an authoritative
+remove-all/add-all extraction baseline in the next delta. Ordinary scalar
+geometry/material/TRS changes remain incremental.
+
+Switch `whichChoice` and per-placement LOD selection changes retain unaffected
+`RenderItemId`s and immutable mesh payloads. Keep calling
+`session.tick(now); auto changes = session.delta();` and apply removals before
+additions. Only placements entering or leaving the active selection appear in
+those lists. If selection changes scoped light/fog indices, records whose indices
+change also appear in both lists, with the same ID. External packed payloads are
+re-resolved and surviving packed placements receive `updatedGeometry`.
+Node-reference edits in the same tick still require the structural baseline.
+Selection refresh uses a bounded active-scene walk; it does not promise CPU cost
+proportional only to the changed subtree. See [ADR-0063](../decisions/0069-selection-deltas-and-cheap-ticks.md).
+
+`lightsChanged` compares the complete world-resolved light list with the last
+published list, including scope, attenuation, radius, and shadow controls. An
+idle tick or unrelated animation leaves it false. Full snapshots set it true for
+initialization. Camera, background, and fog notifications remain conservative.
+You can remove a host value-comparison workaround used solely to suppress
+unchanged light uploads. `snapshotLights()` still owns the indices referenced by
+items; scalar light edits require a new snapshot if you need refreshed indices.
+
+### Measure runtime phases
+
+Build the `x3d_runtime_tick_profile` target with `X3D_CPP_BUILD_EXAMPLES=ON`.
+Run it with a scene filename and a positive tick count:
+
+```sh
+./build/x3d_runtime_tick_profile /path/to/scene.x3d 91
+```
+
+The probe parses, creates a standard `RuntimeSession`, takes a full snapshot,
+and advances from zero at 30 Hz with a fixed authored viewer and no pointer.
+It prints parse, session, and snapshot milliseconds, then CSV rows separating
+systems/cascade, post-cascade hooks, transforms, bounds, total tick, and delta.
+It also prints placement/update counts and `lightsChanged`, and fails if the
+extraction walk budget is exhausted. Use identical build settings for comparisons;
+phase timing adds clock reads and is not a hard real-time guarantee. The optional
+`sdk::X3DExecutionContext::TickTimings` overload is used as
+`session.context().tick(now, &timings)`; ordinary `tick(now)` reads no clocks.
+
+For the CAVEOS LOD probe scene, run:
+
+```sh
+./build/x3d_runtime_tick_profile /home/ben/code/godot-x3d/thirdparty/x3d-examples/www.web3d.org/x3d/content/examples/ConformanceNist/SpecialGroups/LOD/bound_500.x3d 91
+```
 
 ## Consume changes and own lifetime
 

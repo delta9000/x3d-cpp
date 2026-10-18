@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <any>
 #include <atomic>
+#include <chrono>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
@@ -419,7 +420,17 @@ public:
    *          set of fields; repeated inputOnly occurrences still deliver. Legacy
    *          seed producers are not covered by the generated-output cap.
    */
-  void tick(double now) {
+  struct TickTimings {
+    double systemsAndCascadeMs = 0;
+    double postCascadeMs = 0;
+    double transformsMs = 0;
+    double boundsMs = 0;
+  };
+
+  void tick(double now) { tick(now, nullptr); }
+
+  /// Optional phase timings for host profiling; no clock reads when null.
+  void tick(double now, TickTimings *timings) {
     auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
@@ -443,6 +454,15 @@ public:
     // delta(), which keys its one-delta-per-tick contract on this.
     ++tickGeneration_;
 
+    using Clock = std::chrono::steady_clock;
+    auto phaseStart = timings ? Clock::now() : Clock::time_point{};
+    if (timings) *timings = {};
+    const auto finishPhase = [&](double TickTimings::*phase) {
+      if (!timings) return;
+      const auto end = Clock::now();
+      timings->*phase = std::chrono::duration<double, std::milli>(end - phaseStart).count();
+      phaseStart = end;
+    };
     now_ = now;
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
@@ -453,13 +473,17 @@ public:
         s->update(now, *this);
       }
     } while (cascade_.process(/*freshTimestamp=*/false) != 0);  // observer fills dirty_
+    finishPhase(&TickTimings::systemsAndCascadeMs);
     // §29.2.4: Script eventsProcessed() runs AFTER the batch drains. Each hook
     // may post + drain further events (it calls process() internally).
     for (const auto &hook : postCascade_) {
       hook(*this);
     }
+    finishPhase(&TickTimings::postCascadeMs);
     transforms_.propagate(dirty_);        // dirtied locals -> world transforms
+    finishPhase(&TickTimings::transformsMs);
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
+    finishPhase(&TickTimings::boundsMs);
   }
 
   /** @brief Drain pending events without advancing the clock.
@@ -494,9 +518,9 @@ public:
   /// flows through the cascade's field observer (classifyDirty). Without this,
   /// only full-snapshot consumers see the swap; incremental delta() consumers
   /// (e.g. the OpenGL PoC) stay on the stale level. The settable-field analogue
-  /// is Switch.whichChoice -> DirtyChildren in classifyDirty (SW-DELTA-1).
+  /// is Switch.whichChoice -> DirtyActiveChild in classifyDirty (SW-DELTA-1).
   void markActiveChildChanged(X3DNode *n) {
-    if (n) dirty_.markDirty(n, DirtyChildren | DirtyBounds);
+    if (n) dirty_.markDirty(n, DirtyActiveChild);
   }
   /// Pull surface: world transform of a Transform node (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
@@ -766,16 +790,10 @@ private:
         flags |= DirtyChildren;
         break;
       }
-    // Switch.whichChoice selects the active child: changing it is an active-CHILD
-    // change for extraction, so it must trigger a subtree re-walk (DirtyChildren)
-    // — not a plain DirtyField, which delta() ignores for a grouping node (it is
-    // in neither geomDeps_ nor materialDeps_). Without this, incremental delta()
-    // consumers (e.g. the OpenGL PoC) never see the swap; only full-snapshot
-    // consumers (cpuraster) do. The extractor already reads whichChoice on a full
-    // walk, so this only fixes the INCREMENTAL channel.
-    if (a.field == "whichChoice") flags = DirtyChildren;
+    // Selection changes preserve node references and the transform index.
+    if (a.field == "whichChoice") flags = DirtyActiveChild;
     // visible changes active traversal even when the hidden branch emitted no
-    // RenderItems, so it must invalidate the extraction baseline like Switch.
+    // RenderItems, so it must invalidate the extraction baseline.
     if (a.field == "visible") flags |= DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)

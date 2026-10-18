@@ -12,6 +12,13 @@ The render-feed surface is experimental; see the
 resource and identity limits. The installed-package host test is not Vulkan or
 CAVEOS validation.
 
+The LOD/Switch delta proposal retains unaffected placement IDs and immutable
+meshes across selection changes. Real node-reference edits still replace the
+baseline. Light notifications compare rendered values; optional tick phase
+timings support the CPU probe. See
+[ADR-0063](../wiki/decisions/0069-selection-deltas-and-cheap-ticks.md).
+The proposal's new regressions and timing tool have not been built or run.
+
 ## In v1 (supported)
 
 | Capability | Notes |

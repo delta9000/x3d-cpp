@@ -88,6 +88,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -194,14 +195,18 @@ public:
   // fullSnapshot — one full walk; (re)builds the PathIndex + per-item records +
   // the dependency indices + the entry-matrix cache and returns EVERY item in
   // `added` (so frame 0 and frame N share one upload path).
-  RenderDelta fullSnapshot() {
+  RenderDelta fullSnapshot() { return snapshot(false); }
+
+private:
+  // Selection-only walks keep path identities and immutable mesh payloads.
+  RenderDelta snapshot(bool retainPaths) {
     syncSkinChanges();
     visibility_ = currentVisibilityInputs();
-    items_.clear();
-    index_.clear();
+    if (!retainPaths) { items_.clear(); index_.clear(); }
     transformDeps_.clear();
     billboardItems_.clear();
-    lodPlacements_.clear();
+    selectionPlacements_.clear();
+    lightDeps_.clear();
     geomDeps_.clear();
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
@@ -210,8 +215,7 @@ public:
     scopedStateDeps_.clear();
     viewScopedFrames_.clear();
     geomOwners_.clear();
-    geomVersions_.clear();
-    meshContentVersions_.clear();
+    if (!retainPaths) { geomVersions_.clear(); meshContentVersions_.clear(); }
     unplacedGeometry_.clear();
     unplacedPaths_.clear();
     entryMatrix_.clear();
@@ -219,10 +223,12 @@ public:
     // ADR-0045: a full walk is authoritative — it must re-read current field
     // state, so no mesh survives from a previous snapshot. Within THIS walk the
     // caches then collapse N placements onto one build/one allocation.
-    rawMeshCache_.clear();
-    segmentMeshCache_.clear();
-    bakedMeshCache_.clear();
-    textureMemo_.clear();
+    if (!retainPaths) {
+      rawMeshCache_.clear();
+      segmentMeshCache_.clear();
+      bakedMeshCache_.clear();
+    }
+    if (!retainPaths) textureMemo_.clear();
     shaderMemo_.clear();
     ++shaderEpoch_; // re-select every Appearance's shader on this walk.
 
@@ -257,6 +263,7 @@ public:
     }
     liveIds_.clear();
     liveIds_.insert(delta.added.begin(), delta.added.end());
+    if (!retainPaths) publishedLights_ = lights_;
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
     delta.fogChanged = true;
@@ -267,6 +274,7 @@ public:
     return delta;
   }
 
+public:
   // ---------------------------------------------------------------------------
   // delta — INCREMENTAL change channel. Reads ctx.dirtyTracker() ONCE for the
   // current tick and partitions the changed nodes into RenderDelta buckets,
@@ -311,6 +319,7 @@ public:
   //       the geometry leaf — so a parent scale does NOT pollute updatedGeometry).
   //   * DirtyField & n in materialDeps_  =>  re-read the MaterialDesc from the
   //       owning Shape's Appearance => updatedMaterial.
+  //   * Switch/LOD selection => active-path walk retaining IDs and mesh caches.
   //   * Shape/scoped-descriptor dependencies or any DirtyChildren => one full
   //       replacement snapshot (bounded scene walk),
   //       before reading stale paths. All old live ids removed, current ids added.
@@ -325,7 +334,7 @@ public:
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
 
-    // A node-reference/active-child change can invalidate stored paths and
+    // A node-reference change can invalidate stored paths and
     // reverse dependencies, including pointers to already-destroyed nodes.
     // Inspect flags WITHOUT dereferencing those nodes, before any incremental
     // traversal. One authoritative rebuild handles all structural edits this
@@ -335,14 +344,15 @@ public:
       if (ctx_.dirtyTracker().flags(n) & DirtyChildren)
         return replacementSnapshot();
 
-    // LOD rendering is per placement; a node's level_changed announcement
+    // Selection is per placement; a node's level_changed announcement
     // cannot describe every USE path. Retain even empty selections and compare
     // their current per-path choice before consuming this tick's baseline.
+    bool selectionChanged = false;
     LocalXfCache localXf;
-    for (const auto &[path, previous] : lodPlacements_) {
+    for (const auto &[path, previous] : selectionPlacements_) {
       auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
                                      ctx_.cameraWorldPosition());
-      if (selected.get() != previous) return replacementSnapshot();
+      if (selected.get() != previous) selectionChanged = true;
     }
 
     // Clip planes below a Billboard also depend on the tracked eye/up, which
@@ -453,6 +463,7 @@ public:
       if (std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end() ||
           std::find(delta.added.begin(), delta.added.end(), id) != delta.added.end())
         continue;
+      if (!liveIds_.count(id)) continue;
       auto &rec = items_[id];
       if (!rec.skin || !rec.skin->binding) continue;
       const X3DNode *humanoid = rec.skin->binding->humanoid;
@@ -463,13 +474,21 @@ public:
       }
     }
 
-    // camera/lights/background are recomputed full each tick by the consumer; the
-    // change bits are surfaced unconditionally for a caching consumer (the PoC
-    // recomputes them every frame regardless).
+    if (selectionChanged) refreshSelection(delta);
+
+    // Compare the complete rendered light state, including disabled-to-enabled
+    // transitions and world-space fields. Unrelated animation needs no light walk.
+    bool lightDirty = selectionChanged;
+    for (const X3DNode *n : dirty.changedNodes())
+      if (lightDeps_.count(n)) lightDirty = true;
+    if (lightDirty) {
+      auto current = selectionChanged ? lights_ : lights();
+      delta.lightsChanged = publishedLights_ != current;
+      publishedLights_ = std::move(current);
+    }
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
     delta.fogChanged = true;
-    delta.lightsChanged = true;
     for (RenderItemId id : delta.removed) liveIds_.erase(id);
     liveIds_.insert(delta.added.begin(), delta.added.end());
     const std::unordered_set<RenderItemId> added(delta.added.begin(), delta.added.end());
@@ -549,21 +568,22 @@ public:
   // M25-5: lightsOf — indices into snapshotLights() (NOT lights()) for the lights
   // that illuminate this placement. Global lights appear for EVERY item; scoped
   // (global=false) lights appear only when their scopeRoot is an ancestor-or-equal
-  // of the item's path. Returns a stable ref valid until the next fullSnapshot().
+  // of the item's path. Returns a stable ref until the next full snapshot or
+  // selection refresh.
   const std::vector<std::size_t> &lightsOf(RenderItemId id) const {
     return items_.at(id).lights;
   }
 
   // M25-5: snapshotLights — the exact light list the lightsOf() indices reference,
-  // captured once by the last fullSnapshot(). Use THIS (not lights()) to resolve a
+  // captured by the last fullSnapshot() or selection refresh. Use THIS to resolve a
   // RenderItem's light indices to LightDescs: the indices are positions in this
-  // vector, so the two must come from the same walk. NOTE: delta() does NOT refresh
-  // this snapshot, so items emitted by an incremental rewalk reflect the light
-  // topology as of the last fullSnapshot() (re-snapshot if lightsChanged matters).
+  // vector, so the two must come from the same walk. Scalar light edits do not
+  // refresh these indices; re-snapshot if changed light topology matters. A
+  // selection refresh publishes index changes as remove-before-add records.
   const std::vector<LightDesc> &snapshotLights() const { return lights_; }
 
   // §24.4.3: the LocalFog list the RenderItem::localFog indices reference,
-  // captured once by the last fullSnapshot(). A consumer resolves an item's
+  // captured by the last fullSnapshot() or selection refresh. Resolve an item's
   // localFog index here; -1 means no LocalFog applies (global Fog governs).
   const std::vector<LocalFogDesc> &snapshotLocalFogs() const { return localFogs_; }
 
@@ -731,12 +751,76 @@ public:
   bool budgetExceeded() const { return walkBudget_.tripped; }
 
 private:
-  // Structural correctness deliberately takes the bounded full-walk path. A
-  // partial subtree patch cannot repair stale pointer-keyed dependencies or all
-  // USE paths safely. Scalar geometry/material/TRS changes stay incremental.
+  void refreshSelection(RenderDelta &delta) {
+    // Keep the post-incremental records: concurrent scalar edits have already
+    // refreshed their payloads. Rebuild active dependencies, including empty
+    // selections, using the same scoped traversal as a full snapshot.
+    const auto oldLive = liveIds_;
+    struct ItemScopes {
+      int localFog;
+      std::vector<std::size_t> lights;
+      ClipPlaneList clipPlanes;
+      GeomId geometry;
+    };
+    std::unordered_map<RenderItemId, ItemScopes> before;
+    for (auto id : oldLive) {
+      const auto &item = items_[id];
+      before.emplace(id, ItemScopes{item.localFog, item.lights, item.clipPlanes, item.geometry});
+    }
+    auto walked = snapshot(true);
+    std::unordered_set<RenderItemId> next(walked.added.begin(), walked.added.end());
+    delta.added.clear(); delta.removed.clear();
+    for (RenderItemId id : oldLive)
+      if (!next.count(id)) delta.removed.push_back(id);
+    for (RenderItemId id : next) {
+      if (!oldLive.count(id)) { delta.added.push_back(id); continue; }
+      const auto &old = before.at(id); const auto &now = items_[id];
+      // These descriptors have no narrow update channel. Only records whose
+      // descriptors changed need remove-before-add publication.
+      bool stateChanged = old.localFog != now.localFog || old.lights != now.lights ||
+                          old.clipPlanes.size != now.clipPlanes.size;
+      for (std::size_t i = 0; !stateChanged && i < old.clipPlanes.size; ++i) {
+        const auto &a = old.clipPlanes.items[i]; const auto &b = now.clipPlanes.items[i];
+        stateChanged = a.node != b.node || a.planeWorld != b.planeWorld;
+      }
+      if (stateChanged) { delta.removed.push_back(id); delta.added.push_back(id); }
+      // External packed payloads are re-resolved by the walk, with no immutable
+      // mesh cache to prove content equality.
+      if ((now.geometry_ext.is_packed() || old.geometry != now.geometry) &&
+          std::find(delta.updatedGeometry.begin(), delta.updatedGeometry.end(), id) == delta.updatedGeometry.end())
+        delta.updatedGeometry.push_back(id);
+    }
+    // No cached payload may outlive its active source dependencies. A field in
+    // an inactive level can change without reaching the active reverse index.
+    std::unordered_set<const X3DNode *> inactive;
+    for (const auto &[geom, entry] : rawMeshCache_)
+      if (!geomOwners_.count(geom)) inactive.insert(geom);
+    // A geometry can remain active under one Segment while another variant
+    // loses its displacer dependencies. Evict the owner's variants together.
+    std::set<std::pair<const X3DNode *, const X3DNode *>> activeSegments;
+    for (auto id : next) {
+      const auto &item = items_[id];
+      if (const auto *segment = displacingSegment(item.geometry.node, item.path))
+        activeSegments.emplace(item.geometry.node, segment);
+    }
+    for (const auto &[geom, placements] : unplacedGeometry_)
+      for (const auto &placement : placements)
+        if (const auto *segment = displacingSegment(geom, placement.path))
+          activeSegments.emplace(geom, segment);
+    for (const auto &[key, entry] : segmentMeshCache_)
+      if (!activeSegments.count(key)) inactive.insert(key.first);
+    for (const auto *geom : inactive) {
+      evictMeshCache(geom);
+      advanceGeometryVersion(geom);
+    }
+    for (auto *ids : {&delta.added, &delta.removed}) std::sort(ids->begin(), ids->end());
+  }
+
   RenderDelta replacementSnapshot() {
     const auto oldIds = liveIds_;
+    const auto oldLights = publishedLights_;
     RenderDelta changed = fullSnapshot();
+    changed.lightsChanged = oldLights != publishedLights_;
     changed.removed.assign(oldIds.begin(), oldIds.end());
     std::sort(changed.removed.begin(), changed.removed.end());
     return changed;
@@ -1167,6 +1251,9 @@ private:
                                            ctx_.cameraWorldUp(), axis);
     }
     path.push_back(n);
+    const std::string lightType = n->nodeTypeName();
+    if (lightType == "DirectionalLight" || lightType == "PointLight" || lightType == "SpotLight")
+      lightDeps_.insert(path.begin(), path.end());
 
     // Cache the entry matrix (the world frame ABOVE this node) for O(subtree)
     // incremental re-walks. Keyed by node; the last-writer wins for a USE'd
@@ -1247,7 +1334,7 @@ private:
     const std::string t = n->nodeTypeName();
     if (t == "Switch" || t == "LOD") {
       auto child = traversedChild(*n, here, ctx_.cameraWorldPosition());
-      if (t == "LOD") lodPlacements_[path] = child.get();
+      selectionPlacements_[path] = child.get();
       if (child) walk(child.get(), here, path, delta);
       path.pop_back();
       return;
@@ -1548,7 +1635,6 @@ private:
 
   void rememberUnplacedGeometry(const X3DNode *geom, const PathKey &path) {
     registerGeometryOwners(geom, path);
-    if (index_.count(path)) return; // a dormant existing item already owns this path
     if (unplacedPaths_.insert(path).second)
       unplacedGeometry_[geom].push_back({path, activeClips_, activeSkinHumanoid_});
   }
@@ -1830,7 +1916,7 @@ private:
   std::unordered_map<PathKey, RenderItemId, PathKeyHash, PathKeyEqual> index_;
 
   // M25-5: world-resolved active lights for the current snapshot. Populated
-  // once per fullSnapshot() (before the DFS walk) so emit() can tag each item.
+  // before each snapshot/selection DFS walk so emit() can tag each item.
   std::vector<LightDesc> lights_;
   std::vector<LocalFogDesc> localFogs_;
 
@@ -1843,7 +1929,9 @@ private:
   // The three reverse indices + the interior-node entry-matrix cache (T8 inputs).
   DepMap transformDeps_;
   std::unordered_set<RenderItemId> billboardItems_;
-  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
+  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> selectionPlacements_;
+  std::unordered_set<const X3DNode *> lightDeps_;
+  std::vector<LightDesc> publishedLights_;
   DepMap geomDeps_;
   DepMap materialDeps_;
   struct ShaderMemo {

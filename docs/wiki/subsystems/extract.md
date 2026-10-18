@@ -27,8 +27,8 @@ flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
 an incremental `delta()` keeps scalar/TRS updates proportional to affected items.
-Structural/active-child and scoped-descriptor changes take one bounded full-scene
-replacement walk per affected tick; correctness comes before preserving the old subtree optimization.
+Structural and scoped-descriptor changes take one bounded full-scene replacement
+walk per affected tick. Selection changes retain path IDs and mesh caches.
 
 ## Key files
 
@@ -76,7 +76,7 @@ FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-sc
 int           lf   = it.localFog; // §24.4.3: nearest in-scope LocalFog index, or -1.
 const std::vector<LocalFogDesc>& localFogs = ex.snapshotLocalFogs(); // resolve lf here.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
-const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()
+const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last snapshot/selection walk
 
 // World-bounds (per-path-correct, not first-path-only).
 Aabb bounds = ex.sceneWorldBounds();
@@ -115,6 +115,15 @@ struct RenderDelta {
 };
 ```
 
+`lightsChanged` is false when the world-resolved `LightDesc` list is unchanged.
+Active light paths, including disabled lights, record ancestor dependencies;
+unrelated animation needs no light collection. Selection refresh recollects
+lights. Full snapshots initialize the consumer with `lightsChanged=true`;
+structural replacement deltas compare with the previous published list.
+Camera/background/fog bits remain conservative. `snapshotLights()` and
+`snapshotLocalFogs()` refresh on full snapshots and selection walks; scalar light
+edits retain the existing requirement to re-snapshot if changed indices matter.
+
 ### Scalar material update cost
 
 A scalar appearance-subtree edit refreshes each affected placement once per tick,
@@ -146,9 +155,17 @@ not just distinct CPU pointers.
 ### View-dependent placements
 
 `delta()` checks recorded LOD selections in each placement's current world frame,
-including selections whose branch emits no mesh. A changed per-path selection
-uses the structural replacement contract below. The node-level `level_changed`
-event alone cannot represent all USE placements.
+including selections whose branch emits no mesh. Switch and LOD selection
+changes use a bounded active-scene walk retaining path IDs and immutable mesh
+caches. The add/remove lists contain the active-set difference; unaffected
+placements retain their IDs and mesh references. Dependencies are rebuilt for
+active paths, so nested selections and DEF/USE placements remain independent.
+Inactive geometry caches are evicted with fresh content versions for later
+reactivation. Scoped light/fog index changes republish only records whose indices
+change; surviving external packed items receive geometry updates because the
+resolver is called again. See
+[ADR-0063](../decisions/0069-selection-deltas-and-cheap-ticks.md).
+The node-level `level_changed` event alone cannot represent all USE placements.
 
 Billboard descendants recompute their per-path transforms from the current
 tracked eye/up and authored ancestor transforms. A camera-only change emits
@@ -160,8 +177,11 @@ addition is published, including tracked motion while it was absent. Regression:
 
 ### Structural delta replacement contract
 
-Any `DirtyChildren` (including SFNode/MFNode writes, `visible` changes and
-Switch/LOD active-child changes), or a scene topology revision, replaces the extraction baseline once:
+Any `DirtyChildren` (SFNode/MFNode writes or `visible` changes), or a scene
+topology revision, replaces the extraction baseline once. Switch/LOD selection
+uses `DirtyActiveChild` and the retained-path walk above. Structural edits in the
+same tick take precedence:
+
 `removed` contains every previously live ID and `added` contains the complete
 current snapshot. **Apply removals before additions**; dense IDs can occur in
 both. Release their live content-cache entries before accepting new records;
