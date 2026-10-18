@@ -273,7 +273,11 @@ void pushStringDeletion();
 void clearKeyEvents();
 const KeyState &keyState() const;
 
-// CAVE head-tracking (CONF-VIEWNAV):
+// Absolute camera override (ADR-0063):
+void setViewerWorldPose(const Mat4 &cameraToWorld);
+void clearViewerWorldPose();
+
+// Relative head tracking (CONF-VIEWNAV):
 void setHeadPose(const SFVec3f &pos, const SFRotation &ori);
 const HeadPose &headPose() const;
 
@@ -298,7 +302,8 @@ X3DNode *boundBackground() const;
 X3DNode *boundFog() const;
 X3DNode *boundBindable(const std::string &category) const;
 void removeBoundNode(X3DNode *node);       // BIND-06: pop deleted bound node
-Mat4 viewMatrix() const;                   // world-to-camera from bound Viewpoint
+Mat4 boundViewpointWorldPose() const;       // authored world pose; identity if none
+Mat4 viewMatrix() const;                   // effective world-to-camera; host override wins
 SFVec3f cameraWorldPosition() const;
 SFVec3f cameraWorldUp() const;
 PickResult pick(const Ray &worldRay) const;  // index-backed (see below)

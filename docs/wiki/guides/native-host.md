@@ -73,11 +73,26 @@ later delta to replay history.
 
 ### Input and view conventions
 
-`context().setHeadPose(position, orientation)` composes the tracked pose after
-the bound Viewpoint's authored pose and per-viewpoint navigation offset. A bound
-Viewpoint is required; without one, `viewMatrix()` is identity. The tracked pose
-is relative to that composed frame, not an arbitrary absolute world-camera
-matrix. Supply a consistent viewer pose before ticking view-dependent systems.
+`context().setHeadPose(position, orientation)` composes relative tracking after
+the bound Viewpoint's authored pose and navigation offset. Without a bound
+Viewpoint, this relative mode returns an identity view matrix.
+
+When your host owns the camera absolutely, pass its rigid camera-to-world
+matrix directly:
+
+```cpp
+session->context().setViewerWorldPose(worldFromHead);
+session->tick(now);
+auto authored = session->context().boundViewpointWorldPose();
+// Return camera control to the bound viewpoint and stored relative inputs:
+session->context().clearViewerWorldPose();
+```
+
+The override works without a viewpoint and stays active across binds and
+`setHeadPose` calls until cleared. Supply it before ticking view-dependent
+systems. The authored query excludes navigation, head tracking, and the
+absolute override; it returns identity if no viewpoint is bound. See
+[the pose contract](../decisions/0065-absolute-viewer-world-pose.md).
 
 `setPointer` accepts a **world-space ray**. Unprojection and device mapping belong
 to the host. `setPointerButton`, `setPointerPresent`, `setPointerScreen`, `setKey`,

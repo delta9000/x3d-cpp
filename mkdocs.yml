@@ -163,6 +163,7 @@ nav:
       - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
       - "ADR-0064: Resolver base URLs": decisions/0063-resolver-base-urls.md
       - "ADR-0064: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
+      - "ADR-0065: Absolute viewer world pose": decisions/0065-absolute-viewer-world-pose.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

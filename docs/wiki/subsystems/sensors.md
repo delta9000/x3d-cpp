@@ -143,7 +143,7 @@ go through the cascade seam.
 
 - **`ctx.cameraWorldPosition()` / `ctx.viewMatrix()`** — `ViewDependentSystem`
   reads the camera pose here; the browser sets this by binding a `Viewpoint` (or
-  by direct `viewMatrix` injection for head-tracked CAVE setups).
+  by `setViewerWorldPose(cameraToWorld)` for a host-owned absolute camera).
 
 - **Active path matrices** — `ViewDependentSystem` accumulates each active
   transform path to a ProximitySensor or VisibilitySensor. DEF/USE instances

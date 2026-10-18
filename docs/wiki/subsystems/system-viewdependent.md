@@ -31,6 +31,11 @@ The split between tick-time (LOD events, sensor edges) and render-time (Billboar
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
 | `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (31 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 
+
+The viewer pose can come from the bound viewpoint and relative tracking, or
+from the host's persistent `setViewerWorldPose(cameraToWorld)` override. Both
+paths feed the same camera queries used by sensors, LOD, and Billboard.
+Set the pose before ticking. See [the absolute pose contract](../decisions/0065-absolute-viewer-world-pose.md).
 ## Interfaces and seams
 
 ### Exposed interface

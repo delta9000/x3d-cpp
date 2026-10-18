@@ -46,6 +46,7 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
 | GeoProjection | Mathematical interface FROZEN (ADR-0053); context ownership per ADR-0058 | BuiltinGeoProjection | PROJ (`X3D_CPP_BUILD_PROJ`) | `x3d_proj_geo_swap` (toleranced) | Geospatial |
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
+| Absolute viewer pose | EXPERIMENTAL proposal ([ADR-0063](decisions/0065-absolute-viewer-world-pose.md)) | Runtime camera queries | CAVEOS migration pending | `viewer_world_pose_test.cpp` added; not run | NOT-YET-PROVEN; rigid camera-to-world override and authored viewpoint query |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.

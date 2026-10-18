@@ -102,6 +102,25 @@ cam = worldOf(vp) · T(position) · R(orientation) · offset.local · T(head.pos
 viewMatrix = cam⁻¹
 ```
 
+An absolute host camera takes precedence over this formula:
+
+```cpp
+void setViewerWorldPose(const Mat4 &cameraToWorld);
+void clearViewerWorldPose();
+Mat4 boundViewpointWorldPose() const;
+```
+
+Supply a finite, invertible rigid camera-to-world matrix before ticking. The
+caller supplies translation and rotation only. The override applies immediately,
+works without a bound viewpoint, and survives viewpoint binds and `setHeadPose`
+calls until cleared. Camera queries and view-dependent systems use it; projection
+parameters still come from the bound viewpoint. Relative head tracking, navigation,
+and bind transitions continue independently; clearing resumes their current state.
+`boundViewpointWorldPose()` includes the ancestor frame and authored pose (including
+GeoViewpoint conversion), excludes offsets/tracking/override, and returns identity
+without a bound viewpoint. Shared viewpoints keep first-path semantics. See
+[ADR-0063](../decisions/0065-absolute-viewer-world-pose.md).
+
 **Head-pose seam (called by the CAVE consumer per frame):**
 
 ```cpp

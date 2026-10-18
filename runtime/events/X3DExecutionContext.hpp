@@ -32,6 +32,7 @@
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -676,11 +677,21 @@ public:
     return pick_.castCollidable(worldRay, maxDist, groups);
   }
 
-  /// World->camera (view) matrix from the bound Viewpoint (identity if none).
-  // CONF-VIEWNAV: the EFFECTIVE view = worldOf · authoredPose · navOffset · headPose.
-  // Authored position/orientation stay pristine (§23.2.3); navigation accumulates
-  // the per-viewpoint offset and the consumer supplies the head pose.
+  /// World->camera matrix. An absolute host pose takes precedence over the
+  /// bound Viewpoint, navigation offset, and relative head pose.
   Mat4 viewMatrix() const {
+    if (viewerWorldPose_) return viewerWorldPose_->inverse();
+    X3DNode *vp = boundViewpoint();
+    if (!vp) return Mat4::identity();
+    const Mat4 cam = boundViewpointWorldPose() * viewpointOffset(vp).local *
+                     (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
+    return cam.inverse();
+  }
+
+  /// Authored camera-to-world pose of the bound Viewpoint, or identity if none.
+  /// Includes its ancestor frame (first path) and GeoViewpoint tangent frame;
+  /// excludes navigation, head tracking, and the absolute host override.
+  Mat4 boundViewpointWorldPose() const {
     X3DNode *vp = boundViewpoint();
     if (!vp) return Mat4::identity();
     SFRotation ori = geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0});
@@ -694,10 +705,7 @@ public:
       pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
              Mat4::rotation(ori);
     }
-    Mat4 cam = pick_.worldOf(vp) * pose *
-               viewpointOffset(vp).local *
-               (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
-    return cam.inverse();
+    return pick_.worldOf(vp) * pose;
   }
 
   // Per-viewpoint user offset (process-local; §23.3.1 relative viewing transform).
@@ -708,7 +716,16 @@ public:
   }
   void setViewpointOffset(X3DNode *vp, const ViewpointOffset &off) { offsets_[vp] = off; }
 
-  // CAVE head-tracking seam (process-local; composed after the navigation offset).
+  /// Override the viewer with a finite, invertible rigid camera-to-world matrix
+  /// in X3D world coordinates. The caller supplies translation + rotation only.
+  /// Takes effect immediately, even without a bound Viewpoint; persists across
+  /// binds and setHeadPose calls until explicitly cleared.
+  void setViewerWorldPose(const Mat4 &pose) { viewerWorldPose_ = pose; }
+  /// Resume the current bound Viewpoint + navigation offset + stored head pose.
+  void clearViewerWorldPose() { viewerWorldPose_.reset(); }
+
+  // Relative head tracking, composed after navigation when no world override is set.
+  // Writes remain stored while overridden and take effect when it is cleared.
   void setHeadPose(const SFVec3f &pos, const SFRotation &ori) { head_.set(pos, ori); }
   const HeadPose &headPose() const { return head_; }
 
@@ -811,6 +828,7 @@ private:
   PickSystem pick_{geoProjection_};
   PointerState pointer_;
   KeyState keys_;
+  std::optional<Mat4> viewerWorldPose_; // host-owned absolute camera override
   HeadPose head_;                                          // CONF-VIEWNAV head seam
   std::unordered_map<X3DNode *, ViewpointOffset> offsets_; // per-viewpoint user offset
   BindTransition lastVpTransition_ = BindTransition::None; // BIND-09

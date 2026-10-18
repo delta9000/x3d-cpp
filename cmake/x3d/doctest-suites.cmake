@@ -18,6 +18,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/getfield_typecheck_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/dirty_tracker_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/view_dependent_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/viewer_world_pose_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/transform_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/transform_system_hanim_cadpart_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/scene/tests/bounds_system_test.cpp"

@@ -42,7 +42,7 @@ public:
       advance(ctx);
     }
     if (cur) {
-      lastCam_ = ctx.viewMatrix().inverse(); // effective camera of the bound vp
+      lastCam_ = relativeCamera(ctx); // relative camera of the bound vp
       haveCam_ = true;
     }
   }
@@ -57,11 +57,19 @@ private:
     double t0 = 0.0, dur = 0.0;
   } anim_;
 
+  // Bind rules keep operating on the relative camera while a host owns the
+  // effective world camera. Clearing the override resumes this ordinary state.
+  static Mat4 relativeCamera(const X3DExecutionContext &ctx) {
+    const HeadPose &h = ctx.headPose();
+    return ctx.boundViewpointWorldPose() * ctx.viewpointOffset(ctx.boundViewpoint()).local *
+           (Mat4::translation(h.position) * Mat4::rotation(h.orientation));
+  }
+
   // Choose the offset so the effective camera equals `targetCam` (§23.3.1):
   //   Onew = Ocur · head · currentCam⁻¹ · targetCam · head⁻¹   (all public API).
   static void driveCameraTo(X3DExecutionContext &ctx, X3DNode *vp, const Mat4 &targetCam) {
     const Mat4 Ocur = ctx.viewpointOffset(vp).local;
-    const Mat4 currentCam = ctx.viewMatrix().inverse();
+    const Mat4 currentCam = relativeCamera(ctx);
     const HeadPose &h = ctx.headPose();
     const Mat4 head = Mat4::translation(h.position) * Mat4::rotation(h.orientation);
     ViewpointOffset off;
@@ -106,7 +114,7 @@ private:
     //    unless TELEPORT / zero transitionTime / no prior view. The transition is
     //    governed by the BINDING viewpoint's own navigationInfo if it names one
     //    (that NavigationInfo is becoming bound), else the currently-bound one.
-    const Mat4 targetCam = ctx.viewMatrix().inverse();
+    const Mat4 targetCam = relativeCamera(ctx);
     SFNode niField = geombounds::getField<SFNode>(*vp, "navigationInfo", nullptr);
     X3DNode *nav = niField ? niField.get() : ctx.boundNavigationInfo();
     const double dur = nav ? geombounds::getField<double>(*nav, "transitionTime", 1.0) : 0.0;

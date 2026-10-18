@@ -82,6 +82,13 @@ pull surface is current: `worldTransform(node)`, `worldBounds(node)`,
 accessors (`boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`,
 `boundFog()`).
 
+For an absolute host camera, call
+`context().setViewerWorldPose(cameraToWorld)` before ticking. The rigid world
+pose overrides viewpoint/navigation/head composition until
+`clearViewerWorldPose()`, including across binds. Query the authored bound
+viewpoint separately with `boundViewpointWorldPose()` (identity if none).
+See [the native host pose conventions](../wiki/guides/native-host.md#input-and-view-conventions).
+
 The animation set (TimeSensor, the full interpolator family, the ROUTE cascade)
 and the view-dependent sensors (Proximity/Visibility/LOD/Billboard) are attached
 by `attachStandardRuntime`, or by `RuntimeSession` with its default options.
