@@ -43,7 +43,7 @@ normalized rejected URL and Inline DEF. Candidate fallback still applies.
 `RuntimeSession::tick` appends runtime warnings to
 `session.document().inlineWarnings`; poll for new entries after ticking.
 Low-level contexts leave them in `scene.pendingInlineWarnings` for the caller
-to consume and drain. See [ADR-0066](../decisions/0072-fetched-document-diagnostics.md)
+to consume and drain. See [ADR-0072](../decisions/0072-fetched-document-diagnostics.md)
 for the resolver exception contract and scope. The focused cases in
 `inline_diagnostics_test.cpp` are registered in `x3d_extract_tests` and unrun.
 

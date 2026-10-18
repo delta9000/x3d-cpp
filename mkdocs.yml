@@ -169,18 +169,11 @@ nav:
       - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
       - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
       - "ADR-0070: Deferred Inline loader ancestry": decisions/0070-deferred-inline-loader-ancestry.md
-      - "ADR-0063: Pointing sensors without navigation": decisions/0063-pointing-without-navigation.md
-      - "ADR-0063: Absolute viewer world pose": decisions/0063-absolute-viewer-world-pose.md
-      - "ADR-0063: Native SAI presentation materials and frame deltas": decisions/0063-sai-presentation-materials-and-deltas.md
-      - "ADR-0063: Room anchoring through sensor composition": decisions/0063-room-frame-sensor-composition.md
-      - "ADR-0064: Deferred Inline loader ancestry": decisions/0064-deferred-inline-loader-ancestry.md
-      - "ADR-0065: Public node inspection": decisions/0071-public-node-inspection.md
-      - "ADR-0066: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
-      - "ADR-0067: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
-      - "ADR-0063: Selection deltas and cheap ticks": decisions/0063-selection-deltas-and-cheap-ticks.md
-      - "ADR-0065: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
-      - "ADR-0065: Adopt a native session into the SAI provider": decisions/0065-sai-adopt-session.md
-      - "ADR-0066: Queued live SAI ROUTE addition": decisions/0075-sai-live-route-addition.md
+      - "ADR-0071: Public node inspection": decisions/0071-public-node-inspection.md
+      - "ADR-0072: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
+      - "ADR-0073: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
+      - "ADR-0074: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
+      - "ADR-0075: Queued live SAI ROUTE addition": decisions/0075-sai-live-route-addition.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

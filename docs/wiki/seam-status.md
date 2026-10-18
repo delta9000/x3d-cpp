@@ -50,12 +50,10 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | Portable SAI named-node discovery | EXPERIMENTAL proposal | Native scene DEF bindings | x3d-sai reference snapshot bindings | Shared `check_provider_named_nodes` in `sai_provider_reference` / `sai_provider_native_runtime` | [Provider guide](subsystems/sai-provider.md); source interoperability only, no stable ABI |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 | Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` | [ADR-0066](decisions/0066-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
-| Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` (new material/delta assertions not run for this proposal) | [ADR-0063](decisions/0063-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
-| Native SAI session adoption | EXPERIMENTAL proposal | Prepared unticked RuntimeSession; scalar access and host-owned extraction | — | `sai_provider_adopt_session` (registered, not built/run) | [ADR-0065](decisions/0074-sai-adopt-session.md); no live topology/ROUTE authoring or nested contexts |
-| Native SAI session adoption | EXPERIMENTAL proposal | Prepared unticked RuntimeSession; scalar access and host-owned extraction | — | `sai_provider_adopt_session` (registered, not built/run) | [ADR-0065](decisions/0065-sai-adopt-session.md); no live node-valued writes or nested contexts |
-| Queued live SAI ROUTE addition | EXPERIMENTAL proposal | Native executable routes plus retained document | Reference scene-edit route transaction | `sai_provider_contract`, `sai_provider_reference`, `sai_provider_adopt_session` (new assertions not run) | [ADR-0066](decisions/0075-sai-live-route-addition.md); no removal or PROTO redirection |
+| Native SAI session adoption | EXPERIMENTAL proposal | Prepared unticked RuntimeSession; scalar access and host-owned extraction | — | `sai_provider_adopt_session` | [ADR-0074](decisions/0074-sai-adopt-session.md); no live topology/ROUTE authoring or nested contexts |
+| Queued live SAI ROUTE addition | EXPERIMENTAL proposal | Native executable routes plus retained document | Reference scene-edit route transaction | `sai_provider_contract`, `sai_provider_reference`, `sai_provider_adopt_session` | [ADR-0075](decisions/0075-sai-live-route-addition.md); no removal or PROTO redirection |
 
-The Consumer seam's [ADR-0063 proposal](decisions/0069-selection-deltas-and-cheap-ticks.md)
+The Consumer seam's [ADR-0069 proposal](decisions/0069-selection-deltas-and-cheap-ticks.md)
 retains unaffected IDs and mesh references across Switch/LOD selection changes
 and suppresses unchanged light notifications. Its focused cases are registered in
 `x3d_extract_tests`; they have not been compiled or executed for this proposal.
@@ -69,16 +67,16 @@ applicable.
 
 `sdk::forEachNode` and `sdk::readField<T>` add experimental graph discovery
 and owned typed reads to the façade. See
-[ADR-0065](decisions/0071-public-node-inspection.md) for traversal and read
+[ADR-0071](decisions/0071-public-node-inspection.md) for traversal and read
 boundaries. The registered `x3d_sdk_node_inspection` regression is uncompiled
 and unrun. This is a host inspection API; it does not promote any IO seam row.
 
 ## Fetched diagnostics and unbound viewer proposals
 
 The existing load-warning channels gain fetched-source details and runtime
-asset Inline cycle reasons ([ADR-0066](decisions/0072-fetched-document-diagnostics.md)).
+asset Inline cycle reasons ([ADR-0072](decisions/0072-fetched-document-diagnostics.md)).
 The unbound effective viewer preserves the origin and gains effective head tracking
-([ADR-0067](decisions/0073-implicit-default-viewer.md)). These are experimental
+([ADR-0073](decisions/0073-implicit-default-viewer.md)). These are experimental
 behavior proposals, with focused unrun cases registered in `x3d_extract_tests`.
 No seam row is promoted; custom resolver cycle policy remains host-owned.
 
@@ -396,7 +394,7 @@ the installed package exports `x3d_cpp::ext`, its headers, and the portable CAVE
 fallback; the existing install/embed smoke consumes them through a relocated
 prefix. `assetResolversFrom` accepts a recursive PROTO decorator and retains
 asset-loaded Inline ancestry across runtime loads
-([ADR-0064](decisions/0070-deferred-inline-loader-ancestry.md)). Custom and
+([ADR-0070](decisions/0070-deferred-inline-loader-ancestry.md)). Custom and
 local-file resolvers still own their cycle policy. Ext `warnings()` now explains
 rejected room/device input. Native SAI deltas include owned `items` keyed by
 placement identity. Evidence additions: `x3d_ext_cave_recursive_resolver`,

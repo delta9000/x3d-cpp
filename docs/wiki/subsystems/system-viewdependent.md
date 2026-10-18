@@ -28,7 +28,7 @@ Camera queries preserve the world origin when no authored Viewpoint is bound
 and head tracking is identity. Explicit head tracking now moves and rotates
 that viewer, so LOD, Billboards, and sensors respond to the supplied pose.
 Scenes without tracking input retain their existing viewer position.
-See [ADR-0067](../decisions/0073-implicit-default-viewer.md). Compilation and
+See [ADR-0073](../decisions/0073-implicit-default-viewer.md). Compilation and
 regression execution are pending.
 
 ## Key files

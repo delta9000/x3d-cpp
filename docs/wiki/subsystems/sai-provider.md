@@ -110,7 +110,7 @@ Its `same_pump_time_sensor_ingress` case checks that a new cycle interval govern
 the first fraction emitted in that same pump. The separate provider harness
 registers this test for source and relocated package consumers. These proposal
 assertions have not been built or run. See
-[ADR-0065](../decisions/0074-sai-adopt-session.md).
+[ADR-0074](../decisions/0074-sai-adopt-session.md).
 
 ## Add a live ROUTE
 
@@ -147,7 +147,7 @@ nested-context exposure, and PROTO redirection remain unsupported.
 versus later FIFO events, same-submission installation, deferred observation,
 refusals, duplicates, and document/executable agreement. The existing source and
 relocated provider harness runs this test. New assertions have not been run.
-See [ADR-0066](../decisions/0075-sai-live-route-addition.md) and the portable
+See [ADR-0075](../decisions/0075-sai-live-route-addition.md) and the portable
 contract's queued live ROUTE section in the x3d-sai checkout.
 
 ## Discover named nodes

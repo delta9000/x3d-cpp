@@ -83,7 +83,7 @@ all their routes before inputs. Removal and PROTO interface redirection remain
 unsupported. See the
 [adoption contract](../../docs/wiki/subsystems/sai-provider.md#adopt-a-prepared-session)
 for the exact kind set and restrictions, and
-[ADR-0065](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
+[ADR-0074](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
 ingress decisions. `sai_provider_adopt_session` is registered in the source and
 relocated provider harness, including same-pump TimeSensor and live ROUTE
 assertions. The new live ROUTE assertions have not been run for this slice.

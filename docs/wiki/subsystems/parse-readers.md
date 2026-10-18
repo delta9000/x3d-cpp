@@ -184,7 +184,7 @@ cycles across ticks, including lexical dot-segment aliases. Siblings and reloads
 remain independent. This retained policy takes precedence over a session's
 fallback Inline resolver for those nodes; choose the asset policy when loading
 the world. Custom resolvers and the local-file loader do not acquire source
-identity from this helper. See [ADR-0064](../decisions/0070-deferred-inline-loader-ancestry.md).
+identity from this helper. See [ADR-0070](../decisions/0070-deferred-inline-loader-ancestry.md).
 
 The additive three-argument overload accepts a `ProtoResolverDecorator`:
 `assetResolversFrom(assets, hint, [](auto base) { return decorate(base); })`.

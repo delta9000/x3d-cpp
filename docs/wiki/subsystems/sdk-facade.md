@@ -115,7 +115,7 @@ Also re-exported: `MeshBuildOptions` — tessellation density knobs (`sphereRing
 
 The experimental `sdk::forEachNode(scene, visit)` and
 `sdk::readField<T>(node, name)` let a viewer discover viewpoints and read their
-labels without naming runtime helpers ([ADR-0065](../decisions/0071-public-node-inspection.md)).
+labels without naming runtime helpers ([ADR-0071](../decisions/0071-public-node-inspection.md)).
 
 ```cpp
 sdk::forEachNode(session->scene(), [&](sdk::X3DNode *node) {

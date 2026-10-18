@@ -343,7 +343,7 @@ including the listener position used by sound and the eye used by GeoLOD.
 `setViewerWorldPose` still overrides the whole effective camera.
 `boundViewpoint()` remains null and `boundViewpointWorldPose()` remains identity;
 no node is inserted. Explicit tracking input now affects the unbound viewer.
-See [ADR-0067](../decisions/0073-implicit-default-viewer.md). The focused
+See [ADR-0073](../decisions/0073-implicit-default-viewer.md). The focused
 `default_viewer_test.cpp` regression in `x3d_extract_tests` is uncompiled and
 unrun.
 

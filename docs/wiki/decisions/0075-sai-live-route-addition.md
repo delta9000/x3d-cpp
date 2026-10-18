@@ -5,7 +5,7 @@ tags: [adr, sai, routes, runtime]
 updated: 2026-10-18
 related:
   - ../subsystems/sai-provider.md
-  - 0065-sai-adopt-session.md
+  - 0074-sai-adopt-session.md
 ---
 
 # ADR-0075: Queued live SAI ROUTE addition
