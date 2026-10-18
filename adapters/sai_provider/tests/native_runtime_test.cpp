@@ -261,6 +261,10 @@ void partial_failure_no_replay() {
               report.effects == h::failure_effect::partial_or_unknown &&
               report.error.has_value(),
           "post-mutation throw faults activation with honest effects");
+  require(take(service.names(f.transform)) == std::vector<std::string>{"Transform"},
+          "reverse name remains readable after native fault");
+  require(take(service.named_nodes(f.context)).size() == 5,
+          "named-node enumeration remains readable after native fault");
   eq(native.turns.back().translation, {5, 10, 15},
      "injected fault happened after real mutation");
   eq(std::get<sai::vec3f>(take(service.read(f.translation))), {5, 10, 15},
@@ -606,6 +610,8 @@ int main() {
     unnamed_routes_and_weak_identity();
     shared_root_behavior_once();
     native_scene_information();
+    sai::testing::check_provider_named_nodes(
+        [] { return sai::native::make_service(); });
     require(
         author_fields.entryCount() == author_count,
         "provider fixture does not populate or clear another scene's author "

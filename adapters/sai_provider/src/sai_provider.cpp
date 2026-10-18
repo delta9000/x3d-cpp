@@ -551,6 +551,18 @@ result<std::uint64_t> backend::do_named(std::uint64_t scene,
     return error(error_code::unknown_node, "native.named", "unknown DEF name");
   return f.identity(n);
 }
+result<std::vector<backend::name_binding>>
+backend::do_named_nodes(std::uint64_t scene) const {
+  const auto &f = *state_->scenes.at(scene);
+  std::vector<name_binding> out;
+  for (const auto &[name, node] : f.scene().defs) {
+    auto id = f.identity(node);
+    if (!id)
+      return failure(id.error());
+    out.push_back({name, *id});
+  }
+  return out;
+}
 result<std::string> backend::do_type_name(const address &a) const {
   return state_->scenes.at(a.scene)->nodes.at(a.node)->nodeTypeName();
 }

@@ -50,6 +50,7 @@ protected:
   result<std::vector<std::uint64_t>> do_roots(std::uint64_t) const override;
   result<std::uint64_t> do_named(std::uint64_t,
                                  std::string_view) const override;
+  result<std::vector<name_binding>> do_named_nodes(std::uint64_t) const override;
   result<std::string> do_type_name(const address &) const override;
   result<std::vector<provider::field_info>>
   do_fields(const address &) const override;

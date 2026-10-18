@@ -36,6 +36,22 @@ shows source and installed consumption, backpressure, explicit time, callbacks
 and shutdown without a test-fixture API. The native provider target supplies its
 own dependencies; ordinary SDK builds remain independent of x3d-sai.
 
+## Discover named nodes
+
+Use `service.named_nodes(context)` to list owned `name`/`target` pairs and
+`service.names(node)` to format a node reference. Results use ascending,
+case-sensitive name order. Enumeration includes detached named nodes and omits
+unnamed nodes; reverse lookup succeeds with an empty vector for an unnamed node.
+The existing one-DEF-name-per-node authoring rule is unchanged.
+
+The adapter reads the native scene's DEF bindings during setup, active, and
+faulted states. The portable frontend supplies authority checks and wraps native
+IDs; hosts need no parallel name table. Retained results own their strings, but
+node handles lose authority on retirement. These owner-thread operations are
+covered by the shared `check_provider_named_nodes` oracle in
+`sai_provider_native_runtime`; this proposal has not been built or tested.
+See [ADR-0063](../decisions/0067-provider-named-node-discovery.md).
+
 ## Own the host loop
 
 Create supported nodes, author fields and ROUTEs, then activate the scene. Live
