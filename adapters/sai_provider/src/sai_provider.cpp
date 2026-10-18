@@ -199,6 +199,7 @@ struct presentation_state {
   using mesh_ref = x3d::runtime::extract::MeshRef;
   std::map<mesh_ref, std::uint64_t, std::owner_less<mesh_ref>> meshes;
   std::uint64_t next_placement = 1, next_mesh = 1;
+  std::uint64_t next_material = 1;
 
   static std::uint64_t mint(std::uint64_t &next) {
     if (next == std::numeric_limits<std::uint64_t>::max())
@@ -218,6 +219,15 @@ struct presentation_state {
     decltype(placements) next_placements;
     decltype(meshes) next_meshes;
     auto placement_counter = next_placement, mesh_counter = next_mesh;
+    auto material_counter = next_material;
+    std::map<std::uint64_t, std::uint64_t> previous_materials;
+    if (current)
+      for (const auto &item : current->items)
+        previous_materials.emplace(item.placement_key, item.material_revision);
+    std::set<x3d::runtime::extract::RenderItemId> material_dirty(
+        delta.added.begin(), delta.added.end());
+    material_dirty.insert(delta.updatedMaterial.begin(),
+                          delta.updatedMaterial.end());
     auto frame = std::make_shared<presentation_frame>();
     frame->source = source;
     frame->native_tick = session.context().tickGeneration();
@@ -245,8 +255,13 @@ struct presentation_state {
             ? mint(mesh_counter) : previous_mesh->second;
         mesh = next_meshes.emplace(item.mesh, key).first;
       }
+      const auto old_material = previous_materials.find(placement);
+      const auto revision =
+          old_material == previous_materials.end() || material_dirty.count(id)
+              ? mint(material_counter)
+              : old_material->second;
       frame->items.push_back({placement, mesh->second, item.worldTransform,
-                              item.mesh});
+                             item.mesh, item.material, revision});
     }
     // Commit only a complete projection. These maps contain current objects,
     // never all historical paths or mesh owners. Older frames belong to hosts.
@@ -255,6 +270,7 @@ struct presentation_state {
     meshes = std::move(next_meshes);
     next_placement = placement_counter;
     next_mesh = mesh_counter;
+    next_material = material_counter;
     current = std::move(frame);
     return {};
   }
@@ -951,6 +967,38 @@ struct presentation_access {
 
 result<presented_scene> make_presented_scene(p::resource_limits limits) {
   return detail::presentation_access::create(limits);
+}
+result<presentation_delta> changes_between(const presentation_frame *previous,
+                                          const presentation_frame &current) {
+  if (previous && !(previous->source == current.source))
+    return failure(sai_error{error_code::invalid_context,
+        "native.presentation.changes_between", "frames belong to different scenes"});
+  if (previous && previous->native_tick > current.native_tick)
+    return failure(sai_error{error_code::invalid_value,
+        "native.presentation.changes_between", "native ticks must not decrease"});
+  std::map<std::uint64_t, const presentation_item *> remaining;
+  if (previous)
+    for (const auto &item : previous->items)
+      remaining.emplace(item.placement_key, &item);
+  presentation_delta delta;
+  for (const auto &item : current.items) {
+    const auto found = remaining.find(item.placement_key);
+    if (found == remaining.end()) {
+      delta.added.push_back(item.placement_key);
+      continue;
+    }
+    const auto &old = *found->second;
+    if (old.world_transform.m != item.world_transform.m)
+      delta.updated_transform.push_back(item.placement_key);
+    if (old.mesh_key != item.mesh_key || old.mesh != item.mesh)
+      delta.updated_geometry.push_back(item.placement_key);
+    if (old.material_revision != item.material_revision)
+      delta.updated_material.push_back(item.placement_key);
+    remaining.erase(found);
+  }
+  for (const auto &[key, item] : remaining)
+    delta.removed.push_back(key);
+  return delta;
 }
 result<std::shared_ptr<const presentation_frame>>
 render_feed::snapshot(const p::service &service) const {

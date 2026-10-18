@@ -127,6 +127,9 @@ std::string frame_value(const native::presentation_frame &frame) {
   out << ':' << frame.items.size() << ':';
   for (const auto &item : frame.items) {
     out << item.placement_key << ':' << item.mesh_key << ':';
+    const auto rgba = item.material.toRGBA();
+    out << item.material_revision << ':' << static_cast<int>(item.material.model)
+        << ':' << rgba.r << ',' << rgba.g << ',' << rgba.b << ',' << rgba.a << ':';
     for (auto value : item.world_transform.m)
       out << value << ',';
     require(bool(item.mesh), "presentation mesh is non-null");
@@ -314,6 +317,86 @@ void removal_readdition_and_empty_snapshot() {
                   at_x(*restored, 1).placement_key &&
               at_x(*reborn, 1).placement_key != old_right,
           "empty intervals do not permit placement key reuse");
+}
+
+void materials_and_frame_deltas() {
+  auto world = take(native::make_presented_scene());
+  const auto g = author_graph(world);
+  auto &service = *world.service;
+  const auto active = take(service.activate(world.scene));
+  const auto client = take(service.connect(active));
+  const auto initial = take(world.feed.snapshot(service));
+  const auto left = at_x(*initial, 1).placement_key;
+  const auto right = at_x(*initial, 10).placement_key;
+  for (const auto &item : initial->items) {
+    const auto rgba = item.material.toRGBA();
+    require(item.material.model == extract::MaterialModel::Unlit &&
+                rgba.r == 1 && rgba.g == 1 && rgba.b == 1 && rgba.a == 1 &&
+                item.material.textures.empty() && !item.material.backMaterial &&
+                item.material_revision != 0,
+            "no Appearance carries the extractor's unlit white fallback");
+  }
+  const auto upload = take(native::changes_between(nullptr, *initial));
+  require(upload.added.size() == 2 && upload.removed.empty() &&
+              upload.updated_transform.empty() &&
+              upload.updated_geometry.empty() && upload.updated_material.empty(),
+          "initial upload only adds complete placements");
+  const auto unchanged = take(native::changes_between(initial.get(), *initial));
+  require(unchanged.added.empty() && unchanged.removed.empty() &&
+              unchanged.updated_transform.empty() &&
+              unchanged.updated_geometry.empty() && unchanged.updated_material.empty(),
+          "comparing a frame to itself has no changes");
+  turn(service, active, client, {{g.left_translation, sai::vec3f{4, 5, 6}}}, 1);
+  const auto moved = take(world.feed.snapshot(service));
+  const auto motion = take(native::changes_between(initial.get(), *moved));
+  require(motion.updated_transform == std::vector<std::uint64_t>{left} &&
+              motion.updated_geometry.empty() && motion.updated_material.empty() &&
+              motion.added.empty() && motion.removed.empty(),
+          "transform-only turn needs no geometry or material refresh");
+  turn(service, active, client, {{g.geometry, p::node_value{g.replacement}}}, 1);
+  const auto geometry = take(world.feed.snapshot(service));
+  const auto skipped = take(native::changes_between(initial.get(), *geometry));
+  require(skipped.updated_transform == std::vector<std::uint64_t>{left} &&
+              skipped.updated_geometry.size() == 2 && skipped.added.empty() &&
+              skipped.removed.empty(),
+          "skipped ticks at equal host times retain motion and geometry changes");
+  turn(service, active, client, {{g.left_children, p::node_values{}}}, 2);
+  const auto removed = take(world.feed.snapshot(service));
+  const auto removal = take(native::changes_between(geometry.get(), *removed));
+  require(removal.removed == std::vector<std::uint64_t>{left} &&
+              removal.updated_material == std::vector<std::uint64_t>{right} &&
+              removal.added.empty(),
+          "rebuild reports removal and conservative surviving material refresh");
+  turn(service, active, client, {{g.left_children, p::node_values{g.shape}}}, 3);
+  const auto restored = take(world.feed.snapshot(service));
+  const auto readdition = take(native::changes_between(initial.get(), *restored));
+  require(readdition.removed == std::vector<std::uint64_t>{left} &&
+              readdition.added == std::vector<std::uint64_t>{
+                  at_x(*restored, 4).placement_key},
+          "skipping removal and readdition still replaces the placement key");
+  rejects(native::changes_between(restored.get(), *initial),
+          sai::error_code::invalid_value, "reverse native ticks are rejected");
+  auto foreign = take(native::make_presented_scene());
+  author_graph(foreign);
+  take(foreign.service->activate(foreign.scene));
+  rejects(native::changes_between(initial.get(),
+              *take(foreign.feed.snapshot(*foreign.service))),
+          sai::error_code::invalid_context, "numeric keys cannot cross scenes");
+  turn(service, active, client,
+       {{g.left_children, p::node_values{}},
+        {g.right_children, p::node_values{}}}, 4);
+  const auto empty = take(world.feed.snapshot(service));
+  const auto cleared = take(native::changes_between(restored.get(), *empty));
+  require(cleared.removed.size() == 2 && cleared.added.empty() &&
+              cleared.updated_transform.empty() && cleared.updated_geometry.empty() &&
+              cleared.updated_material.empty(),
+          "empty destination removes every placement without update entries");
+  take(service.close());
+  world.service.reset();
+  const auto retained = take(native::changes_between(initial.get(), *removed));
+  require(retained.removed == std::vector<std::uint64_t>{left} &&
+              initial->items.front().material.toRGBA().r == 1,
+          "material values and frame comparison outlive service authority");
 }
 
 void repeated_identical_root_paths_follow_extractor_contract() {
@@ -526,6 +609,7 @@ int main() {
     binding_lifecycle_and_scene_namespace();
     immutable_frames_and_latest_full_snapshot();
     removal_readdition_and_empty_snapshot();
+    materials_and_frame_deltas();
     repeated_identical_root_paths_follow_extractor_contract();
     frontend_notification_overflow_hides_native_candidate();
     truncated_native_walk_cannot_publish_complete_frame();

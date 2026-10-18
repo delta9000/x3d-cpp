@@ -148,7 +148,10 @@ native turn. The activation frame has no host time; later frames record the
 native tick and supplied time. A rejected submission that never enters the
 backend does not create a native frame.
 
-A frame owns its item vector, matrices and shared immutable mesh data. It
+A frame owns its item vector, matrices, extracted `MaterialDesc` values, and
+shared immutable mesh data. With no Appearance in the supported node slice,
+the material is the extractor's unlit-white fallback. You no longer need to
+invent a host material for these placements. The frame
 contains no native node pointers, storage IDs, scene/session storage or callback
 captures. Its opaque scene identity namespaces placement and mesh keys. Host
 code may retain and render an old frame after the service is destroyed; that
@@ -160,14 +163,31 @@ currently live immutable mesh ownership, so shared placements share a key;
 equivalent freshly rebuilt mesh content may receive another key. Neither key
 space is a portable node handle. Identity exhaustion fails explicitly.
 
-This is a latest-full-snapshot policy: the backend keeps one current frame and
+Use `changes_between(previous.get(), *current)` to compare two retained frames
+from the same scene. Pass `nullptr` for the first upload. The result contains
+`added`, `removed`, `updated_transform`, `updated_geometry`, and
+`updated_material` placement keys. Read added and updated values from
+`current.items`, and discard removed keys. Update buckets can overlap, but
+exclude added and removed placements. Ordering within a bucket is unspecified.
+The function rejects foreign scenes and decreasing native ticks; equal host
+times and skipped ticks are supported. It needs no live service.
+
+Transform changes compare exact matrix values; geometry changes compare mesh
+identity. Each item's opaque `material_revision` advances on extractor material
+invalidation or placement rebuild, so `updated_material` can conservatively
+request a refresh of an equal value. Revisions survive unchanged turns and
+cannot be compared across scene identities. This is a net frame comparison,
+not a log of intermediate edits. See
+[ADR-0063](../../docs/wiki/decisions/0066-sai-presentation-materials-and-deltas.md).
+
+This retains the latest-full-snapshot policy: the backend keeps one current frame and
 current identity maps, with no historical frame queue. Slow hosts deliberately
 skip intermediate presentation frames and replace their displayed scene from
 the next complete frame. Portable event/receipt queues retain their separate
 policies. Producer retention scales with the current scene; consumer-retained
 frames and backend scene storage are outside portable queue byte budgets.
 
-The feed exposes only geometry and world transforms for the four-node slice.
+The feed exposes geometry, materials, and world transforms for the four-node slice.
 Its configuration preflight conservatively limits every registered node path,
 including detached nodes, to the native nesting bound (currently 1,000 nodes).
 This prevents the extractor's silent depth truncation from becoming an alleged

@@ -31,7 +31,7 @@ need; reference-only editing mechanisms are optional extensions.
 
 `native::make_service()` returns the ordinary portable service.
 `native::make_presented_scene()` additionally creates one scene with an immutable
-mesh/transform feed. The [ordinary host example](https://github.com/delta9000/x3d-cpp/tree/main/examples/sai_host)
+mesh/material/transform feed. The [ordinary host example](https://github.com/delta9000/x3d-cpp/tree/main/examples/sai_host)
 shows source and installed consumption, backpressure, explicit time, callbacks
 and shutdown without a test-fixture API. The native provider target supplies its
 own dependencies; ordinary SDK builds remain independent of x3d-sai.
@@ -59,6 +59,19 @@ covers Transform, PositionInterpolator, Shape and Box, with eight field kinds.
 It has no portable PROTO, IMPORT, Inline, Script, geospatial, URL-loading or codec
 service. Native runtime support for those features does not expose them through
 this adapter. The contract is experimental and has no stable binary ABI claim.
+
+The native feed keeps `snapshot(service)` for complete frames.
+`changes_between(previous.get(), *current)` compares retained frames by placement
+key, including skipped ticks; `nullptr` requests an initial upload. It returns
+added, removed, transform, geometry, and material update buckets. Material values
+come directly from extraction; the current slice has no Appearance authoring,
+so it carries the SDK's unlit-white fallback. Material revisions track extractor
+invalidations and can report equal values after a rebuild. Comparisons require
+the same scene and nondecreasing native ticks, and remain valid after service
+destruction. See [ADR-0063](../decisions/0066-sai-presentation-materials-and-deltas.md)
+and the [feed contract](https://github.com/delta9000/x3d-cpp/tree/main/adapters/sai_provider#owned-presentation-feed).
+The `sai_provider_presentation` test includes `materials_and_frame_deltas` for
+this proposal; it requires the separate provider harness below.
 
 From this checkout, pass an explicit x3d-sai source directory:
 
