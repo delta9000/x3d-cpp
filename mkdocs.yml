@@ -161,7 +161,8 @@ nav:
       - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
       - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
       - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
-      - "ADR-0063: Resolver base URLs": decisions/0063-resolver-base-urls.md
+      - "ADR-0064: Resolver base URLs": decisions/0063-resolver-base-urls.md
+      - "ADR-0064: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

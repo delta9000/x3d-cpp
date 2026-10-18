@@ -66,6 +66,25 @@ using namespace x3d::core;
  */
 class PointingSensorSystem : public System {
 public:
+  // All enabled pointing-device sensors tied lowest in the hit hierarchy (§20.2.1).
+  // Returns borrowed nodes without changing input state; a miss returns empty. The
+  // pick path is root→hit-geometry; a sensor watches geometry that is a
+  // descendant of the sensor's PARENT GROUP and is typically a sibling of that
+  // geometry. So we walk the path from the hit geometry UPWARD and, at each
+  // grouping ancestor, inspect its children for an enabled sensor sibling; the
+  // deepest such ancestor's sensors are the lowest ones and all activate.
+  static std::vector<X3DNode *> resolve(const PickResult &pick) {
+    if (!pick.hit) return {};
+    const extract::PathKey &path = pick.path;
+    // path.back() is the hit geometry-bearing node; its parent is path[n-2].
+    for (std::size_t i = path.size(); i-- > 1;) {
+      const X3DNode *parent = path[i - 1];
+      auto siblings = enabledSensorChildrenOf(parent);
+      if (!siblings.empty()) return siblings;
+    }
+    return {};
+  }
+
   // Pointing sensors are resolved live from the pick path each tick, so attach()
   // does no per-node enrollment — but it DOES take a one-time inventory: a scene
   // with zero pointing-device sensors can never resolve a pick to one, so the
@@ -261,23 +280,6 @@ private:
     if (!sensor || !sensor->getEnabled())
       return nullptr;
     return const_cast<X3DNode *>(n);
-  }
-
-  // Lowest enabled pointing-device sensor in the hit's hierarchy (§20.2.1). The
-  // pick path is root→hit-geometry; a sensor watches geometry that is a
-  // descendant of the sensor's PARENT GROUP and is typically a sibling of that
-  // geometry. So we walk the path from the hit geometry UPWARD and, at each
-  // grouping ancestor, inspect its children for an enabled sensor sibling; the
-  // deepest such ancestor's sensor is the lowest one and wins.
-  static std::vector<X3DNode *> resolve(const PickResult &pick) {
-    const extract::PathKey &path = pick.path;
-    // path.back() is the hit geometry-bearing node; its parent is path[n-2].
-    for (std::size_t i = path.size(); i-- > 1;) {
-      const X3DNode *parent = path[i - 1];
-      auto siblings = enabledSensorChildrenOf(parent);
-      if (!siblings.empty()) return siblings;
-    }
-    return {};
   }
 
   static std::vector<X3DNode *> enabledSensorChildrenOf(const X3DNode *group) {

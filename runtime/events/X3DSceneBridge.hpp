@@ -553,6 +553,17 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook
 }
 
+/// Install pointing-device sensors without anchors or navigation. Call after
+/// buildSceneGraph(scene), before the first tick (and before navigation, if any).
+inline void attachPointingSensors(Scene &scene, X3DExecutionContext &ctx) {
+  auto pss = std::make_shared<PointingSensorSystem>();
+  // One-time inventory pass: lets the system skip the per-tick whole-scene pick
+  // when the scene holds no pointing-device sensors (the common static-exhibit
+  // case). Sensors still resolve live from the pick path; this only counts them.
+  detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
+  ctx.addSystem(pss);
+}
+
 /**
  * @brief Interactive consumer wiring (reference browser / CAVE-preview).
  * @details Adds the two pointer-driven systems in arbitration order:
@@ -568,12 +579,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
 inline std::shared_ptr<NavigationSystem>
 attachInteractive(Scene &scene, X3DExecutionContext &ctx,
                   AnchorSystem::AnchorHandler anchorHandler = {}) {
-  auto pss = std::make_shared<PointingSensorSystem>();
-  // One-time inventory pass: lets the system skip the per-tick whole-scene pick
-  // when the scene holds no pointing-device sensors (the common static-exhibit
-  // case). Sensors still resolve live from the pick path; this only counts them.
-  detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
-  ctx.addSystem(pss); // claims pointer first
+  attachPointingSensors(scene, ctx); // claims pointer first
   auto anchors = std::make_shared<AnchorSystem>(); // §9.4.1 Anchor activation
   anchors->setAnchorHandler(std::move(anchorHandler)); // non-"#Name" urls
   detail::forEachNode(scene, [&](X3DNode *n) { anchors->attach(n, ctx); });

@@ -51,6 +51,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace x3d::runtime {
 
@@ -105,6 +106,9 @@ struct SessionOptions {
   /// URL stays authored; base is Scene::nodeBaseUrls, or baseUrl if absent.
   extract::TextureResolverWithBase textureResolverWithBase;
   extract::AssetResolverWithBase assetResolverWithBase; // LoadSensor byte path
+  /// Install pointing-device sensors without anchors or SDK navigation.
+  /// `interactive` already includes these sensors; setting both installs once.
+  bool pointingSensors = false;
 };
 
 class RuntimeSession {
@@ -169,6 +173,16 @@ public:
   /// for setForcedMode etc. Null otherwise.
   const std::shared_ptr<NavigationSystem> &navigation() const { return nav_; }
 
+  /// Enabled pointing sensors tied at the lowest scope of a current pick from
+  /// this session's context. Empty on a miss or when no sensor applies. Uses the
+  /// same resolver as press activation, without changing pointer/hover/grab state.
+  /// This geometric query works even when sensor systems are not installed; it
+  /// does not predict an existing grab or reserve a later press. Nodes are
+  /// borrowed from the scene; discard picks/results before removing their nodes.
+  std::vector<X3DNode *> pointingSensors(const PickResult &pick) const {
+    return PointingSensorSystem::resolve(pick);
+  }
+
 private:
   RuntimeSession(X3DDocument doc, SessionOptions options)
       // Member ORDER is the contract: doc_ first (ctx_ and extractor_ both refer
@@ -195,6 +209,8 @@ private:
                             std::move(options.assetResolverWithBase));
     if (options.interactive)
       nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
+    else if (options.pointingSensors)
+      attachPointingSensors(doc_.scene, ctx_);
   }
 
   X3DDocument doc_;

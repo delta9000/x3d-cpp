@@ -52,6 +52,15 @@ Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated sw
 **NOT-YET-PROVEN** = one backend (or pending second) and no swap-test gate. `—` = not yet
 applicable.
 
+## Host pointer arbitration proposal
+
+`SessionOptions::pointingSensors` and `RuntimeSession::pointingSensors(pick)`
+let a host install sensors independently and query the SDK's activation scope.
+See [the pointing subsystem](subsystems/system-pointing.md#host-owned-navigation)
+and [ADR-0063](decisions/0064-pointing-without-navigation.md). Focused cases are
+registered in `x3d_extract_tests` but unrun for this proposal. CAVEOS integration
+and compilation remain unverified; this addition does not promote a seam row.
+
 ## GREEN row: ScriptEngine — the Phase-0 pilot
 
 The `ScriptEngine` seam is the first row to go GREEN and is the **pattern** every later seam

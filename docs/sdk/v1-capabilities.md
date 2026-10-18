@@ -119,6 +119,16 @@ do not independently inherit this host claim.
 
 ## Interactive reference host
 
+For a host that owns navigation, `SessionOptions::pointingSensors = true`
+installs pointing-device sensors alone. `session->pointingSensors(hit)` queries
+all enabled sensors tied at the lowest scope using the activation resolver,
+without changing input state. `interactive` retains its existing behavior; both
+flags together install sensors once. The query accepts a current pick from
+`session->context().pick(ray)` and returns borrowed node pointers. See
+[host-owned navigation](../wiki/subsystems/system-pointing.md#host-owned-navigation)
+for lifetime and grab limits. The added regression cases in
+`pointing_without_navigation_test.cpp` are unrun in this proposal.
+
 `RuntimeSession` with `SessionOptions::interactive` is the Annex C host: XML
 scenes driven only through the pointer, key and bind seams. Its acceptance
 suite (`runtime/extract/tests/interactive_profile_test.cpp`, part of `mise run

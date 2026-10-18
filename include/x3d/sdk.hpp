@@ -123,7 +123,7 @@ using x3d::runtime::Aabb;                ///< axis-aligned bounds
 //   sdk::RenderDelta f0 = session->fullSnapshot();     // upload f0.added
 //   while (running) { session->tick(now); auto d = session->delta(); }
 using x3d::runtime::RuntimeSession;      ///< create(doc, options) -> unique_ptr; tick()/fullSnapshot()/delta()
-using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, meshOptions, textureResolver }
+using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, pointingSensors=false, meshOptions, textureResolver }
 
 // ── Extraction / render feed ────────────────────────────────────── [EXPERIMENTAL]
 // In-process descriptors, not a wire/ABI contract. See docs/wiki/guides/native-host.md.

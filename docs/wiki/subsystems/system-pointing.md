@@ -81,6 +81,45 @@ struct PointerState {
 };
 ```
 
+### Host-owned navigation
+
+Set `SessionOptions::pointingSensors = true` to install pointing-device sensors
+without SDK navigation or Anchor activation. `interactive = true` keeps its
+existing meaning: sensors, anchors, and navigation in arbitration order. Setting
+both flags installs the sensors once. Low-level hosts can call
+`attachPointingSensors(scene, ctx)` after building the scene graph.
+
+Before claiming a trigger, use the same resolver that drives sensor activation:
+
+```cpp
+sdk::SessionOptions options;
+options.pointingSensors = true;
+auto session = sdk::RuntimeSession::create(std::move(document), options);
+auto hit = session->context().pick(worldRay);
+auto sensors = session->pointingSensors(hit);
+if (!sensors.empty()) {
+    // Claim the trigger, then feed the pointer ray and button through context().
+}
+```
+
+The query returns every enabled sensor tied at the deepest applicable group,
+including `GeoTouchSensor`, with duplicates removed in child traversal order.
+A miss or geometry with no applicable sensor returns an empty vector. The query
+reads current enablement and works even when neither input system is installed.
+It doesn't emit events, change pointer state, or acquire a grab. It describes a
+fresh press; an existing grab retains its own targets. Changes between query
+and tick can change activation. Anchors aren't pointing sensors.
+
+Use a current pick from this session. Picks and returned node pointers borrow
+scene storage; discard them before removing their nodes or destroying the
+session. Re-pick after scene changes that affect the hit or path. See
+[ADR-0063](../decisions/0064-pointing-without-navigation.md).
+
+The focused cases in `runtime/extract/tests/pointing_without_navigation_test.cpp`
+are registered in `x3d_extract_tests`. They cover installation, opt-in defaults,
+resolution, activation agreement, and absence of SDK navigation. They haven't
+been run for this proposal.
+
 ### PickSystem seam
 
 `PointingSensorSystem` does not traverse the scene graph itself. It calls `ctx.pick(ps.ray)` (which delegates to `PickSystem::pickClosest`) to get a `PickResult`:
