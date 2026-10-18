@@ -18,10 +18,27 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 namespace x3d::codec {
 
 namespace {
+
+// SEC-4 companion: RAII push/pop for the default resolvers' thread-local
+// active-file stack. A manual push_back/pop_back is balanced only on the happy
+// path and on std::exception-derived throws: anything else unwinding past the
+// pop_back leaves a stale entry, which silently refuses that path for the rest
+// of the thread's life. The destructor always runs.
+struct ActiveFileGuard {
+  std::vector<std::string> &files;
+  ActiveFileGuard(std::vector<std::string> &f, const std::string &path)
+      : files(f) {
+    files.push_back(path);
+  }
+  ~ActiveFileGuard() { files.pop_back(); }
+  ActiveFileGuard(const ActiveFileGuard &) = delete;
+  ActiveFileGuard &operator=(const ActiveFileGuard &) = delete;
+};
 
 // UNIT is a header declaration, so validate it once before any scene expansion.
 // In particular, a malformed factor must never reach a runtime as a scale.
@@ -328,7 +345,7 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack
-    activeFiles.push_back(path);
+    ActiveFileGuard guard(activeFiles, path);
     std::shared_ptr<runtime::ProtoDeclaration> found;
     try {
       runtime::X3DDocument sub = parseFile(path);
@@ -339,7 +356,6 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     } catch (const std::exception &) {
       // lenient: fall through to the next candidate url
     }
-    activeFiles.pop_back();
     if (found)
       return found;
   }
@@ -359,12 +375,13 @@ localFileInlineResolver(const std::vector<std::string> &urls,
       continue;
     auto confined =
         confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
-    if (!confined) continue;
+    if (!confined)
+      continue; // absolute / escaping / unresolvable -> skip this candidate
     const std::string path = std::move(*confined);
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack
-    activeFiles.push_back(path);
+    ActiveFileGuard guard(activeFiles, path);
     std::shared_ptr<runtime::Scene> result;
     try {
       runtime::X3DDocument sub =
@@ -373,7 +390,6 @@ localFileInlineResolver(const std::vector<std::string> &urls,
     } catch (const std::exception &) {
       // lenient: try the next candidate url
     }
-    activeFiles.pop_back();
     if (result)
       return result;
   }

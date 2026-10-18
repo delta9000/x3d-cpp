@@ -57,6 +57,7 @@ _x3d_classify_present_targets(behavior
     x3d_inline_cycle
     x3d_inflate_bomb
     x3d_path_confine
+    x3d_inline_confine
     x3d_inline_containment_cycle
     x3d_vrml97_reader
     x3d_json_reader
@@ -191,6 +192,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_inline_cycle
         x3d_inflate_bomb
         x3d_path_confine
+        x3d_inline_confine
         x3d_inline_containment_cycle
         x3d_vrml97_reader
         x3d_json_reader

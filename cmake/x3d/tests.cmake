@@ -420,6 +420,15 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_path_confine PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_path_confine COMMAND x3d_path_confine)
 
+    # SEC-3 regression at the DEFAULT resolver call sites: localFileInlineResolver
+    # must confine Inline urls exactly like localFileProtoResolver (../ escapes
+    # and absolute urls are not read), must not over-block in-root siblings, and
+    # the a->b->a cycle must still terminate on the canonical keys.
+    add_executable(x3d_inline_confine
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_confine_test.cpp")
+    target_link_libraries(x3d_inline_confine PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_inline_confine COMMAND x3d_inline_confine)
+
     # Regression: expandInlines walk must not stack-overflow on containment cycles
     # (USE-shared or self-referential nodes). Guard mirrors sibling system walkers.
     add_executable(x3d_inline_containment_cycle

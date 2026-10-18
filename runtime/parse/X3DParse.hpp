@@ -100,8 +100,11 @@ localFileProtoResolver(const std::vector<std::string> &urls,
                        const std::string &baseUrl);
 
 /// Default Inline resolver: resolve file-like urls relative to `baseUrl`, parse
-/// the target, return its Scene. http/https/urn skipped (embedder territory).
-/// A thread_local active-file stack makes self-referential / indirect Inline
+/// the target, return its Scene. Like localFileProtoResolver above, resolved
+/// paths are confined to the SEC-3 confinement root (absolute urls and `../`
+/// escapes above the root are rejected, and the canonical path doubles as the
+/// cycle-guard key). http/https/urn skipped (embedder territory). A
+/// thread_local active-file stack makes self-referential / indirect Inline
 /// loops terminate (ISO 19775-1 §9.4.2: browsers shall not honor such loops).
 std::shared_ptr<runtime::Scene>
 localFileInlineResolver(const std::vector<std::string> &urls,
