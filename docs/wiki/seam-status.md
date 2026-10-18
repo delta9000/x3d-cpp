@@ -382,3 +382,11 @@ placement identity. Evidence additions: `x3d_ext_cave_recursive_resolver`,
 `x3d_ext_cave_input_diagnostics`, the deferred-cycle case in
 `x3d_extract_tests`, and `keyed_delta_payloads` in
 `sai_provider_presentation`. No stable seam status changes are claimed.
+
+The CaveInputSystem placement-cache fix awaits maintainer compilation and test
+execution. Placement warnings persist across ordinary updates; structural node
+field writes advance the topology revision, and route rebuilds and enrollment
+changes invalidate the cache. Deferred Inline private ROUTEs also identify
+RoomGroups. New evidence cases are `x3d_ext_cave_placement_cache`,
+`x3d_ext_cave_placement_idle`, `x3d_ext_cave_placement_inline`, and
+`x3d_ext_cave_placement_geolod`; none were run for this proposal. Input diagnostics still refresh on each required update.

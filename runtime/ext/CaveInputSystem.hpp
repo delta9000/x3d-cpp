@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -122,10 +123,16 @@ public:
   void submit(RoomFrame frame) { frame_ = std::move(frame); }
 
   void attach(X3DNode *node, X3DExecutionContext &) override {
+    invalidatePlacement();
     if (dynamic_cast<TrackedDeviceSensor *>(node) || dynamic_cast<RoomFrameSensor *>(node))
       nodes_.insert(node);
   }
-  void detach(X3DNode *node, X3DExecutionContext &) override { nodes_.erase(node); }
+  void detach(X3DNode *node, X3DExecutionContext &) override {
+    // Inline/GeoLOD retirement calls detach before releasing node ownership.
+    // Clear the composed view too: it contains borrowed placement/device nodes.
+    invalidatePlacement();
+    nodes_.erase(node);
+  }
 
   // Current placement and input diagnostics, refreshed during update().
   // A null node identifies the submitted room frame. Identity Transform
@@ -133,7 +140,16 @@ public:
   const std::vector<RoomGroupWarning> &warnings() const { return warnings_; }
 
   void update(double, X3DExecutionContext &ctx) override {
-    diagnoseRoomGroups();
+    if (nodes_.empty()) {
+      warnings_.clear();
+      return;
+    }
+    if (placementDirty_ || topologyRevision_ != ctx.sceneTopologyRevision()) {
+      diagnoseRoomGroups();
+      topologyRevision_ = ctx.sceneTopologyRevision();
+      placementDirty_ = false;
+    }
+    warnings_ = placementWarnings_;
     std::optional<Mat4> worldFromRoom;
     std::optional<cave_detail::Similarity> room;
     std::string roomReason;
@@ -194,20 +210,32 @@ public:
   }
 
 private:
-  void diagnoseRoomGroups() {
+  void invalidatePlacement() {
+    placementDirty_ = true;
+    placementWarnings_.clear();
     warnings_.clear();
+  }
+
+  void diagnoseRoomGroups() {
+    placementWarnings_.clear();
     // Follow the composition's private sensor/ROUTE rather than the primary's
     // expandedSources entry: an enclosing PROTO can replace that source record.
     std::unordered_set<const X3DNode *> anchors;
-    for (const auto &route : scene_.resolvedProtoRoutes)
-      if (dynamic_cast<RoomFrameSensor *>(route.from.get()) &&
-          route.from->getDEF() == "RoomGroupFrame" && route.toField == "translation")
-        anchors.insert(route.to.get());
+    auto collect = [&](const auto &routes) {
+      for (const auto &route : routes)
+        if (dynamic_cast<RoomFrameSensor *>(route.from.get()) &&
+            route.from->getDEF() == "RoomGroupFrame" && nodes_.count(route.from.get()) &&
+            route.toField == "translation")
+          anchors.insert(route.to.get());
+    };
+    collect(scene_.resolvedProtoRoutes);
+    collect(scene_.resolvedInlineRoutes); // Inline hoists child-private ROUTEs here.
+    if (anchors.empty()) return;
     std::unordered_set<const X3DNode *> seen[2], warned;
     std::function<void(const X3DNode *, bool)> walk = [&](const X3DNode *node, bool transformed) {
       if (!node || !seen[transformed].insert(node).second) return;
       if (transformed && anchors.count(node) && warned.insert(node).second)
-        warnings_.push_back({node, "RoomGroup '" + node->getDEF() +
+        placementWarnings_.push_back({node, "RoomGroup '" + node->getDEF() +
             "' requires a transform-free path to the world root; put room-local transforms inside it"});
       const auto type = node->nodeTypeName();
       const bool below = transformed || TransformSystem::isTransform(node) ||
@@ -222,6 +250,9 @@ private:
   const Scene &scene_; // Must outlive the system, like other scene-backed Systems.
   RoomFrame frame_;
   std::unordered_set<X3DNode *> nodes_;
+  bool placementDirty_ = true;
+  std::uint64_t topologyRevision_ = 0;
+  std::vector<RoomGroupWarning> placementWarnings_;
   std::vector<RoomGroupWarning> warnings_;
 };
 

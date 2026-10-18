@@ -253,6 +253,8 @@ public:
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
   }
 
+  // Structural field writes advance this automatically. Call explicitly after
+  // direct root/PROTO-route edits that bypass writeField and cascade delivery.
   void markSceneTopologyChanged() { ++sceneTopologyRevision_; }
   std::uint64_t sceneTopologyRevision() const { return sceneTopologyRevision_; }
 
@@ -788,6 +790,7 @@ private:
       if (f.x3dName == a.field &&
           (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode)) {
         flags |= DirtyChildren;
+        markSceneTopologyChanged();
         break;
       }
     // Selection changes preserve node references and the transform index.

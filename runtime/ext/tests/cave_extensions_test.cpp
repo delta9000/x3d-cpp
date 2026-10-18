@@ -6,6 +6,7 @@
 #include "X3DCodecs.hpp"
 #include "X3DParse.hpp"
 #include "x3d/nodes/Transform.hpp"
+#include "x3d/nodes/Group.hpp"
 
 #include <any>
 #include <cmath>
@@ -386,6 +387,203 @@ void room_placement() {
   check(found, "USE or edited ancestor path escaped placement diagnosis");
 }
 
+// Count reflection visits at a scene root, independently of wall-clock timing.
+// Direct system passes isolate diagnostic traversal from transform/bounds work.
+class CountedGroup : public x3d::nodes::Group {
+public:
+  mutable unsigned visits = 0;
+  const FieldTable &fields() const override {
+    ++visits;
+    return x3d::nodes::Group::fields();
+  }
+};
+
+void placement_cache() {
+  auto doc = document(R"(
+    <Collision DEF='Plain'><ProtoInstance name='RoomGroup' DEF='Room'/></Collision>
+    <Transform DEF='Parent'/>
+    <LOD DEF='Levels'><Group/><Group/></LOD>
+    <ProtoInstance name='Tracked' DEF='Wand'><fieldValue name='device' value='WAND'/></ProtoInstance>
+  )");
+  auto root = std::make_shared<CountedGroup>();
+  root->setChildren(doc.scene.rootNodes);
+  doc.scene.rootNodes = {root};
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto system = setup(doc.scene, ctx);
+  system->submit(frame());
+  root->visits = 0;
+  system->update(0, ctx);
+  check(root->visits == 1, "initial placement diagnosis must walk once");
+  for (int i = 0; i < 6; ++i) system->update(i / 2, ctx);
+  check(root->visits == 1, "static updates/cascade passes repeated ancestry walk");
+  auto parent = doc.scene.resolve("Parent");
+  auto plain = doc.scene.resolve("Plain");
+  auto room = doc.scene.resolve("Room");
+  auto revision = ctx.sceneTopologyRevision();
+  check(ctx.writeField(parent.get(), "translation", SFVec3f{1, 0, 0}) == FieldWriteResult::Ok,
+        "TRS write failed");
+  system->update(3, ctx);
+  check(root->visits == 1 && ctx.sceneTopologyRevision() == revision,
+        "TRS animation invalidated authored containment");
+  ctx.markActiveChildChanged(doc.scene.resolve("Levels").get());
+  ctx.setHeadPose({1, 2, 3}, {0, 1, 0, 0});
+  system->update(3, ctx);
+  check(root->visits == 1 && ctx.sceneTopologyRevision() == revision,
+        "LOD selection or viewer movement invalidated authored containment");
+  auto writeChildren = [&](X3DNode *node, MFNode children) {
+    check(ctx.writeField(node, "children", std::move(children)) == FieldWriteResult::Ok,
+          "child replacement failed");
+    system->update(3, ctx); // Same time and tick generation: no once-per-tick guard.
+  };
+  writeChildren(parent.get(), {room});
+  check(root->visits == 2 && system->warnings().size() == 1,
+        "shared transformed/untransformed paths must warn after replacement");
+  writeChildren(plain.get(), {});
+  check(root->visits == 3 && system->warnings().size() == 1,
+        "reparented RoomGroup lost warning");
+  writeChildren(parent.get(), {});
+  writeChildren(plain.get(), {room});
+  check(root->visits == 5 && system->warnings().empty(), "reparenting retained warning");
+  auto proxyParent = std::make_shared<x3d::nodes::Transform>();
+  proxyParent->setChildren(MFNode{room});
+  check(ctx.writeField(plain.get(), "proxy", SFNode{proxyParent}) == FieldWriteResult::Ok,
+        "SFNode replacement failed");
+  system->update(3, ctx);
+  check(system->warnings().size() == 1, "SFNode ancestor path was not diagnosed");
+  check(ctx.writeField(plain.get(), "proxy", SFNode{}) == FieldWriteResult::Ok,
+        "SFNode removal failed");
+  system->update(3, ctx);
+  check(system->warnings().empty(), "SFNode removal retained placement warning");
+
+  // A write delivered between system passes must be visible in the same tick.
+  writeChildren(parent.get(), {});
+  ctx.postEvent(parent.get(), "children", MFNode{room});
+  ctx.tick(4);
+  check(system->warnings().size() == 1, "cascade edit was not diagnosed within tick");
+  auto invalid = frame();
+  invalid.devices[0].valid = false;
+  system->submit(invalid);
+  system->update(5, ctx);
+  check(system->warnings().size() == 2, "input warning replaced cached placement warning");
+  system->submit(frame());
+  root->visits = 0;
+  system->update(5, ctx);
+  check(root->visits == 0 && system->warnings().size() == 1,
+        "device recovery must preserve placement cache without traversing");
+
+  auto routes = doc.scene.resolvedProtoRoutes;
+  doc.scene.resolvedProtoRoutes.clear();
+  check(buildRoutes(doc.scene, ctx).rejected.empty(), "route removal failed");
+  root->visits = 0;
+  system->update(5, ctx);
+  check(root->visits == 0 && system->warnings().empty(), "empty anchors walked scene");
+  doc.scene.resolvedProtoRoutes = routes;
+  check(buildRoutes(doc.scene, ctx).rejected.empty(), "route restoration failed");
+  system->update(5, ctx);
+  check(root->visits == 1 && system->warnings().size() == 1,
+        "private route replacement did not rebuild anchors");
+  ctx.detachNodes({room.get()});
+  check(system->warnings().empty(), "detach left borrowed warning pointers");
+}
+
+void placement_idle() {
+  Scene scene;
+  auto root = std::make_shared<CountedGroup>();
+  root->setChildren(MFNode{std::make_shared<x3d::nodes::Transform>()});
+  scene.rootNodes = {root};
+  X3DExecutionContext ctx;
+  auto system = installCaveInput(scene, ctx);
+  // No graph systems/indexes: count only work caused by CaveInputSystem in tick.
+  root->visits = 0;
+  ctx.tick(0);
+  ctx.tick(1);
+  check(root->visits == 0, "idle scene without CAVE sensors traversed ancestry");
+  check(system->warnings().empty(), "scene without CAVE sensors diagnosed input");
+  auto sensor = std::make_shared<RoomFrameSensor>();
+  system->attach(sensor.get(), ctx);
+  system->submit(frame());
+  ctx.tick(2);
+  check(root->visits == 0, "sensor without RoomGroup anchors traversed ancestry");
+  system->detach(sensor.get(), ctx);
+  ctx.tick(3);
+  check(root->visits == 0 && system->warnings().empty(), "last detach retained work");
+}
+
+void placement_inline() {
+  auto doc = document("<Transform><Inline DEF='Deferred' load='false' url='&quot;room.x3d&quot;'/></Transform>");
+  unsigned loads = 0;
+  InlineResolver resolver = [&](const auto &, const auto &) {
+    ++loads;
+    auto child = document(R"(
+      <ProtoDeclare name='Wrapper'><ProtoBody><ProtoInstance name='RoomGroup'/></ProtoBody></ProtoDeclare>
+      <ProtoInstance name='Wrapper' DEF='LoadedRoom'/>)");
+    return std::make_shared<Scene>(std::move(child.scene));
+  };
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto loader = std::make_shared<InlineRuntimeSystem>(doc.scene, resolver, "");
+  auto inl = doc.scene.resolve("Deferred");
+  loader->attach(inl.get(), ctx);
+  ctx.addSystem(loader);
+  auto system = setup(doc.scene, ctx);
+  system->submit(frame());
+  ctx.tick(0);
+  check(loads == 0 && system->warnings().empty(), "deferred Inline loaded early");
+  ctx.postEvent(inl.get(), "load", true);
+  ctx.tick(1);
+  check(loads == 1 && system->warnings().size() == 1,
+        "deferred Inline/enclosing PROTO RoomGroup was not enrolled");
+  std::weak_ptr<X3DNode> retired;
+  for (const auto &route : doc.scene.resolvedInlineRoutes)
+    if (route.to.get() == system->warnings().front().node) retired = route.to;
+  check(!retired.expired(), "test did not locate hoisted RoomGroup route");
+  check(ctx.writeField(inl.get(), "load", false) == FieldWriteResult::Ok, "unload failed");
+  loader->update(1, ctx);
+  check(system->warnings().empty(), "unload did not drop borrowed warnings immediately");
+  system->update(1, ctx);
+  check(retired.expired() && system->warnings().empty(), "unload retained stale placement");
+  ctx.postEvent(inl.get(), "load", true);
+  ctx.tick(2);
+  check(loads == 2 && system->warnings().size() == 1, "reload did not diagnose new RoomGroup");
+}
+
+void placement_geolod() {
+  auto doc = document(R"(
+    <Transform><GeoLOD DEF='Tiles' geoSystem='"GC"' center='0 0 0'
+        range='0' child1Url='"room.x3d"'>
+      <Group containerField='rootNode'/>
+    </GeoLOD></Transform>)");
+  unsigned loads = 0;
+  InlineResolver resolver = [&](const auto &, const auto &) {
+    ++loads;
+    auto child = document("<ProtoInstance name='RoomGroup'/>");
+    return std::make_shared<Scene>(std::move(child.scene));
+  };
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto loader = std::make_shared<InlineRuntimeSystem>(doc.scene, resolver, "");
+  auto lod = doc.scene.resolve("Tiles");
+  loader->attach(lod.get(), ctx);
+  ctx.addSystem(loader);
+  auto system = setup(doc.scene, ctx);
+  system->submit(frame());
+  ctx.tick(0);
+  check(loads == 0 && system->warnings().empty(), "far GeoLOD loaded child tile");
+  ctx.postEvent(lod.get(), "range", SFFloat{1000000});
+  ctx.tick(1);
+  check(loads == 1 && system->warnings().size() == 1,
+        "GeoLOD tile RoomGroup was not enrolled");
+  std::weak_ptr<X3DNode> retired;
+  for (const auto &route : doc.scene.resolvedInlineRoutes)
+    if (route.to.get() == system->warnings().front().node) retired = route.to;
+  check(!retired.expired(), "test did not locate GeoLOD RoomGroup");
+  ctx.postEvent(lod.get(), "range", SFFloat{0});
+  ctx.tick(2);
+  check(retired.expired() && system->warnings().empty(), "GeoLOD retirement retained warning");
+  ctx.postEvent(lod.get(), "range", SFFloat{1000000});
+  ctx.tick(3);
+  check(loads == 2 && system->warnings().size() == 1,
+        "GeoLOD tile reload did not rebuild placement warnings");
+}
+
 void fallback() {
   const auto source = xml(std::string(roomChild) + R"(
     <ProtoInstance name='Tracked' DEF='Wand'><fieldValue name='device' value='WAND'/></ProtoInstance>
@@ -430,6 +628,10 @@ int main(int argc, char **argv) {
     else if (name == "tracking_lifecycle") tracking_lifecycle();
     else if (name == "invalid_room") invalid_room();
     else if (name == "room_placement") room_placement();
+    else if (name == "placement_cache") placement_cache();
+    else if (name == "placement_idle") placement_idle();
+    else if (name == "placement_inline") placement_inline();
+    else if (name == "placement_geolod") placement_geolod();
     else if (name == "fallback") fallback();
     else throw std::runtime_error("unknown case");
     std::cout << name << ": PASS\n";

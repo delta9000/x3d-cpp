@@ -85,7 +85,7 @@ if(X3D_CPP_BUILD_EXT)
         target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext)
         target_compile_definitions(x3d_ext_cave_tests PRIVATE
             X3D_EXT_PROTO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos")
-        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement fallback recursive_resolver input_diagnostics)
+        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement placement_cache placement_idle placement_inline placement_geolod fallback recursive_resolver input_diagnostics)
             add_test(NAME x3d_ext_cave_${_case} COMMAND x3d_ext_cave_tests ${_case})
         endforeach()
     endif()

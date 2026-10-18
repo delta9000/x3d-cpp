@@ -300,9 +300,19 @@ a null node identifies a rejected room frame. Reasons distinguish shear,
 non-uniform scale, non-finite or non-affine matrices, singularity, reflection,
 invalid host flags, unknown devices, invalid poses, and non-finite joysticks.
 Disabled sensors do not produce device warnings. Room input is diagnosed once
-per snapshot evaluation even when no room sensor is enabled. A shared group warns
-if any path has a transforming ancestor. Warnings refresh during system
-updates, including after child edits. Copy messages before the next update;
+per snapshot evaluation when at least one CAVE sensor is enrolled, even when no
+room sensor is enabled. A shared group warns if any path has a transforming
+ancestor. Placement diagnostics are cached across updates and cascade passes;
+TRS animation, viewer motion, and LOD selection do not rescan authored ancestry.
+Structural SFNode/MFNode writes advance `sceneTopologyRevision()` automatically.
+Attach/detach, Inline/GeoLOD splices, and `buildRoutes()` also invalidate the
+placement cache. After direct root or private ROUTE collection edits, call
+`context.markSceneTopologyChanged()` (or rebuild the ROUTEs). Recalculation runs
+on the next system update, including another pass within the same tick. With
+no enrolled CAVE sensors, updates return immediately; with no RoomGroup anchors,
+no ancestry walk runs. Input validity is evaluated on each required update and
+composed with cached placement warnings. Detach drops cached warning pointers
+before removed nodes can be released. Copy messages before the next update;
 node pointers are borrowed and must not survive scene topology edits. The
 system diagnoses these placements; it does not cancel their ancestors.
 
@@ -349,6 +359,10 @@ These describe assertions, not a claim that the cases have been executed.
 | `x3d_ext_cave_invalid_room` | Shear, non-uniform or zero scale, reflection, perspective, NaN, infinity, and host-invalid frames deactivate the sensor; valid frames recover, and positive uniform scale produces reciprocal scale. |
 | `x3d_ext_cave_room_placement` | Structural groups are accepted; identity Transform and Billboard ancestors warn; enclosing PROTOs, child edits, and shared placement paths remain diagnosable. |
 | `x3d_ext_cave_recursive_resolver` | Native sensor declarations resolve inside an external PROTO loaded through an Inline; only document URLs reach the asset backend. |
+| `x3d_ext_cave_placement_cache` | Counts ancestry visits across repeated updates and TRS animation; checks child replacement, reparenting, SFNode edits, same-tick cascade edits, route replacement, detach, and device recovery with cached placement warnings. |
+| `x3d_ext_cave_placement_idle` | An idle tick without CAVE sensors and an update without RoomGroup anchors perform zero ancestry visits. |
+| `x3d_ext_cave_placement_inline` | Deferred Inline/enclosing-PROTO RoomGroups enroll, unload drops borrowed warnings and releases nodes, and reload diagnoses the new placement. |
+| `x3d_ext_cave_placement_geolod` | GeoLOD child-tile arrival enrolls RoomGroups; retirement releases old anchors and warnings; returning to the tile rebuilds warnings. |
 | `x3d_ext_cave_input_diagnostics` | Rejection messages identify room or device input, distinguish transform/sample failures, and clear on recovery. |
 | `x3d_ext_cave_fallback` | The normal file resolver reads fallback fragment URLs without ext interception; no native sensors appear, output ROUTEs remain legal, children extract at identity room placement, and fallback XML round-trip loads. |
 

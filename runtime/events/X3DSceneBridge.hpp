@@ -156,6 +156,7 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
   ctx.bindSceneAuthorFields(scene);
   BridgeResult result;
   ctx.clearRoutes();
+  ctx.markSceneTopologyChanged(); // Includes replacement of private PROTO ROUTEs.
   scene.resolveRoutes();
   using Scope = RouteError::Scope;
   auto reject = [&](std::size_t index, Scope scope, std::string reason) {
