@@ -3,6 +3,7 @@
 #include "PathConfine.hpp"
 #include "doctest/doctest.h"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -128,7 +129,18 @@ TEST_CASE("asset policy: explicit rejecting Inline resolver survives nested EXTE
       Encoding::Unknown, reject);
   auto doc = parseDocument(scene(external("Widget", "library.x3d#Widget")),
       Encoding::XML, files.path(), r, reject);
-  CHECK(doc.protoWarnings.empty());
+  // Each rejected fetched Inline now reaches the parent's PROTO channel.
+  // The instantiated Widget's own rejection remains an Inline warning below.
+  REQUIRE(doc.protoWarnings.size() == 2);
+  for (const auto &warning : doc.protoWarnings) {
+    CHECK(warning.kind == x3d::runtime::ProtoWarning::Kind::SourceWarning);
+    CHECK(warning.detail.find(files.path("library.x3d")) != std::string::npos);
+    CHECK(warning.detail.find("forbidden-inline.x3d") != std::string::npos);
+  }
+  CHECK(std::any_of(doc.protoWarnings.begin(), doc.protoWarnings.end(),
+      [&](const auto &warning) {
+        return warning.detail.find(files.path("nested/other.x3d")) != std::string::npos;
+      }));
   CHECK(doc.inlineWarnings.size() == 1);
   CHECK(bases == std::vector<std::string>{files.path("nested"), files.path(), files.path()});
   CHECK(calls == Calls{{files.path("library.x3d"), AssetKind::ExternProto},

@@ -61,6 +61,23 @@ Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated sw
 **NOT-YET-PROVEN** = one backend (or pending second) and no swap-test gate. `—` = not yet
 applicable.
 
+## Public node inspection proposal
+
+`sdk::forEachNode` and `sdk::readField<T>` add experimental graph discovery
+and owned typed reads to the façade. See
+[ADR-0065](decisions/0071-public-node-inspection.md) for traversal and read
+boundaries. The registered `x3d_sdk_node_inspection` regression is uncompiled
+and unrun. This is a host inspection API; it does not promote any IO seam row.
+
+## Fetched diagnostics and unbound viewer proposals
+
+The existing load-warning channels gain fetched-source details and runtime
+asset Inline cycle reasons ([ADR-0066](decisions/0072-fetched-document-diagnostics.md)).
+The unbound effective viewer preserves the origin and gains effective head tracking
+([ADR-0067](decisions/0073-implicit-default-viewer.md)). These are experimental
+behavior proposals, with focused unrun cases registered in `x3d_extract_tests`.
+No seam row is promoted; custom resolver cycle policy remains host-owned.
+
 ## Host pointer arbitration proposal
 
 `SessionOptions::pointingSensors` and `RuntimeSession::pointingSensors(pick)`

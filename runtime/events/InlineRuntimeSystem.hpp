@@ -85,7 +85,7 @@ public:
     for (const Route &r : scene_.routes)
       routeBound.push_back(!r.from.expired() && !r.to.expired());
 
-    expandInlines(scene_, resolver_, baseUrl_, warnings_,
+    expandInlines(scene_, resolver_, baseUrl_, scene_.pendingInlineWarnings,
                   [&](X3DNode *parent, const std::shared_ptr<X3DNode> &group) {
                     splices.push_back({parent, group});
                   });
@@ -393,7 +393,6 @@ private:
   std::unordered_map<X3DNode *, MFString> attempted_;
   std::unordered_map<X3DNode *, Loaded> loaded_;
   std::unordered_map<X3DNode *, GeoLodState> geoLods_;
-  std::vector<InlineWarning> warnings_;
 };
 
 } // namespace x3d::runtime

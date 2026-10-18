@@ -72,6 +72,10 @@ public:
   // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
   std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;
 
+  // Fetched-source diagnostics waiting for the parent expansion/session to
+  // append them to X3DDocument::inlineWarnings. Drained after each session tick.
+  std::vector<InlineWarning> pendingInlineWarnings;
+
   // Inline expansion (Tier 1): synthetic Group (key) -> the original Inline node
   // it replaced. Writers consult this to re-emit <Inline url=.../> rather than
   // the spliced content (AUD-B redirect pattern; mirrors expandedSources).

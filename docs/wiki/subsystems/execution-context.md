@@ -303,7 +303,7 @@ X3DNode *boundFog() const;
 X3DNode *boundBindable(const std::string &category) const;
 void removeBoundNode(X3DNode *node);       // BIND-06: pop deleted bound node
 Mat4 boundViewpointWorldPose() const;       // authored world pose; identity if none
-Mat4 viewMatrix() const;                   // effective world-to-camera; host override wins
+Mat4 viewMatrix() const;                   // effective world-to-camera; origin base if unbound
 SFVec3f cameraWorldPosition() const;
 SFVec3f cameraWorldUp() const;
 PickResult pick(const Ray &worldRay) const;  // index-backed (see below)
@@ -311,6 +311,18 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 ```
 
 `pick()` threads the live viewer pose and the context's `TransformSystem` into an index-backed `pickClosest`: the point index is rebuilt only when `transformRevision()` changes and its cached world AABBs refit only when the `BoundsSystem` revision changes, so a pick on an unchanged scene costs a broad phase over geometry-bearing placements instead of a whole-graph walk. Billboard placements are re-resolved per pick (view-dependent).
+
+### Unbound viewer tracking proposal
+
+Without a bound Viewpoint, `viewMatrix()` now composes stored head tracking
+at the world origin. Identity tracking preserves the previous identity view,
+including the listener position used by sound and the eye used by GeoLOD.
+`setViewerWorldPose` still overrides the whole effective camera.
+`boundViewpoint()` remains null and `boundViewpointWorldPose()` remains identity;
+no node is inserted. Explicit tracking input now affects the unbound viewer.
+See [ADR-0067](../decisions/0073-implicit-default-viewer.md). The focused
+`default_viewer_test.cpp` regression in `x3d_extract_tests` is uncompiled and
+unrun.
 
 ### Seam points
 

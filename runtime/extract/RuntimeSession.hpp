@@ -33,7 +33,7 @@
 // buildSceneGraph() and buildFrom() write DISJOINT state (the former touches
 // transforms_/bounds_/bindings_/pick_, the latter only graph_), so they commute.
 // What actually bites is OMITTING one: skip buildSceneGraph and no Viewpoint
-// binds, so viewMatrix() silently returns identity; skip buildFrom and authored
+// binds, so viewMatrix() uses the unbound origin; skip buildFrom and authored
 // ROUTEs never fire, so the scene renders but never animates. Both are silent.
 // The session's value is that neither is a step you can forget, not that it
 // sequences something delicate.
@@ -140,7 +140,14 @@ public:
   // ── the per-frame loop ────────────────────────────────────────────────────
 
   /// Advance the behavior model to `now` (seconds, any monotonic clock).
-  void tick(double now) { ctx_.tick(now); }
+  /// Append deferred Inline diagnostics to document().inlineWarnings.
+  void tick(double now) {
+    ctx_.tick(now);
+    auto &pending = doc_.scene.pendingInlineWarnings;
+    doc_.inlineWarnings.insert(doc_.inlineWarnings.end(), pending.begin(),
+                               pending.end());
+    pending.clear();
+  }
 
   /// Every item, all in `added` — the frame-0 upload. Also re-baselines the
   /// incremental channel, so a later delta() diffs against this walk.

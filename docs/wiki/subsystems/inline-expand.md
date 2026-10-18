@@ -33,6 +33,20 @@ declarations in `Scene::sourceUnits`, including when reached through
 `expandedInlineScenes`. An empty snapshot means that the child declared no
 units. Retention does not yet convert child values to the parent's units.
 
+## Fetched and runtime diagnostics proposal
+
+The paired asset loaders forward selected child documents' reader, range,
+PROTO, and Inline warnings into the parent's `inlineWarnings` (or
+`protoWarnings` for EXTERNPROTO), with source URLs in each detail. Runtime
+asset-loader cycle rejection becomes an Inline `Cycle` warning containing the
+normalized rejected URL and Inline DEF. Candidate fallback still applies.
+`RuntimeSession::tick` appends runtime warnings to
+`session.document().inlineWarnings`; poll for new entries after ticking.
+Low-level contexts leave them in `scene.pendingInlineWarnings` for the caller
+to consume and drain. See [ADR-0066](../decisions/0072-fetched-document-diagnostics.md)
+for the resolver exception contract and scope. The focused cases in
+`inline_diagnostics_test.cpp` are registered in `x3d_extract_tests` and unrun.
+
 ## Key files
 
 | File / directory | Role |

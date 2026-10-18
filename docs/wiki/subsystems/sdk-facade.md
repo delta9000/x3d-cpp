@@ -2,7 +2,7 @@
 title: SDK Façade
 summary: The single public header consumers include — x3d::sdk — which re-exports the curated v1 embedder surface from namespace x3d::sdk.
 tags: [subsystem, sdk, facade, public-api]
-updated: 2026-06-20
+updated: 2026-10-18
 related:
   - ../architecture.md
   - ../subsystems/cli-suite.md
@@ -14,13 +14,14 @@ related:
 
 ## Purpose
 
-The SDK façade is the boundary between the x3d-cpp runtime internals and every embedder (renderer, tool, or script). It owns exactly one file — `include/x3d/sdk.hpp` — and one CMake target — `x3d_cpp::sdk` (an `INTERFACE` library). Embedders include that one header and link that one target; everything else is an implementation detail they do not name. The façade adds no compiled translation unit of its own: it re-exports curated `using` declarations from `namespace x3d::sdk`, covering loading, the execution context, extraction descriptors, serialization writers, and the five embedder seams. Symbols are tagged `[STABLE]` (frozen pre-v2; breaking change requires a major version bump) or `[EXPERIMENTAL]` (shape may still evolve; embedder wiring is maturing).
+The SDK façade is the boundary between the x3d-cpp runtime internals and every embedder (renderer, tool, or script). It owns `include/x3d/sdk.hpp` and the CMake target `x3d_cpp::sdk` (an `INTERFACE` library). Embedders include that one header and link that one target. The façade adds no compiled translation unit of its own: it provides curated `using` declarations and node-inspection templates in `namespace x3d::sdk`, covering loading, the execution context, extraction descriptors, serialization writers, and the five embedder seams. Symbols are tagged `[STABLE]` (frozen pre-v2; breaking change requires a major version bump) or `[EXPERIMENTAL]` (shape may still evolve; embedder wiring is maturing).
 
 ## Key files
 
 | File / directory | Role |
 |---|---|
-| `include/x3d/sdk.hpp` | The single consumer-facing header; all re-exports live here |
+| `include/x3d/sdk.hpp` | The single consumer-facing header; re-exports and node-inspection templates |
+| `include/x3d/tests/sdk_node_inspection_test.cpp` | Public walk and typed-read regression (`x3d_sdk_node_inspection`) |
 | `include/x3d/tests/sdk_facade_test.cpp` | Compile-and-run surface-lock test (ctest `x3d_sdk_facade`) |
 | `examples/01_load_validate_convert.cpp` | Worked example: load → validate → convert (ctest `x3d_example_01_load_validate_convert`) |
 | `examples/02_extract_render_feed.cpp` | Worked example: extract → feed a renderer (ctest `x3d_example_02_extract_render_feed`) |
@@ -110,9 +111,43 @@ tracker is the [Seam-Status Matrix](../seam-status.md).
 
 Also re-exported: `MeshBuildOptions` — tessellation density knobs (`sphereRings`, `sphereSegments`, `radialSlices`, `fontMetrics`).
 
+### Node inspection proposal
+
+The experimental `sdk::forEachNode(scene, visit)` and
+`sdk::readField<T>(node, name)` let a viewer discover viewpoints and read their
+labels without naming runtime helpers ([ADR-0065](../decisions/0071-public-node-inspection.md)).
+
+```cpp
+sdk::forEachNode(session->scene(), [&](sdk::X3DNode *node) {
+    if (node->nodeTypeName() == "Viewpoint") {
+        auto label = sdk::readField<x3d::core::SFString>(*node, "description")
+                         .value_or("");
+        // Add node and label to the host's viewpoint menu.
+    }
+});
+```
+
+The walk visits each node identity once, before its children, starting with
+scene roots and then PROTO peers. It follows generated SFNode/MFNode fields in
+reflection order, including inactive branches and loaded Inline children.
+Shared nodes and cycles are guarded; nulls are skipped. It does not fetch
+resources or visit uninstantiated PROTO declarations or author-declared Script
+node fields. Callback pointers are borrowed from the graph; don't change the
+graph during traversal or retain pointers after their owning nodes are removed.
+This is discovery by identity, not enumeration of rendered placements.
+
+The typed read returns an owned `std::optional<T>` copy through a generated
+reflected getter. Missing or unreadable fields and exact C++ type mismatches
+return `nullopt`, including in debug builds. Empty strings and false booleans
+are present values. Names are exact X3D field names, without ROUTE aliases;
+there are no numeric or enum-token conversions. Getter and copy exceptions
+propagate. Author-declared Script fields remain on context-aware Script/SAI
+APIs. The focused CTest target `x3d_sdk_node_inspection` is registered but has
+not been compiled or run for this proposal.
+
 ### Seam points
 
-- **CMake INTERFACE target** — `x3d_cpp_sdk` adds the `include/` directory to the consumer's include path and transitively links `x3d_cpp::x3d_cpp` (the full runtime + nodes). No new compiled TU is introduced; the façade is pure re-export.
+- **CMake INTERFACE target** — `x3d_cpp_sdk` adds the `include/` directory to the consumer's include path and transitively links `x3d_cpp::x3d_cpp` (the full runtime + nodes). No new compiled TU is introduced.
 - **No internals pulled in** — `sdk.hpp` includes the internal runtime headers by name (e.g. `X3DParse.hpp`, `SceneExtractor.hpp`) but presents only the curated `using` declarations. Embedders that write `using namespace x3d::sdk` get only what is listed; the deeper `x3d::runtime` and `x3d::runtime::extract` namespaces are accessible but not part of the stable contract.
 - **The ext firewall is not surfaced** — `include/x3d/ext.hpp` and `runtime/ext/` are a separate opt-in (CMake `X3D_CPP_BUILD_EXT=ON`); `sdk.hpp` does not include it. See [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md).
 

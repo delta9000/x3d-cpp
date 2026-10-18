@@ -41,6 +41,10 @@
 #ifndef X3D_SDK_HPP
 #define X3D_SDK_HPP
 
+#include <any>
+#include <optional>
+#include <utility>
+
 // Implementation headers (all reachable bare-name via the x3d_cpp include path).
 #include "X3DParse.hpp"            // x3d::codec   — parseFile/parseDocument/Encoding
 #include "X3DCodecs.hpp"           // x3d::codec   — XmlWriter/JsonWriter/VrmlWriter (serialize)
@@ -86,6 +90,31 @@ using x3d::runtime::Route;               ///< { fromNode, fromField, toNode, toF
 using x3d::nodes::X3DNode;               ///< generated node base (fields(), get/set, getDEF/setDEF) — x3d::nodes
 using x3d::core::RangeDiagnostic;        ///< one out-of-range value kept by the lenient read path — x3d::core
 using x3d::runtime::ProtoWarning;        ///< a PROTO/EXTERNPROTO expansion diagnostic
+
+// ── Node inspection ─────────────────────────────────────────────── [EXPERIMENTAL]
+/// Visit each reachable node once, before its children, in reflected field
+/// order. Includes inactive branches, loaded Inline children, and PROTO peers;
+/// does not fetch resources or visit uninstantiated PROTO declarations.
+/// `visit` receives a borrowed X3DNode*. Do not mutate the graph during a walk.
+template <class F> inline void forEachNode(const Scene &scene, F &&visit) {
+  x3d::runtime::detail::forEachNode(scene, std::forward<F>(visit));
+}
+
+/// Copy a generated reflected field by its exact X3D name and C++ value type.
+/// Missing/unreadable fields and type mismatches return nullopt; no conversion
+/// or event-name aliasing is performed. Author-declared Script fields require
+/// the context-aware Script/SAI APIs. Getter/copy exceptions propagate.
+template <class T>
+std::optional<T> readField(const X3DNode &node, const char *name) {
+  for (const auto &field : node.fields()) {
+    if (field.x3dName != name) continue;
+    if (!field.get) return std::nullopt;
+    const std::any value = field.get(node);
+    if (const T *typed = std::any_cast<T>(&value)) return *typed;
+    return std::nullopt;
+  }
+  return std::nullopt;
+}
 
 // Serialization — reflection-driven writers (writeDocument(doc) -> std::string).
 using x3d::codec::XmlWriter;             ///< X3D-XML serializer

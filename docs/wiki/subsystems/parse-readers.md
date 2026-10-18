@@ -15,6 +15,14 @@ related:
 
 # Parse Readers
 
+## Fetched-source diagnostics proposal
+
+The [fetched-document diagnostics proposal](../decisions/0072-fetched-document-diagnostics.md)
+preserves warnings from selected asset-loaded child documents as source-qualified
+`SourceWarning` details in the enclosing document's Inline/PROTO warning channel.
+Top-level reader and range diagnostics keep their existing structured channels.
+The registered `inline_diagnostics_test.cpp` cases are uncompiled and unrun.
+
 ## Purpose
 
 The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (`SCR-SAI-DYN S1`). After the document is built it triggers PROTO/Inline expansion through injectable resolver seams. Unknown node types and unknown field names are skipped gracefully (lenient-read policy); only genuinely unrecoverable malformation throws.

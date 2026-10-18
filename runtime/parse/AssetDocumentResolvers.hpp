@@ -181,11 +181,25 @@ inline AssetDocumentResolvers nestedResolvers(Context &context) {
 inline AssetDocumentResolvers makeResolvers(Policy policy,
                                            std::vector<std::string> active = {});
 
+// A fetched document has no host-facing lifetime of its own. Forward all its
+// warning channels as source-qualified prose on the enclosing load channel.
+template <class Emit>
+void sourceWarnings(const runtime::X3DDocument &doc, const std::string &url,
+                    Emit emit) {
+  for (const auto &warning : doc.readerWarnings) emit(url + ": " + warning.detail);
+  for (const auto &warning : doc.rangeWarnings) emit(url + ": " + warning.message());
+  for (const auto &warning : doc.protoWarnings)
+    emit(url + ": " + warning.instanceName + ": " + warning.detail);
+  for (const auto &warning : doc.inlineWarnings)
+    emit(url + ": " + warning.inlineDEF + ": " + warning.detail);
+}
+
 template <typename Result, typename Select>
 std::shared_ptr<Result> resolveDocument(Context &context,
     const std::vector<std::string> &urls, const std::string &baseDir,
     runtime::extract::AssetKind kind, Select select) {
   if (context.pending || context.active.size() >= kMaxNestingDepth) return nullptr;
+  std::string cycleUrl;
   for (const auto &raw : urls) {
     const auto hash = raw.find('#');
     const std::string fragment = hash == std::string::npos ? "" : raw.substr(hash + 1);
@@ -193,7 +207,10 @@ std::shared_ptr<Result> resolveDocument(Context &context,
     if (candidate.empty()) continue;
     const std::string url = resolveUrl(candidate, baseDir);
     if (std::find(context.active.begin(), context.active.end(), url) !=
-        context.active.end()) continue;
+        context.active.end()) {
+      cycleUrl = url;
+      continue;
+    }
     ActiveGuard guard(context.active, url);
     try {
       const auto result = context.policy.assets(url, kind);
@@ -210,6 +227,15 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       auto doc = parseDocument(body, enc, documentBaseDir(url),
                                nested.proto, nested.inlineScene);
       if (context.pending) return nullptr;
+      sourceWarnings(doc, url, [&](const std::string &detail) {
+        if (kind == runtime::extract::AssetKind::Inline)
+          doc.scene.pendingInlineWarnings.push_back(
+              {runtime::InlineWarning::Kind::SourceWarning, "", detail});
+        else
+          for (const auto &decl : doc.scene.protoDeclarations)
+            decl->sourceWarnings.push_back(
+                {runtime::ProtoWarning::Kind::SourceWarning, "", detail});
+      });
       const auto deferred = context.policy.inlineOverride
           ? context.policy.inlineOverride
           : makeResolvers(context.policy, context.active).inlineScene;
@@ -222,6 +248,8 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       if (context.pending) return nullptr;
     }
   }
+  if (!cycleUrl.empty() && kind == runtime::extract::AssetKind::Inline)
+    throw runtime::InlineCycleError("Inline cycle rejected: " + cycleUrl);
   return nullptr;
 }
 

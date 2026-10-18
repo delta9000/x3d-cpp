@@ -272,6 +272,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // Retain the selected external source on the expanded ProtoInstance. The
     // instance is copied into Scene::expandedSources after this call.
     inst.declaration = decl;
+    warnings.insert(warnings.end(), decl->sourceWarnings.begin(),
+                    decl->sourceWarnings.end());
   }
   if (!decl) {
     warnings.push_back(

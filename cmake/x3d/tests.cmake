@@ -469,6 +469,10 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_facade_test.cpp")
     target_link_libraries(x3d_sdk_facade PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_sdk_facade COMMAND x3d_sdk_facade)
+    add_executable(x3d_sdk_node_inspection
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_node_inspection_test.cpp")
+    target_link_libraries(x3d_sdk_node_inspection PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_sdk_node_inspection COMMAND x3d_sdk_node_inspection)
     add_executable(x3d_authoring_link_contract
         "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/authoring.cpp")
     target_link_libraries(x3d_authoring_link_contract PRIVATE

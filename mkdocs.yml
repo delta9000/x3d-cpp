@@ -169,6 +169,14 @@ nav:
       - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
       - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
       - "ADR-0070: Deferred Inline loader ancestry": decisions/0070-deferred-inline-loader-ancestry.md
+      - "ADR-0063: Pointing sensors without navigation": decisions/0063-pointing-without-navigation.md
+      - "ADR-0063: Absolute viewer world pose": decisions/0063-absolute-viewer-world-pose.md
+      - "ADR-0063: Native SAI presentation materials and frame deltas": decisions/0063-sai-presentation-materials-and-deltas.md
+      - "ADR-0063: Room anchoring through sensor composition": decisions/0063-room-frame-sensor-composition.md
+      - "ADR-0064: Deferred Inline loader ancestry": decisions/0064-deferred-inline-loader-ancestry.md
+      - "ADR-0065: Public node inspection": decisions/0071-public-node-inspection.md
+      - "ADR-0066: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
+      - "ADR-0067: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

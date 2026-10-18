@@ -23,6 +23,7 @@
 #include <any>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -38,9 +39,17 @@ inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {
   return proto_detail::findField(n, name);
 }
 
-/// Resolve an Inline's url list to a parsed sub-scene (null on failure/cycle).
+/// Resolve an Inline's url list to a parsed sub-scene (null on failure).
+/// A loader may throw InlineCycleError to preserve a cycle rejection reason.
 using InlineResolver = std::function<std::shared_ptr<Scene>(
     const std::vector<std::string> &urls, const std::string &baseUrl)>;
+
+// Optional failure detail from an Inline loader. Other exceptions keep their
+// existing behavior; only this cycle signal becomes a lenient Inline warning.
+class InlineCycleError : public std::runtime_error {
+public:
+  using std::runtime_error::runtime_error;
+};
 
 namespace inline_detail {
 
@@ -164,13 +173,22 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     const auto retained = scene.deferredInlineResolvers.find(inl);
     const auto &load = retained == scene.deferredInlineResolvers.end()
         ? resolver : retained->second;
-    std::shared_ptr<Scene> child = load(
-        urls, origin == scene.nodeBaseUrls.end() ? baseUrl : origin->second);
+    std::shared_ptr<Scene> child;
+    try {
+      child = load(urls, origin == scene.nodeBaseUrls.end()
+                             ? baseUrl : origin->second);
+    } catch (const InlineCycleError &error) {
+      warnings.push_back({InlineWarning::Kind::Cycle, inl->getDEF(), error.what()});
+      return;
+    }
     if (!child) {
       warnings.push_back({InlineWarning::Kind::UnresolvedUrl, inl->getDEF(),
                           urls.empty() ? "no url" : urls.front()});
       return; // node stays un-expanded; round-trips normally (no map entry)
     }
+    warnings.insert(warnings.end(), child->pendingInlineWarnings.begin(),
+                    child->pendingInlineWarnings.end());
+    child->pendingInlineWarnings.clear();
     // Build the Group from the child's root nodes; isolate child DEFs (we never
     // copy child.defs into scene.defs).
     scene.authorFields->importFrom(*child->authorFields);

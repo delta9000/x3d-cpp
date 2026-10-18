@@ -705,11 +705,14 @@ public:
 
   /// World->camera matrix. An absolute host pose takes precedence over the
   /// bound Viewpoint, navigation offset, and relative head pose.
+  /// With no bound Viewpoint, compose head tracking at the world origin.
+  /// Identity tracking preserves the existing unbound camera pose.
   Mat4 viewMatrix() const {
     if (viewerWorldPose_) return viewerWorldPose_->inverse();
     X3DNode *vp = boundViewpoint();
-    if (!vp) return Mat4::identity();
-    const Mat4 cam = boundViewpointWorldPose() * viewpointOffset(vp).local *
+    const Mat4 base = vp ? boundViewpointWorldPose() * viewpointOffset(vp).local
+                        : Mat4::identity();
+    const Mat4 cam = base *
                      (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
     return cam.inverse();
   }
@@ -747,7 +750,7 @@ public:
   /// Takes effect immediately, even without a bound Viewpoint; persists across
   /// binds and setHeadPose calls until explicitly cleared.
   void setViewerWorldPose(const Mat4 &pose) { viewerWorldPose_ = pose; }
-  /// Resume the current bound Viewpoint + navigation offset + stored head pose.
+  /// Resume the bound Viewpoint (or world origin) + stored head pose.
   void clearViewerWorldPose() { viewerWorldPose_.reset(); }
 
   // Relative head tracking, composed after navigation when no world override is set.
