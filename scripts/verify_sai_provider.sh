@@ -52,6 +52,7 @@ check_native_link "$source"
 check_native_link "$source" sai_provider_native_runtime
 check_native_link "$source" sai_provider_allocation_failure
 check_native_link "$source" sai_provider_presentation
+check_native_link "$source" sai_provider_adopt_session
 ctest --test-dir "$source" --output-on-failure -R '^sai_provider_'
 
 prefix="$work/original-prefix"
@@ -71,6 +72,7 @@ cp -R "$consumer" "$work/consumer"
 cp "$cpp/adapters/sai_provider/tests/native_runtime_test.cpp" "$work/consumer/native_runtime_test.cpp"
 cp "$cpp/adapters/sai_provider/tests/allocation_failure_test.cpp" "$work/consumer/allocation_failure_test.cpp"
 cp "$cpp/adapters/sai_provider/tests/presentation_test.cpp" "$work/consumer/presentation_test.cpp"
+cp "$cpp/adapters/sai_provider/tests/adopt_session_test.cpp" "$work/consumer/adopt_session_test.cpp"
 cmake -S "$work/consumer" -B "$work/installed-build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DSAI_PROVIDER_INSTALLED=ON \
   -DCMAKE_PREFIX_PATH="$moved" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
@@ -80,6 +82,7 @@ check_native_link "$work/installed-build"
 check_native_link "$work/installed-build" sai_provider_native_runtime
 check_native_link "$work/installed-build" sai_provider_allocation_failure
 check_native_link "$work/installed-build" sai_provider_presentation
+check_native_link "$work/installed-build" sai_provider_adopt_session
 ctest --test-dir "$work/installed-build" --output-on-failure -R '^sai_provider_'
 
 # An ordinary application consumes only relocated public packages. Its finite

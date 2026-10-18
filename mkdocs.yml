@@ -177,6 +177,8 @@ nav:
       - "ADR-0065: Public node inspection": decisions/0071-public-node-inspection.md
       - "ADR-0066: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
       - "ADR-0067: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
+      - "ADR-0063: Selection deltas and cheap ticks": decisions/0063-selection-deltas-and-cheap-ticks.md
+      - "ADR-0065: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
   - Guides:
       - Gate System: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md

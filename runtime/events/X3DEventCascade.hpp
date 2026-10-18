@@ -55,6 +55,35 @@ public:
         Delivery{FieldAddress{node, field}, std::move(value), Origin::Seed});
   }
 
+  struct RetainedInput {
+    FieldAddress target;
+    std::any value;
+  };
+
+  // Install a prevalidated retained batch before any observer or handler runs.
+  // Delivery below announces these occurrences without setting storage twice.
+  // Failure may leave partial state; callers must retire/fault that execution.
+  void stageRetained(const std::vector<RetainedInput> &batch) {
+    std::deque<Delivery> staged;
+    for (const auto &input : batch) {
+      const auto &a = input.target;
+      if (!a.node)
+        throw std::invalid_argument("null retained ingress node");
+      const auto &fields = a.node->fields();
+      const auto f =
+          std::find_if(fields.begin(), fields.end(),
+                       [&](const auto &f) { return f.x3dName == a.field; });
+      if (f == fields.end() || f->access != AccessType::InputOutput || !f->set)
+        throw std::invalid_argument(
+            "retained ingress requires inputOutput storage");
+      if (!acceptsInput(a, input.value))
+        continue;
+      f->set(*a.node, input.value);
+      staged.push_back({a, input.value, Origin::Staged});
+    }
+    pending_.insert(pending_.begin(), staged.begin(), staged.end());
+  }
+
   /// Queue a generated outputOnly value WITHOUT first mutating node storage.
   /// Validates the writable endpoint now; admission happens when drained. Only
   /// the first admitted value in this timestamp reaches the setter, observer,
@@ -138,7 +167,9 @@ public:
       FieldAddress norm{d.target.node,
                         resolveFieldAlias(d.target.node, d.target.field)};
 
-      if (d.origin != Origin::Output && !acceptsInput(norm, d.value)) continue;
+      if (d.origin != Origin::Output && d.origin != Origin::Staged &&
+          !acceptsInput(norm, d.value))
+        continue;
 
       const bool firstProduction = produced_.insert(norm).second;
 
@@ -160,7 +191,11 @@ public:
       // delivered until the NEXT cascade.
       const std::vector<FieldAddress> sinks = graph_.sinks(norm);
 
-      deliver(norm, d.value);
+      if (d.origin == Origin::Staged) {
+        if (observer_)
+          observer_(norm);
+      } else
+        deliver(norm, d.value);
       if (firstProduction) {
         ++newProductions; // only first-time productions count toward quiescence
       }
@@ -206,7 +241,7 @@ public:
   }
 
 private:
-  enum class Origin { Seed, Output, Route };
+  enum class Origin { Seed, Output, Route, Staged };
 
   struct Delivery {
     FieldAddress target;

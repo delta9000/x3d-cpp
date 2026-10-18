@@ -79,3 +79,17 @@ target_link_libraries(sai_provider_presentation PRIVATE x3d_cpp::sai_provider)
 add_test(NAME sai_provider_presentation COMMAND sai_provider_presentation)
 set_tests_properties(sai_provider_presentation PROPERTIES TIMEOUT 120)
 add_dependencies(sai_provider_all sai_provider_presentation)
+
+# Adopted loaded documents retain the host's extraction consumer.
+if(SAI_PROVIDER_INSTALLED)
+  set(_adoption "${CMAKE_CURRENT_LIST_DIR}/adopt_session_test.cpp")
+else()
+  set(_adoption "${X3D_CPP_SOURCE_DIR}/adapters/sai_provider/tests/adopt_session_test.cpp")
+endif()
+add_executable(sai_provider_adopt_session "${_adoption}")
+# sdk supplies x3d/sdk.hpp in both source and relocated package consumers.
+target_link_libraries(sai_provider_adopt_session PRIVATE
+  x3d_cpp::sai_provider x3d_cpp::sdk)
+add_test(NAME sai_provider_adopt_session COMMAND sai_provider_adopt_session)
+set_tests_properties(sai_provider_adopt_session PROPERTIES TIMEOUT 30)
+add_dependencies(sai_provider_all sai_provider_adopt_session)

@@ -9,8 +9,9 @@ The backend owns one native document per scene and transfers that document into
 an owned `RuntimeSession` at activation. Values, containment, roots, DEF names,
 ROUTEs, interpolation, world transforms and render extraction are native state.
 The real native interpolator systems attach to the owned node registry, including
-unnamed detached nodes; root occurrence lists stay unchanged. Other standard
-runtime systems are not enabled because their node types are outside this slice.
+unnamed detached nodes; root occurrence lists stay unchanged. For setup-authored
+scenes, other standard runtime systems are not enabled because their types are
+outside this slice. Adopted sessions retain the systems the host prepared.
 Activation closes setup for every provider-owned node in this bounded contract.
 Detached nodes remain absent from render roots while supported live inputs and
 ROUTEs stay valid. A future per-node realization model is outside this slice.
@@ -57,18 +58,44 @@ both checkouts. It also demonstrates the optional native presentation feed.
 For backend-independent lifecycle rules, use the SAI
 [portable contract](https://github.com/delta9000/x3d-sai/blob/main/docs/portable-contract.md).
 
+## Adopt a host session
+
+`native::adopt_session(std::move(session), limits)` returns an owning `service`,
+`scene`, `active` activation, and checked `host` access to your existing session.
+The session must be exclusively owned, quiescent, and unticked; relinquish mutable
+node/store aliases. Construct the service on its eventual owner thread.
+
+Use ordinary named-node lookup, field read, enqueue, and pump on the loaded graph.
+`host.session(service)` borrows the same native session for host tracking inputs
+and extraction between pumps. The host owns the sole `fullSnapshot`/`delta`
+consumer; the provider performs neither extraction operation for adopted scenes.
+Don't retain native borrows across pumps or retirement, mutate fields, or tick
+outside the provider. Retire/close the service on its owner thread.
+
+Adopted scalar access extends beyond the creation whitelist. SFNode/MFNode reads
+preserve identity; node-valued writes remain refused. PROTO/Inline/IMPORT/Script
+interfaces remain opaque while native content continues to execute and render.
+No live ROUTE authoring or portable META projection is added. See the
+[adoption contract](../../docs/wiki/subsystems/sai-provider.md#adopt-a-prepared-session)
+for the exact kind set and restrictions, and
+[ADR-0065](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
+ingress decisions. `sai_provider_adopt_session` is registered in the source and
+relocated provider harness, including the same-pump TimeSensor assertion. It
+has not been run for this proposal.
+
 ## Bounded capabilities
 
 - Transform: seven inputOutput scalars, setup bounding-box fields, children and
   metadata; addChildren/removeChildren are explicitly unsupported
 - PositionInterpolator: key, keyValue, set_fraction, value_changed and metadata
 - Shape: geometry and metadata; Box: size, solid and metadata
-- Eight field kinds: SFBool, SFFloat, SFVec3f, SFRotation, SFNode, MFNode,
+- Setup field kinds: SFBool, SFFloat, SFVec3f, SFRotation, SFNode, MFNode,
   MFFloat and MFVec3f
 - Generic setup creation, ordered root occurrences, names and ROUTEs; live host
   turns, owner-bearing node values, indexed writes, user data and notifications
 
-`service.supported()` and field descriptors report these restrictions. A type
+The capability node list describes constructible types. Field descriptors
+report actual access; the field-kind list also includes adopted scalar services. A type
 unknown to the native factory returns unknown_type; a known type beyond this
 slice returns unsupported_operation. Public SFNode/MFNode values contain
 owner-bearing handles. Numeric IDs exist only inside backend dispatch.
@@ -88,12 +115,10 @@ another invalid component. Traversal is iterative.
 
 A released update gate produces one host submission. Stateful writes coalesce;
 ordered inputOnly occurrences, including identical repeats, remain in that
-submission. The complete retained inputOutput seed prefix is stored before
-its source notifications are read or published, so a valid final graph can
+submission. The execution context installs the complete retained inputOutput batch before
+systems, input handlers, and observations. A valid final graph can therefore
 repair a temporarily cyclic prefix. Later routed and inputOnly occurrences
-retain per-occurrence validation and delivery. This relies on the bounded
-backend installing only inputOnly interpolation handlers; it is not a blanket
-guarantee for other native systems. All inputs run in one native tick. Output-event and ROUTE
+retain per-occurrence delivery. All inputs run in one native tick. Output-event and ROUTE
 cardinality follows the runtime's timestamp rules, independently of external
 input occurrence counts. No synthetic epsilon time or per-input event reset is
 introduced by the adapter.

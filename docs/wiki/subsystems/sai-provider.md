@@ -2,7 +2,7 @@
 title: Native SAI provider
 summary: Compose the portable SAI service with owned native scene state and an explicit host loop.
 tags: [subsystem, sai, provider, ownership]
-updated: 2026-10-10
+updated: 2026-10-18
 related:
   - system-script-sai.md
   - execution-context.md
@@ -35,6 +35,82 @@ mesh/material/transform feed. The [ordinary host example](https://github.com/del
 shows source and installed consumption, backpressure, explicit time, callbacks
 and shutdown without a test-fixture API. The native provider target supplies its
 own dependencies; ordinary SDK builds remain independent of x3d-sai.
+
+## Adopt a prepared session
+
+`native::adopt_session(std::move(session), limits)` transfers a prepared native
+`RuntimeSession` into an owning portable service. It returns `service`, `scene`,
+`active`, and checked `host` access; no setup state escapes. Include
+`<x3d/sdk.hpp>` for native runtime operations and `<x3d/sai_provider.hpp>` for
+adoption. You must relinquish mutable graph and author-store aliases and supply
+a quiescent session that has never ticked. Moving a shallow document copy does
+not establish exclusive ownership.
+
+```cpp
+auto adopted = take(native::adopt_session(std::move(session)));
+auto &service = *adopted.service;
+auto context = take(service.root_context(adopted.scene));
+auto paint = take(service.named(context, "Paint"));
+auto color = take(service.get_field(paint, "diffuseColor"));
+auto client = take(service.connect(adopted.active));
+take(service.enqueue(client, {{color, sai::color3f{0.8f, 0.1f, 0.3f}}}));
+auto report = take(service.pump(adopted.active, {now}));
+// Check report.error, report.state, and request receipts before rendering.
+auto *runtime = take(adopted.host.session(service));
+auto changes = runtime->delta();
+// Consume changes through runtime->extractor(), then drain SAI observations.
+take(service.dispatch_notifications());
+```
+
+Here `take` unwraps a result or reports its error. The original session, options,
+custom resolvers, native ROUTEs, document annotations, and extraction baseline
+survive. The provider never calls `fullSnapshot()` or `delta()` for this scene.
+You own the sole extraction cursor, including any loader-thread baseline. Each
+pump performs one native tick. Supply native tracking inputs between pumps;
+don't tick, mutate fields, change topology, or keep native borrows across a pump
+or retirement. Checked access requires the exact service, owner thread, active
+frontend state, and idle native callbacks. Construct the service on the eventual
+owner thread after the loader's exclusive session handoff. Retire or close it
+on that thread; moving an active service to a retirement worker is unsupported.
+
+Identity registration preserves root order and repeated occurrences, DEF/USE
+sharing, detached root-context DEF bindings, and resolved root ROUTE endpoints.
+Node-valued reads preserve NULL slots and sharing. Adoption does not run the
+bounded authoring graph validator, whose repeated-reference and containment
+rules would reject valid loaded graphs. PROTO instances, Inline contexts,
+IMPORT endpoints, and Script fields are opaque: their native execution and
+rendering remain intact, but SAI field discovery refuses them explicitly.
+IMPORT aliases are excluded from named-node enumeration and lookup refuses an
+alias by name. Nested names and declaration templates are never flattened into
+the root context. Adopted META remains in the native document; portable metadata
+projection is unsupported and its service capability is omitted.
+
+The capability node list describes **constructible** types: Transform, Shape,
+Box, and PositionInterpolator. It does not limit adopted node discovery.
+Per-field descriptors govern adopted access: SFBool, SFFloat, SFDouble, SFTime,
+SFInt32, SFString, SFEnum (as a string), SFColor, SFVec3f, and SFRotation, plus
+SFNode/MFNode reads. Other kinds are unsupported. Node-valued writes are refused;
+inputOnly is unreadable, outputOnly is unwritable, and initializeOnly is fixed
+at adoption. Before scalar ingress, disposable native storage checks generated
+range diagnostics and exact enum tokens; a custom type without a factory is
+refused for writes. This is a bounded value service, not complete reflection or
+component support. No live ROUTE addition is introduced.
+
+Retained candidates enter the execution context together before systems run.
+Input occurrences, routed changes, and standard-system outputs share one tick's
+timestamp guards. Native successful field occurrences become owning observations;
+application callbacks run only through explicit dispatch. A native execution
+failure can leave partial effects and faults the activation; no rollback is
+promised. Retirement revokes both portable handles and checked host access.
+
+`sai_provider_adopt_session` covers shared Sphere placements, DEF identity,
+detached names, routed interpolation, deferred observation, Material extraction,
+access/range/enum refusals, opaque content, owner-thread access, and retirement.
+Its `same_pump_time_sensor_ingress` case checks that a new cycle interval governs
+the first fraction emitted in that same pump. The separate provider harness
+registers this test for source and relocated package consumers. These proposal
+assertions have not been built or run. See
+[ADR-0065](../decisions/0074-sai-adopt-session.md).
 
 ## Discover named nodes
 

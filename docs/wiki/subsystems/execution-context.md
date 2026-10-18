@@ -32,6 +32,29 @@ recover initially hidden branches without depending on existing render items.
 Other Shape and scoped ClipPlane/LocalFog descriptor invalidation is handled by
 the extractor's [replacement contract](extract.md#scoped-render-state-replacement-contract).
 
+## Retained batch ingress
+
+The additive `tick(now, vector<RetainedInput>)` overload installs prevalidated
+inputOutput storage together after clearing the previous dirty set and opening
+the timestamp. It then announces the installed occurrences and drains queued
+inputs and ROUTEs before the first system evaluation. This lets a TimeSensor
+read a newly submitted cycle interval before emitting its first fraction.
+Ordinary `tick(now)` retains its existing systems-first ordering.
+
+Each retained entry contains a canonical `FieldAddress` and owning boxed value.
+This is an execution seam, not an admission validator: callers must preflight
+kind, range, access, context, and topology. Static inputOutput fields only are
+accepted; author-declared Script fields are outside this seam. Native input
+filters can suppress an entry. Installed entries are announced without invoking
+their setter twice; observers read the final retained storage. The cascade uses
+the same output/ROUTE guards throughout ingress and system evaluation, with no
+extra tick. Failures can leave partial native effects and require retirement or
+provider fault handling. `callbacksIdle()` reports whether guarded calls have
+returned and callbacks remain live; it provides no synchronization.
+
+The opt-in `sai_provider_adopt_session` test includes the standard-runtime
+`same_pump_time_sensor_ingress` case. It is proposal evidence and has not been run.
+
 ## Activation ownership and retirement
 
 A mutable native node graph belongs to one active execution context. The host

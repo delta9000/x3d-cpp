@@ -50,6 +50,8 @@ an unverified claim. This matrix is the live record the Seam-harness card formal
 | Portable SAI named-node discovery | EXPERIMENTAL proposal | Native scene DEF bindings | x3d-sai reference snapshot bindings | Shared `check_provider_named_nodes` in `sai_provider_reference` / `sai_provider_native_runtime` | [Provider guide](subsystems/sai-provider.md); source interoperability only, no stable ABI |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 | Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` | [ADR-0066](decisions/0066-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
+| Native SAI presentation | EXPERIMENTAL proposal | Native provider mesh/material/transform frames and placement deltas | — | `sai_provider_presentation` (new material/delta assertions not run for this proposal) | [ADR-0063](decisions/0063-sai-presentation-materials-and-deltas.md); no Appearance authoring or renderer swap proof |
+| Native SAI session adoption | EXPERIMENTAL proposal | Prepared unticked RuntimeSession; scalar access and host-owned extraction | — | `sai_provider_adopt_session` (registered, not built/run) | [ADR-0065](decisions/0074-sai-adopt-session.md); no live topology/ROUTE authoring or nested contexts |
 
 The Consumer seam's [ADR-0063 proposal](decisions/0069-selection-deltas-and-cheap-ticks.md)
 retains unaffected IDs and mesh references across Switch/LOD selection changes

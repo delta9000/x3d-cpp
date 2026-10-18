@@ -431,8 +431,19 @@ public:
 
   void tick(double now) { tick(now, nullptr); }
 
+  using RetainedInput = EventCascade::RetainedInput;
+  /// Prevalidated retained candidates become visible together, before systems.
+  /// Queued input occurrences and ROUTEs share this tick's timestamp guards.
+  /// A failure can leave partial native effects; no rollback is promised.
+  void tick(double now, const std::vector<RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+
   /// Optional phase timings for host profiling; no clock reads when null.
-  void tick(double now, TickTimings *timings) {
+  void tick(double now, TickTimings *timings) { tick(now, timings, {}); }
+
+  void tick(double now, TickTimings *timings,
+            const std::vector<RetainedInput> &ingress) {
     auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
@@ -469,6 +480,10 @@ public:
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
     cascade_.beginTimestamp();            // open the tick's single timestamp
+    if (!ingress.empty()) {
+      cascade_.stageRetained(ingress);
+      cascade_.process(/*freshTimestamp=*/false);
+    }
     // §4.4.8.3 step 4: re-evaluate systems + drain until quiescence.
     do {
       for (const auto &s : systems_) {
@@ -509,6 +524,11 @@ public:
   std::uint64_t tickGeneration() const { return tickGeneration_; }
   /// True while tick() runs (systems, cascade drains, post-cascade hooks).
   bool ticking() const { return ticking_; }
+  /// No guarded native call is in flight, and callbacks have not retired.
+  /// This is an owner-thread lifecycle check, not a concurrency lock.
+  bool callbacksIdle() const {
+    return callbacks_.canRetire() && !callbacks_.retired();
+  }
 
   const EventGraph &graph() const { return graph_; }
 
