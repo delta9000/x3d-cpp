@@ -34,9 +34,21 @@ Reuse the bounded active-scene traversal, retaining its path index and immutable
 mesh caches while rebuilding active reverse dependencies. This handles nested
 selections and shared nodes under different parents without the old subtree
 helper's single cached entry frame. It costs O(visited active scene paths) on a
-selection tick; this proposal does not promise subtree-only CPU work. Evict mesh
-caches that lose their active dependencies, advancing their content identity so
-later inactive edits cannot revive stale bytes under an old `GeomId`.
+selection tick; this proposal does not promise subtree-only CPU work. Mesh
+caches that lose their active dependencies stay cached as dormant under their own
+source index; a field edit on a dormant geometry or its direct source evicts it
+and advances its content identity, so inactive edits cannot revive stale bytes
+under an old `GeomId`. An unedited level returns with its previous `GeomId` and
+mesh, so an LOD boundary crossing does not rebuild meshes. (The first version of
+this proposal evicted on every deselection, which rebuilt and re-versioned the
+mesh on each crossing; the review of 2026-10-19 found the retention claim held
+only for placements that stayed active.) HAnimSegment-displaced variants are
+still evicted on deselection.
+
+The walk re-emits each surviving record's material, textures, shader and skin
+binding. Compare them with the published values and list changed records in
+`updatedMaterial` (`updatedSkinPose` for a skin binding), so a texture that
+resolved during a selection tick is not changed silently.
 
 Scoped light/fog indices can shift when branches change. Republish records whose
 indices change with remove-before-add under their retained ID. External packed
@@ -46,8 +58,11 @@ semantics. Snapshot descriptor references remain borrowed until the next full
 snapshot or selection refresh.
 
 Compare complete world-resolved `LightDesc` lists for `lightsChanged`. Record
-active light paths, including disabled lights, to avoid light walks for unrelated
-animation. Initial full snapshots set the bit; replacement deltas compare against
+light paths, including disabled lights, to avoid light walks for unrelated
+animation. The light collection records them itself (`LightDependencies`), so
+they match the graph it reads: subtrees the geometry walk skips (`visible=FALSE`,
+`Collision.proxy`, a GeoLOD `rootNode`) are covered, as is each LOD choice there
+that follows the viewer. Initial full snapshots set the bit; replacement deltas compare against
 the last published values. Camera/background/fog bits remain conservative. Scalar
 light edits retain the existing snapshot-index contract.
 

@@ -28,8 +28,10 @@
 
 #include <algorithm>
 #include <any>
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
@@ -765,11 +767,23 @@ public:
   }
   void setViewpointOffset(X3DNode *vp, const ViewpointOffset &off) { offsets_[vp] = off; }
 
-  /// Override the viewer with a finite, invertible rigid camera-to-world matrix
-  /// in X3D world coordinates. The caller supplies translation + rotation only.
-  /// Takes effect immediately, even without a bound Viewpoint; persists across
-  /// binds and setHeadPose calls until explicitly cleared.
-  void setViewerWorldPose(const Mat4 &pose) { viewerWorldPose_ = pose; }
+  /// Override the viewer with a rigid camera-to-world matrix in X3D world
+  /// coordinates (translation + rotation). Takes effect immediately, even
+  /// without a bound Viewpoint; persists across binds and setHeadPose calls
+  /// until explicitly cleared.
+  ///
+  /// Returns false, and keeps the previous pose, for a matrix that is not
+  /// finite, has a projective bottom row, or whose 3x3 part is not a proper
+  /// rotation within kViewerPoseTolerance (scale, shear or a reflection).
+  /// Accepted matrices are re-orthonormalized, so float drift accumulated by a
+  /// host's tracking or navigation never reaches the view as scale or shear.
+  static constexpr float kViewerPoseTolerance = 1e-3f;
+  bool setViewerWorldPose(const Mat4 &pose) {
+    auto rigid = rigidViewerPose(pose);
+    if (!rigid) return false;
+    viewerWorldPose_ = *rigid;
+    return true;
+  }
   /// Resume the bound Viewpoint (or world origin) + stored head pose.
   void clearViewerWorldPose() { viewerWorldPose_.reset(); }
 
@@ -785,6 +799,48 @@ public:
   /// Viewer world-space up vector (+Y of the camera frame) (M2e).
   SFVec3f cameraWorldUp() const {
     return viewMatrix().inverse().transformDirection(SFVec3f{0, 1, 0});
+  }
+
+  /// The rigid pose setViewerWorldPose would store for `pose`, or nullopt when
+  /// it rejects the matrix (see there).
+  static std::optional<Mat4> rigidViewerPose(const Mat4 &pose) {
+    for (float v : pose.m)
+      if (!std::isfinite(v)) return std::nullopt;
+    const float tol = kViewerPoseTolerance;
+    if (std::fabs(pose.m[3]) > tol || std::fabs(pose.m[7]) > tol ||
+        std::fabs(pose.m[11]) > tol || std::fabs(pose.m[15] - 1.0f) > tol)
+      return std::nullopt;
+    using V = std::array<double, 3>;
+    auto col = [&](int c) { return V{pose.m[c * 4], pose.m[c * 4 + 1], pose.m[c * 4 + 2]}; };
+    auto dot = [](const V &a, const V &b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+    const V x = col(0), y = col(1), z = col(2);
+    for (const V &c : {x, y, z})
+      if (std::fabs(dot(c, c) - 1.0) > 2.0 * tol) return std::nullopt;
+    if (std::fabs(dot(x, y)) > tol || std::fabs(dot(y, z)) > tol ||
+        std::fabs(dot(x, z)) > tol)
+      return std::nullopt;
+    const V cr{x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2],
+               x[0] * y[1] - x[1] * y[0]};
+    if (dot(cr, z) <= 0.0) return std::nullopt; // reflection
+    // Gram-Schmidt: keep x's direction, then y's plane; z completes the frame.
+    auto norm = [&](V v) {
+      const double l = std::sqrt(dot(v, v));
+      return V{v[0] / l, v[1] / l, v[2] / l};
+    };
+    const V nx = norm(x);
+    const double d = dot(nx, y);
+    const V ny = norm(V{y[0] - d * nx[0], y[1] - d * nx[1], y[2] - d * nx[2]});
+    const V nz{nx[1] * ny[2] - nx[2] * ny[1], nx[2] * ny[0] - nx[0] * ny[2],
+               nx[0] * ny[1] - nx[1] * ny[0]};
+    Mat4 out = pose;
+    for (int r = 0; r < 3; ++r) {
+      out.m[r] = static_cast<float>(nx[r]);
+      out.m[4 + r] = static_cast<float>(ny[r]);
+      out.m[8 + r] = static_cast<float>(nz[r]);
+    }
+    out.m[3] = out.m[7] = out.m[11] = 0.0f;
+    out.m[15] = 1.0f;
+    return out;
   }
 
 private:
@@ -816,8 +872,11 @@ private:
         markSceneTopologyChanged();
         break;
       }
-    // Selection changes preserve node references and the transform index.
-    if (a.field == "whichChoice") flags = DirtyActiveChild;
+    // Switch selection changes preserve node references and the transform
+    // index. A PROTO/Script field that happens to be named whichChoice is an
+    // ordinary field write and keeps DirtyField.
+    if (a.field == "whichChoice" && a.node->nodeTypeName() == "Switch")
+      flags = DirtyActiveChild;
     // visible changes active traversal even when the hidden branch emitted no
     // RenderItems, so it must invalidate the extraction baseline.
     if (a.field == "visible") flags |= DirtyChildren;
@@ -826,6 +885,9 @@ private:
         if (a.field == f) flags = DirtyLocalTransform;
     if (isTransformNode && (a.field == "geoCoords" || a.field == "geoCenter"))
       flags = DirtyLocalTransform; // §25.3.3 / §25.3.10 dynamic tangent anchors
+    // geoSystem selects the frame's spatial reference, so it changes the local
+    // matrix too; TransformSystem's cached local matrix refreshes only on this bit.
+    if (isTransformNode && a.field == "geoSystem") flags |= DirtyLocalTransform;
 
     static const char *kBounds[] = {"size", "radius", "height", "bottomRadius",
         "point", "coord", "controlPoint", "crossSection", "spine", "scale",

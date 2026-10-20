@@ -19,15 +19,22 @@ camera. Both operations belong at the SDK boundary.
 Add these methods to `X3DExecutionContext`, also available through `x3d::sdk`:
 
 ```cpp
-void setViewerWorldPose(const Mat4 &pose);
+bool setViewerWorldPose(const Mat4 &pose);
 void clearViewerWorldPose();
 Mat4 boundViewpointWorldPose() const;
 ```
 
 `setViewerWorldPose` stores a camera-to-world matrix in X3D world coordinates.
-The caller supplies a finite, invertible rigid translation/rotation matrix;
-scale, shear, projection, and invalid matrices are outside the contract. The
-matrix uses the existing column-major `Mat4` convention. The override takes
+The caller supplies a rigid translation/rotation matrix in the existing
+column-major `Mat4` convention. The call returns `false` and keeps the previous
+pose for a matrix with a non-finite element, a projective bottom row, or a 3x3
+part that is not a proper rotation within `kViewerPoseTolerance` (1e-3: scale,
+shear, reflection or a singular matrix). An accepted matrix is re-orthonormalized
+(Gram-Schmidt on its columns), so float drift from a host's tracking or
+navigation accumulation never reaches the view as scale or shear. Rejecting,
+rather than normalizing, larger errors keeps a host bug visible instead of
+substituting an arbitrary rotation. (Amended after the 2026-10-19 review, which
+found non-finite and non-rigid matrices stored unchecked.) The override takes
 effect immediately, works without a bound viewpoint, and persists until
 explicitly cleared or the context is destroyed. Set it before `tick` so the
 view-dependent systems observe the same pose as extraction.

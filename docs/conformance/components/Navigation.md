@@ -9,11 +9,13 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 | LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
 | OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, EXTRACT-VISIBILITY-HINT-DELTA, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, BIND-UNBOUND-ORIGIN, EXTRACT-VISIBILITY-HINT-DELTA, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 | ViewpointGroup | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
 
 ## Findings
 
+- **BIND-UNBOUND-ORIGIN** [minor/DEFERRED] — §23.3.1, 23.4.7: With no bound Viewpoint the runtime viewer (camera and listener) sits at the world origin with identity orientation, not at the Viewpoint default position (0 0 10) a browser presents for a scene without one.
+  - Deliberate (ADR-0073): head tracking composes after the origin base; boundViewpoint() stays null and no node is created. Moving to (0 0 10) changed sound attenuation and GeoLOD fixtures that encode the origin contract, so it is deferred until those are migrated. Hosts that want spec framing bind an explicit Viewpoint or call setViewerWorldPose. Regression of the current behaviour: default_viewer_test.cpp.
 - **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
 - **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.

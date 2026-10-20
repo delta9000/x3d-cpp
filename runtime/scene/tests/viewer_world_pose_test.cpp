@@ -171,4 +171,42 @@ TEST_CASE("viewer_world_pose_drives_view_dependent_systems") {
   CHECK_FALSE(field<SFBool>(*ps, "isActive"));
   CHECK(level == 1);
 }
+
+TEST_CASE("viewer_world_pose_rejects_non_finite_and_non_rigid_matrices") {
+  sdk::X3DExecutionContext ctx;
+  const sdk::Mat4 good = sdk::Mat4::translation({1, 2, 3}) *
+                         sdk::Mat4::rotation({0, 1, 0, 0.5f});
+  REQUIRE(ctx.setViewerWorldPose(good));
+  checkMatrix(ctx.viewMatrix(), good.inverse());
+  auto rejected = [&](sdk::Mat4 bad) {
+    CHECK_FALSE(ctx.setViewerWorldPose(bad));
+    checkMatrix(ctx.viewMatrix(), good.inverse()); // previous pose kept
+  };
+  sdk::Mat4 nan = good; nan.m[13] = std::nanf("");
+  rejected(nan);
+  sdk::Mat4 inf = good; inf.m[0] = INFINITY;
+  rejected(inf);
+  sdk::Mat4 scaled = good; for (int i = 0; i < 3; ++i) scaled.m[i] *= 2.0f;
+  rejected(scaled);
+  sdk::Mat4 sheared = good; sheared.m[4] += 0.2f;
+  rejected(sheared);
+  sdk::Mat4 mirrored = good; for (int i = 0; i < 3; ++i) mirrored.m[8 + i] = -mirrored.m[8 + i];
+  rejected(mirrored);
+  sdk::Mat4 projective = good; projective.m[3] = 0.5f;
+  rejected(projective);
+  rejected(sdk::Mat4{}); // all-zero: singular
+  // Float drift inside the tolerance is accepted and re-orthonormalized.
+  sdk::Mat4 drift = good; drift.m[0] *= 1.0002f; drift.m[5] += 0.0003f;
+  REQUIRE(ctx.setViewerWorldPose(drift));
+  const sdk::Mat4 stored = ctx.viewMatrix().inverse();
+  for (int c = 0; c < 3; ++c) {
+    const float len = std::sqrt(stored.m[c * 4] * stored.m[c * 4] +
+                                stored.m[c * 4 + 1] * stored.m[c * 4 + 1] +
+                                stored.m[c * 4 + 2] * stored.m[c * 4 + 2]);
+    CHECK(len == doctest::Approx(1.0f).epsilon(1e-5));
+  }
+  CHECK(stored.m[12] == doctest::Approx(1));
+  CHECK(stored.m[13] == doctest::Approx(2));
+  CHECK(stored.m[14] == doctest::Approx(3));
+}
 } // namespace

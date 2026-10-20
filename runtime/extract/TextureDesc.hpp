@@ -99,6 +99,7 @@ struct MipLevelDesc {
   uint32_t width       = 0;
   uint32_t height      = 0;
   uint32_t depth       = 1;
+  bool operator==(const MipLevelDesc &) const = default;
 };
 
 // ---------------------------------------------------------------------------
@@ -110,6 +111,7 @@ struct KhrTextureTransform {
   float rotation         = 0.0f;
   float scale[2]         = {1.0f, 1.0f};
   int   texcoord_index   = 0;
+  bool operator==(const KhrTextureTransform &) const = default;
 };
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,7 @@ struct TextureDesc {
   bool has_mips()      const { return mips.size() > 1; }
   bool is_compressed() const { return format >= PixelFormat::BC1_RGB; }
   bool empty()         const { return data.empty(); }
+  bool operator==(const TextureDesc &) const = default;
 };
 
 } // namespace x3d::runtime::extract

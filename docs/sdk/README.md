@@ -85,7 +85,8 @@ accessors (`boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`,
 For an absolute host camera, call
 `context().setViewerWorldPose(cameraToWorld)` before ticking. The rigid world
 pose overrides viewpoint/navigation/head composition until
-`clearViewerWorldPose()`, including across binds. Query the authored bound
+`clearViewerWorldPose()`, including across binds. A non-finite or non-rigid
+matrix is rejected (`false`, previous pose kept). Query the authored bound
 viewpoint separately with `boundViewpointWorldPose()` (identity if none).
 See [the native host pose conventions](../wiki/guides/native-host.md#input-and-view-conventions).
 

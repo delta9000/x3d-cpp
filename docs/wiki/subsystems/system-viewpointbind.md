@@ -105,7 +105,7 @@ viewMatrix = cam⁻¹
 An absolute host camera takes precedence over this formula:
 
 ```cpp
-void setViewerWorldPose(const Mat4 &cameraToWorld);
+bool setViewerWorldPose(const Mat4 &cameraToWorld); // false: rejected, pose unchanged
 void clearViewerWorldPose();
 Mat4 boundViewpointWorldPose() const;
 ```
