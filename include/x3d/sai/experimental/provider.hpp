@@ -261,7 +261,14 @@ protected:
   virtual result<void> do_add_route(const address &, const address &) = 0;
   // Optional live topology extension. Called at pump before do_turn; default
   // refuses without effects. Partial installation must report honest effects.
+  // An exact duplicate of an installed route (same source node/field and sink
+  // node/field) is redundant (ISO 19775-1 4.4.8.2): return success, no effect.
   virtual backend_result do_add_live_route(const address &, const address &);
+  // Optional admission pre-check for enqueue_route, after the portable checks.
+  // Refuse backend-specific restrictions (for example native kinds that share
+  // a portable kind) here so they fail at enqueue, not at pump. The default
+  // admits; do_add_live_route still checks again at installation.
+  virtual result<void> do_check_live_route(const address &, const address &) const;
   virtual result<void> do_validate_configuration(std::uint64_t scene,
       const std::vector<admitted_write> &) const = 0;
   virtual result<void> do_activate(std::uint64_t scene) = 0;
@@ -271,9 +278,15 @@ protected:
   void record_event(const address &where, backend_value value) {
     if (events_) events_(where, std::move(value));
   }
+  // True when a live observer of the pumping activation watches this exact
+  // field. A backend may skip reading and recording unobserved writes.
+  bool observed(const address &where) const {
+    return !observing_ || observing_(where);
+  }
   static unexpected error(error_code, std::string_view operation, std::string_view message);
 private:
   std::function<void(const address &, backend_value)> events_;
+  std::function<bool(const address &)> observing_;
   friend class service;
 };
 
@@ -415,6 +428,7 @@ private:
   struct impl;
   static unexpected error(error_code, std::string_view, std::string_view);
   static void record_event(const std::weak_ptr<impl> &, const address &, backend_value);
+  static bool observing(const std::weak_ptr<impl> &, const address &);
   result<backend_value> import_value(const field &, const payload &) const;
   result<payload> export_value(const address &, const backend_value &) const;
   result<std::vector<admitted_write>> prepare(const std::vector<queued_write> &) const;

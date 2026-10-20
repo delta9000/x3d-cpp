@@ -77,6 +77,24 @@ void check_live_routes() {
   if (std::get<sai::vec3f>(service->read(to).value()) != sai::vec3f{4, 5, 6})
     throw std::runtime_error(
         "reference live ROUTE did not carry the next turn");
+  // ISO 19775-1 4.4.8.2: a redundant ROUTE is ignored, alone or in a gate.
+  const auto again = service->enqueue_route(client, from, to).value();
+  auto report = service->pump(active, {3}).value();
+  if (report.error || again.status()->state != sai::provider::request_state::processed)
+    throw std::runtime_error("duplicate of an installed ROUTE was refused");
+  const auto other = service->get_field(sink, "scale").value();
+  const auto scale = service->get_field(source, "scale").value();
+  if (!service->begin_update(client)) throw std::runtime_error("begin_update");
+  service->enqueue_route(client, scale, other).value();
+  const auto copy = service->enqueue_route(client, scale, other).value();
+  service->enqueue_route(client, from, to).value();
+  service->enqueue(client, {{scale, sai::vec3f{2, 2, 2}}}).value();
+  if (!service->end_update(client)) throw std::runtime_error("end_update");
+  report = service->pump(active, {4}).value();
+  if (report.error || report.state != sai::provider::activation_state::active ||
+      copy.status()->state != sai::provider::request_state::processed ||
+      std::get<sai::vec3f>(service->read(other).value()) != sai::vec3f{2, 2, 2})
+    throw std::runtime_error("duplicate ROUTEs in one gate faulted the scene");
 }
 } // namespace
 

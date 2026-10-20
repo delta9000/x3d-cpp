@@ -308,6 +308,15 @@ private:
 
   backend_result do_add_live_route(const address &from,
                                    const address &to) override {
+    // ISO 19775-1 4.4.8.2: a redundant ROUTE is ignored, not an error.
+    if (auto source = lookup(from), sink = lookup(to); source && sink) {
+      const route existing{source->node(), source->name(), sink->node(),
+                           sink->name()};
+      const auto snapshot = storage(from.scene).value()->scene.snapshot();
+      const auto &routes = snapshot.routes();
+      if (std::find(routes.begin(), routes.end(), existing) != routes.end())
+        return {};
+    }
     auto added = do_add_route(from, to);
     if (!added)
       return tl::unexpected{
