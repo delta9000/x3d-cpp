@@ -2,7 +2,7 @@
 title: "Ext Firewall"
 summary: Opt-in EXTERNPROTO extensions provide external geometry and physical room/device input without adding nonstandard nodes or transforms to core.
 tags: [subsystem, ext-firewall, binary, stl, external-geometry, externproto, cave]
-updated: 2026-10-18
+updated: 2026-10-20
 related:
   - ../architecture.md
   - ../decisions/0001-ext-firewall.md
@@ -194,9 +194,14 @@ Room coordinates use metres, floor-centre origin, +Y up, and front wall -Z.
 The host calibrates device axes; the wand points along its local -Z axis.
 The submitted matrix maps world points into this room frame. Device poses
 map device-local coordinates into room coordinates. The ordinary device
-position/orientation outputs describe device-to-world, while the room outputs
-describe device-to-room. Sensor placement in the scene does not change either
-output frame. Device sensors report pose without a scale field.
+position/orientation outputs describe device-to-world (scene-root
+coordinates), while the room outputs describe device-to-room. Sensor placement
+in the scene does not change either output frame; unlike ProximitySensor, the
+world outputs are not local to the sensor's parent. **Inside a RoomGroup, route
+`roomPosition_changed` and `roomOrientation_changed`**: RoomGroup's local frame
+is the room frame, so the room outputs place content correctly, whereas routing
+`position_changed` into a Transform inside a RoomGroup applies the room
+transform twice. Device sensors report pose without a scale field.
 
 Native extension values and RoomGroup contents use the runtime's normalized
 metre-based coordinates. Convert host tracking millimetres before submission.
@@ -221,9 +226,12 @@ events while inactive. Losing a device does not deactivate RoomFrameSensor.
 RoomFrameSensor reports translation, rotation, and uniform scale of
 `inverse(roomFromWorld)`. The matrix must be finite, affine, invertible, and
 have positive uniform scale. Shear, reflection, non-uniform scale, perspective,
-or a non-finite inverse makes it inactive. Validation uses relative 1e-5
+or a non-finite inverse makes it inactive. Validation uses relative 1e-3
 tolerances for equal column lengths and orthogonality, and 1e-6 for affine
-bottom-row checks. An inactive RoomFrameSensor retains its last transform;
+bottom-row checks. Within tolerance the rotation is re-orthonormalized and the
+scale is the mean column length, so float drift in a host's accumulated
+navigation matrix is cleaned rather than freezing the room; device poses and
+RoomGroup placement both use that cleaned similarity. An inactive RoomFrameSensor retains its last transform;
 RoomGroup consequently retains its last placement. The host must stop or hide
 physical-room rendering when its room frame is unavailable.
 
@@ -246,7 +254,11 @@ auto caveInput = x3d::ext::installCaveInput(session.scene(), session.context());
 
 The returned system enrolls native sensors, including auxiliary PROTO peers.
 The existing System attach/detach lifecycle enrolls or removes later Inline
-content. The scene must outlive the system. Calls run on the context's owner
+content. Install it **after** the session's standard systems (RuntimeSession and
+`attachStandardRuntime` add `InlineRuntimeSystem` there), which the snippet above
+does. Systems update in installation order, so a CAVE system installed before
+the Inline loader sees sensors from a freshly loaded Inline or GeoLOD tile only
+on the next tick. The scene must outlive the system. Calls run on the context's owner
 thread, with no concurrent submission or teardown.
 
 For each application frame, construct one complete snapshot and submit it
@@ -291,7 +303,18 @@ Place RoomGroup at the world root or beneath structural groups that introduce
 no transform. Put room-local transforms inside RoomGroup. Transform-bearing
 ancestors count even when their current matrix is identity. Billboard,
 ScreenGroup, and Layout ancestors also violate this contract. A nested
-RoomGroup has a transforming ancestor and is invalid.
+RoomGroup has a transforming ancestor and is invalid. Do not place RoomGroup
+inside a LayerSet layer: each Layer binds its own Viewpoint and NavigationInfo,
+but the room frame tracks root-scene navigation, so such placements warn too.
+
+Ancestry follows only fields that place children in the rendered graph:
+`children`, `LOD.level` and `Switch.choice` (X3D 3.x names), `GeoLOD.rootNode`,
+`LayerSet.layers`, `HAnimHumanoid.skeleton`/`skin`, and `CADFace.shape`.
+Reference and non-rendered slots, such as `TransformSensor.targetObject`,
+`Collision.proxy`, metadata, and geometry/appearance fields, do not make a
+RoomGroup transformed. RoomGroups are recognized by their private auxiliary
+sensor type, not by its `RoomGroupFrame` DEF, so author content reusing that
+name cannot create a false anchor.
 
 `CaveInputSystem::warnings()` reports invalid placements and rejected input
 after a tick. Placement warnings contain the affected primary node and a
@@ -343,13 +366,18 @@ with exposed interface fields and produce no tracking events. RoomGroup's
 fallback is an identity Transform that preserves its children. Physical
 anchoring is unavailable in that mode; mouse-to-wand emulation is not implicit.
 
+The fallback file is an **X3D 4.0** document: RoomGroup's fallback connects
+`visible` and `bboxDisplay`, which are X3D 4 Transform fields. X3D 3.x browsers
+may reject the file or that PROTO; scenes that must degrade in 3.x browsers
+need their own fallback without those two connections.
+
 ## How it is tested
 
-All ext tests are compiled and registered only inside the `if(X3D_CPP_BUILD_EXT)` block in `cmake/x3d/ext.cmake` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They therefore do not appear in, and do not affect, the default `ctest` run.
+All ext tests are compiled and registered only inside the `if(X3D_CPP_BUILD_EXT)` block in `cmake/x3d/ext.cmake` and run only when `-DX3D_CPP_BUILD_EXT=ON` is set. They therefore do not appear in, and do not affect, the default `ctest` run. The `ext` preset (`build-ext/`, warnings as errors) turns the option on in its own tree: `mise run build-ext` builds the `x3d_ext_tests` aggregate and runs `ctest --preset ext`. `mise run ci` depends on it, and the GitHub `ext` job runs the same steps, so the core build stays ext-free while every ext case below runs on each C++ change.
 
 The `x3d_ext_cave_tests` executable contains these independently registered
 CTest cases. Their source is `runtime/ext/tests/cave_extensions_test.cpp`.
-These describe assertions, not a claim that the cases have been executed.
+All of them pass in the `ext` gate.
 
 | CTest name | Assertions |
 |---|---|
@@ -358,8 +386,12 @@ These describe assertions, not a claim that the cases have been executed.
 | `x3d_ext_cave_tracking_lifecycle` | Loss releases buttons and zeros the joystick while preserving pose; recovery republishes state through a ROUTE; disabled and unknown devices remain inactive; disabled room sensors, re-enabling, and detach/attach work. |
 | `x3d_ext_cave_invalid_room` | Shear, non-uniform or zero scale, reflection, perspective, NaN, infinity, and host-invalid frames deactivate the sensor; valid frames recover, and positive uniform scale produces reciprocal scale. |
 | `x3d_ext_cave_room_placement` | Structural groups are accepted; identity Transform and Billboard ancestors warn; enclosing PROTOs, child edits, and shared placement paths remain diagnosable. |
+| `x3d_ext_cave_room_rotation_order` | Room rotated about X and device about Y (non-commuting): world orientation and position match `worldFromRoom * roomFromDevice`, not the reversed product. |
+| `x3d_ext_cave_room_drift` | A float-accumulated navigation matrix with skew and column-length error beyond 1e-5 stays active and places room children within float tolerance; 5e-3 shear and 0.5% non-uniform scale are still rejected. |
+| `x3d_ext_cave_placement_fields` | `TransformSensor.targetObject` references, a transformed `Collision.proxy`, and an author sensor reusing the `RoomGroupFrame` DEF do not warn; a `CADFace.shape` Transform and a LayerSet layer do. |
+| `x3d_ext_cave_placement_inline_same_tick` | With the Inline loader installed before CAVE input, a sensor in a freshly loaded Inline activates in its load tick. |
 | `x3d_ext_cave_recursive_resolver` | Native sensor declarations resolve inside an external PROTO loaded through an Inline; only document URLs reach the asset backend. |
-| `x3d_ext_cave_placement_cache` | Counts ancestry visits across repeated updates and TRS animation; checks child replacement, reparenting, SFNode edits, same-tick cascade edits, route replacement, detach, and device recovery with cached placement warnings. |
+| `x3d_ext_cave_placement_cache` | Counts ancestry visits across repeated updates and TRS animation; checks child replacement, reparenting, SFNode `Collision.proxy` edits (not a render placement, so no warning), same-tick cascade edits, route replacement, detach, and device recovery with cached placement warnings. |
 | `x3d_ext_cave_placement_idle` | An idle tick without CAVE sensors and an update without RoomGroup anchors perform zero ancestry visits. |
 | `x3d_ext_cave_placement_inline` | Deferred Inline/enclosing-PROTO RoomGroups enroll, unload drops borrowed warnings and releases nodes, and reload diagnoses the new placement. |
 | `x3d_ext_cave_placement_geolod` | GeoLOD child-tile arrival enrolls RoomGroups; retirement releases old anchors and warnings; returning to the tile rebuilds warnings. |
@@ -368,7 +400,9 @@ These describe assertions, not a claim that the cases have been executed.
 
 `x3d_install_embed_smoke` also builds an ext consumer when the producing build
 has ext enabled. It resolves a native declaration and reads the installed
-fallback before and after relocating the prefix. These additions are unrun.
+fallback before and after relocating the prefix. It passes in a full
+ext-enabled build (`ctest --test-dir build-ext`) but is outside the `ext`
+preset's test filter, so the ext gate itself does not run it.
 
 - **`stl_reader_test`** (`runtime/ext/tests/stl_reader_test.cpp`) — synthesizes a two-triangle binary STL in-memory and asserts: `vertex_count == 6`, `index_count == 0`, Position and Normal attributes present with correct per-vertex values, AABB computed correctly (`min=(0,0,0)`, `max=(3,1,0)`), and three malformed-input cases (buffer too short, truncated triangle data, null pointer) all return empty `PackedMesh` without crashing.
 
@@ -378,7 +412,7 @@ fallback before and after relocating the prefix. These additions are unrun.
 
 - **`external_geometry_e2e_test`** (`runtime/ext/tests/external_geometry_e2e_test.cpp`) — Round 2 lazy materialization proof: builds a `Group → Shape → ExternalGeometry(url="m.stl")` scene programmatically, wires `makeExternalGeometryResolver` with a counting stub that returns a known two-triangle binary STL, runs `SceneExtractor::fullSnapshot()`, and asserts: (1) PACKED — one `RenderItem` with `geometry_ext.kind == Packed`, `vertex_count == 6`, and the known v0 position `(1,2,3)`; (2) CACHE — a second extract reuses the cached `PackedMesh` and the stub byte-provider was called exactly once; (3) PENDING — an unresolvable URL results in no `RenderItem` emitted, no crash.
 
-- Two further ext-gated tests round out the suite: **`x3d_stl_write_test`** (binary-STL write path) and **`x3d_extract_oracle_test`** (differential extraction oracle), both in `runtime/ext/tests/`.
+- Two further ext-gated tests round out the suite: **`x3d_stl_write_test`** (binary-STL write path) and **`x3d_extract_oracle_test`** (differential extraction oracle), both in `tools/x3d-cli/` and registered in `cmake/x3d/ext.cmake`.
 
 ## Related specs and ADRs
 

@@ -119,5 +119,16 @@ private:
   SFRotation orientation_{0, 1, 0, 0};
 };
 
+namespace cave_detail {
+// RoomGroup's private auxiliary sensor. CaveInputSystem identifies RoomGroup
+// anchors by this type, not by a DEF name an author could reuse. Only the
+// RoomGroup declaration's own clone factory creates it; no parser, generated
+// factory, or other declaration knows the type name.
+class RoomGroupFrameSensor final : public RoomFrameSensor {
+public:
+  std::string nodeTypeName() const override { return "RoomGroupFrameSensor"; }
+};
+} // namespace cave_detail
+
 } // namespace x3d::runtime::ext
 #endif

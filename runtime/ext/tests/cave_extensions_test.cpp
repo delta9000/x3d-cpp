@@ -449,11 +449,13 @@ void placement_cache() {
   check(ctx.writeField(plain.get(), "proxy", SFNode{proxyParent}) == FieldWriteResult::Ok,
         "SFNode replacement failed");
   system->update(3, ctx);
-  check(system->warnings().size() == 1, "SFNode ancestor path was not diagnosed");
+  // Collision.proxy is collision-only (never rendered, X3D 23.4.2), so a
+  // transformed proxy is not a render placement and must not warn.
+  check(system->warnings().empty(), "non-rendered Collision.proxy path was diagnosed");
   check(ctx.writeField(plain.get(), "proxy", SFNode{}) == FieldWriteResult::Ok,
         "SFNode removal failed");
   system->update(3, ctx);
-  check(system->warnings().empty(), "SFNode removal retained placement warning");
+  check(system->warnings().empty(), "SFNode removal produced a placement warning");
 
   // A write delivered between system passes must be visible in the same tick.
   writeChildren(parent.get(), {});
@@ -584,6 +586,166 @@ void placement_geolod() {
         "GeoLOD tile reload did not rebuild placement warnings");
 }
 
+// Room about X, device about Y: these rotations do not commute, so composing
+// them in the wrong order produces a different world orientation.
+void room_rotation_order() {
+  auto doc = document("<ProtoInstance name='Tracked' DEF='Wand'><fieldValue name='device' value='WAND'/></ProtoInstance>");
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto system = setup(doc.scene, ctx);
+  auto f = frame();
+  f.roomFromWorld = Mat4::translation({1, 2, 3}) * Mat4::rotation({1, 0, 0, 0.7f}) *
+                    Mat4::scale({2, 2, 2});
+  f.devices[0].roomFromDevice.orientation = {0, 1, 0, 0.9f};
+  system->submit(f);
+  ctx.tick(1);
+  auto wand = std::dynamic_pointer_cast<TrackedDeviceSensor>(doc.scene.resolve("Wand"));
+  check(wand && wand->getIsActive(), "wand inactive");
+  const Mat4 worldFromRoom = f.roomFromWorld.inverse();
+  const Mat4 roomRotation = Mat4::rotation({1, 0, 0, -0.7f}); // worldFromRoom's rotation.
+  const Mat4 device = Mat4::rotation(f.devices[0].roomFromDevice.orientation);
+  const SFVec3f forward{0, 0, -1};
+  const SFVec3f expected = (roomRotation * device).transformDirection(forward);
+  const SFVec3f reversed = (device * roomRotation).transformDirection(forward);
+  check(std::fabs(expected.x - reversed.x) + std::fabs(expected.y - reversed.y) +
+        std::fabs(expected.z - reversed.z) > 0.1f, "test rotations commute");
+  near(Mat4::rotation(wand->getOrientation_changed()).transformDirection(forward), expected);
+  near(wand->getPosition_changed(), worldFromRoom.transformPoint({1, 2, -3}));
+}
+
+// Float-accumulated navigation drifts past 1e-5 relative error; the frame is
+// re-orthonormalized instead of freezing, while real shear is still rejected.
+void room_drift() {
+  auto doc = document(std::string(roomChild) + "<ProtoInstance name='RoomFrame' DEF='Room'/>");
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto system = setup(doc.scene, ctx);
+  extract::SceneExtractor extractor(ctx, doc.scene);
+  auto room = std::dynamic_pointer_cast<RoomFrameSensor>(doc.scene.resolve("Room"));
+  check(bool(room), "room sensor missing");
+  // Accumulate many small float steps, then add a deliberate 3e-4 skew and a
+  // 2e-4 column-length mismatch: both beyond 1e-5, both within 1e-3.
+  Mat4 nav = Mat4::identity();
+  for (int i = 0; i < 5000; ++i)
+    nav = Mat4::rotation({0.3f, 1, 0.2f, 0.0021f}) * Mat4::translation({0.0002f, 0, -0.0001f}) * nav;
+  nav.m[1] += 3e-4f;
+  for (int r = 0; r < 3; ++r) nav.m[8 + r] *= 1.0002f;
+  double dot = 0, a = 0, b = 0;
+  for (int r = 0; r < 3; ++r) {
+    dot += double(nav.m[r]) * nav.m[4 + r];
+    a += double(nav.m[r]) * nav.m[r];
+    b += double(nav.m[4 + r]) * nav.m[4 + r];
+  }
+  check(std::fabs(dot) > 1e-5 * std::sqrt(a * b), "drift fixture is too clean to test tolerance");
+  auto f = frame();
+  f.roomFromWorld = nav;
+  system->submit(f);
+  ctx.tick(1);
+  check(room->getIsActive(), "float-drifted room frame froze the room");
+  check(system->warnings().empty(), "drifted room frame reported a rejection");
+  const auto delta = extractor.fullSnapshot();
+  check(delta.added.size() == 1, "expected one RoomGroup child placement");
+  const Mat4 child = Mat4::translation({0.5f, 1, -3}) * Mat4::rotation({0, 1, 0, 0.2f});
+  const Mat4 roomSpace = nav * extractor.item(delta.added.front()).worldTransform;
+  for (std::size_t i = 0; i < roomSpace.m.size(); ++i)
+    check(std::fabs(roomSpace.m[i] - child.m[i]) < 5e-3f, "re-orthonormalized frame misplaced room child");
+  const auto lastPose = room->getPosition_changed();
+  Mat4 shear = nav;
+  shear.m[4] += 5e-3f;
+  f.roomFromWorld = shear;
+  system->submit(f);
+  ctx.tick(2);
+  check(!room->getIsActive(), "real shear accepted");
+  near(room->getPosition_changed(), lastPose);
+  Mat4 stretch = nav;
+  for (int r = 0; r < 3; ++r) stretch.m[r] *= 1.005f;
+  f.roomFromWorld = stretch;
+  system->submit(f);
+  ctx.tick(3);
+  check(!room->getIsActive(), "real non-uniform scale accepted");
+}
+
+// Only render-graph placement fields count; references and non-rendered slots
+// do not place a RoomGroup under a transform. Layers warn separately.
+void placement_fields() {
+  auto doc = document(R"(
+    <ProtoDeclare name='Impostor'><ProtoBody>
+      <Group>
+        <ProtoInstance name='RoomFrame' DEF='RoomGroupFrame'/>
+        <Transform DEF='Fake'/>
+      </Group>
+      <ROUTE fromNode='RoomGroupFrame' fromField='position_changed' toNode='Fake' toField='translation'/>
+    </ProtoBody></ProtoDeclare>
+    <ProtoInstance name='RoomGroup' DEF='Root'/>
+    <Transform>
+      <TransformSensor size='1 1 1'>
+        <ProtoInstance USE='Root' name='RoomGroup' containerField='targetObject'/>
+      </TransformSensor>
+      <ProtoInstance name='Impostor'/>
+    </Transform>
+    <Collision><Transform containerField='proxy'>
+      <ProtoInstance name='RoomGroup' DEF='ProxyRoom'/>
+    </Transform></Collision>
+    <CADFace><Transform containerField='shape'>
+      <ProtoInstance name='RoomGroup' DEF='CadRoom'/>
+    </Transform></CADFace>
+    <LayerSet order='0 1'>
+      <Layer/>
+      <Layer><ProtoInstance name='RoomGroup' DEF='LayerRoom'/></Layer>
+    </LayerSet>
+  )");
+  bool impostor = false;
+  for (const auto &route : doc.scene.resolvedProtoRoutes)
+    if (dynamic_cast<RoomFrameSensor *>(route.from.get()) &&
+        route.from->getDEF() == "RoomGroupFrame" && route.to->getDEF() == "Fake")
+      impostor = true;
+  check(impostor, "test must exercise an author sensor reusing RoomGroup's private DEF");
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto system = setup(doc.scene, ctx);
+  system->submit(frame());
+  ctx.tick(1);
+  const auto cad = doc.scene.resolve("CadRoom");
+  const auto layer = doc.scene.resolve("LayerRoom");
+  check(cad && layer, "RoomGroup primaries missing");
+  bool cadWarned = false, layerWarned = false;
+  for (const auto &warning : system->warnings()) {
+    std::cerr << "warning: " << warning.message << '\n';
+    if (warning.node == cad.get()) cadWarned = true;
+    else if (warning.node == layer.get() && warning.message.find("Layer") != std::string::npos)
+      layerWarned = true;
+    else check(false, "reference, proxy, or impostor path produced a placement warning");
+  }
+  check(cadWarned, "CADFace.shape placement under a Transform did not warn");
+  check(layerWarned, "RoomGroup inside a Layer did not warn");
+  check(system->warnings().size() == 2, "expected exactly the CADFace and Layer warnings");
+}
+
+// With the RuntimeSession order (Inline loader first, CAVE input after it),
+// sensors in a freshly loaded Inline report in the load tick itself.
+void placement_inline_same_tick() {
+  auto doc = document("<Inline DEF='Deferred' load='false' url='&quot;room.x3d&quot;'/>");
+  InlineResolver resolver = [&](const auto &, const auto &) {
+    auto child = document("<ProtoInstance name='Tracked' DEF='W'><fieldValue name='device' value='WAND'/></ProtoInstance>");
+    return std::make_shared<Scene>(std::move(child.scene));
+  };
+  X3DExecutionContext ctx(doc.scene.authorFields);
+  auto loader = std::make_shared<InlineRuntimeSystem>(doc.scene, resolver, "");
+  auto inl = doc.scene.resolve("Deferred");
+  loader->attach(inl.get(), ctx);
+  ctx.addSystem(loader);
+  auto system = setup(doc.scene, ctx);
+  system->submit(frame());
+  ctx.tick(0);
+  ctx.postEvent(inl.get(), "load", true);
+  ctx.tick(1);
+  std::size_t sensors = 0, active = 0;
+  x3d::runtime::detail::forEachNode(doc.scene, [&](X3DNode *node) {
+    if (auto *sensor = dynamic_cast<TrackedDeviceSensor *>(node)) {
+      ++sensors;
+      if (sensor->getIsActive()) ++active;
+    }
+  });
+  check(sensors == 1 && active == 1, "Inline-loaded sensor did not activate in its load tick");
+}
+
 void fallback() {
   const auto source = xml(std::string(roomChild) + R"(
     <ProtoInstance name='Tracked' DEF='Wand'><fieldValue name='device' value='WAND'/></ProtoInstance>
@@ -633,6 +795,10 @@ int main(int argc, char **argv) {
     else if (name == "placement_inline") placement_inline();
     else if (name == "placement_geolod") placement_geolod();
     else if (name == "fallback") fallback();
+    else if (name == "room_rotation_order") room_rotation_order();
+    else if (name == "room_drift") room_drift();
+    else if (name == "placement_fields") placement_fields();
+    else if (name == "placement_inline_same_tick") placement_inline_same_tick();
     else throw std::runtime_error("unknown case");
     std::cout << name << ": PASS\n";
     return 0;
