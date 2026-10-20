@@ -2,7 +2,7 @@
 title: "ADR-0074: Adopt a native session into the SAI provider"
 summary: Keep one authoritative runtime graph and one host extraction consumer.
 tags: [adr, sai, ownership, runtime]
-updated: 2026-10-18
+updated: 2026-10-20
 related:
   - ../subsystems/sai-provider.md
   - ../subsystems/execution-context.md
@@ -66,3 +66,24 @@ extraction, routed/deferred changes, Material writes, refusals, opacity,
 retirement, and the same-pump TimeSensor interval case. No builds or tests were
 run for this proposal. Live ROUTE addition, document convenience adoption,
 nested contexts, Script interfaces, and running-session transfer are deferred.
+
+## Amendment (2026-10-20, review fixes)
+
+- **Late identities.** Registration at adoption alone made native SFNode/MFNode
+  writes (a Script ROUTE into `addChildren`, host edits) throw "foreign node"
+  from the field-write listener and fault the pump. Adopted identity lookup now
+  registers a node, and its non-opaque subgraph, the first time a supported
+  read, root list, DEF lookup, or observation reaches it. The opacity rules
+  are unchanged. The listener reads and records only fields that a live
+  observer watches (`backend::observed`, new in x3d-sai).
+- **Type names.** Opaque nodes report their real type through `type_name`: the
+  PROTO name for an instance, otherwise the native type. Opacity is reported
+  only by the field-discovery refusal.
+- **Metadata scope.** The service keeps advertising `scene_metadata`. Only the
+  adopted scene refuses META projection, so other scenes in the service keep
+  it. This replaces "omit portable metadata capability" above.
+- **Tick path.** `do_turn` calls `RuntimeSession::tick(now, ingress)` (a new
+  overload) instead of `context().tick`, so deferred Inline diagnostics drain
+  into `document().inlineWarnings` on both adopted and bounded scenes.
+- The `sai_provider_adopt_session` target has now been built and run against
+  the x3d-sai checkout.
