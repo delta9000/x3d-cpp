@@ -141,8 +141,16 @@ public:
 
   /// Advance the behavior model to `now` (seconds, any monotonic clock).
   /// Append deferred Inline diagnostics to document().inlineWarnings.
-  void tick(double now) {
-    ctx_.tick(now);
+  /// Hosts needing retained ingress or phase timings use the overloads below
+  /// rather than context().tick(), which does not drain those diagnostics.
+  void tick(double now) { tick(now, nullptr, {}); }
+  void tick(double now,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+  void tick(double now, X3DExecutionContext::TickTimings *timings,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress = {}) {
+    ctx_.tick(now, timings, ingress);
     auto &pending = doc_.scene.pendingInlineWarnings;
     doc_.inlineWarnings.insert(doc_.inlineWarnings.end(), pending.begin(),
                                pending.end());

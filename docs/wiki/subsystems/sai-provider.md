@@ -75,15 +75,27 @@ on that thread; moving an active service to a retirement worker is unsupported.
 
 Identity registration preserves root order and repeated occurrences, DEF/USE
 sharing, detached root-context DEF bindings, and resolved root ROUTE endpoints.
+Nodes that native code makes reachable after adoption (a Script ROUTE into
+`addChildren`, a host-side children edit, a new root) are registered on first
+discovery through a supported read, root list, or DEF lookup, with the same
+opacity rules. The registry retains each registered node for the scene's
+lifetime. A native SFNode/MFNode write therefore never faults a pump as a
+"foreign node". The field-write listener reads and records a write only when a
+live observer watches that exact field.
 Node-valued reads preserve NULL slots and sharing. Adoption does not run the
 bounded authoring graph validator, whose repeated-reference and containment
 rules would reject valid loaded graphs. PROTO instances, Inline contexts,
 IMPORT endpoints, and Script fields are opaque: their native execution and
 rendering remain intact, but SAI field discovery refuses them explicitly.
+`type_name` still reports the real type: the PROTO name for a PROTO instance,
+`Inline` and `Script` otherwise. Opacity shows up as the `unsupported_operation`
+refusal from `fields`/`get_field`, not as the type.
 IMPORT aliases are excluded from named-node enumeration and lookup refuses an
 alias by name. Nested names and declaration templates are never flattened into
-the root context. Adopted META remains in the native document; portable metadata
-projection is unsupported and its service capability is omitted.
+the root context. Adopted META remains in the native document; the adopted
+scene refuses portable metadata projection with `unsupported_operation`. The
+service still advertises `scene_metadata`, so other scenes created in the same
+service keep it.
 
 The capability node list describes **constructible** types: Transform, Shape,
 Box, and PositionInterpolator. It does not limit adopted node discovery.
@@ -102,14 +114,21 @@ timestamp guards. Native successful field occurrences become owning observations
 application callbacks run only through explicit dispatch. A native execution
 failure can leave partial effects and faults the activation; no rollback is
 promised. Retirement revokes both portable handles and checked host access.
+Each pump ticks through `RuntimeSession::tick(now, ingress)`, so deferred Inline
+diagnostics drain into `document().inlineWarnings` as they do for a host-driven
+session. The bounded (non-adopted) backend uses the same call.
 
 `sai_provider_adopt_session` covers shared Sphere placements, DEF identity,
 detached names, routed interpolation, deferred observation, Material extraction,
-access/range/enum refusals, opaque content, owner-thread access, and retirement.
+access/range/enum refusals, opaque content and its real type names, per-scene
+metadata refusal, owner-thread access, and retirement.
+`native_node_writes_after_adoption` adds nodes natively (observed and
+unobserved `addChildren`) and reads them back through SAI.
+`inline_diagnostics_drain_through_pump` checks the Inline warning drain.
 Its `same_pump_time_sensor_ingress` case checks that a new cycle interval governs
 the first fraction emitted in that same pump. The separate provider harness
-registers this test for source and relocated package consumers. These proposal
-assertions have not been built or run. See
+registers this test for source and relocated package consumers, and it passes
+there against the x3d-sai checkout. See
 [ADR-0074](../decisions/0074-sai-adopt-session.md).
 
 ## Add a live ROUTE
@@ -128,25 +147,38 @@ install in their relative order before all writes and input occurrences in the
 gate, including writes admitted before the route call. A route ticket shares
 cancellation, capacity accounting, and grouped outcomes with write tickets.
 
-The native installer refuses opaque PROTO/Inline/IMPORT/Script endpoints,
-PROTO interface redirection, cross-context routes, native kind mismatches, and
-duplicates. Adopted node-valued route destinations remain refused, so live
-routes cannot bypass the existing topology-write restriction. It adds a direct
+The native backend's `do_check_live_route` refuses opaque
+PROTO/Inline/IMPORT/Script endpoints, PROTO interface redirection, cross-context
+routes, native kind mismatches, and node-valued destinations. The frontend calls
+it at `enqueue_route`, so these fail at admission rather than at pump. For
+example, SFEnum and SFString both map to portable `sf_string`, but an SFEnum to
+SFString route fails at enqueue with `invalid_route`. Installation repeats the
+check. Node-valued destinations are refused in every native scene: adopted
+scenes keep the topology-write restriction, and bounded scenes would otherwise
+skip the containment and cycle preflight that admitted writes get.
+
+An exact duplicate (same source node/field, same sink node/field) is a
+successful no-op (ISO 19775-1 4.4.8.2). That covers a duplicate of an
+installed route and a copy held in the same update gate. The frontend keeps
+only the first copy of a route when it releases a gate, and the native installer
+returns success without effect for a route already in the executable graph.
+Setup-time `add_route` still refuses a duplicate with `invalid_route`. It adds a direct
 weak-identity entry to `Scene::routes` and installs
 the executable edge; field names are canonical. It prepares document storage
 before native graph mutation and removes that entry if graph insertion throws
 or refuses a detached endpoint. No extraction call is needed. The reference
 backend implements the portable capability through its scene-edit transaction.
 
-A failed duplicate leaves existing topology and the activation intact. If a
+A refused route leaves existing topology and the activation intact. If a
 submission already installed a route before a later operation fails, its effects
 are partial: the activation faults and later work is cancelled. Route removal,
 nested-context exposure, and PROTO redirection remain unsupported.
 
 `live_routes_on_adopted_session` in `sai_provider_adopt_session` checks earlier
 versus later FIFO events, same-submission installation, deferred observation,
-refusals, duplicates, and document/executable agreement. The existing source and
-relocated provider harness runs this test. New assertions have not been run.
+admission-time refusals (including SFEnum to SFString), redundant duplicates
+alone and in a gate, and document/executable agreement. The existing source and
+relocated provider harness runs this test.
 See [ADR-0075](../decisions/0075-sai-live-route-addition.md) and the portable
 contract's queued live ROUTE section in the x3d-sai checkout.
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <x3d/nodes/Transform.hpp>
 #include <x3d/nodes/X3DNodeFactory.hpp>
 #include <x3d/sai_provider.hpp>
 #include <x3d/sdk.hpp>
@@ -59,8 +60,20 @@ void adopted_graph_and_extraction() {
       session->extractor().item(initial.added.front()).mesh;
   auto adopted = take(sai::native::adopt_session(std::move(session)));
   auto &service = *adopted.service;
-  require(!service.supported().supports(p::service_id::scene_metadata),
-          "adopted service does not advertise an undefined META projection");
+  require(service.supported().supports(p::service_id::scene_metadata),
+          "scene_metadata stays a service capability");
+  {
+    const auto refused = service.metadata(adopted.scene);
+    require(!refused &&
+                refused.error().code == sai::error_code::unsupported_operation,
+            "only the adopted scene refuses its undefined META projection");
+    const auto other = take(service.create_scene());
+    take(service.set_metadata(other, "title", std::string{"Other"}));
+    require(take(service.metadata(other, "title")) ==
+                std::optional<std::string>{"Other"},
+            "other scenes in an adopted service keep scene metadata");
+    take(service.retire(other));
+  }
   auto context = take(service.root_context(adopted.scene));
   auto *host = take(adopted.host.session(service));
   require(host == original, "adoption keeps the exact prepared session");
@@ -231,7 +244,12 @@ void adoption_preconditions_and_opaque_content() {
   auto adopted = take(sai::native::adopt_session(std::move(session)));
   auto &service = *adopted.service;
   auto context = take(service.root_context(adopted.scene));
-  for (const char *name : {"Instance", "Child", "Code"}) {
+  for (const auto &[name, type] :
+       std::vector<std::pair<const char *, const char *>>{
+           {"Instance", "Body"}, {"Child", "Inline"}, {"Code", "Script"}}) {
+    require(take(service.type_name(take(service.named(context, name)))) ==
+                type,
+            "opaque nodes report their real type or PROTO name");
     const auto refused = service.fields(take(service.named(context, name)));
     require(!refused &&
                 refused.error().code ==
@@ -256,7 +274,8 @@ void adoption_preconditions_and_opaque_content() {
 void live_routes_on_adopted_session() {
   auto adopted = take(sai::native::adopt_session(sdk::RuntimeSession::create(
       sdk::parseDocument(R"(<X3D profile='Immersive' version='4.0'><Scene>
-        <Transform DEF='Target'><Shape><Sphere/></Shape></Transform>
+        <Transform DEF='Target'><Shape><Appearance DEF='Look'/><Sphere/></Shape></Transform>
+        <Anchor DEF='Link' description='text'/>
         <PositionInterpolator DEF='Curve' key='0 1' keyValue='0 0 0 4 8 12'/>
         <Inline DEF='Child' load='false'/>
       </Scene></X3D>)"))));
@@ -320,13 +339,16 @@ void live_routes_on_adopted_session() {
               sai::error_code::invalid_route,
           "outputOnly is not a ROUTE destination");
   const auto metadata = field(service, context, "Target", "metadata");
-  const auto topology = take(service.enqueue_route(client, metadata, metadata));
-  report = take(service.pump(adopted.active, {2.5}));
-  require(report.error &&
-              report.error->code == sai::error_code::unsupported_operation &&
-              report.effects == p::failure_effect::none &&
-              take(topology.status()).state == p::request_state::failed,
-          "live ROUTEs cannot bypass adopted node-valued write refusal");
+  const auto topology = service.enqueue_route(client, metadata, metadata);
+  require(!topology &&
+              topology.error().code == sai::error_code::unsupported_operation,
+          "live ROUTEs cannot bypass adopted node-valued write refusal, and "
+          "the refusal happens at admission");
+  const auto alpha = field(service, context, "Look", "alphaMode");
+  const auto description = field(service, context, "Link", "description");
+  const auto mismatch = service.enqueue_route(client, alpha, description);
+  require(!mismatch && mismatch.error().code == sai::error_code::invalid_route,
+          "SFEnum -> SFString shares sf_string but fails native admission");
   const auto other = take(service.create_scene());
   const auto other_context = take(service.root_context(other));
   const auto node = take(service.create_node(other_context, "Transform"));
@@ -339,18 +361,21 @@ void live_routes_on_adopted_session() {
           "opaque nested contexts cannot supply a live ROUTE endpoint");
   auto duplicate = take(service.enqueue_route(client, output, translation));
   report = take(service.pump(adopted.active, {3}));
-  require(report.error &&
-              report.error->code == sai::error_code::invalid_route &&
-              report.effects == p::failure_effect::none &&
-              report.state == p::activation_state::active &&
-              take(duplicate.status()).state == p::request_state::failed,
-          "duplicate live ROUTE fails without disturbing active topology");
-  require(take(adopted.host.session(service))->scene().routes.size() == 1,
-          "failed duplicate does not leave a document-only route");
+  require(!report.error && report.state == p::activation_state::active &&
+              take(duplicate.status()).state == p::request_state::processed,
+          "a redundant live ROUTE is a successful no-op (ISO 19775-1 4.4.8.2)");
+  {
+    const auto *host = take(adopted.host.session(service));
+    require(host->scene().routes.size() == 1 &&
+                host->context().graph().routeCount() == 1,
+            "a redundant ROUTE adds no document or executable edge");
+  }
   take(service.begin_update(client));
   const auto scale = field(service, context, "Target", "scale");
   auto held_input = take(service.enqueue(client, {{fraction, .75f}}));
   auto held_route = take(service.enqueue_route(client, output, scale));
+  auto held_copy = take(service.enqueue_route(client, output, scale));
+  auto held_installed = take(service.enqueue_route(client, output, translation));
   take(service.end_update(client));
   report = take(service.pump(adopted.active, {4}));
   require(!report.error &&
@@ -359,8 +384,89 @@ void live_routes_on_adopted_session() {
               std::get<sai::vec3f>(take(service.read(scale))) ==
                   sai::vec3f{3, 6, 9},
           "a released gate installs its routes before evaluating its inputs");
+  require(take(held_copy.status()).state == p::request_state::processed &&
+              take(held_installed.status()).state ==
+                  p::request_state::processed &&
+              report.state == p::activation_state::active,
+          "duplicates in one gate, queued or installed, do not fault it");
   require(take(adopted.host.session(service))->scene().routes.size() == 2,
           "each successfully installed route is retained in the document");
+}
+void native_node_writes_after_adoption() {
+  auto adopted = take(sai::native::adopt_session(sdk::RuntimeSession::create(
+      sdk::parseDocument(R"(<X3D profile='Immersive' version='4.0'><Scene>
+        <Transform DEF='Watched'/><Transform DEF='Quiet'/>
+      </Scene></X3D>)"))));
+  auto &service = *adopted.service;
+  auto context = take(service.root_context(adopted.scene));
+  const auto children = field(service, context, "Watched", "children");
+  std::vector<p::notification> notices;
+  auto subscription = take(
+      service.observe(adopted.active, children,
+                      [&](const auto &notice) { notices.push_back(notice); }));
+  // Native code (here the host; a Script ROUTE behaves alike) adds nodes the
+  // provider never saw at adoption.
+  auto added = x3d::nodes::createX3DNode("Transform");
+  auto nested = x3d::nodes::createX3DNode("Shape");
+  std::dynamic_pointer_cast<x3d::nodes::Transform>(added)->setChildren(
+      x3d::core::MFNode{nested});
+  {
+    auto *host = take(adopted.host.session(service));
+    host->context().postEvent(host->scene().resolve("Watched").get(),
+                              "addChildren", x3d::core::MFNode{added});
+    host->context().postEvent(host->scene().resolve("Quiet").get(),
+                              "addChildren",
+                              x3d::core::MFNode{x3d::nodes::createX3DNode(
+                                  "Group")});
+  }
+  auto report = take(service.pump(adopted.active, {0}));
+  require(!report.error && report.state == p::activation_state::active,
+          "an observed native SFNode/MFNode write does not fault the tick");
+  require(take(service.dispatch_notifications()) == 1 && notices.size() == 1,
+          "the observed children write is published once");
+  const auto published = std::get<p::node_values>(notices.front().value);
+  require(published.size() == 1 && published.front() &&
+              take(service.type_name(*published.front())) == "Transform",
+          "the newly reachable node has an SAI identity");
+  const auto grandchildren = std::get<p::node_values>(
+      take(service.read(take(service.get_field(*published.front(), "children")))));
+  require(grandchildren.size() == 1 &&
+              take(service.type_name(*grandchildren.front())) == "Shape",
+          "its subgraph is reachable through ordinary reads");
+  const auto quiet = std::get<p::node_values>(
+      take(service.read(field(service, context, "Quiet", "children"))));
+  require(quiet.size() == 1 && take(service.type_name(*quiet.front())) == "Group",
+          "unobserved native writes register on first read");
+}
+void inline_diagnostics_drain_through_pump() {
+  sdk::SessionOptions options;
+  options.inlineResolver = [](const std::vector<std::string> &,
+                              const std::string &) {
+    return std::shared_ptr<x3d::runtime::Scene>{};
+  };
+  auto adopted = take(sai::native::adopt_session(sdk::RuntimeSession::create(
+      sdk::parseDocument(R"(<X3D profile='Immersive' version='4.0'><Scene>
+        <Inline DEF='Child' load='false' url='"missing.x3d"'/>
+      </Scene></X3D>)"),
+      options)));
+  auto &service = *adopted.service;
+  {
+    auto *host = take(adopted.host.session(service));
+    require(host->context().writeField(host->scene().resolve("Child").get(),
+                                       "load", true) ==
+                x3d::runtime::FieldWriteResult::Ok,
+            "host requests a deferred Inline load");
+  }
+  take(service.pump(adopted.active, {0}));
+  const auto *host = take(adopted.host.session(service));
+  require(host->scene().pendingInlineWarnings.empty() &&
+              std::any_of(host->document().inlineWarnings.begin(),
+                          host->document().inlineWarnings.end(),
+                          [](const auto &warning) {
+                            return warning.detail.find("missing.x3d") !=
+                                   std::string::npos;
+                          }),
+          "pump ticks through RuntimeSession and drains Inline diagnostics");
 }
 } // namespace
 int main() {
@@ -369,6 +475,8 @@ int main() {
     adopted_graph_and_extraction();
     same_pump_time_sensor_ingress();
     adoption_preconditions_and_opaque_content();
+    native_node_writes_after_adoption();
+    inline_diagnostics_drain_through_pump();
     std::cout << "native session adoption cases passed\n";
   } catch (const std::exception &error) {
     std::cerr << "native session adoption failed: " << error.what() << '\n';

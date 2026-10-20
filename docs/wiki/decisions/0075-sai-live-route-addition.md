@@ -2,7 +2,7 @@
 title: "ADR-0066: Queued live SAI ROUTE addition"
 summary: Admit live routes through the existing portable FIFO and install them before evaluation.
 tags: [adr, sai, routes, runtime]
-updated: 2026-10-18
+updated: 2026-10-20
 related:
   - ../subsystems/sai-provider.md
   - 0074-sai-adopt-session.md
@@ -49,3 +49,23 @@ gates, refusals, defaults, cancellation, budgets, and partial effects;
 agreement in source and relocated consumers. No builds or tests were run for
 this slice. Route removal, nested context exposure, and PROTO interface
 redirection are deferred.
+
+## Amendment (2026-10-20, review fixes)
+
+- **Redundant routes are no-ops.** Refusing an exact duplicate faulted a gate
+  once an earlier route in it had installed. ISO 19775-1 4.4.8.2 ignores
+  redundant routes. The x3d-sai frontend now keeps only the first copy of a
+  route in a released gate, and `do_add_live_route` must return success without
+  effect for an installed duplicate. Both the native and reference backends do.
+  Setup-time `add_route` still refuses duplicates.
+- **Admission pre-check.** x3d-sai adds `backend::do_check_live_route`, which
+  defaults to admit and is called by `enqueue_route` after the portable checks.
+  The native backend uses it for its exact-native-kind, opacity, PROTO
+  redirection, and node-valued destination refusals. A route such as SFEnum to
+  SFString, which shares portable `sf_string`, now fails at enqueue instead of
+  failing the submission at pump. Installation repeats the check.
+- **Node-valued destinations** are refused in bounded native scenes too.
+  Otherwise they would skip the containment and cycle preflight that admitted
+  node writes get.
+- The `sai_provider_contract`, `sai_provider_reference`, and
+  `sai_provider_adopt_session` assertions have now been built and run.

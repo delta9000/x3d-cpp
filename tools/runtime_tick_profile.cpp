@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < ticks; ++i) {
       sdk::X3DExecutionContext::TickTimings phases;
       start = Clock::now();
-      session->context().tick(i / 30.0, &phases);
+      session->tick(i / 30.0, &phases);
       const double tickMs = ms(start);
       start = Clock::now();
       auto delta = session->delta();

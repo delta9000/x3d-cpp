@@ -98,3 +98,30 @@ TEST_CASE("Inline diagnostics: runtime cycles reach document warnings once") {
     CHECK(session->document().inlineWarnings.size() == count);
   }
 }
+
+TEST_CASE("Inline diagnostics: every RuntimeSession::tick overload drains them") {
+  // Hosts with retained ingress or phase timings must not have to call
+  // context().tick(), which skips the drain (SAI do_turn, runtime_tick_profile).
+  for (int overload = 0; overload < 3; ++overload) {
+    SessionOptions options;
+    options.inlineResolver = [](const std::vector<std::string> &,
+                                const std::string &) {
+      return std::shared_ptr<Scene>{};
+    };
+    auto session = RuntimeSession::create(
+        codec::parseDocument(document(
+            "<Inline DEF='Start' load='false' url='&quot;missing.x3d&quot;'/>")),
+        options);
+    REQUIRE(session->context().writeField(session->scene().resolve("Start").get(),
+                                          "load", true) == FieldWriteResult::Ok);
+    X3DExecutionContext::TickTimings timings;
+    if (overload == 0)
+      session->tick(0, std::vector<X3DExecutionContext::RetainedInput>{});
+    else if (overload == 1)
+      session->tick(0, &timings);
+    else
+      session->tick(0, nullptr, {});
+    CHECK(session->scene().pendingInlineWarnings.empty());
+    CHECK(contains(session->document().inlineWarnings, "missing.x3d", ""));
+  }
+}
