@@ -72,13 +72,15 @@ public:
     }
     // A node-reference write can destroy the old child before this pass. Compare
     // identities without dereferencing cached pointers; rebuild only on an actual
-    // edge change (including an expired old node at a reused address).
+    // edge change (including an expired old node at a reused address). Check
+    // every seed, not only DirtyChildren ones: a node-reference field set
+    // without a classified write (e.g. pickingGeometry) still frees the old child.
     bool topologyChanged = false;
     for (const X3DNode *n : seed) {
       auto it = lifetime_.find(n);
       if (it == lifetime_.end()) continue;
       auto live = it->second.lock();
-      if (!live || ((dirty.flags(n) & DirtyChildren) && childrenChanged(*live))) {
+      if (!live || childrenChanged(*live)) {
         topologyChanged = true;
         break;
       }
