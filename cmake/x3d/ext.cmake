@@ -9,7 +9,9 @@
 # One-way dep: ext→core (includes PackedMesh, Aabb, …). Core NEVER includes ext.
 # Default OFF — no TU in runtime/ext/ is ever compiled or linked in the
 # standard build path. Tests registered ONLY inside this block, so the default
-# ctest suite is unaffected. Build with: -DX3D_CPP_BUILD_EXT=ON
+# ctest suite is unaffected. Build with: -DX3D_CPP_BUILD_EXT=ON, or the `ext`
+# preset (its own build-ext/ tree), which `mise run build-ext` -- part of
+# `mise run ci` -- and the GitHub `ext` job use to build and run these tests.
 # ---------------------------------------------------------------------------
 if(X3D_CPP_BUILD_EXT)
     add_library(x3d_cpp_ext INTERFACE)
@@ -85,8 +87,16 @@ if(X3D_CPP_BUILD_EXT)
         target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext)
         target_compile_definitions(x3d_ext_cave_tests PRIVATE
             X3D_EXT_PROTO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos")
-        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement placement_cache placement_idle placement_inline placement_geolod fallback recursive_resolver input_diagnostics)
+        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement placement_cache placement_idle placement_inline placement_geolod fallback recursive_resolver input_diagnostics
+                room_rotation_order room_drift placement_fields placement_inline_same_tick)
             add_test(NAME x3d_ext_cave_${_case} COMMAND x3d_ext_cave_tests ${_case})
         endforeach()
+
+        # One aggregate so `mise run build-ext` and the GitHub ext-gate job
+        # build exactly the executables registered above (ctest --preset ext).
+        add_custom_target(x3d_ext_tests DEPENDS
+            x3d_ext_stl_reader x3d_stl_write_test x3d_extract_oracle_test
+            x3d_ext_external_geometry_node x3d_ext_external_geometry_roundtrip
+            x3d_ext_external_geometry_e2e x3d_ext_cave_tests)
     endif()
 endif()

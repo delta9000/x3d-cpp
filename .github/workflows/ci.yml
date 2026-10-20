@@ -164,6 +164,36 @@ jobs:
       - name: Swap-tests (stb_image vs wuffs; Duktape vs QuickJS)
         run: ctest --preset ci --output-on-failure -R 'x3d_texture|x3d_quickjs(_backend|_swap)'
 
+  # Opt-in extension gate. runtime/ext/ (STL + ExternalGeometry codecs, CAVE
+  # sensors) is quarantined behind X3D_CPP_BUILD_EXT=OFF so the `cpp` job's core
+  # build never compiles it; this job turns it on in its own tree (the `ext`
+  # preset, warnings as errors) and runs only the ext-registered tests. Mirrors
+  # `mise run build-ext`.
+  ext:
+    name: C++ opt-in extensions (runtime/ext) build + ctest
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-ext-${{ github.sha }}
+          restore-keys: ccache-ext-
+      - name: Bound ccache storage
+        run: ccache --max-size=500M
+      - name: Configure (`ext` preset)
+        run: cmake --preset ext
+      - name: Build ext tests
+        run: cmake --build --preset ext --target x3d_ext_tests
+      - name: Test ext suite
+        run: ctest --preset ext -j "$(nproc)"
+
   # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
   # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
   # examples, fuzzers, and external-corpus gates do not execute useful sanitizer

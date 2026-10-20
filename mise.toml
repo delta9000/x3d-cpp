@@ -121,6 +121,17 @@ cmake --build --preset ci --target x3d_compile_contracts
 ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
 """
 
+# build-ext: the opt-in runtime/ext extensions (X3D_CPP_BUILD_EXT) in their own
+# build-ext/ tree, so the core build/ctest path stays ext-free (the quarantine
+# in cmake/x3d/ext.cmake). Mirrors the GitHub Actions `ext` job.
+[tasks.build-ext]
+description = "Configure, build, and ctest the opt-in runtime/ext extensions and their tests (STL, ExternalGeometry, CAVE) using the `ext` preset (separate build-ext/ dir, warnings as errors)."
+run = """
+cmake --preset ext
+cmake --build --preset ext --target x3d_ext_tests
+ctest --preset ext -j "$(nproc)"
+"""
+
 # build-san: ASan + UBSan build (the BLD-2 sanitizer gate). Mirrors the GitHub
 # Actions `cpp-san` job: Debug, per-header checks OFF, and only behavior targets
 # run against sanitized binaries so a memory or UB regression fails the gate.
@@ -261,8 +272,8 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
-depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
+description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), opt-in ext build/ctest (ext preset), cli differential regression gate."
+depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "build-ext", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
 description = "STRONGEST local pre-PR verification: everything `ci` runs PLUS the ASan/UBSan sanitizer build (build-san) and the example-renderer gates (validate-examples: cpu_raster + poc headless probes + the xvfb GL smoke). Mirrors the full set of blocking GitHub jobs; slower than `ci` — use before pushing risky C++ changes."
