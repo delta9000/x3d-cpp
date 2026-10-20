@@ -1,5 +1,5 @@
 ---
-title: "ADR-0066: Queued live SAI ROUTE addition"
+title: "ADR-0075: Queued live SAI ROUTE addition"
 summary: Admit live routes through the existing portable FIFO and install them before evaluation.
 tags: [adr, sai, routes, runtime]
 updated: 2026-10-18

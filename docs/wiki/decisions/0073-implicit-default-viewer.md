@@ -1,5 +1,5 @@
 ---
-title: "ADR-0067: Unbound viewer head tracking"
+title: "ADR-0073: Unbound viewer head tracking"
 summary: Preserve the unbound world origin while making head tracking effective.
 tags: [adr, viewpoint, host]
 updated: 2026-10-18

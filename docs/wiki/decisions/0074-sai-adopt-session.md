@@ -1,5 +1,5 @@
 ---
-title: "ADR-0065: Adopt a native session into the SAI provider"
+title: "ADR-0074: Adopt a native session into the SAI provider"
 summary: Keep one authoritative runtime graph and one host extraction consumer.
 tags: [adr, sai, ownership, runtime]
 updated: 2026-10-18

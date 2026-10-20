@@ -1,5 +1,5 @@
 ---
-title: "ADR-0066: Fetched document diagnostics"
+title: "ADR-0072: Fetched document diagnostics"
 summary: Preserve fetched-source warnings and deferred Inline cycle reasons.
 tags: [adr, inline, proto, diagnostics]
 updated: 2026-10-18
