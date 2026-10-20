@@ -89,7 +89,9 @@ session->context().clearViewerWorldPose();
 ```
 
 The override works without a viewpoint and stays active across binds and
-`setHeadPose` calls until cleared. Supply it before ticking view-dependent
+`setHeadPose` calls until cleared. `setViewerWorldPose` returns `false` and keeps
+the previous pose for a non-finite matrix, or one with scale, shear or reflection
+beyond a 1e-3 tolerance; small float drift is accepted and re-orthonormalized. Supply it before ticking view-dependent
 systems. The authored query excludes navigation, head tracking, and the
 absolute override; it returns identity if no viewpoint is bound. See
 [the pose contract](../decisions/0065-absolute-viewer-world-pose.md).
@@ -135,7 +137,13 @@ remove-all/add-all extraction baseline in the next delta. Ordinary scalar
 geometry/material/TRS changes remain incremental.
 
 Switch `whichChoice` and per-placement LOD selection changes retain unaffected
-`RenderItemId`s and immutable mesh payloads. Keep calling
+`RenderItemId`s and immutable mesh payloads. A level that leaves and re-enters
+the selection without an edit comes back with the same `GeomId` and mesh, so a
+`GeomId`-keyed upload cache can keep its buffers across LOD boundary crossings
+(keep them for removed placements if you want that reuse). An edit while the
+level was inactive gives it a new `GeomId`. Surviving placements whose material,
+texture resolution, shader or skin binding changed during the selection tick are
+listed in `updatedMaterial` (or `updatedSkinPose`). Keep calling
 `session.tick(now); auto changes = session.delta();` and apply removals before
 additions. Only placements entering or leaving the active selection appear in
 those lists. If selection changes scoped light/fog indices, records whose indices
@@ -146,8 +154,10 @@ Selection refresh uses a bounded active-scene walk; it does not promise CPU cost
 proportional only to the changed subtree. See [ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
 
 `lightsChanged` compares the complete world-resolved light list with the last
-published list, including scope, attenuation, radius, and shadow controls. An
-idle tick or unrelated animation leaves it false. Full snapshots set it true for
+published list, including scope, attenuation, radius, and shadow controls. It
+also covers lights the geometry walk does not reach, such as those under
+`visible=FALSE` or in `Collision.proxy`. An idle tick or unrelated animation
+leaves it false. Full snapshots set it true for
 initialization. Camera, background, and fog notifications remain conservative.
 You can remove a host value-comparison workaround used solely to suppress
 unchanged light uploads. `snapshotLights()` still owns the indices referenced by

@@ -20,6 +20,7 @@ namespace cave_detail {
 inline std::shared_ptr<X3DNode> createSensor(const std::string &type) {
   if (type == "TrackedDeviceSensor") return std::make_shared<TrackedDeviceSensor>();
   if (type == "RoomFrameSensor") return std::make_shared<RoomFrameSensor>();
+  if (type == "RoomGroupFrameSensor") return std::make_shared<RoomGroupFrameSensor>();
   return nullptr;
 }
 
@@ -74,7 +75,8 @@ inline std::shared_ptr<ProtoDeclaration> makeRoomGroupProto() {
   decl->createNode = cave_detail::createSensor;
   auto transform = std::make_shared<x3d::nodes::Transform>();
   transform->setDEF("RoomTransform");
-  auto sensor = std::make_shared<RoomFrameSensor>();
+  // The private sensor type, not this DEF, marks the anchor (CaveInputSystem).
+  auto sensor = std::make_shared<cave_detail::RoomGroupFrameSensor>();
   sensor->setDEF("RoomGroupFrame");
   decl->body.nodes = {transform, sensor};
   cave_detail::expose(*decl, transform, {"metadata", "children", "addChildren",

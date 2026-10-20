@@ -1,5 +1,5 @@
 ---
-title: "ADR-0065: Public node inspection"
+title: "ADR-0071: Public node inspection"
 summary: Viewer discovery through an identity walk and owned typed field reads.
 tags: [adr, sdk, reflection]
 updated: 2026-10-18

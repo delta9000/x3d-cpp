@@ -21,7 +21,10 @@ The [fetched-document diagnostics proposal](../decisions/0072-fetched-document-d
 preserves warnings from selected asset-loaded child documents as source-qualified
 `SourceWarning` details in the enclosing document's Inline/PROTO warning channel.
 Top-level reader and range diagnostics keep their existing structured channels.
-The registered `inline_diagnostics_test.cpp` cases are uncompiled and unrun.
+For an EXTERNPROTO only the selected declaration carries the fetched document's
+warnings, and expansion reports each one once per warning collection however
+many instances resolve it. The registered `inline_diagnostics_test.cpp` cases run
+in `x3d_extract_tests`.
 
 ## Purpose
 

@@ -3667,6 +3667,7 @@
         "BIND-07",
         "BIND-08",
         "BIND-09",
+        "BIND-UNBOUND-ORIGIN",
         "COL-1",
         "COL-2",
         "COL-3",
@@ -3833,7 +3834,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 9.4.3; 4.3.6; 7.2.5.5",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.3.1, 23.4.7; 4.4.2.2, 4.4.8.2; 9.4.3; 4.3.6; 7.2.5.5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -3848,6 +3849,7 @@
             "BIND-07",
             "BIND-08",
             "BIND-09",
+            "BIND-UNBOUND-ORIGIN",
             "EXTRACT-VISIBILITY-HINT-DELTA",
             "NAV-FLY-ROLL",
             "NAV-LOOKAT-SCALE",
@@ -8883,6 +8885,20 @@
       "summary": "Pop (unbind/delete) does not apply the \u00a723.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind."
     },
     {
+      "clause": "23.3.1, 23.4.7",
+      "id": "BIND-UNBOUND-ORIGIN",
+      "interfaces": [
+        "X3DViewpointNode"
+      ],
+      "nodes": [
+        "Viewpoint"
+      ],
+      "note": "Deliberate (ADR-0073): head tracking composes after the origin base; boundViewpoint() stays null and no node is created. Moving to (0 0 10) changed sound attenuation and GeoLOD fixtures that encode the origin contract, so it is deferred until those are migrated. Hosts that want spec framing bind an explicit Viewpoint or call setViewerWorldPose. Regression of the current behaviour: default_viewer_test.cpp.",
+      "severity": "minor",
+      "status": "deferred",
+      "summary": "With no bound Viewpoint the runtime viewer (camera and listener) sits at the world origin with identity orientation, not at the Viewpoint default position (0 0 10) a browser presents for a scene without one."
+    },
+    {
       "clause": "23.4.4",
       "id": "NAV-LOOKAT-SCALE",
       "nodes": [
@@ -11596,6 +11612,7 @@
       "BooleanTrigger",
       "Box",
       "BufferAudioSource",
+      "CADFace",
       "CADPart",
       "Circle2D",
       "CollidableShape",
@@ -11643,6 +11660,9 @@
       "KeySensor",
       "LOD",
       "Layer",
+      "LayerSet",
+      "LayoutGroup",
+      "LayoutLayer",
       "LinePickSensor",
       "LineSet",
       "LoadSensor",
@@ -11674,6 +11694,7 @@
       "ScalarChaser",
       "ScalarDamper",
       "ScalarInterpolator",
+      "ScreenGroup",
       "Script",
       "ShaderPart",
       "ShaderProgram",
@@ -11719,13 +11740,13 @@
   "summary": {
     "closed_count": 281,
     "component_count": 36,
-    "deferred_count": 21,
-    "finding_count": 311,
+    "deferred_count": 22,
+    "finding_count": 312,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
       "major": 14,
-      "minor": 14
+      "minor": 15
     }
   },
   "unresolved_findings": []

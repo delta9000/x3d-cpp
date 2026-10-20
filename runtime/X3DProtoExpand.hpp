@@ -272,8 +272,14 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // Retain the selected external source on the expanded ProtoInstance. The
     // instance is copied into Scene::expandedSources after this call.
     inst.declaration = decl;
-    warnings.insert(warnings.end(), decl->sourceWarnings.begin(),
-                    decl->sourceWarnings.end());
+    // Each instance resolves (and may re-fetch) its declaration; the fetched
+    // document's warnings are reported once per collection, not per instance.
+    for (const auto &w : decl->sourceWarnings)
+      if (std::none_of(warnings.begin(), warnings.end(), [&](const ProtoWarning &seen) {
+            return seen.kind == w.kind && seen.instanceName == w.instanceName &&
+                   seen.detail == w.detail;
+          }))
+        warnings.push_back(w);
   }
   if (!decl) {
     warnings.push_back(

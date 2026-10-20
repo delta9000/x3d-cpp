@@ -328,33 +328,60 @@ struct backend::storage {
   struct fixture {
     std::shared_ptr<X3DDocument> setup = std::make_shared<X3DDocument>();
     std::unique_ptr<RuntimeSession> session;
-    std::map<std::uint64_t, std::shared_ptr<X3DNode>> nodes;
-    std::unordered_map<const X3DNode *, std::uint64_t> identities;
-    std::uint64_t next_node = 1;
+    // Adopted graphs register lazily: native code (a Script ROUTE into
+    // addChildren, host mutation) can reach nodes after adoption. Discovery
+    // through a const read assigns them identities, so they stay mutable.
+    mutable std::map<std::uint64_t, std::shared_ptr<X3DNode>> nodes;
+    mutable std::unordered_map<const X3DNode *, std::uint64_t> identities;
+    mutable std::uint64_t next_node = 1;
     native_evidence evidence;
     std::shared_ptr<detail::presentation_state> presentation;
     bool adopted = false;
     std::shared_ptr<detail::host_state> host;
-    std::unordered_map<const X3DNode *, std::string> opaque;
+    // Opaque nodes keep their real type (or PROTO name) for type_name; the
+    // reason names the unsupported boundary in fields/ROUTE refusals.
+    struct opacity {
+      std::string type, reason;
+    };
+    mutable std::unordered_map<const X3DNode *, opacity> opaque;
     bool supports(const X3DNode &node,
                   const x3d::core::FieldInfo &field) const {
       return !opaque.contains(&node) &&
              (adopted ? adopted_field(field) : supported_field(node, field));
     }
-    void register_graph(const std::shared_ptr<X3DNode> &node) {
+    std::string proto_name(const X3DNode *node) const {
+      if (const auto found = scene().expandedSources.find(
+              const_cast<X3DNode *>(node));
+          found != scene().expandedSources.end() && !found->second.name.empty())
+        return found->second.name;
+      if (const auto *placed = scene().instanceAtPlacement(node);
+          placed && !placed->name.empty())
+        return placed->name;
+      if (const auto *wrapper =
+              dynamic_cast<const x3d::runtime::ProtoInstanceTemplate *>(node);
+          wrapper && !wrapper->instance.name.empty())
+        return wrapper->instance.name;
+      return node->nodeTypeName();
+    }
+    void register_graph(const std::shared_ptr<X3DNode> &node) const {
       if (!node || identities.contains(node.get()))
         return;
       const auto id = next_node++;
       identities.emplace(node.get(), id);
       nodes.emplace(id, node);
       if (scene().expandedSources.contains(node.get()) ||
-          scene().instanceAtPlacement(node.get()))
-        opaque.emplace(node.get(), "PROTO instance");
+          scene().instanceAtPlacement(node.get()) ||
+          dynamic_cast<const x3d::runtime::ProtoInstanceTemplate *>(
+              node.get()))
+        opaque.emplace(node.get(),
+                       opacity{proto_name(node.get()), "PROTO instance"});
       else if (scene().expandedInlines.contains(node.get()) ||
                node->nodeTypeName() == "Inline")
-        opaque.emplace(node.get(), "Inline context");
+        opaque.emplace(node.get(),
+                       opacity{node->nodeTypeName(), "Inline context"});
       else if (node->nodeTypeName() == "Script")
-        opaque.emplace(node.get(), "Script fields");
+        opaque.emplace(node.get(),
+                       opacity{node->nodeTypeName(), "Script fields"});
       if (opaque.contains(node.get()))
         return;
       for (const auto &field : node->fields()) {
@@ -449,7 +476,13 @@ struct backend::storage {
       return session ? session->document() : *setup;
     }
     result<std::uint64_t> identity(const std::shared_ptr<X3DNode> &n) const {
-      const auto i = identities.find(n.get());
+      auto i = identities.find(n.get());
+      if (i == identities.end() && adopted && n) {
+        // Reached through a supported adopted field or root/DEF list after
+        // adoption: register it (and its non-opaque subgraph) on demand.
+        register_graph(n);
+        i = identities.find(n.get());
+      }
       if (i == identities.end())
         return backend::error(error_code::invalid_context, "native.identity",
                               "native graph contains a foreign node");
@@ -579,12 +612,8 @@ p::capabilities backend::supported() const {
                         V::sf_node, V::mf_node, V::mf_float, V::mf_vec3f,
                         V::sf_color, V::sf_double, V::sf_time, V::sf_int32,
                         V::sf_string}};
-  if (state_->adoption ||
-      std::any_of(state_->scenes.begin(), state_->scenes.end(),
-                  [](const auto &entry) { return entry.second->adopted; }))
-    std::erase_if(caps.services, [](const auto &entry) {
-      return entry.id == p::service_id::scene_metadata;
-    });
+  // scene_metadata stays advertised: only the adopted scene refuses its META
+  // projection (do_metadata), so other scenes in the same service keep it.
   return caps;
 }
 result<std::uint64_t> backend::do_create_scene() {
@@ -600,7 +629,10 @@ result<std::uint64_t> backend::do_create_scene() {
       const auto name = import.as.empty() ? import.importedDEF : import.as;
       const auto found = fixture->scene().defs.find(name);
       if (found != fixture->scene().defs.end() && found->second)
-        fixture->opaque.emplace(found->second.get(), "IMPORT endpoint");
+        fixture->opaque.emplace(
+            found->second.get(),
+            storage::fixture::opacity{found->second->nodeTypeName(),
+                                      "IMPORT endpoint"});
     }
     for (const auto &root : fixture->scene().rootNodes) {
       if (!root)
@@ -778,7 +810,7 @@ result<std::string> backend::do_type_name(const address &a) const {
   const auto &f = *state_->scenes.at(a.scene);
   const auto &node = f.nodes.at(a.node);
   if (const auto opaque = f.opaque.find(node.get()); opaque != f.opaque.end())
-    return opaque->second;
+    return opaque->second.type;
   return node->nodeTypeName();
 }
 result<std::vector<p::field_info>> backend::do_fields(const address &a) const {
@@ -787,7 +819,7 @@ result<std::vector<p::field_info>> backend::do_fields(const address &a) const {
   if (const auto opaque = fixture.opaque.find(&n);
       opaque != fixture.opaque.end())
     return error(error_code::unsupported_operation, "native.fields",
-                 opaque->second + " is opaque to SAI");
+                 opaque->second.reason + " is opaque to SAI");
   std::vector<p::field_info> out;
   for (const auto &f : n.fields())
     if (!document_syntax(f.x3dName))
@@ -928,17 +960,14 @@ result<void> backend::do_add_route(const address &from, const address &to) {
   return {};
 }
 
-backend::backend_result backend::do_add_live_route(const address &from,
-                                                   const address &to) {
-  const auto fail = [](error_code code,
-                       std::string_view message) -> backend_result {
-    return tl::unexpected{
-        backend_failure{error(code, "native.live_route", message).value(),
-                        p::failure_effect::none}};
+result<void> backend::do_check_live_route(const address &from,
+                                          const address &to) const {
+  const auto fail = [](error_code code, std::string_view message) {
+    return error(code, "native.live_route", message);
   };
   if (from.scene != to.scene || from.context != to.context || from.context != 1)
     return fail(error_code::invalid_context, "ROUTE crosses lexical context");
-  auto &f = *state_->scenes.at(from.scene);
+  const auto &f = *state_->scenes.at(from.scene);
   if (!f.session)
     return fail(error_code::access_denied,
                 "live ROUTE requires an active session");
@@ -948,7 +977,7 @@ backend::backend_result backend::do_add_live_route(const address &from,
   for (auto *node : {source->second.get(), sink->second.get()}) {
     if (const auto opaque = f.opaque.find(node); opaque != f.opaque.end())
       return fail(error_code::unsupported_operation,
-                  opaque->second + " ROUTE redirection is unsupported");
+                  opaque->second.reason + " ROUTE redirection is unsupported");
     if (f.scene().expandedSources.contains(node) ||
         f.scene().protoRedirects.contains(node) ||
         f.scene().instanceAtPlacement(node))
@@ -962,21 +991,41 @@ backend::backend_result backend::do_add_live_route(const address &from,
       !f.supports(*sink->second, *input))
     return fail(error_code::unsupported_operation,
                 "unsupported ROUTE endpoint field");
-  if (f.adopted && input->isNode())
+  // Live node-valued ROUTEs would bypass the containment/cycle preflight that
+  // admitted writes get (bounded) or the adopted node-write refusal.
+  if (input->isNode())
     return fail(error_code::unsupported_operation,
-                "adopted node-valued ROUTE writes are unsupported");
+                "live node-valued ROUTE writes are unsupported");
+  // Native kinds are stricter than portable ones: SFEnum and SFString share
+  // sf_string, but a native ROUTE needs the exact field type.
   if (output->type != input->type ||
       (output->access != A::OutputOnly && output->access != A::InputOutput) ||
       (input->access != A::InputOnly && input->access != A::InputOutput))
     return fail(error_code::invalid_route,
                 "ROUTE requires exact native kind and compatible direction");
-  const x3d::runtime::FieldAddress native_from{source->second.get(),
-                                               from.field};
-  const x3d::runtime::FieldAddress native_to{sink->second.get(), to.field};
+  return {};
+}
+
+backend::backend_result backend::do_add_live_route(const address &from,
+                                                   const address &to) {
+  const auto fail = [](error_code code,
+                       std::string_view message) -> backend_result {
+    return tl::unexpected{
+        backend_failure{error(code, "native.live_route", message).value(),
+                        p::failure_effect::none}};
+  };
+  // Admission ran the same check; repeat it, since the graph may have changed.
+  if (auto ok = do_check_live_route(from, to); !ok)
+    return tl::unexpected{backend_failure{ok.error(), p::failure_effect::none}};
+  auto &f = *state_->scenes.at(from.scene);
+  const auto &source = f.nodes.at(from.node), &sink = f.nodes.at(to.node);
+  const x3d::runtime::FieldAddress native_from{source.get(), from.field};
+  const x3d::runtime::FieldAddress native_to{sink.get(), to.field};
   auto &context = f.session->context();
   const auto &sinks = context.graph().sinks(native_from);
+  // ISO 19775-1 4.4.8.2: a redundant ROUTE is ignored. Success, no effect.
   if (std::find(sinks.begin(), sinks.end(), native_to) != sinks.end())
-    return fail(error_code::invalid_route, "duplicate ROUTE");
+    return {};
   // Prepare retained document storage before touching executable state. Native
   // addRoute appends one edge or throws before that edge is present.
   auto added = backend::do_add_route(from, to);
@@ -1125,6 +1174,9 @@ result<void> backend::do_activate(std::uint64_t scene) {
         if (info && info->access == x3d::core::AccessType::InputOnly)
           ++f.evidence.input_occurrences;
         const auto publish = [&](const address &source) {
+          // Nobody observes most native writes; skip the read and projection.
+          if (!observed(source))
+            return;
           auto value = do_read(source);
           if (!value)
             throw std::runtime_error(value.error().message);
@@ -1163,7 +1215,9 @@ backend::do_turn(std::uint64_t scene, event_time time,
       f.session->context().postEvent(f.nodes.at(a.node).get(), a.field,
                                      std::move(values[i]));
   }
-  f.session->context().tick(time.seconds, ingress);
+  // RuntimeSession::tick also drains deferred Inline diagnostics into
+  // document().inlineWarnings; calling the context directly would drop them.
+  f.session->tick(time.seconds, ingress);
   // In adoption mode the host exclusively owns the extraction cursor.
   const auto delta =
       f.adopted ? x3d::runtime::extract::RenderDelta{} : f.session->delta();

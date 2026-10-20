@@ -25,6 +25,7 @@
 
 #include "x3d/sdk.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -54,9 +55,9 @@ static AABB3 compute_aabb(const std::vector<SFVec3f> &pts) {
     bb.minY = bb.maxY = pts[0].y;
     bb.minZ = bb.maxZ = pts[0].z;
     for (const auto &p : pts) {
-        if (p.x < bb.minX) bb.minX = p.x; if (p.x > bb.maxX) bb.maxX = p.x;
-        if (p.y < bb.minY) bb.minY = p.y; if (p.y > bb.maxY) bb.maxY = p.y;
-        if (p.z < bb.minZ) bb.minZ = p.z; if (p.z > bb.maxZ) bb.maxZ = p.z;
+        bb.minX = std::min(bb.minX, p.x); bb.maxX = std::max(bb.maxX, p.x);
+        bb.minY = std::min(bb.minY, p.y); bb.maxY = std::max(bb.maxY, p.y);
+        bb.minZ = std::min(bb.minZ, p.z); bb.maxZ = std::max(bb.maxZ, p.z);
     }
     return bb;
 }

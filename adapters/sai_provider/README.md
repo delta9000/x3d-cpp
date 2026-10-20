@@ -73,20 +73,29 @@ Don't retain native borrows across pumps or retirement, mutate fields, or tick
 outside the provider. Retire/close the service on its owner thread.
 
 Adopted scalar access extends beyond the creation whitelist. SFNode/MFNode reads
-preserve identity; node-valued writes remain refused. PROTO/Inline/IMPORT/Script
-interfaces remain opaque while native content continues to execute and render.
-Portable META projection is unsupported. Live ROUTE addition is available
+preserve identity; node-valued writes remain refused. Nodes that native code
+adds after adoption get identities when a read or observation first reaches
+them, so native node writes do not fault a pump. Unobserved native writes are
+not read back. PROTO/Inline/IMPORT/Script interfaces remain opaque while native
+content continues to execute and render; `type_name` reports their real type or
+PROTO name. The adopted scene refuses portable META projection; other scenes in
+the same service keep `scene_metadata`. Each pump ticks through
+`RuntimeSession::tick`, so deferred Inline warnings reach
+`document().inlineWarnings`. Live ROUTE addition is available
 through the optional `live_routes` capability: enqueue a route with
 `service.enqueue_route(client, from, to)` and process its ordinary FIFO ticket.
 Its pump installs the route before evaluating that turn; update gates install
-all their routes before inputs. Removal and PROTO interface redirection remain
+all their routes before inputs. Native restrictions, including exact native
+kinds (SFEnum is not SFString) and node-valued destinations, are refused at
+`enqueue_route`. An exact duplicate route, whether installed or held in the same
+gate, is a successful no-op. Removal and PROTO interface redirection remain
 unsupported. See the
 [adoption contract](../../docs/wiki/subsystems/sai-provider.md#adopt-a-prepared-session)
 for the exact kind set and restrictions, and
 [ADR-0074](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
 ingress decisions. `sai_provider_adopt_session` is registered in the source and
-relocated provider harness, including same-pump TimeSensor and live ROUTE
-assertions. The new live ROUTE assertions have not been run for this slice.
+relocated provider harness, including same-pump TimeSensor, live ROUTE,
+native node-write and Inline-diagnostic assertions.
 
 ## Bounded capabilities
 

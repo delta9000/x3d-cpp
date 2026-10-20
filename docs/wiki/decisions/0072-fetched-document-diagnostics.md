@@ -1,5 +1,5 @@
 ---
-title: "ADR-0066: Fetched document diagnostics"
+title: "ADR-0072: Fetched document diagnostics"
 summary: Preserve fetched-source warnings and deferred Inline cycle reasons.
 tags: [adr, inline, proto, diagnostics]
 updated: 2026-10-18
@@ -31,10 +31,14 @@ The URL precedes the original detail; nested loads preserve that chain.
 Top-level reader/range warnings retain their structured representation.
 
 Scenes carry pending Inline warnings across the resolver boundary;
-declarations carry source warnings across EXTERNPROTO resolution. Expansion
-appends them to the parent's load-warning collection. Declaration warnings
-remain available for each later resolution; Inline transport is drained when
-spliced. Failed/unparseable candidates remain lenient; forwarding applies to
+the selected declaration carries source warnings across EXTERNPROTO resolution
+(other declarations in the fetched document are unused and carry none).
+Expansion appends them to the parent's load-warning collection once: every
+instance resolves its declaration again, so a warning already present in the
+collection (same kind, instance name and detail) is not appended a second time.
+Three instances of one EXTERNPROTO therefore report its document's warning once.
+Declaration warnings remain available for each later resolution, which reports
+them once into its own collection; Inline transport is drained when spliced. Failed/unparseable candidates remain lenient; forwarding applies to
 selected documents, not discarded candidates.
 
 After exhausting URL candidates, an asset Inline loader that rejected an active
@@ -64,6 +68,11 @@ host cap warning at plain-main `x3d_scene.cpp:289-295`; round two already remove
 that cap. No host files are changed by this proposal.
 
 ## Verification
+
+The 2026-10-19 review found the first version copied a fetched document's
+warnings onto every declaration in it and appended them on every expansion, so
+three instances reported three copies. The case "EXTERNPROTO diagnostics: a
+fetched document's warnings are reported once" covers the corrected behaviour.
 
 `inline_diagnostics_test.cpp`, registered in `x3d_extract_tests`, checks child
 reader/range/PROTO/Inline warnings, nested source URLs, EXTERNPROTO warnings,

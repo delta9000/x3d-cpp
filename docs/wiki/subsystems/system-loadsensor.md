@@ -25,7 +25,7 @@ the first SDK-side caller of the [AssetResolver seam](system-asset-io.md)
 [ADR-0046](../decisions/0046-loadsensor-assetresolver-oracle.md).
 
 The optional `AssetResolverWithBase(url, kind, baseUrl)` callback receives each
-watched child's source directory from `Scene::nodeBaseUrls`, or the configured
+watched child's source directory from `Scene::nodeBaseUrls` (an ownership lookup, not a scan), or the configured
 fallback when no entry exists. `SessionOptions::assetResolverWithBase` wires it
 through the standard runtime; it takes precedence over `assetResolver`. Ready
 memoization distinguishes base, URL, and kind so equal relative URLs in different

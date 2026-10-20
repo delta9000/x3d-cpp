@@ -2,7 +2,7 @@
 title: Seam-Status Matrix
 summary: The live tracker for the product's core thesis — every renderer/engine seam is proven generic only when a second independent backend runs identical fixtures to identical observable behavior, gated in CI. One row per seam; GREEN = interface frozen + ≥2 backends + a CI-gated swap-test.
 tags: [seam, tracker, genericity, swap-test, thesis, meta]
-updated: 2026-09-30
+updated: 2026-10-20
 related:
   - index.md
   - coverage.md
@@ -389,7 +389,8 @@ claim of complete Geospatial or SAI conformance.
 
 ## Round-two CAVE host proposals
 
-These additions await maintainer builds and test execution. With ext enabled,
+The ext-side additions below build and pass in the `ext` preset gate
+(`mise run build-ext`, part of `mise run ci`, and the GitHub `ext` job). With ext enabled,
 the installed package exports `x3d_cpp::ext`, its headers, and the portable CAVE
 fallback; the existing install/embed smoke consumes them through a relocated
 prefix. `assetResolversFrom` accepts a recursive PROTO decorator and retains
@@ -402,10 +403,13 @@ placement identity. Evidence additions: `x3d_ext_cave_recursive_resolver`,
 `x3d_extract_tests`, and `keyed_delta_payloads` in
 `sai_provider_presentation`. No stable seam status changes are claimed.
 
-The CaveInputSystem placement-cache fix awaits maintainer compilation and test
-execution. Placement warnings persist across ordinary updates; structural node
+The CaveInputSystem placement cache is covered by the same gate. Placement warnings persist across ordinary updates; structural node
 field writes advance the topology revision, and route rebuilds and enrollment
 changes invalidate the cache. Deferred Inline private ROUTEs also identify
 RoomGroups. New evidence cases are `x3d_ext_cave_placement_cache`,
 `x3d_ext_cave_placement_idle`, `x3d_ext_cave_placement_inline`, and
-`x3d_ext_cave_placement_geolod`; none were run for this proposal. Input diagnostics still refresh on each required update.
+`x3d_ext_cave_placement_geolod`, all passing. Input diagnostics still refresh on each required update.
+Review follow-ups added `x3d_ext_cave_room_rotation_order`,
+`x3d_ext_cave_room_drift`, `x3d_ext_cave_placement_fields`, and
+`x3d_ext_cave_placement_inline_same_tick` (render-graph-only ancestry, Layer
+warnings, a private RoomGroup marker, and re-orthonormalized room frames).

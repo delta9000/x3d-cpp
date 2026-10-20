@@ -624,15 +624,15 @@ TEST_CASE("Session: deferred asset Inline cycles retain source ancestry") {
       // Enable every newly arrived deferred Inline, including in child scenes.
       x3d::runtime::detail::forEachNode(session->scene(), [&](X3DNode *node) {
         if (node->nodeTypeName() == "Inline")
-          session->context().writeField(node, "load", true);
+          CHECK(session->context().writeField(node, "load", true) == FieldWriteResult::Ok);
       });
       session->tick(tick);
     }
     CHECK(loads == (mutual ? 4 : 2)); // independent siblings both load normally
     CHECK(session->fullSnapshot().added.size() == (mutual ? 4 : 2));
-    session->context().writeField(session->scene().resolve("Start").get(), "load", false);
+    REQUIRE(session->context().writeField(session->scene().resolve("Start").get(), "load", false) == FieldWriteResult::Ok);
     session->tick(7);
-    session->context().writeField(session->scene().resolve("Start").get(), "load", true);
+    REQUIRE(session->context().writeField(session->scene().resolve("Start").get(), "load", true) == FieldWriteResult::Ok);
     session->tick(8);
     CHECK(loads == (mutual ? 5 : 3)); // unloading doesn't permanently blacklist a URL
   }

@@ -1056,6 +1056,14 @@
   summary: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   note: Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
   resolution: "Fixed in 1d995c7 — BindTransition side-channel (None/Push/Pop) from BindingSystem to ViewpointBindSystem; Pop branch in onBind preserves the stored offset instead of resetting. 3 tests in viewpoint_bind_test.cpp."
+- id: BIND-UNBOUND-ORIGIN
+  nodes: [Viewpoint]
+  interfaces: [X3DViewpointNode]
+  clause: "23.3.1, 23.4.7"
+  severity: minor
+  status: deferred
+  summary: With no bound Viewpoint the runtime viewer (camera and listener) sits at the world origin with identity orientation, not at the Viewpoint default position (0 0 10) a browser presents for a scene without one.
+  note: "Deliberate (ADR-0073): head tracking composes after the origin base; boundViewpoint() stays null and no node is created. Moving to (0 0 10) changed sound attenuation and GeoLOD fixtures that encode the origin contract, so it is deferred until those are migrated. Hosts that want spec framing bind an explicit Viewpoint or call setViewerWorldPose. Regression of the current behaviour: default_viewer_test.cpp."
 - id: NAV-LOOKAT-SCALE
   nodes: [Viewpoint]
   clause: "23.4.4"

@@ -116,8 +116,13 @@ struct RenderDelta {
 ```
 
 `lightsChanged` is false when the world-resolved `LightDesc` list is unchanged.
-Active light paths, including disabled lights, record ancestor dependencies;
-unrelated animation needs no light collection. Selection refresh recollects
+`LightSystem::collect` records its own dependencies (`LightDependencies`): every
+node on a path to a light, including disabled lights, and to each Switch/LOD it
+selects through, plus the current choice of each LOD the geometry walk does not
+already track. These cover the graph the light walk reads, which includes
+subtrees the geometry walk skips (`visible=FALSE`, `Collision.proxy`, a GeoLOD
+`rootNode` beside loaded children), so a light change there notifies too.
+Unrelated animation needs no light collection. Selection refresh recollects
 lights. Full snapshots initialize the consumer with `lightsChanged=true`;
 structural replacement deltas compare with the previous published list.
 Camera/background/fog bits remain conservative. `snapshotLights()` and
@@ -160,10 +165,18 @@ changes use a bounded active-scene walk retaining path IDs and immutable mesh
 caches. The add/remove lists contain the active-set difference; unaffected
 placements retain their IDs and mesh references. Dependencies are rebuilt for
 active paths, so nested selections and DEF/USE placements remain independent.
-Inactive geometry caches are evicted with fresh content versions for later
-reactivation. Scoped light/fog index changes republish only records whose indices
-change; surviving external packed items receive geometry updates because the
-resolver is called again. See
+Deselected geometry keeps its raw mesh cache as *dormant*, with its own source
+index: a `DirtyField` on the geometry or a direct source node evicts it and
+advances its content version, so later reactivation reads current fields. An
+unedited level comes back with the same `GeomId` and mesh reference, so a viewer
+sitting on an LOD range boundary does not rebuild or re-upload on each crossing.
+HAnimSegment-displaced variants are still evicted on deselection. Scoped
+light/fog index changes republish only records whose indices change; surviving
+external packed items receive geometry updates because the resolver is called
+again. The walk also re-derives every surviving record's material, textures,
+shader and skin binding: a record whose payload differs (for example, a texture
+that finished resolving) is listed in `updatedMaterial` (`updatedSkinPose` for
+the skin binding). See
 [ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
 The node-level `level_changed` event alone cannot represent all USE placements.
 

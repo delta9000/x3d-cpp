@@ -10,6 +10,7 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <type_traits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -227,14 +228,16 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       auto doc = parseDocument(body, enc, documentBaseDir(url),
                                nested.proto, nested.inlineScene);
       if (context.pending) return nullptr;
+      // EXTERNPROTO: only the selected declaration carries the document's
+      // warnings (attached after selection below); its siblings are unused.
+      std::vector<runtime::ProtoWarning> protoSource;
       sourceWarnings(doc, url, [&](const std::string &detail) {
         if (kind == runtime::extract::AssetKind::Inline)
           doc.scene.pendingInlineWarnings.push_back(
               {runtime::InlineWarning::Kind::SourceWarning, "", detail});
         else
-          for (const auto &decl : doc.scene.protoDeclarations)
-            decl->sourceWarnings.push_back(
-                {runtime::ProtoWarning::Kind::SourceWarning, "", detail});
+          protoSource.push_back(
+              {runtime::ProtoWarning::Kind::SourceWarning, "", detail});
       });
       const auto deferred = context.policy.inlineOverride
           ? context.policy.inlineOverride
@@ -242,7 +245,12 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       for (const auto &[node, base] : doc.scene.nodeBaseUrls)
         if (auto owned = node.lock(); owned && owned->nodeTypeName() == "Inline")
           doc.scene.deferredInlineResolvers.try_emplace(node, deferred);
-      if (auto selected = select(std::move(doc), fragment)) return selected;
+      if (auto selected = select(std::move(doc), fragment)) {
+        if constexpr (std::is_same_v<Result, runtime::ProtoDeclaration>)
+          selected->sourceWarnings.insert(selected->sourceWarnings.end(),
+                                          protoSource.begin(), protoSource.end());
+        return selected;
+      }
     } catch (const std::exception &) {
       // Missing/unparseable candidates and backend failures remain lenient.
       if (context.pending) return nullptr;

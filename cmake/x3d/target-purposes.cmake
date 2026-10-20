@@ -130,7 +130,8 @@ _x3d_classify_present_targets(opt-in
 _x3d_classify_present_targets(internal
     x3d_duktape
     x3d_s3_testsupport
-    x3d_doctest_main)
+    x3d_doctest_main
+    x3d_ext_tests)
 
 # Test-suite membership is deliberately independent of primary target purpose:
 # x3d_cli is production software and still belongs in the behavior/sanitizer

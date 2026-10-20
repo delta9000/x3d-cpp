@@ -152,10 +152,20 @@ One ADR per binding decision. Numbered sequentially; the slug is a short topic n
 | covered | `decisions/0060-generated-cube-maps-local-frame.md` | GeneratedCubeMapTexture is a consumer-rendered cube ref (`TextureRef::generatedCube`) with GeneratedCubeMapSystem resetting NEXT_FRAME_ONLY; every cube map is looked up in its geometry's local frame | `runtime/events/GeneratedCubeMapSystem.hpp`; `runtime/extract/tests/generated_cube_map_test.cpp`; `examples/cpu_raster/tests/generated_cube_map_test.cpp` |
 | covered | `decisions/0061-texture-projectors-as-lights.md` | TextureProjector/TextureProjectorParallel surface as world-resolved `ProjectorDesc` values; both hosts light the scene through them as unattenuated lights filtered by the projected texel | `runtime/events/TextureProjectorSystem.hpp`; `runtime/extract/tests/texture_projector_test.cpp`; `examples/cpu_raster/tests/texture_projector_test.cpp` |
 | covered | `decisions/0062-classic-prototype-metadata-comments.md` | Versioned ClassicVRML comments preserve prototype declaration and interface-field appinfo/documentation across SDK conversions | `runtime/parse/VrmlTokenizer.hpp`; `runtime/parse/ClassicVrmlReader.cpp`; `runtime/codecs/VrmlWriter.cpp` |
+| covered | `decisions/0063-resolver-base-urls.md` | Optional base-URL-aware texture/asset resolver callbacks beside the stable aliases | `runtime/extract/tests/resolver_base_test.cpp` |
+| covered | `decisions/0064-pointing-without-navigation.md` | Pointing sensors install without navigation; hosts query the activation resolver before claiming a trigger | `runtime/events/X3DSceneBridge.hpp` (`attachPointingSensors`) |
 | covered | `decisions/0065-absolute-viewer-world-pose.md` | Persistent absolute host camera override and independent authored viewpoint query | `runtime/events/X3DExecutionContext.hpp`; `runtime/scene/tests/viewer_world_pose_test.cpp` |
+| covered | `decisions/0066-sai-presentation-materials-and-deltas.md` | Native SAI presentation carries extracted materials and placement-keyed frame deltas | `adapters/sai_provider/`; `sai_provider_presentation` |
+| covered | `decisions/0067-provider-named-node-discovery.md` | Native DEF bindings read through the portable SAI provider contract | `adapters/sai_provider/` |
+| covered | `decisions/0068-room-frame-sensor-composition.md` | CAVE room anchoring: native room/device sensors drive a standard-Transform RoomGroup PROTO through ROUTEs (opt-in ext) | `runtime/ext/CaveInputSystem.hpp`; `runtime/ext/tests/cave_extensions_test.cpp` (`x3d_ext_cave_*`, `ext` preset) |
 | covered | `decisions/0069-selection-deltas-and-cheap-ticks.md` | Retain LOD/Switch placement IDs, separate local bounds from world motion, compare light notifications | `runtime/extract/tests/scene_extractor_selection_delta_test.cpp`; `tools/runtime_tick_profile.cpp` |
-
 | covered | `decisions/0070-deferred-inline-loader-ancestry.md` | Asset-loaded deferred Inline nodes retain policy and source ancestry across ticks | `runtime/parse/AssetDocumentResolvers.hpp`; `runtime/InlineExpand.hpp`; `runtime/extract/tests/runtime_session_test.cpp` |
+| covered | `decisions/0071-public-node-inspection.md` | Viewer discovery through an identity walk and owned typed field reads | `x3d_sdk_node_inspection` |
+| covered | `decisions/0072-fetched-document-diagnostics.md` | Fetched-source warnings and deferred Inline cycle reasons are preserved | `runtime/parse/AssetDocumentResolvers.hpp` |
+| covered | `decisions/0073-implicit-default-viewer.md` | Unbound viewer stays at the world origin while head tracking takes effect | `runtime/events/X3DExecutionContext.hpp` |
+| covered | `decisions/0074-sai-adopt-session.md` | Adopt a host RuntimeSession into the native SAI provider: one runtime graph, one extraction consumer | `sai_provider_adopt_session` |
+| covered | `decisions/0075-sai-live-route-addition.md` | Live SAI ROUTE addition through the portable FIFO, installed before evaluation | `adapters/sai_provider/` |
+
 
 ## 3. Guides
 
