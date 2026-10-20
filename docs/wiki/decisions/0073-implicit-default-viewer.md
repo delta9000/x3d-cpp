@@ -47,7 +47,9 @@ The maintainer's build exposed sound attenuation and GeoLOD regressions in
 existing scenes without Viewpoints. Those fixtures correctly encode the
 runtime's previous origin-based camera/listener contract. Moving every such
 scene is unnecessary to make head tracking effective, so preserve that contract.
-Do not claim an unbound viewer is a synthetic default X3D Viewpoint.
+Do not claim an unbound viewer is a synthetic default X3D Viewpoint. The
+deviation from the spec default position is recorded as conformance finding
+`BIND-UNBOUND-ORIGIN` (`docs/conformance/findings.yaml`).
 
 Hosts that supply no head tracking keep their existing framing, listener
 position, and LOD selection. Hosts that explicitly supply head tracking now

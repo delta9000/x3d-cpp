@@ -41,10 +41,27 @@
 #include <cmath>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace x3d::runtime::extract {
 using namespace x3d::core;
+
+// What a light collection read, so a caller can tell when to collect again:
+// every node on a path to a light node (enabled or not) or to a Switch/LOD
+// selection point, plus each LOD's current choice (LOD selection follows the
+// viewer, which dirties no node). Covers exactly the graph collect() walks,
+// including subtrees the geometry walk skips (visible=FALSE, Collision.proxy,
+// GeoLOD rootNode beside loaded children).
+struct LightDependencies {
+  std::unordered_set<const X3DNode *> nodes;
+  struct Selection {
+    std::vector<const X3DNode *> path; // root..LOD inclusive
+    const X3DNode *selected = nullptr;
+  };
+  std::vector<Selection> lodSelections;
+  void clear() { nodes.clear(); lodSelections.clear(); }
+};
 
 class LightSystem {
 public:
@@ -74,7 +91,8 @@ public:
 
   std::vector<LightDesc> collect(const Scene &scene,
                                 const geo::GeoProjection &projection,
-                                WalkBudget &budget, const SFVec3f &eyeWorld) {
+                                WalkBudget &budget, const SFVec3f &eyeWorld,
+                                LightDependencies *deps = nullptr) {
     std::vector<LightDesc> out;
     auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot) {
       bool isLight = false;
@@ -88,8 +106,9 @@ public:
     for (const auto &root : scene.rootNodes) {
       if (!root) continue;
       // A root light has no enclosing grouping node => scopeRoot null.
+      std::vector<const X3DNode *> path;
       walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, leaf, budget,
-           eyeWorld, projection);
+           eyeWorld, projection, 0, deps, &path);
     }
     return out;
   }
@@ -147,12 +166,15 @@ private:
 
   // `leaf(node, world, scopeRoot)` collects a light-like node and returns true
   // to stop the descent there.
+  // With `deps`, `path` is the root..parent chain and the walk records what
+  // it read (LightDependencies).
   template <typename Leaf>
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
             Leaf &leaf, WalkBudget &budget,
             const SFVec3f &eyeWorld,
             const geo::GeoProjection &projection,
-            std::size_t depth = 0) {
+            std::size_t depth = 0, LightDependencies *deps = nullptr,
+            std::vector<const X3DNode *> *path = nullptr) {
     if (!n) return;
     // #21: bound total node-visits so a wide acyclic ("doubling DAG") light
     // fan-out collects a bounded number of LightDescs (the shared budget makes
@@ -165,7 +187,15 @@ private:
     Mat4 here = isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
-    if (leaf(n, here, scopeRoot)) return;
+    const bool track = deps && path;
+    auto record = [&] {
+      deps->nodes.insert(path->begin(), path->end());
+      deps->nodes.insert(n);
+    };
+    if (leaf(n, here, scopeRoot)) {
+      if (track) record();
+      return;
+    }
 
     // Descend. The scopeRoot handed to children is THIS node when it is a
     // grouping node, else the inherited one (a non-grouping passthrough keeps
@@ -173,14 +203,27 @@ private:
     const X3DNode *childScope = isGroupingNode(n) ? n : scopeRoot;
     const std::string typeName = n->nodeTypeName();
     if (typeName == "Switch" || typeName == "LOD") {
-      if (auto child = traversedChild(*n, here, eyeWorld))
+      auto child = traversedChild(*n, here, eyeWorld);
+      if (track) {
+        record(); // a selection change can expose or hide a light
+        if (typeName == "LOD") {
+          deps->lodSelections.push_back({*path, child.get()});
+          deps->lodSelections.back().path.push_back(n);
+        }
+        path->push_back(n);
+      }
+      if (child)
         walk(child.get(), here, childScope, leaf, budget, eyeWorld, projection,
-             depth + 1);
+             depth + 1, deps, path);
+      if (track) path->pop_back();
       return;
     }
+    if (track) path->push_back(n);
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-      walk(c.get(), here, childScope, leaf, budget, eyeWorld, projection, depth + 1);
+      walk(c.get(), here, childScope, leaf, budget, eyeWorld, projection, depth + 1,
+           deps, path);
     });
+    if (track) path->pop_back();
   }
 
   // Read every light field reflection-generic by spec name; world-resolve the

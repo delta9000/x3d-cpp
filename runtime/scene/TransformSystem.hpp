@@ -318,7 +318,9 @@ private:
     if (itLive == lifetime_.end()) return;
     auto live = itLive->second.lock();
     if (!live) return; // a dirty ancestor may precede the removing parent's diff
-    if (dirty.flags(n) & DirtyLocalTransform)
+    // DirtyField too: a non-TRS field can still feed the local matrix (a geo
+    // node's geoSystem) when the writer's classification did not say so.
+    if (dirty.flags(n) & (DirtyLocalTransform | DirtyField))
       local_[n] = localMatrix(n, geoProjection());
     Mat4 w = parentWorld * local_.at(n);
     if (parentOf(n) == parentNode) world_[n] = w; // canonical edge only

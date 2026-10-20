@@ -121,6 +121,7 @@ struct RenderItem {
     std::vector<std::uint32_t> sourceCoordIndex;
     std::vector<std::uint32_t> sourceNormalIndex;
     std::uint64_t poseVersion = 0;
+    bool operator==(const SkinDesc &) const = default;
   };
   std::optional<SkinDesc> skin;
 
@@ -227,6 +228,8 @@ private:
       rawMeshCache_.clear();
       segmentMeshCache_.clear();
       bakedMeshCache_.clear();
+      dormantGeometry_.clear();
+      dormantOwners_.clear();
     }
     if (!retainPaths) textureMemo_.clear();
     shaderMemo_.clear();
@@ -240,7 +243,7 @@ private:
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
     lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                         ctx_.cameraWorldPosition());
+                         ctx_.cameraWorldPosition(), &lightDeps_);
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
@@ -263,6 +266,7 @@ private:
     }
     liveIds_.clear();
     liveIds_.insert(delta.added.begin(), delta.added.end());
+    dropCoveredLightSelections();
     if (!retainPaths) publishedLights_ = lights_;
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
@@ -397,6 +401,20 @@ public:
     // Shared across every reaccumulateWorld() in this delta() so a transform that
     // sits on the path of many dirty items is recomposed once, not once per item.
 
+    // A dormant (deselected, still cached) geometry whose source changed must
+    // not be reselected with its old bytes or GeomId.
+    if (!dormantGeometry_.empty())
+      for (const X3DNode *n : dirty.changedNodes()) {
+        if (!(dirty.flags(n) & DirtyField)) continue;
+        auto owners = dormantOwners_.find(n);
+        if (owners == dormantOwners_.end()) continue;
+        for (const X3DNode *geom : owners->second)
+          if (dormantGeometry_.erase(geom)) {
+            evictMeshCache(geom);
+            advanceGeometryVersion(geom);
+          }
+      }
+
     // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
     // and several sources of one geometry may change in the same tick. Resolve
     // the complete owner set first: each owner's cache is evicted exactly once.
@@ -478,11 +496,19 @@ public:
 
     // Compare the complete rendered light state, including disabled-to-enabled
     // transitions and world-space fields. Unrelated animation needs no light walk.
+    // Dependencies come from the light collection itself, so lights in subtrees
+    // the geometry walk skips (visible=FALSE, Collision.proxy, GeoLOD rootNode)
+    // and viewer-driven LOD choices there are covered too.
     bool lightDirty = selectionChanged;
     for (const X3DNode *n : dirty.changedNodes())
-      if (lightDeps_.count(n)) lightDirty = true;
+      if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
+    for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
+      const auto &sel = lightDeps_.lodSelections[i];
+      lightDirty = traversedChild(*sel.path.back(), worldAlongPath(sel.path, localXf),
+                                  ctx_.cameraWorldPosition()).get() != sel.selected;
+    }
     if (lightDirty) {
-      auto current = selectionChanged ? lights_ : lights();
+      auto current = selectionChanged ? lights_ : collectTrackedLights();
       delta.lightsChanged = publishedLights_ != current;
       publishedLights_ = std::move(current);
     }
@@ -661,10 +687,7 @@ public:
       const bool textured = b->nodeTypeName() == "TextureBackground";
       TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
       const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
-      std::string backgroundBase = baseUrl_;
-      if (!textured)
-        for (const auto &[weak, base] : scene_.nodeBaseUrls)
-          if (weak.lock().get() == b) { backgroundBase = base; break; }
+      const std::string backgroundBase = textured ? baseUrl_ : baseUrlOf(b);
       for (int i = 0; i < 6; ++i) {
         if (textured) {
           *faces[i] = matsys::refOf(geombounds::getNode(*b, (std::string(names[i]) + "Texture").c_str()),
@@ -761,20 +784,42 @@ private:
       std::vector<std::size_t> lights;
       ClipPlaneList clipPlanes;
       GeomId geometry;
+      // The walk re-emits every live record's appearance-derived payload. A
+      // texture can finish resolving, or a shader or skin binding be re-selected,
+      // without any dirty dependency; compare to publish those as updates.
+      MaterialDesc material;
+      std::optional<ShaderProgramDesc> shaderProgram;
+      std::optional<RenderItem::SkinDesc> skin;
     };
     std::unordered_map<RenderItemId, ItemScopes> before;
     for (auto id : oldLive) {
-      const auto &item = items_[id];
-      before.emplace(id, ItemScopes{item.localFog, item.lights, item.clipPlanes, item.geometry});
+      auto &item = items_[id];
+      // Moved, not copied: a surviving record is overwritten by the walk below,
+      // and a record leaving the selection gets its payload moved back.
+      before.emplace(id, ItemScopes{item.localFog, item.lights, item.clipPlanes, item.geometry,
+                                    std::move(item.material), std::move(item.shaderProgram),
+                                    std::move(item.skin)});
     }
     auto walked = snapshot(true);
     std::unordered_set<RenderItemId> next(walked.added.begin(), walked.added.end());
     delta.added.clear(); delta.removed.clear();
     for (RenderItemId id : oldLive)
-      if (!next.count(id)) delta.removed.push_back(id);
+      if (!next.count(id)) {
+        delta.removed.push_back(id);
+        auto &old = before.at(id); auto &rec = items_[id];
+        rec.material = std::move(old.material);
+        rec.shaderProgram = std::move(old.shaderProgram);
+        rec.skin = std::move(old.skin);
+      }
+    auto publish = [](std::vector<RenderItemId> &ids, RenderItemId id) {
+      if (std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
+    };
     for (RenderItemId id : next) {
       if (!oldLive.count(id)) { delta.added.push_back(id); continue; }
       const auto &old = before.at(id); const auto &now = items_[id];
+      if (!(old.material == now.material) || old.shaderProgram != now.shaderProgram)
+        publish(delta.updatedMaterial, id);
+      if (old.skin != now.skin) publish(delta.updatedSkinPose, id);
       // These descriptors have no narrow update channel. Only records whose
       // descriptors changed need remove-before-add publication.
       bool stateChanged = old.localFog != now.localFog || old.lights != now.lights ||
@@ -786,15 +831,25 @@ private:
       if (stateChanged) { delta.removed.push_back(id); delta.added.push_back(id); }
       // External packed payloads are re-resolved by the walk, with no immutable
       // mesh cache to prove content equality.
-      if ((now.geometry_ext.is_packed() || old.geometry != now.geometry) &&
-          std::find(delta.updatedGeometry.begin(), delta.updatedGeometry.end(), id) == delta.updatedGeometry.end())
-        delta.updatedGeometry.push_back(id);
+      if (now.geometry_ext.is_packed() || old.geometry != now.geometry)
+        publish(delta.updatedGeometry, id);
     }
-    // No cached payload may outlive its active source dependencies. A field in
-    // an inactive level can change without reaching the active reverse index.
+    // No cached payload may outlive its source dependencies. A field in an
+    // inactive level does not reach the active reverse index, so a deselected
+    // geometry's raw mesh stays cached only as DORMANT, with its own source
+    // index (dormantOwners_): a DirtyField on any source evicts it in delta()
+    // before it can be reselected. A viewer on an LOD range boundary then gets
+    // the same mesh and GeomId back on every crossing instead of a rebuild.
+    dormantGeometry_.clear();
+    dormantOwners_.clear();
     std::unordered_set<const X3DNode *> inactive;
     for (const auto &[geom, entry] : rawMeshCache_)
-      if (!geomOwners_.count(geom)) inactive.insert(geom);
+      if (!geomOwners_.count(geom)) {
+        dormantGeometry_.insert(geom);
+        forEachGeometrySource(geom, PathKey{}, [&](const X3DNode *source) {
+          dormantOwners_[source].insert(geom);
+        });
+      }
     // A geometry can remain active under one Segment while another variant
     // loses its displacer dependencies. Evict the owner's variants together.
     std::set<std::pair<const X3DNode *, const X3DNode *>> activeSegments;
@@ -807,13 +862,50 @@ private:
       for (const auto &placement : placements)
         if (const auto *segment = displacingSegment(geom, placement.path))
           activeSegments.emplace(geom, segment);
+    // Displaced (HAnimSegment) variants depend on path-scoped displacers that
+    // the dormant index does not cover: evict them, and their owner, as before.
     for (const auto &[key, entry] : segmentMeshCache_)
       if (!activeSegments.count(key)) inactive.insert(key.first);
     for (const auto *geom : inactive) {
       evictMeshCache(geom);
       advanceGeometryVersion(geom);
+      dormantGeometry_.erase(geom);
     }
     for (auto *ids : {&delta.added, &delta.removed}) std::sort(ids->begin(), ids->end());
+  }
+
+  // The base URL recorded for `n` (Scene::nodeBaseUrls), else the configured
+  // base. nodeBaseUrls is keyed by ownership, so a raw pointer needs a scan;
+  // memoize the last answer until the scene topology changes (which is how
+  // nodes and their base entries come and go) so background() stays O(1).
+  const std::string &baseUrlOf(const X3DNode *n) const {
+    const auto revision = ctx_.sceneTopologyRevision();
+    if (baseLookup_.node != n || baseLookup_.revision != revision) {
+      baseLookup_ = {n, revision, baseUrl_};
+      for (const auto &[weak, base] : scene_.nodeBaseUrls)
+        if (weak.lock().get() == n) { baseLookup_.base = base; break; }
+    }
+    return baseLookup_.base;
+  }
+
+  // Re-collect the rendered light list and the dependencies that decide when
+  // to collect it again; snapshotLights() indices are left as they are.
+  std::vector<LightDesc> collectTrackedLights() {
+    LightSystem ls;
+    WalkBudget budget(kMaxGraphWalkVisits);
+    lightDeps_.clear();
+    auto out = ls.collect(scene_, ctx_.geoProjection(), budget,
+                          ctx_.cameraWorldPosition(), &lightDeps_);
+    dropCoveredLightSelections();
+    return out;
+  }
+
+  // An LOD the geometry walk also selects is compared by selectionPlacements_.
+  void dropCoveredLightSelections() {
+    auto &sels = lightDeps_.lodSelections;
+    sels.erase(std::remove_if(sels.begin(), sels.end(), [&](const auto &sel) {
+      return selectionPlacements_.count(sel.path) > 0;
+    }), sels.end());
   }
 
   RenderDelta replacementSnapshot() {
@@ -1251,9 +1343,6 @@ private:
                                            ctx_.cameraWorldUp(), axis);
     }
     path.push_back(n);
-    const std::string lightType = n->nodeTypeName();
-    if (lightType == "DirectionalLight" || lightType == "PointLight" || lightType == "SpotLight")
-      lightDeps_.insert(path.begin(), path.end());
 
     // Cache the entry matrix (the world frame ABOVE this node) for O(subtree)
     // incremental re-walks. Keyed by node; the last-writer wins for a USE'd
@@ -1930,7 +2019,13 @@ private:
   DepMap transformDeps_;
   std::unordered_set<RenderItemId> billboardItems_;
   std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> selectionPlacements_;
-  std::unordered_set<const X3DNode *> lightDeps_;
+  LightDependencies lightDeps_;
+  struct BaseLookup {
+    const X3DNode *node = nullptr;
+    std::uint64_t revision = 0;
+    std::string base;
+  };
+  mutable BaseLookup baseLookup_;
   std::vector<LightDesc> publishedLights_;
   DepMap geomDeps_;
   DepMap materialDeps_;
@@ -1957,6 +2052,11 @@ private:
   const X3DNode *activeSkinHumanoid_ = nullptr;
   // Content source -> ALL geometry owners (not a last-writer-wins owner).
   std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
+  // Deselected geometry whose raw mesh stays cached, and its source index
+  // (source -> dormant geometry). Rebuilt on each selection refresh; cleared
+  // by a full snapshot, which also clears the mesh caches.
+  std::unordered_set<const X3DNode *> dormantGeometry_;
+  std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> dormantOwners_;
   std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
   std::unordered_map<const X3DNode *,
                      std::unordered_map<const MeshData *, std::uint32_t>> meshContentVersions_;

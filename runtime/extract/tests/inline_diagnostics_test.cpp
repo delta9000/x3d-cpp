@@ -125,3 +125,28 @@ TEST_CASE("Inline diagnostics: every RuntimeSession::tick overload drains them")
     CHECK(contains(session->document().inlineWarnings, "missing.x3d", ""));
   }
 }
+
+TEST_CASE("EXTERNPROTO diagnostics: a fetched document's warnings are reported once") {
+  const auto loaders = codec::assetResolversFrom(memory({
+      {"memory://cave/proto.x3d", document(
+          "<UnknownExtern/><ProtoDeclare name='P'><ProtoBody>"
+          "<Shape><Box/></Shape></ProtoBody></ProtoDeclare>"
+          "<ProtoDeclare name='Q'><ProtoBody><Group/></ProtoBody></ProtoDeclare>")}}));
+  auto doc = codec::parseDocument(document(
+      "<ExternProtoDeclare name='P' url='&quot;proto.x3d#P&quot;'/>"
+      "<ProtoInstance name='P'/><ProtoInstance name='P'/><ProtoInstance name='P'/>"),
+      codec::Encoding::XML, "memory://cave", loaders.proto, loaders.inlineScene);
+  const auto count = std::count_if(doc.protoWarnings.begin(), doc.protoWarnings.end(),
+      [](const ProtoWarning &w) {
+        return w.kind == ProtoWarning::Kind::SourceWarning &&
+               w.detail.find("UnknownExtern") != std::string::npos;
+      });
+  CHECK(count == 1);
+  CHECK(contains(doc.protoWarnings, "memory://cave/proto.x3d", "UnknownExtern"));
+
+  // The selected declaration carries the document's warning exactly once.
+  const std::vector<std::string> urls{"proto.x3d#P"};
+  auto p = loaders.proto(urls, "memory://cave");
+  REQUIRE(p);
+  CHECK(p->sourceWarnings.size() == 1);
+}

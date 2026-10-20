@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -213,10 +214,13 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
     //    seeding new entries and diffing url/load for NSN-7 resets.
     std::vector<X3DNode *> watched;
     std::unordered_set<X3DNode *> present;
+    // Owning handles for Scene::nodeBaseUrls lookups (keyed by ownership).
+    std::unordered_map<X3DNode *, std::shared_ptr<X3DNode>> owners;
     for (const auto &childAny : ls->getChildren()) {
       X3DNode *c = childAny.get();
       if (!c || present.count(c))
         continue;
+      if (resolverWithBase_ && scene_) owners.emplace(c, childAny);
 
       const bool pre = scene_ && scene_->expandedInlines.count(c) > 0;
       ChildLoadPlan plan;
@@ -310,9 +314,14 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       cs.status = ChildStatus::Loading;
       const extract::AssetKind kind = detail_loadsensor::kindForNode(c);
       std::string base = baseUrl_;
-      if (resolverWithBase_ && scene_)
-        for (const auto &[weak, origin] : scene_->nodeBaseUrls)
-          if (weak.lock().get() == c) { base = origin; break; }
+      if (resolverWithBase_ && scene_) {
+        // O(log n) ownership lookup, not a scan of every recorded node.
+        auto owner = owners.find(c);
+        if (owner != owners.end()) {
+          auto origin = scene_->nodeBaseUrls.find(std::weak_ptr<X3DNode>(owner->second));
+          if (origin != scene_->nodeBaseUrls.end()) base = origin->second;
+        }
+      }
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];

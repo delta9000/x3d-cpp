@@ -45,6 +45,7 @@ struct TextureTransform2DParams {
         1.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f,
         0.0f, 0.0f, 1.0f};
+    bool operator==(const TextureTransform2DParams &) const = default;
 };
 
 // ---------------------------------------------------------------------------
@@ -249,6 +250,7 @@ struct ExtendedSamplerParams {
     MinFilter       minificationFilter   = MinFilter::Default;
     bool            generateMipmaps      = false;
     float           anisotropicDegree    = 1.0f; // [1, ∞); 1 = isotropic
+    bool operator==(const ExtendedSamplerParams &) const = default;
 };
 
 // Derive BoundaryMode from the legacy repeatS/repeatT bool (§18.2.3).
@@ -281,6 +283,7 @@ enum class TexCoordGenMode {
 struct TexCoordGenDesc {
     TexCoordGenMode    mode      = TexCoordGenMode::Sphere;
     std::vector<float> parameter; // mode-dependent; see §18.4.8 Table 18.6
+    bool operator==(const TexCoordGenDesc &) const = default;
 };
 
 } // namespace x3d::runtime::extract
