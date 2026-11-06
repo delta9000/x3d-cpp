@@ -398,7 +398,7 @@ XmlWriter::writeProtoInstanceElement(const runtime::ProtoInstance &src,
           fe->children.push_back(std::move(ce));
       }
     } else if (fv.value.has_value()) {
-      if (const runtime::ProtoField *pf = interfaceField(src, fv.name))
+      if (const runtime::ProtoField *pf = src.interfaceField(fv.name))
         fe->setAttr("value", formatValue(pf->type, fv.value));
     }
   }
@@ -528,23 +528,6 @@ void XmlWriter::attachIsBlocks(xml::Element &nodeEl,
     conn->setAttr("nodeField", c.nodeField);
     conn->setAttr("protoField", c.protoField);
   }
-}
-
-const runtime::ProtoField *
-XmlWriter::interfaceField(const runtime::ProtoInstance &src,
-                          const std::string &name) {
-  auto scan = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const runtime::ProtoField &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (src.declaration)
-    return scan(src.declaration->interface);
-  if (src.externDeclaration)
-    return scan(src.externDeclaration->interface);
-  return nullptr;
 }
 
 void XmlWriter::indent(std::ostringstream &os, int depth) {

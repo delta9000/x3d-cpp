@@ -42,11 +42,14 @@ runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   std::string_view src(text);
   // VrmlTokenizer skips comment lines, including the header, so we read the
   // version off the raw first line here and let the tokenizer skip it.
-  parseHeaderLine(src, doc);
+  const auto header = firstLine(src);
+  const auto parts = splitOnSpace(header);
+  if (!header.empty() && header.front() == '#')
+    parseHeaderLine(parts, doc);
 
   // Dialect hook: validate / react to the header line (VRML97 rejects V1.0,
   // sets a default profile, etc.). Base accepts everything best-effort.
-  onHeaderLine(src, doc);
+  onHeaderLine(parts, doc);
 
   VrmlTokenizer tok(src, /*firstLineIsHeader=*/true);
   parseHeaderStatements(tok, doc);
@@ -58,16 +61,12 @@ runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   return doc;
 }
 
-std::string ClassicVrmlReader::mapNodeName(const std::string &token) const {
-  return token;
-}
-
 std::string ClassicVrmlReader::mapFieldName(const std::string & /*nodeType*/,
                                             const std::string &token) const {
   return token;
 }
 
-void ClassicVrmlReader::onHeaderLine(std::string_view /*src*/,
+void ClassicVrmlReader::onHeaderLine(const std::vector<std::string> & /*parts*/,
                                      runtime::X3DDocument & /*doc*/) {}
 
 void ClassicVrmlReader::warn(const std::string & /*message*/) {}
@@ -84,21 +83,7 @@ std::string_view ClassicVrmlReader::firstLine(std::string_view src) {
   return line;
 }
 
-void ClassicVrmlReader::parseHeaderLine(std::string_view src,
-                                        runtime::X3DDocument &doc) {
-  // Skip a leading UTF-8 BOM.
-  if (src.size() >= 3 && static_cast<unsigned char>(src[0]) == 0xEF &&
-      static_cast<unsigned char>(src[1]) == 0xBB &&
-      static_cast<unsigned char>(src[2]) == 0xBF)
-    src.remove_prefix(3);
-  // Isolate the first physical line.
-  std::size_t nl = src.find('\n');
-  std::string_view line = src.substr(0, nl);
-  if (!line.empty() && line.back() == '\r')
-    line.remove_suffix(1);
-  if (line.empty() || line.front() != '#')
-    return; // no header; leave doc.version at its default
-  // Tokenize the header line on whitespace: `#X3D`, `V4.0`, `utf8`.
+std::vector<std::string> ClassicVrmlReader::splitOnSpace(std::string_view line) {
   std::vector<std::string> parts;
   std::string cur;
   for (char c : line) {
@@ -113,6 +98,11 @@ void ClassicVrmlReader::parseHeaderLine(std::string_view src,
   }
   if (!cur.empty())
     parts.push_back(cur);
+  return parts;
+}
+
+void ClassicVrmlReader::parseHeaderLine(const std::vector<std::string> &parts,
+                                        runtime::X3DDocument &doc) {
   // A `#VRML`/`#VRML97` payload is VRML97 — floor to the X3D 3.0 baseline
   // (). X3D has no V2.0/V1.0, so never let such a token reach a writer.
   if (!parts.empty() && (parts[0] == "#VRML" || parts[0] == "#VRML97")) {
@@ -168,8 +158,8 @@ void ClassicVrmlReader::parseHeaderStatements(VrmlTokenizer &tok,
     } else if (t.isWord("META")) {
       tok.next();
       runtime::Meta m;
-      m.name = expectString(tok, "META name");
-      m.content = expectString(tok, "META content");
+      m.name = expectWord(tok, "META name");
+      m.content = expectWord(tok, "META content");
       doc.head.meta.push_back(std::move(m));
     } else {
       return; // first non-header token: the scene body begins
@@ -279,10 +269,6 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
     return nullptr;
   }
 
-  // Apply the dialect node rename (identity for ClassicVRML) before the
-  // factory lookup.
-  std::string typeName = mapNodeName(rawTypeName);
-
   // Stray prose recovery: a known type name immediately followed by another
   // word (never '{') is a word that merely happens to collide with a node type
   // (e.g. leaked from a misused comment block such as
@@ -304,7 +290,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
     return nullptr;
   }
 
-  auto node = build::beginNode(typeName);
+  auto node = build::beginNode(rawTypeName);
   if (!node) {
     // Unknown node type (a forward/undeclared EXTERNPROTO name used as a
     // node, or a genuinely unknown type). If a `{` body follows, consume the
@@ -334,7 +320,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   }
 
   expectPunct(tok, '{', "node body open");
-  parseNodeBody(tok, scene, *node, typeName, currentProtoBody, node);
+  parseNodeBody(tok, scene, *node, rawTypeName, currentProtoBody, node);
   // Normally the body is closed by its own '}'. If parseNodeBody returned on a
   // stray container-closer (a ']' belonging to an enclosing array, or an
   // over-count '}'), the body had a missing/swallowed '}': consume the '}' if
@@ -345,7 +331,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   if (tok.peek().isPunct('}')) {
     tok.next();
   } else if (tok.peek().isPunct(']')) {
-    warn("missing '}' closing " + typeName + " node body at line " +
+    warn("missing '}' closing " + rawTypeName + " node body at line " +
          std::to_string(tok.peek().line) +
          " — recovered (enclosing container will close)");
   } else {
@@ -353,7 +339,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   }
   // Preserve inline Script URL source in sourceCode for runtime execution.
 
-  if (typeName == "Script")
+  if (rawTypeName == "Script")
     mirrorScriptSource(*node);
   return node;
 }
@@ -375,22 +361,10 @@ void ClassicVrmlReader::mirrorScriptSource(X3DNode &node) {
   const auto *url = std::any_cast<MFString>(&urlAny);
   if (!url)
     return;
-  std::string source = decodeInlineScriptSource(*url);
+  std::string source = build::decodeInlineScriptSource(*url);
   if (source.empty())
     return;
   srcF->set(node, std::any(SFString(source)));
-}
-
-std::string ClassicVrmlReader::decodeInlineScriptSource(const MFString &url) {
-  static const char *kSchemes[] = {"ecmascript:", "javascript:", "vrmlscript:"};
-  for (const std::string &entry : url) {
-    for (const char *scheme : kSchemes) {
-      const std::size_t n = std::char_traits<char>::length(scheme);
-      if (entry.size() >= n && entry.compare(0, n, scheme) == 0)
-        return entry.substr(n);
-    }
-  }
-  return {};
 }
 
 void ClassicVrmlReader::parseNodeBody(
@@ -733,7 +707,7 @@ ClassicVrmlReader::parseExternProto(VrmlTokenizer &tok,
       decl->url.push_back(tok.next().text);
     expectPunct(tok, ']', "EXTERNPROTO url list close");
   } else {
-    decl->url.push_back(expectString(tok, "EXTERNPROTO url"));
+    decl->url.push_back(expectWord(tok, "EXTERNPROTO url"));
   }
   scene.declareExternProto(decl);
   return decl;
@@ -748,9 +722,9 @@ ClassicVrmlReader::parseInterface(
     runtime::ProtoField field;
     applyPrototypeMetadata(tok.peek(), field);
     std::string accessTok = expectWord(tok, "interface accessType");
-    field.access = accessTypeFromString(accessTok);
+    field.access = accessTypeFromName(accessTok);
     std::string typeTok = expectWord(tok, "interface field type");
-    field.type = fieldTypeFromString(typeTok);
+    field.type = fieldTypeFromName(typeTok);
     field.name = expectWord(tok, "interface field name");
     // A default value is present only for non-event fields
     // (field/exposedField i.e. initializeOnly/inputOutput). For node-typed
@@ -820,7 +794,7 @@ void ClassicVrmlReader::parseProtoInstance(VrmlTokenizer &tok,
     // Determine the value shape from the declaration's interface if known;
     // otherwise gather conservatively (a node, a bracketed run, or one
     // token).
-    const runtime::ProtoField *decl = findProtoField(inst, fname);
+    const runtime::ProtoField *decl = inst.interfaceField(fname);
     if (decl && (decl->type == X3DFieldType::SFNode ||
                  decl->type == X3DFieldType::MFNode)) {
       captureInstanceNodeValue(tok, scene, fv, decl->type);
@@ -862,9 +836,9 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
     const std::shared_ptr<X3DNode> &nodeShared,
     runtime::ProtoBody *currentProtoBody) {
   std::string accessTok = expectWord(tok, "interface accessType");
-  AccessType access = accessTypeFromString(accessTok);
+  AccessType access = accessTypeFromName(accessTok);
   std::string typeTok = expectWord(tok, "interface field type");
-  X3DFieldType type = fieldTypeFromString(typeTok);
+  X3DFieldType type = fieldTypeFromName(typeTok);
   std::string fieldName = expectWord(tok, "interface field name");
 
   const auto nodeType = nodeShared->nodeTypeName();
@@ -1220,16 +1194,6 @@ std::string ClassicVrmlReader::expectWord(VrmlTokenizer &tok,
   return tok.next().text;
 }
 
-std::string ClassicVrmlReader::expectString(VrmlTokenizer &tok,
-                                            const std::string &what) {
-  const VrmlToken &t = tok.peek();
-  if (t.atEnd())
-    throw error(t, "expected " + what + ", got end of input");
-  if (t.kind == VrmlToken::Kind::Punct)
-    throw error(t, "expected " + what + ", got '" + t.text + "'");
-  return tok.next().text;
-}
-
 void ClassicVrmlReader::expectPunct(VrmlTokenizer &tok, char c,
                                     const std::string &what) {
   const VrmlToken &t = tok.peek();
@@ -1254,44 +1218,12 @@ bool ClassicVrmlReader::isAccessTypeWord(const std::string &w) {
          w == "field" || w == "exposedField";
 }
 
-AccessType ClassicVrmlReader::accessTypeFromString(const std::string &w) {
-  if (w == "inputOnly" || w == "eventIn")
-    return AccessType::InputOnly;
-  if (w == "outputOnly" || w == "eventOut")
-    return AccessType::OutputOnly;
-  if (w == "initializeOnly" || w == "field")
-    return AccessType::InitializeOnly;
-  // inputOutput / exposedField (and any default)
-  return AccessType::InputOutput;
-}
-
-X3DFieldType ClassicVrmlReader::fieldTypeFromString(const std::string &w) {
-  return codec::fieldTypeFromName(w); // unknown: harmless SFString fallback
-}
-
 std::shared_ptr<runtime::ExternProtoDeclaration>
 ClassicVrmlReader::findExternProto(const runtime::Scene &scene,
                                    const std::string &name) {
   for (const auto &e : scene.externProtoDeclarations)
     if (e && e->name == name)
       return e;
-  return nullptr;
-}
-
-const runtime::ProtoField *
-ClassicVrmlReader::findProtoField(const runtime::ProtoInstance &inst,
-                                  const std::string &name) {
-  auto search = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const auto &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (inst.declaration)
-    return search(inst.declaration->interface);
-  if (inst.externDeclaration)
-    return search(inst.externDeclaration->interface);
   return nullptr;
 }
 

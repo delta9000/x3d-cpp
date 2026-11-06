@@ -90,6 +90,7 @@ _x3d_classify_present_targets(opt-in
     x3d_quickjs_backend_test
     x3d_curl
     x3d_assetresolver_backend_a_test
+    x3d_http_address_guard_test
     x3d_s3
     x3d_assetresolver_backend_b_test
     x3d_assetresolver_swap

@@ -5,7 +5,7 @@
 //
 // Four layers of coverage:
 //   1. Dialect-table tripwire: every X3D target name the Vrml97Dialect maps to
-//      (mapNodeName / mapFieldName) must resolve to a real factory type /
+//      (mapFieldName) must resolve to a real factory type /
 //      FieldInfo. This fails CI if the generated bindings drift away from a
 //      name the hand-authored table assumes (per the reader spec).
 //   2. Corpus fixtures (the five text .wrl files named in the reader spec /
@@ -117,14 +117,11 @@ void collectTypes(const std::shared_ptr<X3DNode> &n,
 }
 // (1) Dialect-table tripwire: every mapped X3D target must really exist.
 void testDialectTableResolves() {
-  // Node mappings: VRML97 keeps every node name in X3D 4.0, so the table is the
-  // identity. Spot-check that a representative set still resolves through the
-  // factory (so a binding drop is caught here, not at parse time).
+  // VRML97 node names resolve directly through the X3D factory.
   for (const char *t :
        {"Shape", "Transform", "Group", "Switch", "LOD", "WorldInfo",
         "OrientationInterpolator", "TimeSensor", "Script", "Cylinder"}) {
-    check(static_cast<bool>(
-              X3DNodeFactory::create(codec::vrml97::mapNodeName(t))),
+    check(static_cast<bool>(X3DNodeFactory::create(t)),
           std::string("dialect: node '") + t + "' resolves via factory");
   }
 
@@ -149,8 +146,6 @@ void testDialectTableResolves() {
   check(codec::vrml97::mapFieldName("Transform", "translation") ==
             "translation",
         "dialect: unmapped field passes through unchanged");
-  check(codec::vrml97::mapNodeName("Cylinder") == "Cylinder",
-        "dialect: unmapped node passes through unchanged");
 }
 // (2) Corpus fixture: NewShape.wrl — minimal PROTO + instance + Switch/Group.
 void testNewShapeFixture() {

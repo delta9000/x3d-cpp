@@ -16,7 +16,7 @@ Encoding JsonReader::encoding() const { return Encoding::JSON; }
 
 runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   readerWarnings_.clear();
-  auto root = json::parse(text);
+  auto root = json::parseComplete(text);
   runtime::X3DDocument doc;
   // An unversioned document reads as 3.0. Set here, not
   // via the X3DDocument member default (that is the 4.0 authoring default).
@@ -106,7 +106,7 @@ void JsonReader::readScene(const json::Value &scene, runtime::Scene &out) {
         out.addRootNode(node);
     }
   }
-  readRoutes(scene.member("ROUTE"), out);
+  readRoutesInto(scene.member("ROUTE"), out.routes);
   readImports(scene.member("IMPORT"), out);
   readExports(scene.member("EXPORT"), out);
 }
@@ -128,10 +128,6 @@ void JsonReader::readRoutesInto(const json::Value *v,
   } else {
     one(*v);
   }
-}
-
-void JsonReader::readRoutes(const json::Value *v, runtime::Scene &out) {
-  readRoutesInto(v, out.routes);
 }
 
 void JsonReader::readImports(const json::Value *v, runtime::Scene &out) {
@@ -356,9 +352,9 @@ void JsonReader::readJsonInterfaceFields(const json::Value &iface,
     pf.name = strMember(f, "@name");
     pf.appinfo = strMember(f, "@appinfo");
     pf.documentation = strMember(f, "@documentation");
-    pf.type = mapProtoFieldType(strMember(f, "@type"));
+    pf.type = fieldTypeFromName(strMember(f, "@type"));
     pf.access =
-        mapProtoAccessType(strMemberOr(f, "@accessType", "inputOutput"));
+        accessTypeFromName(strMemberOr(f, "@accessType", "inputOutput"));
     if (pf.type == X3DFieldType::SFNode || pf.type == X3DFieldType::MFNode) {
       if (const json::Value *kids = f.member("-children");
           kids && kids->isArray()) {
@@ -553,24 +549,12 @@ void JsonReader::captureAuthorInterface(const json::Value &body,
   // (the url field is already set on the node from applyJsonField).
   if (source.empty()) {
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
-      source = decodeInlineUrl(script->getUrl());
+      source = build::decodeInlineScriptSource(script->getUrl());
   }
   if (!source.empty()) {
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
       script->setSourceCode(source);
   }
-}
-
-std::string JsonReader::decodeInlineUrl(const MFString &url) {
-  static const char *kSchemes[] = {"ecmascript:", "javascript:", "vrmlscript:"};
-  for (const std::string &entry : url) {
-    for (const char *scheme : kSchemes) {
-      const std::size_t n = std::char_traits<char>::length(scheme);
-      if (entry.size() >= n && entry.compare(0, n, scheme) == 0)
-        return entry.substr(n);
-    }
-  }
-  return {};
 }
 
 void JsonReader::readJsonProtoInstance(const json::Value &obj,
@@ -688,20 +672,6 @@ std::shared_ptr<X3DNode> JsonReader::readJsonInstanceTemplate(
   return node;
 }
 
-X3DFieldType JsonReader::mapProtoFieldType(const std::string &w) {
-  return codec::fieldTypeFromName(w); // unknown: harmless SFString fallback
-}
-
-AccessType JsonReader::mapProtoAccessType(const std::string &w) {
-  if (w == "inputOnly" || w == "eventIn")
-    return AccessType::InputOnly;
-  if (w == "outputOnly" || w == "eventOut")
-    return AccessType::OutputOnly;
-  if (w == "initializeOnly" || w == "field")
-    return AccessType::InitializeOnly;
-  return AccessType::InputOutput; // inputOutput / exposedField / default
-}
-
 bool JsonReader::applyJsonField(X3DNode &node, const std::string &x3dName,
                                 const json::Value &val) {
   std::string_view canonicalName =
@@ -727,7 +697,7 @@ std::string JsonReader::jsonToWire(const json::Value &val, X3DFieldType type) {
     auto emit = [&](const json::Value &e) {
       if (!out.empty())
         out += ' ';
-      out += requoteString(e.isString() ? e.str : scalarToken(e));
+      out += build::requote(e.isString() ? e.str : scalarToken(e));
     };
     if (val.isArray()) {
       for (const auto &e : val.array)
@@ -769,17 +739,6 @@ std::string JsonReader::scalarToken(const json::Value &v) {
   default:
     return "";
   }
-}
-
-std::string JsonReader::requoteString(const std::string &s) {
-  std::string out = "\"";
-  for (char c : s) {
-    if (c == '"' || c == '\\')
-      out += '\\';
-    out += c;
-  }
-  out += '"';
-  return out;
 }
 
 std::string JsonReader::strMemberOr(const json::Value &obj,

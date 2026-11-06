@@ -101,6 +101,10 @@ The `path` field is the root-to-geometry `PathKey` that the resolution walk uses
 
 `ctx.worldOf(node)` (delegating to `PickSystem::worldOf`) retrieves the accumulated world matrix for any node; the system uses it to transform hit point and normal into the sensor's local frame for `hitPoint_changed` / `hitNormal_changed` emission.
 
+The private narrow phase returns an optional hit with distance, normal, and
+texture coordinates. A miss returns an empty optional. The AABB fallback reuses
+the geometry bound for both intersection and the proxy normal.
+
 ### Lazy pick index
 
 `pickClosest` no longer walks the whole scene graph per pick. `PickSystem` owns an index of geometry-bearing placements — **one per PATH**, so a DEF/USE node keeps a distinct entry and world AABB for each placement — and tests them with the same `rayAabb` broad phase and existing `narrowPhase`. The index is built lazily on the first pick and thereafter:

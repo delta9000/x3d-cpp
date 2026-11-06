@@ -49,28 +49,6 @@ inline std::optional<float> raySphere(const Ray &ray, float radius) {
   return std::nullopt;
 }
 
-inline std::optional<float> rayTriangle(const Ray &ray, const SFVec3f &v0,
-                                        const SFVec3f &v1, const SFVec3f &v2) {
-  auto sub = [](const SFVec3f &a, const SFVec3f &b) { return SFVec3f{a.x-b.x, a.y-b.y, a.z-b.z}; };
-  auto cross = [](const SFVec3f &a, const SFVec3f &b) {
-    return SFVec3f{a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
-  };
-  auto dot = [](const SFVec3f &a, const SFVec3f &b) { return a.x*b.x + a.y*b.y + a.z*b.z; };
-  SFVec3f e1 = sub(v1, v0), e2 = sub(v2, v0);
-  SFVec3f p = cross(ray.direction, e2);
-  float det = dot(e1, p);
-  if (std::fabs(det) < 1e-12f) return std::nullopt;
-  float inv = 1.0f / det;
-  SFVec3f tv = sub(ray.origin, v0);
-  float u = dot(tv, p) * inv;
-  if (u < 0 || u > 1) return std::nullopt;
-  SFVec3f q = cross(tv, e1);
-  float v = dot(ray.direction, q) * inv;
-  if (v < 0 || u + v > 1) return std::nullopt;
-  float t = dot(e2, q) * inv;
-  return t < 0 ? std::nullopt : std::optional<float>(t);
-}
-
 // rayTriangleBary — like rayTriangle, but also returns the barycentric
 // coordinates (u, v) of the hit relative to (v0, v1, v2): the hit point is
 // (1-u-v)·v0 + u·v1 + v·v2. Used by the pick narrow-phase to interpolate
@@ -96,6 +74,12 @@ inline std::optional<float> rayTriangleBary(const Ray &ray, const SFVec3f &v0,
   if (v < 0 || u + v > 1) return std::nullopt;
   float t = dot(e2, q) * inv;
   return t < 0 ? std::nullopt : std::optional<float>(t);
+}
+
+inline std::optional<float> rayTriangle(const Ray &ray, const SFVec3f &v0,
+                                        const SFVec3f &v1, const SFVec3f &v2) {
+  float u, v;
+  return rayTriangleBary(ray, v0, v1, v2, u, v);
 }
 
 // rayCone — X3D §13.3.2: axis=Y, apex at (0,+height/2,0), base circle radius

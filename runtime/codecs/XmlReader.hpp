@@ -71,16 +71,6 @@ public:
     return doc;
   }
 
-  /// Parse a scene fragment (the children of a <Scene>) from an XML string.
-  runtime::Scene readSceneString(const std::string &xmlText) {
-    auto root = xml::parse(xmlText);
-    runtime::Scene scene;
-    if (root && root->name == "Scene")
-      readScene(*root, scene);
-    scene.resolveRoutes();
-    return scene;
-  }
-
 private:
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
@@ -338,8 +328,8 @@ private:
       d.x3dName = c->attrOr("name", "");
       if (d.x3dName.empty())
         continue; // a nameless field is unaddressable; skip leniently
-      d.type = mapFieldType(c->attrOr("type", "SFString"));
-      d.access = mapAccessType(c->attrOr("accessType", "inputOutput"));
+      d.type = fieldTypeFromName(c->attrOr("type", "SFString"));
+      d.access = accessTypeFromName(c->attrOr("accessType", "inputOutput"));
       // Box the default only for fields that hold a persistent value.
       if ((d.access == AccessType::InitializeOnly ||
            d.access == AccessType::InputOutput)) {
@@ -383,14 +373,6 @@ private:
       script.setSourceCode(el.text);
   }
 
-  /// Trim ASCII whitespace from both ends of a string.
-  static std::string trim(const std::string &s) {
-    std::size_t b = s.find_first_not_of(" \t\r\n");
-    if (b == std::string::npos)
-      return {};
-    std::size_t e = s.find_last_not_of(" \t\r\n");
-    return s.substr(b, e - b + 1);
-  }
   // PROTO family capture (ProtoDeclare / ExternProtoDeclare / ProtoInstance).
   // These weave into the same node-reading recursion as ordinary elements:
   // body nodes and node-typed defaults/values go through readNode() so there
@@ -464,8 +446,8 @@ private:
       f.name = c->attrOr("name", "");
       f.appinfo = c->attrOr("appinfo", "");
       f.documentation = c->attrOr("documentation", "");
-      f.type = mapFieldType(c->attrOr("type", "SFString"));
-      f.access = mapAccessType(c->attrOr("accessType", "inputOutput"));
+      f.type = fieldTypeFromName(c->attrOr("type", "SFString"));
+      f.access = accessTypeFromName(c->attrOr("accessType", "inputOutput"));
       if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {
         // Node-typed default: child element(s) are the default node(s).
         for (const auto &nc : c->children) {
@@ -595,7 +577,7 @@ private:
       fv.name = c->attrOr("name", "");
       // Node-typed override: child node element(s).
       bool hasNodeChild = false;
-      const runtime::ProtoField *decl = findInterfaceField(inst, fv.name);
+      const runtime::ProtoField *decl = inst.interfaceField(fv.name);
       bool nodeTyped = decl && (decl->type == X3DFieldType::SFNode ||
                                 decl->type == X3DFieldType::MFNode);
       if (nodeTyped || (!c->attr("value") && !c->children.empty())) {
@@ -647,39 +629,6 @@ private:
       if (e && e->name == name)
         return e;
     return nullptr;
-  }
-
-  static const runtime::ProtoField *
-  findInterfaceField(const runtime::ProtoInstance &inst,
-                     const std::string &name) {
-    auto search = [&](const std::vector<runtime::ProtoField> &iface)
-        -> const runtime::ProtoField * {
-      for (const auto &f : iface)
-        if (f.name == name)
-          return &f;
-      return nullptr;
-    };
-    if (inst.declaration)
-      return search(inst.declaration->interface);
-    if (inst.externDeclaration)
-      return search(inst.externDeclaration->interface);
-    return nullptr;
-  }
-
-  /// Map an X3D field-type string (e.g. "SFVec3f") to X3DFieldType.
-  static X3DFieldType mapFieldType(const std::string &w) {
-    return fieldTypeFromName(w); // unknown: harmless SFString fallback
-  }
-
-  /// Map an X3D accessType string to AccessType (X3D and VRML spellings).
-  static AccessType mapAccessType(const std::string &w) {
-    if (w == "inputOnly" || w == "eventIn")
-      return AccessType::InputOnly;
-    if (w == "outputOnly" || w == "eventOut")
-      return AccessType::OutputOnly;
-    if (w == "initializeOnly" || w == "field")
-      return AccessType::InitializeOnly;
-    return AccessType::InputOutput; // inputOutput / exposedField / default
   }
 
   /// Set one value attribute on a node via its FieldInfo thunks.

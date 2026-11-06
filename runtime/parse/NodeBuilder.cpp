@@ -18,11 +18,6 @@ const FieldInfo *findField(const FieldTable &table, std::string_view name) {
   return nullptr;
 }
 
-bool isNodeField(const FieldTable &table, std::string_view name) {
-  const FieldInfo *f = findField(table, name);
-  return f && f->isNode();
-}
-
 std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName) {
   return x3d::nodes::X3DNodeFactory::create(std::string(typeName));
 }
@@ -175,37 +170,16 @@ int mfElementComponents(X3DFieldType type) {
   }
 }
 
-bool isMF(X3DFieldType type) {
-  switch (type) {
-  case X3DFieldType::MFBool:
-  case X3DFieldType::MFColor:
-  case X3DFieldType::MFColorRGBA:
-  case X3DFieldType::MFDouble:
-  case X3DFieldType::MFFloat:
-  case X3DFieldType::MFImage:
-  case X3DFieldType::MFInt32:
-  case X3DFieldType::MFMatrix3d:
-  case X3DFieldType::MFMatrix3f:
-  case X3DFieldType::MFMatrix4d:
-  case X3DFieldType::MFMatrix4f:
-  case X3DFieldType::MFRotation:
-  case X3DFieldType::MFString:
-  case X3DFieldType::MFTime:
-  case X3DFieldType::MFVec2d:
-  case X3DFieldType::MFVec2f:
-  case X3DFieldType::MFVec3d:
-  case X3DFieldType::MFVec3f:
-  case X3DFieldType::MFVec4d:
-  case X3DFieldType::MFVec4f:
-  case X3DFieldType::MFEnum:
-    return true;
-  default:
-    return false;
+std::string decodeInlineScriptSource(const std::vector<std::string> &url) {
+  static const char *kSchemes[] = {"ecmascript:", "javascript:", "vrmlscript:"};
+  for (const std::string &entry : url) {
+    for (const char *scheme : kSchemes) {
+      const std::size_t n = std::char_traits<char>::length(scheme);
+      if (entry.size() >= n && entry.compare(0, n, scheme) == 0)
+        return entry.substr(n);
+    }
   }
-}
-
-bool isStringType(X3DFieldType type) {
-  return type == X3DFieldType::SFString || type == X3DFieldType::MFString;
+  return {};
 }
 
 std::string requote(const std::string &s) {

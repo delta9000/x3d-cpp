@@ -5,9 +5,9 @@
 // this TU links against those symbols within the x3d_stbtt lib. The public
 // header stays decoder-free, so no stb header leaks to consumers.
 #include "StbttGlyphAtlas.hpp"
+#include "../ReadFile.hpp"
 
 #include <algorithm>
-#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -27,16 +27,6 @@ constexpr std::uint32_t kFirstCp = 0x20;  // space
 constexpr std::uint32_t kLastCp = 0xff;   // Latin-1 Supplement end
 constexpr int kAtlasWidth = 512;
 constexpr int kPad = 2;
-
-bool readFile(const std::string& path, std::vector<unsigned char>& out) {
-  std::ifstream f(path, std::ios::binary | std::ios::ate);
-  if (!f) return false;
-  const std::streamoff size = f.tellg();
-  if (size <= 0) return false;
-  out.resize(static_cast<std::size_t>(size));
-  f.seekg(0);
-  return static_cast<bool>(f.read(reinterpret_cast<char*>(out.data()), size));
-}
 
 // Raw unitsPerEm (head + 18, big-endian) — same exact-integer path as
 // StbttFontMetrics so the atlas's advanceEm bit-matches the metrics backend.
@@ -70,7 +60,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
   std::vector<std::string> families;
   for (auto& [family, path] : faces) {
     std::vector<unsigned char> bytes;
-    if (!readFile(path, bytes)) continue;
+    if (!::x3d::runtime::io::detail::readFile(path, bytes) || bytes.empty()) continue;
     stbtt_fontinfo fi{};
     const int off = stbtt_GetFontOffsetForIndex(bytes.data(), 0);
     if (off < 0 || !stbtt_InitFont(&fi, bytes.data(), off)) continue;

@@ -32,8 +32,7 @@ using namespace x3d::core;
 namespace {
 
 // RAII guard for an owned JSValue. Frees on scope exit against the context it
-// was created in. Move-only (transfers ownership); release() hands the raw
-// value out without freeing (for the rare case ownership must pass on).
+// was created in. Move-only (transfers ownership).
 
 class JsValue {
 public:
@@ -59,13 +58,6 @@ public:
   JsValue &operator=(const JsValue &) = delete;
 
   const JSValue &get() const { return v_; }
-  // Hand the raw value out without freeing (ownership passes to the caller).
-  JSValue release() {
-    JSValue out = v_;
-    ctx_ = nullptr;
-    v_ = JS_UNDEFINED;
-    return out;
-  }
   bool isException() const { return JS_IsException(v_); }
   bool isUndefined() const { return JS_IsUndefined(v_); }
 
@@ -713,7 +705,6 @@ struct QuickJsBackend::Impl {
   // boxed initialValue -> JS global, per readable author field
   // (initializeOnly/inputOutput). Lets the script read its authored defaults.
   void seedAuthorGlobals(Entry &e) {
-    if (!e.node || !e.ctx) return;
     JSContext *ctx = e.ctx;
     for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable() || !info.get) continue;
@@ -736,8 +727,7 @@ struct QuickJsBackend::Impl {
 
   // JS global -> store + cascade event, per readable author field
   // (outputOnly/inputOutput) the script wrote. Suppresses no-op re-emits.
-  void readbackAuthorGlobals(Entry &e, double timestamp) {
-    if (!e.node || !e.ctx || !e.sai) return;
+  void readbackAuthorGlobals(Entry &e) {
     JSContext *ctx = e.ctx;
     for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable()) continue;
@@ -775,7 +765,6 @@ struct QuickJsBackend::Impl {
       }
       if (!value.has_value()) continue;
       e.sai->context().authorFields().setValue(*e.node, info.x3dName, value);
-      (void)timestamp;
       e.sai->setField(e.node, info.x3dName, value);
     }
   }
@@ -989,7 +978,7 @@ void QuickJsBackend::initialize(ScriptHandle handle) {
   impl_->callGlobalNoArgs(e->ctx, "initialize");
   // initialize() may write outputOnly/inputOutput author fields (§29.2.3) —
   // read them back (timestamp 0 = scene start).
-  impl_->readbackAuthorGlobals(*e, 0.0);
+  impl_->readbackAuthorGlobals(*e);
 }
 
 void QuickJsBackend::shutdown(ScriptHandle handle) {
@@ -1009,7 +998,7 @@ void QuickJsBackend::prepareEvents(ScriptHandle handle, double now) {
   JSValueConst argv[1] = {arg.get()};
   impl_->callGlobal(e->ctx, "prepareEvents", 1, argv);
   // §29.2.5: prepareEvents may generate events — read author outputs back.
-  impl_->readbackAuthorGlobals(*e, now);
+  impl_->readbackAuthorGlobals(*e);
 }
 
 void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
@@ -1025,17 +1014,17 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
   impl_->callGlobal(ctx, eventName.c_str(), 2, argv);
   // §3.5: read any author outputOnly/inputOutput field the handler wrote and
   // emit it into the cascade carrying the triggering timestamp.
-  impl_->readbackAuthorGlobals(*e, timestamp);
+  impl_->readbackAuthorGlobals(*e);
 }
 
-void QuickJsBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
+void QuickJsBackend::eventsProcessed(ScriptHandle handle, double /*timestamp*/) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
   ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events from eventsProcessed() enter the cascade with the timestamp
   // of the last event processed — read author outputs back.
-  impl_->readbackAuthorGlobals(*e, timestamp);
+  impl_->readbackAuthorGlobals(*e);
 }
 
 // updateField(): an inputOutput author field was written from outside the
@@ -1044,7 +1033,7 @@ void QuickJsBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
 void QuickJsBackend::updateField(ScriptHandle handle, const std::string &name,
                                  const std::any &value, X3DFieldType type) {
   Impl::Entry *e = impl_->entryFor(handle);
-  if (!e || !e->ctx || !value.has_value()) return;
+  if (!e || !value.has_value()) return;
   ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->setGlobal(e->ctx, name.c_str(), pushValue(e->ctx, value, type));
   // The script may have made this global a throwing setter.

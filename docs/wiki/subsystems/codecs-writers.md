@@ -36,10 +36,18 @@ the remaining cross-encoding ordering limits.
 | `runtime/codecs/CanonicalXmlWriter.hpp` | Runtime model → X3D Canonical Form (X3DC14N); header-only, fully separate from `XmlWriter` |
 | `runtime/codecs/FieldValueIO.hpp` | Bidirectional field-value IO: `formatValue` (`std::any` → wire string) and `parseValue` (wire string → `std::any`), all type-switched on `X3DFieldType`; also low-level helpers (`fmtFloat`, `parseFloat`, `tokenize`, `parseMFString`, …). Floats/doubles serialize in **shortest round-trip form** (`std::to_chars`): authored digits like `0.9` survive a round-trip verbatim instead of expanding to `0.899999976`, and `parse(format(v)) == v` bit-exactly (pinned by `fval_extended_test`). `CanonicalXmlWriter`'s `canonFmtFloat` is deliberately separate — X3DC14N owns its own pinned formatting contract. |
 | `runtime/codecs/JsonString.hpp` | Shared JSON string escaping for JsonWriter and the two metadata strings in ClassicVRML comments; control characters never create extra comment lines |
-| `runtime/codecs/ProtoNameMaps.hpp` | `fieldTypeName()` and `accessTypeName()` — enum → string helpers shared by the writers; `fieldTypeFromName()` inverts `fieldTypeName()` for the XML, ClassicVRML and JSON readers, so both directions come from one table |
+| `runtime/codecs/ProtoNameMaps.hpp` | `fieldTypeName()` and `accessTypeName()` — enum → string helpers shared by the writers; `fieldTypeFromName()` inverts `fieldTypeName()` for the XML, ClassicVRML and JSON readers; `accessTypeFromName()` accepts canonical names and VRML97 aliases |
 | `runtime/codecs/XmlLite.hpp` | Lightweight hand-written XML element tree and renderer used by `XmlWriter`, `CanonicalXmlWriter`, and `XmlReader` |
 | `runtime/codecs/XmlReader.hpp` | X3D-XML → runtime model (counterpart reader; out of scope for this page — see [Codec Readers](../subsystems/parse-readers.md)) |
 | `runtime/codecs/tests/` | Per-writer and cross-writer round-trip tests |
+
+The ordinary writers and the XML/Classic readers use
+`ProtoInstance::interfaceField()` for interface lookup. A local declaration
+takes precedence over an external declaration, even when the requested field
+is absent locally. JSON retains its existing external-field fallback;
+canonical XML keeps its separate lookup path. `x3d::codec::isMF` classifies
+multiple-value wire types for the Classic reader and writer; the writer also
+handles MFNode structurally.
 
 ## Interfaces and seams
 

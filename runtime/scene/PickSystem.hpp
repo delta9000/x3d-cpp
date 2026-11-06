@@ -185,17 +185,12 @@ public:
   static std::optional<float> intersectGeometry(const X3DNode *geom,
                                                 const geo::GeoProjection &projection,
                                                 const Ray &local) {
-    bool gotHit = false;
-    NarrowHit h = narrowPhase(geom, projection, local, gotHit);
-    if (!gotHit) return std::nullopt;
-    return h.t;
+    auto h = narrowPhase(geom, projection, local);
+    if (!h) return std::nullopt;
+    return h->t;
   }
 
 private:
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard rotation is applied separately using the live camera pose.
-  static bool isTransform(const X3DNode *n) { return TransformSystem::isTransform(n); }
-
   // Triangle-bearing types supported by extract::buildLocalMesh.
   static bool isMeshType(const std::string &t) {
     return t == "IndexedFaceSet" || t == "IndexedTriangleSet" || t == "TriangleSet"
@@ -238,9 +233,9 @@ private:
     }
   }
 
-  static NarrowHit narrowPhase(const X3DNode *geom, const geo::GeoProjection &projection,
-                               const Ray &local, bool &gotHit) {
-    gotHit = false;
+  static std::optional<NarrowHit> narrowPhase(const X3DNode *geom,
+                                             const geo::GeoProjection &projection,
+                                             const Ray &local) {
     NarrowHit hit;
     const std::string t = geom->nodeTypeName();
     if (t == "Sphere") {
@@ -252,9 +247,9 @@ private:
         const float inv = r > 0 ? 1.0f / r : 0.0f;
         hit.normal = {p.x*inv, p.y*inv, p.z*inv};
         hit.texCoord = sphereTexCoord(p, r);
-        gotHit = true;
+        return hit;
       }
-      return hit;
+      return std::nullopt;
     }
     // Analytic Cone — axis=Y, apex at (0,+height/2,0), base radius.
     if (t == "Cone") {
@@ -284,9 +279,9 @@ private:
           const float tc = (h > 0) ? (halfH - p.y) / h : 0.0f;
           hit.texCoord = SFVec2f{s, tc};
         }
-        gotHit = true;
+        return hit;
       }
-      return hit;
+      return std::nullopt;
     }
     // Analytic Cylinder — axis=Y, caps at ±height/2.
     if (t == "Cylinder") {
@@ -316,9 +311,9 @@ private:
           const float tc = (h > 0) ? (p.y + halfH) / h : 0.0f;
           hit.texCoord = SFVec2f{s, tc};
         }
-        gotHit = true;
+        return hit;
       }
-      return hit;
+      return std::nullopt;
     }
     if (isMeshType(t)) {
       extract::MeshData mesh = extract::buildLocalMesh(geom, projection);
@@ -354,14 +349,15 @@ private:
             }
           }
         }
-        gotHit = found;
-        return hit;
+        if (found) return hit;
+        return std::nullopt;
       }
     }
     // Long-tail / AABB-proxy fallback (exact for Box). Best-effort normal from
     // the AABB face the local hit lands on; texcoord (0,0). For Box this yields
     // the spec §13.3.1 per-face parameterization (size = full extents).
-    if (auto h = rayAabb(local, localGeometryBounds(geom, projection))) {
+    const Aabb bb = localGeometryBounds(geom, projection);
+    if (auto h = rayAabb(local, bb)) {
       hit.t = *h;
       const SFVec3f p = local.pointAt(*h);
       if (t == "Box") {
@@ -372,7 +368,6 @@ private:
         hit.normal = n;
       } else {
         // Generic AABB proxy: pick the dominant face from the local hit point.
-        const Aabb bb = localGeometryBounds(geom, projection);
         const SFVec3f c{(bb.min.x+bb.max.x)*0.5f, (bb.min.y+bb.max.y)*0.5f, (bb.min.z+bb.max.z)*0.5f};
         const SFVec3f e{std::max(1e-6f,(bb.max.x-bb.min.x)*0.5f),
                         std::max(1e-6f,(bb.max.y-bb.min.y)*0.5f),
@@ -384,9 +379,9 @@ private:
         else                           hit.normal = {0, ry >= 0 ? 1.0f : -1.0f, 0};
         hit.texCoord = SFVec2f{0,0};
       }
-      gotHit = true;
+      return hit;
     }
-    return hit;
+    return std::nullopt;
   }
 
   // Lazily-maintained index entry: one per geometry-bearing placement (per path).
@@ -507,10 +502,9 @@ private:
     if (!geom) return;
     Mat4 inv = worldM.inverse();
     Ray local{inv.transformPoint(worldRay.origin), inv.transformDirection(worldRay.direction)};
-    bool gotHit = false;
-    NarrowHit h = narrowPhase(geom.get(), geoProjection(), local, gotHit);
-    if (!gotHit) return;
-    SFVec3f wp = worldM.transformPoint(local.pointAt(h.t));
+    auto h = narrowPhase(geom.get(), geoProjection(), local);
+    if (!h) return;
+    SFVec3f wp = worldM.transformPoint(local.pointAt(h->t));
     float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
           dz = wp.z - worldRay.origin.z;
     float d = std::sqrt(dx * dx + dy * dy + dz * dz);
@@ -518,8 +512,8 @@ private:
       best.hit = true; best.node = shape; best.point = wp; best.distance = d;
       best.path = path; // root→this geometry-bearing node chain.
       // World-space normal = normalize(inverse-transpose(worldM) · n).
-      best.normal = normalize(invTranspose(worldM).transformDirection(h.normal));
-      best.texCoord = h.texCoord; // surface attribute — not transformed.
+      best.normal = normalize(invTranspose(worldM).transformDirection(h->normal));
+      best.texCoord = h->texCoord; // surface attribute — not transformed.
     }
   }
 
@@ -579,7 +573,7 @@ private:
     // completed false return proves `target` is not under `n`; a depth-truncated
     // one does not, so only complete subtrees are inserted below.
     if (visited.count(n)) return false;
-    Mat4 here = isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
+    Mat4 here = TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
     if (n == target) { out = here; return true; }
     bool found = false;
     bool childIncomplete = false;

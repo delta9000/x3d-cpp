@@ -170,34 +170,6 @@ void testFloatDot() {
   CHECK_MESSAGE((back > 3.14f && back < 3.15f), "CDC-4: SFFloat parses '.' input");
 }
 
-void testFloatDotUnderCommaLocale() {
-  // Try to install a comma-decimal locale; skip gracefully if unavailable.
-  bool installed = false;
-  try {
-    std::locale::global(std::locale("de_DE.UTF-8"));
-    installed = true;
-  } catch (...) {
-    try {
-      std::locale::global(std::locale("de_DE"));
-      installed = true;
-    } catch (...) {
-      installed = false;
-    }
-  }
-  if (!installed) {
-
-    return;
-  }
-  std::string s = formatValue(X3DFieldType::SFDouble, std::any(3.14159));
-  CHECK_MESSAGE((contains(s, ".")), "CDC-4: SFDouble uses '.' even under comma locale");
-  CHECK_MESSAGE((!contains(s, ",")), "CDC-4: SFDouble no ',' under comma locale");
-  double back =
-      std::any_cast<double>(parseValue(X3DFieldType::SFDouble, "2.71828"));
-  CHECK_MESSAGE((back > 2.71 && back < 2.72),
-        "CDC-4: SFDouble parses '.' input under comma locale");
-  std::locale::global(std::locale::classic());
-}
-
 } // namespace
 
 TEST_CASE("codec_conformance_test") {
@@ -207,7 +179,6 @@ TEST_CASE("codec_conformance_test") {
   testMatrix4d();
   testImage();
   testFloatDot();
-  testFloatDotUnderCommaLocale();
 
   return;
 }

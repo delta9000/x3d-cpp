@@ -116,10 +116,6 @@ public:
   }
 
 private:
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard rotation is applied by the view-dependent path walkers.
-  bool isTransform(const X3DNode *n) const { return TransformSystem::isTransform(n); }
-
   bool childrenChanged(const X3DNode &n) const {
     std::unordered_set<const X3DNode *> now;
     bool expired = false;
@@ -188,7 +184,7 @@ private:
     if (it != children_.end())
       for (const X3DNode *c : it->second) {
         Aabb cb = compute(c, ts); // post-order: child entry set first
-        if (isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c, ts.geoProjection()));
+        if (TransformSystem::isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c, ts.geoProjection()));
         childUnion.unionWith(cb);
       }
     Aabb a;

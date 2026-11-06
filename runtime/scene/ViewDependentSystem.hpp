@@ -174,10 +174,8 @@ private:
       const X3DNode *n = pending.back(); pending.pop_back();
       if (!n || !seen.insert(n).second) continue;
       forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        if (c) {
-          parents[c.get()].push_back(n);
-          pending.push_back(c.get());
-        }
+        parents[c.get()].push_back(n);
+        pending.push_back(c.get());
       });
     }
     pending.clear();
@@ -372,19 +370,12 @@ private:
     if (len(xAxis) < 1e-9f) xAxis = cross(SFVec3f{0, 1, 0}, zAxis);
     xAxis = norm(xAxis);
     const SFVec3f yAxis = cross(zAxis, xAxis);
-    // Rotation-matrix (columns xAxis,yAxis,zAxis) -> axis-angle.
-    const float trace = xAxis.x + yAxis.y + zAxis.z;
-    const float cosT = std::max(-1.0f, std::min(1.0f, (trace - 1.0f) * 0.5f));
-    const float angle = std::acos(cosT);
-    if (angle < 1e-6f) return SFRotation{0, 0, 1, 0};
-    SFVec3f ax{yAxis.z - zAxis.y, zAxis.x - xAxis.z, xAxis.y - yAxis.x};
-    if (len(ax) < 1e-9f) return SFRotation{0, 1, 0, angle};
-    ax = norm(ax);
-    return SFRotation{ax.x, ax.y, ax.z, angle};
-  }
-
-  static SFVec3f viewMatrixForward(X3DExecutionContext &ctx) {
-    return ctx.viewMatrix().inverse().transformDirection(SFVec3f{0, 0, -1});
+    Mat4 m = Mat4::identity();
+    m.m[0] = xAxis.x; m.m[1] = xAxis.y; m.m[2] = xAxis.z;
+    m.m[4] = yAxis.x; m.m[5] = yAxis.y; m.m[6] = yAxis.z;
+    m.m[8] = zAxis.x; m.m[9] = zAxis.y; m.m[10] = zAxis.z;
+    const SFRotation rotation = rotationFromMatrix(m);
+    return rotation.angle < 1e-6f ? SFRotation{0, 0, 1, 0} : rotation;
   }
 
   void updateProximity(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
@@ -428,7 +419,8 @@ private:
     const SFVec3f eyeLocal = inv.transformPoint(eyeWorld);
     if (inside || last) {
       // §22.4.1: pose outputs include the exit instant.
-      const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(viewMatrixForward(ctx)));
+      const SFVec3f fwdWorld = ctx.viewMatrix().inverse().transformDirection(SFVec3f{0, 0, -1});
+      const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(fwdWorld));
       const SFVec3f upLocal = viewdep::norm(inv.transformDirection(ctx.cameraWorldUp()));
       const SFRotation ori = lookAtRotation(fwdLocal, upLocal);
       // Emit only when the viewer pose actually changes, not every tick.

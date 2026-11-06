@@ -90,6 +90,10 @@ std::optional<float> rayCylinder(const Ray &, float radius, float height,
                                   bool side = true, bool top = true, bool bottom = true);
 ```
 
+`rayTriangle` delegates to `rayTriangleBary` and discards the barycentric
+coordinates. Both entry points share the same intersection thresholds and edge
+acceptance.
+
 ### Seam points
 
 - **TransformSystem** — `runtime/scene/TransformSystem.hpp` calls `transformMatrix` for every dirty `Transform` node and accumulates world-space `Mat4` down the scene graph.
@@ -99,7 +103,7 @@ std::optional<float> rayCylinder(const Ray &, float radius, float height,
 - **Extract layer** — `runtime/extract/RenderItem.hpp`, `PackedMesh.hpp`, and `SceneExtractor.hpp` carry `Aabb` and `Mat4` fields in the structs they hand to the renderer consumer.
 - **Navigation / viewpoint** — `runtime/events/NavigationSystem.hpp`, `ViewpointBindSystem.hpp`, and `ViewpointOffset.hpp` use `Mat4` (including `rotationFromMatrix`) for head-pose composition and viewpoint-offset accumulation.
 - **Billboard** — `runtime/scene/Billboard.hpp` uses `Mat4` to align geometry to the viewer axis.
-- **ViewDependentSystem** — `runtime/scene/ViewDependentSystem.hpp` uses `Mat4` for LOD distance and Billboard view-coupling.
+- **ViewDependentSystem** — `runtime/scene/ViewDependentSystem.hpp` uses `Mat4` for LOD distance and Billboard view-coupling, and `rotationFromMatrix` for sensor orientation.
 - **LightSystem** — `runtime/extract/LightSystem.hpp` uses `transformDirection` / `transformPoint` to bring light direction and position into world space.
 
 The math module has no upward dependencies. It sits at the bottom of the dependency graph.

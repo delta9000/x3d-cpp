@@ -145,6 +145,10 @@ if(X3D_CPP_BUILD_CURL)
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/curl/tests/asset_resolver_backend_a_test.cpp")
         target_link_libraries(x3d_assetresolver_backend_a_test PRIVATE x3d_curl)
         add_test(NAME x3d_assetresolver_backend_a COMMAND x3d_assetresolver_backend_a_test)
+        add_executable(x3d_http_address_guard_test
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/curl/tests/http_address_guard_test.cpp")
+        target_link_libraries(x3d_http_address_guard_test PRIVATE x3d_cpp::x3d_cpp CURL::libcurl)
+        add_test(NAME x3d_http_address_guard COMMAND x3d_http_address_guard_test)
     endif()
 endif()
 

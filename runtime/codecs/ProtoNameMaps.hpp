@@ -81,6 +81,16 @@ inline X3DFieldType fieldTypeFromName(std::string_view name) {
   return X3DFieldType::SFString;
 }
 
+inline AccessType accessTypeFromName(std::string_view w) {
+  if (w == "inputOnly" || w == "eventIn")
+    return AccessType::InputOnly;
+  if (w == "outputOnly" || w == "eventOut")
+    return AccessType::OutputOnly;
+  if (w == "initializeOnly" || w == "field")
+    return AccessType::InitializeOnly;
+  return AccessType::InputOutput;
+}
+
 inline const char *accessTypeName(AccessType a) {
   switch (a) {
   case AccessType::InitializeOnly: return "initializeOnly";

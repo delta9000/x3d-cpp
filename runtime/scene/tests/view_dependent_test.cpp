@@ -183,6 +183,37 @@ static void testProximitySensor() {
   CHECK((!active && feq((float)exit, 2.75f)));        // exited mid-flight at t=2.75
 }
 
+TEST_CASE("proximity_sensor_half_turn_orientation_preserves_camera_basis") {
+  SFVec3f scale, expectedForward;
+  SUBCASE("X half-turn") { scale = {1, -1, -1}; expectedForward = {0, 0, 1}; }
+  SUBCASE("Z half-turn") { scale = {-1, -1, 1}; expectedForward = {0, 0, -1}; }
+  auto ps = createX3DNode("ProximitySensor");
+  setF(ps, "size", std::any(SFVec3f{4, 4, 4}));
+  auto parent = createX3DNode("Transform");
+  // Two negative scales give an exact half-turn without rounding sin(pi).
+  setF(parent, "scale", std::any(scale));
+  setF(parent, "children", std::any(MFNode{ps}));
+  auto vp = createX3DNode("Viewpoint");
+  setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  auto sink = createX3DNode("Transform");
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(parent); scene.addRootNode(sink);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ps.get(), ctx); ctx.addSystem(vds);
+  ctx.addRoute(FieldAddress{ps.get(), "orientation_changed"}, FieldAddress{sink.get(), "rotation"});
+  ctx.tick(0.0);
+  REQUIRE(getF<SFBool>(ps, "isActive"));
+  const Mat4 orientation = Mat4::rotation(getF<SFRotation>(sink, "rotation"));
+  const SFVec3f forward = orientation.transformDirection({0, 0, -1});
+  const SFVec3f up = orientation.transformDirection({0, 1, 0});
+  CHECK(forward.x == doctest::Approx(expectedForward.x).epsilon(1e-5));
+  CHECK(forward.y == doctest::Approx(expectedForward.y).epsilon(1e-5));
+  CHECK(forward.z == doctest::Approx(expectedForward.z).epsilon(1e-5));
+  CHECK(up.x == doctest::Approx(0).epsilon(1e-5));
+  CHECK(up.y == doctest::Approx(-1).epsilon(1e-5));
+  CHECK(up.z == doctest::Approx(0).epsilon(1e-5));
+}
+
 static std::shared_ptr<X3DNode> localGeoOrigin() {
   auto origin = createX3DNode("GeoOrigin");
   setF(origin, "geoSystem", std::any(std::vector<std::string>{"GC"}));

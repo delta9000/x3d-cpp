@@ -21,7 +21,7 @@ using x3d::codec::isGzip;
 using x3d::codec::sniff;
 using x3d::codec::sniffByContent;
 using x3d::codec::sniffByExtension;
-using x3d::json::parse;
+using x3d::json::parseComplete;
 
 namespace {
 
@@ -204,7 +204,7 @@ void testJsonLite() {
 
   // Integer lexeme preservation: '3' not '3.0'.
   {
-    auto v = parse(R"({"n":3})");
+    auto v = parseComplete(R"({"n":3})");
     CHECK_MESSAGE((v && v->member("n") && v->member("n")->isNumber()),
           "json: '3' parses as Number");
     CHECK_MESSAGE((v->member("n")->numberLexeme == "3"),
@@ -215,28 +215,28 @@ void testJsonLite() {
 
   // Float lexeme preserved.
   {
-    auto v = parse(R"({"f":1.5e2})");
+    auto v = parseComplete(R"({"f":1.5e2})");
     CHECK_MESSAGE((v->member("f")->numberLexeme == "1.5e2"),
           "json: float lexeme '1.5e2' preserved verbatim");
   }
 
   // Leading UTF-8 BOM is accepted.
   {
-    auto v = parse(std::string("\xEF\xBB\xBF") + R"({"n":3})");
+    auto v = parseComplete(std::string("\xEF\xBB\xBF") + R"({"n":3})");
     CHECK_MESSAGE((v && v->member("n") && v->member("n")->number == 3.0),
           "json: leading UTF-8 BOM is stripped before parsing");
   }
 
   // Trailing whitespace tolerated.
   {
-    auto v = parse(R"({"n":3}   )");
+    auto v = parseComplete(R"({"n":3}   )");
     CHECK_MESSAGE((v && v->member("n") && v->member("n")->number == 3.0),
           "json: trailing whitespace tolerated");
   }
 
   // Standard string escapes decoded correctly.
   {
-    auto v = parse(R"({"s":"a\"b\\c\/d\n\te\tf\rg"})");
+    auto v = parseComplete(R"({"s":"a\"b\\c\/d\n\te\tf\rg"})");
     const std::string &s = v->member("s")->str;
     std::string expected = "a\"b\\c/d\n\te\tf\rg";
     CHECK_MESSAGE((s == expected),
@@ -245,7 +245,7 @@ void testJsonLite() {
 
   // \uXXXX 2-byte UTF-8 (Latin-1 supplement): \u00E9 -> 'é' (0xC3 0xA9).
   {
-    auto v = parse(R"({"k":"\u00E9"})");
+    auto v = parseComplete(R"({"k":"\u00E9"})");
     const std::string &s = v->member("k")->str;
     CHECK_MESSAGE((s == std::string("\xC3\xA9")),
           "json: \\u00E9 -> 2-byte UTF-8 (é)");
@@ -253,7 +253,7 @@ void testJsonLite() {
 
   // \uXXXX 3-byte UTF-8 (BMP): \u4E2D -> '中' (0xE4 0xB8 0xAD).
   {
-    auto v = parse(R"({"k":"\u4E2D"})");
+    auto v = parseComplete(R"({"k":"\u4E2D"})");
     const std::string &s = v->member("k")->str;
     CHECK_MESSAGE((s == std::string("\xE4\xB8\xAD")),
           "json: \\u4E2D -> 3-byte UTF-8 (中)");
@@ -264,7 +264,7 @@ void testJsonLite() {
   // unpaired high surrogate produces invalid UTF-8; a properly-paired
   // supplementary-plane code point should emit a 4-byte sequence.
   {
-    auto v = parse(R"({"k":"\uD83D\uDE00"})");
+    auto v = parseComplete(R"({"k":"\uD83D\uDE00"})");
     const std::string &s = v->member("k")->str;
     std::string expected = "\xF0\x9F\x98\x80"; // U+1F600 GRINNING FACE
     CHECK_MESSAGE((s == expected),

@@ -16,6 +16,9 @@ using namespace x3d::core;
 
 // Enum tokens are bare identifiers; strip MFString-style quotes before matching.
 std::string stripEnumQuotes(const std::string &wire);
+// Multiple-value wire types; node fields are handled by structural codecs.
+bool isMF(X3DFieldType type);
+
 // Low-level scalar formatting. Floats/doubles use the shortest round-trippable
 // representation so the writer's output re-parses to the same value.
 

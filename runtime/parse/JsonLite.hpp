@@ -368,14 +368,14 @@ private:
 
 } // namespace detail
 
-/// Parse a JSON document. Returns the root value (never null on success);
+/// Parse a JSON value prefix. Returns the root value (never null on success);
 /// throws std::runtime_error on malformed input.
 inline std::unique_ptr<Value> parse(const std::string &text) {
   detail::Parser p(text);
   return p.parse();
 }
 
-// For embedded metadata payloads that must contain exactly one JSON value.
+// Parse exactly one JSON value, rejecting trailing non-whitespace content.
 inline std::unique_ptr<Value> parseComplete(const std::string &text) {
   detail::Parser p(text);
   return p.parseComplete();

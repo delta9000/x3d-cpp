@@ -22,6 +22,10 @@ The View-Dependent System is the runtime subsystem that re-evaluates every scene
 
 The split between tick-time (LOD events, sensor edges) and render-time (Billboard rotation, LOD child selection for rendering) is intentional and documented: the `ViewDependentSystem` class owns the event side; the free function `billboardLocalMatrix` and the inline `lodSelectLevel` are used at extract/pick time. This avoids a dependency cycle between `SceneExtractor`, `PickSystem`, and the execution context.
 
+Proximity sensor orientation uses `rotationFromMatrix` to convert the viewer's
+forward/up basis in sensor coordinates. X- and Z-axis half-turns preserve that
+basis. A zero forward vector returns the identity orientation.
+
 ## Key files
 
 | File / directory | Role |
@@ -107,6 +111,8 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
   - `testLodLevelChanged` — `ViewDependentSystem` fires `level_changed` on viewer move; hook captured.
   - `testLodLevelClamp` — LOD-1 §23.4.3: with 2 children and 3 range bins, far viewer (raw level 2) clamps to reported level 1.
   - `testProximitySensor` — enter/exit edge + interpolated boundary-crossing timestamps (ENV-08).
+  - `proximity_sensor_half_turn_orientation_preserves_camera_basis` checks the
+    emitted forward and up directions through exact X- and Z-axis half-turns.
   - `testProximityLoadTime` — initial enter fires at tick 0 when the viewer starts inside the box.
   - `testProximityChangeGate` — ENV-04: `position_changed` fires only on viewer movement, not every tick; a no-move tick leaves a downstream sentinel unchanged.
   - `testProximityReEnable` — ENV-07: disabling then re-enabling fires a fresh enter when the viewer is still inside.

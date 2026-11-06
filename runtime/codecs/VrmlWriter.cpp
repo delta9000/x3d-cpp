@@ -50,7 +50,7 @@ void VrmlWriter::writeInterfaceValue(std::ostringstream &os,
     os << " \"" << vrmlEscapeString(val) << "\"";
   else if (type == X3DFieldType::SFEnum)
     os << " " << (value.has_value() ? val : "\"\"");
-  else if (type == X3DFieldType::MFEnum || isMultiField(type))
+  else if (type == X3DFieldType::MFNode || isMF(type))
     os << " [ " << vrmlBoolCase(type, val) << " ]";
   else
     os << " " << vrmlBoolCase(type, val);
@@ -127,36 +127,6 @@ std::string VrmlWriter::vrmlBoolCase(X3DFieldType type, const std::string &in) {
   return out;
 }
 
-bool VrmlWriter::isMultiField(X3DFieldType t) {
-  switch (t) {
-  case X3DFieldType::MFBool:
-  case X3DFieldType::MFInt32:
-  case X3DFieldType::MFFloat:
-  case X3DFieldType::MFDouble:
-  case X3DFieldType::MFTime:
-  case X3DFieldType::MFString:
-  case X3DFieldType::MFVec2f:
-  case X3DFieldType::MFVec2d:
-  case X3DFieldType::MFVec3f:
-  case X3DFieldType::MFVec3d:
-  case X3DFieldType::MFVec4f:
-  case X3DFieldType::MFVec4d:
-  case X3DFieldType::MFColor:
-  case X3DFieldType::MFColorRGBA:
-  case X3DFieldType::MFRotation:
-  case X3DFieldType::MFMatrix3f:
-  case X3DFieldType::MFMatrix3d:
-  case X3DFieldType::MFMatrix4f:
-  case X3DFieldType::MFMatrix4d:
-  case X3DFieldType::MFImage:
-  case X3DFieldType::MFNode:
-  case X3DFieldType::MFEnum:
-    return true;
-  default:
-    return false;
-  }
-}
-
 std::string VrmlWriter::vrmlEscapeString(const std::string &in) {
   std::string out;
   out.reserve(in.size());
@@ -181,23 +151,6 @@ X3DNode *VrmlWriter::defaultFor(const std::string &typeName) {
   X3DNode *raw = fresh.get();
   defaults_[typeName] = std::move(fresh);
   return raw;
-}
-
-const runtime::ProtoField *
-VrmlWriter::interfaceField(const runtime::ProtoInstance &src,
-                           const std::string &name) {
-  auto scan = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const runtime::ProtoField &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (src.declaration)
-    return scan(src.declaration->interface);
-  if (src.externDeclaration)
-    return scan(src.externDeclaration->interface);
-  return nullptr;
 }
 
 void VrmlWriter::writeVrmlProtoInstance(std::ostringstream &os,
@@ -228,18 +181,18 @@ void VrmlWriter::writeVrmlProtoInstance(std::ostringstream &os,
         os << "]\n";
       }
     } else if (fv.value.has_value()) {
-      const runtime::ProtoField *pf = interfaceField(src, fv.name);
+      const runtime::ProtoField *pf = src.interfaceField(fv.name);
       if (pf) {
         pad(os, depth + 1);
         std::string valStr = formatValue(pf->type, fv.value);
         if (pf->type == X3DFieldType::SFString)
           os << fv.name << " \"" << vrmlEscapeString(valStr) << "\"\n";
-        else if (isMultiField(pf->type))
+        else if (pf->type == X3DFieldType::MFNode || isMF(pf->type))
           os << fv.name << " [ " << vrmlBoolCase(pf->type, valStr) << " ]\n";
         else
           os << fv.name << " " << vrmlBoolCase(pf->type, valStr) << "\n";
       }
-    } else if (const auto *pf = interfaceField(src, fv.name);
+    } else if (const auto *pf = src.interfaceField(fv.name);
                pf && (pf->type == X3DFieldType::SFNode ||
                       pf->type == X3DFieldType::MFNode)) {
       pad(os, depth + 1);
@@ -459,7 +412,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     pad(os, depth + 1);
     if (f.type == X3DFieldType::SFString)
       os << f.x3dName << " \"" << vrmlEscapeString(text) << "\"\n";
-    else if (isMultiField(f.type))
+    else if (f.type == X3DFieldType::MFNode || isMF(f.type))
       os << f.x3dName << " [ " << vrmlBoolCase(f.type, text) << " ]\n";
     else
       os << f.x3dName << " " << vrmlBoolCase(f.type, text) << "\n";

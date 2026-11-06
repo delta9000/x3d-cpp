@@ -31,18 +31,15 @@ public:
 protected:
   // Dialect hooks: the base passes names through and discards warnings.
 
-  /// Map a node type token to its X3D type name. Base: identity.
-  virtual std::string mapNodeName(const std::string &token) const;
-
   /// Map a field-name token (on a node of `nodeType`) to its X3D field name.
   /// Base: identity.
   virtual std::string mapFieldName(const std::string & /*nodeType*/,
                                    const std::string &token) const;
 
-  /// React to the raw first line. Base: accept anything (the version was
+  /// React to the tokenized first line. Base: accept anything (the version was
   /// already read by parseHeaderLine). A subclass may throw on an unsupported
   /// header or set document defaults.
-  virtual void onHeaderLine(std::string_view /*src*/,
+  virtual void onHeaderLine(const std::vector<std::string> & /*parts*/,
                             runtime::X3DDocument & /*doc*/);
 
   /// Non-fatal diagnostic sink. Base: discard (ClassicVRML is tolerant-silent,
@@ -59,7 +56,9 @@ private:
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
   std::vector<runtime::ReaderWarning> readerWarnings_;
-  static void parseHeaderLine(std::string_view src, runtime::X3DDocument &doc);
+  static std::vector<std::string> splitOnSpace(std::string_view line);
+  static void parseHeaderLine(const std::vector<std::string> &parts,
+                               runtime::X3DDocument &doc);
   static void parseHeaderStatements(VrmlTokenizer &tok,
                                     runtime::X3DDocument &doc);
   // Scene body: a sequence of top-level statements until EOF (or, inside a
@@ -89,10 +88,6 @@ private:
   // sourceCode is already set (an explicit `sourceCode` field wins).
   static void mirrorScriptSource(X3DNode &node);
 
-  // The first `ecmascript:`/`javascript:`/`vrmlscript:` entry's body (text
-  // after the scheme prefix), or empty if none. Mirrors ScriptSystem's
-  // decodeInlineSource so the captured sourceCode matches the runtime decode.
-  static std::string decodeInlineScriptSource(const MFString &url);
   // Node body: field / nested-node / interface-decl / IS / route statements.
   // `currentProtoBody` is non-null when this body sits inside a PROTO body: a
   // `field IS protoField` statement then records an IsConnection on it bound to
@@ -181,7 +176,7 @@ private:
   // declaration is captured into the
   // DynamicFieldStore as an AuthorFieldDecl so it becomes visible to the
   // runtime (ROUTE endpoint resolution, SAI get/set). The access keyword maps
-  // per accessTypeFromString (field->initializeOnly, exposedField->inputOutput,
+  // per accessTypeFromName (field->initializeOnly, exposedField->inputOutput,
   // eventIn->inputOnly, eventOut->outputOnly); the boxed default seeds the
   // value store (empty for input/outputOnly). Declaration IS mappings are
   // recorded on the enclosing ProtoBody (ISO/IEC 19776-2 A.3).
@@ -252,13 +247,8 @@ private:
   // Small token utilities + error formatting.
   static std::runtime_error error(const VrmlToken &t, const std::string &msg);
 
-  // Consume a bare word/number token; throw if the next token is punctuation,
-  // EOF, or a string.
+  // Consume a word, number, or string token; reject punctuation and EOF.
   static std::string expectWord(VrmlTokenizer &tok, const std::string &what);
-
-  // Consume a quoted-string token (its unescaped contents). Tolerates a bare
-  // word too (some generators omit quotes), but flags pure punctuation/EOF.
-  static std::string expectString(VrmlTokenizer &tok, const std::string &what);
 
   static void expectPunct(VrmlTokenizer &tok, char c, const std::string &what);
 
@@ -268,17 +258,9 @@ private:
 
   static bool isAccessTypeWord(const std::string &w);
 
-  // Map an accessType token (incl. VRML97 aliases) to AccessType.
-  static AccessType accessTypeFromString(const std::string &w);
-
-  // Map a field-type token (e.g. "SFVec3f", "MFNode") to X3DFieldType.
-  static X3DFieldType fieldTypeFromString(const std::string &w);
-
   static std::shared_ptr<runtime::ExternProtoDeclaration>
   findExternProto(const runtime::Scene &scene, const std::string &name);
 
-  static const runtime::ProtoField *
-  findProtoField(const runtime::ProtoInstance &inst, const std::string &name);
 };
 
 } // namespace x3d::codec

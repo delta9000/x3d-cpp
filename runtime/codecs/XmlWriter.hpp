@@ -122,10 +122,6 @@ private:
                              const std::shared_ptr<X3DNode> &node,
                              const std::vector<runtime::IsConnection> &isc);
 
-  /// Look up a ProtoInstance's interface field by name in its resolved
-  /// (extern)declaration, for the field's wire type. Null if not found.
-  static const runtime::ProtoField *
-  interfaceField(const runtime::ProtoInstance &src, const std::string &name);
   static void indent(std::ostringstream &os, int depth);
 
   void render(const xml::Element &el, std::ostringstream &os, int depth);

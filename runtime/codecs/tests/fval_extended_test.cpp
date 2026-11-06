@@ -383,32 +383,10 @@ void testStripEnumQuotes() {
         "stripEnumQuotes: runs of quoted tokens collapse to bare run");
   // Empty stays empty.
   CHECK_MESSAGE((stripEnumQuotes("") == ""), "stripEnumQuotes: empty stays empty");
+  CHECK_MESSAGE((stripEnumQuotes("\"NONEXISTENT_TOKEN\"") == "NONEXISTENT_TOKEN"),
+        "stripEnumQuotes: preserves unknown tokens");
 }
 
-void testEnumUnknownTokenNotSilentlyDropped() {
-  // The generated setEnumString is a per-field thunk that tokenizes on
-  // whitespace and matches against a known list; an unknown token simply
-  // doesn't match (no exception, no error). This is by-design: parseValue
-  // should not introduce new failure modes here. We verify the strip + pass
-  // path is uniform by direct call.
-  std::string wire = "\"NONEXISTENT_TOKEN\"";
-  std::string stripped = stripEnumQuotes(wire);
-  CHECK_MESSAGE((stripped == "NONEXISTENT_TOKEN"),
-        "stripEnumQuotes: unknown quoted token still strips (no silent drop)");
-}
-
-void testEnumAliasInReader() {
-  // Enum matching strips quoted tokens before token comparison.
-  std::string xmlQuoted = "\"FLY\"";
-  CHECK_MESSAGE((stripEnumQuotes(xmlQuoted) == "FLY"),
-        "AUD-D: XML reader site: stripEnumQuotes available to XmlReader.hpp");
-  std::string vrmlQuoted = "\"FLY\" \"EXAMINE\"";
-  CHECK_MESSAGE((stripEnumQuotes(vrmlQuoted) == "FLY EXAMINE"),
-        "AUD-D: ClassicVRML reader site: stripEnumQuotes available to NodeBuilder");
-  std::string jsonQuoted = "\"WALK\"";
-  CHECK_MESSAGE((stripEnumQuotes(jsonQuoted) == "WALK"),
-        "AUD-D: JSON reader site: stripEnumQuotes available");
-}
 // 6. fmtFloat / fmtDouble locale
 void testFloatFormatLocaleIndependent() {
   // Install a comma-decimal locale if available; format must still use '.'.
@@ -425,7 +403,7 @@ void testFloatFormatLocaleIndependent() {
     }
   }
   if (!installed) {
-
+    MESSAGE("comma-decimal locale unavailable; skipping locale assertions");
     return;
   }
   std::string sf = formatValue(X3DFieldType::SFFloat, std::any(3.14159f));
@@ -590,8 +568,6 @@ TEST_CASE("fval_extended_test") {
 
   // Section 5: enum aliasing
   testStripEnumQuotes();
-  testEnumUnknownTokenNotSilentlyDropped();
-  testEnumAliasInReader();
 
   // Section 6: locale
   testFloatFormatLocaleIndependent();

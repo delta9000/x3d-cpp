@@ -34,7 +34,7 @@ public:
     X3DNode *prev = top();
     remove(node);
     stack_.push_back(node);
-    if (prev && prev != node) emit(prev, false);
+    if (prev) emit(prev, false);
     emit(node, true);
   }
 

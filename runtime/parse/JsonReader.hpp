@@ -38,7 +38,6 @@ private:
   void readRoutesInto(const json::Value *v,
                       std::vector<runtime::Route> &routes);
 
-  void readRoutes(const json::Value *v, runtime::Scene &out);
 
   void readImports(const json::Value *v, runtime::Scene &out);
 
@@ -105,10 +104,6 @@ private:
                                runtime::Scene &scene,
                                runtime::ProtoBody *currentProtoBody);
 
-  /// Return the body of the first ecmascript:/javascript:/vrmlscript: entry in
-  /// `url`, or empty if none is an inline script. Mirrors
-  /// ScriptSystem::decodeInlineSource so the reader can pre-stage sourceCode.
-  static std::string decodeInlineUrl(const MFString &url);
 
   /// Capture a ProtoInstance: name, DEF/USE, fieldValues (single-or-array).
   /// `parent`/`slot` give placement; `body` routes into body->nestedInstances.
@@ -119,11 +114,7 @@ private:
   std::shared_ptr<X3DNode> readJsonInstanceTemplate(
       const json::Value &obj, runtime::Scene &scene);
 
-  /// Map an X3D field-type string (e.g. "SFVec3f") to X3DFieldType.
-  static X3DFieldType mapProtoFieldType(const std::string &w);
 
-  /// Map an X3D accessType string to AccessType (X3D and VRML spellings).
-  static AccessType mapProtoAccessType(const std::string &w);
   // Field value application.
   /// Apply one "@field" member: find the FieldInfo, convert the JSON value to
   /// the X3D wire string, and set it via build::applyField. Unknown fields are
@@ -140,8 +131,6 @@ private:
   /// enum token emitted by JsonWriter as a JSON string lands here).
   static std::string scalarToken(const json::Value &v);
 
-  /// Re-quote a string for parseMFString, escaping embedded quote/backslash.
-  static std::string requoteString(const std::string &s);
   // Small member accessors.
   static std::string strMemberOr(const json::Value &obj, const std::string &key,
                                  const std::string &fallback);

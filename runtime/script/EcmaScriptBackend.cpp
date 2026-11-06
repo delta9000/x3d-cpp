@@ -929,7 +929,7 @@ void EcmaScriptBackend::initialize(ScriptHandle handle) {
   // initialize() may itself write outputOnly/inputOutput author fields (§29.2.3
   // permits it); read them back so an authored default emitted at init drives
   // any wired ROUTE (timestamp 0 = scene start).
-  readbackAuthorGlobals(*e, 0.0);
+  readbackAuthorGlobals(*e);
 }
 
 void EcmaScriptBackend::shutdown(ScriptHandle handle) {
@@ -957,7 +957,7 @@ void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   // exactly as invoke() does for an eventIn handler. Without this a Script that
   // emits via JS globals from prepareEvents (the common, directOutput=FALSE
   // pattern) produces no events at all.
-  readbackAuthorGlobals(*e, now);
+  readbackAuthorGlobals(*e);
 }
 
 void EcmaScriptBackend::invoke(ScriptHandle handle,
@@ -977,10 +977,10 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
   // §3.5: after the handler runs, read any author outputOnly/inputOutput field
   // the script wrote back into the store and emit it as a cascade event carrying
   // the triggering timestamp (so it fans out along ROUTEs from the author field).
-  readbackAuthorGlobals(*e, timestamp);
+  readbackAuthorGlobals(*e);
 }
 
-void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
+void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double /*timestamp*/) {
   Entry *e = entryFor(handle);
   if (!e) return;
   ArmDeadline armed(&e->heap->deadline, callBudget());
@@ -988,7 +988,7 @@ void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   // §29.2.4: events generated from eventsProcessed() enter the cascade with the
   // timestamp of the last event processed — read back any author
   // outputOnly/inputOutput global the script wrote, exactly as invoke() does.
-  readbackAuthorGlobals(*e, timestamp);
+  readbackAuthorGlobals(*e);
 }
 
 // updateField(): an inputOutput author field was written from outside the
@@ -1047,7 +1047,6 @@ std::string jsonOfAny(duk_context *ctx, const std::any &v, X3DFieldType type) {
 // field. Pushes initializeOnly/inputOutput defaults so the script reads them.
 
 void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
-  if (!e.node || !e.ctx) return;
   duk_context *ctx = e.ctx;
   for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
     // Only fields with a persistent value (initializeOnly/inputOutput) seed a
@@ -1068,8 +1067,7 @@ void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
 // readbackAuthorGlobals(): JS global -> store + cascade event, per readable
 // author field (outputOnly/inputOutput) the script defined.
 
-void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
-  if (!e.node || !e.ctx || !e.sai) return;
+void EcmaScriptBackend::readbackAuthorGlobals(Entry &e) {
   duk_context *ctx = e.ctx;
   for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
     // Read back only fields the script may emit: outputOnly + inputOutput. Both
@@ -1101,7 +1099,6 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
     // triggering-timestamp contract is satisfied by emitting within this
     // cascade — see ScriptSystem deliverInputEvent.)
     e.sai->context().authorFields().setValue(*e.node, info.x3dName, value);
-    (void)timestamp;
     e.sai->setField(e.node, info.x3dName, value);
   }
 }

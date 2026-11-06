@@ -36,8 +36,6 @@ public:
 protected:
   // Dialect hooks (override the identity base).
 
-  std::string mapNodeName(const std::string &token) const override;
-
   std::string mapFieldName(const std::string &nodeType,
                            const std::string &token) const override;
 
@@ -51,12 +49,10 @@ protected:
   ///   off
   ///       so the same entry point reads `.x3dv` correctly.
   ///   missing/garbled         -> warn, assume VRML97, attempt the parse.
-  void onHeaderLine(std::string_view src, runtime::X3DDocument &doc) override;
+  void onHeaderLine(const std::vector<std::string> &parts,
+                     runtime::X3DDocument &doc) override;
 
 private:
-  /// Split a line into whitespace-delimited tokens (header lexing only).
-  static std::vector<std::string> splitOnSpace(std::string_view line);
-
   bool strict_ = false;
   bool dialectOn_ = true;
   std::vector<std::string> warnings_;

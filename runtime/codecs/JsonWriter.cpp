@@ -217,23 +217,6 @@ void JsonWriter::writeSceneStatements(std::ostringstream &os,
   }
 }
 
-const runtime::ProtoField *
-JsonWriter::interfaceField(const runtime::ProtoInstance &src,
-                           const std::string &name) {
-  auto scan = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const runtime::ProtoField &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (src.declaration)
-    return scan(src.declaration->interface);
-  if (src.externDeclaration)
-    return scan(src.externDeclaration->interface);
-  return nullptr;
-}
-
 void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
                                         const runtime::ProtoInstance &src,
                                         int depth) {
@@ -270,7 +253,7 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
     } else if (fv.value.has_value()) {
       // Scalar-valued: emit as { "@name": <name>, "@value": <formatted> }
       // or just { "@name": <name> } if the type is unknown.
-      const runtime::ProtoField *pf = interfaceField(src, fv.name);
+      const runtime::ProtoField *pf = src.interfaceField(fv.name);
       if (pf) {
         std::string valStr = formatValue(pf->type, fv.value);
         fvElements.push_back("{ \"@name\": " + jstr(fv.name) +
@@ -316,8 +299,7 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
   os << "} }";
 }
 
-std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f,
-                                       [[maybe_unused]] int depth) {
+std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f) {
   std::ostringstream os;
   os << "{ \"@name\": " << jstr(f.name)
      << ", \"@type\": " << jstr(fieldTypeName(f.type))
@@ -384,7 +366,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
     os << "\"field\": [\n";
     for (std::size_t i = 0; i < d.interface.size(); ++i) {
       pad(os, depth + 3);
-      os << bodyWriter.jsonProtoField(d.interface[i], depth + 3);
+      os << bodyWriter.jsonProtoField(d.interface[i]);
       if (i + 1 < d.interface.size())
         os << ",";
       os << "\n";
@@ -496,7 +478,7 @@ void JsonWriter::writeJsonExternProtoDeclare(
     os << "\"field\": [\n";
     for (std::size_t i = 0; i < d.interface.size(); ++i) {
       pad(os, depth + 2);
-      os << jsonProtoField(d.interface[i], depth + 2);
+      os << jsonProtoField(d.interface[i]);
       if (i + 1 < d.interface.size())
         os << ",";
       os << "\n";
@@ -577,7 +559,7 @@ void JsonWriter::writeNode(std::ostringstream &os,
       std::string val = jsonValue(*node, f);
       if (val.empty())
         continue;
-      if (defaults && val == jsonValueOf(*defaults, f))
+      if (defaults && val == jsonValue(*defaults, f))
         continue; // equals the type default -> omit
       members.push_back("\"@" + f.x3dName + "\": " + val);
     }
@@ -796,10 +778,6 @@ JsonWriter::jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node,
     out.push_back(os.str());
   }
   return out;
-}
-
-std::string JsonWriter::jsonValueOf(const X3DNode &node, const FieldInfo &f) {
-  return jsonValue(node, f);
 }
 
 std::string JsonWriter::jsonValue(const X3DNode &node, const FieldInfo &f) {

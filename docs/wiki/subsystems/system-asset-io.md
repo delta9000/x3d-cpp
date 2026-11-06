@@ -125,8 +125,10 @@ heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
   - **Resolved-address guard**: `CURLOPT_OPENSOCKETFUNCTION` inspects the *resolved*
     sockaddr (post-DNS, per connection and per redirect hop) and refuses loopback
     (127/8, ::1), link-local (169.254/16, fe80::/10), RFC1918 (10/8, 172.16/12,
-    192.168/16), CGNAT (100.64/10), unique-local (fc00::/7) and unspecified
-    (0.0.0.0, ::) addresses. IPv4 addresses embedded in IPv6 are classified too —
+    192.168/16), CGNAT (100.64/10), unique-local (fc00::/7), unspecified
+    (0/8, ::), IPv4 multicast (224/4), reserved/broadcast (240/4), protocol
+    assignments (192.0.0/24), and benchmarking (198.18/15) addresses. IPv4
+    addresses embedded in IPv6 are classified too —
     IPv4-mapped (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`) and NAT64
     (`64:ff9b::/96`) forms all run the IPv4 classifier on the embedded address. A
     hostname or redirect cannot smuggle a private address past it.
@@ -145,6 +147,10 @@ heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
   error path against unreachable host + the SEC-6 loopback-block / size-cap /
   non-http-redirect cases against an in-process loopback server). Success path is in
   the swap-test.
+
+`x3d_http_address_guard` checks the added IPv4 ranges at both endpoints, their
+adjacent addresses, and all three supported IPv6 embedding forms without
+opening a socket.
 
 ### Backend B — AWS C++ SDK S3 (`x3d_s3`, `X3D_CPP_BUILD_S3`)
 

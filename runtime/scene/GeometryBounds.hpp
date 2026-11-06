@@ -177,9 +177,8 @@ inline void geom2DExpandArc(Aabb &out, float radius, float startAngle,
   }
 }
 
-// Text-layout inputs read off a Text node by reflection. Mirrors the extraction
-// layer's readers (TextExtract.hpp) so the bounds path lays the glyphs out with
-// exactly the same FontStyleParams/TextParams the renderer uses.
+// Text-layout inputs shared by bounds and TextExtract.hpp so both paths use
+// the same FontStyleParams, TextParams, and glyph metrics.
 
 // Split an X3D enum token string on whitespace/quotes/commas (justify is
 // "MAJOR" or "MAJOR MINOR"; family/style are MFEnum token lists).

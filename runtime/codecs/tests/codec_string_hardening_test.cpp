@@ -460,7 +460,7 @@ TEST_CASE("Script node defaults survive canonical JSON and Classic writers") {
   for (const auto &[output, encoding] : outputs) {
     CAPTURE(output);
     if (encoding == codec::Encoding::JSON) {
-      auto dom = json::parse(output);
+      auto dom = json::parseComplete(output);
       auto children = dom->member("X3D")->member("Scene")->member("-children");
       REQUIRE(children->array.size() == 1);
       auto fields = children->array[0]->member("Script")->member("field");
@@ -523,7 +523,7 @@ TEST_CASE("shader author interfaces survive every writer") {
       CAPTURE(type);
       CAPTURE(output);
       if (encoding == codec::Encoding::JSON) {
-        auto dom = json::parse(output);
+        auto dom = json::parseComplete(output);
         auto children = dom->member("X3D")->member("Scene")->member("-children");
         REQUIRE(children->array.size() == 1);
         auto fields = children->array[0]->member(type)->member("field");

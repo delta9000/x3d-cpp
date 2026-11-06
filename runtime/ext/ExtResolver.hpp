@@ -42,58 +42,23 @@ makeExternalGeometryProto() {
         return type == "ExternalGeometry" ? std::make_shared<ExternalGeometry>() : nullptr;
     };
 
-    // Interface fields
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "url";
-        f.type   = X3DFieldType::MFString;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(MFString{});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "bboxCenter";
-        f.type   = X3DFieldType::SFVec3f;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFVec3f{0.0f, 0.0f, 0.0f});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "bboxSize";
-        f.type   = X3DFieldType::SFVec3f;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFVec3f{-1.0f, -1.0f, -1.0f});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "contentType";
-        f.type   = X3DFieldType::SFString;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFString{});
-        decl->interface.push_back(std::move(f));
-    }
-
-    // Body: one ExternalGeometry node
     auto body_node = std::make_shared<ExternalGeometry>();
     decl->body.nodes.push_back(body_node);
+    for (const auto& info : body_node->fields()) {
+        if (info.access != AccessType::InitializeOnly) continue;
+        x3d::runtime::ProtoField f;
+        f.name   = info.x3dName;
+        f.type   = info.type;
+        f.access = info.access;
+        f.value  = info.get(*body_node);
+        decl->interface.push_back(std::move(f));
 
-    // IS connections: each interface field → the matching body field
-    // expandInstance uses body.isConnections to forward fieldValues from the
-    // ProtoInstance onto the cloned body node (cloneMap[body_node.get()]).
-    auto add_is = [&](const std::string& field) {
         x3d::runtime::IsConnection is;
-        is.node       = body_node;  // the original body node (cloneMap key)
-        is.nodeField  = field;
-        is.protoField = field;
+        is.node       = body_node;
+        is.nodeField  = info.x3dName;
+        is.protoField = info.x3dName;
         decl->body.isConnections.push_back(std::move(is));
-    };
-    add_is("url");
-    add_is("bboxCenter");
-    add_is("bboxSize");
-    add_is("contentType");
+    }
 
     return decl;
 }

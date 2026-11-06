@@ -47,7 +47,7 @@ private:
   // emitted by the shared formatter.
   static std::string vrmlBoolCase(X3DFieldType type, const std::string &in);
 
-  // True for every multiple-value (MF*) field type. ClassicVRML / VRML97
+  // ClassicVRML / VRML97
   // grammar (ISO/IEC 19776-2, VRML97 Annex A) requires an MF value to be
   // bracketed
   //   mfValue ::= '[' ']' | '[' sfValue+ ']' | sfValue
@@ -55,7 +55,6 @@ private:
   // element on reparse), and an empty MF must be written '[ ]'. We always
   // bracket MF values (single/empty included) — always grammatical, never
   // lossy.
-  static bool isMultiField(X3DFieldType t);
   static void writeInterfaceValue(std::ostringstream &os, X3DFieldType type,
                                   const std::any &value);
 
@@ -78,10 +77,6 @@ private:
   static void pad(std::ostringstream &os, int depth);
 
   X3DNode *defaultFor(const std::string &typeName);
-
-  /// Look up a ProtoInstance's interface field by name (for type information).
-  static const runtime::ProtoField *
-  interfaceField(const runtime::ProtoInstance &src, const std::string &name);
 
   /// Emit a proto instance: `[DEF d ]Name {\n  field value\n}\n`
   void writeVrmlProtoInstance(std::ostringstream &os,

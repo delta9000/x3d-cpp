@@ -366,7 +366,6 @@ private:
     // External-url fetch state
     std::size_t urlCandidate = 0;  ///< next url entry to try (preference order)
     bool pendingFetch = false;     ///< last resolver call was Pending -> retry
-    std::size_t fetchAttempts = 0; ///< resolver calls made (diagnostic)
     // autoRefresh state
     /// Scene time the auto-refresh window opened (first load after attach or a
     /// url change). `autoRefreshTimeLimit` is measured from here and it does not
@@ -407,7 +406,6 @@ private:
         ++e.urlCandidate;
         continue;
       }
-      ++e.fetchAttempts;
       const extract::AssetResult r = resolver_(u, extract::AssetKind::Inline);
       if (r.ready()) {
         e.pendingFetch = false;

@@ -34,6 +34,10 @@ bool isBlockedV4(std::uint32_t a /* host byte order */) {
   if ((a >> 20) == 0xAC1) return true;   // 172.16.0.0/12  RFC1918
   if ((a >> 16) == 0xC0A8) return true;  // 192.168.0.0/16 RFC1918
   if ((a >> 22) == 0x191) return true;   // 100.64.0.0/10  CGNAT
+  if ((a >> 28) == 0xE) return true;    // 224.0.0.0/4 multicast
+  if ((a >> 28) == 0xF) return true;    // 240.0.0.0/4 reserved, including broadcast
+  if ((a >> 8) == 0xC00000) return true; // 192.0.0.0/24 protocol assignments
+  if ((a >> 17) == 0x6309) return true; // 198.18.0.0/15 benchmarking
   return false;
 }
 

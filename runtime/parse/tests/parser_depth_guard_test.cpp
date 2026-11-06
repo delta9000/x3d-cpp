@@ -2,6 +2,7 @@
 
 #include "ClassicVrmlReader.hpp" // direct reader reuse (depth_ is a member)
 #include "JsonLite.hpp"
+#include "JsonReader.hpp"
 #include "X3DParse.hpp" // codec::parseDocument front door (content-sniffs VRML)
 
 #include "doctest/doctest.h"
@@ -21,11 +22,11 @@ static std::string nestedVrml(int depth) {
 }
 
 TEST_CASE("json_rejects_pathological_nesting") {
-  CHECK_THROWS_AS((void)x3d::json::parse(nestedJson(50000)), std::runtime_error);
+  CHECK_THROWS_AS((void)x3d::json::parseComplete(nestedJson(50000)), std::runtime_error);
 }
 
 TEST_CASE("json_allows_legitimate_nesting") {
-  CHECK_NOTHROW((void)x3d::json::parse(nestedJson(100)));
+  CHECK_NOTHROW((void)x3d::json::parseComplete(nestedJson(100)));
 }
 
 TEST_CASE("vrml_rejects_pathological_nesting") {
@@ -49,4 +50,20 @@ TEST_CASE("vrml_reader_depth_counter_resets_after_a_rejected_parse") {
   // 1000 levels is the deepest the cap accepts; it must still parse on the same
   // reused reader after rejecting excessive nesting.
   CHECK_NOTHROW((void)reader.readDocument(nestedVrml(1000)));
+}
+
+TEST_CASE("json_document_rejects_trailing_content") {
+  const std::string document = R"({"X3D":{"Scene":{}}})";
+  x3d::codec::JsonReader reader;
+  for (const auto &suffix : {" garbage", " {}", " []", " true", " 0"}) {
+    const auto text = document + suffix;
+    CHECK_THROWS_WITH_AS(x3d::json::parseComplete(text),
+        doctest::Contains("trailing content after JSON value"), std::runtime_error);
+    CHECK_THROWS_WITH_AS(reader.readDocument(text),
+        doctest::Contains("trailing content after JSON value"), std::runtime_error);
+    CHECK_THROWS_WITH_AS(x3d::codec::parseDocument(text),
+        doctest::Contains("trailing content after JSON value"), std::runtime_error);
+  }
+  CHECK_NOTHROW(reader.readDocument(document + " \t\r\n"));
+  CHECK_NOTHROW(x3d::codec::parseDocument(document + " \t\r\n"));
 }

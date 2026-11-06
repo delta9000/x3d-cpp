@@ -1,3 +1,4 @@
+#include "FieldRead.hpp"
 // Compare author fields and ROUTE targets after each tick under both engines.
 // Numeric traces use fixed-precision rounding to compare marshalled field
 // values without engine-specific formatting differences. See ADR-0022.
@@ -353,17 +354,9 @@ std::string slurp(const std::string &path) {
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
   if (!n) return;
   if (auto *s = dynamic_cast<Script *>(n)) out.push_back(s);
-  for (const auto &fi : n->fields()) {
-    if (!fi.get) continue;
-    if (fi.type == X3DFieldType::SFNode) {
-      auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-      if (c) collectScripts(c.get(), out);
-    } else if (fi.type == X3DFieldType::MFNode) {
-      for (const auto &c :
-           std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-        if (c) collectScripts(c.get(), out);
-    }
-  }
+  x3d::runtime::forEachChildNode(*n, [&](const auto &, const auto &child) {
+    collectScripts(child.get(), out);
+  });
 }
 
 // F4: the authored CDATA corpus fixture, loaded through the real XmlReader ->

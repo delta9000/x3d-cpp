@@ -4,9 +4,9 @@
 // so it never leaks. The factory returns a std::function exchanging only std
 // types, so linking x3d_stbtt pulls in no stb headers.
 #include "StbttFontMetrics.hpp"
+#include "../ReadFile.hpp"
 
 #include <cstdint>
-#include <fstream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -17,16 +17,6 @@
 
 namespace x3d::runtime::io::stbtt {
 namespace {
-
-bool readFile(const std::string& path, std::vector<unsigned char>& out) {
-  std::ifstream f(path, std::ios::binary | std::ios::ate);
-  if (!f) return false;
-  const std::streamoff size = f.tellg();
-  if (size <= 0) return false;
-  out.resize(static_cast<std::size_t>(size));
-  f.seekg(0);
-  return static_cast<bool>(f.read(reinterpret_cast<char*>(out.data()), size));
-}
 
 // One initialized face: the byte buffer (stbtt_fontinfo points into it, so it
 // must outlive the info) + the parsed font info.
@@ -49,7 +39,7 @@ struct State {
     if (cached != cache.end()) return cached->second;
 
     auto face = std::make_shared<Face>();
-    if (readFile(path, face->bytes)) {
+    if (::x3d::runtime::io::detail::readFile(path, face->bytes) && !face->bytes.empty()) {
       const int off = stbtt_GetFontOffsetForIndex(face->bytes.data(), 0);
       if (off >= 0 && stbtt_InitFont(&face->info, face->bytes.data(), off)) {
         face->ok = true;

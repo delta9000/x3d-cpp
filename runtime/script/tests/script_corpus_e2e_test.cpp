@@ -1,3 +1,4 @@
+#include "FieldRead.hpp"
 // File-authored Script lifecycle and output behavior.
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"
@@ -47,17 +48,9 @@ void check(bool cond, const std::string &what) {
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
   if (!n) return;
   if (auto *s = dynamic_cast<Script *>(n)) out.push_back(s);
-  for (const auto &fi : n->fields()) {
-    if (!fi.get) continue;  // inputOnly fields have no get thunk
-    if (fi.type == X3DFieldType::SFNode) {
-      auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-      if (c) collectScripts(c.get(), out);
-    } else if (fi.type == X3DFieldType::MFNode) {
-      for (const auto &c :
-           std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-        if (c) collectScripts(c.get(), out);
-    }
-  }
+  x3d::runtime::forEachChildNode(*n, [&](const auto &, const auto &child) {
+    collectScripts(child.get(), out);
+  });
 }
 
 std::string slurp(const std::string &path) {

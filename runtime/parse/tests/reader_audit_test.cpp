@@ -305,7 +305,7 @@ void testJsonContainerField() {
 // (3) Access-type aliases. Spec §4.4.4.2 defines 4 X3D names; VRML97 alias
 //     forms are accepted by the spec's "equivalent" rule. ClassicVRML/VRML97
 //     must map both spellings; XML/JSON take the X3D canonical form (verified
-//     via their own alias-aware mapProtoAccessType / mapAccessType).
+//     via the shared alias-aware accessTypeFromName).
 //
 // Also pins the case-sensitivity gap: an unknown-case access token (EventIn
 // not eventIn) falls through to InputOutput via the default branch. This is
@@ -341,7 +341,7 @@ void testAccessTypeAliases() {
     }
   }
 
-  // VRML97: same mapping (subclass shares the base's accessTypeFromString).
+  // VRML97: same mapping (subclass shares accessTypeFromName).
   {
     const std::string src =
         "#VRML V2.0 utf8\n"
@@ -363,7 +363,7 @@ void testAccessTypeAliases() {
   }
 
   // XML: X3D canonical spelling (inputOnly / initializeOnly / ...) reaches
-  // the same AccessType via XmlReader::mapAccessType. Aliases work too (the
+  // the same AccessType via accessTypeFromName. Aliases work too (the
   // map covers eventIn / field / exposedField).
   {
     const std::string xml =
@@ -393,7 +393,7 @@ void testAccessTypeAliases() {
     }
   }
 
-  // JSON: same canonical spellings via JsonReader::mapProtoAccessType.
+  // JSON: same canonical spellings via accessTypeFromName.
   {
     const std::string j = R"({"X3D":{"@profile":"Immersive","@version":"4.0",
       "Scene":{"-children":[
@@ -425,7 +425,7 @@ void testAccessTypeAliases() {
 
   // Case-sensitivity gap (documented behavior, not fixed): an accessType token
   // with non-canonical casing ("EventIn") falls through the literal-case
-  // switch in accessTypeFromString() / mapAccessType() / mapProtoAccessType()
+  // switch in accessTypeFromName()
   // and lands on the InputOutput default. The spec is literal-case so this
   // is the documented lenient fallback; we pin the behavior so a future
   // tightening (or a fix) shows up as a diff here.

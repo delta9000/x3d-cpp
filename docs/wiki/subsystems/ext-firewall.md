@@ -19,8 +19,8 @@ The ext firewall contains every piece of code that is non-spec, binary-format, o
 
 | File / directory | Role |
 |---|---|
-| `runtime/ext/ExternalGeometry.hpp` | Hand-written `X3DNode` subclass — the `ExternalGeometry` dialect node; holds `url`, `bboxCenter`, `bboxSize`, `contentType`; `defaultContainerField()` is `"geometry"` |
-| `runtime/ext/ExtResolver.hpp` | `install(base)` factory — wraps a `ProtoDeclarationResolver` to intercept `urn:x3d-cpp-gen:ext:ExternalGeometry` and delegate other URNs to `base`; caches the ProtoDeclaration per-process via `static` |
+| `runtime/ext/ExternalGeometry.hpp` | Hand-written `X3DNode` subclass — the `ExternalGeometry` dialect node; holds `url`, `bboxCenter`, `bboxSize`, `contentType`; appends inherited descriptors from `X3DNode::fields()`; `defaultContainerField()` is `"geometry"` |
+| `runtime/ext/ExtResolver.hpp` | `install(base)` factory — wraps a `ProtoDeclarationResolver` to intercept `urn:x3d-cpp-gen:ext:ExternalGeometry` and delegate other URNs to `base`; derives the PROTO interface and IS connections from the body node's `initializeOnly` field descriptors |
 | `runtime/ext/ExternalGeometryResolver.hpp` | `makeExternalGeometryResolver(bytesResolver)` — the lazy materialization seam; produces a `std::function<PackedMesh(const X3DNode*, AssetResolver)>` for `MeshBuildOptions::externalGeometryResolver`; owns a url-keyed `PackedMesh` cache |
 | `runtime/ext/codecs/StlReader.hpp` | Binary STL codec: `parseStlBinary(data, len)` and `parseStlBinary(vector)` — reads the 84 + N×50 byte layout, produces a non-indexed `PackedMesh` (Position + Normal, `Topology::Triangles`, `ccw=true`, `solid=true`) |
 | `include/x3d/ext.hpp` | Opt-in embedder façade; re-exports `x3d::ext::ExternalGeometry`, `x3d::ext::install`, `x3d::ext::kExternalGeometryUrn`, `x3d::ext::makeExternalGeometryProto`, `x3d::ext::makeExternalGeometryResolver` |

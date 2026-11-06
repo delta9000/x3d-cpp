@@ -10,7 +10,6 @@
 #include "AssetResolver.hpp"         // x3d::runtime::extract::{AssetResolver, AssetKind, AssetResult}
 #include "PackedMesh.hpp"            // x3d::runtime::extract::PackedMesh
 
-#include <algorithm>
 #include <cctype>
 #include <functional>
 #include <memory>
@@ -18,22 +17,6 @@
 #include <unordered_map>
 
 namespace x3d::runtime::ext {
-
-namespace egr_detail {
-
-inline std::string toLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return s;
-}
-
-// Returns true if `url` ends (case-insensitively) in `ext` (e.g. ".stl").
-inline bool hasExtension(const std::string& url, const std::string& ext) {
-    if (url.size() < ext.size()) return false;
-    return toLower(url.substr(url.size() - ext.size())) == ext;
-}
-
-} // namespace egr_detail
 
 // Fetch through the captured bytesResolver, rather than the call-site resolver.
 // Successful meshes are cached across copies of the closure; Pending results
@@ -72,7 +55,10 @@ makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver)
         }
 
         // Only binary STL is supported.
-        if (!egr_detail::hasExtension(url, ".stl")) {
+        if (url.size() < 4 || url[url.size() - 4] != '.' ||
+            std::tolower(static_cast<unsigned char>(url[url.size() - 3])) != 's' ||
+            std::tolower(static_cast<unsigned char>(url[url.size() - 2])) != 't' ||
+            std::tolower(static_cast<unsigned char>(url[url.size() - 1])) != 'l') {
             // Unsupported formats return an empty mesh without caching.
             return PackedMesh{};
         }

@@ -65,13 +65,13 @@ is destroyed. Unknown and read-only fields are not recorded.
 | `runtime/parse/Encoding.hpp` | `Encoding` enum + `sniff`, `sniffByContent`, `sniffByExtension`, `isGzip`, `skipBomAndSpace` |
 | `runtime/parse/XmlReaderAdapter.hpp` | Thin adapter wrapping `codec::XmlReader` (in `runtime/codecs/`) to satisfy the `X3DReader` interface |
 | `runtime/parse/ClassicVrmlReader.hpp` | Full Classic VRML reader (ISO/IEC 19776-2); also the base class for `Vrml97Reader`; defines all dialect hooks |
-| `runtime/parse/Vrml97Reader.hpp` | VRML97 reader (ISO/IEC 14772-1) — inherits `ClassicVrmlReader`, overrides the dialect hooks (`mapNodeName`, `mapFieldName`, `onHeaderLine`, `warn`) |
-| `runtime/parse/Vrml97Dialect.hpp` | VRML97 → X3D name-remap table (`vrml97::mapNodeName`, `vrml97::mapFieldName`); header-only |
+| `runtime/parse/Vrml97Reader.hpp` | VRML97 reader (ISO/IEC 14772-1) — inherits `ClassicVrmlReader`, overrides the dialect hooks (`mapFieldName`, `onHeaderLine`, `warn`) |
+| `runtime/parse/Vrml97Dialect.hpp` | VRML97 → X3D field-name aliases (`vrml97::mapFieldName`); header-only |
 | `runtime/parse/JsonReader.hpp` | X3D-JSON reader — walks the Web3D X3D-JSON shape, converts JSON values to X3D wire strings, applies fields via `build::applyField` |
 | `runtime/parse/NodeBuilder.hpp` | Encoding-independent build helpers shared by all text/JSON readers: `beginNode`, `applyField`, `attachChild`, `defineDef`, `resolveUse`, `collectFieldValue`; `namespace x3d::codec::build` |
 | `runtime/X3DAuthoredScalarFields.hpp` | Weak node-identity field presence shared by scenes and PROTO declarations |
 | `runtime/parse/VrmlTokenizer.hpp` | Streaming VRML lexer with one-token (and two-token) lookahead; shared by `ClassicVrmlReader` and `Vrml97Reader` |
-| `runtime/parse/JsonLite.hpp` | Bundled minimal JSON parser used by `JsonReader` (`x3d::json::parse`) |
+| `runtime/parse/JsonLite.hpp` | Bundled minimal JSON parser used by `JsonReader` (`x3d::json::parseComplete`) |
 | `runtime/parse/Inflate.hpp` | In-memory gzip decompression (`inflateGzip`) using `tinfl.h` (bundled); called by `parseFile` when gzip magic is detected |
 | `runtime/parse/X3DProtoResolver.hpp` | `ProtoDeclarationResolver` typedef (a `std::function`) + `noopProtoResolver`; the seam for EXTERNPROTO resolution |
 | `runtime/parse/tests/` | Per-encoding and per-feature unit tests (see How it is tested) |
@@ -184,10 +184,18 @@ as EXTERNPROTO; rejected absolute/escaping includes never open the target.
 The front door snapshots each document's authored `head.units` onto its `Scene::sourceUnits` and locally authored `ProtoDeclaration::sourceUnits` before expansion. Child Scenes returned by Inline and declarations selected by file or asset EXTERNPROTO resolution therefore carry their own source UNIT declarations; an empty snapshot means that source declared none. These runtime snapshots do not change `Head` serialization or numeric field values.
 
 - **Dialect hooks on `ClassicVrmlReader`** — three protected virtual methods that `Vrml97Reader` overrides:
-  - `mapNodeName(token)` — renames a node type token before the factory lookup (identity in Classic VRML; delegates to `vrml97::mapNodeName` in VRML97).
   - `mapFieldName(nodeType, token)` — renames a field token (identity in Classic VRML; applies the LOD/Switch field renames in VRML97).
-  - `onHeaderLine(src, doc)` — reacts to the raw first line to set `doc.version`, `doc.profile`, or reject an unsupported encoding (e.g. VRML 1.0 throws in `Vrml97Reader`).
+  - `onHeaderLine(parts, doc)` — reuses the first line's tokens to set `doc.version`, `doc.profile`, or reject an unsupported encoding (e.g. VRML 1.0 throws in `Vrml97Reader`).
   - `warn(message)` — diagnostic sink; discarded by the base, collected into a `std::vector<std::string>` by `Vrml97Reader` (optional strict mode via `setStrict(true)`).
+
+ClassicVRML extracts and tokenizes the header once, then shares the tokens
+with the VRML97 dialect hook. Node type names go directly to the factory;
+VRML97 remaps only field names.
+
+JSON document reads require exactly one JSON value. Trailing whitespace is
+accepted; trailing garbage or another JSON value throws. The regression case
+`json_document_rejects_trailing_content` exercises JsonLite, JsonReader, and
+`parseDocument`.
 
 - **Node factory** — all readers instantiate nodes via `X3DNodeFactory::create(typeName)`, which is the same factory used everywhere else in the runtime. Unknown type names return null; the element is skipped, and the reader records a `ReaderWarning{Kind::UnknownNode}` in `X3DDocument.readerWarnings` so `x3d validate` reports it instead of silently deleting author content (DIAG-UNKNOWN-NODE). In XML, a `<ROUTE>` nested among a node's children is not a node: it is added to the enclosing scene's (or PROTO body's) routes, and a nested `<IS>` is skipped there because the IS pass reads it (before 2026-09-26 nested ROUTEs were silently dropped; `nested_route_xml_is_kept`).
 

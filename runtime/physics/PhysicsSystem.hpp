@@ -79,7 +79,7 @@ public:
 
       ShapeDesc shape;
       SFNode collidableShape;
-      if (!shapeForBody(*body, shape, &collidableShape)) {
+      if (!shapeForBody(*body, shape, collidableShape)) {
         // Count unsupported bodies for droppedBodyCount().
         ++droppedBodies_;
         std::cerr << "[PhysicsSystem] RigidBody has no supported collidable "
@@ -374,7 +374,7 @@ private:
 
   /** Use the first supported CollidableShape; return false if none is found. */
   static bool shapeForBody(const xn::RigidBody &body, ShapeDesc &out,
-                           SFNode *outShape = nullptr) {
+                           SFNode &outShape) {
     for (const auto &geomNode : body.getGeometry()) {
       auto *collidable = dynamic_cast<xn::CollidableShape *>(geomNode.get());
       if (!collidable) continue;
@@ -384,17 +384,17 @@ private:
       if (auto *box = dynamic_cast<xn::Box *>(geom)) {
         const SFVec3f s = box->getSize();
         out = ShapeDesc::box(SFVec3f{s.x * 0.5f, s.y * 0.5f, s.z * 0.5f});
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *sphere = dynamic_cast<xn::Sphere *>(geom)) {
         out = ShapeDesc::sphere(sphere->getRadius());
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *cyl = dynamic_cast<xn::Cylinder *>(geom)) {
         out = ShapeDesc::cylinder(cyl->getRadius(), cyl->getHeight() * 0.5f);
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *cone = dynamic_cast<xn::Cone *>(geom)) {
@@ -403,7 +403,7 @@ private:
         // the body in the simulation instead of dropping it.
         const float r = cone->getBottomRadius();
         out = ShapeDesc::box(SFVec3f{r, cone->getHeight() * 0.5f, r});
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
     }

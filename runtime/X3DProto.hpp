@@ -311,6 +311,16 @@ public:
   std::shared_ptr<ProtoDeclaration> declaration;
   std::shared_ptr<ExternProtoDeclaration> externDeclaration;
 
+  /// Find an interface field, preferring a local declaration over an extern.
+  const ProtoField *interfaceField(const std::string &fieldName) const {
+    const auto *fields = declaration ? &declaration->interface
+        : externDeclaration ? &externDeclaration->interface : nullptr;
+    if (fields)
+      for (const auto &field : *fields)
+        if (field.name == fieldName) return &field;
+    return nullptr;
+  }
+
   // Set by expandScene when this instance was successfully expanded into the
   // graph (its primary node is then re-emitted via Scene::expandedSources).
   // A failed reader-authored instance keeps its template in the graph; an

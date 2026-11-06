@@ -14,8 +14,9 @@ namespace x3d::runtime::io::curl {
 struct HttpResolverOptions {
   /// When false (default) the resolver refuses to connect to a resolved
   /// loopback, link-local (169.254/16, fe80::/10), RFC1918, CGNAT (100.64/10),
-  /// unique-local (fc00::/7) or unspecified (0.0.0.0/::) address, and also
-  /// classifies IPv4 addresses embedded in IPv4-mapped (::ffff:a.b.c.d),
+  /// unique-local (fc00::/7), unspecified (0/8, ::), IPv4 multicast (224/4),
+  /// reserved/broadcast (240/4), protocol assignment (192.0.0/24), or
+  /// benchmarking (198.18/15) address. It also classifies IPv4 addresses embedded in IPv4-mapped (::ffff:a.b.c.d),
   /// IPv4-compatible (::a.b.c.d) and NAT64 (64:ff9b::/96) IPv6 forms. The check
   /// runs on the resolved sockaddr (after DNS, per connection), so a hostname
   /// or redirect cannot smuggle a private address past it. Environment proxies

@@ -72,17 +72,12 @@ private:
   void writeSceneStatements(std::ostringstream &os, const runtime::Scene &scene,
                             int depth);
 
-  /// Look up a ProtoInstance's interface field by name (for type information).
-  static const runtime::ProtoField *
-  interfaceField(const runtime::ProtoInstance &src, const std::string &name);
-
   /// Re-emit a captured <ProtoInstance> as a JSON object.
   void writeJsonProtoInstance(std::ostringstream &os,
                               const runtime::ProtoInstance &src, int depth);
 
   /// Emit one proto interface `field` as a JSON object.
-  std::string jsonProtoField(const runtime::ProtoField &f,
-                             [[maybe_unused]] int depth);
+  std::string jsonProtoField(const runtime::ProtoField &f);
 
   /// Emit a <ProtoDeclare> as a JSON object entry in the -children array.
   void writeJsonProtoDeclare(std::ostringstream &os,
@@ -117,9 +112,6 @@ private:
   /// there are none or scene_ is null. `depth` is the slot's own indent level.
   std::vector<std::string>
   jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node, int depth);
-
-  /// jsonValueOf on the (raw) defaults instance, for default elision.
-  std::string jsonValueOf(const X3DNode &node, const FieldInfo &f);
 
   /// Format a value field as a JSON value (scalar, string, or array). Returns
   /// "" for an unsupported type; empty multi-fields produce [].

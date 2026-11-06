@@ -28,9 +28,6 @@ using namespace x3d::core;
 /// Find a field by its X3D name, or null if the node has no such field.
 const FieldInfo *findField(const FieldTable &table, std::string_view name);
 
-/// True if `name` names an SFNode/MFNode field on this node (so a reader can
-/// disambiguate `fieldName Type{…}` child syntax from a value field).
-bool isNodeField(const FieldTable &table, std::string_view name);
 // Node construction.
 
 /// Instantiate a node by type name. Returns null for an unknown type so the
@@ -89,9 +86,8 @@ int sfComponentCount(X3DFieldType type);
 /// size a bracket-less single-element MF run.
 int mfElementComponents(X3DFieldType type);
 
-bool isMF(X3DFieldType type);
-
-bool isStringType(X3DFieldType type);
+/// Body of the first inline ecmascript/javascript/vrmlscript URL, or empty.
+std::string decodeInlineScriptSource(const std::vector<std::string> &url);
 
 /// Re-quote a string token for handing back into FieldValueIO::parseMFString,
 /// escaping embedded quote/backslash (the inverse of the tokenizer's unescape).

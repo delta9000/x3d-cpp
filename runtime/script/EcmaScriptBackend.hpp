@@ -163,7 +163,7 @@ private:
   //   SaiContext, so an author output write drives ROUTEs. Skips a field whose
   //   JS global is undefined (the handler never assigned it).
   static void seedAuthorGlobals(Entry &e);
-  static void readbackAuthorGlobals(Entry &e, double timestamp);
+  static void readbackAuthorGlobals(Entry &e);
 
   // Install the Browser global object on a fresh context, bound to the Entry's
   // SaiContext (stamped on each Browser method so native callbacks recover it).

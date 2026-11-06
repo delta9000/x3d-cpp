@@ -24,6 +24,35 @@ std::string stripEnumQuotes(const std::string &wire) {
   return out;
 }
 
+bool isMF(X3DFieldType type) {
+  switch (type) {
+  case X3DFieldType::MFBool:
+  case X3DFieldType::MFColor:
+  case X3DFieldType::MFColorRGBA:
+  case X3DFieldType::MFDouble:
+  case X3DFieldType::MFFloat:
+  case X3DFieldType::MFImage:
+  case X3DFieldType::MFInt32:
+  case X3DFieldType::MFMatrix3d:
+  case X3DFieldType::MFMatrix3f:
+  case X3DFieldType::MFMatrix4d:
+  case X3DFieldType::MFMatrix4f:
+  case X3DFieldType::MFRotation:
+  case X3DFieldType::MFString:
+  case X3DFieldType::MFTime:
+  case X3DFieldType::MFVec2d:
+  case X3DFieldType::MFVec2f:
+  case X3DFieldType::MFVec3d:
+  case X3DFieldType::MFVec3f:
+  case X3DFieldType::MFVec4d:
+  case X3DFieldType::MFVec4f:
+  case X3DFieldType::MFEnum:
+    return true;
+  default:
+    return false;
+  }
+}
+
 std::string fmtFloat(float v) {
   if (v == static_cast<long long>(v) && std::fabs(v) < 1e15f) {
     return std::to_string(static_cast<long long>(v));

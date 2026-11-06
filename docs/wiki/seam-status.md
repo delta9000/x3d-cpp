@@ -109,6 +109,9 @@ The `AssetResolver` seam is the second row to go GREEN (Phase-1):
   `curl_easy_perform` path behind `X3D_CPP_BUILD_CURL` (OFF default, `find_package(CURL)`),
   with **no core `#ifdef`** — libcurl meets the seam in a single isolated TU (`x3d_curl`
   static lib), linked PRIVATE so its headers/flags never leak to consumers.
+  Its resolved-address guard also rejects IPv4 multicast, reserved/broadcast,
+  protocol assignment, and benchmarking ranges, including embedded IPv4 in IPv6.
+  `x3d_http_address_guard` checks these ranges without making network requests.
 - **Backend B — AWS C++ SDK S3** (`runtime/io/s3/S3Resolver.{hpp,cpp}`): `GetObject` path
   behind `X3D_CPP_BUILD_S3` (OFF default, `find_package(AWSSDK REQUIRED COMPONENTS s3)`),
   with **no core `#ifdef`** — AWS SDK meets the seam in a single isolated TU (`x3d_s3`
