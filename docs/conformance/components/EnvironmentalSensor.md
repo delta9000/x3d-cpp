@@ -25,6 +25,7 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **ENV-04** [minor/CLOSED `2b84a99`] — §22.4.1: position/orientation_changed fire every tick even when the viewer is still (no change-gate).
+  - Pose outputs are change-gated. Sensor orientation uses the shared rigid-matrix conversion, preserving X- and Z-axis half-turns instead of substituting a Y-axis turn. Covered by proximity_sensor_half_turn_orientation_preserves_camera_basis.
 - **ENV-05** [minor/CLOSED] — §22.4.3: Cone (not frustum) test → false isActive=FALSE in wide-aspect periphery.
   - Six view-frustum planes from Viewpoint.fieldOfView (smaller angle) + ViewVolume aspect; per-axis so wide aspect widens only the horizontal half-angle.
 - **ENV-08** [minor/CLOSED] — §22.4.1: enter/exitTime use tick now, not the interpolated boundary-crossing time.

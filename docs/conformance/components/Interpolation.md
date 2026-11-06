@@ -29,7 +29,7 @@ _Generated. Levels 1,2,3,4,5 · 13 nodes · profiles: Interchange, Interactive, 
   - ROUTE wrappers inside ProtoBody child arrays and nested body nodes belong to the enclosing prototype, while scene routes remain in the scene. Test: reader_audit_test.cpp, JSON statement wrappers in children retain their execution scope.
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
-- **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
+- **PIV-1** [minor/CLOSED `07c31ca`] — §—: attachInterpolators enrolls scene nodes using the makeInterpolatorSystems factory; the unused add-only registration helper was removed.
 - **AUD-INTERP-1** [minor/CLOSED] — §19.3.1: value_changed read before any input returns the field default instead of keyValue[0].
   - The hand-written linear, spline, and Squad attach paths initialize value_changed from the first authored keyValue or row without posting an event. Regression: interpolator_initial_value_readback.
 - **INTERP-03** [low/CLOSED] — §19.4.13: SquadOrientationInterpolator.normalizeVelocity is ignored by quaternion spline interpolation.

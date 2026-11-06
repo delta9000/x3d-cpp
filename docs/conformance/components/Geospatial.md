@@ -62,7 +62,7 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 - **DELTA-GEOORIGIN** [major/FIXED] — §ISO/IEC 19775-1 25.2.3, 25.3.1, 25.3.2, 25.3.3, 25.3.10: GeoOrigin edits refresh dependent geographic placements and meshes.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
-- **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
+- **PIV-1** [minor/CLOSED `07c31ca`] — §—: attachInterpolators enrolls scene nodes using the makeInterpolatorSystems factory; the unused add-only registration helper was removed.
 - **CONF-GEO** [minor/CLOSED] — §25: Geospatial behavioral nodes have no System (geo-coordinate projection prerequisite missing).
   - Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.

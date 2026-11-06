@@ -15,7 +15,7 @@ _Generated. Levels 1,2 · 5 nodes · profiles: Full._
 - **REQ-LAYOUT** [major/OPEN] — §36.2; 36.4.1-36.4.5: Layout rectangles and screen-relative transforms are absent; ScreenFontStyle.pointSize is treated as a world-space size.
   - No production layout-node dispatch exists in TransformSystem or SceneExtractor. TextExtract::readFontStyleParams copies pointSize into FontStyleParams::size without viewport/DPI conversion. Acceptance: nested align/offset/size/scaleMode in WORLD/FRACTION/PIXEL units; ScreenGroup retains pixel scale while the camera moves; screen text and LayoutLayer work with viewport changes.
 - **LYT-1** [major/FIXED] — §36.4.4: ScreenFontStyle.pointSize ignored — text always renders at size 1.0.
-  - Was: readFontStyleParams (TextExtract.hpp) read 'size' which ScreenFontStyle lacks → always 1.0. Fixed by branching on nodeTypeName()==ScreenFontStyle to read 'pointSize'. Tested in text_extract_test.cpp (test_screenfontstyle_pointsize). (sweep 2026-06-25, fixed same day)
+  - Was: readFontStyleParams (TextExtract.hpp) read 'size' which ScreenFontStyle lacks → always 1.0. Fixed by branching on nodeTypeName()==ScreenFontStyle to read 'pointSize'; the reader is now shared with bounds in GeometryBounds.hpp. Tested in text_extract_test.cpp (test_screenfontstyle_pointsize). (sweep 2026-06-25, fixed same day)
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 
