@@ -177,6 +177,10 @@ type is unchanged. (TGA has no leading magic, so it is routed by a conservative 
 last resort.) This is the rule [ADR-0024 §7] adopts and AssetResolver's `makeSchemeRouter`
 (`runtime/extract/SchemeRouter.hpp`) mirrors.
 
+The CPU reference host also decodes PPM through the stb backend; it no longer
+maintains a separate PPM reader. Its procedural textures and PPM writer remain
+consumer code.
+
 ### Scope honesty
 
 Unlike AssetResolver, this seam unblocks **no specific conformance findings** — its value is

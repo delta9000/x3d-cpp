@@ -10,10 +10,10 @@ pipeline.
 Image I/O uses single-header **stb** (vendored, not system libraries, so the
 bare-runner property holds): output is **PNG** by default (vendored
 `stb_image_write`, a consumer-side encoder; pass `-o foo.ppm` for the
-dependency-free P6 writer), and PNG/JPEG texture *input* is decoded by
+dependency-free P6 writer), and PPM/PNG/JPEG/DDS texture *input* is decoded by
 **explicitly opting into the SDK's `TextureResolver` decode-seam backend**
 (`-DX3D_CPP_BUILD_STB=ON`, ADR-0024) — the example composes a first-party SDK
-seam rather than vendoring its own decoder. `proc:`/`.ppm` stay built-in.
+seam rather than vendoring its own decoder. `proc:` textures stay built-in.
 
 It is firewalled behind `X3D_CPP_BUILD_CPURASTER=OFF`, so the default
 build/golden/ctest path never compiles any of it.
@@ -44,8 +44,8 @@ build/golden/ctest path never compiles any of it.
      next shader or the material. `--frag` forces one shader onto every item.
 - **Textures** via a `TextureResolver`: `ImageTexture url="proc:<name>"`
   synthesizes a test texture (`checker`, `uvgrid`, `gradient`, `brick`, `bars`)
-  on the fly and `url="foo.ppm"` decodes a binary PPM with no decoder at all;
-  PNG/JPEG decode through the opt-in stb seam (`-DX3D_CPP_BUILD_STB=ON`).
+  on the fly. PPM, PNG, JPEG, and DDS files decode through the SDK stb seam
+  (`-DX3D_CPP_BUILD_STB=ON`), with bottom-left-origin pixels.
   `PixelTexture` (inline) works directly. `--gentex <dir>` dumps the procedural set as PPMs.
   (`uvgrid` is an orientation probe: red=U, green=V — a no-V-flip check you can
   read off the image.)
@@ -121,6 +121,10 @@ Author fragment shaders read the same `in` varyings the PoC's `lit.vert` emits �
 `uNumLights`, `uLightDirEye[]`, `uLightColor[]`, `uShininess`, `uMetallic`,
 `uRoughness`, `uTime`, …) and binds the base-color sampler as `uTexture`. See
 `shaders/author_lambert.frag` for a worked example.
+
+Runtime `GlslError` failures keep the material fallback, log once per draw, and
+increment the thread-local `interpreterRuntimeErrors` count per failed fragment.
+Other exceptions propagate to the host.
 
 `dFdx`/`dFdy` are exact for the two varyings the rasterizer precomputes
 derivatives for (`vPosEye`, `vTexCoord`); any other argument yields zero.

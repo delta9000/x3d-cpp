@@ -268,7 +268,6 @@ struct backend::storage {
     std::map<std::uint64_t, std::shared_ptr<X3DNode>> nodes;
     std::unordered_map<const X3DNode *, std::uint64_t> identities;
     std::uint64_t next_node = 1;
-    native_evidence evidence;
     std::shared_ptr<detail::presentation_state> presentation;
     std::vector<address> retained_seeds;
     std::size_t next_retained_seed = 0;
@@ -772,9 +771,7 @@ result<void> backend::do_activate(std::uint64_t scene) {
   if (!f.session->routes().ok())
     return error(error_code::invalid_route, "native.activate",
                  "native ROUTE bridge rejected an admitted route");
-  f.evidence.routes = f.session->routes().routesAdded;
   const auto initial = f.session->fullSnapshot();
-  f.evidence.snapshot_items = initial.added.size();
   if (f.presentation) {
     auto captured = f.presentation->capture(*f.session, f.identities, initial, std::nullopt);
     if (!captured) return failure(captured.error());
@@ -786,8 +783,6 @@ result<void> backend::do_activate(std::uint64_t scene) {
         if (id == f.identities.end())
           return;
         const auto *info = field_info(*a.node, a.field);
-        if (info && info->access == x3d::core::AccessType::InputOnly)
-          ++f.evidence.input_occurrences;
         const auto publish = [&](const address &source) {
           auto value = do_read(source);
           if (!value)
@@ -822,7 +817,6 @@ backend::do_turn(std::uint64_t scene, event_time time,
   values.reserve(writes.size());
   for (const auto &w : writes)
     values.push_back(f.native_value(w.value));
-  f.evidence.input_occurrences = 0;
   f.retained_seeds.clear();
   f.next_retained_seed = 0;
   // Retained inputOutput state is staged before inputOnly behavior. Preserve
@@ -849,34 +843,6 @@ backend::do_turn(std::uint64_t scene, event_time time,
   if (!f.retained_seeds.empty())
     throw std::runtime_error("native retained seed prefix was not delivered");
   const auto delta = f.session->delta();
-  auto &e = f.evidence;
-  e.tick = f.session->context().tickGeneration();
-  e.host_time = f.session->context().now();
-  if (auto t = std::dynamic_pointer_cast<x3d::nodes::Transform>(
-          f.scene().resolve("Transform"))) {
-    e.translation = portable(t->getTranslation());
-    e.translation_authored =
-        f.scene().authoredScalarFields.contains(t, "translation");
-    const auto world = f.session->context().worldTransform(t.get());
-    e.world_translation = {world.m[12], world.m[13], world.m[14]};
-  }
-  if (auto i = std::dynamic_pointer_cast<x3d::nodes::PositionInterpolator>(
-          f.scene().resolve("Interpolator"))) {
-    e.interpolated = portable(i->getValue_changed());
-    e.key_authored = f.scene().authoredScalarFields.contains(i, "key");
-    e.key_value_authored =
-        f.scene().authoredScalarFields.contains(i, "keyValue");
-  }
-  e.added = delta.added.size();
-  e.removed = delta.removed.size();
-  e.transformed = delta.updatedTransform.size();
-  e.geometry = delta.updatedGeometry.size();
-  e.material = delta.updatedMaterial.size();
-  e.rendered_translations.clear();
-  for (auto id : delta.updatedTransform) {
-    const auto &m = f.session->extractor().item(id).worldTransform.m;
-    e.rendered_translations.push_back({m[12], m[13], m[14]});
-  }
   if (f.presentation) {
     auto captured = f.presentation->capture(*f.session, f.identities, delta, time);
     if (!captured)
@@ -884,11 +850,6 @@ backend::do_turn(std::uint64_t scene, event_time time,
           backend_failure{captured.error(), p::failure_effect::partial_or_unknown}};
   }
   return {};
-}
-backend::native_evidence backend::inspect(std::uint64_t scene) const {
-  if (std::this_thread::get_id() != state_->thread)
-    throw std::logic_error("native inspection is owner-thread-affine");
-  return state_->scenes.at(scene)->evidence;
 }
 result<std::shared_ptr<Scene>>
 backend::native_scene(std::uint64_t scene) const {

@@ -22,18 +22,6 @@ public:
   // activate.
   result<std::shared_ptr<x3d::runtime::Scene>>
   native_scene(std::uint64_t scene) const;
-  struct native_evidence {
-    std::uint64_t tick = 0;
-    double host_time = 0;
-    std::size_t routes = 0, snapshot_items = 0, input_occurrences = 0;
-    bool translation_authored = false, key_authored = false,
-         key_value_authored = false;
-    vec3f interpolated, translation, world_translation;
-    std::size_t added = 0, removed = 0, transformed = 0, geometry = 0,
-                material = 0;
-    std::vector<vec3f> rendered_translations;
-  };
-  native_evidence inspect(std::uint64_t scene) const;
 
 protected:
   result<std::uint64_t> do_create_scene() override;

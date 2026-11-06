@@ -1,7 +1,7 @@
 """Headless GL regression for eye-space TextureCoordinateGenerator modes."""
 import math
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -22,15 +22,8 @@ def render(tmp, name, texcoord):
 <IndexedFaceSet coordIndex="0 1 2 3 -1" texCoordIndex="0 0 0 0 -1">
 <Coordinate point="-6 -6 0 6 -6 0 6 6 0 -6 6 0"/>{texcoord}</IndexedFaceSet></Shape>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(eye_x):
         # Column whose eye-space surface point has x = eye_x on the y = 0 row.

@@ -60,7 +60,7 @@ if(TARGET x3d_stb)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/texture_pipeline_test.cpp")
     target_include_directories(x3d_assetimport_texture PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/extract"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/io/stb")
@@ -264,7 +264,7 @@ target_link_libraries(x3d_asset_import PRIVATE ${ASSET_IMPORT_LIBS})
 target_compile_features(x3d_asset_import PRIVATE cxx_std_20)
 target_include_directories(x3d_asset_import PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../tools"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/io/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/extract"

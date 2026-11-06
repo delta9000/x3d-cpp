@@ -20,9 +20,6 @@ inline float clampf(float x, float lo, float hi) {
   return x < lo ? lo : (x > hi ? hi : x);
 }
 inline float mixf(float a, float b, float t) { return a + (b - a) * t; }
-inline float stepf(float edge, float x) { return x < edge ? 0.0f : 1.0f; }
-inline float fractf(float x) { return x - std::floor(x); }
-inline float signf(float x) { return (x > 0.0f) - (x < 0.0f); }
 
 // vec2 / vec3 / vec4 — POD-ish value types with GLSL component access (.x/.y/.z
 // /.w and .r/.g/.b/.a aliases via accessor methods) and the arithmetic GLSL
@@ -154,7 +151,6 @@ inline vec3 mix(vec3 a, vec3 b, vec3 t) {
 
 // max/min (scalar + vector-vs-scalar, the common GLSL forms).
 inline float maxf(float a, float b) { return a > b ? a : b; }
-inline float minf(float a, float b) { return a < b ? a : b; }
 inline vec3 maxv(vec3 v, float s) { return {maxf(v.x, s), maxf(v.y, s), maxf(v.z, s)}; }
 
 // pow (component-wise vec3 — used by linearToSRGB).

@@ -181,11 +181,9 @@ TexturePlan planTextures(const ImportScene& scene, const std::string& outDir,
 
   // Lazy-init the decode seam (only needed on the re-encode path).
   TextureResolver resolver;
-  bool resolverInit = false;
   auto ensureResolver = [&]() -> const TextureResolver& {
-    if (!resolverInit) {
+    if (!resolver) {
       resolver = makeStbTextureResolver();
-      resolverInit = true;
     }
     return resolver;
   };

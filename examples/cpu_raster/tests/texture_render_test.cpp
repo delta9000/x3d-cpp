@@ -69,9 +69,13 @@ int main() {
     ex::TexturePixels src = cr::makeUvGrid(64, 4);
     const std::string tmp = "._cpuraster_tex_test.ppm";
     CHECK(cr::writePpm(tmp, src));
-    ex::TexturePixels rd = cr::readPpm(tmp);
+    const auto decoded = cr::makeTextureResolver(".")(tmp);
+    CHECK(decoded.ready());
+    if (!decoded.ready()) return 1;
+    const auto &rd = *decoded.pixels;
     std::remove(tmp.c_str());
     CHECK(rd.width == src.width && rd.height == src.height && !rd.rgba.empty());
+    CHECK(rd.rgba == src.rgba);
     // Bottom-left pixel (index 0) survives the top-down<->bottom-up flips.
     CHECK(rd.rgba[0] == src.rgba[0] && rd.rgba[1] == src.rgba[1]);
   }

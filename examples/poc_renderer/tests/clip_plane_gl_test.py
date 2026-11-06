@@ -5,7 +5,7 @@ Each built-in program (Phong, PBR, unlit) must cut a box at x = 0 when the
 plane is enabled and draw it whole when it is not.
 """
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -21,15 +21,8 @@ def render(tmp, name, material, plane):
 <Viewpoint position="0 0 {DISTANCE}"/><NavigationInfo headlight="false"/>
 <Group>{plane}<Shape><Appearance>{material}</Appearance><Box size="3 3 3"/></Shape></Group>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(eye_x):
         # The box's front face sits at z = 1.5, 4.5 from the eye.

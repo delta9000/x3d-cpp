@@ -7,7 +7,7 @@ samplers); one that does not compile is skipped for the
 next shader, or for the fixed-function material when none is left.
 """
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -44,15 +44,8 @@ def center(tmp, name, shaders):
 <Shape><Appearance><Material emissiveColor="0 0 1" diffuseColor="0 0 0"/>
 {shaders}</Appearance><Box size="2 2 2"/></Shape>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
     offset = ((height // 2) * width + width // 2) * 3
     return tuple(data[offset:offset + 3])
 
@@ -76,6 +69,14 @@ with tempfile.TemporaryDirectory() as directory:
 
     invalid = center(tmp, 'invalid', composed('FragColor = vec4(uColor, 1.0) +;'))
     assert near(invalid, (0, 0, 255)), invalid
+
+    # Each stage compiles, but conflicting uniform types fail program linkage.
+    mismatch = composed('FragColor = vec4(uColor, 1.0);').replace(
+        'uniform mat4 modelViewMatrix;',
+        'uniform float uColor; uniform mat4 modelViewMatrix;').replace(
+        'vec4(aPos, 1.0)', 'vec4(aPos * uColor, 1.0)')
+    link_failure = center(tmp, 'link-failure', mismatch)
+    assert near(link_failure, (0, 0, 255)), link_failure
 
     # SFNode -> sampler2D, MFNode -> sampler2D[], MF -> arrays.
     arrays = center(tmp, 'arrays', f'''<ComposedShader language="GLSL">

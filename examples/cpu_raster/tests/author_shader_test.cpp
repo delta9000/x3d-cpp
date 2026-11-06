@@ -142,6 +142,31 @@ int main() {
     CHECK(!h.flag("Bad", "isValid"));
   }
 
+  {
+    Host h(composed("Empty", "void main(){}"));
+    CHECK(near(h.center(), 0, 0, 0));
+  }
+  CHECK(interpreterRuntimeErrors == 0);
+
+  // Runtime failures retain the material fallback and remain observable.
+  for (const char *source : {
+      "void main(){ FragColor = missing; }",
+      "void main(){ FragColor = vec4(uLightDirEye[2], 1.0); }",
+      "void main(){ for(;;){} }"}) {
+    InterpretedProgram program;
+    CHECK(program.compile(source));
+    const ex::MaterialDesc material;
+    const auto fallback = material.toRGBA();
+    auto shader = makeInterpretedShader(program, material, {}, false);
+    const auto before = interpreterRuntimeErrors;
+    g::vec4 color;
+    CHECK(shader(FragmentInput{}, color));
+    CHECK(near(color, fallback.r, fallback.g, fallback.b));
+    CHECK(shader(FragmentInput{}, color));
+    CHECK(near(color, fallback.r, fallback.g, fallback.b));
+    CHECK(interpreterRuntimeErrors == before + 2);
+  }
+
   if (failures) {
     std::fprintf(stderr, "author_shader_test: %d failure(s)\n", failures);
     return 1;

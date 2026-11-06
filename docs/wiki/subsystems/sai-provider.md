@@ -80,3 +80,7 @@ Key implementation and evidence: `adapters/sai_provider/src/sai_provider.cpp`,
 `adapters/sai_provider/tests/`, `tests/cmake/sai_provider/`,
 `tests/cmake/sai_coexistence/`, `scripts/verify_sai_provider.sh` and
 `scripts/verify_sai_coexistence.sh`.
+
+Live runtime assertions use portable reads and notifications. Native rendering
+assertions use immutable `render_feed` snapshots; the backend carries no
+fixture-specific inspection record.

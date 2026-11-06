@@ -52,8 +52,7 @@ example; no part of it is committed here.
   stb_image.h       examples/poc_renderer/third_party/     MIT OR Public Domain
                     (PoC renderer; also TextureResolver decode Backend A,
                      -DX3D_CPP_BUILD_STB=ON)
-  stb_image_write.h examples/cpu_raster/third_party/       MIT OR Public Domain
-                    examples/asset_import/third_party/
+  stb_image_write.h third_party/                          MIT OR Public Domain
                     (PNG/JPEG encode; cpu_raster export + asset_import
                      texture re-encode)
   assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause

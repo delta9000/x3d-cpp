@@ -57,6 +57,10 @@ using TextureResolver =
 | `runtime/io/tests/texture_decode_tests.cpp` | The grouped doctest binary `x3d_texture_tests`: per-backend cases, the byte-equal swap-test, Failed-parity, and the composer routing cases. Talks only through the seam factories — no decoder headers. |
 | `runtime/io/tests/fixtures/texture/` | Controlled 8-bit fixtures (PNG/BMP/GIF/TGA) + `generate_fixtures.py` + corrupt/garbage inputs. |
 
+The CPU reference host uses the stb backend for PPM input as well as PNG,
+JPEG, and DDS. Its procedural generators and PPM writer remain local. The
+PPM round-trip regression checks the shared decoder's bottom-left orientation.
+
 ## The two backends
 
 Both backends read the file at `url` and decode **from memory** (identical IO path, so the

@@ -226,6 +226,11 @@ shader onto every item. It binds the same `ShaderUniformVocabulary` names this
 seam defines, making the shader seam testable as a GPU-free golden-image
 harness (`tests/author_shader_test.cpp`); see `examples/cpu_raster/README.md`.
 
+Runtime interpreter failures retain the material fallback. Each draw logs its
+first `GlslError`, and the thread-local `interpreterRuntimeErrors` counter records
+every failed fragment. Unexpected exceptions propagate to the host. The author
+shader regression checks that ordinary rendering produces no runtime errors.
+
 Its `cpuraster/Texture.hpp` sampler consumes the §18.4.9 state surfaced on
 `TextureRef::extSampler` (see [Texture extraction](extract-textures.md)):
 REPEAT, CLAMP, CLAMP_TO_EDGE, CLAMP_TO_BOUNDARY and MIRRORED_REPEAT wrap modes,

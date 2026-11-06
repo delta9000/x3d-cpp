@@ -10,7 +10,7 @@ if(NOT TARGET x3d_stb)
         "Re-run with -DX3D_CPP_BUILD_STB=ON (or use `mise run cpuraster`).")
 endif()
 
-# PNG output: the consumer-side stb_image_write encoder, vendored locally (not
+# PNG output: the consumer-side stb_image_write encoder, shared in third_party (not
 # an SDK seam — output/encoding is the consumer's concern). Compiled in its one
 # TU; warnings silenced (stb is noisy). PPM output stays dependency-free.
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/cpuraster/ImageWrite.cpp"
@@ -24,7 +24,7 @@ if(TARGET x3d_curl)
     target_compile_definitions(x3d_cpu_raster PRIVATE X3D_CPURASTER_CURL=1)
 endif()
 target_include_directories(x3d_cpu_raster PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+    "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party")
 target_compile_features(x3d_cpu_raster PRIVATE cxx_std_20)
 target_compile_definitions(x3d_cpu_raster PRIVATE
     "X3D_CPURASTER_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""

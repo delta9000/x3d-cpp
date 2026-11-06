@@ -88,6 +88,10 @@ The consumer-side texture pipeline ([texture_pipeline.cpp](file:///home/ben/code
 4. **Re-encoding**: Other formats are decoded via the SDK's `stb` decode seam (`x3d_stb`) and re-encoded to PNG via `stbi_write_png`.
 5. **Asset Layout**: Saves unique files to `<outdir>/assets/<hash>.<ext>` and exposes a relative `TexturePlan` mapping for `emit()`.
 
+The encoder header is shared with CPU rasterizer output at
+`third_party/stb_image_write.h`; each consumer keeps its implementation
+translation unit.
+
 ## USD Material Port & Portable-GLSL Seam
 
 USD/USDZ materials port to realtime through a stack of four ceilings, fully worked

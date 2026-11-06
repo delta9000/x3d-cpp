@@ -118,11 +118,9 @@ through the ordinary service interface.
 `native::backend::native_scene(storage_id)` is an explicit setup-only native
 inspection extension, with owner-thread checks. Retained native storage cannot
 retain portable handle authority. A retained setup Scene view is moved-from at
-activation and is not a view of the live session. `inspect(storage_id)` is also
-owner-thread-affine and returns copied runtime,
-interpolation, world-transform and render-delta evidence; neither extension is
-part of normative SAI. Applications use the final portable service for ordinary
-work, not an additional native general-purpose service API.
+activation and is not a view of the live session. Applications read live fields
+and observe notifications through the portable service. The immutable
+`render_feed` supplies native world transforms and mesh placements.
 
 Run `mise run sai-provider /path/to/x3d-sai /empty/work/directory` from the
 x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`).

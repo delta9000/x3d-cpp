@@ -39,6 +39,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <deque>
 #include <memory>
 #include <stdexcept>
@@ -87,6 +88,7 @@ struct Value {
 // Propagate control flow without exceptions in the per-fragment loop.
 enum class Flow : std::uint8_t { Normal, Return, Break, Continue, Discard };
 struct GlslError : std::runtime_error { using std::runtime_error::runtime_error; };
+inline thread_local std::size_t interpreterRuntimeErrors = 0;
 
 // AST
 struct Expr;
@@ -1087,8 +1089,7 @@ makeInterpretedShader(const InterpretedProgram &prog,
   // Author shaders (usd_preview_surface, author_lambert) encode their own
   // output, so they sample colour textures sRGB-decoded (linear workflow).
   auto tx = std::make_shared<MaterialTextures>(buildTextures(material, /*linearWorkflow=*/true));
-  auto base = std::make_shared<std::unordered_map<std::string, Value>>(
-      seedUniforms(material, lights, *tx));
+  auto base = seedUniforms(material, lights, *tx);
   // Texture fields sample through Textures kept alive with the closure; they
   // are sRGB-decoded like the material textures above.
   auto fieldTextures = std::make_shared<std::deque<Texture>>();
@@ -1112,7 +1113,7 @@ makeInterpretedShader(const InterpretedProgram &prog,
         v.t = VT::Array;
         v.arr = arr;
       }
-      if (v.t != VT::Void) (*base)[f.name] = v;
+      if (v.t != VT::Void) base[f.name] = v;
     }
   const InterpretedProgram *pp = &prog;
   glsl::vec4 fallback = glsl::vec4(material.toRGBA());
@@ -1120,9 +1121,9 @@ makeInterpretedShader(const InterpretedProgram &prog,
   // Seed the uniforms once; the interpreter is reused for every fragment of the
   // draw, resetting only the per-fragment varyings/locals in beginFragment().
   Interpreter interp(pp->functions());
-  for (const auto &kv : *base) interp.defineGlobal(kv.first, kv.second);
+  for (const auto &kv : base) interp.defineGlobal(kv.first, kv.second);
 
-  return [pp, tx, fieldTextures, hasColors, fallback, interp](const FragmentInput &f,
+  return [pp, tx, fieldTextures, hasColors, fallback, interp, errorLogged = false](const FragmentInput &f,
                                              glsl::vec4 &out) mutable -> bool {
     (void)tx; // keep the sampler texture storage alive for interp's pointers.
     (void)fieldTextures;
@@ -1137,13 +1138,18 @@ makeInterpretedShader(const InterpretedProgram &prog,
     Flow flow;
     try {
       flow = interp.run(pp->globalInits(), "main");
-    } catch (const std::exception &) {
+    } catch (const GlslError &error) {
+      ++interpreterRuntimeErrors;
+      if (!errorLogged) {
+        std::fprintf(stderr, "[cpuraster] shader runtime error: %s\n", error.what());
+        errorLogged = true;
+      }
       out = fallback; // a runtime error draws the flat material color (robust).
       return true;
     }
     if (flow == Flow::Discard) return false;
     Value *fc = interp.find("FragColor");
-    out = fc ? fc->vec4v() : fallback;
+    out = fc->vec4v();
     return true;
   };
 }

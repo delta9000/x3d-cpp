@@ -192,7 +192,8 @@ std::string readTextFile(const std::string &path) {
   return ss.str();
 }
 
-GLuint compileShader(GLenum stage, const std::string &src, const char *label) {
+GLuint compileShader(GLenum stage, const std::string &src, const char *label,
+                     std::string *error = nullptr) {
   GLuint sh = glCreateShader(stage);
   const char *c = src.c_str();
   glShaderSource(sh, 1, &c, nullptr);
@@ -200,9 +201,10 @@ GLuint compileShader(GLenum stage, const std::string &src, const char *label) {
   GLint ok = GL_FALSE;
   glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
   if (!ok) {
-    char log[2048];
+    char log[2048] = {};
     glGetShaderInfoLog(sh, sizeof(log), nullptr, log);
-    std::fprintf(stderr, "[poc] %s compile failed:\n%s\n", label, log);
+    if (error) *error = log;
+    else std::fprintf(stderr, "[poc] %s compile failed:\n%s\n", label, log);
     glDeleteShader(sh);
     return 0;
   }
@@ -222,26 +224,12 @@ x3d::runtime::extract::ShaderValidator makeGlShaderValidator(std::shared_ptr<boo
     std::string key;
     for (const auto &stage : p.stages) key += stage.source + "\n---\n";
     if (auto it = cache->find(key); it != cache->end()) return it->second;
-    auto compile = [&](GLenum type, const std::string &src) -> GLuint {
-      GLuint sh = glCreateShader(type);
-      const char *c = src.c_str();
-      glShaderSource(sh, 1, &c, nullptr);
-      glCompileShader(sh);
-      GLint ok = GL_FALSE;
-      glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);
-      if (ok) return sh;
-      char log[2048] = {};
-      glGetShaderInfoLog(sh, sizeof(log), nullptr, log);
-      v = {false, log};
-      glDeleteShader(sh);
-      return 0;
-    };
     GLuint vs = 0, fs = 0;
     for (const auto &stage : p.stages) {
       if (stage.stage == ex::ShaderStageDesc::Stage::Vertex)
-        vs = compile(GL_VERTEX_SHADER, stage.source);
+        vs = compileShader(GL_VERTEX_SHADER, stage.source, "author.vert", &v.error);
       else if (stage.stage == ex::ShaderStageDesc::Stage::Fragment)
-        fs = compile(GL_FRAGMENT_SHADER, stage.source);
+        fs = compileShader(GL_FRAGMENT_SHADER, stage.source, "author.frag", &v.error);
     }
     if (vs && fs) {
       GLuint prog = glCreateProgram();
@@ -258,8 +246,8 @@ x3d::runtime::extract::ShaderValidator makeGlShaderValidator(std::shared_ptr<boo
         v = {false, log};
       }
       glDeleteProgram(prog);
-    } else if (v.valid) {
-      v = {false, "vertex/fragment compile failed"};
+    } else {
+      v = {false, v.error.empty() ? "vertex/fragment compile failed" : v.error};
     }
     if (vs) glDeleteShader(vs);
     if (fs) glDeleteShader(fs);
