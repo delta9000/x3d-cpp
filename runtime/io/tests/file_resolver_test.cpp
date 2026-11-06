@@ -1,5 +1,5 @@
 // runtime/io/tests/file_resolver_test.cpp
-// Task 1: FileResolver backend — SEC-3-confined local-file AssetResolver.
+// FileResolver backend — -confined local-file AssetResolver.
 // Hermetic + offline; uses committed fixtures only.
 #include "doctest/doctest.h"
 #include "io/file/FileResolver.hpp"

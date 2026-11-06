@@ -1,21 +1,4 @@
-// runtime/io/plmpeg/tests/movie_decoder_tests.cpp — the MovieDecoder seam
-// genericity + pluggability proof (ADR-0041).
-//
-// Video codecs PARTITION by format — no two backends decode the same input — so
-// the proof is NOT a bit-identical swap (the font/texture pattern) but a SHARED
-// per-backend semantics-CONTRACT: each backend, given its OWN reference clip, must
-// agree on the observable seam behavior. runContract() encodes that contract and
-// is run against EVERY plug:
-//   * pl_mpeg / MPEG-1                (Backend A, always)
-//   * libtheora / Ogg-Theora         (Backend B, when built)
-//   * a FROM-SCRATCH std-only backend (proves the interface needs nothing but the
-//                                      public header + std to implement)
-//   * the multi-format composer        (proves backends COMPOSE behind one seam)
-// Plus pluggability stress: each backend rejects a FOREIGN container cleanly, and
-// truncated input never crashes — so a dispatcher/consumer can trust Failed.
-//
-// ABI ISOLATION: this TU talks ONLY through the seam factories (decoder-free
-// headers); it includes NO pl_mpeg / theora / ogg header.
+// MovieDecoder behavior across codecs and composition; see ADR-0041.
 #include "MovieDecoder.hpp"
 #include "MultiFormatMovieDecoder.hpp"
 #include "PlMpegMovieDecoder.hpp"
@@ -59,7 +42,7 @@ void runContract(const Backend &make, const std::vector<std::uint8_t> &validByte
                  unsigned w, unsigned h) {
   REQUIRE(!validBytes.empty());
 
-  // --- Ready: a tight, opaque, correctly-sized frame. ---
+  // Ready: a tight, opaque, correctly-sized frame.
   auto dec = make(readyResolver(validBytes));
   FrameResult r = dec("clip", 0.0);
   REQUIRE(r.ready());
@@ -72,39 +55,39 @@ void runContract(const Backend &make, const std::vector<std::uint8_t> &validByte
   CHECK(r.frame.rgba[c + 0] > r.frame.rgba[c + 2]);
   CHECK(r.frame.rgba[c + 3] == 255);
 
-  // --- EOF holds the last frame (does not blank). ---
+  // EOF holds the last frame (does not blank).
   FrameResult eof = dec("clip", 999.0);
   REQUIRE(eof.ready());
   CHECK(eof.frame.width == w);
 
-  // --- Backward seek (incl. straight after EOF) rewinds and still yields a frame. ---
+  // Backward seek (incl. straight after EOF) rewinds and still yields a frame.
   CHECK(dec("clip", 0.5).ready());
   FrameResult back = dec("clip", 0.0);
   REQUIRE(back.ready());
   CHECK(back.frame.width == w);
 
-  // --- Pending resolver -> Pending (retry next frame). ---
+  // Pending resolver -> Pending (retry next frame).
   CHECK(make([](const std::string &, AssetKind) {
             return AssetResult::makePending();
           })("later", 0.0)
             .pending());
 
-  // --- Failed / missing -> Failed. ---
+  // Failed / missing -> Failed.
   CHECK(make([](const std::string &, AssetKind) {
             return AssetResult::makeFailed();
           })("missing", 0.0)
             .failed());
 
-  // --- Garbage bytes -> Failed, and cached (no crash on retry). ---
+  // Garbage bytes -> Failed, and cached (no crash on retry).
   auto garbage = make(readyResolver({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
   CHECK(garbage("junk", 0.0).failed());
   CHECK(garbage("junk", 0.1).failed());
 
-  // --- Null resolver never crashes, always Failed. ---
+  // Null resolver never crashes, always Failed.
   CHECK(make(AssetResolver{})("x", 0.0).failed());
 }
 
-// A MovieDecoder written FROM SCRATCH against ONLY the public header + std — no
+// A MovieDecoder written FROM SCRATCH against only the public header + std — no
 // codec, no external dependency. "Valid" input begins with the ASCII magic
 // "FAKEMOV1"; anything else (garbage / wrong format) -> Failed. It honors the
 // resolver tri-state and produces a solid-red w×h opaque frame. If this passes the
@@ -185,7 +168,7 @@ TEST_CASE("MovieDecoder contract: a FROM-SCRATCH std-only backend") {
 }
 
 TEST_CASE("MovieDecoder: the multi-format composer is itself a conforming backend") {
-  // The composer (sniff -> dispatch) must satisfy the SAME contract end-to-end.
+  // The composer (sniff -> dispatch) must satisfy the same contract end-to-end.
   auto m1v = readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v");
   Backend composed = [](AssetResolver r) {
     std::map<MovieFormat, MovieDecoder> backends;

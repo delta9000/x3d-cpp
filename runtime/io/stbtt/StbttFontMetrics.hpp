@@ -1,8 +1,5 @@
-// runtime/io/stbtt/StbttFontMetrics.hpp — Backend A (stb_truetype) for the
-// FontMetrics seam (T-TEXT genericity proof, ADR-0025). Part of the
-// runtime/io/stbtt quarantine (x3d_stbtt target, default OFF). Core (x3d_cpp,
-// sdk.hpp) MUST NEVER include this file; it is decoder-free (no stb_truetype.h),
-// so consumers linking x3d_stbtt do not inherit stb's translation unit.
+// stb_truetype FontMetrics adapter. Font library headers stay private.
+// See ADR-0025.
 #ifndef X3D_RUNTIME_IO_STBTT_STBTT_FONT_METRICS_HPP
 #define X3D_RUNTIME_IO_STBTT_STBTT_FONT_METRICS_HPP
 
@@ -13,7 +10,7 @@
 
 namespace x3d::runtime::io::stbtt {
 
-/// family -> TTF/OTF file path. v1 supports PLAIN style only.
+/// family -> TTF/OTF file path. Supports PLAIN style only.
 using FontFaceMap = std::map<std::string, std::string>;
 
 /// Returns a FontMetrics that reads glyph advances via stb_truetype.

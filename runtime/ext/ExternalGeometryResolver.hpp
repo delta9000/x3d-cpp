@@ -1,32 +1,7 @@
-// runtime/ext/ExternalGeometryResolver.hpp
-// Lazy materialization resolver for the ExternalGeometry extension node (Round 2).
-// Namespace: x3d::runtime::ext. Header-only. Part of the runtime/ext/ quarantine
-// (x3d_cpp_ext target, default OFF, gated by X3D_CPP_BUILD_EXT).
-//
-// One-way dep: ext->core. Core (x3d_cpp, sdk.hpp) MUST NEVER include this file.
-//
-// This file builds the higher-level (X3DNode -> PackedMesh) seam value that an
-// embedder assigns to MeshBuildOptions::externalGeometryResolver. It bridges the
-// FIREWALL: the extractor only ever sees the core-typed
-//   std::function<PackedMesh(const X3DNode*, AssetResolver)>
-// callback; the ext-specific knowledge (the ExternalGeometry node, the STL codec)
-// lives entirely inside the closure built here.
-//
-// Lazy contract (mirrors the texture AssetResolver / Pending model):
-//   - reads the node's url via the typed ExternalGeometry::getUrl() accessor
-//     (after a dynamic_cast confirms the node is an ExternalGeometry leaf);
-//   - sniffs format by extension (.stl -> binary STL; else unhandled -> empty);
-//   - fetches bytes through the embedder's byte-level AssetResolver with
-//     AssetKind::ExternalGeometry;
-//   - not-ready / empty bytes -> empty PackedMesh => SceneExtractor treats it as
-//     Pending and skips this tick (it will retry on the next extract);
-//   - on ready bytes -> parseStlBinary -> PackedMesh;
-//   - CACHES the resulting PackedMesh keyed by url (owned in the closure via a
-//     shared_ptr<map>), so a second extract of the same node reuses the mesh
-//     without re-fetching bytes or re-parsing.
-//
-// Empty PackedMesh (vertex_count == 0) is the universal Pending/skip/unhandled
-// signal back to the extractor.
+// Lazy ExternalGeometry materialization. The extension depends on core.
+// The resolver closure owns extension types and a URL-keyed mesh cache, while
+// the extractor receives only core PackedMesh values. Failed, Pending, empty,
+// or unsupported inputs return an empty mesh; extraction retries on later ticks.
 #ifndef X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_RESOLVER_HPP
 #define X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_RESOLVER_HPP
 
@@ -44,9 +19,6 @@
 
 namespace x3d::runtime::ext {
 
-// ---------------------------------------------------------------------------
-// detail — small helpers (lower-case extension test).
-// ---------------------------------------------------------------------------
 namespace egr_detail {
 
 inline std::string toLower(std::string s) {
@@ -63,21 +35,10 @@ inline bool hasExtension(const std::string& url, const std::string& ext) {
 
 } // namespace egr_detail
 
-// ---------------------------------------------------------------------------
-// makeExternalGeometryResolver — factory.
-//
-// Returns a std::function<PackedMesh(const X3DNode*, AssetResolver)> suitable for
-// MeshBuildOptions::externalGeometryResolver. `bytesResolver` is the embedder's
-// byte-level resolver (url, kind) -> AssetResult; it is captured and used to
-// fetch the raw mesh bytes. (The AssetResolver the extractor passes at the call
-// site is currently a default-constructed placeholder, so the resolver fetched
-// here is the captured `bytesResolver`.)
-//
-// CACHE: the returned closure owns a shared_ptr to a url->PackedMesh map. A
-// successful parse is cached; a subsequent extract of a node with the same url
-// returns the cached copy WITHOUT calling `bytesResolver` again. Pending results
-// (empty bytes) are NOT cached (so a later tick can still resolve them).
-// ---------------------------------------------------------------------------
+// Fetch through the captured bytesResolver, rather than the call-site resolver.
+// Successful meshes are cached across copies of the closure; Pending results
+// are not cached so extraction can retry.
+
 inline std::function<x3d::runtime::extract::PackedMesh(
     const X3DNode*, x3d::runtime::extract::AssetResolver)>
 makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver) {
@@ -110,10 +71,9 @@ makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver)
             return it->second;
         }
 
-        // (2) Sniff format by extension. Only binary STL is handled at Round 2.
+        // Only binary STL is supported.
         if (!egr_detail::hasExtension(url, ".stl")) {
-            // Unhandled format — return empty (skip), do not cache (a future
-            // codec might handle it once added).
+            // Unsupported formats return an empty mesh without caching.
             return PackedMesh{};
         }
 

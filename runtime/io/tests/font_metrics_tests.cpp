@@ -1,14 +1,4 @@
-// runtime/io/tests/font_metrics_tests.cpp — the FontMetrics seam genericity
-// proof (ADR-0025), one grouped doctest binary.
-//
-//   per-backend: stb_truetype reads advances + rejects bad input
-//   per-backend: FreeType reads advances + rejects bad input   (added Task 3)
-//   swap-test:   stbtt vs FreeType return EXACT-equal advanceEm,
-//                plus Failed-parity on absent codepoints         (added Task 4)
-//
-// ABI ISOLATION (the AssetResolver lesson, ADR-0023): this TU talks ONLY through
-// the seam factories and includes NO backend headers' heavy deps. The factories
-// exchange std types, so no heavy backend header can leak in.
+// Glyph metrics and failure handling across adapters; see ADR-0025.
 #include "FontMetrics.hpp"
 #include "FreetypeFontMetrics.hpp"
 #include "StbttFontMetrics.hpp"
@@ -50,7 +40,7 @@ TEST_CASE("fontmetrics_backend_a_stbtt") {
     CHECK((g.metrics.hasAtlasUv == false));
   }
 
-  CHECK((fm(FontKey{"SANS", "PLAIN", kAbsentEmoji}).failed()));   // .notdef → Failed
+  CHECK((fm(FontKey{"SANS", "PLAIN", kAbsentEmoji}).failed()));   //.notdef → Failed
   CHECK((fm(FontKey{"UNMAPPED", "PLAIN", 'A'}).failed()));        // family not in map
   CHECK((fm(FontKey{"SANS", "BOLD", 'A'}).failed()));            // style out of scope
 }
@@ -86,8 +76,7 @@ TEST_CASE("fontmetrics_swap_advance_exact_equal") {
       const GlyphResult gb = b(FontKey{fam, "PLAIN", cp});
       CHECK((ga.ready()));
       CHECK((gb.ready()));
-      // The proof: two independent libraries, bit-identical advanceEm.
-      CHECK((ga.metrics.advanceEm == gb.metrics.advanceEm));
+          CHECK((ga.metrics.advanceEm == gb.metrics.advanceEm));
       CHECK((ga.metrics.bearingX == gb.metrics.bearingX));
       CHECK((ga.metrics.sizeX == gb.metrics.sizeX));
       CHECK((ga.metrics.sizeY == gb.metrics.sizeY));
@@ -103,7 +92,7 @@ TEST_CASE("fontmetrics_swap_failed_parity") {
   FontMetrics a = x3d::runtime::io::stbtt::makeStbttFontMetrics(liberationFaces());
   FontMetrics b = x3d::runtime::io::freetype::makeFreetypeFontMetrics(liberationFaces());
 
-  // Absent codepoint → glyph 0 → Failed on BOTH (the .notdef contract rule).
+  // Absent codepoint → glyph 0 → Failed on both (the.notdef contract rule).
   CHECK((a(FontKey{"SANS", "PLAIN", kAbsentEmoji}).failed()));
   CHECK((b(FontKey{"SANS", "PLAIN", kAbsentEmoji}).failed()));
 
@@ -111,7 +100,7 @@ TEST_CASE("fontmetrics_swap_failed_parity") {
   CHECK((a(FontKey{"UNMAPPED", "PLAIN", 'A'}).failed()));
   CHECK((b(FontKey{"UNMAPPED", "PLAIN", 'A'}).failed()));
 
-  // Out-of-scope style → Failed on both (synthetic BOLD/ITALIC not in v1).
+  // Out-of-scope style → Failed on both (synthetic BOLD/ITALIC unsupported).
   CHECK((a(FontKey{"SANS", "BOLD", 'A'}).failed()));
   CHECK((b(FontKey{"SANS", "BOLD", 'A'}).failed()));
 }

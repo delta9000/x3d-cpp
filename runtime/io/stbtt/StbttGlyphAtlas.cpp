@@ -1,6 +1,6 @@
 // runtime/io/stbtt/StbttGlyphAtlas.cpp — see StbttGlyphAtlas.hpp. Rasterizes a
 // Basic Latin + Latin-1 Supplement atlas via stb_truetype and returns it with
-// ready FontMetrics (advances + glyph boxes + UVs). stb_truetype.h is included WITHOUT the implementation define
+// ready FontMetrics (advances + glyph boxes + UVs). stb_truetype.h is included without the implementation define
 // — StbttFontMetrics.cpp is the one TU that defines STB_TRUETYPE_IMPLEMENTATION;
 // this TU links against those symbols within the x3d_stbtt lib. The public
 // header stays decoder-free, so no stb header leaks to consumers.
@@ -64,7 +64,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
   if (emPx < 8) emPx = 8;
 
   // Load every distinct face; keep byte buffers alive for the whole bake (each
-  // stbtt_fontinfo points INTO its buffer).
+  // stbtt_fontinfo points into its buffer).
   std::vector<std::vector<unsigned char>> fontBytes;
   std::vector<stbtt_fontinfo> fonts;
   std::vector<std::string> families;
@@ -92,7 +92,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
     for (std::uint32_t cp = kFirstCp; cp <= kLastCp; ++cp) {
       if (cp >= 0x7f && cp < 0xa0) continue;  // DEL + C1 controls have no display cells
       const int glyph = stbtt_FindGlyphIndex(&fi, static_cast<int>(cp));
-      if (glyph == 0) continue;  // .notdef → Failed (no cell, no entry)
+      if (glyph == 0) continue;  //.notdef → Failed (no cell, no entry)
       int adv = 0, lsb = 0;
       stbtt_GetGlyphHMetrics(&fi, glyph, &adv, &lsb);  // unscaled
       Cell c;
@@ -134,7 +134,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
   }
   const int atlasH = yTop + rowH + kPad;
 
-  // Rasterize into a TOP-DOWN buffer, then flip to bottom-up for GL upload.
+  // Rasterize into a top-down buffer, then flip to bottom-up for GL upload.
   std::vector<std::uint8_t> top(static_cast<std::size_t>(atlasW) * atlasH, 0);
   for (const Cell& c : cells) {
     if (c.gw == 0 || c.gh == 0) continue;  // space / blank glyph

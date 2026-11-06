@@ -1,6 +1,6 @@
-// runtime/io/stbtt/StbttFontMetrics.cpp — the ONE translation unit where
+// runtime/io/stbtt/StbttFontMetrics.cpp — the one translation unit where
 // stb_truetype meets the FontMetrics seam. STB_TRUETYPE_IMPLEMENTATION is
-// defined here and nowhere else; stb_truetype.h is included PRIVATE (see CMake)
+// defined here and nowhere else; stb_truetype.h is included private (see CMake)
 // so it never leaks. The factory returns a std::function exchanging only std
 // types, so linking x3d_stbtt pulls in no stb headers.
 #include "StbttFontMetrics.hpp"
@@ -85,7 +85,7 @@ x3d::runtime::extract::FontMetrics makeStbttFontMetrics(FontFaceMap faces) {
     if (!face || !face->ok) return GlyphResult::makeFailed();
 
     const int glyph = stbtt_FindGlyphIndex(&face->info, static_cast<int>(key.codepoint));
-    if (glyph == 0) return GlyphResult::makeFailed();  // .notdef → Failed (rule 3)
+    if (glyph == 0) return GlyphResult::makeFailed();  //.notdef → Failed (rule 3)
 
     int advance = 0, lsb = 0;
     stbtt_GetGlyphHMetrics(&face->info, glyph, &advance, &lsb);  // unscaled (rule 1)

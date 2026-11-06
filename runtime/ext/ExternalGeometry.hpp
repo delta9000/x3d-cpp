@@ -1,18 +1,5 @@
-// runtime/ext/ExternalGeometry.hpp
-// Hand-written X3DNode subclass for the ExternalGeometry extension node.
-// Namespace: x3d::runtime::ext.
-// Part of the runtime/ext/ quarantine (x3d_cpp_ext target, default OFF).
-// Core (x3d_cpp, sdk.hpp) MUST NEVER include this file.
-//
-// ExternalGeometry is a pure-reference geometry leaf node:
-//   url          — MFString, initializeOnly — external mesh url(s)
-//   bboxCenter   — SFVec3f,  initializeOnly — pre-computed bounds center (0 0 0)
-//   bboxSize     — SFVec3f,  initializeOnly — pre-computed bounds size (-1 -1 -1)
-//   contentType  — SFString, initializeOnly — optional format hint ("")
-//
-// The node does NOT hold binary data / accessors — those live in PackedMesh,
-// produced by the resolver/codec layer (lazy materialization, Round 2).
-// defaultContainerField() == "geometry" so it attaches to Shape.geometry.
+// ExternalGeometry is a reference-only geometry leaf. Encoded bytes and meshes
+// belong to the resolver, rather than the node. The extension depends on core.
 #ifndef X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_HPP
 #define X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_HPP
 
@@ -35,14 +22,14 @@ using namespace x3d::core;
  *          X3D files via <ExternProtoDeclare url='"urn:x3d-cpp-gen:ext:ExternalGeometry"'/>.
  *          The EXTERNPROTO expansion wires fieldValues onto this node via IS connections
  *          inside the factory ProtoDeclaration (see ExtResolver.hpp).
- *          Lazy materialization (producing a PackedMesh) is Round 2.
+ *          Lazy materialization (producing a PackedMesh) is.
  */
 class ExternalGeometry : public X3DNode {
 public:
     ExternalGeometry() = default;
     ~ExternalGeometry() override = default;
 
-    // ── Typed accessors ────────────────────────────────────────────────────
+    // Typed accessors
 
     MFString getUrl() const { return _url; }
     void setUrl(const MFString& v) { _url = v; }
@@ -57,7 +44,7 @@ public:
     SFString getContentType() const { return _contentType; }
     void setContentType(const SFString& v) { _contentType = v; }
 
-    // ── X3DNode virtuals ──────────────────────────────────────────────────
+    // X3DNode virtuals
 
     std::string nodeTypeName() const override { return "ExternalGeometry"; }
 
@@ -115,7 +102,7 @@ public:
                 nullptr, nullptr
             });
 
-            // ── Inherited base fields (mirrors WorldInfo.cpp) ───────────────
+            // Inherited base fields
 
             t.push_back(FieldInfo{
                 "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",

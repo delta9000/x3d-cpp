@@ -1,21 +1,4 @@
-// ecmascript_backend_test.cpp
-// Track-B unit test (U3 skeleton): EcmaScriptBackend + Duktape.
-//
-// Proves:
-//   - an inline "ecmascript:" script loads, initializes, and runs without crash,
-//   - inline "javascript:" prefix also decodes (via ScriptSystem::decodeInlineSource),
-//   - a trivial initialize() function is invoked by initialize(),
-//   - a named handler (simulated inputOnly) is invoked by invoke() with no args,
-//   - eventsProcessed() calls the script's eventsProcessed() if defined,
-//   - a script with a syntax error fails to load (returns kInvalidScriptHandle),
-//   - shutdown() destroys the context (no crash, no double-free),
-//   - prepareEvents() with a numeric arg is dispatched safely.
-//
-// The SAI and X3DExecutionContext are only lightly used (browser-info only);
-// full field marshalling is U4.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// ECMAScript backend behavior tests.
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"   // for decodeInlineSource
 
@@ -51,9 +34,7 @@ void check(bool cond, const std::string &what) {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Minimal wiring helpers.
-// ---------------------------------------------------------------------------
 
 struct Fixture {
   Script script;
@@ -83,9 +64,9 @@ std::any roundTrip(const std::any &v, X3DFieldType type) {
 } // namespace
 
 int main() {
-  // -------------------------------------------------------------------------
-  // T1: decodeInlineSource strips "ecmascript:" correctly.
-  // -------------------------------------------------------------------------
+
+  // decodeInlineSource strips "ecmascript:" correctly.
+
   {
     MFString url;
     url.push_back("ecmascript:function initialize() { }");
@@ -102,9 +83,8 @@ int main() {
           "T1b: decodeInlineSource javascript: strips prefix");
   }
 
-  // -------------------------------------------------------------------------
-  // T2: load() succeeds for a trivial script; returns non-zero handle.
-  // -------------------------------------------------------------------------
+  // load() succeeds for a trivial script; returns non-zero handle.
+
   EcmaScriptBackend backend;
   {
     Fixture fix;
@@ -113,40 +93,34 @@ int main() {
         "function initialize() { _initCalled = true; }");
     check(h != kInvalidScriptHandle, "T2: load trivial script succeeds");
 
-    // -------------------------------------------------------------------------
-    // T3: initialize() calls the script's initialize() without crash.
-    // -------------------------------------------------------------------------
+    // initialize() calls the script's initialize() without crash.
+
     backend.initialize(h);
     check(true, "T3: initialize() runs without crash");
 
-    // -------------------------------------------------------------------------
-    // T4: invoke() dispatches to a handler by name without crash.
-    // -------------------------------------------------------------------------
+    // invoke() dispatches to a handler by name without crash.
+
     backend.invoke(h, "initialize", std::any{}, X3DFieldType::SFBool, 0.0);
     check(true, "T4: invoke('initialize') runs without crash");
 
-    // -------------------------------------------------------------------------
-    // T5: eventsProcessed() calls the script's eventsProcessed if defined.
-    // -------------------------------------------------------------------------
+    // eventsProcessed() calls the script's eventsProcessed if defined.
+
     backend.eventsProcessed(h, 0.0);  // not defined in this script — no-op, no crash
     check(true, "T5: eventsProcessed() with no handler is a no-op");
 
-    // -------------------------------------------------------------------------
-    // T6: prepareEvents() dispatches with a numeric timestamp without crash.
-    // -------------------------------------------------------------------------
+    // prepareEvents() dispatches with a numeric timestamp without crash.
+
     backend.prepareEvents(h, 1.0);
     check(true, "T6: prepareEvents() with no handler is a no-op");
 
-    // -------------------------------------------------------------------------
-    // T7: shutdown() destroys the context without crash.
-    // -------------------------------------------------------------------------
+    // shutdown() destroys the context without crash.
+
     backend.shutdown(h);
     check(true, "T7: shutdown() runs without crash");
   }
 
-  // -------------------------------------------------------------------------
-  // T8: load() fails for a script with a syntax error -> kInvalidScriptHandle.
-  // -------------------------------------------------------------------------
+  // load() fails for a script with a syntax error -> kInvalidScriptHandle.
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix, "function broken( { bad syntax");
@@ -154,9 +128,8 @@ int main() {
           "T8: load with syntax error returns kInvalidScriptHandle");
   }
 
-  // -------------------------------------------------------------------------
-  // T9: eventsProcessed() handler IS called when defined.
-  // -------------------------------------------------------------------------
+  // eventsProcessed() handler IS called when defined.
+
   {
     Fixture fix;
     // Script sets a global flag when eventsProcessed() is called.
@@ -170,9 +143,8 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T10: load multiple scripts — each gets an independent context.
-  // -------------------------------------------------------------------------
+  // load multiple scripts — each gets an independent context.
+
   {
     Fixture fix1, fix2;
     ScriptHandle h1 = loadSource(backend, fix1,
@@ -187,9 +159,8 @@ int main() {
     check(true, "T10: both scripts shut down without crash");
   }
 
-  // -------------------------------------------------------------------------
-  // T11: prepareEvents() IS called when defined; passes a numeric timestamp.
-  // -------------------------------------------------------------------------
+  // prepareEvents() IS called when defined; passes a numeric timestamp.
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -201,9 +172,8 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T12: field marshalling round-trips (std::any -> JS -> std::any) per type.
-  // -------------------------------------------------------------------------
+  // field marshalling round-trips (std::any -> JS -> std::any) per type.
+
   {
     // scalars
     check(std::any_cast<SFBool>(roundTrip(SFBool(true), X3DFieldType::SFBool)),
@@ -302,7 +272,7 @@ int main() {
       check(out.empty(), "T12: empty MFFloat round-trips to empty");
     }
 
-    // SFImage (3-component 2x2) round-trips byte-for-byte. CONF-IMG.
+    // SFImage (3-component 2x2) round-trips byte-for-byte..
     {
       SFImage in{2, 2, 3,
                  {0xFF, 0x00, 0x00,  // pixel 0 = red
@@ -364,7 +334,7 @@ int main() {
             "T12: MFImage[1] (3-comp) header round-trips");
       check(out[1].data == in[1].data, "T12: MFImage[1] pixel bytes round-trip");
     }
-    // MFMatrix3f/4f/3d/4d round-trip (CONF-IMG). Element 0,0 and last cell
+    // MFMatrix3f/4f/3d/4d round-trip (). Element 0,0 and last cell
     // preserved across two matrices.
     {
       MFMatrix3f in{SFMatrix3f{}, SFMatrix3f{}};
@@ -405,11 +375,10 @@ int main() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // T13: handler dispatch passes (value, timestamp) into the script and the
+  // handler dispatch passes (value, timestamp) into the script and the
   //      script can read both. The script stashes them into globals which we
   //      then read back via a second handler invocation that returns via print.
-  // -------------------------------------------------------------------------
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -427,9 +396,8 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T14: Browser object — getName/getVersion/currentTime/print.
-  // -------------------------------------------------------------------------
+  // Browser object — getName/getVersion/currentTime/print.
+
   {
     Fixture fix;
     fix.ctx.tick(5.0);  // advance the clock so currentTime reads 5
@@ -445,11 +413,10 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15: end-to-end — a handler uses Browser.addRoute to wire two real nodes,
+  // end-to-end — a handler uses Browser.addRoute to wire two real nodes,
   //      and driving the source then fans out through the new route. directOutput
   //      must be TRUE for the script to add routes (§29.4.1).
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -488,12 +455,11 @@ int main() {
     backend.shutdown(h2);
   }
 
-  // -------------------------------------------------------------------------
-  // T15b: SFNode handles are unforgeable — a script that clones a node
+  // SFNode handles are unforgeable — a script that clones a node
   //       handle's own properties onto a plain object (or guesses the internal
-  //       key) must NOT obtain a node reference. A forged handle would let
+  //       key) must not obtain a node reference. A forged handle would let
   //       hostile content aim the runtime at an arbitrary address.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -518,13 +484,12 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15c: a script's SFNode is a real node reference (ISO/IEC 19777-1): an
-  //       SFNode the script writes out SHARES ownership with the scene (like
+  // a script's SFNode is a real node reference (ISO/IEC 19777-1): an
+  // SFNode the script writes out shares ownership with the scene (like
   //       DEF/USE), and a handle whose node the scene has since dropped
   //       resolves to null — Browser.addRoute reports INVALID_NODE instead of
   //       touching freed memory.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -568,11 +533,10 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15d: Browser.addRoute validates like a document ROUTE (ISO/IEC 19775-2
+  // Browser.addRoute validates like a document ROUTE (ISO/IEC 19775-2
   //       INVALID_FIELD): unknown field, wrong direction and type mismatch are
   //       rejected; set_/_changed aliases of an inputOutput field are accepted.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -602,13 +566,12 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15f: hostile author-field values cannot crash the host. Reading a JS
+  // hostile author-field values cannot crash the host. Reading a JS
   //       global back after a handler runs can execute script code (getters,
   //       toJSON, Proxy traps, a global accessor). A throw there must be
   //       contained: no process abort, no event emitted for that field, and the
   //       script keeps working afterwards.
-  // -------------------------------------------------------------------------
+
   {
     struct HostileCase {
       const char *what;
@@ -668,12 +631,11 @@ int main() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // T15g: call budget. A handler (or the script's top level) that never
+  // call budget. A handler (or the script's top level) that never
   //       returns is interrupted after callBudget() instead of hanging the
   //       host -- even if it tries to catch the interruption and keep going --
   //       and the script keeps working afterwards.
-  // -------------------------------------------------------------------------
+
   {
     using Clock = std::chrono::steady_clock;
     const auto budget = std::chrono::milliseconds(200);
@@ -730,14 +692,13 @@ int main() {
     backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
   }
 
-  // -------------------------------------------------------------------------
-  // T15h: memory limit. A handler that allocates without bound is stopped by
+  // memory limit. A handler that allocates without bound is stopped by
   //       memoryLimit() -- well inside a generous call budget, so the memory
   //       cap, not the clock, ends it -- and the script keeps working. The
   //       check is causal, not a speed bound: the call must end well before
   //       the budget could have ended it. Sanitizer builds spend seconds in
   //       garbage collection near the cap, so a fixed wall-clock bound flakes.
-  // -------------------------------------------------------------------------
+
   {
     using Clock = std::chrono::steady_clock;
     const auto budget = std::chrono::seconds(60);
@@ -772,11 +733,10 @@ int main() {
     backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
   }
 
-  // -------------------------------------------------------------------------
-  // T15i: updateField. An inputOutput author field written from outside the
+  // updateField. An inputOutput author field written from outside the
   //       script reaches its JS global, is not echoed back as an output, and a
   //       throwing setter on that global is contained.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -824,13 +784,12 @@ int main() {
     ctx.authorFields().erase(hostile);
   }
 
-  // -------------------------------------------------------------------------
-  // T18 (SCRIPT-OUTPUTONLY-REEMIT): an explicit same-value assignment to an
-  //      outputOnly field STILL generates an event (§29.2.4 / ISO 19777-1).
+  // an explicit same-value assignment to an
+  //      outputOnly field still generates an event (§29.2.4 / ISO 19777-1).
   //      The ROUTE target is reset out-of-band between ticks, so a second,
   //      identical assignment re-driving it proves an event was emitted (a
   //      suppressed re-emit would leave the reset value untouched).
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -854,7 +813,7 @@ int main() {
     check(sink.getTranslation().x == 4.0f && sink.getTranslation().y == 4.0f,
           "T18-pre: the first explicit outputOnly assignment emits");
 
-    // Reset the target out-of-band, then assign the SAME value again.
+    // Reset the target out-of-band, then assign the same value again.
     sink.setTranslation(SFVec3f{0, 0, 0});
     backend.invoke(h, "emit_out", std::any(4.0), X3DFieldType::SFTime, 2.0);
     ctx.process();
@@ -865,10 +824,9 @@ int main() {
     ctx.authorFields().erase(script);
   }
 
-  // -------------------------------------------------------------------------
-  // T16: directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
-  //      the route is NOT added.
-  // -------------------------------------------------------------------------
+  // directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
+  // the route is not added.
+
   {
     X3DExecutionContext ctx;
     Script script;  // directOutput defaults FALSE
@@ -893,12 +851,11 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T17: deterministic Date. Date.now() and a zero-argument `new Date()` /
+  // deterministic Date. Date.now() and a zero-argument `new Date()` /
   //      `Date()` read the injected execution clock (SaiContext::currentTime(),
   //      seconds -> ms); Date with explicit arguments, Date.parse/UTC and
   //      instanceof are preserved.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;

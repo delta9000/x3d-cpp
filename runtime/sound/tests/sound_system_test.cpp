@@ -1,24 +1,4 @@
-// sound_system_test.cpp — CORE SoundSystem driving the §16 audio graph, in two
-// tiers (the design's "prove it"):
-//   (a) RECORDING tier: a §16 Oscillator->Biquad->Gain->Destination scene ->
-//       SoundSystem.attach(RecordingBackend) -> assert the recorded graph (4
-//       nodes, 3 connections in the child->parent direction, initial params) +
-//       that the op sequence is deterministic across two runs.
-//   (b) DSP tier (BuiltinDspBackend): render the graph -> assert on SAMPLES — a
-//       440 Hz oscillator -> LOWPASS biquad (cutoff >> 440) -> Gain 0.5 yields a
-//       half-amplitude 440 Hz tone (RMS ~= 0.5/sqrt(2)*amp; a Goertzel at 440 Hz
-//       shows a strong component), while a high-frequency oscillator through the
-//       same lowpass is strongly ATTENUATED.
-//   (c) PARAM ANIMATION: drive Gain.gain across blocks via the event cascade
-//       (postEvent, the same inbound mechanism an interpolator route uses) ->
-//       render per block -> assert the per-block RMS ramps with the gain.
-//   (d) DETERMINISM: same graph + same render twice -> byte-identical buffer.
-//   (f) SPATIAL DSP (Task 3): BuiltinDsp equal-power Panner — direct NodeParams
-//       graph (osc -> Panner -> Destination), positions set in NodeParams.
-//       Asserts: hard-left source ⇒ rms(L) > 4·rms(R); hard-right ⇒ inverse;
-//       centered ⇒ |rms(L)−rms(R)| tiny AND gL²+gR²≈1 (energy conserved);
-//       source at maxDistance ⇒ total energy ≪ source at referenceDistance.
-
+// §16 graph construction, synthesis, parameter animation, and spatialization.
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -86,7 +66,7 @@ int main() {
   constexpr float kSR = 48000.0f;
   constexpr int kFrames = 4096;
 
-  // ── (a) RECORDING tier: the §16 graph is read correctly + deterministically.
+  // (a) recording tier: the §16 graph is read correctly + deterministically.
   {
     Chain c = buildChain(440.0f, 8000.0f, BiquadTypeFilterChoices::LOWPASS, 0.5f);
 
@@ -161,7 +141,7 @@ int main() {
                  rec->ops.size());
   }
 
-  // ── (b) DSP tier: 440 Hz -> LOWPASS(8k) -> Gain 0.5 is a half-amp 440 tone.
+  // (b) DSP tier: 440 Hz -> LOWPASS(8k) -> Gain 0.5 is a half-amp 440 tone.
   {
     Chain c = buildChain(440.0f, 8000.0f, BiquadTypeFilterChoices::LOWPASS, 0.5f);
     auto dsp = std::make_shared<BuiltinDspBackend>();
@@ -189,7 +169,7 @@ int main() {
                  gOff);
     CHECK(gOff < g440 * 0.1, "440 component dominates a non-harmonic bin");
 
-    // A HIGH-frequency oscillator (15 kHz) through the SAME lowpass(1 kHz cutoff)
+    // A high-frequency oscillator (15 kHz) through the same lowpass(1 kHz cutoff)
     // is strongly attenuated vs a low tone (200 Hz) through that lowpass.
     Chain lo = buildChain(200.0f, 1000.0f, BiquadTypeFilterChoices::LOWPASS, 1.0f);
     Chain hi = buildChain(15000.0f, 1000.0f, BiquadTypeFilterChoices::LOWPASS, 1.0f);
@@ -211,7 +191,7 @@ int main() {
     CHECK(rHi < rLo * 0.1, "15 kHz is strongly attenuated by the 1 kHz lowpass");
   }
 
-  // ── (c) PARAM ANIMATION: Gain.gain ramped via the inbound event cascade.
+  // (c) param animation: Gain.gain ramped via the inbound event cascade.
   //     postEvent is the same mechanism an interpolator ROUTE uses to write a
   //     field; SoundSystem.update reads the field each tick -> setParam.
   {
@@ -252,7 +232,7 @@ int main() {
     CHECK(prevRms > 0.30, "at gain=1.0 the tone reaches ~full half... (>0.30)");
   }
 
-  // ── (d) DETERMINISM: same graph + same render twice -> byte-identical buffer.
+  // (d) determinism: same graph + same render twice -> byte-identical buffer.
   {
     auto renderOnce = [&](std::vector<float> &out) {
       Chain c = buildChain(440.0f, 6000.0f, BiquadTypeFilterChoices::LOWPASS, 0.7f);
@@ -274,7 +254,7 @@ int main() {
     CHECK(identical, "two identical renders produce byte-identical buffers");
   }
 
-  // ── (g) enabled semantics and destination gain.
+  // (g) enabled semantics and destination gain.
   {
     Chain c = buildChain(440.0f, 8000.0f, BiquadTypeFilterChoices::LOWPASS, 1.0f);
     auto dsp = std::make_shared<BuiltinDspBackend>();
@@ -313,10 +293,8 @@ int main() {
     CHECK(rms(changed) < 1e-6, "disabled OscillatorSource emits silence");
   }
 
-  // ── (e) PANNER SEAM: NodeKind::Panner + positional params cross the seam.
-  //     This is a recording-tier test — it proves the seam carries Panner +
-  //     positions (not a precomputed gain).  The actual spatial DSP lands in
-  //     Task 3; here we just assert the seam contract.
+  // (e) panner seam: NodeKind::Panner + positional params cross the seam.
+  // The recording backend receives positions rather than precomputed gains.
   {
     NodeParams pannerParams;
     pannerParams.distanceModel    = DistanceModel::Inverse;
@@ -359,7 +337,7 @@ int main() {
                  stereoOut.size());
   }
 
-  // ── (f) SPATIAL DSP: BuiltinDsp equal-power Panner (Task 3).
+  // (f) spatial DSP: BuiltinDsp equal-power Panner.
   //     Build a direct NodeParams graph: OscillatorSource -> Panner -> Destination.
   //     Set positions directly in NodeParams (no full SpatialSound scene path
   //     required for this unit test). Assert equal-power pan law + distance falloff.
@@ -391,7 +369,7 @@ int main() {
       return {dsp, hDest};
     };
 
-    // Listener at origin facing -Z (default), source at hard LEFT (+X, same Z=0).
+    // Listener at origin facing -Z (default), source at hard left (+X, same Z=0).
     // The "right" ear direction = cross(forward,up) = cross(0,0,-1 , 0,1,0) = +X.
     // Source at (-5, 0, 0) relative to listener at origin: az_norm should be -1
     // (full left).

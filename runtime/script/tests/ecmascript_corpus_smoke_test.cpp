@@ -1,21 +1,4 @@
-// ecmascript_corpus_smoke_test.cpp
-// Track-B corpus smoke (M4 / U4): drive the whole pipeline
-//   parse (XML) -> expand (PROTO) -> attach ScriptSystem(EcmaScriptBackend)
-//   -> tick
-// over (a) an authored "known scene" with a deterministic Browser.print output,
-// and (b) a handful of real Script-bearing .x3d from the testdata corpus, just
-// to prove no crash on real-world content.
-//
-// KNOWN-SCENE NOTE: the inline script body is carried in the Script `url`
-// attribute (ecmascript:...), which the XmlReader parses into the url field.
-// Real corpus scenes carry their script body in a <![CDATA[...]]> block AND
-// declare author <field>s; the reader does not yet capture either (the S1
-// dynamic-field foundation is unimplemented — see the limitation logged in the
-// task report). Those scenes therefore parse to an inert Script (empty url ->
-// no handle) and the smoke proves robustness (no crash), not script execution.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// Parse, expand, attach, and tick authored and corpus Script scenes.
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"
 
@@ -54,7 +37,7 @@ void check(bool cond, const std::string &what) {
   }
 }
 
-// Blind child walk (mirrors PickSystem::forEachChild) — visit every Script node
+// Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
   if (!n) return;
@@ -92,11 +75,11 @@ std::string slurp(const std::string &path) {
 } // namespace
 
 int main() {
-  // -------------------------------------------------------------------------
-  // KNOWN SCENE: a Script whose initialize() prints a deterministic string,
+
+  // known scene: a Script whose initialize() prints a deterministic string,
   // and an enabled() handler that toggles a global. Body lives in url= so the
   // reader captures it. Drive it through the real ScriptSystem + cascade.
-  // -------------------------------------------------------------------------
+
   {
     // The url is an MFString — its single inline entry must be double-quoted so
     // the whole script body is one element (unquoted whitespace would split it
@@ -150,10 +133,9 @@ int main() {
           "known scene: ping handler received marshalled (value, timestamp)");
   }
 
-  // -------------------------------------------------------------------------
-  // REAL CORPUS: parse -> expand -> attach -> tick a handful of Script-bearing
+  // real corpus: parse -> expand -> attach -> tick a handful of Script-bearing
   // .x3d files; assert no crash and that the pipeline runs to completion.
-  // -------------------------------------------------------------------------
+
   {
     // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
     // bundled). Unset => base is empty => every slurp misses => graceful skip.

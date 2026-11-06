@@ -1,5 +1,5 @@
-// runtime/io/freetype/FreetypeFontMetrics.cpp — the ONE translation unit where
-// FreeType meets the FontMetrics seam. <ft2build.h> is included PRIVATE (see
+// runtime/io/freetype/FreetypeFontMetrics.cpp — the one translation unit where
+// FreeType meets the FontMetrics seam. <ft2build.h> is included private (see
 // CMake) so it never leaks. The factory returns a std::function exchanging only
 // std types, so linking x3d_freetype pulls in no FreeType headers.
 #include "FreetypeFontMetrics.hpp"
@@ -61,7 +61,7 @@ x3d::runtime::extract::FontMetrics makeFreetypeFontMetrics(FontFaceMap faces) {
     if (!face) return GlyphResult::makeFailed();
 
     const FT_UInt glyph = FT_Get_Char_Index(face, key.codepoint);
-    if (glyph == 0) return GlyphResult::makeFailed();  // .notdef → Failed (rule 3)
+    if (glyph == 0) return GlyphResult::makeFailed();  //.notdef → Failed (rule 3)
 
     FT_Fixed advance = 0;  // font units when FT_LOAD_NO_SCALE is set (rule 1)
     if (FT_Get_Advance(face, glyph, FT_LOAD_NO_SCALE, &advance) != 0)

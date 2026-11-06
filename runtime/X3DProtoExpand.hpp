@@ -298,7 +298,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
 
   // Validate an IS access-type mapping per ISO/IEC 19775-1 Table 4.4.
   // inputOutput body fields may map to any interface type; all other body
-  // fields must map to an interface of the SAME access type.
+  // fields must map to an interface of the same access type.
   auto isValidIsMapping = [](AccessType body, AccessType iface) -> bool {
     switch (body) {
       case AccessType::InputOutput:
@@ -582,7 +582,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   }
 
   // Expand ProtoInstances captured inside this body, once per outer
-  // instantiation. Each was recorded against an ORIGINAL body node (a cloneMap
+  // instantiation. Each was recorded against an original body node (a cloneMap
   // key) or with an empty parent (a direct body-root child). Recurse through the
   // shared guard — increment/decrement depth so deep/cyclic nesting terminates
   // with a RecursionLimit warning rather than overflowing.

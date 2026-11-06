@@ -1,8 +1,5 @@
-// runtime/io/stb/StbTextureResolver.cpp — the ONE translation unit where
-// stb_image meets the TextureResolver seam. STB_IMAGE_IMPLEMENTATION is defined
-// here and nowhere else; stb_image.h is included PRIVATE (see CMake) so it never
-// leaks to consumers. The factory returns a plain std::function exchanging only
-// std types, so linking x3d_stb pulls in no stb headers.
+// Compile stb_image in this translation unit; decoder headers stay private.
+// See ADR-0024.
 #include "StbTextureResolver.hpp"
 #include "DdsDecode.hpp"
 

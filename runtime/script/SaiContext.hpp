@@ -1,10 +1,10 @@
 // SaiContext.hpp
 // The in-process Scene Access Interface surface a Script backend calls back into
 // (ISO/IEC 19775-1 §29.4.1, §4.9; ISO 19775-2). Read/set fields, add/delete
-// routes, query browser info, print. This is the ONLY sanctioned channel from a
+// routes, query browser info, print. This is the only sanctioned channel from a
 // backend into the running scene, and it enforces the Script's directOutput gate.
 //
-// LANGUAGE-AGNOSTIC: every value crossing this surface is the runtime's own
+// Every value crossing this surface is the runtime's own
 // std::any field representation, never a scripting-language object.
 // This is x3d-cpp's legacy Script-backend API, not an implementation of, or
 // adapter to, the independent x3d-sai experimental semantic kernel. Its node
@@ -16,20 +16,20 @@
 //   - getField(node, name)        : always permitted (read access is unconditional).
 //   - setField(self, name, value) : always permitted (a script may write its own
 //                                   fields — chiefly its outputOnly outputs).
-//   - setField(other, name, value): permitted ONLY if directOutput==TRUE; else the
+//   - setField(other, name, value): permitted only if directOutput==TRUE; else the
 //                                   spec declares the result UNDEFINED, and we
 //                                   take the safest conformant response: throw.
-//   - addRoute / deleteRoute      : permitted ONLY if directOutput==TRUE; else throw.
-// A permitted SELF-write (to the Script's own field) is posted as an input event
-// into the CURRENT cascade at the current timestamp, so it fans out along ROUTEs
-// (§29.2.4 — the sanctioned output channel). A permitted CROSS-node write is a
-// direct VALUE MUTATION of the target field (SAI 19775-2 §4.5.2 / ADR-0029): it
+//   - addRoute / deleteRoute      : permitted only if directOutput==TRUE; else throw.
+// A permitted self-write (to the Script's own field) is posted as an input event
+// into the current cascade at the current timestamp, so it fans out along ROUTEs
+// (§29.2.4 — the sanctioned output channel). A permitted cross-node write is a
+// direct value mutation of the target field (SAI 19775-2 §4.5.2 / ADR-0029): it
 // generates no event and does not form part of the cascade, so no ROUTE fans out
 // from the written field. The target still generates its own output events per
 // that field's access type, since the mutation is an ordinary write.
 //
 // §29.2.6 ("shall be part of the current event cascade") contradicts SAI §4.5.2
-// ("generates no event ... not part of the event cascade"); SAI governs this seam.
+// ("generates no event... not part of the event cascade"); SAI governs this seam.
 #ifndef X3D_RUNTIME_SAI_CONTEXT_HPP
 #define X3D_RUNTIME_SAI_CONTEXT_HPP
 
@@ -79,9 +79,7 @@ public:
       : ctx_(ctx), script_(scriptNode), name_(std::move(name)),
         version_(std::move(version)), active_(ctx.callbackLease()) {}
 
-  // --------------------------------------------------------------------------
   // Field access (§29.4.1 paragraph 1: read is unconditional).
-  // --------------------------------------------------------------------------
 
   /**
    * @brief Read the last value of `fieldName` on `node` (boxed std::any).
@@ -101,13 +99,13 @@ public:
    * @brief Set `fieldName` on `node` to `value`.
    * @details Gate (§29.2.6/§29.4.1):
    *            - node == owning Script: always allowed (its own fields/outputs).
-   *            - node != owning Script: allowed ONLY if directOutput==TRUE;
+   *            - node != owning Script: allowed only if directOutput==TRUE;
    *              otherwise throws std::logic_error (spec says "undefined").
    *          Semantics differ by target (SAI §4.5.2 / ADR-0029):
-   *            - a SELF-write is posted as an input event into the current
+   *            - a self-write is posted as an input event into the current
    *              cascade so it carries the current timestamp and fans out via
    *              ROUTEs (the Script's own output channel, §29.2.4);
-   *            - a permitted CROSS-node write is a direct value mutation of the
+   *            - a permitted cross-node write is a direct value mutation of the
    *              target field via the reflection setter — no event is generated
    *              and no ROUTE fans out from the written field. The target still
    *              produces its own output events per the field's access type.
@@ -137,9 +135,7 @@ public:
     (void)ctx_.writeField(node, fieldName, std::move(value));
   }
 
-  // --------------------------------------------------------------------------
   // Routing (§29.4.1: dynamic route add/remove only when directOutput==TRUE).
-  // --------------------------------------------------------------------------
 
   /**
    * @brief Dynamically add a ROUTE (from -> to). Requires directOutput==TRUE.
@@ -177,9 +173,7 @@ public:
                      FieldAddress{toNode, toField});
   }
 
-  // --------------------------------------------------------------------------
   // Browser info (§29.4.1; SAI Browser object).
-  // --------------------------------------------------------------------------
 
   /** @brief Browser name (SAI Browser.getName()). */
   const std::string &getName() const { return name_; }
@@ -255,12 +249,8 @@ private:
                                   fromField + "' -> '" + toField + "'");
   }
 
-  // Locate a field on a node by x3dName via its EFFECTIVE table: static fields()
-  // plus Script author fields from the dynamic-field store (S1). Returns a COPY
-  // (std::optional) because effectiveFields() builds a temporary table holding
-  // the synthesized author FieldInfos — a pointer into it would dangle.
-  // std::nullopt if absent. (S1 NOTE closed: author fields now resolve here, so
-  // script get/set/addRoute see them.)
+  // Include static and author fields. Return a copy because effectiveFields()
+  // builds a temporary table; a pointer into it would dangle. nullopt if absent.
   std::optional<FieldInfo> findField(const X3DNode &node,
                                             const std::string &name) const {
     for (FieldInfo &info : effectiveFields(node, ctx_.authorFields())) {

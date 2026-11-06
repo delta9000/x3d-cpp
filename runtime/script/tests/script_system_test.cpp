@@ -1,24 +1,4 @@
-// script_system_test.cpp
-// Track-A unit test (NO JavaScript): ScriptSystem — the System that wires a
-// Script node's lifecycle (load/initialize/shutdown) and its event delivery
-// (inputOnly -> engine.invoke, prepareEvents/eventsProcessed phasing,
-// outputOnly -> cascade) into the X3DExecutionContext tick/cascade, driven by a
-// recording MockScriptEngine.
-//
-// Proves the spec-checked ordering (ISO/IEC 19775-1 §29.2):
-//   - initialize() runs once at load, BEFORE the first event;
-//   - prepareEvents() runs once per timestamp, BEFORE route processing;
-//   - an inputOnly event dispatches to engine.invoke with its name+timestamp;
-//   - an outputOnly write the script makes becomes a cascade event carrying the
-//     TRIGGERING event's timestamp (not the clock);
-//   - eventsProcessed() runs once after a batch of received events, and only for
-//     scripts that actually received an event this tick;
-//   - set_url shuts down the old script then loads+initializes the new one;
-//   - the directOutput gate is honored (cross-node write rejected when FALSE);
-//   - mustEvaluate: TRUE delivers eagerly, FALSE may defer until the batch end.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// Script lifecycle and event ordering under ISO/IEC 19775-1 §29.2.
 #include "ScriptSystem.hpp"
 
 #include "AssetResolver.hpp"
@@ -78,7 +58,7 @@ Script makeScript(bool directOutput = false, bool mustEvaluate = true) {
   return s;
 }
 
-// --- load -> initialize happens once, before any event ----------------------
+// load -> initialize happens once, before any event
 void testInitializeBeforeFirstEvent() {
   X3DExecutionContext ctx;
   Script script = makeScript();
@@ -101,7 +81,7 @@ void testInitializeBeforeFirstEvent() {
         "initialize precedes the first invoke");
 }
 
-// load=FALSE must NOT load/initialize at attach time --------------------------
+// load=FALSE must not load/initialize at attach time
 void testLoadFalseDefersLoad() {
   X3DExecutionContext ctx;
   Script script = makeScript();
@@ -115,7 +95,7 @@ void testLoadFalseDefersLoad() {
   check(engine->count("initialize") == 0, "load=FALSE: not initialized");
 }
 
-// --- prepareEvents once per timestamp, before routes ------------------------
+// prepareEvents once per timestamp, before routes
 void testPrepareEventsPhasing() {
   X3DExecutionContext ctx;
   Script script = makeScript();
@@ -135,7 +115,7 @@ void testPrepareEventsPhasing() {
         "prepareEvents carries the timestamp");
 }
 
-// --- inputOnly -> invoke; outputOnly write -> cascade at trigger timestamp ---
+// inputOnly -> invoke; outputOnly write -> cascade at trigger timestamp
 void testInputInvokeAndOutputTimestamp() {
   X3DExecutionContext ctx;
   Script script = makeScript(/*directOutput=*/true);
@@ -170,7 +150,7 @@ void testInputInvokeAndOutputTimestamp() {
         "outputOnly write reached the target via the cascade");
 }
 
-// --- eventsProcessed runs once after a batch, only for receivers ------------
+// eventsProcessed runs once after a batch, only for receivers
 void testEventsProcessedAfterBatch() {
   X3DExecutionContext ctx;
   Script script = makeScript();
@@ -180,13 +160,13 @@ void testEventsProcessedAfterBatch() {
   ctx.addScriptSystem(sys);
   sys->attach(&script, ctx);
 
-  // Tick with NO events: eventsProcessed must not fire.
+  // Tick with no events: eventsProcessed must not fire.
   ctx.tick(1.0);
   check(engine->count("eventsProcessed") == 0,
         "eventsProcessed skipped on a tick with no received events");
 
   // A tick during which two events are delivered -> exactly one eventsProcessed,
-  // AFTER both invokes.
+  // after both invokes.
   // Wire delivery to happen during the cascade: deliver inside tick by using a
   // pre-armed System is overkill; deliver directly then run eventsProcessed.
   sys->deliverInputEvent(&script, "set_a", std::any(SFFloat(1.0f)),
@@ -210,7 +190,7 @@ void testEventsProcessedAfterBatch() {
         "eventsProcessed not re-fired without new events");
 }
 
-// --- set_url: shutdown old, then load + initialize new ----------------------
+// set_url: shutdown old, then load + initialize new
 void testSetUrlReload() {
   X3DExecutionContext ctx;
   Script script = makeScript();
@@ -239,7 +219,7 @@ void testSetUrlReload() {
         "set_url order: shutdown < new load < new initialize");
 }
 
-// --- directOutput gate honored end-to-end through the system ----------------
+// directOutput gate honored end-to-end through the system
 void testDirectOutputGate() {
   X3DExecutionContext ctx;
   Script script = makeScript(/*directOutput=*/false);  // FALSE
@@ -266,7 +246,7 @@ void testDirectOutputGate() {
         "directOutput=FALSE: the other node is unchanged");
 }
 
-// --- mustEvaluate: TRUE eager, FALSE deferred to the batch flush ------------
+// mustEvaluate: TRUE eager, FALSE deferred to the batch flush
 void testMustEvaluateEagerVsLazy() {
   // mustEvaluate = TRUE: invoke happens immediately on delivery.
   {
@@ -306,7 +286,7 @@ void testMustEvaluateEagerVsLazy() {
   }
 }
 
-// SCR-002: §29.2.3 shutdown() runs when the world is unloaded. Destroying the
+// §29.2.3 shutdown() runs when the world is unloaded. Destroying the
 // ScriptSystem (its execution context going away) is that teardown, so every
 // still-loaded script must be shut down.
 void testShutdownOnTeardown() {
@@ -325,7 +305,7 @@ void testShutdownOnTeardown() {
         "scr002: ScriptSystem teardown shuts down the loaded script");
 }
 
-// --- CONF-CRITIC-2: external url fetched through the AssetResolver seam ------
+// external url fetched through the AssetResolver seam
 // A map-backed resolver: url -> status + bytes. Tracks call order.
 struct MappingResolver {
   std::function<extract::AssetResult(const std::string &)> fn;
@@ -364,7 +344,7 @@ void testExternalUrlFetch() {
           "CONF-CRITIC-2: the resolver was called with the url");
   }
 
-  // 2. Pending defers the load; a later tick retries the SAME url.
+  // 2. Pending defers the load; a later tick retries the same url.
   {
     X3DExecutionContext ctx;
     Script script;
@@ -425,7 +405,7 @@ void testExternalUrlFetch() {
   }
 }
 
-// --- SCR-005: autoRefresh / autoRefreshTimeLimit -----------------------------
+// autoRefresh / autoRefreshTimeLimit
 void testAutoRefresh() {
   // 1. autoRefresh=0 (default) never reloads.
   {
@@ -484,7 +464,7 @@ void testAutoRefresh() {
 
 } // namespace
 
-// --- a ROUTE into a Script eventIn runs its handler (SCRIPT-EVENTIN) ---------
+// a ROUTE into a Script eventIn runs its handler
 // ISO/IEC 19775-1 §29.2: an event arriving at a Script's inputOnly field invokes
 // the function of that name, within the same cascade, at the current timestamp;
 // eventsProcessed() follows once the batch drains. No embedder bridging.

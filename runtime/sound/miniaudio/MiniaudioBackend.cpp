@@ -1,50 +1,17 @@
-// MiniaudioBackend.cpp — the ONLY translation unit where miniaudio meets the
-// AudioBackend seam.  MINIAUDIO_IMPLEMENTATION is defined here so the ~100k-
-// line header body compiles into exactly ONE object file and never leaks to
-// consumers.  MiniaudioBackend.hpp is miniaudio-free (pImpl).
+// Headless miniaudio implementation; see ADR-0026.
+// Initialization is deferred until render supplies the sample rate. It creates
+// the graph and pending nodes, then replays their connections.
 //
-// Design: LAZY INIT.  The AudioBackend seam delivers sampleRate at render()
-// time, but miniaudio nodes need it at construction.  Solution: createNode()
-// stores a PendingNode; the first render() call initializes the ma_node_graph
-// (with the known sampleRate), flushes all PendingNodes to real ma_* nodes,
-// then replays deferred connect() calls.  Subsequent render() calls find the
-// graph already initialized and just call ma_node_graph_read_pcm_frames.
+// ma_data_source_node retains a pointer to its ma_waveform. MaNode must stay
+// at a fixed heap address so moving the owning map cannot invalidate it.
 //
-// PINNED NODES: ma_data_source_node stores an internal pointer back to the
-// ma_waveform it wraps. Any move/copy of the owning struct invalidates that
-// pointer. Therefore MaNode is heap-allocated (std::unique_ptr<MaNode>) and
-// never moved after creation. The map stores unique_ptr<MaNode> so nodes are
-// stable at their original heap addresses throughout the backend's lifetime.
-//
-// Node mapping (synthesis chain, v1):
-//   NodeKind::Oscillator  → ma_waveform + ma_data_source_node
-//   NodeKind::Biquad      → ma_lpf_node / ma_hpf_node / ma_bpf_node
-//                           wrapped by a ma_splitter_node: bus 0 feeds the
-//                           filter (wet), bus 1 bypasses it (dry); the enabled
-//                           flag mixes the two so a disabled filter passes its
-//                           input through unchanged.
-//   NodeKind::Gain        → ma_splitter_node (1-in 2-out, only bus 0 used)
-//                           + ma_node_set_output_bus_volume
-//   NodeKind::Panner      → ma_splitter_node (unity pass-through in mono graph)
-//                           + ma_spatializer (applied in renderStereo)
-//                           + ma_spatializer_listener (owned by Panner node)
-//   NodeKind::Destination → ma_node_graph_get_endpoint (the graph's sink)
-//
-// connect(dst, src) seam contract: src feeds INTO dst.
-// miniaudio contract: ma_node_attach_output_bus(src, 0, dst, 0).
-//
-// renderStereo for a Panner graph:
-//   The mono node graph renders the signal through the Panner (as a unity
-//   splitter), delivering it to the Destination endpoint.  renderStereo then
-//   finds the first Panner node, renders the mono graph output, and feeds that
-//   buffer through ma_spatializer_process_pcm_frames to produce interleaved
-//   stereo.  If no Panner node exists, it falls back to duplicating the mono
-//   signal into both channels (the pre-Task-4 behaviour).
-
+// Biquads use a splitter to select the wet or bypass path. Panners pass mono
+// through the graph and apply ma_spatializer during stereo rendering. Without
+// a Panner, stereo output duplicates the mono signal.
 #define MINIAUDIO_IMPLEMENTATION
 // Suppress device/OS backend code — we use the node graph headlessly.
 // MA_NO_DEVICE_IO trims the device I/O code entirely (no ALSA/PulseAudio/etc).
-// Do NOT define MA_NO_THREADING: the node graph uses spinlocks internally for
+// Do not define MA_NO_THREADING: the node graph uses spinlocks internally for
 // thread-safe output-bus attach/detach. The spinlocks use C11 atomics which
 // require proper linking; MA_NO_THREADING would break the atomic path.
 #define MA_NO_DEVICE_IO
@@ -62,17 +29,14 @@
 
 namespace x3d::runtime::miniaudio {
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Internal node representation (heap-pinned — never moved after init)
-// ─────────────────────────────────────────────────────────────────────────────
 
 enum class MaNodeKind { Oscillator, Biquad, Gain, Panner, Destination, Buffer };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Buffer source (NodeKind::Buffer, ADR-0050): decoded PCM played through a
 // custom ma_data_source — read cursor at rate * srcRate/outRate, linear
 // interpolation, wrapping at the end; stopped/paused read silence.
-// ─────────────────────────────────────────────────────────────────────────────
+
 struct BufferSource {
   ma_data_source_base base{};  // must be first: miniaudio casts to it
   const std::vector<float> *samples = nullptr;
@@ -141,7 +105,7 @@ struct MaNode {
   MaNodeKind kind;
   NodeParams params;
 
-  // Oscillator: waveform MUST NOT MOVE after ma_data_source_node_init because
+  // Oscillator: waveform must not move after ma_data_source_node_init because
   // dsNode.pDataSource points back into it.
   ma_waveform            waveform{};
   ma_data_source_node    dsNode{};
@@ -193,9 +157,7 @@ static void applyBiquadMix(MaNode &mn) {
   ma_node_set_output_bus_volume(mn.node, 1, dry ? 1.0f : 0.0f);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Impl
-// ─────────────────────────────────────────────────────────────────────────────
 
 struct MiniaudioBackend::Impl {
   struct PendingNode {
@@ -264,7 +226,7 @@ struct MiniaudioBackend::Impl {
     }
   }
 
-  // ── helper: map seam DistanceModel → miniaudio ma_attenuation_model ─────────
+  // helper: map seam DistanceModel → miniaudio ma_attenuation_model
   static ma_attenuation_model toMaAttenuation(DistanceModel dm) {
     switch (dm) {
     case DistanceModel::Linear:      return ma_attenuation_model_linear;
@@ -274,7 +236,7 @@ struct MiniaudioBackend::Impl {
     }
   }
 
-  // ── Wire src's output into dstNode's first input bus ────────────────────────
+  // Wire src's output into dstNode's first input bus
   // A Biquad fans out through its bypass splitter: the filtered (wet) output and
   // the dry splitter output both feed dstNode, which sums them per the seam's
   // "many inputs sum" contract, so `enabled` can mix them live.
@@ -294,7 +256,7 @@ struct MiniaudioBackend::Impl {
     }
   }
 
-  // ── flush: lazy-init the graph + all pending nodes ──────────────────────────
+  // flush: lazy-init the graph + all pending nodes
   bool flush(float sampleRate) {
     if (graphInited) return true;
     initSampleRate = sampleRate;
@@ -467,7 +429,7 @@ struct MiniaudioBackend::Impl {
         mn->node = &mn->splitterNode;
         ma_node_set_output_bus_volume(mn->node, 0, 1.0f);  // unity gain
 
-        // ── Init the spatializer (mono → stereo) ───────────────────────────
+        // Init the spatializer (mono → stereo)
         ma_spatializer_config spatCfg =
             ma_spatializer_config_init(/*channelsIn=*/1, /*channelsOut=*/2);
         // Ellipsoid (§16.4.17): the spatializer only pans; renderStereo applies
@@ -499,7 +461,7 @@ struct MiniaudioBackend::Impl {
                                     pn.params.sourcePosition[1],
                                     pn.params.sourcePosition[2]);
 
-        // ── Init the listener (at listenerPosition, facing listenerForward) ─
+        // Init the listener (at listenerPosition, facing listenerForward) ─
         ma_spatializer_listener_config listCfg =
             ma_spatializer_listener_config_init(/*channelsOut=*/2);
         if (ma_spatializer_listener_init(&listCfg, nullptr,
@@ -548,7 +510,7 @@ struct MiniaudioBackend::Impl {
     return true;
   }
 
-  // ── findFirstPanner: return the first initialized Panner node, or nullptr ──
+  // findFirstPanner: return the first initialized Panner node, or nullptr
   MaNode* findFirstPanner() {
     for (auto &[h, pn] : nodes) {
       if (pn && pn->initialized && pn->kind == MaNodeKind::Panner)
@@ -558,9 +520,7 @@ struct MiniaudioBackend::Impl {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // MiniaudioBackend methods
-// ─────────────────────────────────────────────────────────────────────────────
 
 MiniaudioBackend::MiniaudioBackend() : impl_(std::make_unique<Impl>()) {}
 MiniaudioBackend::~MiniaudioBackend() = default;

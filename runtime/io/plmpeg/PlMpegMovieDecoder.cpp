@@ -1,11 +1,11 @@
-// runtime/io/plmpeg/PlMpegMovieDecoder.cpp — the ONE translation unit that meets
+// runtime/io/plmpeg/PlMpegMovieDecoder.cpp — the one translation unit that meets
 // pl_mpeg. PL_MPEG_IMPLEMENTATION is defined exactly here so the codec lives in a
 // single isolated object file and never leaks past the x3d_plmpeg target.
 //
 // Two MPEG-1 container shapes occur in the wild and both must work:
-//   * PROGRAM STREAM (.mpg with a pack header 0x000001BA) — the high-level plm_t
+// * program stream (.mpg with a pack header 0x000001BA) — the high-level plm_t
 //     demuxer handles it; we seek by media time (plm_seek_frame).
-//   * RAW ELEMENTARY VIDEO (.mpg/.m1v starting with a sequence header 0x000001B3,
+// * raw elementary video (.mpg/.m1v starting with a sequence header 0x000001B3,
 //     no system layer — the entire Web3D/NIST conformance corpus) — the plm_t
 //     demuxer reports zero streams for these, so we drive the low-level plm_video_t
 //     directly and reach a media time by sequential decode (rewind when seeking
@@ -49,7 +49,7 @@ using PlmVideoPtr = std::unique_ptr<plm_video_t, PlmVideoDeleter>;
 
 // Per-URL decoder context. Exactly one path is used: `plm` (program stream, seeks
 // natively) or `video` over the retained `rawBytes` (raw elementary stream). For
-// the raw path a backward seek REBUILDS `video` from rawBytes — plm_video_rewind
+// the raw path a backward seek rebuilds `video` from rawBytes — plm_video_rewind
 // does not recover after the stream has hit EOF, so a fresh decoder is the robust
 // rewind (the same approach as the Theora backend). `failed` marks a URL we
 // already tried and could not open so we never re-resolve it every frame.
@@ -63,7 +63,7 @@ struct Context {
   bool failed = false;
 };
 
-// (Re)create a raw-video decoder over a FRESH malloc'd COPY of `bytes` that the
+// (Re)create a raw-video decoder over a fresh malloc'd copy of `bytes` that the
 // decoder owns (free_when_done=1). The Context keeps `bytes` as an untouched master
 // so it can rebuild on a backward seek; each decoder gets its own buffer, so there
 // is no shared-memory aliasing between the old and new decoder during a rebuild.
@@ -110,7 +110,7 @@ VideoFrame toBottomLeftRgba(plm_frame_t *frame) {
   out.height = frame->height;
   const std::size_t stride = static_cast<std::size_t>(frame->width) * 4;
   // Pre-fill 0xFF so the alpha byte ends up 255 (opaque): plm_frame_to_rgba writes
-  // R,G,B and leaves the alpha component UNTOUCHED, so a zero-filled buffer would
+  // R,G,B and leaves the alpha component untouched, so a zero-filled buffer would
   // yield a fully transparent frame.
   out.rgba.assign(stride * frame->height, 0xFF);
   plm_frame_to_rgba(frame, out.rgba.data(), static_cast<int>(stride));
@@ -148,7 +148,7 @@ AudioDecoder makePlMpegMovieAudioDecoder() {
 
 MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
   // Shared so the returned std::function stays copyable while every copy talks to
-  // the SAME per-URL context cache (sequential decode needs a persistent decoder).
+  // the same per-URL context cache (sequential decode needs a persistent decoder).
   auto cache = std::make_shared<std::map<std::string, Context>>();
 
   return [cache, resolver](const std::string &url,
@@ -211,10 +211,10 @@ MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
     if (ctx.failed) return FrameResult::makeFailed();
 
     // Clamp to [0, duration): the consumer passes loop-wrapped time, but an EOF
-    // (loop=FALSE past the end) should HOLD the last frame, not go blank.
+    // (loop=FALSE past the end) should hold the last frame, not go blank.
     double t = mediaTimeSeconds < 0.0 ? 0.0 : mediaTimeSeconds;
 
-    // ---- Program-stream path: seek by media time. ----
+    // Program-stream path: seek by media time.
     if (ctx.plm) {
       plm_t *plm = ctx.plm.get();
       const double duration = plm_get_duration(plm);
@@ -227,8 +227,8 @@ MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
       return FrameResult::makeReady(toBottomLeftRgba(frame));
     }
 
-    // ---- Raw-elementary path: sequential decode to media time. ----
-    // Seeking backwards (loop wrap / re-render): REBUILD the decoder from the
+    // Raw-elementary path: sequential decode to media time.
+    // Seeking backwards (loop wrap / re-render): rebuild the decoder from the
     // retained bytes. plm_video_rewind does not recover after the stream has hit
     // EOF, so a fresh decoder is the reliable rewind.
     if (t + 1e-9 < ctx.lastDecodedTime) {
@@ -240,7 +240,7 @@ MovieDecoder makePlMpegMovieDecoder(AssetResolver resolver) {
     plm_video_t *vid = ctx.video.get();
     if (!vid) return FrameResult::makeFailed();
 
-    // Decode forward while the NEXT frame's time is still <= t; the decoder's
+    // Decode forward while the next frame's time is still <= t; the decoder's
     // internal time is the time of the frame about to be decoded. Convert only the
     // final frame. plm_video_get_time advances by 1/fps per decode, so this lands
     // on the greatest frame time <= t (and on the last frame at/after EOF).

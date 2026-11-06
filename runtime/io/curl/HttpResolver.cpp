@@ -1,6 +1,4 @@
-// runtime/io/curl/HttpResolver.cpp — libcurl HTTP backend for the
-// AssetResolver seam. The single TU where libcurl meets the seam (mirrors the
-// QuickJsBackend.cpp isolation discipline).
+// libcurl AssetResolver implementation; see ADR-0023.
 #include "HttpResolver.hpp"
 #include "SchemeRouter.hpp"
 
@@ -23,7 +21,7 @@ namespace x3d::runtime::io::curl {
 
 namespace {
 
-// ── Resolved-address guard (SEC-6) ──────────────────────────────────────────
+// Resolved-address guard
 // Runs in CURLOPT_OPENSOCKETFUNCTION, i.e. on the actual sockaddr libcurl is
 // about to connect to — after DNS resolution and for every redirect hop. A
 // hostname or a redirect therefore cannot bypass the check.
@@ -92,7 +90,7 @@ curl_socket_t openSocketCb(void *clientp, curlsocktype /*purpose*/,
   return ::socket(address->family, address->socktype, address->protocol);
 }
 
-// ── Size-capped write sink ──────────────────────────────────────────────────
+// Size-capped write sink
 
 struct WriteSink {
   std::vector<std::uint8_t> bytes;
@@ -148,7 +146,7 @@ makeResolver(HttpResolverOptions options, bool ftp) {
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, &openSocketCb);
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETDATA, &options);
 
-    // SEC-6: the guard above runs on the sockaddr libcurl actually connects to.
+    // The guard above runs on the sockaddr libcurl actually connects to.
     // With http_proxy/https_proxy/all_proxy in the environment libcurl connects
     // to the *proxy*, so the guard would inspect the proxy, not the target, and
     // a private target is reachable through it. Disable environment proxies in

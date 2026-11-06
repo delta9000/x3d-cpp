@@ -1,14 +1,6 @@
-// runtime/io/tests/asset_resolver_swap_test.cpp
-// U3 swap-test: the AssetResolver/IO genericity proof. Drives identical
-// fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3 SDK)
-// and asserts byte-equal AssetResult.bytes, plus equal AssetStatus::Failed
-// for missing keys.
-//
-// Self-contained: starts an in-process HTTP server on localhost serving the
-// fixture directory, and (when $X3D_S3_ENDPOINT is set, i.e. docker minio is
-// reachable) uploads the same fixtures to a minio bucket via the AWS SDK.
-// Skips with a status message when minio is not available so local dev
-// without docker doesn't get a spurious failure.
+// Compare HTTP and S3 fixture bytes and missing-key results; see ADR-0023.
+// Starts a local HTTP server. S3 provisioning uses X3D_S3_ENDPOINT; when it is
+// unset, only the HTTP path runs.
 #include "AssetResolver.hpp"
 #include "HttpResolver.hpp"
 #include "S3Resolver.hpp"
@@ -36,7 +28,7 @@
 using namespace x3d::runtime::extract;
 using x3d::runtime::extract::AssetResolver;
 
-// ── In-process HTTP server (serves a directory of files on localhost) ──────
+// In-process HTTP server (serves a directory of files on localhost)
 class FixtureServer {
  public:
   explicit FixtureServer(std::string root)
@@ -169,7 +161,7 @@ class FixtureServer {
   int port_ = 0;
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// Helpers
 std::vector<std::uint8_t> readFile(const std::string &p) {
   std::ifstream in(p, std::ios::binary);
   if (!in) return {};
@@ -199,7 +191,7 @@ int main() {
   std::cerr << "[swap-test] HTTP server on http://127.0.0.1:" << port << "\n";
 
   // 2. Resolve backend A (libcurl HTTP). The fixture server is on 127.0.0.1,
-  //    so opt in to private-network destinations (SEC-6 default blocks them).
+  //    so opt in to private-network destinations ( default blocks them).
   auto backendA = x3d::runtime::io::curl::makeHttpResolver(
       x3d::runtime::io::curl::HttpResolverOptions{
           /*allowPrivateNetworks=*/true});

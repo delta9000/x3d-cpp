@@ -79,17 +79,17 @@ inline bool isKnownProfileToken(const std::string &s) {
  */
 class X3DDocument {
 public:
-  // <X3D> attributes. The default is the AUTHORING default: a hand-built
+  // <X3D> attributes. The default is the authoring default: a hand-built
   // document targets the UOM the node bindings are generated from (4.0), so
-  // it never serializes as a mislabeled 3.0 file. The VP-2 §1 bare-floor rung
-  // (unversioned parsed input → 3.0) is owned by the READERS, which set
+  // it never serializes as a mislabeled 3.0 file. The  §1 bare-floor rung
+  // (unversioned parsed input → 3.0) is owned by the readers, which set
   // doc.version explicitly on every path — version_floor_test pins both.
   std::string version = "4.0";          // authoring default; readers overwrite
   Profile profile = Profile::Interchange;
 
   // The authored `profile=` token, verbatim (empty when absent). Preserved so a
   // round-trip writer re-emits what the author wrote — an unknown/misspelled
-  // token is NOT silently rewritten to the coerced "Interchange". Readers that
+  // token is not silently rewritten to the coerced "Interchange". Readers that
   // see a non-canonical token also push a ReaderWarning{ProfileCoerced}.
   std::string profileRaw;
 
@@ -143,9 +143,7 @@ public:
   }
 };
 
-// ---------------------------------------------------------------------------
 // Scene member definitions that require the complete X3DNode type.
-// ---------------------------------------------------------------------------
 
 inline void Scene::addRootNode(std::shared_ptr<x3d::nodes::X3DNode> node) {
   if (node) {

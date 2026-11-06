@@ -1,8 +1,4 @@
-// EcmaScriptBackend.cpp
-// ScriptEngine implementation backed by Duktape 2.7.0 (U4: full marshalling +
-// Browser object + handler dispatch). See EcmaScriptBackend.hpp and the design
-// spec docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md §4.
-
+// Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
@@ -30,14 +26,12 @@ namespace {
 constexpr const char *kNodeIdKey = "\xff" "x3dNodeId";  // SFNode handle id
 constexpr const char *kStashSaiKey = "sai";  // global-stash slot: SaiContext*
 
-// -------------------------------------------------------------------------
 // SFNode <-> JS opaque handle object.
 // A non-null node becomes a JS object carrying its NodeHandleTable id in a
 // hidden property; a null node becomes JS null. extractNode resolves the id
 // through this script's table to the node's owning shared_ptr, or null if the
 // id is unknown or the node is gone (see NodeHandleTable.hpp). The SaiContext
 // that owns the table lives in the global stash, which scripts cannot reach.
-// -------------------------------------------------------------------------
 
 SaiContext *stashedSai(duk_context *ctx) {
   duk_push_global_stash(ctx);
@@ -47,13 +41,11 @@ SaiContext *stashedSai(duk_context *ctx) {
   return static_cast<SaiContext *>(p);
 }
 
-// -------------------------------------------------------------------------
 // Active-clock bridge. Duktape's DUK_USE_DATE_GET_NOW hook (duk_config.h)
 // calls x3d_duktape_date_now_ms() below, which reads this thread's current
 // SaiContext so Date.now()/new Date()/Date() see the injected execution clock.
 // The pointer is set for the duration of every engine entry that can run
 // script: protectedRun (below) and the top-level source eval in load().
-// -------------------------------------------------------------------------
 
 thread_local SaiContext *t_activeSai = nullptr;
 
@@ -95,21 +87,17 @@ SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
   return sai->nodeHandles().resolve(static_cast<NodeHandleTable::Id>(id));
 }
 
-// -------------------------------------------------------------------------
 // Call budget. Duktape polls DUK_USE_EXEC_TIMEOUT_CHECK (duk_config.h) while
 // running bytecode; once the armed deadline has passed it raises a RangeError
 // and keeps raising it until the deadline is disarmed, so a script cannot catch
 // its way past the limit. ArmDeadline arms it for the duration of one public
 // entry point (see ScriptEngine::setCallBudget).
-// -------------------------------------------------------------------------
 
-// -------------------------------------------------------------------------
 // Memory limit. Each script's heap allocates through these, with its HeapState
 // as udata. Every block carries a header holding its size, so the running total
 // stays exact across realloc/free. Past the limit an allocation returns null;
 // Duktape then collects garbage, retries, and finally raises an out-of-memory
 // error, which protectedRun contains like any other script error.
-// -------------------------------------------------------------------------
 
 constexpr std::size_t kAllocHeader = alignof(std::max_align_t);
 static_assert(kAllocHeader >= sizeof(std::size_t));
@@ -178,7 +166,6 @@ private:
   EcmaScriptBackend::CallDeadline *d_;
 };
 
-// -------------------------------------------------------------------------
 // Protected entry into the engine.
 //
 // Much of what the backend does can run script code: reading a global can hit a
@@ -193,7 +180,6 @@ private:
 // frames inside `fn` as an exception, with destructors run, and lands here.
 // On failure the error is logged, the value stack is restored to its entry
 // height, and false is returned.
-// -------------------------------------------------------------------------
 
 template <typename Fn>
 bool protectedRun(duk_context *ctx, const std::string &what, Fn fn) {
@@ -231,9 +217,7 @@ bool callGlobal(duk_context *ctx, const std::string &what, const char *name,
   return called;
 }
 
-// -------------------------------------------------------------------------
 // Structured-SF helpers (named numeric properties).
-// -------------------------------------------------------------------------
 
 void putNumberProp(duk_context *ctx, const char *name, double v) {
   duk_push_number(ctx, v);
@@ -247,9 +231,7 @@ double getNumberProp(duk_context *ctx, duk_idx_t objIdx, const char *name) {
   return v;
 }
 
-// -------------------------------------------------------------------------
 // Single-SF pushers (used directly and as MF element pushers).
-// -------------------------------------------------------------------------
 
 void pushSFVec2f(duk_context *c, const SFVec2f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
@@ -286,9 +268,7 @@ void pushSFRotation(duk_context *c, const SFRotation &v) {
   putNumberProp(c, "z", v.z); putNumberProp(c, "angle", v.angle);
 }
 
-// -------------------------------------------------------------------------
 // Single-SF poppers.
-// -------------------------------------------------------------------------
 
 SFVec2f toSFVec2f(duk_context *c, duk_idx_t i) {
   return {(float)getNumberProp(c, i, "x"), (float)getNumberProp(c, i, "y")};
@@ -325,9 +305,7 @@ SFRotation toSFRotation(duk_context *c, duk_idx_t i) {
           (float)getNumberProp(c, i, "z"), (float)getNumberProp(c, i, "angle")};
 }
 
-// -------------------------------------------------------------------------
 // Generic MF push/pop via element functors.
-// -------------------------------------------------------------------------
 
 template <typename Vec, typename PushElem>
 void pushMF(duk_context *c, const Vec &v, PushElem pushElem) {
@@ -439,16 +417,14 @@ SFImage toSFImage(duk_context *c, duk_idx_t idx) {
 
 } // namespace
 
-// ---------------------------------------------------------------------------
 // pushValue: std::any -> JS, by X3DFieldType.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
                                   X3DFieldType type) {
   // Helper: cast-or-default for scalar SF types when the any is empty.
   auto has = v.has_value();
   switch (type) {
-    // --- scalars ---
+    // scalars
     case X3DFieldType::SFBool:
       duk_push_boolean(ctx, has && std::any_cast<SFBool>(v)); return;
     case X3DFieldType::SFInt32:
@@ -461,7 +437,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       duk_push_number(ctx, has ? std::any_cast<SFTime>(v) : 0.0); return;
     case X3DFieldType::SFString:
       duk_push_string(ctx, has ? std::any_cast<SFString>(v).c_str() : ""); return;
-    // --- structured SF ---
+    // structured SF
     case X3DFieldType::SFVec2f:
       pushSFVec2f(ctx, has ? std::any_cast<SFVec2f>(v) : SFVec2f{}); return;
     case X3DFieldType::SFVec2d:
@@ -484,7 +460,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       return;
     case X3DFieldType::SFNode:
       pushNode(ctx, has ? std::any_cast<SFNode>(v) : SFNode{}); return;
-    // --- MF ---
+    // MF
     case X3DFieldType::MFBool: {
       MFBool d = has ? std::any_cast<MFBool>(v) : MFBool{};
       pushMF(ctx, d, [](duk_context *c, bool b) { duk_push_boolean(c, b); });
@@ -557,7 +533,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       MFNode d = has ? std::any_cast<MFNode>(v) : MFNode{};
       pushMF(ctx, d, pushNode); return;
     }
-    // --- matrices: flat row-major arrays ---
+    // matrices: flat row-major arrays
     case X3DFieldType::SFMatrix3f:
       pushSFMatrix<SFMatrix3f, 3>(ctx, has ? std::any_cast<SFMatrix3f>(v)
                                             : SFMatrix3f{});
@@ -574,7 +550,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       pushSFMatrix<SFMatrix4d, 4>(ctx, has ? std::any_cast<SFMatrix4d>(v)
                                              : SFMatrix4d{});
       return;
-    // --- images: spec-canonical {x, y, comp, array} (19777-1 ECMAScript) ---
+    // images: spec-canonical {x, y, comp, array} (19777-1 ECMAScript)
     case X3DFieldType::SFImage:
       pushSFImage(ctx, has ? std::any_cast<SFImage>(v) : SFImage{});
       return;
@@ -582,7 +558,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       MFImage d = has ? std::any_cast<MFImage>(v) : MFImage{};
       pushMF(ctx, d, pushSFImage); return;
     }
-    // --- MF matrices: arrays of flat row-major matrices ---
+    // MF matrices: arrays of flat row-major matrices
     case X3DFieldType::MFMatrix3f: {
       MFMatrix3f d = has ? std::any_cast<MFMatrix3f>(v) : MFMatrix3f{};
       pushMF(ctx, d, [](duk_context *c, const SFMatrix3f &m) {
@@ -618,9 +594,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
   }
 }
 
-// ---------------------------------------------------------------------------
 // toValue: JS -> std::any, by X3DFieldType.
-// ---------------------------------------------------------------------------
 
 std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
                                     X3DFieldType type) {
@@ -729,9 +703,7 @@ std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
   }
 }
 
-// ===========================================================================
 // Browser global object — native callbacks bound to the script's SaiContext.
-// ===========================================================================
 
 namespace {
 
@@ -883,9 +855,7 @@ void EcmaScriptBackend::installBrowser(duk_context *ctx, Entry *entry) {
   duk_pop(ctx);                              // pop global object
 }
 
-// ---------------------------------------------------------------------------
 // Destructor — destroy every live duk_context.
-// ---------------------------------------------------------------------------
 
 EcmaScriptBackend::~EcmaScriptBackend() {
   for (auto &[handle, entry] : entries_) {
@@ -895,9 +865,7 @@ EcmaScriptBackend::~EcmaScriptBackend() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // load(): create duk_context, install Browser, eval source, return handle.
-// ---------------------------------------------------------------------------
 
 ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
                                      const std::string &source,
@@ -950,15 +918,11 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
   return handle;
 }
 
-// ---------------------------------------------------------------------------
-// initialize(): call the script's initialize() if defined.
-// ---------------------------------------------------------------------------
-
 void EcmaScriptBackend::initialize(ScriptHandle handle) {
   Entry *e = entryFor(handle);
   if (!e) return;
   ArmDeadline armed(&e->heap->deadline, callBudget());
-  // §3.5: seed author-field globals from their boxed initialValue BEFORE the
+  // §3.5: seed author-field globals from their boxed initialValue before the
   // script's initialize() runs, so the script reads its authored defaults.
   seedAuthorGlobals(*e);
   callGlobalNoArgs(e->ctx, "initialize");
@@ -967,10 +931,6 @@ void EcmaScriptBackend::initialize(ScriptHandle handle) {
   // any wired ROUTE (timestamp 0 = scene start).
   readbackAuthorGlobals(*e, 0.0);
 }
-
-// ---------------------------------------------------------------------------
-// shutdown(): call shutdown() if defined, then destroy context.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::shutdown(ScriptHandle handle) {
   Entry *e = entryFor(handle);
@@ -983,10 +943,6 @@ void EcmaScriptBackend::shutdown(ScriptHandle handle) {
   duk_destroy_heap(e->ctx);
   entries_.erase(handle);
 }
-
-// ---------------------------------------------------------------------------
-// prepareEvents(): call the script's prepareEvents(now) if defined.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   Entry *e = entryFor(handle);
@@ -1004,10 +960,6 @@ void EcmaScriptBackend::prepareEvents(ScriptHandle handle, double now) {
   readbackAuthorGlobals(*e, now);
 }
 
-// ---------------------------------------------------------------------------
-// invoke(): dispatch one inputOnly event — call handler(value, timestamp).
-// ---------------------------------------------------------------------------
-
 void EcmaScriptBackend::invoke(ScriptHandle handle,
                                const std::string &eventName,
                                const std::any &value,
@@ -1024,13 +976,9 @@ void EcmaScriptBackend::invoke(ScriptHandle handle,
 
   // §3.5: after the handler runs, read any author outputOnly/inputOutput field
   // the script wrote back into the store and emit it as a cascade event carrying
-  // the TRIGGERING timestamp (so it fans out along ROUTEs from the author field).
+  // the triggering timestamp (so it fans out along ROUTEs from the author field).
   readbackAuthorGlobals(*e, timestamp);
 }
-
-// ---------------------------------------------------------------------------
-// eventsProcessed(): call the script's eventsProcessed() if defined.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   Entry *e = entryFor(handle);
@@ -1043,10 +991,8 @@ void EcmaScriptBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
   readbackAuthorGlobals(*e, timestamp);
 }
 
-// ---------------------------------------------------------------------------
 // updateField(): an inputOutput author field was written from outside the
 // script -- refresh its JS global (ScriptEngine::updateField).
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::updateField(ScriptHandle handle, const std::string &name,
                                     const std::any &value, X3DFieldType type) {
@@ -1060,9 +1006,7 @@ void EcmaScriptBackend::updateField(ScriptHandle handle, const std::string &name
   });
 }
 
-// ---------------------------------------------------------------------------
 // Private helpers.
-// ---------------------------------------------------------------------------
 
 EcmaScriptBackend::Entry *EcmaScriptBackend::entryFor(ScriptHandle handle) {
   auto it = entries_.find(handle);
@@ -1099,10 +1043,8 @@ std::string jsonOfAny(duk_context *ctx, const std::any &v, X3DFieldType type) {
 
 } // namespace
 
-// ---------------------------------------------------------------------------
 // seedAuthorGlobals(): boxed initialValue -> JS global, per readable author
 // field. Pushes initializeOnly/inputOutput defaults so the script reads them.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
   if (!e.node || !e.ctx) return;
@@ -1123,10 +1065,8 @@ void EcmaScriptBackend::seedAuthorGlobals(Entry &e) {
   }
 }
 
-// ---------------------------------------------------------------------------
 // readbackAuthorGlobals(): JS global -> store + cascade event, per readable
 // author field (outputOnly/inputOutput) the script defined.
-// ---------------------------------------------------------------------------
 
 void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
   if (!e.node || !e.ctx || !e.sai) return;
@@ -1144,18 +1084,18 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e, double timestamp) {
                  [&](duk_context *c) {
       duk_get_global_string(c, info.x3dName.c_str());
       if (duk_is_undefined(c, -1)) return;  // never defined / never assigned
-      // Suppress a no-op re-emit ONLY for inputOutput: there the JS global is an
+      // Suppress a no-op re-emit only for inputOutput: there the JS global is an
       // echo of the value the field already holds, so re-emitting it would be a
       // spurious event. outputOnly is the script's own output channel — an
       // explicit assignment generates an event regardless of value (§29.2.4 /
-      // ISO 19777-1), so it is never diffed away (SCRIPT-OUTPUTONLY-REEMIT).
+      // ISO 19777-1), so it is never diffed away.
       if (info.access == AccessType::InputOutput && prev.has_value() &&
           jsonOfTop(c) == jsonOfAny(c, prev, info.type))
         return;
       value = toValue(c, -1, info.type);
     });
     if (!value.has_value()) continue;
-    // Record the new value, then post it as an event on the script's OWN field
+    // Record the new value, then post it as an event on the script's own field
     // (always permitted, §29.2.6) so it fans out along ROUTEs at the triggering
     // timestamp. (The cascade carries the value, not the timestamp itself; the
     // triggering-timestamp contract is satisfied by emitting within this

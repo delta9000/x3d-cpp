@@ -1,13 +1,6 @@
-// runtime/io/theora/TheoraMovieDecoder.cpp — the ONE translation unit that meets
-// libogg + libtheora. The codec headers are PRIVATE to this TU (FreeType backend-B
-// pattern); the factory exchanges only std types so nothing leaks to consumers.
-//
-// Ogg/Theora decode: feed all encoded bytes into an ogg_sync, demux pages by
-// serial number to find the Theora logical stream, parse its 3 setup headers, then
-// decode data packets to YCbCr and convert to RGBA. Seeking is done by sequential
-// decode (rewind = tear down + re-init from the same bytes), exactly the seam
-// behavior the pl_mpeg raw-elementary path uses, so both backends share the
-// contract (ADR-0041): Pending/Failed parity, EOF-holds-last, backward-seek rewind.
+// Ogg/Theora decoder; see ADR-0041.
+// Pages are demultiplexed by serial number to find the Theora logical stream.
+// Seeking decodes sequentially; backward seeks rebuild from the encoded bytes.
 #include "TheoraMovieDecoder.hpp"
 
 #include <algorithm> // std::swap_ranges
@@ -63,7 +56,7 @@ struct Session {
     fedAll = false;
   }
 
-  // Push ALL retained bytes into the ogg_sync (one shot; clips are small enough).
+  // Push all retained bytes into the ogg_sync (one shot; clips are small enough).
   void feedAll() {
     if (fedAll) return;
     const long n = static_cast<long>(bytes.size());
@@ -176,7 +169,7 @@ struct Session {
     const th_img_plane &Cr = yc[2];
 
     for (int y = 0; y < ph; ++y) {
-      // Bottom-left origin: row 0 of output is the BOTTOM image row.
+      // Bottom-left origin: row 0 of output is the bottom image row.
       const int srcY = py + (ph - 1 - y);
       std::uint8_t *dst = out.rgba.data() + static_cast<std::size_t>(y) * pw * 4;
       const std::uint8_t *yrow = Y.data + static_cast<std::ptrdiff_t>(srcY) * Y.stride;

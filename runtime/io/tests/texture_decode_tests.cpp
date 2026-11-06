@@ -1,16 +1,4 @@
-// runtime/io/tests/texture_decode_tests.cpp — the TextureResolver decode
-// genericity proof (ADR-0024), one grouped doctest binary.
-//
-//   U1  per-backend: stb_image decodes fixtures + rejects bad input
-//   U2  per-backend: wuffs decodes fixtures + rejects bad input
-//   U3  swap-test:   stb vs wuffs decode each lossless fixture BYTE-EQUAL,
-//                    plus Failed-parity on corrupt / missing input
-//   U2.5 composer:   makeMultiFormatTextureResolver sniff-routes by magic bytes
-//
-// ABI ISOLATION (the AssetResolver lesson, ADR-0023): this TU talks ONLY through
-// the seam factories and includes NO decoder headers (no stb_image.h, no wuffs
-// amalgamation). The factories exchange std types, so no heavy backend header
-// can leak in and disagree with the linked lib.
+// Texture decoding, failure handling, and format routing; see ADR-0024.
 #include "MultiFormatTextureResolver.hpp"
 #include "StbTextureResolver.hpp"
 #include "TextureResolver.hpp"
@@ -40,7 +28,7 @@ std::vector<std::uint8_t> readBytes(const std::string& path) {
 
 // The lossless swap matrix: the intersection of stb_image and wuffs v0.3.4
 // codecs that decode to exactly-reproducible 8-bit RGBA. (PNM is stb-only in
-// wuffs v0.3.x — added in v0.4 — so it is NOT in this gate; see ADR-0024 §3.)
+// wuffs v0.3.x — added in v0.4 — so it is not in this gate; see ADR-0024 §3.)
 const char* const kLosslessFixtures[] = {
     "rgba_gradient.png",
     "rgb_checker.bmp",
@@ -94,7 +82,6 @@ TEST_CASE("texture_swap_byte_equal") {
     CHECK((ra.pixels->width == rb.pixels->width));
     CHECK((ra.pixels->height == rb.pixels->height));
     CHECK((ra.pixels->rgba.size() == rb.pixels->rgba.size()));
-    // The proof: two independent decoders, byte-identical RGBA surface.
     CHECK((ra.pixels->rgba == rb.pixels->rgba));
   }
 }
@@ -150,7 +137,7 @@ TEST_CASE("multiformat_composer_routing") {
   CHECK((r2(fx("rgb_checker.bmp")).ready()));
 }
 
-// ---- DDS (REQ-CUBE: §34.4.3 ImageCubeMapTexture) --------------------------
+// DDS (REQ-CUBE: §34.4.3 ImageCubeMapTexture)
 // Both backends route "DDS " bytes to the shared std-only decoder
 // (runtime/io/dds/DdsDecode.hpp). The files are built here byte by byte.
 namespace {

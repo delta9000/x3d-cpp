@@ -1,6 +1,6 @@
 // X3DRangeValidate.hpp — collect out-of-range values kept by the lenient read
 // path. Node-agnostic: walks the graph via reflection and aggregates each
-// node's validateRanges(). Range constraints ONLY (SFColor/SFColorRGBA [0,1],
+// node's validateRanges(). Range constraints only (SFColor/SFColorRGBA [0,1],
 // numeric minInclusive/maxInclusive) — enum/required/type/structural
 // validation is out of scope here.
 #ifndef X3D_RANGE_VALIDATE_HPP
@@ -115,7 +115,7 @@ inline void validateSpecial(const x3d::nodes::X3DNode &node,
 /// Depth-first range-diagnostic walk guarded against graph cycles. `onPath`
 /// holds the nodes on the current recursion stack: a child already on the path
 /// is a USE referencing an ancestor (a true cycle) and is skipped, so the walk
-/// terminates. A node NOT on the current path is still descended each time it is
+/// terminates. A node not on the current path is still descended each time it is
 /// reached, preserving the per-usage-site semantics for shared (DAG) subtrees.
 inline void collect(const x3d::nodes::X3DNode &node, std::vector<x3d::core::RangeDiagnostic> &out,
                     std::unordered_set<const x3d::nodes::X3DNode *> &onPath) {

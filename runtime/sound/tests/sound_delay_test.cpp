@@ -1,13 +1,4 @@
-// sound_delay_test.cpp — the §16 Delay node (Sound component, clause 16.4.6):
-// a pure delay of its input by delayTime seconds, clamped to [0, maxDelayTime].
-//   (a) RECORDING tier: a Delay{AudioDestination <- Delay <- OscillatorSource}
-//       scene -> SoundSystem builds a NodeKind::Delay node, wires it, and reads
-//       delayTime/maxDelayTime/enabled; update() pushes them as setParam.
-//   (b) DSP tier (BuiltinDspBackend): an impulse into Delay comes out one
-//       impulse, delayTime later, at the right sample.
-//   (c) CLAMP: delayTime > maxDelayTime clamps to maxDelayTime.
-//   (d) enabled=false passes the input through unchanged.
-
+// §16.4.6 Delay: impulse timing, clamping, and disabled passthrough.
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -60,8 +51,8 @@ static void renderImpulse(const std::shared_ptr<BuiltinDspBackend> &dsp,
   NodeParams destP;
   NodeHandle hDest = dsp->createNode(NodeKind::Destination, destP);
 
-  dsp->connect(hDelay, hBuf);   // buffer feeds INTO delay
-  dsp->connect(hDest, hDelay);  // delay feeds INTO destination
+  dsp->connect(hDelay, hBuf);   // buffer feeds into delay
+  dsp->connect(hDest, hDelay);  // delay feeds into destination
   dsp->render(hDest, frames, sr, out);
 }
 
@@ -76,7 +67,7 @@ static std::size_t peakIndex(const std::vector<float> &buf) {
 int main() {
   constexpr float kSR = 48000.0f;
 
-  // ── (a) RECORDING tier: SoundSystem builds + wires a Delay node.
+  // (a) recording tier: SoundSystem builds + wires a Delay node.
   {
     auto osc = std::make_shared<OscillatorSource>();
     auto delay = std::make_shared<Delay>();
@@ -123,7 +114,7 @@ int main() {
     std::fprintf(stderr, "[recording] Delay built + wired, 3 nodes, 2 edges\n");
   }
 
-  // ── (b) DSP tier: impulse in -> impulse out delayTime later.
+  // (b) DSP tier: impulse in -> impulse out delayTime later.
   {
     const int frames = 256;
     const int delaySamples = 100;
@@ -146,7 +137,7 @@ int main() {
                  delaySamples, peakIndex(out));
   }
 
-  // ── (c) CLAMP: delayTime > maxDelayTime clamps to maxDelayTime.
+  // (c) clamp: delayTime > maxDelayTime clamps to maxDelayTime.
   {
     const int frames = 128;
     const int maxSamples = 48;  // maxDelayTime = 0.001 s * 48000
@@ -161,7 +152,7 @@ int main() {
                  peakIndex(out), maxSamples);
   }
 
-  // ── (d) enabled=false passes the input through unchanged.
+//   (d) enabled=false passes the input through unchanged.
   {
     const int frames = 64;
     auto dsp = std::make_shared<BuiltinDspBackend>();

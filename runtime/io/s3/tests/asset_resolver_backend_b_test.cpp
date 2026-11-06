@@ -1,7 +1,4 @@
-// runtime/io/s3/tests/asset_resolver_backend_b_test.cpp
-// U2 per-backend test: verify S3Resolver wiring + URL prefix check +
-// URL parse + SDK init. The success path is tested in U3 (swap-test)
-// against a docker minio fixture, keeping this test fast + hermetic + offline.
+// S3 resolver URL handling and failure behavior.
 #include "S3Resolver.hpp"
 
 #include "AssetResolver.hpp"

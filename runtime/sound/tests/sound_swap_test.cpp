@@ -1,48 +1,11 @@
-// sound_swap_test.cpp — Headless SWAP-TEST: the Audio seam genericity proof.
-//
-// Renders the SAME SoundSystem-built §16 audio graphs through BOTH backends
-// (BuiltinDspBackend + MiniaudioBackend) with no audio device and asserts:
-//
-//   SYNTHESIS fixtures (numeric tolerance — calibrated from Task-1 spike):
-//     F1: Mono tone  — Oscillator(440, sine, gain=1) → Destination;
-//         Goertzel@440 of both backends agree within ±5%.
-//         RMS agree within ±2%. Off-frequency bin (1kHz) ≪ tone on both.
-//     F2: Mono lowpass — Oscillator(440) → Biquad(Lowpass, 1kHz) → Destination;
-//         Both backends attenuate stopband(8kHz source) to <2% of passband.
-//         Goertzel@passband agree within ±15%.
-//
-//   SPATIAL fixtures (STRUCTURAL — BuiltinDsp equal-power vs ma_spatializer;
-//     rendered via SoundSystem.renderStereo()):
-//     F3: Oscillator → Panner → stereo Destination, listener at origin -Z.
-//         For EACH backend independently (NOT cross-backend numeric equality):
-//           - hard-left  ⇒ rmsL > rmsR (correct ear dominant)
-//           - hard-right ⇒ rmsR > rmsL
-//           - centered   ⇒ |rmsL − rmsR| < 1% of max (non-vacuous: silence fails)
-//           - monotonic distance falloff: total stereo energy strictly decreases
-//             (ref→mid→far) for each distance model; source on centered on-axis
-//             (0,0,-dist) so panning stays symmetric and only distance varies.
-//           - total stereo energy at refDist (centered): symmetric ±40% of monoRms/√2
-//             (equal-power ref = monoRms/√2; miniaudio amplitude law lands at ~0.71×ref;
-//              both lower AND upper bounds real; near-zero fails lower bound)
-//         Distance models LINEAR, INVERSE, EXPONENTIAL all exercised.
-//         Cross-backend STRUCTURAL assertion: BOTH backends put the louder
-//           channel on the SAME side (sign agreement). Numbers are NOT compared
-//           (different panning laws: equal-power vs ma_spatializer amplitude law).
-//
-//   IMMERSIVE fixtures (ADR-0050; tests/immersive_fixtures.hpp), per backend:
-//     F4: Sound ellipsoid — inside / between (-20 dB*(d-rMin)/(rMax-rMin)) /
-//         beyond / behind zones as ratios to the inside level, intensity, and
-//         spatialize FALSE centred. Cross-backend: the between/inside ratio agrees.
-//     F5: Buffer (decoded PCM) — stopped/playing/paused, 1 kHz resampled to the
-//         output rate, PlaybackRate 2 doubles the pitch. Cross-backend: RMS agrees.
-//
-// Anti-tautology guardrail (verified in comments): each assertion fails if a
-// backend's DSP were stubbed to echo input (L==R would break ear-sign;
-// no synthesis would break Goertzel).
-//
-// Style: hand-rolled main() + CHECK macro + g_failures counter (same as
-// sound_system_test.cpp). Shared metric helpers from dsp_metrics.hpp.
-
+// Headless audio graph comparison; see ADR-0026 and ADR-0050.
+// Tolerances come from direct backend measurements.
+// Tone RMS tolerance is 2%, Goertzel amplitude tolerance is 5%; the lowpass
+// passband comparison allows 15% for differing filter responses.
+// Spatial tests compare ear dominance, symmetry within 1%, and distance falloff.
+// Centered channel RMS is bounded within 40% of monoRms/sqrt(2): equal-power
+// panning yields that reference, while miniaudio's amplitude law is about 0.71
+// times it. Both bounds matter: the lower bound rejects silence.
 #include "AudioBackend.hpp"
 #include "SoundSystem.hpp"
 #include "dsp/BuiltinDspBackend.hpp"
@@ -72,7 +35,7 @@ using x3d::test::rmsL;
 using x3d::test::rmsR;
 using x3d::test::rmsStereo;
 
-// ── test harness ────────────────────────────────────────────────────────────
+// test harness
 
 static int g_failures = 0;
 #define CHECK(cond, msg)                                                       \
@@ -83,9 +46,9 @@ static int g_failures = 0;
     }                                                                          \
   } while (0)
 
-// ── constants ────────────────────────────────────────────────────────────────
+// constants
 
-// Thresholds calibrated from Task-1 spike (audio-spike-report.md) + observed
+// Thresholds calibrated from  spike (audio-spike-report.md) + observed
 // values from F2 filtered passband runs:
 //   Raw tone RMS agreement:     ≤0.01%  → kRmsTol  = ±2%  (200× headroom)
 //   Raw tone Goertzel@440:      ≤0.00%  → kGoertzelTol = ±5%  (for F1, raw only)
@@ -108,7 +71,7 @@ static constexpr double kSpatialEnergy       = 0.40;  // ±40% stereo vs mono/�
 static constexpr float  kSR    = 48000.0f;
 static constexpr int    kFrames = 4096;
 
-// ── graph helpers ────────────────────────────────────────────────────────────
+// graph helpers
 
 struct MonoChain {
   std::shared_ptr<OscillatorSource> osc;
@@ -151,7 +114,7 @@ static std::vector<float> renderMono(std::shared_ptr<AudioBackend> backend,
   return buf;
 }
 
-// ── spatial helpers ──────────────────────────────────────────────────────────
+// spatial helpers
 
 // Build a panner NodeParams for a given source position + listener at origin -Z.
 // distance model, ref, max, rolloff are caller-provided.
@@ -195,7 +158,7 @@ static std::vector<float> renderDirectPannerStereo(
   return lr;
 }
 
-// ── test fixtures ────────────────────────────────────────────────────────────
+// test fixtures
 
 // F1: Mono 440 Hz tone — both backends agree on RMS and Goertzel@440.
 // Anti-tautology: a stub echoing input produces RMS≈0 (no tone synthesis)
@@ -253,7 +216,7 @@ static void testF1_MonoTone() {
 // Anti-tautology: a stub echoing input has stopband≈passband, so the
 // stopband < 2% check fails; the strong-tone checks also fail.
 static void testF2_MonoLowpass() {
-  // ── variant (a): passband — 440 Hz through 1kHz lowpass ──
+  // variant (a): passband — 440 Hz through 1kHz lowpass
   MonoChain passA_chain = buildLowpassChain(440.0f, 1000.0f);
   MonoChain passB_chain = buildLowpassChain(440.0f, 1000.0f);
 
@@ -284,7 +247,7 @@ static void testF2_MonoLowpass() {
   CHECK(gRelDiff <= kGoertzelFilteredTol,
         "F2: passband Goertzel@440 agrees within ±15% (filter-implementation delta)");
 
-  // ── variant (b): stopband — 8kHz tone through 1kHz lowpass ──
+  // variant (b): stopband — 8kHz tone through 1kHz lowpass
   MonoChain stopA_chain = buildLowpassChain(8000.0f, 1000.0f);
   MonoChain stopB_chain = buildLowpassChain(8000.0f, 1000.0f);
 
@@ -312,9 +275,9 @@ static void testF2_MonoLowpass() {
 }
 
 // F3: Spatial structural test for one distance model.
-// For EACH backend: assert ear-sign (hard-left, hard-right, centre), monotonic
+// For each backend: assert ear-sign (hard-left, hard-right, centre), monotonic
 // distance falloff, and stereo energy ≈ mono.
-// Cross-backend: assert BOTH backends put louder channel on SAME side (sign).
+// Cross-backend: assert both backends put louder channel on same side (sign).
 // Anti-tautology: a stub echoing input produces L==R (breaking ear-sign
 // assertions) and no synthesis (breaking energy assertions).
 static void testF3_Spatial(DistanceModel dm, const char *dmName) {
@@ -344,7 +307,7 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
 
   std::vector<float> lrA, lrB;
 
-  // ── hard-left: source at (-5, 0, 0) ──
+  // hard-left: source at (-5, 0, 0)
   renderBothStereo(-5.0f, 0.0f, 0.0f, lrA, lrB);
   double lLA = rmsL(lrA), lRA = rmsR(lrA);
   double lLB = rmsL(lrB), lRB = rmsR(lrB);
@@ -358,7 +321,7 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
   CHECK(leftSignA == leftSignB,
         "F3/cross: hard-left — both backends agree on dominant channel (L)");
 
-  // ── hard-right: source at (+5, 0, 0) ──
+  // hard-right: source at (+5, 0, 0)
   renderBothStereo(5.0f, 0.0f, 0.0f, lrA, lrB);
   double rLA = rmsL(lrA), rRA = rmsR(lrA);
   double rLB = rmsL(lrB), rRB = rmsR(lrB);
@@ -371,7 +334,7 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
   CHECK(rightSignA == rightSignB,
         "F3/cross: hard-right — both backends agree on dominant channel (R)");
 
-  // ── centered: source at (0, 0, -refDist) ──
+  // centered: source at (0, 0, -refDist)
   renderBothStereo(0.0f, 0.0f, -kRefDist, lrA, lrB);
   double cLA = rmsL(lrA), cRA = rmsR(lrA);
   double cLB = rmsL(lrB), cRB = rmsR(lrB);
@@ -395,9 +358,9 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
     CHECK(std::fabs(cLB - cRB) / cMaxB < 0.01,
           "F3/ma/centered:      |L-R| < 1% of max (symmetric)");
 
-  // ── monotonic distance falloff: three distances (1, 3, 6 × refDist) ──
+  // monotonic distance falloff: three distances (1, 3, 6 × refDist)
   // Source on the centered on-axis position (0, 0, -dist) so panning stays
-  // symmetric (L≈R) and ONLY distance attenuation varies.  Using the +X axis
+  // symmetric (L≈R) and only distance attenuation varies.  Using the +X axis
   // (hard-right) was incorrect: it suppressed the L channel and forced the
   // energy bound to be one-sided.
   // For LINEAR model: at dist=10 (maxDist with rolloff=1) gain→0.
@@ -435,7 +398,7 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
   CHECK(rmsFar_A < rmsRef_A, "F3/builtin: gain < 1 at d=6 > referenceDistance");
   CHECK(rmsFar_B < rmsRef_B, "F3/ma:      gain < 1 at d=6 > referenceDistance");
 
-  // ── energy preservation: symmetric ±40% of monoRms/√2 (both backends, at refDist) ──
+  // energy preservation: symmetric ±40% of monoRms/√2 (both backends, at refDist)
   // Source at (0, 0, -refDist) — centered, directly in front of the listener.
   // For an equal-power centered pan: rmsL = rmsR = monoRms/√2, so:
   //   rmsStereo = sqrt((rmsL² + rmsR²) / 2) = monoRms/√2  (equal-power reference)
@@ -465,7 +428,7 @@ static void testF3_Spatial(DistanceModel dm, const char *dmName) {
                  refEnergy * (1.0 - kSpatialEnergy),
                  refEnergy * (1.0 + kSpatialEnergy));
 
-    // Symmetric ±40% of monoRms/√2 — both lower AND upper bounds are real.
+    // Symmetric ±40% of monoRms/√2 — both lower and upper bounds are real.
     double lo = refEnergy * (1.0 - kSpatialEnergy);
     double hi = refEnergy * (1.0 + kSpatialEnergy);
     CHECK(rmsRef_A >= lo,
@@ -507,7 +470,7 @@ static void testF4F5_Immersive() {
   CHECK(std::fabs(bb - bm) < kRmsTol * bb, "F5: buffer playback RMS agrees across backends");
 }
 
-// F6: enabled / time-lifecycle / destination gain (SND-1/2/7), per backend.
+// F6: enabled / time-lifecycle / destination gain (/2/7), per backend.
 // Oscillator(440) -> [Gain(0.5)] -> Destination and Oscillator -> Biquad ->
 // Destination at the backend level, driving the per-tick params SoundSystem
 // pushes.
@@ -542,7 +505,7 @@ static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBacken
 
   // Oscillator(440) -> Biquad(Lowpass, 100Hz) -> Destination. A 440 Hz tone is
   // well into the stopband, so an enabled filter strongly attenuates it while a
-  // disabled one (SND-1) must pass the input through unchanged, live.
+  // disabled one  must pass the input through unchanged, live.
   auto biquad = [&](bool disabledFilter) {
     auto be = make();
     NodeParams op; op.frequency = 440; op.gain = 1;
@@ -573,22 +536,22 @@ static void testF6_EnableLifecycle(const char *name, std::shared_ptr<AudioBacken
         "F6: a disabled Biquad passes its input through unchanged");
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
+// main
 
 int main() {
   std::fprintf(stderr,
                "=== sound_swap_test: BuiltinDsp vs miniaudio headless swap-test ===\n"
                "    %d frames @ %.0f Hz\n", kFrames, static_cast<double>(kSR));
 
-  // ── F1: Synthesis — mono tone numeric tolerance ──
+  // F1: Synthesis — mono tone numeric tolerance
   std::fprintf(stderr, "\n--- F1: Mono 440 Hz tone ---\n");
   testF1_MonoTone();
 
-  // ── F2: Synthesis — lowpass filter numeric tolerance ──
+  // F2: Synthesis — lowpass filter numeric tolerance
   std::fprintf(stderr, "\n--- F2: Mono lowpass filter ---\n");
   testF2_MonoLowpass();
 
-  // ── F3: Spatial structural (three distance models) ──
+  // F3: Spatial structural (three distance models)
   std::fprintf(stderr, "\n--- F3: Spatial (LINEAR) ---\n");
   testF3_Spatial(DistanceModel::Linear, "LINEAR");
 

@@ -1,8 +1,5 @@
-// runtime/io/stb/StbTextureResolver.hpp — Backend A (stb_image) for the
-// TextureResolver decode seam (T-TEX genericity proof, ADR-0024). Part of the
-// runtime/io/stb quarantine (x3d_stb target, default OFF). Core (x3d_cpp,
-// sdk.hpp) MUST NEVER include this file; it is decoder-free (no stb_image.h),
-// so consumers linking x3d_stb do not inherit stb's translation unit.
+// stb_image TextureResolver adapter. Decoder headers stay private.
+// See ADR-0024.
 #ifndef X3D_RUNTIME_IO_STB_STB_TEXTURE_RESOLVER_HPP
 #define X3D_RUNTIME_IO_STB_STB_TEXTURE_RESOLVER_HPP
 
@@ -15,7 +12,7 @@ namespace x3d::runtime::io::stb {
 ///
 /// The `url` is treated as a local filesystem path: the resolver reads the file
 /// and decodes it from memory to RGBA8 (4 channels, straight/non-premultiplied
-/// alpha), tightly packed, **bottom-left origin** (GL convention — stb is run
+/// alpha), tightly packed, bottom-left origin (GL convention — stb is run
 /// with stbi_set_flip_vertically_on_load, matching the seam contract).
 ///
 /// Returns Failed when the path cannot be opened or stb_image cannot decode the

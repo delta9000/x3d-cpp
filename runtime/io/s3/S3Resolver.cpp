@@ -1,6 +1,4 @@
-// runtime/io/s3/S3Resolver.cpp — AWS C++ SDK S3 backend for the
-// AssetResolver seam. The single TU where the AWS SDK meets the seam
-// (mirrors the QuickJsBackend.cpp / HttpResolver.cpp isolation discipline).
+// S3 AssetResolver implementation; see ADR-0023.
 #include "S3Resolver.hpp"
 
 #include <aws/core/Aws.h>

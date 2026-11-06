@@ -1,8 +1,4 @@
-// runtime/io/s3/S3TestSupport.cpp — the single test-support TU where the AWS
-// SDK meets the swap-test's fixture-seeding need. Linked into x3d_s3_testsupport
-// with the AWS SDK PRIVATE, so the AWS SDK is confined here (mirrors the
-// S3Resolver.cpp / QuickJsBackend.cpp isolation discipline). See
-// S3TestSupport.hpp for why the swap-test must not include <aws/...> itself.
+// S3 fixture provisioning; AWS headers stay private. See ADR-0023.
 #include "S3TestSupport.hpp"
 
 #include <aws/core/Aws.h>

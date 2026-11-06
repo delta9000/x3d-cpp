@@ -1,19 +1,4 @@
-// sai_context_test.cpp
-// Track-A unit test (NO JavaScript): the ScriptEngine seam + in-process
-// SaiContext + the MockScriptEngine backend.
-//
-// Proves:
-//   - field get/set round-trips through reflection,
-//   - setField on the OWNING script is always allowed,
-//   - the directOutput write-gate: a write to a SECOND node is rejected when
-//     directOutput=FALSE and allowed (and lands in the cascade) when TRUE,
-//   - addRoute/deleteRoute are gated on directOutput and take effect in the graph,
-//   - a permitted setField is delivered as an event in the cascade,
-//   - browser-info getters (name/version/currentTime/frameRate/print),
-//   - the mock backend records the seam calls and can drive the SAI on invoke.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// SaiContext field access, directOutput gates, and route delivery.
 #include "SaiContext.hpp"
 #include "ScriptEngine.hpp"
 #include "tests/MockScriptEngine.hpp"
@@ -100,7 +85,7 @@ void testAuthorFieldOwnerIsolation() {
         "explicit context owner retains fields declared before construction");
 }
 
-// --- field get/set round-trip, on the owning script's own node -------------
+// field get/set round-trip, on the owning script's own node
 void testFieldRoundTrip() {
   X3DExecutionContext ctx;
   Transform target;
@@ -133,7 +118,7 @@ void testFieldRoundTrip() {
   check(!threw, "setField on the owning script never throws (self-write)");
 }
 
-// --- directOutput write-gate to a SECOND node ------------------------------
+// directOutput write-gate to a second node
 void testDirectOutputGate() {
   // directOutput FALSE (default): cross-node write is rejected.
   {
@@ -165,7 +150,7 @@ void testDirectOutputGate() {
     script.setDirectOutputUnchecked(true);
     SaiContext sai(ctx, script, "b", "v");
 
-    // A ROUTE leaving the WRITTEN field (other.translation, inputOutput).
+    // A ROUTE leaving the written field (other.translation, inputOutput).
     ctx.addRoute(FieldAddress{&other, "translation"},
                  FieldAddress{&sink, "translation"});
 
@@ -180,12 +165,12 @@ void testDirectOutputGate() {
     check(veq(transformTranslation(other), 4, 5, 6),
           "directOutput=TRUE: permitted write mutated the target field");
     // DO-CASCADE (SAI §4.5.2 / ADR-0029): the direct write is a value mutation,
-    // NOT a cascade seed — no ROUTE fans out from the written field.
+    // not a cascade seed — no ROUTE fans out from the written field.
     check(veq(transformTranslation(sink), 0, 0, 0),
           "DO-CASCADE: no ROUTE fans out from a directOutput cross-node write");
   }
 
-  // A SELF-write to the Script's own field keeps the routable path (§29.2.4):
+  // A self-write to the Script's own field keeps the routable path (§29.2.4):
   // it must still fan out along a ROUTE leaving that field.
   {
     X3DExecutionContext ctx;
@@ -209,7 +194,7 @@ void testDirectOutputGate() {
   }
 }
 
-// --- addRoute / deleteRoute gate + effect ----------------------------------
+// addRoute / deleteRoute gate + effect
 void testRouteGateAndEffect() {
   // FALSE: add/delete route both throw.
   {
@@ -251,7 +236,7 @@ void testRouteGateAndEffect() {
     sai.deleteRoute(&a, "translation", &b, "translation");
     check(ctx.graph().routeCount() == 0, "deleteRoute removed the route");
 
-    // After deletion the route no longer fans out.
+    // Deleted routes do not fan out.
     b.setTranslation(SFVec3f{0, 0, 0});
     ctx.postEvent(&a, "translation", std::any(SFVec3f{1, 1, 1}));
     ctx.process();
@@ -260,7 +245,7 @@ void testRouteGateAndEffect() {
   }
 }
 
-// --- browser info ----------------------------------------------------------
+// browser info
 void testBrowserInfo() {
   X3DExecutionContext ctx;
   Script script;
@@ -281,7 +266,7 @@ void testBrowserInfo() {
   check(sai.log() == "hello world", "print accumulates into the log");
 }
 
-// --- the seam through the MockScriptEngine ---------------------------------
+// the seam through the MockScriptEngine
 void testSeamWithMock() {
   X3DExecutionContext ctx;
   Script script;

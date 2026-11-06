@@ -1,14 +1,7 @@
-// InlineExpand.hpp
-// Tier-1 parse-time Inline expansion. For each Inline node with load=TRUE and a
-// resolvable url, replace it in its parent slot with a synthetic Group holding
-// the loaded child scene's root nodes. The original Inline is preserved in
-// Scene::expandedInlines so writers re-emit <Inline url=.../>. The child's
-// internal ROUTEs are pre-resolved in the child's DEF scope into
-// Scene::resolvedInlineRoutes. Node-agnostic: reflection + X3DNodeFactory only.
-//
-// Mirrors runtime/X3DProtoExpand.hpp (expandScene) and the AUD-B expandedSources
-// writer redirect. DEF isolation per ISO 19775-1 §9.4.2: a child's DEFs are NOT
-// exposed to the parent (only IMPORT would, which is out of Tier-1 scope).
+// Parse-time Inline expansion preserves the original node for serialization,
+// retains child scenes for IMPORT resolution, and pre-resolves child ROUTEs.
+// Child DEFs are isolated from the parent under ISO/IEC 19775-1 §9.4.2;
+// cross-Inline references use IMPORT.
 #ifndef X3D_RUNTIME_INLINE_EXPAND_HPP
 #define X3D_RUNTIME_INLINE_EXPAND_HPP
 
@@ -139,7 +132,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
   std::function<void(const std::shared_ptr<X3DNode> &, std::size_t)> walk =
       [&](const std::shared_ptr<X3DNode> &n, std::size_t depth) {
         if (!n) return;
-        // MEM-1: the same depth cap as the other graph walkers. The readers
+        // The same depth cap as the other graph walkers. The readers
         // cap parse depth, but proto expansion can nest deeper than any one
         // document did, and this walk recurses on the native stack.
         if (depth >= kMaxNestingDepth) return;
@@ -181,8 +174,8 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     for (const auto &peer : child->protoPeerNodes)
       scene.protoPeerNodes.push_back(peer);
     scene.expandedInlines[group.get()] = inl; // preserve for writer round-trip
-    // Retain the child scene so a parent <IMPORT ...> can resolve an imported
-    // DEF/EXPORT against it (§9.2). Keyed by the ORIGINAL Inline node.
+    // Retain the child scene so a parent <IMPORT...> can resolve an imported
+    // DEF/EXPORT against it (§9.2). Keyed by the original Inline node.
     scene.expandedInlineScenes[inl.get()] = child;
     if (parent) {
       replaceInParent(*parent, inl.get(), group);
@@ -204,7 +197,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
 /// register the local alias in `scene.defs` so a later resolveRoutes() binds a
 /// ROUTE that names it. Lenient: an Inline that was not expanded (load=FALSE,
 /// unresolved url) or an imported name with no matching child node leaves the
-/// alias unregistered, exactly as before. Call AFTER expandInlines and before
+/// alias unregistered. Call after expandInlines and before
 /// (re)running resolveRoutes.
 inline void wireInlineImports(Scene &scene) {
   for (const Import &imp : scene.imports) {

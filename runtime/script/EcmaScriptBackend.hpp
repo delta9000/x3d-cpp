@@ -1,20 +1,5 @@
-// EcmaScriptBackend.hpp
-// ScriptEngine implementation backed by the vendored Duktape 2.7.0 ECMAScript
-// engine (runtime/script/vendor/duktape/). This is the reference backend for
-// the X3D ECMAScript language binding (ISO/IEC 19777-1).
-//
-// U4 (this revision) completes the backend:
-//   - field marshalling std::any <-> Duktape JS, both directions, for the core
-//     SF/MF types (Bool/Int32/Float/Double/Time/String, Vec2/3/4 f+d, Color,
-//     ColorRGBA, Rotation, Node; MF* as JS array-like);
-//   - the Browser global object backed by SaiContext (currentTime,
-//     currentFrameRate, getName, getVersion, addRoute, deleteRoute, print);
-//   - handler dispatch: invoke() calls the handler function with (value,
-//     timestamp), value marshalled from the boxed std::any by its X3DFieldType.
-//
-// Registered in the scheme->backend registry (ScriptSystem) under "ecmascript".
-// The seam (ScriptEngine) carries NO JS types — the backend is the only place
-// where Duktape API calls appear, and the marshalling is its private concern.
+// Duktape implementation of the ISO/IEC 19777-1 ECMAScript language binding.
+// Registered under "ecmascript" in ScriptSystem. See ADR-0022.
 #ifndef X3D_RUNTIME_ECMASCRIPT_BACKEND_HPP
 #define X3D_RUNTIME_ECMASCRIPT_BACKEND_HPP
 
@@ -79,9 +64,7 @@ public:
   EcmaScriptBackend(const EcmaScriptBackend &) = delete;
   EcmaScriptBackend &operator=(const EcmaScriptBackend &) = delete;
 
-  // -------------------------------------------------------------------------
   // ScriptEngine interface.
-  // -------------------------------------------------------------------------
 
   /**
    * @brief Compile and eval the source in a fresh duk_context.
@@ -129,11 +112,9 @@ public:
   void updateField(ScriptHandle handle, const std::string &name,
                    const std::any &value, X3DFieldType type) override;
 
-  // -------------------------------------------------------------------------
   // Marshalling (public so the unit test can round-trip without a script).
   // These are the ISO/IEC 19777-1 std::any <-> JS conversions; they are the
   // backend's private concern w.r.t. the seam, but exposed here for testing.
-  // -------------------------------------------------------------------------
 
   /**
    * @brief Push a boxed field value onto the Duktape stack as its JS form.

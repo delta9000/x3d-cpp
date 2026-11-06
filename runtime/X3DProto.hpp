@@ -5,7 +5,7 @@
 //   <ProtoBody> (implementation body)
 //   <ProtoInstance> + <fieldValue> (instantiation)
 //
-// NOTE: This models the *structure* of prototypes so a document can carry and
+// This models the *structure* of prototypes so a document can carry and
 //       round-trip their declarations and instances. Full PROTO expansion
 //       (instantiating the body with field substitution / IS routing) is a
 //       documented stub: see ProtoInstance::expand().
@@ -157,10 +157,10 @@ struct ProtoBody {
   std::vector<std::shared_ptr<X3DNode>> nodes;
   std::vector<Route> routes;
   std::vector<IsConnection> isConnections;
-  // ProtoInstances that appear INSIDE this body (template). Each carries its
+  // ProtoInstances that appear inside this body (template). Each carries its
   // placement (parent = an original body node, or empty for a direct body-root
   // child) so the expansion engine can splice the expanded primary into the
-  // per-instantiation CLONE of that parent. Kept here, not in scene.protoInstances,
+  // per-instantiation clone of that parent. Kept here, not in scene.protoInstances,
   // so a body-nested instance is expanded once per outer instantiation rather
   // than once globally / mis-attached to the un-cloned template.
   std::vector<ProtoInstance> nestedInstances;

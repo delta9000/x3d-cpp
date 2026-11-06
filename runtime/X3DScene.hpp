@@ -25,7 +25,7 @@ namespace x3d::runtime {
  *          declarations visible at scene scope, and IMPORT/EXPORT statements.
  *
  *          DEF / USE semantics: a node introduced with a DEF is registered in
- *          `defs` keyed by its DEF name. A USE reference resolves to the SAME
+ *          `defs` keyed by its DEF name. A USE reference resolves to the same
  *          std::shared_ptr<X3DNode> via `resolve()`, so the graph shares node
  *          identity rather than cloning. Codecs emit a `DEF` attribute the
  *          first time a shared node is written and a `USE` attribute thereafter.
@@ -65,7 +65,7 @@ public:
   }
 
   // Body-internal ROUTEs of expanded instances, pre-resolved to concrete
-  // endpoints (proto-local DEF scope; NOT registered in `defs`).
+  // endpoints (proto-local DEF scope; not registered in `defs`).
   std::vector<ResolvedProtoRoute> resolvedProtoRoutes;
 
   // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
@@ -73,15 +73,15 @@ public:
 
   // Inline expansion (Tier 1): synthetic Group (key) -> the original Inline node
   // it replaced. Writers consult this to re-emit <Inline url=.../> rather than
-  // the spliced content (AUD-B redirect pattern; mirrors expandedSources).
+  // the spliced content (see expandedSources).
   std::unordered_map<X3DNode *, std::shared_ptr<X3DNode>> expandedInlines;
 
-  // Internal ROUTEs of expanded Inlines, pre-resolved against the CHILD scene's
+  // Internal ROUTEs of expanded Inlines, pre-resolved against the child scene's
   // own DEF scope (never registered in this scene's `defs`). The bridge
   // registers these directly. Reuses ResolvedProtoRoute (same endpoint shape).
   std::vector<ResolvedProtoRoute> resolvedInlineRoutes;
 
-  // The child Scene each Inline expanded to, keyed by the ORIGINAL Inline node.
+  // The child Scene each Inline expanded to, keyed by the original Inline node.
   // Retained so an <IMPORT inlineDEF=... importedDEF=...> can resolve the
   // imported name against the child's exported/DEF'd node (§9.2 cross-Inline
   // escape hatch) without leaking the child's whole DEF table.
@@ -103,7 +103,7 @@ public:
   // replay this so a node shared across fields (e.g. HAnimHumanoid skeleton vs
   // joints) keeps its authored DEF placement instead of falling back to static
   // field-declaration order. Absent/empty => writers use declaration order.
-  // Scene-side so the generated X3DNode is untouched (mirrors expandedSources).
+  // Scene-side so the generated X3DNode is untouched.
   std::unordered_map<const X3DNode *, std::vector<std::string>> childFieldOrder;
 
   // Record `field` as authored on `parent` (first-touch order, de-duplicated).

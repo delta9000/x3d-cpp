@@ -1,6 +1,4 @@
-// external_geometry_node_test.cpp
-// Stage 1: X3DNode identity + reflection for ExternalGeometry.
-// Gated on X3D_CPP_BUILD_EXT; registered in CMakeLists.txt ext block.
+// ExternalGeometry identity and reflection.
 #include "ExternalGeometry.hpp"
 
 #include <any>
@@ -12,9 +10,8 @@
 int main() {
     using namespace x3d::runtime::ext;
 
-    // =========================================================================
-    // TEST 1: basic construction + typed accessors
-    // =========================================================================
+    // basic construction + typed accessors
+
     {
         ExternalGeometry eg;
 
@@ -44,18 +41,16 @@ int main() {
         assert(eg.getContentType() == "model/x.stl-binary");
     }
 
-    // =========================================================================
-    // TEST 2: nodeTypeName / defaultContainerField
-    // =========================================================================
+    // nodeTypeName / defaultContainerField
+
     {
         ExternalGeometry eg;
         assert(eg.nodeTypeName() == "ExternalGeometry");
         assert(eg.defaultContainerField() == "geometry");
     }
 
-    // =========================================================================
-    // TEST 3: fields() reflection — correct count and types
-    // =========================================================================
+    // fields() reflection — correct count and types
+
     {
         ExternalGeometry eg;
         const FieldTable& ft = eg.fields();
@@ -89,9 +84,8 @@ int main() {
         assert(has_contentType && "fields() must contain 'contentType'");
     }
 
-    // =========================================================================
-    // TEST 4: reflection get/set thunks — read/write url via FieldTable
-    // =========================================================================
+    // reflection get/set thunks — read/write url via FieldTable
+
     {
         ExternalGeometry eg;
         const FieldTable& ft = eg.fields();
@@ -115,9 +109,8 @@ int main() {
         assert(got[0] == "refl.stl");
     }
 
-    // =========================================================================
-    // TEST 5: reflection get/set for bboxCenter and bboxSize
-    // =========================================================================
+    // reflection get/set for bboxCenter and bboxSize
+
     {
         ExternalGeometry eg;
         const FieldTable& ft = eg.fields();
@@ -140,9 +133,8 @@ int main() {
         assert(got_s.x == 20.0f && got_s.y == 30.0f && got_s.z == 40.0f);
     }
 
-    // =========================================================================
-    // TEST 6: accept(NodeVisitor&) — enter/leave called in order
-    // =========================================================================
+    // accept(NodeVisitor&) — enter/leave called in order
+
     {
         class TrackVisitor : public NodeVisitor {
         public:
@@ -158,9 +150,8 @@ int main() {
         assert(tv.leaves == 1 && "accept must call leave once");
     }
 
-    // =========================================================================
-    // TEST 7: DEF/USE inherited from X3DNode base
-    // =========================================================================
+    // DEF/USE inherited from X3DNode base
+
     {
         ExternalGeometry eg;
         eg.setDEF("MyEG");

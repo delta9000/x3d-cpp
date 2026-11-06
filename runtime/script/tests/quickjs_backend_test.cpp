@@ -1,21 +1,4 @@
-// quickjs_backend_test.cpp
-// U1 lifecycle test for the QuickJS (quickjs-ng) ScriptEngine backend. Mirrors
-// the Duktape ecmascript_backend_test T1-T11 lifecycle subset to prove the
-// second backend implements the SAME seam with identical lifecycle behavior:
-//
-//   - a trivial valid script loads and returns a non-zero handle,
-//   - a syntax error fails to load (returns kInvalidScriptHandle),
-//   - initialize() / invoke() / eventsProcessed() / prepareEvents() run without
-//     crash, with and without the corresponding script global defined,
-//   - shutdown() frees the context (no crash, no double-free),
-//   - two independent scripts get independent contexts (distinct handles, no
-//     global bleed-through).
-//
-// Full marshalling parity + Browser + handler value round-trip are U2; this
-// test exercises lifecycle only (matching the U1 scope of QuickJsBackend).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// QuickJS backend behavior tests.
 #include "QuickJsBackend.hpp"
 
 #include "DynamicField.hpp"
@@ -64,7 +47,7 @@ ScriptHandle loadSource(QuickJsBackend &backend, Fixture &fix,
 
 bool nearly(double a, double b) { return std::fabs(a - b) < 1e-5; }
 
-// Round-trip a boxed value through the PUBLIC seam (pushValue on invoke's arg +
+// Round-trip a boxed value through the public seam (pushValue on invoke's arg +
 // toValue on the author-field readback), proving the marshalling is observable
 // and reversible exactly as a real script would see it. Mechanism: declare an
 // inputOutput author field `echo` of `type`, load a handler that copies its
@@ -74,7 +57,7 @@ std::any roundTrip(QuickJsBackend &backend, const std::any &v,
                    X3DFieldType type) {
   Fixture fix;
   // An inputOutput author field is readable+writable, so seed/readback handle it
-  // and the store keeps its value. Seed an EMPTY initialValue so any non-empty
+  // and the store keeps its value. Seed an empty initialValue so any non-empty
   // echo differs from the prior value and is not suppressed as a no-op.
   fix.ctx.authorFields().addAuthorField(
       fix.script, AuthorFieldDecl{"echo", type, AccessType::InputOutput, {}});
@@ -94,9 +77,8 @@ std::any roundTrip(QuickJsBackend &backend, const std::any &v,
 int main() {
   QuickJsBackend backend;
 
-  // -------------------------------------------------------------------------
-  // T2: load() succeeds for a trivial script; returns a non-zero handle.
-  // -------------------------------------------------------------------------
+  // load() succeeds for a trivial script; returns a non-zero handle.
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -104,30 +86,29 @@ int main() {
         "function initialize() { _initCalled = true; }");
     check(h != kInvalidScriptHandle, "T2: load trivial script succeeds");
 
-    // T3: initialize() calls the script's initialize() without crash.
+    // initialize() calls the script's initialize() without crash.
     backend.initialize(h);
     check(true, "T3: initialize() runs without crash");
 
-    // T4: invoke() dispatches to a handler by name without crash.
+    // invoke() dispatches to a handler by name without crash.
     backend.invoke(h, "initialize", std::any{}, X3DFieldType::SFBool, 0.0);
     check(true, "T4: invoke('initialize') runs without crash");
 
-    // T5: eventsProcessed() with no handler is a safe no-op.
+    // eventsProcessed() with no handler is a safe no-op.
     backend.eventsProcessed(h, 0.0);
     check(true, "T5: eventsProcessed() with no handler is a no-op");
 
-    // T6: prepareEvents() with no handler is a safe no-op.
+    // prepareEvents() with no handler is a safe no-op.
     backend.prepareEvents(h, 1.0);
     check(true, "T6: prepareEvents() with no handler is a no-op");
 
-    // T7: shutdown() frees the context without crash / double-free.
+    // shutdown() frees the context without crash / double-free.
     backend.shutdown(h);
     check(true, "T7: shutdown() runs without crash");
   }
 
-  // -------------------------------------------------------------------------
-  // T8: load() fails for a syntax error -> kInvalidScriptHandle.
-  // -------------------------------------------------------------------------
+  // load() fails for a syntax error -> kInvalidScriptHandle.
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix, "function broken( { bad syntax");
@@ -135,9 +116,8 @@ int main() {
           "T8: load with syntax error returns kInvalidScriptHandle");
   }
 
-  // -------------------------------------------------------------------------
-  // T9: eventsProcessed() handler IS called when defined (no crash).
-  // -------------------------------------------------------------------------
+  // eventsProcessed() handler IS called when defined (no crash).
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -150,9 +130,8 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T10: load multiple scripts — each gets an independent context.
-  // -------------------------------------------------------------------------
+  // load multiple scripts — each gets an independent context.
+
   {
     Fixture fix1, fix2;
     ScriptHandle h1 = loadSource(backend, fix1, "var id = 'script_one';");
@@ -165,9 +144,8 @@ int main() {
     check(true, "T10: both scripts shut down without crash");
   }
 
-  // -------------------------------------------------------------------------
-  // T11: prepareEvents() IS called when defined; passes a numeric timestamp.
-  // -------------------------------------------------------------------------
+  // prepareEvents() IS called when defined; passes a numeric timestamp.
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -179,11 +157,10 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T12: field marshalling round-trips through the public seam (pushValue on
+  // field marshalling round-trips through the public seam (pushValue on
   //      invoke's value arg -> toValue on the author-field readback), per type.
   //      Asserts the std::any survives unchanged, matching the Duktape backend.
-  // -------------------------------------------------------------------------
+
   {
     // scalars
     check(std::any_cast<SFBool>(roundTrip(backend, SFBool(true),
@@ -338,10 +315,9 @@ int main() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // T13: handler dispatch passes (value, timestamp) into the script; the script
+  // handler dispatch passes (value, timestamp) into the script; the script
   //      echoes both via Browser.print so we observe the marshalled value.
-  // -------------------------------------------------------------------------
+
   {
     Fixture fix;
     ScriptHandle h = loadSource(backend, fix,
@@ -359,9 +335,8 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T14: Browser object — getName/getVersion/currentTime/currentFrameRate/print.
-  // -------------------------------------------------------------------------
+  // Browser object — getName/getVersion/currentTime/currentFrameRate/print.
+
   {
     Fixture fix;
     fix.ctx.tick(5.0);                 // advance clock so currentTime reads 5
@@ -380,11 +355,10 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15: end-to-end — a handler uses Browser.addRoute to wire two real nodes
+  // end-to-end — a handler uses Browser.addRoute to wire two real nodes
   //      (exercising SFNode marshalling both ways), then driving the source fans
   //      out through the new route. directOutput must be TRUE (§29.4.1).
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -419,12 +393,11 @@ int main() {
     backend.shutdown(h2);
   }
 
-  // -------------------------------------------------------------------------
-  // T15b: SFNode handles are unforgeable — a script that clones a node
+  // SFNode handles are unforgeable — a script that clones a node
   //       handle's own properties onto a plain object (or guesses the internal
-  //       key) must NOT obtain a node reference. A forged handle would let
+  //       key) must not obtain a node reference. A forged handle would let
   //       hostile content aim the runtime at an arbitrary address.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -449,13 +422,12 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15c: a script's SFNode is a real node reference (ISO/IEC 19777-1): an
-  //       SFNode the script writes out SHARES ownership with the scene (like
+  // a script's SFNode is a real node reference (ISO/IEC 19777-1): an
+  // SFNode the script writes out shares ownership with the scene (like
   //       DEF/USE), and a handle whose node the scene has since dropped
   //       resolves to null — Browser.addRoute reports INVALID_NODE instead of
   //       touching freed memory.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -499,11 +471,10 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15d: Browser.addRoute validates like a document ROUTE (ISO/IEC 19775-2
+  // Browser.addRoute validates like a document ROUTE (ISO/IEC 19775-2
   //       INVALID_FIELD): unknown field, wrong direction and type mismatch are
   //       rejected; set_/_changed aliases of an inputOutput field are accepted.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -533,13 +504,12 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T15f: hostile author-field values cannot crash the host. Reading a JS
+  // hostile author-field values cannot crash the host. Reading a JS
   //       global back after a handler runs can execute script code (getters,
   //       toJSON, Proxy traps, a global accessor). A throw there must be
   //       contained: no process abort, no event emitted for that field, and the
   //       script keeps working afterwards.
-  // -------------------------------------------------------------------------
+
   {
     struct HostileCase {
       const char *what;
@@ -599,12 +569,11 @@ int main() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // T15g: call budget. A handler (or the script's top level) that never
+  // call budget. A handler (or the script's top level) that never
   //       returns is interrupted after callBudget() instead of hanging the
   //       host -- even if it tries to catch the interruption and keep going --
   //       and the script keeps working afterwards.
-  // -------------------------------------------------------------------------
+
   {
     using Clock = std::chrono::steady_clock;
     const auto budget = std::chrono::milliseconds(200);
@@ -661,14 +630,13 @@ int main() {
     backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
   }
 
-  // -------------------------------------------------------------------------
-  // T15h: memory limit. A handler that allocates without bound is stopped by
+  // memory limit. A handler that allocates without bound is stopped by
   //       memoryLimit() -- well inside a generous call budget, so the memory
   //       cap, not the clock, ends it -- and the script keeps working. The
   //       check is causal, not a speed bound: the call must end well before
   //       the budget could have ended it. Sanitizer builds spend seconds in
   //       garbage collection near the cap, so a fixed wall-clock bound flakes.
-  // -------------------------------------------------------------------------
+
   {
     using Clock = std::chrono::steady_clock;
     const auto budget = std::chrono::seconds(60);
@@ -703,11 +671,10 @@ int main() {
     backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
   }
 
-  // -------------------------------------------------------------------------
-  // T15i: updateField. An inputOutput author field written from outside the
+  // updateField. An inputOutput author field written from outside the
   //       script reaches its JS global, is not echoed back as an output, and a
   //       throwing setter on that global is contained.
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
     Script script;
@@ -755,10 +722,9 @@ int main() {
     ctx.authorFields().erase(hostile);
   }
 
-  // -------------------------------------------------------------------------
-  // T16: directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
-  //      the route is NOT added.
-  // -------------------------------------------------------------------------
+  // directOutput=FALSE — Browser.addRoute throws into JS (not a crash);
+  // the route is not added.
+
   {
     X3DExecutionContext ctx;
     Script script;  // directOutput defaults FALSE
@@ -783,14 +749,13 @@ int main() {
     backend.shutdown(h);
   }
 
-  // -------------------------------------------------------------------------
-  // T17: author-field cascade — a handler writing an outputOnly field drives the
-  //      cascade through a ROUTE; directOutput is NOT required (a script always
+  // author-field cascade — a handler writing an outputOnly field drives the
+  //      cascade through a ROUTE; directOutput is not required (a script always
   //      may write its own fields, §29.2.6).
-  // -------------------------------------------------------------------------
+
   {
     X3DExecutionContext ctx;
-    Script script;  // directOutput FALSE — writing OWN field is still allowed
+    Script script;  // directOutput FALSE — writing own field is still allowed
     SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
     ctx.authorFields().addAuthorField(
         script,
@@ -818,12 +783,11 @@ int main() {
     ctx.authorFields().erase(script);
   }
 
-  // -------------------------------------------------------------------------
-  // T18: deterministic Date. Date.now() and a zero-argument `new Date()` /
+  // deterministic Date. Date.now() and a zero-argument `new Date()` /
   //      `Date()` read the injected execution clock (SaiContext::currentTime(),
   //      seconds -> ms); Date with explicit arguments, Date.parse/UTC and
   //      instanceof are preserved.
-  // -------------------------------------------------------------------------
+
   {
     Fixture fix;
     fix.ctx.tick(12.5);  // injected clock: 12.5 s -> 12500 ms

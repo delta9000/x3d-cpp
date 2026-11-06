@@ -1,30 +1,8 @@
-// sound_periodicwave_test.cpp — SND-9: §16.4.18 PeriodicWave — an Oscillator
-// shaped by real/imag harmonic terms instead of a built-in waveform.
-//
-//   (a) BACKEND DSP (BuiltinDspBackend, direct NodeParams):
-//       P1: CUSTOM real=[0,0] imag=[0,1] (one fundamental sine term) renders
-//           the Sine waveform sample-for-sample (the single term already
-//           peaks at 1, so normalization is the identity).
-//       P2: CUSTOM real=[0,0,0.5] imag=[0,1,0] — x(t) = sin(t) + 0.5cos(2t)
-//           with analytic peak 1.5 (at t=3π/2) — normalized: x(0)=x(T/4)=
-//           x(T/2)=1/3, x(3T/4)=-1, |x| peaks at 1, and the wave repeats
-//           with period SR/f samples.
-//       P3: an Oscillator with no custom wave (Sine default) is unchanged.
-//   (b) SYSTEM (SoundSystem): setPeriodicWave() registers a PeriodicWave
-//       node's terms onto the OscillatorSource's backend node; type CUSTOM
-//       synthesizes the harmonic sum, the four standard types map onto the
-//       Waveform enum, and an oscillator with NO registered wave stays sine.
-//   (c) PARSE PATH (evidence recorded in the SND-9 finding): the X3D 4.0
-//       object model gives OscillatorSource NO periodicWave field (added in
-//       4.1), so a scene that authors <PeriodicWave containerField=
-//       "periodicWave"/> cannot be read back by that name — findField()
-//       returns null and the parser's best-effort fallback parks the node
-//       in the IS field. The field becomes readable only when the generated
-//       bindings move to 4.1.
-//
-// Style: hand-rolled main() + CHECK macro + g_failures counter (same as
-// sound_system_test.cpp). Shared metric helpers from dsp_metrics.hpp.
-
+// §16.4.18 harmonic synthesis, wave registration, and normalization.
+// sin(t) + 0.5*cos(2*t) has peak magnitude 1.5 at t=3*pi/2; normalized samples
+// at 0, T/4, T/2 are 1/3, and at 3*T/4 are -1.
+// SND-9: X3D 4.0 bindings lack OscillatorSource.periodicWave; the parse test
+// documents the deferred authored-wave gap.
 #include "AudioBackend.hpp"
 #include "InlineExpand.hpp"  // x3d::runtime::findField (generic-by-name reads)
 #include "RecordingBackend.hpp"
@@ -79,7 +57,7 @@ int main() {
     return std::fabs(a - b) <= tol;
   };
 
-  // ── (a) BACKEND DSP ───────────────────────────────────────────────────────
+  // (a) backend DSP
 
   // P1: single-harmonic CUSTOM (imag[1]=1) == Sine, sample-for-sample.
   {
@@ -158,7 +136,7 @@ int main() {
     CHECK(g > 0.6, "strong fundamental present");
   }
 
-  // ── (b) SYSTEM: SoundSystem::setPeriodicWave registered waves ────────────
+  // (b) system: SoundSystem::setPeriodicWave registered waves
   // A §16 chain AudioDestination <- OscillatorSource. The 4.0 bindings cannot
   // read the authored periodicWave field (tier (c)), so the test registers the
   // PeriodicWave node the way an embedder bridges the gap.
@@ -252,7 +230,7 @@ int main() {
   }
 
   // P7: the wave rides the seam in the node's params (recording tier) — and a
-  // CUSTOM wave with NO harmonic terms falls back to sine.
+  // CUSTOM wave with no harmonic terms falls back to sine.
   {
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
@@ -292,7 +270,7 @@ int main() {
           "CUSTOM wave with no harmonic terms falls back to sine");
   }
 
-  // ── (c) PARSE PATH: the 4.1 field is unreadable on the 4.0 bindings ──────
+  // (c) parse path: the 4.1 field is unreadable on the 4.0 bindings
   {
     const char *xml =
         "<?xml version='1.0' encoding='UTF-8'?>"

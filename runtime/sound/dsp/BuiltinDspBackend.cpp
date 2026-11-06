@@ -1,10 +1,10 @@
-// BuiltinDspBackend.cpp — the ONLY translation unit with DSP in the sound seam.
+// BuiltinDspBackend.cpp — the only translation unit with DSP in the sound seam.
 // All audio math (oscillator phase accumulators, RBJ "Audio EQ Cookbook" biquad
 // coefficients + per-sample difference equation + filter state, gain multiply,
 // destination summing, the topological render pull) lives here. The seam
 // (AudioBackend.hpp) and the System (SoundSystem.hpp) stay DSP-free.
 //
-// Rendering model (mono, v1): each node is pulled for `frames` samples per
+// Rendering model: each node is pulled for `frames` samples per
 // render() call. render() walks the destination's inputs depth-first; each node
 // computes its block from its inputs' blocks (sources generate; biquads filter;
 // gains scale; the destination sums). Per-call block processing keeps a node's
@@ -68,9 +68,7 @@ struct Node {
   bool rendered = false;
 };
 
-// Naive band-unlimited waveforms (v1): adequate for the validation asserts
-// (tone presence, filtering, gain). Anti-aliasing (PolyBLEP/wavetables) is a
-// clean later refinement and does not change the seam.
+// Band-unlimited waveforms can alias above the Nyquist frequency.
 inline double oscSample(Waveform w, double phase) {
   // phase in [0, 2pi).
   switch (w) {
@@ -95,7 +93,7 @@ inline double oscSample(Waveform w, double phase) {
 // DC term, ignored), normalized so the wave's peak absolute value is 1 —
 // Web Audio's default; X3D 4.0's PeriodicWave exposes no disableNormalization
 // toggle. Extra elements of the longer array are ignored. The normalization
-// gain is computed ONCE at createNode by scanning one period.
+// gain is computed once at createNode by scanning one period.
 constexpr int kPeakScanPoints = 4096;
 
 double periodicWaveGain(const NodeParams &np) {
@@ -129,7 +127,7 @@ inline double customSample(const NodeParams &np, double gain, double phase) {
 }
 
 // RBJ "Audio EQ Cookbook" biquad coefficients (normalized by a0). Implemented
-// for LOWPASS + HIGHPASS (the §16 v1 requirement); BANDPASS + NOTCH + ALLPASS
+// for LOWPASS + HIGHPASS; BANDPASS + NOTCH + ALLPASS
 // included; the shelf/peaking types (which need a dB gain param the seam does
 // not yet carry) fall back to a pass-through (b0=1) — a named extension point.
 struct BiquadCoeffs {
@@ -438,8 +436,8 @@ struct BuiltinDspBackend::Impl {
       break;
     }
     case NodeKind::Panner: {
-      // Task 3: equal-power spatial DSP. All computation is BACKEND-SIDE.
-      // POSITIONS cross the seam (NodeParams); no precomputed gain/coefficient
+      // equal-power spatial DSP. All computation is backend-side.
+      // positions cross the seam (NodeParams); no precomputed gain/coefficient
       // may arrive from SoundSystem (seam-purity contract in AudioBackend.hpp).
       //
       // The rendering model (per the seam spec + X3D §16):
@@ -458,7 +456,7 @@ struct BuiltinDspBackend::Impl {
 
       const NodeParams &np = n.params;
 
-      // ── 1. Distance ──────────────────────────────────────────────────────────
+      // 1. Distance
       double dx = static_cast<double>(np.sourcePosition[0]) -
                   static_cast<double>(np.listenerPosition[0]);
       double dy = static_cast<double>(np.sourcePosition[1]) -
@@ -475,7 +473,7 @@ struct BuiltinDspBackend::Impl {
       double maxD   = static_cast<double>(np.maxDistance);
       double rollof = static_cast<double>(np.rolloffFactor);
 
-      // ── 2. Distance gain ─────────────────────────────────────────────────────
+      // 2. Distance gain
       double distGain = 1.0;
       switch (np.distanceModel) {
       case DistanceModel::Ellipsoid:
@@ -508,7 +506,7 @@ struct BuiltinDspBackend::Impl {
       }
       }
 
-      // ── 3. Azimuth in listener frame ─────────────────────────────────────────
+      // 3. Azimuth in listener frame
       // right = normalize(cross(listenerForward, listenerUp))
       double fX = static_cast<double>(np.listenerForward[0]);
       double fY = static_cast<double>(np.listenerForward[1]);
@@ -535,13 +533,13 @@ struct BuiltinDspBackend::Impl {
         if (azNorm >  1.0) azNorm =  1.0;
       }
 
-      // ── 4. Equal-power pan ───────────────────────────────────────────────────
+      // 4. Equal-power pan
       // theta in [0, pi/2]: 0 = full left, pi/4 = center, pi/2 = full right
       double theta = (azNorm * 0.5 + 0.5) * (kPi / 2.0);
       double gL = std::cos(theta);
       double gR = std::sin(theta);
 
-      // ── 5. Output: interleaved L/R (block is 2*frames for Panner) ───────────
+      // 5. Output: interleaved L/R (block is 2*frames for Panner)
       n.block.resize(static_cast<std::size_t>(frames) * 2);
       for (int i = 0; i < frames; ++i) {
         float mono = in[static_cast<std::size_t>(i)];
@@ -653,7 +651,7 @@ void BuiltinDspBackend::render(NodeHandle destination, int frames,
 void BuiltinDspBackend::renderStereo(NodeHandle destination, int frames,
                                       float sampleRate,
                                       std::vector<float> &outLR) {
-  // Task 3: stereo render. If the destination graph contains any Panner node,
+  // stereo render. If the destination graph contains any Panner node,
   // the Panner renders an interleaved L/R block (2*frames); the destination
   // sums those stereo pairs. Non-Panner nodes produce mono blocks (frames).
   //
@@ -670,11 +668,11 @@ void BuiltinDspBackend::renderStereo(NodeHandle destination, int frames,
   for (auto &kv : impl_->nodes) kv.second.rendered = false;
 
   // Render the destination node's subtree using renderNode().
-  // For Panner nodes the block is now 2*frames (interleaved L/R).
+  // For Panner nodes the block is 2*frames (interleaved L/R).
   // For all other node kinds the block is `frames` mono samples.
   // renderNode() on the Destination itself will call sumInputs() which
   // operates mono-style (adding scalar samples). We bypass that for stereo:
-  // we render the INPUTS of the destination ourselves, then do a stereo-aware
+  // we render the inputs of the destination ourselves, then do a stereo-aware
   // summation below.
   auto destIt = impl_->nodes.find(destination);
   if (destIt == impl_->nodes.end()) return;

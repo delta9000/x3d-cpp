@@ -1,9 +1,5 @@
-// runtime/io/wuffs/WuffsTextureResolver.cpp — the ONE translation unit where
-// the wuffs amalgamation is compiled (WUFFS_IMPLEMENTATION) and meets the
-// TextureResolver seam. The wuffs header is included PRIVATE (see CMake) and
-// WUFFS_IMPLEMENTATION is defined nowhere else, so the 1.8 MB codec body lives
-// in exactly one object file and never leaks to consumers. The factory returns
-// a plain std::function exchanging only std types.
+// Compile Wuffs in this translation unit; decoder headers stay private.
+// See ADR-0024.
 #include "WuffsTextureResolver.hpp"
 #include "DdsDecode.hpp"
 

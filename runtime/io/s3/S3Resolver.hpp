@@ -1,7 +1,5 @@
-// runtime/io/s3/S3Resolver.hpp — Backend B (AWS C++ SDK S3) for the
-// AssetResolver seam (Phase-1 genericity pilot). Part of the runtime/io/s3
-// quarantine (x3d_s3 target, default OFF). Core (x3d_cpp, sdk.hpp) MUST
-// NEVER include this file.
+// S3 AssetResolver adapter. AWS headers stay private to the backend.
+// See ADR-0023.
 #ifndef X3D_RUNTIME_IO_S3_S3_RESOLVER_HPP
 #define X3D_RUNTIME_IO_S3_S3_RESOLVER_HPP
 
@@ -22,7 +20,7 @@ namespace x3d::runtime::io::s3 {
 ///
 /// Synchronous: blocks on GetObject until the body is fully received, then
 /// returns AssetResult::makeReady(bytes) on success, Failed otherwise.
-/// Pending (deferred-bytes) is NOT supported in v1 — a follow-up.
+/// Pending is not supported.
 x3d::runtime::extract::AssetResolver makeS3Resolver(
     const std::string &endpoint = "http://localhost:9000");
 
