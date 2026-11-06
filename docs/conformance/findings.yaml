@@ -21,6 +21,39 @@
 # status semantics: open = actionable now; deferred = blocked on a missing
 # subsystem/seam/design; fixed/closed = done (kept for history + closed-rate).
 
+- id: LIFE-STRUCTURAL-DETACH
+  interfaces: [X3DNode, X3DGroupingNode]
+  nodes: [IntegerTrigger, TimeSensor, ScalarInterpolator, Script]
+  clause: "ISO/IEC 19775-1 §4.4.3, §10.2.1"
+  severity: major
+  status: fixed
+  summary: Structural field writes detach unreachable systems before releasing nodes and attach newly reachable subtrees.
+  note: "Shared nodes remain attached through their other parents. Cascade and direct writes retain replaced node values through lifecycle reconciliation, using the same subtree collector as Inline retirement. System detach waits for active cascade callbacks to return; retained nodes keep their author fields for reattachment. Tests: x3d_structural_lifetime and runtime_callback_retirement_test.cpp structural Script cases."
+
+- id: LIFE-SCRIPT-RETIRE
+  nodes: [Script]
+  clause: "ISO/IEC 19775-1 §29.2.3"
+  severity: major
+  status: fixed
+  summary: Context retirement shuts down scripts while context state is alive and revokes retained SAI bridges.
+  note: "Script handles are invalidated even when the host retains ScriptSystem. Shutdown may perform self and directOutput writes before callback retirement. A copied SaiContext rejects access after retirement. Tests: runtime_callback_retirement_test.cpp context teardown and shutdown-write cases."
+
+- id: DELTA-SHADER-AUTHOR-NODE
+  nodes: [ComposedShader, ProgramShader, ShaderProgram]
+  clause: "ISO/IEC 19775-1 §31.2.4"
+  severity: major
+  status: fixed
+  summary: Replacing an SFNode or MFNode shader author field rebuilds extraction dependencies on its new subtree.
+  note: "Structural classification consults the effective static and author field table. Tests: shader_selection_test.cpp replacement author texture remains a live shader dependency, for both field types."
+
+- id: DELTA-DIRECTOUTPUT-AUTHOR
+  nodes: [Script, ComposedShader, ProgramShader, ShaderProgram]
+  clause: "ISO/IEC 19775-1 §29.2.6, §31.2.4"
+  severity: major
+  status: fixed
+  summary: Script directOutput writes to shader author fields notify dirty tracking and update extracted uniforms.
+  note: "SaiContext uses the dirty-aware execution-context write for static and author fields, retaining direct value mutation semantics. Type-mismatched author writes leave values and dirtiness unchanged. Tests: shader_selection_test.cpp directOutput author uniform writes reach the render delta."
+
 # ── X3DTimeDependentNode (TimeSensor) — calibration wave ────────────────────
 - id: TDN-1
   nodes: [TimeSensor]

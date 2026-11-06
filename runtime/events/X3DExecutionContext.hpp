@@ -55,10 +55,7 @@ enum class FieldWriteResult {
   Ok,           ///< Written, and the dirty-tracker was updated.
   NullNode,     ///< `node` was null.
   DetachedNode, ///< Node was removed with an Inline subtree.
-  /// No field of that x3dName in this node's STATIC table (a typo, or a field
-  /// this node's profile does not carry). Also returned for a Script/PROTO
-  /// author-declared field: those live in the DynamicFieldStore side-table and
-  /// are reached via effectiveFields(), which writeField does not consult.
+  /// No field of that x3dName in the static table or author-field store.
   UnknownField,
   /// Field exists but carries no write thunk. Defensive depth — NO node type
   /// currently produces this. Every one of the generated fields has a set thunk,
@@ -146,9 +143,19 @@ public:
   /// unwinding. Node storage may survive; its retired runtime inputs are inert.
   [[nodiscard]] bool retireCallbacks() noexcept {
     if (!callbacks_.canRetire() || !bindings_.canRetireCallbacks()) return false;
+    {
+      auto invocation = callbacks_.enter();
+      flushDetachedNodes();
+      for (const auto &shutdown : scriptShutdown_) shutdown();
+      scriptShutdown_.clear();
+    }
     (void)callbacks_.retire();
     (void)bindings_.retireCallbacks();
     return true;
+  }
+
+  auto callbackLease() const {
+    return callbacks_.guardOr([] { return true; }, false);
   }
 
   /// Runtime-owned node handlers are valid only while BOTH their activation
@@ -165,7 +172,7 @@ public:
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
-    if (detached_.count(from.node) || detached_.count(to.node)) return;
+    if (cascade_.removed_.count(from.node) || cascade_.removed_.count(to.node)) return;
     graph_.addRoute(from, to);
   }
 
@@ -190,12 +197,13 @@ public:
   void buildSceneGraph(Scene &scene) {
     bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
-    detached_.clear();
+    cascade_.removed_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
     // ancestor, e.g. from a malformed <X DEF='a' USE='a'/>) so the recursive
     // walkers below (transform/bounds/binding/pick + later extract) traverse a
     // DAG and cannot stack-overflow. No-op on well-formed scenes. See CycleBreaker.
     breakContainmentCycles(scene);
+    captureSceneNodes(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     bindings_.enrollScene(scene,
@@ -204,14 +212,16 @@ public:
         [this](BindTransition k) { lastVpTransition_ = k; });
     bindings_.bindDefaults();
     pick_.build(scene);
-    cascade_.setFieldObserver(
-        [this](const FieldAddress &a) { onFieldWritten(a); });
+    cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
+      onFieldWritten(a, std::move(retained));
+    };
   }
 
   // Called after an Inline subtree is spliced into the live Scene.
   void refreshSceneTopology(Scene &scene) {
     bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
+    captureSceneNodes(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     pick_.build(scene);
@@ -219,21 +229,34 @@ public:
 
   void attachNewSubtree(X3DNode *root) {
     std::unordered_set<const X3DNode *> seen;
-    std::function<void(X3DNode *, std::size_t)> walk =
-        [&](X3DNode *n, std::size_t depth) {
-          if (!n || depth >= kMaxNestingDepth || !seen.insert(n).second) return;
-          detached_.erase(n);
-          for (const auto &s : systems_) s->attach(n, *this);
-          forEachChildNode(*n, [&](const FieldInfo &,
-                                   const std::shared_ptr<X3DNode> &c) {
-            walk(c.get(), depth + 1);
-          });
-        };
-    walk(root, 0);
-    bindings_.enrollAdditional(root);
+    collectSubtreeNodes(root, seen);
+    for (const auto *n : seen) attachNode(const_cast<X3DNode *>(n));
   }
 
-  void detachNodes(const std::unordered_set<const X3DNode *> &nodes) {
+  void collectSubtreeNodes(const X3DNode *root,
+                           std::unordered_set<const X3DNode *> &nodes,
+                           std::size_t depth = 0) const {
+    if (!root || depth >= kMaxNestingDepth || !nodes.insert(root).second) return;
+    forEachChildNode(*root, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &child) {
+      collectSubtreeNodes(child.get(), nodes, depth + 1);
+    });
+    for (const auto &field : authorFields_->authorFields(*root)) {
+      if (!field.get) continue;
+      if (field.type == X3DFieldType::SFNode) {
+        const auto value = field.get(*root);
+        if (const auto *child = std::any_cast<SFNode>(&value))
+          collectSubtreeNodes(child->get(), nodes, depth + 1);
+      } else if (field.type == X3DFieldType::MFNode) {
+        const auto value = field.get(*root);
+        if (const auto *children = std::any_cast<MFNode>(&value))
+          for (const auto &child : *children)
+            collectSubtreeNodes(child.get(), nodes, depth + 1);
+      }
+    }
+  }
+
+  void detachNodes(const std::unordered_set<const X3DNode *> &nodes,
+                   bool eraseAuthorFields = true) {
     graph_.removeNodes(nodes);
     cascade_.removeNodes(nodes);
     dirty_.removeNodes(nodes);
@@ -245,8 +268,10 @@ public:
       // the node's shared_ptr (e.g. InlineRuntimeSystem tile retirement).
       removeFieldWriteListeners(n);
       bindings_.removeNode(node);
-      authorFields_->erase(*node);
-      detached_.insert(node);
+      if (eraseAuthorFields) authorFields_->erase(*node);
+      sceneNodes_.erase(n);
+      pendingDetach_.erase(n);
+      offsets_.erase(node);
     }
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
   }
@@ -304,13 +329,15 @@ public:
    *        prepareEvents/update runs before other sensors and the cascade) and
    *        wire its post-cascade eventsProcessed phase.
    * @details `sys` must expose `update(now, ctx)` (prepareEvents phase) and
-   *          `runEventsProcessed(ctx)` (post-cascade phase). Templated so this
+   *          `runEventsProcessed(ctx)` (post-cascade phase), and `shutdown()`
+   *          (ISO/IEC 19775-1 §29.2.3). Templated so this
    *          header stays free of a ScriptSystem include (avoids the cycle:
    *          ScriptSystem includes this header).
    */
   template <class ScriptSystemT>
   void addScriptSystem(std::shared_ptr<ScriptSystemT> sys) {
     systems_.insert(systems_.begin(), sys);  // FIRST: prepareEvents before routes
+    scriptShutdown_.push_back([sys] { sys->shutdown(); });
     addPostCascadeHook(
         [sys](X3DExecutionContext &ctx) { sys->runEventsProcessed(ctx); });
     // §29.2: an event reaching a Script's inputOnly author field (a ROUTE, or
@@ -324,7 +351,7 @@ public:
 
   /** @brief External input or legacy seed; preserves every accepted occurrence. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
-    if (detached_.count(node)) return;
+    if (cascade_.removed_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
   }
 
@@ -333,7 +360,7 @@ public:
   /// owns admission and storage mutation together. Legacy postEvent producers
   /// are unchanged and are outside this scoped generated-output guarantee.
   void postOutputEvent(X3DNode *node, const std::string &field, std::any value) {
-    if (detached_.count(node)) return;
+    if (cascade_.removed_.count(node)) return;
     cascade_.postOutputEvent(node, field, std::move(value));
   }
 
@@ -378,7 +405,7 @@ public:
                                             std::any value) {
     auto invocation = callbacks_.enter();
     if (!node) return FieldWriteResult::NullNode;
-    if (detached_.count(node)) return FieldWriteResult::DetachedNode;
+    if (cascade_.removed_.count(node)) return FieldWriteResult::DetachedNode;
     if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
       return FieldWriteResult::Ok;
     for (const auto &info : node->fields()) {
@@ -388,6 +415,9 @@ public:
       // the field's EMITTER, which is why writing e.g. TouchSensor.isActive
       // succeeds and fires the event rather than being rejected.
       if (!info.set) return FieldWriteResult::NotWritable;
+      std::any retained = info.get &&
+          (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+          ? info.get(*node) : std::any{};
       try {
         info.set(*node, std::move(value));
       } catch (const std::bad_any_cast &) {
@@ -397,7 +427,17 @@ public:
         // before assignment), so skipping classifyDirty keeps the tracker honest.
         return FieldWriteResult::TypeMismatch;
       }
-      onFieldWritten(FieldAddress{node, field});
+      onFieldWritten(FieldAddress{node, field}, std::move(retained));
+      return FieldWriteResult::Ok;
+    }
+    for (const auto &info : authorFields_->authorFields(*node)) {
+      if (info.x3dName != field) continue;
+      if (!anyMatchesFieldType(value, info.type)) return FieldWriteResult::TypeMismatch;
+      std::any retained = info.get &&
+          (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+          ? info.get(*node) : std::any{};
+      authorFields_->setValue(*node, field, std::move(value));
+      onFieldWritten(FieldAddress{node, field}, std::move(retained));
       return FieldWriteResult::Ok;
     }
     return FieldWriteResult::UnknownField;
@@ -447,15 +487,19 @@ public:
     dirty_.clear();                       // drop last tick's changed-set
     cascade_.beginTimestamp();            // open the tick's single timestamp
     // §4.4.8.3 step 4: re-evaluate systems + drain until quiescence.
+    std::size_t productions;
     do {
       for (const auto &s : systems_) {
         s->update(now, *this);
       }
-    } while (cascade_.process(/*freshTimestamp=*/false) != 0);  // observer fills dirty_
+      productions = cascade_.process(/*freshTimestamp=*/false);
+      flushDetachedNodes();
+    } while (productions != 0);
     // §29.2.4: Script eventsProcessed() runs AFTER the batch drains. Each hook
     // may post + drain further events (it calls process() internally).
     for (const auto &hook : postCascade_) {
       hook(*this);
+      flushDetachedNodes();
     }
     transforms_.propagate(dirty_);        // dirtied locals -> world transforms
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
@@ -468,6 +512,7 @@ public:
   void process() {
     auto invocation = callbacks_.enter();
     cascade_.process(/*freshTimestamp=*/!ticking_);
+    if (!ticking_) flushDetachedNodes();
   }
 
   double now() const { return now_; }
@@ -627,7 +672,9 @@ public:
     fieldWriteListeners_.push_back({owner, std::move(l)});
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
-    cascade_.setFieldObserver([this](const FieldAddress &a) { onFieldWritten(a); });
+    cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
+      onFieldWritten(a, std::move(retained));
+    };
   }
   /// Remove every listener registered with this owner (no-op if none).
   void removeFieldWriteListeners(const X3DNode *owner) {
@@ -722,12 +769,65 @@ public:
   }
 
 private:
+  void attachNode(X3DNode *node) {
+    cascade_.removed_.erase(node);
+    if (pendingDetach_.erase(node)) return;
+    for (const auto &system : systems_) system->attach(node, *this);
+    if (dynamic_cast<X3DBindableNode *>(node)) bindings_.enrollAdditional(node);
+  }
+
+  void captureSceneNodes(const Scene &scene) {
+    sceneRoots_.clear();
+    for (const auto &root : scene.rootNodes) sceneRoots_.push_back(root);
+    for (const auto &peer : scene.protoPeerNodes) sceneRoots_.push_back(peer);
+    sceneNodes_.clear();
+    for (const auto &root : sceneRoots_)
+      if (const auto node = root.lock()) collectSubtreeNodes(node.get(), sceneNodes_);
+  }
+
+  void synchronizeSceneNodes() {
+    std::unordered_set<const X3DNode *> reachable;
+    for (const auto &root : sceneRoots_)
+      if (const auto node = root.lock()) collectSubtreeNodes(node.get(), reachable);
+    std::unordered_set<const X3DNode *> removed;
+    for (const auto *node : sceneNodes_)
+      if (!reachable.count(node)) removed.insert(node);
+    const auto previous = std::move(sceneNodes_);
+    sceneNodes_ = reachable;
+    if (ticking_ || cascade_.processDepth_ != 0) {
+      pendingDetach_.insert(removed.begin(), removed.end());
+      cascade_.removeNodes(removed);
+    } else {
+      detachNodes(removed, false);
+    }
+    for (const auto *node : reachable)
+      if (!previous.count(node) && sceneNodes_.count(node))
+        attachNode(const_cast<X3DNode *>(node));
+  }
+
+  void flushDetachedNodes() {
+    if (cascade_.processDepth_ != 0) return;
+    while (!pendingDetach_.empty()) {
+      auto nodes = std::move(pendingDetach_);
+      pendingDetach_.clear();
+      auto retained = std::move(retainedNodeValues_);
+      retainedNodeValues_.clear();
+      detachNodes(nodes, false);
+    }
+    retainedNodeValues_.clear();
+  }
+
   /// Map a delivered field to dirty flags on its node.
   // A field was written (cascade delivery or writeField): feed dirty tracking,
   // then the Systems that react to inputOutput writes.
-  void onFieldWritten(const FieldAddress &a) {
+  void onFieldWritten(const FieldAddress &a, std::any retained = {}) {
+    // ISO/IEC 19775-1 §4.4.3: retain removed nodes until their callbacks return.
+    if (retained.has_value() && (ticking_ || cascade_.processDepth_ != 0))
+      retainedNodeValues_.push_back(std::move(retained));
     classifyDirty(a);
-    for (const auto &l : fieldWriteListeners_) l.fn(a);
+    const auto listeners = fieldWriteListeners_;
+    for (const auto &l : listeners)
+      if (!l.owner || !cascade_.removed_.count(l.owner)) l.fn(a);
   }
 
   void classifyDirty(const FieldAddress &a) {
@@ -736,17 +836,19 @@ private:
                                  "scaleOrientation"};
     static const char *kChildren[] = {"children", "addChildren", "removeChildren"};
     unsigned flags = DirtyField;
+    bool nodeReferencesChanged = false;
     // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
     bool isTransformNode = TransformSystem::isTransform(a.node);
     for (const char *f : kChildren)
-      if (a.field == f) flags = DirtyChildren;
+      if (a.field == f) { flags = DirtyChildren; nodeReferencesChanged = true; }
     // Every node-valued field participates in the scene indexes, not just
     // grouping children. Shape.geometry and geometry.coord replacements can
     // release their old node immediately and must refresh both indexes.
-    for (const auto &f : a.node->fields())
+    for (const auto &f : effectiveFields(*a.node, *authorFields_))
       if (f.x3dName == a.field &&
           (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode)) {
         flags |= DirtyChildren;
+        nodeReferencesChanged = true;
         break;
       }
     // Switch.whichChoice selects the active child: changing it is an active-CHILD
@@ -772,6 +874,7 @@ private:
     for (const char *f : kBounds)
       if (a.field == f) { flags |= DirtyBounds; break; }
     if (flags & DirtyChildren) flags |= DirtyBounds;
+    if (nodeReferencesChanged) synchronizeSceneNodes();
     dirty_.markDirty(a.node, flags);
   }
 
@@ -801,7 +904,11 @@ private:
   EventGraph graph_;
   EventCascade cascade_{graph_, authorFields_};
   std::vector<std::shared_ptr<System>> systems_;
-  std::unordered_set<const X3DNode *> detached_;
+  std::vector<std::function<void()>> scriptShutdown_;
+  std::vector<std::weak_ptr<X3DNode>> sceneRoots_;
+  std::unordered_set<const X3DNode *> sceneNodes_;
+  std::unordered_set<const X3DNode *> pendingDetach_;
+  std::vector<std::any> retainedNodeValues_;
   std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;

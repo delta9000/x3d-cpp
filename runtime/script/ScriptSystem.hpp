@@ -49,6 +49,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -90,17 +91,23 @@ public:
    * @brief Teardown: shut down every still-loaded script (§29.2.3, SCR-002).
    * @details Destroying the ScriptSystem (e.g. with its execution context) is
    *          the "world unloaded/replaced" case where each x3d::nodes::Script's shutdown()
-   *          must run. Done before the engine member is destroyed. Node-level
-   *          deletion (dynamic SAI) remains deferred.
+   *          must run. Done before the engine member is destroyed.
    */
   ~ScriptSystem() {
+    retireCallbacksBeforeDestruction();
+    shutdown();
+  }
+
+  /// ISO/IEC 19775-1 §29.2.3: unload scripts while their context is alive.
+  void shutdown() {
     if (!engine_) return;
     for (auto &up : scripts_) {
       if (up && up->handle != kInvalidScriptHandle) {
-        engine_->shutdown(up->handle);
-        up->handle = kInvalidScriptHandle; // guard against double-shutdown
+        const auto handle = std::exchange(up->handle, kInvalidScriptHandle);
+        engine_->shutdown(handle);
       }
     }
+    scripts_.clear();
   }
 
   // --------------------------------------------------------------------------

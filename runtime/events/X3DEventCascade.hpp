@@ -93,6 +93,7 @@ public:
   }
 
   void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    removed_.insert(nodes.begin(), nodes.end());
     pending_.erase(std::remove_if(pending_.begin(), pending_.end(), [&](const Delivery &d) {
       return nodes.count(d.target.node) != 0;
     }), pending_.end());
@@ -124,6 +125,7 @@ public:
     while (!pending_.empty()) {
       Delivery d = std::move(pending_.front());
       pending_.pop_front();
+      if (removed_.count(d.target.node)) continue;
       // An empty value is a re-read request (editChildren): deliver the
       // field's value as it stands now.
       if (!d.value.has_value() && d.target.node) {
@@ -178,7 +180,9 @@ public:
   /// Register a callback invoked after each field is successfully delivered.
   /// Used by the runtime to feed the dirty-tracking layer; null by default.
   void setFieldObserver(std::function<void(const FieldAddress &)> obs) {
-    observer_ = std::move(obs);
+    observer_ = obs ? [obs = std::move(obs)](const FieldAddress &addr, std::any) {
+      obs(addr);
+    } : std::function<void(const FieldAddress &, std::any)>{};
   }
 
   void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
@@ -251,8 +255,11 @@ private:
     for (const auto &info : addr.node->fields()) {
       if (info.x3dName == addr.field) {
         if (info.set) {
+          std::any retained = info.get &&
+              (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+              ? info.get(*addr.node) : std::any{};
           info.set(*addr.node, value);
-          if (observer_) observer_(addr);
+          if (observer_) observer_(addr, std::move(retained));
         }
         return;
       }
@@ -264,8 +271,11 @@ private:
     for (FieldInfo &info : authorFields_->authorFields(*addr.node)) {
       if (info.x3dName == addr.field) {
         if (info.set) {
+          std::any retained = info.get &&
+              (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+              ? info.get(*addr.node) : std::any{};
           info.set(*addr.node, value);
-          if (observer_) observer_(addr);
+          if (observer_) observer_(addr, std::move(retained));
           if (info.access == AccessType::InputOnly ||
               info.access == AccessType::InputOutput)
             for (const auto &listener : authorInputListeners_)
@@ -290,7 +300,8 @@ private:
       if (info.x3dName != "children" || info.type != X3DFieldType::MFNode ||
           !info.get || !info.set)
         continue;
-      Nodes children = std::any_cast<Nodes>(info.get(*addr.node));
+      Nodes retained = std::any_cast<Nodes>(info.get(*addr.node));
+      Nodes children = retained;
       if (addr.field == "addChildren") {
         for (const auto &n : *delta)
           if (n && std::find(children.begin(), children.end(), n) == children.end())
@@ -303,6 +314,7 @@ private:
       // Apply now so a later add/remove in this cascade sees this result, then
       // queue a re-read of the final value for dirty tracking and fan-out.
       info.set(*addr.node, std::any(std::move(children)));
+      if (observer_) observer_(addr, std::any(std::move(retained)));
       pending_.push_back(
           Delivery{FieldAddress{addr.node, "children"}, std::any{}, Origin::Seed});
       return true;
@@ -317,8 +329,9 @@ private:
   const EventGraph &graph_;
   std::shared_ptr<DynamicFieldStore> authorFields_;
   std::deque<Delivery> pending_;
+  std::unordered_set<const X3DNode *> removed_;
   std::size_t processDepth_ = 0;  // nested drains share the active timestamp
-  std::function<void(const FieldAddress &)> observer_;
+  std::function<void(const FieldAddress &, std::any)> observer_;
   std::vector<std::function<bool(const FieldAddress &, const std::any &)>> inputFilters_;
   std::vector<AuthorInputListener> authorInputListeners_;
   // Per-timestamp guards (reset by beginTimestamp). They persist across the

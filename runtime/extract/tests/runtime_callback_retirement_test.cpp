@@ -1,5 +1,8 @@
 #include "RuntimeSession.hpp"
+#include "ScriptSystem.hpp"
+#include "../../script/tests/MockScriptEngine.hpp"
 #include "x3d/nodes/ScalarInterpolator.hpp"
+#include "x3d/nodes/Group.hpp"
 #include "x3d/nodes/Viewpoint.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/TextureBackground.hpp"
@@ -101,6 +104,124 @@ public:
 private:
   std::shared_ptr<ScalarInterpolator> observed_;
 };
+}
+
+TEST_CASE("Runtime retirement: context shuts down an externally retained ScriptSystem") {
+  auto script = std::make_shared<Script>();
+  script->setUrl(MFString{"ecmascript:/* body */"});
+  script->setDirectOutputUnchecked(true);
+  auto engine = std::make_shared<test::MockScriptEngine>();
+  auto system = std::make_shared<ScriptSystem>(engine, "test", "1");
+  ScriptHandle handle = kInvalidScriptHandle;
+  std::unique_ptr<SaiContext> bridge;
+  {
+    X3DExecutionContext context;
+    system->attach(script.get(), context);
+    context.addScriptSystem(system);
+    handle = system->handleFor(script.get());
+    REQUIRE(handle != kInvalidScriptHandle);
+    bridge = std::make_unique<SaiContext>(*system->saiFor(script.get()));
+    CHECK(engine->count("shutdown") == 0);
+  }
+  CHECK(engine->count("shutdown") == 1);
+  CHECK(system->handleFor(script.get()) == kInvalidScriptHandle);
+  CHECK(system->saiFor(script.get()) == nullptr);
+  REQUIRE(engine->count("shutdown") == 1);
+  CHECK_THROWS_AS(bridge->currentTime(), std::logic_error);
+  CHECK_THROWS_AS(bridge->setField(script.get(), "url", MFString{}), std::logic_error);
+  system.reset();
+  CHECK(engine->count("shutdown") == 1);
+}
+
+TEST_CASE("Runtime retirement: script shutdown can write while context members are alive") {
+  class ShutdownWriter : public test::MockScriptEngine {
+  public:
+    X3DNode *target = nullptr;
+    void shutdown(ScriptHandle handle) override {
+      auto *sai = saiFor(handle);
+      sai->setField(target, "integerKey", SFInt32{17});
+      sai->setField(&sai->script(), "url", MFString{});
+      MockScriptEngine::shutdown(handle);
+    }
+  };
+  auto target = std::make_shared<IntegerTrigger>();
+  auto script = std::make_shared<Script>();
+  script->setUrl(MFString{"ecmascript:/* body */"});
+  script->setDirectOutputUnchecked(true);
+  auto engine = std::make_shared<ShutdownWriter>();
+  engine->target = target.get();
+  int writes = 0;
+  {
+    X3DExecutionContext context;
+    context.addFieldWriteListener([&](const FieldAddress &a) {
+      if (a.node == target.get() && a.field == "integerKey") ++writes;
+    });
+    auto system = std::make_shared<ScriptSystem>(engine, "test", "1");
+    context.addScriptSystem(system);
+    system->attach(script.get(), context);
+  }
+  CHECK(engine->count("shutdown") == 1);
+  CHECK(target->getIntegerKey() == 17);
+  CHECK(writes == 1);
+}
+
+TEST_CASE("structural edits attach and retire scripts while preserving retained author fields") {
+  auto root = std::make_shared<x3d::nodes::Group>();
+  auto script = std::make_shared<Script>();
+  script->setUrl(MFString{"ecmascript:/* body */"});
+  Scene scene;
+  scene.rootNodes = {root};
+  scene.authorFields->addAuthorField(script,
+      {"level", X3DFieldType::SFFloat, AccessType::InputOutput, SFFloat{3}});
+  X3DExecutionContext context(scene.authorFields);
+  context.buildSceneGraph(scene);
+  auto engine = std::make_shared<test::MockScriptEngine>();
+  auto system = std::make_shared<ScriptSystem>(engine, "test", "1");
+  context.addScriptSystem(system);
+  context.postEvent(root.get(), "addChildren", MFNode{script});
+  context.tick(1);
+  CHECK(engine->count("load") == 1);
+  context.postEvent(root.get(), "removeChildren", MFNode{script});
+  context.tick(2);
+  CHECK(engine->count("shutdown") == 1);
+  context.postEvent(root.get(), "addChildren", MFNode{script});
+  context.tick(3);
+  CHECK(engine->count("load") == 2);
+  REQUIRE(system->saiFor(script.get()));
+  CHECK(std::any_cast<SFFloat>(system->saiFor(script.get())->getField(script.get(), "level")) == 3);
+}
+
+TEST_CASE("structural script self-removal waits for its active callback to return") {
+  auto root = std::make_shared<x3d::nodes::Group>();
+  auto script = std::make_shared<Script>();
+  script->setUrl(MFString{"ecmascript:/* body */"});
+  script->setDirectOutputUnchecked(true);
+  script->setMustEvaluateUnchecked(true);
+  root->setChildren(MFNode{script});
+  Scene scene;
+  scene.rootNodes = {root};
+  scene.authorFields->addAuthorField(script,
+      {"remove", X3DFieldType::SFBool, AccessType::InputOnly, {}});
+  X3DExecutionContext context(scene.authorFields);
+  context.buildSceneGraph(scene);
+  auto engine = std::make_shared<test::MockScriptEngine>();
+  auto system = std::make_shared<ScriptSystem>(engine, "test", "1");
+  context.addScriptSystem(system);
+  system->attach(script.get(), context);
+  bool callbackReturned = false;
+  engine->on("remove", [&](SaiContext &sai, const std::any &, double) {
+    sai.setField(root.get(), "children", MFNode{});
+    CHECK(engine->count("shutdown") == 0);
+    CHECK(sai.script().getUrl().size() == 1);
+    callbackReturned = true;
+  });
+  std::weak_ptr<Script> weak = script;
+  context.postEvent(script.get(), "remove", SFBool{true});
+  script.reset();
+  context.tick(1);
+  CHECK(callbackReturned);
+  CHECK(engine->count("shutdown") == 1);
+  CHECK(weak.expired());
 }
 
 TEST_CASE("Runtime retirement: retained native nodes are inert after session teardown") {

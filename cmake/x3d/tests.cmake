@@ -5,6 +5,15 @@
 if(X3D_CPP_BUILD_TESTS)
     enable_testing()
 
+    add_executable(x3d_structural_lifetime
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/events_misc_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_callback_retirement_test.cpp")
+    x3d_set_target_purpose(x3d_structural_lifetime behavior)
+    target_link_libraries(x3d_structural_lifetime PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_structural_lifetime
+        COMMAND x3d_structural_lifetime
+            "--test-case=structural*,Runtime retirement: context shuts down*,Runtime retirement: script shutdown*")
+
     add_executable(x3d_hanim_skin_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim/tests/hanim_skin_test.cpp")
     x3d_set_target_purpose(x3d_hanim_skin_tests behavior)

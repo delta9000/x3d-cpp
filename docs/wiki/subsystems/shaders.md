@@ -66,8 +66,10 @@ Edits take effect immediately; `activate` TRUE additionally re-resolves urls
 and re-runs the validator (an interpretation recorded in the
 [requirements audit](../guides/x3d4-requirements-audit.md#shader-selection-and-execution-2026-10-10)).
 On the extraction side, shaders, parts and programs are appearance-subtree
-nodes, so uniform events, source edits and the emitted outputs all reach
-`delta()` as `updatedMaterial`, and `refreshMaterial()` re-selects.
+nodes. Scalar and array uniform events, Script directOutput writes, source
+edits, and emitted outputs reach `delta()` as `updatedMaterial`, and
+`refreshMaterial()` re-selects. Replacing an SFNode or MFNode author field
+triggers a replacement snapshot that rebuilds dependencies on its new subtree.
 
 Composed-geometry `attrib` children are extracted separately from the uniform
 binding plan. `MeshData::vertexAttributes` contains one stream per supported

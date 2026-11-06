@@ -43,6 +43,7 @@
 #include "x3d/nodes/Script.hpp"  // Script::getDirectOutput()
 
 #include <any>
+#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -62,7 +63,7 @@ using namespace x3d::core;
  *          object and field accessors forward here).
  *
  *          Lifetime: the SaiContext does not own the Script or the context; the
- *          runtime guarantees both outlive it.
+ *          context lease rejects runtime access after context retirement.
  */
 class SaiContext {
 public:
@@ -76,7 +77,7 @@ public:
   SaiContext(X3DExecutionContext &ctx, x3d::nodes::Script &scriptNode, std::string name,
              std::string version)
       : ctx_(ctx), script_(scriptNode), name_(std::move(name)),
-        version_(std::move(version)) {}
+        version_(std::move(version)), active_(ctx.callbackLease()) {}
 
   // --------------------------------------------------------------------------
   // Field access (§29.4.1 paragraph 1: read is unconditional).
@@ -89,6 +90,7 @@ public:
    *          (e.g. an inputOnly field has no get thunk).
    */
   std::any getField(X3DNode *node, const std::string &fieldName) const {
+    requireActive();
     if (!node) return {};
     std::optional<FieldInfo> info = findField(*node, fieldName);
     if (!info || !info->get) return {};
@@ -112,6 +114,7 @@ public:
    * @throws std::logic_error on a gated cross-node write with directOutput FALSE.
    */
   void setField(X3DNode *node, const std::string &fieldName, std::any value) {
+    requireActive();
     if (!node) return;
     const bool self = node == static_cast<X3DNode *>(&script_);
     if (!self && !script_.getDirectOutput()) {
@@ -130,12 +133,8 @@ public:
     // directOutput cross-node write: a direct value mutation, non-routable
     // (SAI §4.5.2 / ADR-0029). writeField applies the reflection setter and the
     // dirty-tracker update atomically, so a failed (type-mismatched) write
-    // changes nothing. Author-declared (Script <field>) targets are absent from
-    // the static table writeField scans, so fall back to the dynamic-field store.
-    if (ctx_.writeField(node, fieldName, std::any(value)) ==
-        FieldWriteResult::UnknownField) {
-      ctx_.authorFields().setValue(*node, fieldName, std::move(value));
-    }
+    // changes nothing, including author fields (ISO/IEC 19775-1 §29.2.6).
+    (void)ctx_.writeField(node, fieldName, std::move(value));
   }
 
   // --------------------------------------------------------------------------
@@ -189,7 +188,7 @@ public:
   const std::string &getVersion() const { return version_; }
 
   /** @brief Current scene time = the execution context clock (§29.2). */
-  double currentTime() const { return ctx_.now(); }
+  double currentTime() const { requireActive(); return ctx_.now(); }
 
   /** @brief Current frame rate (frames/sec). 0 until the embedder supplies it. */
   double currentFrameRate() const { return frameRate_; }
@@ -204,18 +203,23 @@ public:
   const std::string &log() const { return log_; }
 
   /** @brief The owning Script node. */
-  x3d::nodes::Script &script() const { return script_; }
+  x3d::nodes::Script &script() const { requireActive(); return script_; }
 
   /** @brief The execution context this SAI acts on. */
-  X3DExecutionContext &context() const { return ctx_; }
+  X3DExecutionContext &context() const { requireActive(); return ctx_; }
 
   /** @brief This script's SFNode handle table (see NodeHandleTable.hpp). The
    *         engine backends intern every node they hand to script code here and
    *         resolve script-supplied handles back through it. */
-  NodeHandleTable &nodeHandles() { return nodeHandles_; }
+  NodeHandleTable &nodeHandles() { requireActive(); return nodeHandles_; }
 
 private:
+  void requireActive() const {
+    if (!active_()) throw std::logic_error("SaiContext: execution context retired");
+  }
+
   void requireDirectOutput(const char *op) const {
+    requireActive();
     if (!script_.getDirectOutput()) {
       throw std::logic_error(std::string("SaiContext::") + op +
           ": Script directOutput=FALSE forbids dynamic route changes");
@@ -272,6 +276,7 @@ private:
   double frameRate_ = 0.0;
   std::string log_;
   NodeHandleTable nodeHandles_;
+  std::function<bool()> active_;
 };
 
 } // namespace x3d::runtime

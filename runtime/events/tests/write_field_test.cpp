@@ -204,12 +204,7 @@ TEST_CASE("writeField: every failure mode has its own answer") {
           FieldWriteResult::Ok);
   }
 
-  SUBCASE("a Script/PROTO author field is UnknownField, not a silent success") {
-    // Author-declared (dynamic) fields live in the DynamicFieldStore side-table
-    // and resolve via effectiveFields(); writeField consults only the static
-    // fields() table. Writing one therefore reports UnknownField rather than
-    // appearing to succeed. Documented narrowing, pinned so a change is a
-    // deliberate one — see FieldWriteResult::UnknownField.
+  SUBCASE("an undeclared Script field is UnknownField") {
     auto script = createX3DNode("Script");
     CHECK(ctx.writeField(script.get(), "myAuthorField", std::any(1.0f)) ==
           FieldWriteResult::UnknownField);

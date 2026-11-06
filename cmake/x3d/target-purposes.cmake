@@ -165,6 +165,7 @@ if(X3D_CPP_BUILD_TESTS)
     # differ from their owning targets, and shell-driven tests have no owning
     # executable, so CTest labels are assigned from the public test names.
     set(_x3d_behavior_tests
+        x3d_structural_lifetime
         x3d_codec_roundtrip_audit
         x3d_xml_script_field
         x3d_xml_composed_shader
