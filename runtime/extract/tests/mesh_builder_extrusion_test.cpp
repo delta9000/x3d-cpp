@@ -74,11 +74,9 @@ TEST_CASE("mesh_builder_b3_test") {
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // The last 4 triangles are the caps (2 begin then 2 end). Collect a normal
     // for a begin-cap tri and an end-cap tri.
-    std::size_t ntri = m.indices.size() / 3;
     // begin cap = tris[8],[9]; end cap = tris[10],[11].
     SFVec3f nBegin = triGeoNormal(m, 8 * 3);
     SFVec3f nEnd = triGeoNormal(m, 10 * 3);
-    (void)ntri;
     // Caps are in the X-Z spine plane => normals along the spine (+/-Y).
     CHECK((std::fabs(nBegin.y) > 1e-3f));
     CHECK((std::fabs(nEnd.y) > 1e-3f));

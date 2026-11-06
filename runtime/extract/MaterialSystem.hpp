@@ -21,12 +21,6 @@ using namespace x3d::core;
 
 namespace matsys {
 
-// Read an SFEnum field as its X3D token string (FieldRead.hpp enumToken).
-inline std::string getEnumToken(const X3DNode &n, const char *name,
-                                const std::string &dflt) {
-  return ::x3d::runtime::enumToken(n, name, dflt);
-}
-
 // Map an X3D alphaMode token to the descriptor AlphaMode. AUTO => Opaque (the
 // renderer infers from transparency); unknown tokens fall through to Opaque.
 inline AlphaMode alphaModeFromToken(const std::string &t) {
@@ -248,7 +242,7 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   }
 
   // alphaMode / alphaCutoff off the Appearance (independent of material type).
-  m.alphaMode = alphaModeFromToken(getEnumToken(*appearance, "alphaMode", "AUTO"));
+  m.alphaMode = alphaModeFromToken(::x3d::runtime::enumToken(*appearance, "alphaMode", "AUTO"));
   m.alphaCutoff = geombounds::getField<float>(*appearance, "alphaCutoff", 0.5f);
 
   // §12.4.3: an absent node does not enable hatching; a present node's
@@ -296,79 +290,56 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
     return m;
   }
 
-  const std::string t = material->nodeTypeName();
-  if (t == "PhysicalMaterial") {
-    m.model = MaterialModel::Physical;
-    SFColor base = geombounds::getField<SFColor>(*material, "baseColor",
-                                                 SFColor{1.0f, 1.0f, 1.0f});
-    m.transparency = geombounds::getField<float>(*material, "transparency", 0.0f);
-    m.physical.baseColor = base;
-    m.physical.metallic = geombounds::getField<float>(*material, "metallic", 1.0f);
-    m.physical.roughness = geombounds::getField<float>(*material, "roughness", 1.0f);
-    m.physical.occlusionStrength =
-        geombounds::getField<float>(*material, "occlusionStrength", 1.0f);
-    m.emissive = geombounds::getField<SFColor>(*material, "emissiveColor",
+  const auto decodeMaterial = [](const X3DNode &node, MaterialDesc &m) {
+    const std::string t = node.nodeTypeName();
+    if (t == "PhysicalMaterial") {
+      m.model = MaterialModel::Physical;
+      SFColor base = geombounds::getField<SFColor>(node, "baseColor",
+                                                SFColor{1.0f, 1.0f, 1.0f});
+      m.transparency = geombounds::getField<float>(node, "transparency", 0.0f);
+      m.physical.baseColor = base;
+      m.physical.metallic = geombounds::getField<float>(node, "metallic", 1.0f);
+      m.physical.roughness = geombounds::getField<float>(node, "roughness", 1.0f);
+      m.physical.occlusionStrength =
+          geombounds::getField<float>(node, "occlusionStrength", 1.0f);
+      m.emissive = geombounds::getField<SFColor>(node, "emissiveColor",
                                                SFColor{0.0f, 0.0f, 0.0f});
-  } else if (t == "UnlitMaterial") {
-    m.model = MaterialModel::Unlit;
-    SFColor emis = geombounds::getField<SFColor>(*material, "emissiveColor",
-                                                 SFColor{1.0f, 1.0f, 1.0f});
-    m.transparency = geombounds::getField<float>(*material, "transparency", 0.0f);
-    // Unlit: the emissive color is the surface color; toRGBA() reads emissive.
-    m.emissive = emis;
-  } else {
-    // Material (Phong) — also the safe default for any other material-ish node.
-    m.model = MaterialModel::Phong;
-    SFColor diffuse = geombounds::getField<SFColor>(*material, "diffuseColor",
-                                                    SFColor{0.8f, 0.8f, 0.8f});
-    m.transparency = geombounds::getField<float>(*material, "transparency", 0.0f);
-    m.phong.diffuse = diffuse;
-    m.emissive = geombounds::getField<SFColor>(*material, "emissiveColor",
+    } else if (t == "UnlitMaterial") {
+      m.model = MaterialModel::Unlit;
+      SFColor emis = geombounds::getField<SFColor>(node, "emissiveColor",
+                                                SFColor{1.0f, 1.0f, 1.0f});
+      m.transparency = geombounds::getField<float>(node, "transparency", 0.0f);
+      // Unlit: the emissive color is the surface color; toRGBA() reads emissive.
+      m.emissive = emis;
+    } else {
+      // Material (Phong) — also the safe default for any other material-ish node.
+      m.model = MaterialModel::Phong;
+      SFColor diffuse = geombounds::getField<SFColor>(node, "diffuseColor",
+                                                   SFColor{0.8f, 0.8f, 0.8f});
+      m.transparency = geombounds::getField<float>(node, "transparency", 0.0f);
+      m.phong.diffuse = diffuse;
+      m.emissive = geombounds::getField<SFColor>(node, "emissiveColor",
                                                SFColor{0.0f, 0.0f, 0.0f});
-    m.phong.specular = geombounds::getField<SFColor>(*material, "specularColor",
+      m.phong.specular = geombounds::getField<SFColor>(node, "specularColor",
                                                SFColor{0.0f, 0.0f, 0.0f});
-    m.phong.shininess = geombounds::getField<float>(*material, "shininess", 0.2f);
-    m.phong.ambientIntensity =
-        geombounds::getField<float>(*material, "ambientIntensity", 0.2f);
-    m.phong.occlusionStrength =
-        geombounds::getField<float>(*material, "occlusionStrength", 1.0f);
-  }
+      m.phong.shininess = geombounds::getField<float>(node, "shininess", 0.2f);
+      m.phong.ambientIntensity =
+          geombounds::getField<float>(node, "ambientIntensity", 0.2f);
+      m.phong.occlusionStrength =
+          geombounds::getField<float>(node, "occlusionStrength", 1.0f);
+    }
 
-  // normalScale (X3DOneSidedMaterialNode, all lit/unlit one-sided materials) — .
-  m.normalScale = geombounds::getField<float>(*material, "normalScale", 1.0f);
+    // normalScale (X3DOneSidedMaterialNode, all lit/unlit one-sided materials) — .
+    m.normalScale = geombounds::getField<float>(node, "normalScale", 1.0f);
+  };
+  decodeMaterial(*material, m);
 
   m.textures = texturesOf(appearance);
 
   // X3D v4 Appearance.backMaterial.
   if (auto backNode = geombounds::getNode(*appearance, "backMaterial")) {
     MaterialDesc bm;
-    const std::string bt = backNode->nodeTypeName();
-    if (bt == "PhysicalMaterial") {
-      bm.model = MaterialModel::Physical;
-      SFColor base = geombounds::getField<SFColor>(*backNode, "baseColor", SFColor{1.0f, 1.0f, 1.0f});
-      bm.transparency = geombounds::getField<float>(*backNode, "transparency", 0.0f);
-      bm.physical.baseColor = base;
-      bm.physical.metallic = geombounds::getField<float>(*backNode, "metallic", 1.0f);
-      bm.physical.roughness = geombounds::getField<float>(*backNode, "roughness", 1.0f);
-      bm.physical.occlusionStrength = geombounds::getField<float>(*backNode, "occlusionStrength", 1.0f);
-      bm.emissive = geombounds::getField<SFColor>(*backNode, "emissiveColor", SFColor{0.0f, 0.0f, 0.0f});
-    } else if (bt == "UnlitMaterial") {
-      bm.model = MaterialModel::Unlit;
-      bm.emissive = geombounds::getField<SFColor>(*backNode, "emissiveColor", SFColor{1.0f, 1.0f, 1.0f});
-      bm.transparency = geombounds::getField<float>(*backNode, "transparency", 0.0f);
-    } else {
-      // Material (Phong) default.
-      bm.model = MaterialModel::Phong;
-      SFColor diffuse = geombounds::getField<SFColor>(*backNode, "diffuseColor", SFColor{0.8f, 0.8f, 0.8f});
-      bm.transparency = geombounds::getField<float>(*backNode, "transparency", 0.0f);
-      bm.phong.diffuse = diffuse;
-      bm.phong.specular = geombounds::getField<SFColor>(*backNode, "specularColor", SFColor{0,0,0});
-      bm.phong.shininess = geombounds::getField<float>(*backNode, "shininess", 0.2f);
-      bm.phong.ambientIntensity = geombounds::getField<float>(*backNode, "ambientIntensity", 0.2f);
-      bm.phong.occlusionStrength = geombounds::getField<float>(*backNode, "occlusionStrength", 1.0f);
-      bm.emissive = geombounds::getField<SFColor>(*backNode, "emissiveColor", SFColor{0.0f, 0.0f, 0.0f});
-    }
-    bm.normalScale = geombounds::getField<float>(*backNode, "normalScale", 1.0f);
+    decodeMaterial(*backNode, bm);
     // §12.2.3: the back MaterialDesc carries ITS own texture set (from the back
     // material node's slots), so the constraint can compare both the model type
     // and the texture set against the front.

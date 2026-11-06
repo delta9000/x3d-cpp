@@ -101,9 +101,11 @@ placed there directly (§26.3.2). The `joints`, `segments`, `sites` and
 Each skin item carries `RenderItem::SkinDesc`:
 
 - the shared `SkinBinding`;
-- the source coordinate index of every expanded mesh corner (and source normal
-  indices when authored);
 - a pose version.
+
+The shared `item.mesh` carries each expanded corner's `sourceCoordIndex` and
+`sourceNormalIndex` remaps. CPU and GPU skinning read these arrays directly;
+`SkinDesc` does not copy them per placement.
 
 Motion of a skeletal frame, including an HAnimSite above a joint, or a
 Joint-displacer weight change advances the version and lists the item in

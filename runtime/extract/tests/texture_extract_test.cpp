@@ -8,8 +8,8 @@
 //      current MeshData.texcoords (s,t) seam by taking the first usable channel
 //      and first two coordinates.
 //   2. TextureTransform (center/rotation/scale/translation, §18.4.10) is baked
-//      into the mesh texcoords by applyTextureTransformToMesh().
-//   3. textureTransformParamsOf(appearance) reads the authored TextureTransform
+//      into the mesh texcoords by applyTextureTransformsToMesh().
+//   3. textureTransformParamsListOf(appearance) reads the authored TextureTransform
 //      node from Appearance.textureTransform.
 //   4. ExtendedSampler / TextureProperties boundary+filter modes are surfaced on
 //      TextureRef::extSampler (§18.4.9), and repeatS/T derive a BoundaryMode when
@@ -139,7 +139,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
   CHECK((feq(m4.texcoords[2].x, 0.75f) && feq(m4.texcoords[2].y, 0.85f)));
 }
 
-// 2. applyTextureTransformToMesh bakes the transform into texcoords
+// 2. applyTextureTransformsToMesh bakes the transform into texcoords
 static void testApplyTransformToMesh() {
   MeshData m;
   m.texcoords = {{0.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f}};
@@ -148,15 +148,15 @@ static void testApplyTransformToMesh() {
   TextureTransform2DParams p;
   p.translationS = 0.5f;
   p.translationT = 0.25f;
-  applyTextureTransformToMesh(m, p);
+  applyTextureTransformsToMesh(m, {p});
   CHECK((feq(m.texcoords[0].x, 0.5f) && feq(m.texcoords[0].y, 0.25f)));
   CHECK((feq(m.texcoords[1].x, 1.5f) && feq(m.texcoords[1].y, 0.25f)));
   CHECK((feq(m.texcoords[2].x, 0.5f) && feq(m.texcoords[2].y, 1.25f)));
 
-  // Identity transform must be a no-op (cheap early-exit; bytes unchanged).
+  // Identity transforms preserve UV values.
   MeshData m2;
   m2.texcoords = {{0.3f, 0.7f}};
-  applyTextureTransformToMesh(m2, TextureTransform2DParams{});
+  applyTextureTransformsToMesh(m2, {TextureTransform2DParams{}});
   CHECK((feq(m2.texcoords[0].x, 0.3f) && feq(m2.texcoords[0].y, 0.7f)));
 
   // Scale (2,2) about default center 0: doubles each coordinate.
@@ -165,7 +165,7 @@ static void testApplyTransformToMesh() {
   TextureTransform2DParams sp;
   sp.scaleS = 2.0f;
   sp.scaleT = 2.0f;
-  applyTextureTransformToMesh(m3, sp);
+  applyTextureTransformsToMesh(m3, {sp});
   CHECK((feq(m3.texcoords[0].x, 0.5f) && feq(m3.texcoords[0].y, 1.0f)));
 }
 
@@ -215,13 +215,13 @@ static void testTextureTransformOrder() {
   }
 }
 
-// 3. textureTransformParamsOf reads Appearance.textureTransform
-static void testTextureTransformParamsOf() {
-  // No appearance / no textureTransform => identity.
-  CHECK((isIdentityTextureTransform(textureTransformParamsOf(nullptr))));
+// 3. textureTransformParamsListOf reads Appearance.textureTransform
+static void testTextureTransformParamsListOf() {
+  // No appearance / no textureTransform => no authored transforms.
+  CHECK((textureTransformParamsListOf(nullptr).empty()));
   {
     auto app = createX3DNode("Appearance");
-    CHECK((isIdentityTextureTransform(textureTransformParamsOf(app.get()))));
+    CHECK((textureTransformParamsListOf(app.get()).empty()));
   }
   // Authored TextureTransform => fields surfaced.
   {
@@ -233,15 +233,16 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(tt)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
+    auto params = textureTransformParamsListOf(app.get());
+    REQUIRE(params.size() == 1);
+    const auto &p = params.front();
     CHECK((!isIdentityTextureTransform(p)));
     CHECK((feq(p.centerS, 0.5f) && feq(p.centerT, 0.5f)));
     CHECK((feq(p.rotation, 1.0f)));
     CHECK((feq(p.scaleS, 2.0f) && feq(p.scaleT, 3.0f)));
     CHECK((feq(p.translationS, 0.1f) && feq(p.translationT, 0.2f)));
   }
-  // MultiTextureTransform => first usable 2D child surfaced on the current
-  // single-texture transform seam.
+  // MultiTextureTransform preserves each channel's transform.
   {
     auto tt = createX3DNode("TextureTransform");
     setF(tt, "translation", std::any(SFVec2f{0.25f, 0.5f}));
@@ -252,8 +253,6 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(mtt)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
-    CHECK((feq(p.translationS, 0.25f) && feq(p.translationT, 0.5f)));
     auto params = textureTransformParamsListOf(app.get());
     CHECK((params.size() == 2));
     CHECK((feq(params[0].translationS, 0.25f) &&
@@ -285,10 +284,11 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(tm)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
+    auto params = textureTransformParamsListOf(app.get());
+    REQUIRE(params.size() == 1);
     MeshData mesh;
     mesh.texcoords = {{0.5f, 0.25f}};
-    applyTextureTransformToMesh(mesh, p);
+    applyTextureTransformsToMesh(mesh, params);
     CHECK((feq(mesh.texcoords[0].x, 1.25f)));
     CHECK((feq(mesh.texcoords[0].y, 1.25f)));
   }
@@ -492,7 +492,7 @@ TEST_CASE("texture_extract_test") {
   testTextureCoordinate3DAnd4DProjectToST();
   testApplyTransformToMesh();
   testTextureTransformOrder();
-  testTextureTransformParamsOf();
+  testTextureTransformParamsListOf();
   testExtendedSampler();
   testTexCoordGen();
   testResolverRoundTrip();

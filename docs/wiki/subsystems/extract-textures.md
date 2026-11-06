@@ -2,7 +2,7 @@
 title: Texture, Material, and Light Extraction
 summary: Texture descriptor extraction, material system, light extraction, and the asset-resolver seam used by rendering consumers.
 tags: [subsystem, extract, textures, materials, lights, asset-resolver]
-updated: 2026-10-02
+updated: 2026-11-05
 related:
   - ../architecture.md
   - extract.md
@@ -16,7 +16,11 @@ related:
 This subsystem converts the scene graph's Appearance, material, and light nodes into flat, renderer-ready descriptors that a consumer can read without touching generated bindings or spec internals. It owns three distinct extraction concerns:
 
 - **Material**: `materialOf(appearance)` in `MaterialSystem.hpp` dispatches on the material node type (Material/PhysicalMaterial/UnlitMaterial) and produces a tagged `MaterialDesc` with texture slots populated. Texture slot precedence (material-borne slots win over legacy `Appearance.texture`) is enforced here, not in the caller.
-- **Texture**: `TextureExtract.hpp` enriches texture descriptors produced by `MaterialSystem` with the full §18.4.9 sampler state (`extendedSamplerOf`), §18.4.8 procedural coordinate generation descriptors (`texCoordGenOf`), baked §18.4.10 UV transforms (`applyTextureTransformToMesh`), and resolved decoded pixels from the consumer's `TextureResolver` callback.
+- **Texture**: `MaterialSystem` fills sampler state with `extendedSamplerOf`.
+  `TextureExtract.hpp` adds §18.4.8 procedural coordinate generation descriptors
+  (`texCoordGenOf`), bakes §18.4.10 UV transforms across coordinate sets
+  (`applyTextureTransformsToMesh`), and resolves decoded pixels through the
+  consumer's `TextureResolver` callback.
 - **Lights**: `LightSystem::collect(scene)` walks the scene graph, accumulates the world transform fresh along every path (never reads the shared `world_` table, which is first-path-only), and returns a `std::vector<LightDesc>` with all active lights world-resolved. `LightSystem::collectProjectors` runs the same walk for TextureProjector/TextureProjectorParallel and returns `ProjectorDesc` values (`SceneExtractor::projectors()` resolves their textures).
 
 The subsystem is intentionally IO-free: it never loads image bytes, opens files, or calls network APIs. (The SDK as a whole does open local files on the parse path — `parseFile` — but nothing in texture extraction does.) `AssetResolver.hpp` defines the seam type (`std::function`) that a consumer plugs in to supply bytes; `TextureResolver.hpp` defines the narrower, decoded-pixel variant used by `TextureExtract`.
@@ -26,15 +30,14 @@ The subsystem is intentionally IO-free: it never loads image bytes, opens files,
 | File | Role |
 |---|---|
 | `runtime/extract/MaterialSystem.hpp` | `materialOf()` / `texturesOf()` — Appearance → `MaterialDesc` + `TextureRef` vector; enforces material-slot precedence (D6); builds `SamplerParams` and `ExtendedSamplerParams`. |
-| `runtime/extract/TextureExtract.hpp` | `textureTransformParamsOf()`, `applyTextureTransformToMesh()`, `extendedSamplerOf()`, `texCoordGenOf()`, `resolveTextureRefs()`, `enrichTextureRefs()` — enriches `TextureRef` vectors with samplers, UV gen, baked transforms, and resolved pixels. |
+| `runtime/extract/TextureExtract.hpp` | `textureTransformParamsListOf()`, `applyTextureTransformsToMesh()`, `extendedSamplerOf()`, `texCoordGenOf()`, `resolveTextureRefs()`, `enrichTextureRefs()` — enriches `TextureRef` vectors with samplers, UV gen, baked transforms, and resolved pixels. |
 | `runtime/extract/TextureTransform2D.hpp` | Pure-math §18.4.10 UV transform: `TextureTransform2DParams`, `applyTextureTransform()`, `isIdentityTextureTransform()`, `makeTextureTransform3x3()`. Also hosts `BoundaryMode`, `MagFilter`, `MinFilter`, `ExtendedSamplerParams`, `TexCoordGenMode`, `TexCoordGenDesc`. No node or scene-graph includes. |
 | `runtime/extract/TextureResolver.hpp` | Seam type: `TextureResolver` (`std::function<TexturePixelResult(const std::string&)>`), `TexturePixelResult` / `TexturePixels` / `TextureResolveStatus`, `makeNullTextureResolver()`. |
-| `runtime/extract/TextureDesc.hpp` | Binary texture descriptor for embedder-supplied compressed/decoded textures: `TextureDesc`, `PixelFormat`, `TextureType`, `ColorSpace`, `WrapMode`, `FilterMode`, `MipLevelDesc`, `KhrTextureTransform`. |
 | `runtime/extract/LightSystem.hpp` | `LightSystem::collect(scene)` — scene walk → `std::vector<LightDesc>`, world-resolved; per-path transform re-accumulation to handle USE'd lights under multiple transforms. |
 | `runtime/extract/AssetResolver.hpp` | Generic IO seam: `AssetResolver` (`std::function<AssetResult(url, AssetKind)>`), `AssetResult`, `AssetStatus`, `AssetKind`. Two invocation contracts: render-time (Pending allowed) vs parse-time/SYNC (Pending is incoherent). |
 | `runtime/events/GeneratedCubeMapSystem.hpp` | §34.4.2 runtime half of GeneratedCubeMapTexture: resets `update` NEXT_FRAME_ONLY to NONE at the start of the tick after the frame that drew it, as an event ([ADR-0060](../decisions/0060-generated-cube-maps-local-frame.md)). Attached by `attachStandardRuntime`. |
 | `runtime/events/TextureProjectorSystem.hpp` | §42 `aspectRatio` output: emits width/height for a PixelTexture projector texture on load and when the texture or its image changes ([ADR-0061](../decisions/0061-texture-projectors-as-lights.md)). Attached by `attachStandardRuntime`. |
-| `runtime/extract/RenderItem.hpp` | Descriptor contract shared by the whole extraction layer: `TextureRef`, `MaterialDesc`, `LightDesc`, `MeshData`, `SamplerParams`. Includes `TextureDesc.hpp` and `TextureTransform2D.hpp`. |
+| `runtime/extract/RenderItem.hpp` | Descriptor contract shared by the whole extraction layer: `TextureRef`, `MaterialDesc`, `LightDesc`, `MeshData`, `SamplerParams`. Includes `TextureTransform2D.hpp`. |
 
 ## Interfaces and seams
 
@@ -60,18 +63,29 @@ Null/default rules:
 **Texture enrichment**
 
 ```cpp
-TextureTransform2DParams textureTransformParamsOf(const X3DNode *appearance);
-void applyTextureTransformToMesh(MeshData &mesh, const TextureTransform2DParams &p);
+std::vector<TextureTransform2DParams>
+textureTransformParamsListOf(const X3DNode *appearance);
+std::vector<TextureTransform2DParams>
+textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom);
+void applyTextureTransformsToMesh(
+    MeshData &mesh, const std::vector<TextureTransform2DParams> &params);
 ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<X3DNode> &texNode);
 TexCoordGenDesc texCoordGenOf(const X3DNode *geom, bool *has, int channel = 0);
 void resolveTextureRefs(std::vector<TextureRef> &refs, const TextureResolver &resolver);
 void enrichTextureRefs(std::vector<TextureRef> &refs,
-                       const std::vector<std::shared_ptr<X3DNode>> &texNodes,
                        const X3DNode *geom,
                        const X3DNode *appearance = nullptr);
 ```
 
-`applyTextureTransformToMesh` bakes the §18.4.10 UV transform into `MeshData::texcoords` in place; identity transforms early-exit with no allocation, keeping untransformed mesh bytes unchanged. The application order follows the normative matrix `Tc' = C·S·R·C⁻¹·T·Tc` — translate → pivot-to-centre → **rotate → scale** → un-pivot (rotation BEFORE scaling, per §18.4.10's "(in order)" list; the contradicting prose sentence is treated as editorial — TXF-1). `makeTextureTransform3x3` produces the equivalent 3×3 for a shader-upload consumer.
+`applyTextureTransformsToMesh` bakes §18.4.10 UV transforms into
+`MeshData::texcoordSets` and keeps `texcoords` as the set-zero mirror. A single
+transform applies to every set; a list selects transforms by set index. Empty
+lists leave the mesh unchanged. Identity transforms preserve UV values. The
+application order follows the normative matrix `Tc' = C·S·R·C⁻¹·T·Tc`: translate,
+pivot to the center, rotate, scale, then un-pivot. Rotation precedes scaling,
+following §18.4.10's application list; the contradicting prose sentence is
+treated as editorial. `makeTextureTransform3x3` produces the equivalent 3×3
+matrix for shader upload.
 
 `resolveTextureRefs` applies the MFString fallback order (first non-failed URL wins) and threads decoded pixels from the `TextureResolver` callback onto `TextureRef::resolvedPixels`. It recurses into `Source::Multi` stages. `Source::Inline` (PixelTexture) and `Source::Movie` refs are skipped.
 
@@ -118,9 +132,10 @@ TextureResolver makeNullTextureResolver(); // always returns makeFailed()
 
 RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resolver; the consumer calls `resolveTextureRefs` explicitly at render time.
 
-**Binary texture descriptor**
-
-`TextureDesc` in `TextureDesc.hpp` is an embedder-filled struct for compressed or pre-decoded textures arriving via `TextureRef::Source::Buffer`. `PixelFormat` covers uncompressed (R8 through RGBA16F), block-compressed (BC1–BC7), mobile (ETC2, ASTC), and the `BasisUniversal = 255` supercompressed sentinel. The SDK does not fill or decode `TextureDesc`; the consumer fills `TextureRef::resolved_desc` once it has decoded `TextureRef::bufferBytes`.
+`TextureRef::Source::Buffer` remains reserved for existing consumer switches.
+It has no payload fields or extraction path. All source enumerator values stay
+unchanged. Decoded image data crosses the `TextureResolver` seam as
+`TexturePixelResult`.
 
 ### Movie frame decoding
 
@@ -136,7 +151,7 @@ See the [decision amendment](../decisions/0041-moviedecoder-seam-royalty-free-de
 - **`TextureResolver` seam** — the consumer (or an adapter around stb_image/libpng) supplies a `TextureResolver` and calls `resolveTextureRefs` after `materialOf`; the SDK provides the stub `makeNullTextureResolver()` (always-failed, white-fallback rendering).
 - **`AssetResolver` seam** — one callback for both render-time URL bytes and parse-time Inline/EXTERNPROTO bytes. `AssetKind` lets one resolver branch by intent and pick the appropriate async/sync policy.
 - **`geombounds` reflection helpers** — all field reads in `MaterialSystem`, `TextureExtract`, and `LightSystem` go through `geombounds::getField` / `geombounds::getNode` / `geombounds::hasField` so no generated node type is directly named; the subsystem stays valid across regeneration.
-- **`SceneExtractor` integration** — `SceneExtractor.hpp` includes `MaterialSystem.hpp` and `LightSystem.hpp`. It calls `materialOf(appearance)` for each Shape's Appearance, calls `LightSystem::collect(scene)` on full snapshots and deltas with active or changed lights, and calls `TextureExtract` helpers (via `textureTransformParamsOf` + `applyTextureTransformToMesh` + `enrichTextureRefs`) on extracted mesh data. `SceneExtractor` is the only caller in the production path; the free functions are also exercised directly by tests.
+- **`SceneExtractor` integration** — `SceneExtractor.hpp` includes `MaterialSystem.hpp` and `LightSystem.hpp`. It calls `materialOf(appearance)` for each Shape's Appearance, calls `LightSystem::collect(scene)` on full snapshots and deltas with active or changed lights, and calls `TextureExtract` helpers (via `textureTransformsForGeometry` + `applyTextureTransformsToMesh` + `enrichTextureRefs`) on extracted mesh data. `SceneExtractor` is the only caller in the production path; the free functions are also exercised directly by tests.
 
 ## How it is tested
 
@@ -145,7 +160,6 @@ See the [decision amendment](../decisions/0041-moviedecoder-seam-royalty-free-de
 - `x3d_cpuraster_multi_texture_test` (built with `-DX3D_CPP_BUILD_CPURASTER=ON`; the raster tests register through a `foreach` in `examples/cpu_raster/CMakeLists.txt`, which the doc ctest gate does not scan, so it is cited by target name) — §18.4.3 MultiTexture stage combining in the CPU rasterizer (`examples/cpu_raster/tests/multi_texture_test.cpp`): two-stage MODULATE gives the product, REPLACE takes the second stage, OFF/ADD/ADDSIGNED/SUBTRACT/SELECTARG2/FACTOR/COMPLEMENT, and a single texture is unchanged.
 - `ctest --preset dev -R x3d_extract_tests` (doctest case: `texture_extract_test`) — T-TEX v1 end-to-end coverage: authored `TextureCoordinate` wins over §13 default projection; `TextureTransform` center/rotation/scale/translation bake (§18.4.10); `extendedSamplerOf` with and without `TextureProperties` (§18.4.9); `TextureCoordinateGenerator` mode/parameter descriptor (§18.4.8); `resolveTextureRefs` MFString fallback order + Inline skip; 3D textures (T3D-1) — `PixelTexture3D` → `Source::Tex3D` descriptor with the right width/height/depth/numComponents/texel bytes + `repeatR`, default `image` → zero-size, and `ComposedTexture3D` → slice refs reusing the 2D path. Source: `runtime/extract/tests/texture_extract_test.cpp`.
 - `ctest --preset dev -R x3d_extract_tests` (doctest case: `light_system_test`) — `LightSystem::collect` unit tests: DirectionalLight/PointLight/SpotLight field reads; world-frame direction and location; `global` flag default differences per light type; `on==false` skip; `scopeRoot` assignment. Source: `runtime/extract/tests/light_system_test.cpp`.
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `texture_desc_test`) — `TextureDesc` struct, `PixelFormat` compressed/uncompressed predicate, `MipLevelDesc` accessors. Source: `runtime/extract/tests/texture_desc_test.cpp`.
 - `ctest --preset dev -R x3d_extract_oracle_test` — STL round-trip oracle using `SceneExtractor` (exercises the `materialOf` integration path indirectly via extraction). Requires `X3D_CPP_BUILD_EXT`. Source: `tools/x3d-cli/extract_oracle_test.cpp`.
 
 ## Related specs and ADRs

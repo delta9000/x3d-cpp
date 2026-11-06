@@ -29,8 +29,6 @@ TEST_CASE("render_item_test") {
   CHECK((hash(p1) == hash(p2))); // equal keys must share a bucket.
 
   // RenderItemId handle
-  RenderItemId id = 7;
-  CHECK((id != kInvalidRenderItemId));
   static_assert(std::is_same_v<RenderItemId, std::uint32_t>);
 
   // GeomId: content identity
@@ -44,40 +42,10 @@ TEST_CASE("render_item_test") {
 
   // MeshData
   MeshData mesh;
-  mesh.positions = {SFVec3f{0, 0, 0}, SFVec3f{1, 0, 0}, SFVec3f{0, 1, 0}};
-  mesh.indices = {0, 1, 2};
-  mesh.normals = {SFVec3f{0, 0, 1}};
-  mesh.texcoords = {SFVec2f{0, 0}, SFVec2f{1, 0}, SFVec2f{0, 1}};
-  mesh.colors = {SFColorRGBA{1, 0, 0, 1}};
-  mesh.ccw = true;
-  mesh.solid = true;
-  mesh.hasNormals = true;
-  mesh.hasColors = true;
-  CHECK((mesh.indices.size() == 3));
-
   // isGlyphMesh defaults false for all non-text geometry.
   CHECK((mesh.isGlyphMesh == false));
 
-  // a glyph mesh is a plain MeshData with isGlyphMesh=true (routing flag).
-  // Each quad: 4 positions (XY plane, Z=0), 4 texcoords (atlas UV), 6 indices.
-  MeshData glyphMesh;
-  glyphMesh.positions  = {SFVec3f{0,0,0}, SFVec3f{1,0,0}, SFVec3f{1,1,0}, SFVec3f{0,1,0}};
-  glyphMesh.texcoords  = {SFVec2f{0,0},   SFVec2f{1,0},   SFVec2f{1,1},   SFVec2f{0,1}};
-  glyphMesh.indices    = {0,1,2, 0,2,3};  // two CCW triangles per quad.
-  glyphMesh.isGlyphMesh = true;
-  CHECK((glyphMesh.isGlyphMesh == true));
-  CHECK((glyphMesh.indices.size() == 6)); // 2 tris per glyph quad.
-
-  // TextureRef / SamplerParams
-  SamplerParams sampler{};
   TextureRef tex;
-  tex.slot = TextureRef::Slot::BaseColor;
-  tex.source = TextureRef::Source::Url;
-  tex.url = {"diffuse.png"};
-  tex.sampler = sampler;
-  tex.inlinePixels = SFImage{};
-  tex.channel = 0;
-  CHECK((tex.url.size() == 1));
 
   // resolvedPixels defaults to Failed (= PoC white-fallback contract).
   CHECK((tex.resolvedPixels.failed()));
@@ -100,81 +68,15 @@ TEST_CASE("render_item_test") {
   pendingTex.resolvedPixels = TexturePixelResult::makePending();
   CHECK((pendingTex.resolvedPixels.pending()));
 
-  // Source::Inline textures do not use the resolver; resolvedPixels stays
-  // Failed and the consumer reads inlinePixels instead.
-  TextureRef inlineTex;
-  inlineTex.source = TextureRef::Source::Inline;
-  inlineTex.inlinePixels = SFImage{2, 2, 3, std::vector<unsigned char>(12, 0xFF)};
-  CHECK((inlineTex.inlinePixels.width == 2));
-  CHECK((inlineTex.resolvedPixels.failed())); // never set for Inline sources.
-
   // MaterialDesc + toRGBA documented alpha = 1 - transparency
   MaterialDesc mat;
   CHECK((mat.model == MaterialModel::Phong));
   CHECK((feq(mat.toRGBA().a, 1.0f))); // default transparency=0 => alpha=1.
   mat.transparency = 0.25f;
   CHECK((feq(mat.toRGBA().a, 0.75f)));
-  mat.model = MaterialModel::Physical;
-  mat.physical.baseColor = SFColor{0.1f, 0.2f, 0.3f};
-  mat.physical.metallic = 0.0f;
-  mat.physical.roughness = 0.5f;
-  mat.textures.push_back(tex);
-  CHECK((mat.textures.size() == 1));
 
-  MaterialDesc unlit;
-  unlit.model = MaterialModel::Unlit;
-  // unlit bool dropped; model == Unlit is the discriminator.
-  unlit.alphaMode = AlphaMode::Blend; // descriptor-only surface compiles.
-
-  // LightDesc: authored global carried, not promoted
-  LightDesc dir;
-  dir.type = LightDesc::Type::Directional;
-  dir.global = false; // DirectionalLight spec default; carried verbatim.
-  dir.worldDirection = SFVec3f{0, 0, -1};
-  dir.scopeRoot = nA;
-  CHECK((dir.global == false));
-
-  LightDesc point;
-  point.type = LightDesc::Type::Point;
-  point.global = true; // PointLight spec default.
-  point.worldLocation = SFVec3f{1, 2, 3};
-  CHECK((point.global == true));
-
-  LightDesc spot;
-  spot.type = LightDesc::Type::Spot;
-  spot.cutOffAngle = 0.5f;
-  (void)spot;
-
-  // CameraDesc: min-dimension FOV + descriptor-only ortho surface
+  // CameraDesc: default min-dimension field of view
   CameraDesc cam;
   CHECK((feq(cam.fieldOfView, 0.7854f))); // X3D default min-dimension FOV.
-  cam.viewMatrix = Mat4::identity();
-  cam.cameraChanged = true;
-  cam.ortho = true;                       // descriptor-only surface compiles.
-  cam.orthoFieldOfView = {-1, -1, 1, 1};
-
-  // BackgroundDesc
-  BackgroundDesc bg;
-  bg.skyColor = {SFColor{0, 0, 0.2f}, SFColor{0, 0.5f, 1.0f}};
-  bg.skyAngle = {1.2f};
-  bg.groundColor = {SFColor{0.1f, 0.1f, 0.1f}};
-  bg.backgroundChanged = true;
-  CHECK((bg.skyColor.size() == 2));
-
-  // RenderDelta: the single authoritative change channel
-  RenderDelta delta;
-  delta.added = {id};
-  delta.removed = {};
-  delta.updatedTransform = {id};
-  delta.updatedGeometry = {id};
-  delta.updatedMaterial = {id};
-  delta.cameraChanged = true;
-  delta.backgroundChanged = false;
-  delta.lightsChanged = true;
-  CHECK((delta.added.size() == 1));
-
-  // RenderItem must not carry change bits — the design dropped any parallel
-  // encoding. (No RenderItem struct exists in this header; change lives only in
-  // RenderDelta. This is a contract assertion expressed by construction.)
   return;
 }

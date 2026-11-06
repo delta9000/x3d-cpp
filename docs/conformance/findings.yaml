@@ -1461,8 +1461,8 @@
     runtime/hanim/HAnimSkin.hpp compiles an immutable SkinBinding per humanoid (bind positions and
     normals, uncapped normalized CSR influences, inverse bind matrices from the v2 jointBinding*
     fields or identity for the v1 rest pose) and evaluates a humanoid-local palette each tick.
-    SceneExtractor emits the skin once from HAnimHumanoid.skin with RenderItem::skin (binding plus
-    per-corner source coordinate/normal indices), reports pose-only changes in
+    SceneExtractor emits the skin once from HAnimHumanoid.skin with RenderItem::skin (binding and pose version)
+    and per-corner source coordinate/normal indices on the shared RenderItem::mesh, reports pose-only changes in
     RenderDelta::updatedSkinPose, and recompiles the binding only on binding-field edits.
     deformedMesh() runs the reference CPU skinner; the cpu_raster example draws with it.
     Verified against an independent X3D browser (X_ITE) on posed archive humanoids (JoeKick, Leif,

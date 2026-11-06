@@ -363,9 +363,9 @@ GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
   const auto &b = *item.skin->binding;
   // Per corner: (offset, count) into the influence buffer for the corner's
   // source coordinate. Its normal is skinned with the same influences.
-  std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 2);
-  for (std::size_t i = 0; i < item.skin->sourceCoordIndex.size(); ++i) {
-    auto source = item.skin->sourceCoordIndex[i];
+  std::vector<std::uint32_t> ranges(item.mesh->sourceCoordIndex.size() * 2);
+  for (std::size_t i = 0; i < item.mesh->sourceCoordIndex.size(); ++i) {
+    auto source = item.mesh->sourceCoordIndex[i];
     if (source < b.bindPositions.size() && source + 1 < b.influenceOffset.size()) {
       ranges[i * 2] = b.influenceOffset[source];
       ranges[i * 2 + 1] = b.influenceOffset[source + 1] - ranges[i * 2];
@@ -1231,8 +1231,8 @@ int main(int argc, char **argv) {
       const auto &it = extractor.item(id);
       if (it.skin)
         std::fprintf(stderr, "[poc] headless skin %u: corners=%zu normal indices=%zu influences=%zu displacers=%zu\n",
-                     static_cast<unsigned>(id), it.skin->sourceCoordIndex.size(),
-                     it.skin->sourceNormalIndex.size(), it.skin->binding->influences.size(),
+                     static_cast<unsigned>(id), it.mesh->sourceCoordIndex.size(),
+                     it.mesh->sourceNormalIndex.size(), it.skin->binding->influences.size(),
                      it.skin->binding->displacers.size());
     }
 
@@ -1670,18 +1670,18 @@ int main(int argc, char **argv) {
     // Joint displacers add offsets after skinning; those skins use the
     // reference CPU mesh. Everything else skins on the GPU.
     bool fallback = !it.skin->binding->displacers.empty() ||
-                    it.skin->sourceCoordIndex.size() != it.mesh->positions.size();
+                    it.mesh->sourceCoordIndex.size() != it.mesh->positions.size();
     ex::MeshData bindMesh = *it.mesh;
     if (!fallback) {
       const auto &binding = *it.skin->binding;
       for (std::size_t i = 0; i < bindMesh.positions.size(); ++i) {
-        auto source = it.skin->sourceCoordIndex[i];
+        auto source = it.mesh->sourceCoordIndex[i];
         if (source < binding.bindPositions.size())
           bindMesh.positions[i] = binding.bindPositions[source];
         // Authored bind normal when present; otherwise keep the normal the
         // mesh builder generated for the bind pose.
-        if (i < it.skin->sourceNormalIndex.size() && i < bindMesh.normals.size()) {
-          auto normal = it.skin->sourceNormalIndex[i];
+        if (i < it.mesh->sourceNormalIndex.size() && i < bindMesh.normals.size()) {
+          auto normal = it.mesh->sourceNormalIndex[i];
           if (normal < binding.bindNormals.size())
             bindMesh.normals[i] = binding.bindNormals[normal];
         }

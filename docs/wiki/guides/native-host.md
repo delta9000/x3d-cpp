@@ -147,9 +147,11 @@ any tick, extraction, rebuild, or session destruction.
 - On unload, drop borrowed references and all ID-indexed lookup tables
 
 `MeshRef` (`shared_ptr<const MeshData>`) and `TexturePixelsRef` own immutable CPU
-payloads. Retaining these handles preserves those bytes across replacement or
-session destruction. Copying an entire descriptor does **not** make its raw
-node/path/light/skin identities owning or portable. Keeping a node `shared_ptr`
+payloads. For skin items, `item.mesh->sourceCoordIndex` and
+`item.mesh->sourceNormalIndex` hold the corner remaps; `item.skin` carries the
+binding and pose version. Retaining these handles preserves those bytes across
+replacement or session destruction. Copying an entire descriptor does **not**
+make its raw node/path/light/skin identities owning or portable. Keeping a node `shared_ptr`
 alive also does not keep its former session or runtime callbacks valid: do not
 write through retained runtime-bound nodes after unload. A GPU upload or draw may
 outlive the CPU frame: hold required payloads and defer freeing GPU resources

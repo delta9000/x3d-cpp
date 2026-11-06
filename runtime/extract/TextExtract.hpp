@@ -98,7 +98,6 @@ inline MeshData buildTextMesh(const X3DNode &textNode, const FontMetrics &fm,
 
   const std::size_t N = t.strings.size();
   for (std::size_t i = 0; i < N; ++i) {
-    if (i >= layout.lineBaselineOrigins.size()) break;
     const float baseX = layout.lineBaselineOrigins[i][0];
     const float baseY = layout.lineBaselineOrigins[i][1];
 

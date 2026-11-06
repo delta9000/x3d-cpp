@@ -480,4 +480,4 @@ The full conformance extraction oracle is exercised by `x3d_extract_oracle_test`
 - [Execution context](execution-context.md) — `X3DExecutionContext` (camera/background/dirty pull surface)
 - [Ext firewall](ext-firewall.md) — `PackedMesh` + `externalGeometryResolver` live here behind the firewall
 - Spec: `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md` — the M2.5 design that established `SceneExtractor`, `RenderDelta`, and the pull-per-path model
-- Spec: `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md` — Phase 1 `PackedMesh`/`TextureDesc` binary geometry and texture abstractions
+- Spec: `docs/superpowers/specs/2026-06-18-binary-mesh-texture-abstractions.md` — original binary geometry and texture design; the runtime retains `PackedMesh`, while textures use the decoded-pixel resolver seam

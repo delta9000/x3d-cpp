@@ -46,6 +46,11 @@ The unused per-node compatibility path has been removed; see the
 | **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 | — | `x3d_movie_tests` (lifecycle and composition contract) | MPEG-1 playback |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 
+The experimental render feed keeps skin corner remaps on the shared
+`RenderItem::mesh`; `SkinDesc` retains the binding and pose version.
+`TextureRef::Source::Buffer` stays reserved with its existing numeric value,
+without a binary-texture payload. Decoded textures use `TextureResolver`.
+
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.
 **NOT-YET-PROVEN** = one backend (or pending second) and no swap-test gate. `—` = not yet
 applicable.

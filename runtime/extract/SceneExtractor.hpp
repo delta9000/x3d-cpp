@@ -64,15 +64,13 @@ struct RenderItem {
   MeshRef mesh = emptyMeshRef();
   struct SkinDesc {
     std::shared_ptr<const hanim::SkinBinding> binding;
-    std::vector<std::uint32_t> sourceCoordIndex;
-    std::vector<std::uint32_t> sourceNormalIndex;
     std::uint64_t poseVersion = 0;
   };
   std::optional<SkinDesc> skin;
 
   // For AoS items,
-  // geometry_ext.kind == AoS and geometry_ext.aos is empty (mesh above is the
-  // authoritative AoS data). For Packed items (emitted via emitPacked()),
+  // geometry_ext.kind == AoS and mesh above carries the payload.
+  // For Packed items (emitted via emitPacked()),
   // geometry_ext.kind == Packed and geometry_ext.packed carries the binary slab.
   Geometry geometry_ext;
 
@@ -449,28 +447,28 @@ public:
     std::vector<SFVec3f> positions;
     hanim::deform(*skin.binding, pose, positions, nullptr);
     if (positions.empty()) return out; // temporary core stub has no bind data.
-    for (std::size_t i = 0; i < out.positions.size() && i < skin.sourceCoordIndex.size(); ++i)
-      if (skin.sourceCoordIndex[i] < positions.size())
-        out.positions[i] = positions[skin.sourceCoordIndex[i]];
+    for (std::size_t i = 0; i < out.positions.size() && i < rec.mesh->sourceCoordIndex.size(); ++i)
+      if (rec.mesh->sourceCoordIndex[i] < positions.size())
+        out.positions[i] = positions[rec.mesh->sourceCoordIndex[i]];
     // Normals: each corner's bind normal (authored skinNormal /
     // skinBindingNormals via its normal index, else the normal the mesh
     // builder generated for the bind pose) skinned with the influences of the
     // corner's source coordinate, as the GPU path does (ADR-0055).
     const bool authored = !skin.binding->bindNormals.empty() &&
-                          skin.sourceNormalIndex.size() == out.positions.size();
-    if (skin.sourceCoordIndex.size() == out.positions.size() &&
+                          rec.mesh->sourceNormalIndex.size() == out.positions.size();
+    if (rec.mesh->sourceCoordIndex.size() == out.positions.size() &&
         out.normals.size() == out.positions.size() && (authored || rec.mesh->hasNormals)) {
       std::vector<Mat4> inversePalette;
       inversePalette.reserve(pose.palette.size());
       for (const auto &matrix : pose.palette) inversePalette.push_back(matrix.inverse());
       for (std::size_t i = 0; i < out.normals.size(); ++i) {
-        if (authored && skin.sourceNormalIndex[i] < skin.binding->bindNormals.size())
+        if (authored && rec.mesh->sourceNormalIndex[i] < skin.binding->bindNormals.size())
           out.normals[i] = hanim::detail::deformCornerNormal(
-              *skin.binding, inversePalette, skin.sourceCoordIndex[i],
-              skin.sourceNormalIndex[i]);
+              *skin.binding, inversePalette, rec.mesh->sourceCoordIndex[i],
+              rec.mesh->sourceNormalIndex[i]);
         else
           out.normals[i] = hanim::detail::deformNormalWithCoordinate(
-              *skin.binding, inversePalette, skin.sourceCoordIndex[i], rec.mesh->normals[i]);
+              *skin.binding, inversePalette, rec.mesh->sourceCoordIndex[i], rec.mesh->normals[i]);
       }
     }
     return out;
@@ -619,22 +617,10 @@ public:
                                          : FogDesc::Type::Linear;
       f.visibilityRange =
           geombounds::getField<float>(*n, "visibilityRange", 0.0f);
-      f.visibilityRange *= fogWorldScale(ctx_.worldTransformAny(n));
+      f.visibilityRange *= LocalFogSystem::worldScale(ctx_.worldTransformAny(n));
     }
     f.fogChanged = true;
     return f;
-  }
-
-  // Local->world scale factor of a transform matrix: the mean of the upper-3x3
-  // column norms. Equals the uniform scale exactly; for a non-uniform scale it
-  // is the documented isotropic approximation (which axis is "the" scale is not
-  // spec'd — §24.4.2 says only "in the coordinate space of the Fog node").
-  static float fogWorldScale(const Mat4 &m) {
-    auto norm = [&](int c) {
-      const float x = m.m[c * 4 + 0], y = m.m[c * 4 + 1], z = m.m[c * 4 + 2];
-      return std::sqrt(x * x + y * y + z * z);
-    };
-    return (norm(0) + norm(1) + norm(2)) / 3.0f;
   }
 
   // sceneWorldBounds — union over every emitted item of (its local mesh AABB
@@ -702,7 +688,7 @@ private:
     std::unordered_set<const X3DNode *> visited;
     auto visit = [&](auto &&self, const X3DNode *node) -> void {
       if (!node || !visited.insert(node).second) return;
-      if (isTransform(node)) add(skinPoseDeps_, node);
+      if (TransformSystem::isTransform(node)) add(skinPoseDeps_, node);
       if (node->nodeTypeName() == "HAnimJoint") {
         add(skinBindingDeps_, node);
         skinBindFrames_[node] = {
@@ -766,12 +752,6 @@ private:
     return changed;
   }
 
-  // Delegates authored transforms to TransformSystem. Billboard's view-dependent
-  // frame is composed separately, using each placement's accumulated world.
-  static bool isTransform(const X3DNode *n) {
-    return TransformSystem::isTransform(n);
-  }
-
   static const std::vector<RenderItemId> &depsOf(const DepMap &m,
                                                  const X3DNode *n) {
     static const std::vector<RenderItemId> kEmpty;
@@ -784,7 +764,7 @@ private:
   // incremental, per-path-correct staleness fix: it never reads
   // ctx.worldTransform()/TransformSystem.world_ (the first-path table), so
   // a USE-shared placement under two Transforms updates each placement correctly.
-  // Per-node memo for one delta(): isTransform() allocates a type-name string and
+  // Per-node memo for one delta(): TransformSystem::isTransform() allocates a type-name string and
   // localMatrix() does five reflective field scans + a quaternion compose, so a
   // dirty ancestor shared by every dependent item would otherwise be recomposed
   // O(items * depth) times. Field values are stable between the end of tick()'s
@@ -871,7 +851,7 @@ private:
     auto it = cache.find(n);
     if (it != cache.end()) return it->second;
     LocalXf v;
-    v.isXform = isTransform(n);
+    v.isXform = TransformSystem::isTransform(n);
     v.isBillboard = n->nodeTypeName() == "Billboard";
     v.billboardAxis = v.isBillboard
         ? geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0})
@@ -938,8 +918,6 @@ private:
         const auto *humanoid = rec.skin->binding->humanoid;
         rec.skin->binding = skinBinding(humanoid);
         rec.skin->poseVersion = skinVersions_[humanoid];
-        rec.skin->sourceCoordIndex = rec.mesh->sourceCoordIndex;
-        rec.skin->sourceNormalIndex = rec.mesh->sourceNormalIndex;
       }
       if (mesh->indices.empty()) {
         if (liveIds_.count(id)) delta.removed.push_back(id);
@@ -1043,7 +1021,7 @@ private:
     // re-runs the resolver and re-derives the §18.4.8/9 descriptor surface. The
     // Authored UV transforms update the mesh; generated UV transforms update
     // the material descriptor. Both dependency channels are registered below.
-    enrichTextureRefs(rec.material.textures, /*texNodes=*/{}, rec.geometry.node,
+    enrichTextureRefs(rec.material.textures, rec.geometry.node,
                       appearance.get());
     // Shared appearances resolve once per URL; a changed URL is a cache miss.
     // Same-URL external edits do not dirty nodes. See ADR-0045.
@@ -1067,7 +1045,7 @@ private:
     bool viewDependent = false;
     for (const X3DNode *ancestor : path) {
       const bool billboard = ancestor->nodeTypeName() == "Billboard";
-      if (isTransform(ancestor) || billboard) {
+      if (TransformSystem::isTransform(ancestor) || billboard) {
         scopedStateDeps_.insert(ancestor);
         if (auto origin = geombounds::getNode(*ancestor, "geoOrigin"))
           scopedStateDeps_.insert(origin.get());
@@ -1105,7 +1083,7 @@ private:
     if (geombounds::hasField(*n, "visible") &&
         !geombounds::getField<bool>(*n, "visible", true))
       return;
-    Mat4 here = isTransform(n)
+    Mat4 here = TransformSystem::isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, ctx_.geoProjection()) : worldM;
     if (n->nodeTypeName() == "Billboard") {
       const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
@@ -1275,7 +1253,7 @@ private:
     // USE'd under two different TextureTransforms legitimately yields two meshes.
     mesh = bakedMesh(geom, std::move(mesh),
                      textureTransformsForGeometry(appearance.get(), geom));
-    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom,
+    enrichTextureRefs(material.textures, geom,
                       appearance.get());
     // Decode once per URL across shared placements; see ADR-0045.
     resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
@@ -1287,29 +1265,19 @@ private:
     if (it == index_.end()) {
       id = static_cast<RenderItemId>(items_.size());
       index_.emplace(path, id);
-      RenderItem rec;
-      rec.path = path;
-      rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
-      rec.material = std::move(material);
-      rec.shaderProgram = shaderFor(appearance.get());
-      rec.mesh = std::move(mesh);
-      rec.beyondVisibilityLimit = beyond;
-      rec.castShadow = castShadow;
-      items_.push_back(std::move(rec));
+      items_.emplace_back();
+      items_.back().path = path;
     } else {
-      // Reuse an interned path within this baseline and refresh the
-      // per-path world matrix + content (a rebuild reflects current field state).
       id = it->second;
-      RenderItem &rec = items_[id];
-      rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
-      rec.material = std::move(material);
-      rec.shaderProgram = shaderFor(appearance.get());
-      rec.mesh = std::move(mesh);
-      rec.beyondVisibilityLimit = beyond;
-      rec.castShadow = castShadow;
     }
+    RenderItem &rec = items_[id];
+    rec.worldTransform = worldM;
+    rec.geometry = GeomId{geom, meshContentVersion(geom, mesh)};
+    rec.material = std::move(material);
+    rec.shaderProgram = shaderFor(appearance.get());
+    rec.mesh = std::move(mesh);
+    rec.beyondVisibilityLimit = beyond;
+    rec.castShadow = castShadow;
 
     // attach the enabled ClipPlanes in scope at this placement.
     items_[id].clipPlanes = ClipPlaneList{};
@@ -1321,10 +1289,7 @@ private:
     tagLights(items_[id], path);
     tagLocalFog(items_[id], path);
     if (activeSkinHumanoid_) {
-      auto &rec = items_[id];
       rec.skin = RenderItem::SkinDesc{skinBinding(activeSkinHumanoid_),
-                                      rec.mesh->sourceCoordIndex,
-                                      rec.mesh->sourceNormalIndex,
                                       skinVersions_[activeSkinHumanoid_]};
       registerSkinDeps(activeSkinHumanoid_);
     } else {
@@ -1346,7 +1311,7 @@ private:
     auto appearance = geombounds::getNode(shape, "appearance");
     MaterialDesc material = materialOf(appearance ? appearance.get() : nullptr);
     const bool castShadow = geombounds::getField<bool>(shape, "castShadow", true);
-    enrichTextureRefs(material.textures, /*texNodes=*/{}, geom,
+    enrichTextureRefs(material.textures, geom,
                       appearance.get());
     // Decode once per URL across shared placements; see ADR-0045.
     resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
@@ -1356,31 +1321,21 @@ private:
     if (it == index_.end()) {
       id = static_cast<RenderItemId>(items_.size());
       index_.emplace(path, id);
-      RenderItem rec;
-      rec.path = path;
-      rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
-      rec.material = std::move(material);
-      rec.shaderProgram = shaderFor(appearance.get());
-      rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
-      rec.geometry_ext.kind = Geometry::Kind::Packed;
-      rec.geometry_ext.packed = std::move(packed);
-      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
-      rec.castShadow = castShadow;
-      items_.push_back(std::move(rec));
+      items_.emplace_back();
+      items_.back().path = path;
     } else {
       id = it->second;
-      RenderItem& rec = items_[id];
-      rec.worldTransform = worldM;
-      rec.geometry = GeomId{geom, geomVersions_[geom]};
-      rec.material = std::move(material);
-      rec.shaderProgram = shaderFor(appearance.get());
-      rec.mesh = emptyMeshRef();
-      rec.geometry_ext.kind = Geometry::Kind::Packed;
-      rec.geometry_ext.packed = std::move(packed);
-      rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
-      rec.castShadow = castShadow;
     }
+    RenderItem &rec = items_[id];
+    rec.worldTransform = worldM;
+    rec.geometry = GeomId{geom, geomVersions_[geom]};
+    rec.material = std::move(material);
+    rec.shaderProgram = shaderFor(appearance.get());
+    rec.mesh = emptyMeshRef(); // Packed items retain the never-null AoS channel.
+    rec.geometry_ext.kind = Geometry::Kind::Packed;
+    rec.geometry_ext.packed = std::move(packed);
+    rec.beyondVisibilityLimit = isBeyondVisibilityLimit(worldM, visibility_);
+    rec.castShadow = castShadow;
     // attach the enabled ClipPlanes in scope at this placement.
     items_[id].clipPlanes = ClipPlaneList{};
     for (const ClipPlaneDesc &cp : activeClips_) items_[id].clipPlanes.push(cp);
@@ -1496,7 +1451,7 @@ private:
     // of them re-accumulates this item's worldTransform.
     for (const X3DNode *anc : path) {
       const bool billboard = anc->nodeTypeName() == "Billboard";
-      if (isTransform(anc) || billboard) {
+      if (TransformSystem::isTransform(anc) || billboard) {
         appendDep(transformDeps_, anc, id);
         if (auto origin = geombounds::getNode(*anc, "geoOrigin"))
           appendDep(transformDeps_, origin.get(), id);

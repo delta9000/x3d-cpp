@@ -133,28 +133,16 @@ TEST_CASE("mesh_builder_tc3_test") {
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
 
-    // The cap corners are the trailing triangles. Collect cap-corner UVs via the
-    // cross-section bbox normalization and verify each square corner maps to a
-    // {0,1}x{0,1} combination. cross-section (1,1)->(1,1),(1,-1)->(1,0),
-    // (-1,-1)->(0,0),(-1,1)->(0,1).
-    auto expectCorner = [&](float cx, float cy, float es, float et) {
-      // s=(cx+1)/2, t=(cy+1)/2 for bbox [-1,1]^2.
-      CHECK((feq((cx + 1.0f) * 0.5f, es) && feq((cy + 1.0f) * 0.5f, et)));
-    };
-    expectCorner(1, 1, 1, 1);
-    expectCorner(1, -1, 1, 0);
-    expectCorner(-1, -1, 0, 0);
-    expectCorner(-1, 1, 0, 1);
-
-    // And the generated mesh actually CONTAINS a cap corner with a bbox-corner
-    // UV {0,1}x{0,1}. The caps are the last 4 tris (begin 2 + end 2) -> verify at
-    // least one texcoord equals (0,0) and one equals (1,1) (cap bbox extremes).
-    bool saw00 = false, saw11 = false;
-    for (const auto &uv : m.texcoords) {
-      if (feq(uv.x, 0.0f) && feq(uv.y, 0.0f)) saw00 = true;
-      if (feq(uv.x, 1.0f) && feq(uv.y, 1.0f)) saw11 = true;
+    // The last four triangles are the two caps. Check their generated UVs
+    // against their actual positions in the square's X-Z plane.
+    REQUIRE(m.indices.size() == 36);
+    for (std::size_t i = 24; i < m.indices.size(); ++i) {
+      const auto corner = m.indices[i];
+      const auto &p = m.positions[corner];
+      const auto &uv = m.texcoords[corner];
+      CHECK(feq(uv.x, (p.x + 1.0f) * 0.5f));
+      CHECK(feq(uv.y, (p.z + 1.0f) * 0.5f));
     }
-    CHECK((saw00 && saw11));
   }
 
   // 5. Zero-extent guards: no div-by-zero / NaN
@@ -179,18 +167,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     setF(g, "ccw", std::any(SFBool(false)));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
-    // The per-corner UV still matches its lattice id (S=chord[k], T=section)
-    // for side-wall corners — the swap reorders b/c consistently across pos and uv.
-    const int nc = 5;
-    const float chord[5] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
     for (std::size_t i = 0; i < m.texcoords.size(); ++i) {
-      const std::uint32_t lid = m.latticeIndex[i];
-      const int sec = static_cast<int>(lid) / nc;
-      const int k = static_cast<int>(lid) % nc;
-      // Side-wall corners (sections 0..ns-1 across a band): S must be chord[k].
-      // Cap corners share section 0 / last; their S is the bbox mapping, not
-      // chord — so only assert the chord identity holds for SOME corner set.
-      (void)sec; (void)k; (void)chord;
       CHECK((std::isfinite(m.texcoords[i].x) && std::isfinite(m.texcoords[i].y)));
     }
   }

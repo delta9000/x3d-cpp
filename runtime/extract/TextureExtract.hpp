@@ -123,24 +123,6 @@ inline TextureTransform2DParams textureTransformParamsOfNode(const x3d::nodes::X
   return p;
 }
 
-// textureTransformParamsOf — read Appearance.textureTransform into the pure
-// TextureTransform2DParams field bag (§18.4.10).
-//
-//   * appearance == nullptr / no textureTransform / null node => identity.
-//   * A 2D TextureTransform / TextureTransform2D node => its center/rotation/
-//     scale/translation SFVec2f+SFFloat fields.
-//   * MultiTextureTransform => first usable contained transform for legacy
-//     callers; use textureTransformParamsListOf() for per-channel transforms.
-//   * TextureTransformMatrix3D => project the 4x4 transform over (s,t,0,1) onto
-//     the same 2D seam.
-inline TextureTransform2DParams textureTransformParamsOf(const x3d::nodes::X3DNode *appearance) {
-  TextureTransform2DParams p; // identity by default.
-  if (!appearance) return p;
-  auto tt = geombounds::getNode(*appearance, "textureTransform");
-  if (!tt) return p;
-  return textureTransformParamsOfNode(*tt);
-}
-
 inline std::vector<TextureTransform2DParams>
 textureTransformParamsListOfNode(const x3d::nodes::X3DNode &tt) {
   if (tt.nodeTypeName() != "MultiTextureTransform")
@@ -160,21 +142,6 @@ textureTransformParamsListOf(const x3d::nodes::X3DNode *appearance) {
   auto tt = geombounds::getNode(*appearance, "textureTransform");
   if (!tt) return {};
   return textureTransformParamsListOfNode(*tt);
-}
-
-// applyTextureTransformToMesh — BAKE a TextureTransform into mesh.texcoords
-// (§18.4.10), in place. Identity transforms early-exit (no allocation, no write)
-// so untransformed meshes stay byte-for-byte identical. Operates on whatever
-// texcoords MeshBuilder already produced (authored TextureCoordinate or the
-// default §13 projection) — both are in the same [0,1]-ish UV space.
-inline void applyTextureTransformToMesh(MeshData &mesh,
-                                        const TextureTransform2DParams &p) {
-  if (isIdentityTextureTransform(p)) return;
-  for (SFVec2f &uv : mesh.texcoords) {
-    const std::array<float, 2> r = applyTextureTransform(uv.x, uv.y, p);
-    uv.x = r[0];
-    uv.y = r[1];
-  }
 }
 
 inline void applyTextureTransformsToMesh(
@@ -400,25 +367,14 @@ inline void resolveTextureRefs(
   }
 }
 
-// enrichTextureRefs — single pass an extractor calls after materialOf(): fills
-// each ref's extended sampler from its source texture node, and attaches the
-// geometry-borne TexCoordGenDesc (one generator per geometry applies to every
-// texture channel that uses default coords). MaterialSystem already populated the
-// legacy SamplerParams + URLs; this layers the §18.4.9/§18.4.8 descriptor surface.
-//
-// `texNodes` is parallel to `refs` (the concrete texture node each ref came from,
-// or nullptr); pass an empty vector to skip the sampler enrichment (the legacy
-// SamplerParams on each ref still stands).
+// Attach coordinate mapping, generators, and their transforms to material refs.
 inline void enrichTextureRefs(
     std::vector<TextureRef> &refs,
-    const std::vector<std::shared_ptr<x3d::nodes::X3DNode>> &texNodes,
     const x3d::nodes::X3DNode *geom,
     const x3d::nodes::X3DNode *appearance = nullptr) {
   bool hasGen = false;
   const auto transforms = textureTransformsForGeometry(appearance, geom);
   for (std::size_t i = 0; i < refs.size(); ++i) {
-    if (i < texNodes.size() && texNodes[i])
-      refs[i].extSampler = extendedSamplerOf(texNodes[i]);
     if (geom && !refs[i].texCoordMapping.empty()) {
       auto tc = geombounds::getNode(*geom, "texCoord");
       if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {

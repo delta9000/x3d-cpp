@@ -94,3 +94,11 @@ Segment displacers apply to their Segment's own mesh before it is placed.
   space, source-index remap) is fixed by this ADR.
 - Content with the v2 binding fields is supported but not represented in the
   archive, so it is tested with synthetic scenes.
+
+## Amendment (2026-11-05)
+
+The per-placement copies of source coordinate and normal remaps were removed
+from `RenderItem::SkinDesc`. No consumer needs an independent copy: the shared
+`item.mesh` already owns the same `sourceCoordIndex` and `sourceNormalIndex`
+arrays. CPU and GPU consumers read those arrays there; the binding and pose
+version remain in `SkinDesc`.

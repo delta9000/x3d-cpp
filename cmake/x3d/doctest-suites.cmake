@@ -179,7 +179,6 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_feed_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/packed_mesh_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_geometry_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/external_geom_seam_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_normals_triangulation_test.cpp"

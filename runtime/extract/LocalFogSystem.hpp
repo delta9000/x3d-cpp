@@ -69,23 +69,19 @@ public:
     return out;
   }
 
-private:
-  static bool isTransform(const X3DNode *n) {
-    return x3d::runtime::TransformSystem::isTransform(n);
-  }
-
-  static bool isGroupingNode(const X3DNode *n) {
-    return n && geombounds::hasField(*n, "children");
-  }
-
-  // Mean of the upper-3x3 column norms — matches SceneExtractor::fogWorldScale
-  // (uniform scale exact; non-uniform is the documented isotropic approximation).
+  // Mean of the upper-3x3 column norms: uniform scale is exact; non-uniform
+  // scale uses the documented isotropic approximation for global and local fog.
   static float worldScale(const Mat4 &m) {
     auto norm = [&](int c) {
       const float x = m.m[c * 4 + 0], y = m.m[c * 4 + 1], z = m.m[c * 4 + 2];
       return std::sqrt(x * x + y * y + z * z);
     };
     return (norm(0) + norm(1) + norm(2)) / 3.0f;
+  }
+
+private:
+  static bool isGroupingNode(const X3DNode *n) {
+    return n && geombounds::hasField(*n, "children");
   }
 
   static LocalFogDesc makeFog(const X3DNode &n, const Mat4 &worldM,
@@ -112,7 +108,7 @@ private:
     if (path.size() >= kMaxNestingDepth) return;
     for (const X3DNode *ancestor : path)
       if (ancestor == n) return; // reject back-edges, not separate USE placements.
-    const bool frame = isTransform(n);
+    const bool frame = TransformSystem::isTransform(n);
     const Mat4 here = frame
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 

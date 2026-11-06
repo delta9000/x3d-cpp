@@ -70,7 +70,7 @@ Every top-level functional area gets one page. The canonical list follows the ar
 | covered | `subsystems/sensors.md` | Sensor layer overview: time/pointing/key/visibility sensor wiring + System model | `runtime/events/X3DSystem.hpp` (sensor cross-cutting view) |
 | covered | `subsystems/extract.md` | Extraction pipeline: SceneExtractor → MeshBuilder → PackedMesh + RenderItem | `runtime/extract/SceneExtractor.hpp`, `MeshBuilder.hpp`, `PackedMesh.hpp`, `RenderItem.hpp` |
 | covered | `subsystems/hanim.md` | §26 skin extraction, pose-only deltas, Segment displacement at mesh build, and the CPU `deformedMesh` API | `runtime/extract/SceneExtractor.hpp`, `MeshBuilder.cpp`, `runtime/hanim/HAnimSkin.hpp` |
-| covered | `subsystems/extract-textures.md` | Texture/material/light extraction + resolver seam | `runtime/extract/TextureExtract.hpp`, `TextureResolver.hpp`, `TextureDesc.hpp`, `TextureTransform2D.hpp`, `MaterialSystem.hpp`, `LightSystem.hpp`, `AssetResolver.hpp` |
+| covered | `subsystems/extract-textures.md` | Texture/material/light extraction + resolver seam | `runtime/extract/TextureExtract.hpp`, `TextureResolver.hpp`, `TextureTransform2D.hpp`, `MaterialSystem.hpp`, `LightSystem.hpp`, `AssetResolver.hpp` |
 | covered | `subsystems/extract-text.md` | Text extraction + layout via the font-metrics seam | `runtime/extract/TextExtract.hpp`, `TextLayout.hpp`, `FontMetrics.hpp` |
 | covered | `subsystems/extract-topology.md` | Topology classification (tris/lines/points) for extracted meshes | `runtime/extract/Topology.hpp` |
 | covered | `subsystems/ext-firewall.md` | The ext firewall: binary mesh / STL / ExternalGeometry behind the resolver seam | `runtime/ext/`, `include/x3d/ext.hpp`, `runtime/ext/codecs/StlReader.hpp` |

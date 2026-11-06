@@ -296,7 +296,6 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
                            float creaseAngle = 0.0f, bool ccw = true,
                            const AttrResolvers *attrs = nullptr,
                            bool reverseWinding = false) {
-  const std::size_t startCorner = m.positions.size();
   auto lid = [&](int i, int j) {
     return static_cast<std::uint32_t>(j * xDim + i);
   };
@@ -371,7 +370,6 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
   // creaseAngle smoothing keyed on the source lattice id (row*xDim+col),
   // not the expanded 0..N-1 run. creaseAngle==0 => byte-identical flat output.
   // Runs only when no Normal node is authored (authored normals must survive).
-  (void)startCorner; // grids own the whole mesh; smoothing reads it wholesale.
   if (!authoredNormal && creaseAngle > 0.0f)
     creaseSmoothNormals(m, m.latticeIndex, creaseAngle);
   m.hasNormals = !m.normals.empty();

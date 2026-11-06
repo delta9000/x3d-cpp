@@ -70,8 +70,8 @@ TEST_CASE("HAnim skin placement, corner remap, pose delta and snapshot") {
   const auto skinId = first.added[1];
   const auto &item = extractor.item(skinId);
   REQUIRE(item.skin.has_value());
-  CHECK(item.skin->sourceCoordIndex == std::vector<std::uint32_t>{0,1,2,0,2,3});
-  CHECK(item.skin->sourceCoordIndex.size() == item.mesh->positions.size());
+  CHECK(item.mesh->sourceCoordIndex == std::vector<std::uint32_t>{0,1,2,0,2,3});
+  CHECK(item.mesh->sourceCoordIndex.size() == item.mesh->positions.size());
   const auto bind = extractor.deformedMesh(skinId);
   CHECK(bind.positions == item.mesh->positions); // rest pose: deformed == bind
 
@@ -130,7 +130,7 @@ TEST_CASE("HAnim skin accepts direct geometry") {
   SceneExtractor extractor(ctx, scene);
   auto snapshot = extractor.fullSnapshot();
   REQUIRE(snapshot.added.size() == 1);
-  CHECK(extractor.item(snapshot.added.front()).skin->sourceCoordIndex ==
+  CHECK(extractor.item(snapshot.added.front()).mesh->sourceCoordIndex ==
         std::vector<std::uint32_t>{0,1,2});
 }
 
@@ -162,7 +162,7 @@ TEST_CASE("HAnim skin normalIndex follows each corner's coordinate influences") 
   auto snapshot = extractor.fullSnapshot();
   REQUIRE(snapshot.added.size() == 1);
   const auto id = snapshot.added[0];
-  CHECK(extractor.item(id).skin->sourceNormalIndex ==
+  CHECK(extractor.item(id).mesh->sourceNormalIndex ==
         std::vector<std::uint32_t>{3,0,1,3,1,2});
   const auto mesh = extractor.deformedMesh(id);
   CHECK(mesh.normals[0].x == doctest::Approx(std::sin(1.0f)));

@@ -6,7 +6,6 @@
 #include "Aabb.hpp"
 #include "Mat4.hpp"
 #include "PackedMesh.hpp"
-#include "TextureDesc.hpp"
 #include "TextureResolver.hpp"
 #include "TextureTransform2D.hpp"
 #include "Topology.hpp"
@@ -18,7 +17,6 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -174,12 +172,11 @@ inline const MeshRef &emptyMeshRef() {
   return kEmpty;
 }
 
-// Geometry — union of AoS (array-of-structs MeshData) and Packed (binary slab
-// PackedMesh). Packed stores embedder-supplied binary geometry.
+// Geometry selects the shared RenderItem::mesh AoS payload or an
+// embedder-supplied binary PackedMesh.
 struct Geometry {
   enum class Kind { AoS, Packed };
   Kind kind = Kind::AoS;
-  MeshData aos;      // populated when kind == AoS .
   PackedMesh packed; // populated when kind == Packed (binary geometry resolver).
   bool is_packed() const { return kind == Kind::Packed; }
 };
@@ -251,12 +248,7 @@ struct TextureRef {
             // resolvedPixels with layers = 6 once decoded;
             // GeneratedCubeMapTexture (§34.4.2): generatedCube, rendered by
             // the consumer.
-    Buffer, // Raw bytes provided by the embedder.
-            // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
-            // type hint ("image/png", "image/jpeg", etc.). The SDK does not
-            // decode them; the consumer decodes and uploads. resolved_desc
-            // carries the decoded/structured TextureDesc once the embedder
-            // materialises it (optional: empty = not yet decoded).
+    Buffer, // Reserved source value retained for existing consumers.
     Tex3D   // §33 X3DTexture3DNode family: PixelTexture3D -> tex3d (inline
             //  voxel bytes); ComposedTexture3D -> tex3dSlices (2D refs per slice).
             //  Appended last so no existing enumerator value shifts.
@@ -321,7 +313,7 @@ struct TextureRef {
   TexturePixelResult resolvedPixels;
 
   // the full §18.4.9 sampler descriptor. Populated by
-  // TextureExtract::enrichTextureRefs() from the source texture node's
+  // MaterialSystem::refOf() from the source texture node's
   // repeatS/T + TextureProperties (boundary/filter/mipmap/anisotropy). The legacy
   // SamplerParams `sampler` + repeatS/T bools above stay populated for existing
   // consumers; extSampler is the superset for a consumer that reads
@@ -338,16 +330,6 @@ struct TextureRef {
   TexCoordGenDesc texCoordGen;
   TextureTransform2DParams
       generatedTransform; // applied by consumer after generation
-
-  // Source::Buffer fields.
-  // Raw bytes provided by the embedder (encoded PNG/JPEG/KTX2/etc.).
-  // Only meaningful when source == Source::Buffer.
-  std::vector<uint8_t> bufferBytes;
-  // MIME type hint for the buffer bytes ("image/png", "image/ktx2", etc.).
-  std::string mimeHint;
-  // Decoded/structured descriptor — filled in by the consumer once it decodes
-  // the buffer; empty until then.
-  std::optional<TextureDesc> resolved_desc;
 };
 
 // MaterialDesc — one tagged superset descriptor read reflection-generic by spec

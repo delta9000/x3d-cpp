@@ -96,11 +96,6 @@ public:
   }
 
 private:
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  static bool isTransform(const X3DNode *n) {
-    return x3d::runtime::TransformSystem::isTransform(n);
-  }
-
   // A grouping node is any node carrying a `children` MFNode slot (Group,
   // Transform, Switch, Anchor, ...). The enclosing one becomes a child light's
   // scopeRoot — the subtree a non-global light is scoped to.
@@ -140,7 +135,7 @@ private:
     // USE-cyclic / pathologically deep graph (this walk runs before the
     // extractor's own walk in fullSnapshot, so it must be self-safe too).
     if (depth >= kMaxNestingDepth) return;
-    Mat4 here = isTransform(n)
+    Mat4 here = TransformSystem::isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
     if (leaf(n, here, scopeRoot)) return;
