@@ -25,10 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      audio: ${{ steps.f.outputs.audio }}
       quickjs: ${{ steps.f.outputs.quickjs }}
-      assets: ${{ steps.f.outputs.assets }}
-      fontmetrics: ${{ steps.f.outputs.fontmetrics }}
       cpp: ${{ steps.f.outputs.cpp }}
       generator: ${{ steps.f.outputs.generator }}
       docs: ${{ steps.f.outputs.docs }}
@@ -161,121 +158,6 @@ jobs:
       - name: Fuzz (bounded 60s smoke)
         run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
 
-  # Compare HTTP/S3 resolver results using a local fixture (ADR-0023).
-  assetresolver-swap:
-    name: AssetResolver seam swap-test
-    needs: changes
-    if: needs.changes.outputs.assets == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      # Pinned S3 fixture supports path-style requests. Start explicitly so the
-      # readiness check can poll before tests create their bucket.
-      - name: Start s3mock (S3 fixture backend for the swap-test)
-        run: |
-          docker run -d --name s3mock -p 9000:9090 adobe/s3mock:5.2.3
-          # Wait up to ~60s for the listing endpoint (JVM startup) to answer.
-          for i in $(seq 1 60); do
-            if curl -fsS -o /dev/null http://localhost:9000/; then
-              echo "s3mock is live"; exit 0
-            fi
-            echo "waiting for s3mock to come up ($i/60)..."; sleep 1
-          done
-          echo "s3mock did not become ready in time"; docker logs s3mock; exit 1
-      - name: Install build tools (compiler, cmake, ninja, ccache, vcpkg deps)
-        run: |
-          sudo apt-get update
-          # Both backend libs come from vcpkg below (libcurl for Backend A, the
-          # AWS C++ SDK for Backend B), so no -dev packages from apt. From apt we
-          # only need: the toolchain, and curl/zip/unzip/tar/pkg-config as
-          # vcpkg's build prerequisites (the curl CLI also drives the s3mock
-          # readiness check above).
-          sudo apt-get install -y cmake ninja-build ccache g++ mold \
-            curl zip unzip tar pkg-config
-      # The AWS C++ SDK has no stock apt package, so install it via vcpkg.
-      # GitHub-hosted runners ship vcpkg at $VCPKG_INSTALLATION_ROOT; fall back
-      # to a shallow clone + bootstrap (e.g. on Forgejo Actions mirrors).
-      - name: Locate or bootstrap vcpkg
-        run: |
-          if [ -n "$VCPKG_INSTALLATION_ROOT" ] && [ -x "$VCPKG_INSTALLATION_ROOT/vcpkg" ]; then
-            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
-          else
-            git clone --depth 1 https://github.com/microsoft/vcpkg "$HOME/vcpkg"
-            "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-            echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
-          fi
-      # Binary cache so the heavy aws-sdk-cpp build (+ curl/openssl deps) is
-      # built once and restored on later runs. Restored before `vcpkg install`.
-      - name: Cache vcpkg binary archives
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/vcpkg/archives
-          # Encode the manifest baseline in the key so it self-refreshes when the
-          # baseline (or declared deps) change (a fixed key is immutable — it would
-          # never pick up a new build). The prefix restore-keys still warm-restore
-          # the unchanged archives (openssl/curl/aws-c-*/zlib), so only changed
-          # ports rebuild. Bump alongside the vcpkg.json baseline.
-          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
-          restore-keys: vcpkg-${{ runner.os }}-
-      - name: "Install backend deps (vcpkg.json manifest: curl + aws-sdk-cpp)"
-        # Manifest mode (vcpkg.json in repo root, builtin-baseline pinned) installs
-        # exactly the ports declared for this job — for the assetresolver swap,
-        # that's curl and aws-sdk-cpp[core,s3]. The `[core,s3]` features on
-        # aws-sdk-cpp suppress unused sub-clients (dynamodb, kinesis) and keep the
-        # cold build tight.
-        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-assetresolver-${{ github.sha }}
-          restore-keys: ccache-assetresolver-
-      - name: Configure (libcurl + S3 backends ON)
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET=x64-linux
-      - name: Build (AssetResolver swap-test targets only)
-        run: |
-          cmake --build build --target \
-            x3d_assetresolver_backend_a_test \
-            x3d_assetresolver_backend_b_test \
-            x3d_assetresolver_swap
-      - name: Swap-test (libcurl HTTP vs AWS S3 observable parity)
-        env:
-          X3D_S3_ENDPOINT: http://localhost:9000
-          # s3mock ignores credentials, but the AWS SDK requires some.
-          AWS_ACCESS_KEY_ID: x3d-swap-test
-          AWS_SECRET_ACCESS_KEY: x3d-swap-test
-        run: ctest --test-dir build --output-on-failure -R 'x3d_assetresolver(_backend|_swap)'
-
-
-  # Compare audio samples headlessly (ADR-0026).
-  audio-swap:
-    name: Audio seam swap-test
-    needs: changes
-    if: needs.changes.outputs.audio == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Install compiler + cmake + ninja + ccache
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-audio-${{ github.sha }}
-          restore-keys: ccache-audio-
-      - name: Configure (miniaudio backend ON — fetched, headless)
-        run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_MINIAUDIO=ON
-      - name: Build (Audio swap-test target only)
-        run: cmake --build build --target x3d_sound_swaptest
-      - name: Swap-test (BuiltinDsp vs miniaudio, headless — no audio device)
-        run: ctest --test-dir build --output-on-failure -R x3d_sound_swaptest
-
   proj-swap:
     name: GeoProjection seam swap-test
     needs: changes
@@ -292,56 +174,6 @@ jobs:
         run: cmake --build build --target x3d_proj_geo_swap -j4
       - name: Swap-test (built-in vs PROJ)
         run: ctest --test-dir build --output-on-failure -R x3d_proj_geo_swap -V
-
-  # Compare glyph metrics on the same font fixtures (ADR-0025).
-  fontmetrics-swap:
-    name: FontMetrics seam swap-test
-    needs: changes
-    if: needs.changes.outputs.fontmetrics == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold curl zip unzip tar
-      - name: Locate or bootstrap vcpkg
-        run: |
-          if [ -n "$VCPKG_INSTALLATION_ROOT" ] && [ -x "$VCPKG_INSTALLATION_ROOT/vcpkg" ]; then
-            echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
-          else
-            git clone --depth 1 https://github.com/microsoft/vcpkg "$HOME/vcpkg"
-            "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
-            echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
-          fi
-      - name: Cache vcpkg binary archives
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/vcpkg/archives
-          # Encode the manifest baseline in the key so it self-refreshes when the
-          # baseline (or declared deps) change. Same key family as the
-          # assetresolver job so a single archive cache serves both.
-          key: vcpkg-${{ runner.os }}-manifest-01f602195983451bc83e72f4214af2cbc495aa94
-          restore-keys: vcpkg-${{ runner.os }}-
-      - name: "Install backend deps (vcpkg.json manifest: freetype)"
-        # Manifest mode installs the declared port for this job — for the
-        # fontmetrics swap, that's freetype.
-        run: '"$VCPKG_ROOT/vcpkg" install --triplet x64-linux'
-      - name: ccache cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
-        with:
-          path: ~/.cache/ccache
-          key: ccache-fontmetrics-${{ github.sha }}
-          restore-keys: ccache-fontmetrics-
-      - name: Configure (stbtt + FreeType backends ON)
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_FREETYPE=ON \
-            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-            -DVCPKG_TARGET_TRIPLET=x64-linux
-      - name: Build (FontMetrics swap-test target only)
-        run: cmake --build build --target x3d_text_tests x3d_text_atlas_tests
-      - name: Swap-test (stb_truetype vs FreeType exact-equal advanceEm)
-        run: ctest --test-dir build --output-on-failure -R x3d_text
 
   # Build the example consumers and exercise real GL under software rendering.
   # See scripts/validate-examples.sh.

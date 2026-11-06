@@ -112,7 +112,7 @@ deterministic across libraries.
 
 A real `TextureResolver` is an **array of per-format decoders behind one seam** (stb is broad;
 wuffs is memory-safe; a JPEG-heavy app might want libjpeg-turbo) — the decode analog of the fetch
-seam's `file`/`http`/`s3` routes. `makeMultiFormatTextureResolver` (std-only, decoder-free)
+seam's `file`/`http`/`ftp` routes. `makeMultiFormatTextureResolver` (std-only, decoder-free)
 **sniffs the input's magic bytes and dispatches to the one registered decoder _before_ calling
 it**. Because dispatch picks the correct decoder up front, each decoder only ever sees input it
 owns, so `Failed` keeps meaning "real decode failure" — **no `Unsupported`/`NotHandled` status is

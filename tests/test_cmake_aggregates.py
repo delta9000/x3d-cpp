@@ -21,7 +21,6 @@ FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_example_03_attach_behavior_tick",
     "x3d_assetresolver_swap",
     "x3d_quickjs_swap",
-    "x3d_sound_swaptest",
 }
 DEFAULT_DOCTEST_TARGETS = {
     "x3d_geometry_scene_tests",

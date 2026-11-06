@@ -1,5 +1,5 @@
 // dsp_metrics.hpp — shared DSP measurement helpers for audio swap-tests.
-// Used by sound_system_test.cpp and sound_swap_test.cpp.
+// Used by sound_system_test.cpp.
 // No DSP implementation lives here — only measurement utilities (RMS + Goertzel).
 #ifndef X3D_RUNTIME_SOUND_TESTS_DSP_METRICS_HPP
 #define X3D_RUNTIME_SOUND_TESTS_DSP_METRICS_HPP

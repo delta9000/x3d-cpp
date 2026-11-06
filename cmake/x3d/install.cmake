@@ -26,7 +26,6 @@ set(_x3d_install_excludes
 
 # Exclude reference backends nested inside public runtime subdirectories.
 set(_x3d_runtime_backend_excludes
-    PATTERN "miniaudio" EXCLUDE          # reference AudioBackend over a real device
     PATTERN "dsp" EXCLUDE                # reference built-in software DSP backend
     PATTERN "RecordingBackend.hpp" EXCLUDE)  # op-recording test double (tests only)
 

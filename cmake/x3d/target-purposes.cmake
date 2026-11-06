@@ -91,15 +91,11 @@ _x3d_classify_present_targets(opt-in
     x3d_curl
     x3d_assetresolver_backend_a_test
     x3d_http_address_guard_test
-    x3d_s3
-    x3d_assetresolver_backend_b_test
     x3d_assetresolver_swap
     x3d_stb
     x3d_wuffs
     x3d_stbtt
     x3d_plmpeg
-    x3d_theora
-    x3d_freetype
     x3d_text_tests
     x3d_text_atlas_tests
     x3d_texture_tests
@@ -117,13 +113,10 @@ _x3d_classify_present_targets(opt-in
     x3d_ext_external_geometry_node
     x3d_ext_external_geometry_roundtrip
     x3d_ext_external_geometry_e2e
-    x3d_miniaudio
-    x3d_sound_swaptest
     x3d_parse_fuzz)
 
 _x3d_classify_present_targets(internal
     x3d_duktape
-    x3d_s3_testsupport
     x3d_doctest_main)
 
 # Test-suite membership is deliberately independent of primary target purpose:

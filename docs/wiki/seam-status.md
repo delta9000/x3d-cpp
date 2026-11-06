@@ -1,6 +1,6 @@
 ---
 title: Seam-Status Matrix
-summary: The live tracker for the product's core thesis — every renderer/engine seam is proven generic only when a second independent backend runs identical fixtures to identical observable behavior, gated in CI. One row per seam; GREEN = interface frozen + ≥2 backends + a CI-gated swap-test.
+summary: Current seam interfaces, shipped backends, and contract or parity tests.
 tags: [seam, tracker, genericity, swap-test, thesis, meta]
 updated: 2026-09-30
 related:
@@ -22,17 +22,11 @@ related:
 
 # Seam-Status Matrix
 
-This is the **live tracker for the product's core thesis**: x3d-cpp is unopinionated and
-pluggable — every place a renderer/engine plugs in is an abstract *seam*, and a seam is
-**proven generic** only when a **second independent backend** runs identical fixtures to
-**identical observable behavior**, gated in CI ([ADR-0022](decisions/0022-scriptengine-second-backend-swap-test.md)).
-
-A row is **GREEN** when all of: the interface is `[STABLE]` (frozen pre-v2 in
-[`include/x3d/sdk.hpp`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp)),
-**two independent backends** implement it, and a **CI-gated swap-test** asserts they produce
-identical observable behavior over shared fixtures. Until a seam reaches two backends + a
-swap-test it is **NOT-YET-PROVEN** — one backend (or pending) is not a genericity proof, only
-an unverified claim. This matrix is the live record the Seam-harness card formalizes.
+This page records the shipped implementations and tests for each seam. The
+asset, audio, font, and movie interfaces remain stable after removal of unused
+second backends. Their remaining tests check behavior without claiming current
+parity between two shipped implementations. See the amendments to the linked
+decisions for the removals.
 
 Behavior registration uses `System` and `X3DExecutionContext::addSystem`.
 The unused per-node compatibility path has been removed; see the
@@ -43,13 +37,13 @@ The unused per-node compatibility path has been removed; see the
 | Seam | Interface | Backend A | Backend B | Swap-test | Findings |
 |---|---|---|---|---|---|
 | **ScriptEngine** | **STABLE** | Duktape (EcmaScriptBackend) | QuickJS / quickjs-ng v0.15.1 (QuickJsBackend) | `x3d_quickjs_swap` ✓ | SCR-* |
-| **AssetResolver / IO** | **STABLE** | libcurl (HttpResolver) | AWS C++ SDK S3 (S3Resolver, docker s3mock fixture) | `x3d_assetresolver_swap` ✓ | unblocks NSN-*, PRF-6, CONF-CRITIC-2, SCR-005 |
+| **AssetResolver / IO** | **STABLE** | libcurl HTTP/FTP; local files | — | `x3d_assetresolver_swap` (HTTP contract) | Asset loading |
 | Physics (PhysicsBackend) | EXPERIMENTAL | Jolt (flag-gated) | — pending | — | CONF-RBP* |
-| **Audio (AudioBackend)** | **STABLE** | BuiltinDsp | miniaudio (MiniaudioBackend) | `x3d_sound_swaptest` ✓ | thesis-completion (SND-3 partial) |
-| **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | FreeType (FreetypeFontMetrics) | `x3d_text_tests` ✓ | thesis-completion (no findings) |
+| **Audio (AudioBackend)** | **STABLE** | BuiltinDsp | — | Sound component tests | HRTF and Doppler deferred |
+| **FontMetrics** | **STABLE** | stb_truetype (StbttFontMetrics) | — | `x3d_text_tests`, `x3d_text_atlas_tests` | Glyph metrics and atlas |
 | **TextureResolver** | **STABLE** | stb_image (StbTextureResolver) | wuffs v0.3.4 (WuffsTextureResolver) | `x3d_texture_tests` ✓ | thesis-completion (no findings) |
 | GeoProjection | Mathematical interface FROZEN (ADR-0053); context ownership per ADR-0058 | BuiltinGeoProjection | PROJ (`X3D_CPP_BUILD_PROJ`) | `x3d_proj_geo_swap` (toleranced) | Geospatial |
-| **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 (PlMpegMovieDecoder, [ADR-0041](decisions/0041-moviedecoder-seam-royalty-free-defaults.md)) | libtheora / Ogg-Theora (TheoraMovieDecoder) | `x3d_movie_tests` ✓ (shared per-backend contract, not bit-swap — see ADR-0041) | MovieTexture conformance blanks (MPEG-1 fixed) |
+| **MovieDecoder** | **STABLE** | pl_mpeg / MPEG-1 | — | `x3d_movie_tests` (lifecycle and composition contract) | MPEG-1 playback |
 | Consumer (RenderDelta) | EXPERIMENTAL | PoC renderer; CPU/SVG consumers | Native host CPU-mirror contract (not a renderer swap proof) | `x3d_native_host_contract` + installed/relocated package smoke | [Native host boundary](guides/native-host.md); Vulkan/CAVEOS unverified |
 
 Legend: **GREEN** = interface frozen + ≥2 independent backends + a CI-gated swap-test.
@@ -95,38 +89,25 @@ identical observable behavior, so it **evidences that the SCR conformance holds 
 under the second backend** — the claims are backend-independent. (The swap-test does not change
 any finding status; it re-verifies the existing claims hold for a second implementation.)
 
-## GREEN row: AssetResolver/IO — the Phase-1 proof
+## AssetResolver/IO
 
-The `AssetResolver` seam is the second row to go GREEN (Phase-1):
+The stable `AssetResolver` callback carries bytes and status. FileResolver and
+the libcurl HTTP/FTP implementations remain. With `X3D_CPP_BUILD_CURL=ON`,
+`x3d_assetresolver_swap` checks three HTTP fixtures against their source bytes
+and verifies that a missing asset returns Failed with empty bytes. This test
+uses an in-process loopback server and requires no external service.
 
-- **Interface frozen `[STABLE]`.** The single `std::function<AssetResult(url, AssetKind)>`
-  callback type carried two independent backends with **no signature change** — the empirical
-  proof it is generic — so it was promoted `[EXPERIMENTAL]` → `[STABLE]` in
-  [`include/x3d/sdk.hpp:50`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
-  The whole `AssetResolver` / `AssetResult` / `AssetKind` / `AssetStatus` surface is part of
-  the same frozen seam.
-- **Backend A — libcurl HTTP** (`runtime/io/curl/HttpResolver.{hpp,cpp}`): synchronous
-  `curl_easy_perform` path behind `X3D_CPP_BUILD_CURL` (OFF default, `find_package(CURL)`),
-  with **no core `#ifdef`** — libcurl meets the seam in a single isolated TU (`x3d_curl`
-  static lib), linked PRIVATE so its headers/flags never leak to consumers.
-  Its resolved-address guard also rejects IPv4 multicast, reserved/broadcast,
-  protocol assignment, and benchmarking ranges, including embedded IPv4 in IPv6.
-  `x3d_http_address_guard` checks these ranges without making network requests.
-- **Backend B — AWS C++ SDK S3** (`runtime/io/s3/S3Resolver.{hpp,cpp}`): `GetObject` path
-  behind `X3D_CPP_BUILD_S3` (OFF default, `find_package(AWSSDK REQUIRED COMPONENTS s3)`),
-  with **no core `#ifdef`** — AWS SDK meets the seam in a single isolated TU (`x3d_s3`
-  static lib), linked PRIVATE. A docker `adobe/s3mock` container in CI provides the S3-compatible
-  fixture.
-- **Swap-test — `x3d_assetresolver_swap`** (`runtime/io/tests/asset_resolver_swap_test.cpp`):
-  in-process POSIX-socket HTTP server on 127.0.0.1 (Backend A's fixture) + `PutObject` to
-  seed the S3 fixture bucket (Backend B's fixture) + loop asserting
-  `resultA.bytes == resultB.bytes` byte-for-byte for every fixture, plus equal
-  `AssetStatus::Failed` for missing keys. Gated in CI (see below).
+The unused S3 backend was removed; see the
+[decision amendment](decisions/0023-assetresolver-second-backend-swap-test.md#amendment-2026-11-05).
+
+The libcurl backend's resolved-address guard also rejects IPv4 multicast,
+reserved/broadcast, protocol-assignment and benchmarking ranges, including
+embedded IPv4 in IPv6. `x3d_http_address_guard` checks these ranges without
+making network requests.
 
 ### What the AssetResolver seam unblocks
 
-The IO seam being proven generic removes the blocker on four P1 dependency cards (whose
-findings currently note "Blocked on the asset-resolver/IO seam"):
+The IO callback supports loading for the following runtime features:
 
 - **NSN-*** — LoadSensor (NSN-1..7, NSN-9): **SHIPPED** (2026-07-17, ADR-0046).
   `LoadSensorSystem` (`runtime/events/LoadSensorSystem.hpp`) is the first SDK-side
@@ -144,8 +125,7 @@ findings currently note "Blocked on the asset-resolver/IO seam"):
 - **SCR-005** — Script autoRefresh / autoRefreshTimeLimit: periodic re-fetch becomes
   possible.
 
-The AssetResolver card itself does **not** ship these — they become **workable** now that
-the IO seam is proven generic; each flips its own findings when its card ships.
+Each feature has its own behavior tests and conformance findings.
 
 ## GREEN row: TextureResolver — Phase-2 proof
 
@@ -184,7 +164,7 @@ TextureResolver decodes them (`bytes → RGBA8 pixels`)**.
 
 A real `TextureResolver` is an **array of per-format decoders behind one seam** (stb is broad;
 wuffs is memory-safe; a JPEG app might want libjpeg-turbo) — the decode analog of the fetch
-seam's file/http/s3 routes. `makeMultiFormatTextureResolver(map<ImageFormat, TextureResolver>)`
+seam's file/http/ftp routes. `makeMultiFormatTextureResolver(map<ImageFormat, TextureResolver>)`
 (in `runtime/extract/MultiFormatTextureResolver.hpp`, std-only, decoder-free) **sniffs the input's
 magic bytes and dispatches to the one registered decoder before calling it**, so each decoder only
 ever sees input it owns and `Failed` stays unambiguous — no `Unsupported` status, the frozen seam
@@ -201,99 +181,30 @@ PNG/BMP/GIF/TGA only; **PNM/PPM is deferred** (wuffs v0.3.x ships no Netpbm deco
 v0.4), and **JPEG** byte-equality is impossible by construction (lossy IDCT) — a PSNR tolerance
 companion is a separate optional card.
 
-## GREEN row: Audio (AudioBackend) — Phase-3 proof
+## Audio (AudioBackend)
 
-The `AudioBackend` DSP engine seam is the fourth row to go GREEN ([ADR-0026](decisions/0026-audiobackend-second-backend-swap-test.md)).
+`AudioBackend` remains stable. `BuiltinDspBackend` provides dependency-free
+synthesis, equal-power stereo panning, distance attenuation, ellipsoid sound,
+and decoded PCM playback. Sound component tests exercise the shipped behavior.
+HRTF and Doppler remain deferred. The unused miniaudio backend and its parity
+gate were removed; see the
+[decision amendment](decisions/0026-audiobackend-second-backend-swap-test.md#amendment-2026-11-05).
 
-- **Interface frozen `[STABLE]`.** The abstract `AudioBackend` interface (`createNode` /
-  `connect` / `setParam` / `render` / `renderStereo`) carried two independent backends with
-  **no signature change** — the empirical proof it is generic — so it was promoted
-  `[EXPERIMENTAL]` → `[STABLE]` in `runtime/sound/AudioBackend.hpp` (a runtime seam, not
-  re-exported in `include/x3d/sdk.hpp`). The seam was extended in a prior task
-  (`NodeKind::Panner`, positional `NodeParams` fields, `renderStereo`) — those extensions
-  were driven by the spatial feature, not by Backend B.
-- **Backend A — BuiltinDspBackend** (`runtime/sound/dsp/BuiltinDspBackend.{hpp,cpp}`): the
-  originally shipped backend — always-built, dependency-free, RBJ-Cookbook synthesis,
-  equal-power spatial pan. No flag required.
-- **Backend B — MiniaudioBackend** (`runtime/sound/miniaudio/MiniaudioBackend.{hpp,cpp}`):
-  miniaudio v0.11.x (fetched via CMake FetchContent from `mackron/miniaudio`,
-  Unlicense OR MIT-0), behind `X3D_CPP_BUILD_MINIAUDIO` (OFF default), with **no core
-  `#ifdef`** — miniaudio meets the seam in a single isolated TU (`x3d_miniaudio` static lib,
-  `MINIAUDIO_IMPLEMENTATION` in that TU only, PRIVATE). The headless render path
-  (`ma_node_graph_read_pcm_frames`) requires no audio device. The default build is
-  unaffected; the dual license adds no compatibility concern.
-- **Swap-test — `x3d_sound_swaptest`** (`runtime/sound/tests/sound_swap_test.cpp`):
-  headless, in-process, no audio device. Two tiers:
-  - **Synthesis tier (tight numeric)**: same `OscillatorSource → BiquadFilter → Gain →
-    AudioDestination` fixture, both backends. Asserts RMS ±2%, Goertzel at the signal
-    frequency ±5%, F2 in-band ±15% (the ±15% bound is explicit and honest — it reflects
-    the RBJ-vs-independent-derivation filter-law delta at the filter knee).
-  - **Spatial tier (structural invariants)**: same `OscillatorSource → Panner →
-    Destination` fixture at multiple positions and all three `DistanceModel` modes. Asserts
-    ear-sign (left source → L louder), centered symmetry (ahead source →
-    `|rmsL − rmsR| < threshold`), and monotonic distance falloff across five distances
-    per model. Energy allowed to differ by up to ±40% (equal-power vs. amplitude+1/d —
-    two legitimately different panning laws agreeing on physical invariants, not on numbers).
-  Gated in CI (see below).
+## FontMetrics
 
-### Scope honesty for the Audio seam
+`FontMetrics` remains stable. stb_truetype provides font-table metrics and a
+glyph atlas through `x3d_stbtt`. Enable `X3D_CPP_BUILD_STBTT` to run
+`x3d_text_tests` and `x3d_text_atlas_tests`. The unused FreeType backend and its
+parity gate were removed; see the
+[decision amendment](decisions/0025-fontmetrics-second-backend-swap-test.md#amendment-2026-11-05).
 
-The synthesis proof is tight (numeric spectral agreement). The spatial proof is real-but-coarse:
-two different panning laws agree on physical invariants, not on sample values. This is the right
-approach for a spatial seam, and it is explicitly documented in ADR-0026.
+## MovieDecoder
 
-The following remain **explicitly OUT** and deferred under SND-3 (partial):
-
-- **HRTF spatialization** — no second reference HRTF renderer; LabSound deferred.
-- **Doppler shift** — no second Doppler implementation.
-- **§16 Sound ellipsoid** (`minFront`/`maxFront`/`minBack`/`maxBack`) — seam carries no
-  ellipsoid params; SpatialSound does not fully map to `Panner`.
-
-The `x3d_sound_swaptest` failing would mean one of the proven invariants broke — that is a
-real regression, not test noise.
-
-## GREEN row: FontMetrics — Phase-3 proof
-
-The `FontMetrics` seam is the fourth row to go GREEN ([ADR-0025](decisions/0025-fontmetrics-second-backend-swap-test.md)).
-It proves the font advance path is backend-agnostic: **the layout engine calls the seam; both
-backends return the same advance**.
-
-- **Interface frozen `[STABLE]`.** The single `std::function<GlyphResult(const FontKey&)>`
-  callback carried two independent backends with **no signature change** — the empirical proof
-  it is generic — so it was promoted `[EXPERIMENTAL]` → `[STABLE]` in
-  [`include/x3d/sdk.hpp`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
-  The whole `FontMetrics` / `FontKey` / `GlyphMetrics` / `GlyphResult` / `GlyphStatus` /
-  `makeMonospaceStub` surface is one frozen seam.
-- **Backend A — stb_truetype** (`runtime/io/stbtt/StbttFontMetrics.{hpp,cpp}`): the
-  hand-written C truetype parser, behind `X3D_CPP_BUILD_STBTT` (OFF default), with **no core
-  `#ifdef`** — stb_truetype meets the seam in a single isolated TU (`x3d_stbtt` static lib),
-  `stb_truetype.h` included PRIVATE so it never leaks.
-- **Backend B — FreeType** (`runtime/io/freetype/FreetypeFontMetrics.{hpp,cpp}`): the
-  reference-quality font library via vcpkg, **fully independent** of stb_truetype (shares zero
-  implementation), behind `X3D_CPP_BUILD_FREETYPE` (OFF default), with **no core `#ifdef`** —
-  FreeType meets the seam in a single isolated TU (`x3d_freetype` static lib, PRIVATE).
-- **Swap-test — `x3d_text_tests`** (`runtime/io/tests/font_metrics_tests.cpp`, one grouped
-  doctest binary): queries the *same* Liberation font fixtures (**SERIF / SANS / TYPEWRITER** ×
-  `{'A','i','M',' ','0'}`) through both backends and asserts **exact bit-identical `advanceEm`**
-  (strict `==`, no epsilon) for every PLAIN-style glyph, plus equal `Failed` status on absent
-  codepoints. 99/99 assertions passed. Dropped cells: synthetic BOLD/ITALIC (stb has no
-  embolden/oblique API; both correctly return `Failed`); atlas-UV/outline (not font-table-derived).
-  Fully in-process — Liberation TTFs are vendored, no service, no network.
-
-### Exact-equality criterion
-
-The `==` equality (no epsilon) is structurally guaranteed: both backends read the same raw
-`uint16 unitsPerEm` from the font's `head` table and the same integer `hmtx` advance, then
-compute `(float)advance / (float)unitsPerEm`. Because the operands are identical integers and
-the operation is the same IEEE-754 `float / float` divide, the result is bit-identical on any
-conformant hardware.
-
-### Scope honesty
-
-Like TextureResolver, this seam unblocks **no specific conformance findings** — its value is
-**thesis-completion** (the font advance path is now proven generic) and providing a real
-advance source for `Text` node layout. Synthetic BOLD/ITALIC and atlas-UV paths are explicitly
-out of scope; they are separate future cards.
+`MovieDecoder` remains stable. `x3d_plmpeg` provides MPEG-1 frames and movie
+MP2 audio. Enable `X3D_CPP_BUILD_PLMPEG` to run `x3d_movie_tests`, which covers
+decoder lifecycle, a std-only test backend, and format composition. The unused
+Theora implementation was removed; see the
+[decision amendment](decisions/0041-moviedecoder-seam-royalty-free-defaults.md#amendment-2026-11-05).
 
 ## CI gate
 
@@ -302,22 +213,11 @@ The genericity proof is a **permanent merge gate** — one job per GREEN row:
 - **QuickJS seam swap-test** (`[.github/workflows/ci.yml](https://github.com/delta9000/x3d-cpp/blob/main/.github/workflows/ci.yml)`
   `cpp` job): `-DX3D_CPP_BUILD_QUICKJS=ON` (FetchContent fetches quickjs-ng
   v0.15.1) + `ctest -R 'x3d_quickjs(_backend|_swap)'` on every pull request that touches C++.
-- **AssetResolver seam swap-test** (`.github/workflows/ci.yml` `assetresolver-swap` job):
-  `-DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON` + a pinned docker `adobe/s3mock:5.2.3`
-  S3 fixture on port 9000 + `ctest -R 'x3d_assetresolver(_backend|_swap)'` on every pull request
-  that touches the asset seam, a consumer of it, or the build.
+
 - **TextureResolver decode seam swap-test** (`.github/workflows/ci.yml` `cpp` job):
   `-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON` + `ctest -R x3d_texture` on every pull
   request that touches C++. Both decoders are vendored single files — no vcpkg, no docker, no FetchContent — so
   this gate runs sub-minute.
-- **AudioBackend headless swap-test** (`.github/workflows/ci.yml` `audio-swap` job):
-  `-DX3D_CPP_BUILD_MINIAUDIO=ON` + `ctest -R x3d_sound_swaptest` on every
-  pull request. miniaudio is a vendored single file — no vcpkg, no docker, no audio device
-  — sub-minute gate.
-- **FontMetrics seam swap-test** (`.github/workflows/ci.yml` `fontmetrics-swap` job):
-  `-DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_FREETYPE=ON` + `ctest -R x3d_text` on every pull
-  request. stb_truetype is a vendored single file; FreeType is pulled via vcpkg. Liberation
-  TTF fixtures are vendored — no network, no service container.
 
 If a future change breaks observable parity between the two backends of any seam,
 the corresponding job fails.
@@ -334,7 +234,6 @@ For each NOT-YET-PROVEN row, the path to GREEN mirrors the ScriptEngine pilot:
 3. **Gate it in CI** (a dedicated flag-gated job, like `QuickJS seam swap-test`).
 4. Then **freeze the interface** `[STABLE]` (in `sdk.hpp` for public seams; in the seam header
    itself for runtime seams like `AudioBackend.hpp`) and flip the row GREEN here.
-
 
 ### GeoProjection ownership boundary
 

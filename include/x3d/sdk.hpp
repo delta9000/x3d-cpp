@@ -1,5 +1,7 @@
 // Include this header and link x3d_cpp::sdk for the headless SDK surface.
 // Simulation and extraction perform no resource I/O; embedders supply callbacks.
+// Optional source-tree backends provide file/HTTP/FTP, stb fonts, and pl_mpeg;
+// the AudioBackend seam has a dependency-free BuiltinDspBackend implementation.
 // parseFile() and the default Inline/EXTERNPROTO resolvers can read local files.
 // Inject both parse resolvers for a fully host-controlled resource boundary.
 // See docs/wiki/seam-status.md for interface stability.

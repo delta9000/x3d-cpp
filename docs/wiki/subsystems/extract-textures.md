@@ -122,6 +122,15 @@ RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resol
 
 `TextureDesc` in `TextureDesc.hpp` is an embedder-filled struct for compressed or pre-decoded textures arriving via `TextureRef::Source::Buffer`. `PixelFormat` covers uncompressed (R8 through RGBA16F), block-compressed (BC1–BC7), mobile (ETC2, ASTC), and the `BasisUniversal = 255` supercompressed sentinel. The SDK does not fill or decode `TextureDesc`; the consumer fills `TextureRef::resolved_desc` once it has decoded `TextureRef::bufferBytes`.
 
+### Movie frame decoding
+
+`MovieDecoder` is a consumer-owned callback. The SDK surfaces a MovieTexture
+URL and lifecycle state; the host supplies the requested media time and uploads
+the returned frame. `x3d_plmpeg` provides MPEG-1 decoding when
+`X3D_CPP_BUILD_PLMPEG` is enabled, and the PoC renderer uses this path. The
+unused Theora backend was removed; the callback and format routing remain.
+See the [decision amendment](../decisions/0041-moviedecoder-seam-royalty-free-defaults.md#amendment-2026-11-05).
+
 ### Seam points
 
 - **`TextureResolver` seam** — the consumer (or an adapter around stb_image/libpng) supplies a `TextureResolver` and calls `resolveTextureRefs` after `materialOf`; the SDK provides the stub `makeNullTextureResolver()` (always-failed, white-fallback rendering).

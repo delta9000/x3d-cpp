@@ -4,9 +4,6 @@
 #include "PlMpegMovieDecoder.hpp"
 #include "doctest/doctest.h"
 
-#ifdef X3D_MOVIE_HAVE_THEORA
-#include "TheoraMovieDecoder.hpp"
-#endif
 
 #include <algorithm>
 #include <cstdint>
@@ -151,15 +148,6 @@ TEST_CASE("pl_mpeg decodes a movie MP2 track to mono PCM") {
   CHECK_FALSE(decode(readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v")).ok);
 }
 
-#ifdef X3D_MOVIE_HAVE_THEORA
-TEST_CASE("MovieDecoder contract: libtheora / Ogg-Theora (Backend B)") {
-  runContract(
-      [](AssetResolver r) {
-        return x3d::runtime::io::theora::makeTheoraMovieDecoder(std::move(r));
-      },
-      readFixture(THEORA_FIXTURES_DIR, "redsquare.ogv"), 32, 32);
-}
-#endif
 
 TEST_CASE("MovieDecoder contract: a FROM-SCRATCH std-only backend") {
   // The seam is implementable by any downstream with only the header + std.
@@ -183,9 +171,6 @@ TEST_CASE("MovieDecoder: composer routes each container to its backend by magic"
   auto m1v = readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v");
   std::map<std::string, std::vector<std::uint8_t>> files;
   files["a.m1v"] = m1v;
-#ifdef X3D_MOVIE_HAVE_THEORA
-  files["b.ogv"] = readFixture(THEORA_FIXTURES_DIR, "redsquare.ogv");
-#endif
   // One resolver serves every url/format (keyed by url).
   AssetResolver multi = [files](const std::string &u, AssetKind) {
     auto it = files.find(u);
@@ -195,34 +180,12 @@ TEST_CASE("MovieDecoder: composer routes each container to its backend by magic"
   std::map<MovieFormat, MovieDecoder> backends;
   backends[MovieFormat::Mpeg1] =
       x3d::runtime::io::plmpeg::makePlMpegMovieDecoder(multi);
-#ifdef X3D_MOVIE_HAVE_THEORA
-  backends[MovieFormat::OggTheora] =
-      x3d::runtime::io::theora::makeTheoraMovieDecoder(multi);
-#endif
   auto dec = makeMultiFormatMovieDecoder(multi, std::move(backends));
 
   FrameResult a = dec("a.m1v", 0.0); // MPEG magic -> pl_mpeg
   REQUIRE(a.ready());
   CHECK(a.frame.width == 32);
-#ifdef X3D_MOVIE_HAVE_THEORA
-  FrameResult b = dec("b.ogv", 0.0); // Ogg magic -> theora
-  REQUIRE(b.ready());
-  CHECK(b.frame.width == 32);
-#endif
   CHECK(dec("nope", 0.0).failed()); // unreadable -> Failed (not a routing crash)
-}
-
-TEST_CASE("MovieDecoder: each backend rejects a FOREIGN container cleanly") {
-  // A backend handed someone else's format must Failed, not crash or mis-decode —
-  // this is what lets the magic-sniff composer (and any consumer) trust Failed.
-#ifdef X3D_MOVIE_HAVE_THEORA
-  auto m1v = readFixture(PLMPEG_FIXTURES_DIR, "redsquare.m1v");
-  auto ogv = readFixture(THEORA_FIXTURES_DIR, "redsquare.ogv");
-  CHECK(x3d::runtime::io::plmpeg::makePlMpegMovieDecoder(readyResolver(ogv))("x", 0.0)
-            .failed());
-  CHECK(x3d::runtime::io::theora::makeTheoraMovieDecoder(readyResolver(m1v))("x", 0.0)
-            .failed());
-#endif
 }
 
 TEST_CASE("MovieDecoder: truncated input fails without crashing") {

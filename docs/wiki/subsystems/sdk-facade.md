@@ -95,16 +95,16 @@ The complete `x3d::sdk` namespace, grouped by area:
 
 **Seams — embedder-supplied IO**
 
-Stability is marked **per seam**, not for the group: a seam is frozen `[STABLE]` only once a
-second independent backend has carried the interface with no signature change, under a
-CI-gated swap-test. Four of the five have cleared that bar; `GeoProjection` has not. The live
-tracker is the [Seam-Status Matrix](../seam-status.md).
+Stability is marked per seam. AssetResolver, AudioBackend, FontMetrics, and
+MovieDecoder keep their interface contracts after removal of unused second
+implementations. The [Seam-Status Matrix](../seam-status.md) lists current
+backends and test coverage.
 
 | Seam | Stability | Re-exported types | Contract |
 |---|---|---|---|
-| Asset resolution | `[STABLE]` ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md); libcurl + S3) | `AssetResolver`, `AssetResult`, `AssetStatus`, `AssetKind` | `function<AssetResult(url, AssetKind)>`; render-time may return `Pending`; parse-time must answer synchronously |
+| Asset resolution | `[STABLE]` ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md); file/HTTP/FTP) | `AssetResolver`, `AssetResult`, `AssetStatus`, `AssetKind` | `function<AssetResult(url, AssetKind)>`; render-time may return `Pending`; parse-time must answer synchronously |
 | Texture decode | `[STABLE]` ([ADR-0024](../decisions/0024-textureresolver-second-backend-swap-test.md); stb_image + wuffs) | `TextureResolver`, `TexturePixelResult`, `TexturePixels`, `TextureResolveStatus`, `TextureRef`, `SamplerParams` | `function<TexturePixelResult(url)>`; embedder maps url → decoded RGBA pixels |
-| Font metrics | `[STABLE]` ([ADR-0025](../decisions/0025-fontmetrics-second-backend-swap-test.md); stb_truetype + FreeType) | `FontMetrics`, `FontKey`, `GlyphMetrics`, `GlyphResult`, `GlyphStatus`, `makeMonospaceStub` | `function<GlyphResult(const FontKey&)>`; SDK does all Text layout; default = monospaced stub (advanceEm 0.6) |
+| Font metrics | `[STABLE]` ([ADR-0025](../decisions/0025-fontmetrics-second-backend-swap-test.md); stb_truetype) | `FontMetrics`, `FontKey`, `GlyphMetrics`, `GlyphResult`, `GlyphStatus`, `makeMonospaceStub` | `function<GlyphResult(const FontKey&)>`; SDK does all Text layout; default = monospaced stub (advanceEm 0.6) |
 | Geo-projection | ADR-0053 interface; per-context ownership by ADR-0058 | `runtime::geo::GeoProjection`, `SessionOptions::geoProjection`, `X3DExecutionContext::geoProjection`, `runtime::geo::builtinProjection` | Fixed per execution context; built-in default. Node conversion uses `GeoNodes.hpp`. |
 | Script / SAI | `[STABLE]` ([ADR-0022](../decisions/0022-scriptengine-second-backend-swap-test.md); Duktape + QuickJS) | `ScriptEngine`, `ScriptSystem`, `SaiContext`, `ScriptHandle`, `kInvalidScriptHandle` | Abstract engine; wrap in `ScriptSystem`, register via `ctx.addScriptSystem`; `SaiContext` is the backend↔runtime channel |
 

@@ -1,8 +1,7 @@
 // immersive_fixtures.hpp — backend-level fixtures for the Immersive Sound seam
 // extension (ADR-0050): the Sound ellipsoid (DistanceModel::Ellipsoid) and the
 // decoded-PCM Buffer node. Each fixture drives a bare AudioBackend, so the same
-// numbers are checked on the built-in backend (sound_immersive_test) and on
-// both backends side by side (sound_swap_test).
+// numbers are checked on the built-in backend by sound_immersive_test.
 #ifndef X3D_SOUND_TESTS_IMMERSIVE_FIXTURES_HPP
 #define X3D_SOUND_TESTS_IMMERSIVE_FIXTURES_HPP
 

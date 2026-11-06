@@ -30,7 +30,7 @@ This subsystem converts X3D `Text` and `FontStyle` nodes into renderable geometr
 | `runtime/io/stbtt/StbttFontMetrics.cpp` | Single TU where `stb_truetype.h` is included PRIVATE (`STB_TRUETYPE_IMPLEMENTATION` defined here). Reads unscaled advances via `stbtt_GetGlyphHMetrics`, derives `unitsPerEm` from the raw `head` table uint16 at offset 18 (big-endian). Returns `makeFailed()` for .notdef (glyph 0), unmapped family, or non-PLAIN style. |
 | `runtime/io/stbtt/StbttGlyphAtlas.cpp` | Optional raster helper: bakes printable Basic Latin and Latin-1 Supplement into a bottom-up coverage atlas, with exact advances and bitmap-aligned glyph boxes/UVs. |
 | `runtime/io/tests/glyph_atlas_tests.cpp` | Atlas bitmap/metrics oracle over all three bundled Liberation faces, boundaries, blank glyphs, and failure cases (`x3d_text_atlas_tests`). |
-| `runtime/io/tests/font_metrics_tests.cpp` | Per-backend doctest binary (`x3d_text_tests`). Task 2: `fontmetrics_backend_a_stbtt` verifies Ready+sane advanceEm for 5 Liberation codepoints and Failed-parity for absent emoji, unmapped family, and BOLD style. Tasks 3–4 will add the FreeType case and the cross-backend swap-test. |
+| `runtime/io/tests/font_metrics_tests.cpp` | `x3d_text_tests`: stb metrics and failure contract cases. |
 
 ## Interfaces and seams
 
@@ -142,13 +142,11 @@ int setTextOutputs(X3DNode& textNode, const TextLayoutResult& layout);
 
 No golden files exist for this subsystem — the tests use analytic expected values.
 
-## FontMetrics seam genericity proof (ADR-0025)
+## FontMetrics seam (ADR-0025)
 
-The `FontMetrics` seam is proven generic across real font backends using the same
-U1–U4 discipline as `TextureResolver` (ADR-0024). Backend work lives in the
-`x3d_stbtt` (and eventually `x3d_freetype`) flag-gated targets; the seam header
-(`FontMetrics.hpp`) ships with the core and is never contaminated by decoder
-headers.
+`FontMetrics` remains stable. `x3d_stbtt` provides the shipped metrics and atlas
+implementation behind a build option. Its factory header exposes no font-library
+types. The unused FreeType backend was removed; see the decision amendment.
 
 ### Adapter contract (cross-backend equality surface)
 
@@ -201,9 +199,8 @@ including non-breaking-space advance before the next visible glyph.
 
 ```bash
 cmake -S . -B build-font -G Ninja -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_TESTS=ON
-cmake --build build-font --target x3d_text_atlas_tests
-ctest --test-dir build-font --output-on-failure -R x3d_text_atlas_tests
-# Also enable -DX3D_CPP_BUILD_FREETYPE=ON to build/run x3d_text_tests (swap proof).
+cmake --build build-font --target x3d_text_tests x3d_text_atlas_tests
+ctest --test-dir build-font --output-on-failure -R x3d_text
 ```
 
 ## Related specs and ADRs

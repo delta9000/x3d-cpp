@@ -152,59 +152,12 @@ if(X3D_CPP_BUILD_CURL)
     endif()
 endif()
 
-# Optional AWS S3 AssetResolver; keep backend dependencies private.
-option(X3D_CPP_BUILD_S3 "Build AWS S3 SDK AssetResolver backend (OFF default)" OFF)
-
-if(X3D_CPP_BUILD_S3)
-    find_package(AWSSDK REQUIRED COMPONENTS s3)
-    add_library(x3d_s3 STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/s3/S3Resolver.cpp")
-    target_link_libraries(x3d_s3 PUBLIC x3d_cpp::x3d_cpp)
-    target_link_libraries(x3d_s3 PRIVATE
-        aws-cpp-sdk-core
-        aws-cpp-sdk-s3)
-    target_include_directories(x3d_s3 PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/s3")
-    # AWS SDK headers are warning-noisy on some toolchains; silence on this TU.
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(x3d_s3 PRIVATE -w)
-    endif()
-
-    if(X3D_CPP_BUILD_TESTS)
-        enable_testing()
-        add_executable(x3d_assetresolver_backend_b_test
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/s3/tests/asset_resolver_backend_b_test.cpp")
-        target_link_libraries(x3d_assetresolver_backend_b_test PRIVATE x3d_s3)
-        add_test(NAME x3d_assetresolver_backend_b COMMAND x3d_assetresolver_backend_b_test)
-
-        # Keep fixture seeding behind an AWS-free helper: compiling AWS headers
-        # with differing settings across translation units can corrupt
-        # ClientConfiguration. See runtime/io/s3/S3TestSupport.hpp.
-        add_library(x3d_s3_testsupport STATIC
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/s3/S3TestSupport.cpp")
-        target_link_libraries(x3d_s3_testsupport PUBLIC x3d_cpp::x3d_cpp)
-        target_link_libraries(x3d_s3_testsupport PRIVATE
-            aws-cpp-sdk-core aws-cpp-sdk-s3)
-        target_include_directories(x3d_s3_testsupport PUBLIC
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/s3")
-        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-            target_compile_options(x3d_s3_testsupport PRIVATE -w)
-        endif()
-    endif()
-endif()
-
-# Compare AssetResolver results (ADR-0023). X3D_S3_ENDPOINT enables the S3
-# fixture; without it, only the HTTP path runs.
-if(TARGET x3d_curl AND TARGET x3d_s3 AND X3D_CPP_BUILD_TESTS)
+# Check HTTP fixture bytes and missing assets through the AssetResolver seam.
+if(TARGET x3d_curl AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_assetresolver_swap
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/asset_resolver_swap_test.cpp")
-    # The swap-test talks only through the seams (makeHttpResolver/makeS3Resolver)
-    # plus the AWS-free x3d_s3_testsupport seeding helper. It never includes
-    # <aws/...> or <curl/...> itself, so no heavy backend dependency leaks into
-    # the test TU (both backends' libs link their dep PRIVATE).
-    target_link_libraries(x3d_assetresolver_swap PRIVATE
-        x3d_curl x3d_s3 x3d_s3_testsupport)
+    target_link_libraries(x3d_assetresolver_swap PRIVATE x3d_curl)
     target_compile_definitions(x3d_assetresolver_swap PRIVATE
         FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures")
     add_test(NAME x3d_assetresolver_swap COMMAND x3d_assetresolver_swap)
@@ -292,7 +245,7 @@ if(X3D_CPP_BUILD_STBTT OR X3D_CPP_BUILD_POC)
     endif()
 endif()
 
-# The raster helper is independently testable without the FreeType swap backend.
+# Test the raster helper against local font fixtures.
 if(TARGET x3d_stbtt AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_text_atlas_tests
@@ -326,41 +279,13 @@ if(X3D_CPP_BUILD_PLMPEG OR X3D_CPP_BUILD_POC)
     endif()
 endif()
 
-# Optional libtheora/libogg decoder; codec headers remain private (ADR-0041).
-option(X3D_CPP_BUILD_THEORA "Build libtheora MovieDecoder backend (OFF default)" OFF)
-
-if(X3D_CPP_BUILD_THEORA)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(THEORADEC REQUIRED IMPORTED_TARGET theoradec)
-    add_library(x3d_theora STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora/TheoraMovieDecoder.cpp")
-    target_link_libraries(x3d_theora PUBLIC x3d_cpp::x3d_cpp)
-    # theoradec.pc pulls in libogg transitively; both stay PRIVATE to this TU.
-    target_link_libraries(x3d_theora PRIVATE PkgConfig::THEORADEC)
-    target_include_directories(x3d_theora PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora")
-endif()
-
-# Optional FreeType glyph metrics; library headers remain private (ADR-0025).
-option(X3D_CPP_BUILD_FREETYPE "Build FreeType FontMetrics backend (OFF default)" OFF)
-
-if(X3D_CPP_BUILD_FREETYPE)
-    find_package(Freetype REQUIRED)
-    add_library(x3d_freetype STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/freetype/FreetypeFontMetrics.cpp")
-    target_link_libraries(x3d_freetype PUBLIC x3d_cpp::x3d_cpp)
-    target_link_libraries(x3d_freetype PRIVATE Freetype::Freetype)  # heavy dep PRIVATE
-    target_include_directories(x3d_freetype PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/freetype")
-endif()
-
-# Compare glyph metrics on local font fixtures (ADR-0025).
-if(TARGET x3d_stbtt AND TARGET x3d_freetype AND X3D_CPP_BUILD_TESTS)
+# Check glyph metrics on local font fixtures (ADR-0025).
+if(TARGET x3d_stbtt AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_text_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/font_metrics_tests.cpp")
     target_link_libraries(x3d_text_tests PRIVATE
-        x3d_stbtt x3d_freetype x3d_doctest_main)
+        x3d_stbtt x3d_doctest_main)
     target_include_directories(x3d_text_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
@@ -398,14 +323,6 @@ if(TARGET x3d_plmpeg AND X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract")
     target_compile_definitions(x3d_movie_tests PRIVATE
         PLMPEG_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/plmpeg/tests/fixtures")
-    if(TARGET x3d_theora)
-        target_link_libraries(x3d_movie_tests PRIVATE x3d_theora)
-        target_include_directories(x3d_movie_tests PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora")
-        target_compile_definitions(x3d_movie_tests PRIVATE
-            X3D_MOVIE_HAVE_THEORA=1
-            THEORA_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/theora/tests/fixtures")
-    endif()
     add_test(NAME x3d_movie_tests COMMAND x3d_movie_tests)
     set_tests_properties(x3d_movie_tests PROPERTIES TIMEOUT 120)
 endif()

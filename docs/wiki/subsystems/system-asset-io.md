@@ -1,7 +1,7 @@
 ---
 title: Asset Resolver / IO Seam
-summary: The bytes path from a URL surfaced verbatim in `TextureRef` to the raw bytes a consumer decodes — one callback type, two invocation contracts, two proven-generic backends (libcurl HTTP + AWS S3 SDK). The seam that unblocks LoadSensor, http/urn EXTERNPROTO, Script external-URL, and autoRefresh.
-tags: [subsystem, seam, asset-resolver, io, libcurl, s3, genericity, proven]
+summary: AssetResolver carries URL bytes and status through a host callback, with local-file and libcurl HTTP/FTP implementations.
+tags: [subsystem, seam, asset-resolver, io, libcurl, file, ftp]
 updated: 2026-10-02
 related:
   - ../architecture.md
@@ -18,9 +18,9 @@ The `AssetResolver` seam is the **bytes path** — the place where a CONSUMER tu
 surfaced verbatim in `TextureRef` (or in an Inline / EXTERNPROTO / ExternalGeometry
 descriptor) into the raw bytes it then decodes. The SDK never does I/O; the embedder
 supplies a `std::function<AssetResult(url, AssetKind)>` callback and a CONSUMER calls
-it. **Two independent backends** (`HttpResolver` over libcurl, `S3Resolver` over the
-AWS C++ SDK) plus a CI-gated swap-test prove the seam is generic ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md));
-the interface is frozen `[STABLE]` in [`include/x3d/sdk.hpp:50`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
+it. The interface remains stable. Local-file and libcurl HTTP/FTP implementations
+remain; the unused S3 implementation was removed. See the
+[decision amendment](../decisions/0023-assetresolver-second-backend-swap-test.md#amendment-2026-11-05).
 
 ## Purpose
 
@@ -63,14 +63,14 @@ lifetimes — locked at B8 design, not papered over:
 | **(A) Render-time** | Texture / Movie bytes in the consumer's render loop, AFTER extraction | `Texture`, `Movie`, `ExternalGeometry` | **Yes** — retry next frame, never blocks a frame | Per `TextureRef` with `Source::Url` |
 | **(B) Parse-time** | Inline / EXTERNPROTO at scene-build, BEFORE `buildSceneGraph` | `Inline`, `ExternProto` | **No** — must return `Ready`/`Failed` synchronously (Pending is incoherent: nodes must exist before extraction can walk them) | During `expandScene` / `expandInlines` |
 
-A single embedder resolver can branch on `AssetKind` to honor both contracts; both
-backends (`HttpResolver`, `S3Resolver`) return `Failed` (never `Pending`) in v1 —
+A single embedder resolver can branch on `AssetKind` to honor both contracts; the reference
+backends (`HttpResolver`, `FtpResolver`, `FileResolver`) return `Failed` (never `Pending`) in v1 —
 deferred-bytes Pending is a documented follow-up.
 
 ## Routing — `makeSchemeRouter` (route by scheme, never by `Failed`)
 
-Every backend self-identifies by URL scheme (HttpResolver → `http(s)://`, S3Resolver
-→ `s3://`, a local-file resolver → scheme-less/relative) and returns `Failed` for
+Every backend self-identifies by URL scheme (HttpResolver → `http(s)://`,
+FtpResolver → `ftp(s)://`, a local-file resolver → scheme-less/relative) and returns `Failed` for
 everything else, so without a router "wrong backend" and "right backend, genuinely
 failed" are indistinguishable. `runtime/extract/SchemeRouter.hpp` (header-only,
 std-only, IO-free — a lexical prefix check, no socket/file) mirrors
@@ -98,12 +98,10 @@ The optional `x3d_curl` backend exposes `makeFtpResolver(HttpResolverOptions)` a
 
 With `X3D_CPP_BUILD_CPURASTER`, `X3D_CPP_BUILD_STB` and `X3D_CPP_BUILD_CURL` enabled, the CPU host registers file/http/https/ftp routes and sends fetched image bytes to the stb decoder. Local reads are confined to the scene directory. `mise run interchange` builds this configuration and runs its tests. FTP is required by Interchange Annex B.6 as well as Full; a disconnected core SDK does not independently satisfy the host protocol requirement.
 
-## Backends (both proven generic)
+## Backends
 
-Both backends implement the unchanged `AssetResolver` type behind their own CMake option
-(mirroring the `x3d_quickjs` / `x3d_physics_jolt` isolation discipline: option →
-find_package → an isolated STATIC lib whose single TU is the resolver, with the
-heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
+The file backend is header-only. libcurl implements HTTP/FTP with its library
+headers and link dependencies private to `x3d_curl`.
 
 ### Backend A — libcurl HTTP (`x3d_curl`, `X3D_CPP_BUILD_CURL`)
 
@@ -139,53 +137,25 @@ heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
     reached through it. Opting in (`allowPrivateNetworks = true`) re-enables them.
 - **Configuration**: `makeHttpResolver(HttpResolverOptions{})` — defaults are the
   hardened ones above; `allowPrivateNetworks = true` widens for local dev/tests
-  (the swap-test opts in to reach its loopback fixture server). The no-argument
+  (the HTTP contract test opts in to reach its loopback fixture server). The no-argument
   `makeHttpResolver()` is source-compatible and uses the defaults.
 - **Build option**: `-DX3D_CPP_BUILD_CURL=ON` (OFF default, `find_package(CURL REQUIRED)`).
   Default build (option OFF) is byte-identical and behavior-unchanged.
 - **Per-backend test**: `x3d_assetresolver_backend_a` (URL prefix check + libcurl
   error path against unreachable host + the SEC-6 loopback-block / size-cap /
-  non-http-redirect cases against an in-process loopback server). Success path is in
-  the swap-test.
+  non-http-redirect cases against an in-process loopback server). The HTTP contract test covers successful reads.
 
 `x3d_http_address_guard` checks the added IPv4 ranges at both endpoints, their
 adjacent addresses, and all three supported IPv6 embedding forms without
 opening a socket.
 
-### Backend B — AWS C++ SDK S3 (`x3d_s3`, `X3D_CPP_BUILD_S3`)
+## HTTP contract cases — `x3d_assetresolver_swap`
 
-`runtime/io/s3/S3Resolver.{hpp,cpp}`:
-
-- **Transport**: `Aws::S3::S3Client::GetObject` per call.
-- **URL subset**: `s3://<bucket>/<key>[?...]` only; returns `Failed` otherwise. The
-  `endpoint` parameter (default `http://localhost:9000`) overrides the SDK's endpoint
-  resolver for S3-compatible fixtures (docker `adobe/s3mock` in CI).
-- **SDK init**: lazy `Aws::InitAPI` via `std::once_flag` on first call. Embedder does
-  not need to call `Aws::InitAPI` / `ShutdownAPI` explicitly (idempotent if they do).
-- **Build option**: `-DX3D_CPP_BUILD_S3=ON` (OFF default, `find_package(AWSSDK REQUIRED
-  COMPONENTS s3)`). Default build (option OFF) is byte-identical.
-- **Per-backend test**: `x3d_assetresolver_backend_b` (URL prefix check + `s3://`
-  parse + SDK init path against unreachable endpoint). Success path is in the swap-test.
-
-## Genericity proof — `x3d_assetresolver_swap`
-
-`runtime/io/tests/asset_resolver_swap_test.cpp` — a ctest binary that drives identical
-fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3) and asserts:
-
-- **Byte equality**: `resultA.bytes == resultB.bytes` (size + content via `std::equal`)
-  for every fixture.
-- **Failure parity**: `resultA.failed() == resultB.failed()` and both have empty
-  `bytes` for missing keys.
-- **Hermetic**: in-process POSIX-socket HTTP server on 127.0.0.1 (no external HTTP
-  server needed); fixtures uploaded to the S3 fixture via the AWS SDK at swap-test setup.
-- **Skip-when-no-S3-endpoint**: when `$X3D_S3_ENDPOINT` is unset (no docker), the test
-  degrades to an HTTP-only parity check and emits a SKIP message — so local dev
-  without docker doesn't get a spurious failure.
-
-Gated in CI by the `assetresolver-swap` job in `.github/workflows/ci.yml` (flag-gated
-build + a pinned docker `adobe/s3mock:5.2.3` S3 fixture on port 9000 +
-`ctest -R 'x3d_assetresolver(_backend|_swap)'`). On every PR that touches the asset seam, a consumer of it, or the build; a future parity break
-fails the merge.
+`runtime/io/tests/asset_resolver_swap_test.cpp` starts an in-process loopback
+HTTP server. It checks that three fixtures return Ready and match the source
+bytes, and that a missing asset returns Failed with empty bytes. Enable
+`X3D_CPP_BUILD_CURL` to build it. No service container or credentials are needed.
+The target keeps its existing name after removal of the S3 comparison.
 
 ## How it is used
 
@@ -196,7 +166,7 @@ The seam is invoked from **two distinct call sites**:
 A consumer (PoC renderer, Godot embedder, CAVE master, …) holds the `AssetResolver`
 and calls it per `TextureRef::Source::Url`. The PoC's `examples/poc_renderer/main.cpp:394`
 shows the wiring (`makeLocalFileResolver` — the pre-AssetResolver-seam file-I/O
-implementation; the new libcurl / S3 backends drop in as direct replacements).
+implementation; the libcurl backends drop in as direct replacements).
 
 ### SDK-side (contract B — parse-time)
 
@@ -231,8 +201,8 @@ The AssetResolver card ships four P1 dependency cards from "blocked" to "workabl
 - **SCR-005** — Script autoRefresh / autoRefreshTimeLimit: periodic re-fetch becomes
   possible.
 
-The AssetResolver card itself does **not** ship these — they become workable now that
-the IO seam is proven generic; each flips its own findings when its card ships.
+The AssetResolver card itself does **not** ship these — they become workable through
+the IO seam; each flips its own findings when its card ships.
 
 ## Files and tests
 
@@ -243,9 +213,7 @@ the IO seam is proven generic; each flips its own findings when its card ships.
 | `runtime/parse/AssetProtoResolver.hpp` | `protoResolverFrom` — EXTERNPROTO over the AssetResolver seam |
 | `runtime/io/curl/HttpResolver.{hpp,cpp}` | Backend A — libcurl HTTP, isolated TU |
 | `runtime/io/curl/tests/asset_resolver_backend_a_test.cpp` | Per-backend test for A |
-| `runtime/io/s3/S3Resolver.{hpp,cpp}` | Backend B — AWS C++ SDK S3, isolated TU |
-| `runtime/io/s3/tests/asset_resolver_backend_b_test.cpp` | Per-backend test for B |
-| `runtime/io/tests/asset_resolver_swap_test.cpp` | The swap-test (the genericity proof) |
+| `runtime/io/tests/asset_resolver_swap_test.cpp` | HTTP fixtures and missing-asset contract |
 | `runtime/io/tests/fixtures/{f1,f2,f3}.bin` | 100-byte fixture payloads |
 | `include/x3d/sdk.hpp:50` | `AssetResolver` re-export with `[STABLE]` marker |
 | `docs/wiki/decisions/0023-assetresolver-second-backend-swap-test.md` | The ADR |
@@ -254,8 +222,7 @@ the IO seam is proven generic; each flips its own findings when its card ships.
 | ctest target | What it covers |
 |---|---|
 | `x3d_assetresolver_backend_a` | Backend A: URL prefix + libcurl error path |
-| `x3d_assetresolver_backend_b` | Backend B: URL prefix + `s3://` parse + SDK init |
-| `x3d_assetresolver_swap` | Genericity proof: byte-equality A==B over shared fixtures, failure-mode parity |
+| `x3d_assetresolver_swap` | HTTP fixture bytes and missing-asset results |
 | `x3d_extract_tests` (`scheme_router_test`) | `makeSchemeRouter`: dispatch table, case-insensitive scheme match, unknown-scheme/`fallback` behavior (fake resolvers) |
 | `x3d_parse_tests` (`asset_proto_resolver_test`) | `protoResolverFrom`: fetch+parse+fragment selection over a fake in-memory backend, Pending/Failed contract, router+urn |
 
@@ -265,7 +232,7 @@ behavior independently of the new backends.
 ## Related specs and ADRs
 
 - [ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test](../decisions/0023-assetresolver-second-backend-swap-test.md)
-  — the genericity proof.
+  — historical parity decision and removal amendment.
 - [ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test](../decisions/0022-scriptengine-second-backend-swap-test.md)
   — the pattern this row follows.
 - [Seam-Status Matrix](../seam-status.md) — the live tracker; AssetResolver/IO is GREEN.

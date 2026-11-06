@@ -163,7 +163,7 @@ Concretely, for the `AudioBackend` seam:
   (ear-sign, symmetry guard, monotonic distance falloff over Linear/Inverse/Exponential).
 - **Permanent CI merge gate**: an `audio-swap` job in `.github/workflows/ci.yml`,
   flag-gated `-DX3D_CPP_BUILD_MINIAUDIO=ON`, scoped build of `x3d_sound_swaptest`
-  only, `ctest -R x3d_sound_swaptest`. No vcpkg, no docker — miniaudio is a vendored
+  only, the historical sound swap test (removed; see amendment). No vcpkg, no docker — miniaudio is a vendored
   single file, so the gate runs sub-minute.
 - The interface carried two backends with **no signature change** (one seam extension: the
   `Panner` `NodeKind` + positional `NodeParams` fields + `renderStereo()` were added in a
@@ -233,3 +233,9 @@ one of the two backends — that is a real regression, not test noise.
 - [ADR-0020: Sound via an Engine-Agnostic AudioBackend Seam](0020-sound-seam.md)
   — established the seam and BuiltinDspBackend; this ADR completes the genericity proof.
 - Design spec: `docs/superpowers/specs/2026-06-24-audio-seam-genericity-design.md`.
+
+## Amendment (2026-11-05)
+
+Removed the miniaudio backend, dependency fetch, build option, and dedicated
+swap test and CI job because no consumer selected this backend. AudioBackend,
+SoundSystem, BuiltinDspBackend, and the sound component tests remain.

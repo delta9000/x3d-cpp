@@ -51,7 +51,7 @@ using PlmVideoPtr = std::unique_ptr<plm_video_t, PlmVideoDeleter>;
 // natively) or `video` over the retained `rawBytes` (raw elementary stream). For
 // the raw path a backward seek rebuilds `video` from rawBytes — plm_video_rewind
 // does not recover after the stream has hit EOF, so a fresh decoder is the robust
-// rewind (the same approach as the Theora backend). `failed` marks a URL we
+// rewind. `failed` marks a URL we
 // already tried and could not open so we never re-resolve it every frame.
 struct Context {
   PlmPtr plm;                          // program-stream path
