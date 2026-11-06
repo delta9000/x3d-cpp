@@ -41,7 +41,7 @@ Loading a newer version declaration does not add its node types. See the
 
 ## Build and install
 
-Build from the checkout with CMake:
+Requires a C++20 compiler and CMake 3.21+. Build from the checkout:
 
 ```bash
 cmake -S . -B build -G Ninja \
