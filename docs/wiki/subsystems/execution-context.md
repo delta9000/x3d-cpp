@@ -338,7 +338,7 @@ The `tick(now)` implementation enforces two spec requirements:
 `addFieldWriteListener(FieldWriteListener)` registers a callback run after every field write, whether a cascade delivery or `writeField`, after dirty classification. Systems use it for nodes that react to an inputOutput write themselves: IntegerTrigger re-emitting `triggerValue` (§30.4.6) and key-device focus arbitration (§21.2). A listener may post events; they join the current timestamp.
 ## How it is tested
 
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `m2b_tick_test`) — `runtime/events/tests/m2b_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `m2b_tick_test`) — `runtime/events/tests/bounds_tick_test.cpp`: verifies that `buildSceneGraph` + `tick` correctly compute world and local bounds for a translated Shape, and that a cascade-delivered field change updates them.
 
 - `ctest --preset dev -R x3d_event_scene_bridge` — `runtime/events/tests/scene_bridge_test.cpp`: validates ROUTE resolution (DEF names to `FieldAddress`), rejection diagnostics (unknown field, wrong direction, type mismatch), silent skip of dangling DEFs, and an end-to-end parse + `buildFrom` + `tick` animation cycle (TimeSensor → PositionInterpolator → Transform).
 

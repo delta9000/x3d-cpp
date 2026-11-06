@@ -9560,7 +9560,7 @@
       "nodes": [
         "Switch"
       ],
-      "note": "Root cause: X3DExecutionContext::classifyDirty mapped a whichChoice field change to DirtyField, but a Switch is in neither geomDeps_ nor materialDeps_, so SceneExtractor::delta() ignored it (no subtree re-walk). The extractor already reads whichChoice on a full walk \u2014 only the incremental channel was affected (the prior 'Switch audited clean' note covered fullSnapshot only). Fix: classifyDirty maps whichChoice -> DirtyChildren, so delta() re-walks the Switch subtree and emits removed(old child)+added(new child). Regression: scene_extractor_t8_test.cpp case 5 (flip 0->1->-1). Surfaced via a Switch+IntegerSequencer demo rendered through the OpenGL PoC's incremental delta() path.",
+      "note": "Root cause: X3DExecutionContext::classifyDirty mapped a whichChoice field change to DirtyField, but a Switch is in neither geomDeps_ nor materialDeps_, so SceneExtractor::delta() ignored it (no subtree re-walk). The extractor already reads whichChoice on a full walk \u2014 only the incremental channel was affected (the prior 'Switch audited clean' note covered fullSnapshot only). Fix: classifyDirty maps whichChoice -> DirtyChildren, so delta() re-walks the Switch subtree and emits removed(old child)+added(new child). Regression: scene_extractor_incremental_test.cpp case 5 (flip 0->1->-1). Surfaced via a Switch+IntegerSequencer demo rendered through the OpenGL PoC's incremental delta() path.",
       "severity": "major",
       "status": "fixed",
       "summary": "Switch.whichChoice change was invisible to the incremental delta() channel \u2014 a runtime change of whichChoice swapped the active child for full-snapshot consumers (cpuraster) but NOT for incremental ones (the OpenGL PoC), which stayed on the old child."
@@ -10099,7 +10099,7 @@
         "ElevationGrid",
         "GeoElevationGrid"
       ],
-      "note": "emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per \u00a713.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_ext001_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)",
+      "note": "emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per \u00a713.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_grid_attributes_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)",
       "severity": "major",
       "status": "closed",
       "summary": "ElevationGrid/GeoElevationGrid drop authored color + normal nodes (colorPerVertex/normalPerVertex ignored) \u2014 only auto flat normals, no vertex colors."
@@ -10406,7 +10406,7 @@
       "nodes": [
         "LayerSet"
       ],
-      "note": "Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per \u00a735.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_b2_test.cpp.",
+      "note": "Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per \u00a735.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_skipped_geometry_test.cpp.",
       "severity": "major",
       "status": "closed",
       "summary": "LayerSet.order render-suppression is inert \u2014 unlisted layers render anyway."
@@ -10652,7 +10652,7 @@
         "CoordinateDouble",
         "GeoElevationGrid"
       ],
-      "note": "Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_b5_test.cpp and geometry_bounds_test.cpp.",
+      "note": "Closed 2026-09-27: GeoCoordinate MFVec3d points now convert in one list through geo::toWorld for mesh and bounds; CoordinateDouble remains Cartesian. GeoElevationGrid lattice, elevation, authored tangent normals, and bounds convert through GeoNodes. Earlier type mismatch coverage remains. Regressions: mesh_builder_geospatial_test.cpp and geometry_bounds_test.cpp.",
       "severity": "minor",
       "status": "closed",
       "summary": "Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float)."
@@ -10757,7 +10757,7 @@
         "Matrix3VertexAttribute",
         "Matrix4VertexAttribute"
       ],
-      "note": "Fixed: MeshBuilder extracts FloatVertexAttribute (1-4 components), Matrix3VertexAttribute (9), and Matrix4VertexAttribute (16) into named MeshData vertex streams, expanded by coordIndex alongside positions. Covered by custom vertex attributes follow expanded coordinate vertices in mesh_builder_t3_test.cpp.",
+      "note": "Fixed: MeshBuilder extracts FloatVertexAttribute (1-4 components), Matrix3VertexAttribute (9), and Matrix4VertexAttribute (16) into named MeshData vertex streams, expanded by coordIndex alongside positions. Covered by custom vertex attributes follow expanded coordinate vertices in mesh_builder_attributes_test.cpp.",
       "severity": "minor",
       "status": "closed",
       "summary": "Custom vertex-attribute nodes silently dropped \u2014 'attrib' children never read."
@@ -10810,7 +10810,7 @@
       "nodes": [
         "CADFace"
       ],
-      "note": "Fixed: SceneExtractor::walk generic loop now skips a CADFace.shape child whose nodeTypeName is not Shape|LOD|Transform, mirroring the Collision.proxy guard. Tested in scene_extractor_cad1_test.cpp. (sweep 2026-06-25, fixed same day)",
+      "note": "Fixed: SceneExtractor::walk generic loop now skips a CADFace.shape child whose nodeTypeName is not Shape|LOD|Transform, mirroring the Collision.proxy guard. Tested in scene_extractor_cad_face_test.cpp. (sweep 2026-06-25, fixed same day)",
       "severity": "minor",
       "status": "fixed",
       "summary": "CADFace.shape type constraint ([Shape|LOD|Transform]) is unenforced."
@@ -11543,7 +11543,7 @@
       "nodes": [
         "Extrusion"
       ],
-      "note": "Root cause was the GENERATOR, not the extractor: the MF-struct default emitter (src/x3d_cpp_gen/emit/defaults.py) collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment). An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2 guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_default_expr.py) and regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED 1-point spine still culls (the documented \"< 2 spine points => empty\" contract, mesh_builder_b3_test.cpp).",
+      "note": "Root cause was the GENERATOR, not the extractor: the MF-struct default emitter (src/x3d_cpp_gen/emit/defaults.py) collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment). An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2 guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_default_expr.py) and regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED 1-point spine still culls (the documented \"< 2 spine points => empty\" contract, mesh_builder_extrusion_test.cpp).",
       "severity": "major",
       "status": "fixed",
       "summary": "Extrusion with default/simple fields extracts NO geometry (render_items=0) \u2014 default_extrusion.x3d and test_simpleorient.x3d render blank. FIXED: now render (default_extrusion = unit box, test_simpleorient = oriented square swept along the spine)."
@@ -11555,7 +11555,7 @@
       "nodes": [
         "ElevationGrid"
       ],
-      "note": "NIST test_xSpacing and test_zSpacing scenes omit one required dimension. MeshBuilder.cpp infers a dimension below two when the height count divides evenly by the other dimension, preserving these reference renders as a deliberate leniency. The omitted-dimension regression in mesh_builder_t2_test.cpp checks both axes with non-default spacing, triangle counts, and corner heights.",
+      "note": "NIST test_xSpacing and test_zSpacing scenes omit one required dimension. MeshBuilder.cpp infers a dimension below two when the height count divides evenly by the other dimension, preserving these reference renders as a deliberate leniency. The omitted-dimension regression in mesh_builder_composed_geometry_test.cpp checks both axes with non-default spacing, triangle counts, and corner heights.",
       "severity": "major",
       "status": "fixed",
       "summary": "ElevationGrid infers one omitted dimension from a divisible height count."

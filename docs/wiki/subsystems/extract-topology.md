@@ -25,8 +25,8 @@ The enum was factored into its own header (Phase 1 / B4) so both the AoS path (`
 | `runtime/extract/PackedMesh.hpp` | Includes `Topology.hpp`; `PackedMesh::topology` carries the classification for binary-slab geometry. |
 | `runtime/extract/MeshBuilder.hpp` | Sets `topology` to `Lines` or `Points` in the B4 line/point branches (`IndexedLineSet`, `LineSet`, `PointSet`); leaves the default `Triangles` for all composed/parametric geometry. |
 | `runtime/extract/TextExtract.hpp` | Explicitly sets `mesh.topology = Topology::Triangles` to make the glyph-quad path unambiguous. |
-| `runtime/extract/tests/mesh_builder_b4_test.cpp` | Primary acceptance suite for the B4 topology extension. |
-| `runtime/extract/tests/mesh_builder_tc1_test.cpp` | Confirms lines/points carry no implicit UV and that topology propagates through the texcoord path. |
+| `runtime/extract/tests/mesh_builder_topology_test.cpp` | Primary acceptance suite for the B4 topology extension. |
+| `runtime/extract/tests/mesh_builder_default_texcoords_test.cpp` | Confirms lines/points carry no implicit UV and that topology propagates through the texcoord path. |
 | `runtime/extract/tests/text_extract_test.cpp` | Asserts `Topology::Triangles` on glyph-quad output. |
 
 ## Interfaces and seams
@@ -73,7 +73,7 @@ Both fields default to `Triangles`, so code written before B4 is unaffected.
 
 ## How it is tested
 
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_b4_test`) — B4 acceptance suite (`runtime/extract/tests/mesh_builder_b4_test.cpp`). Covers:
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_b4_test`) — B4 acceptance suite (`runtime/extract/tests/mesh_builder_topology_test.cpp`). Covers:
   - Default topology is `Triangles`; a triangle mesh is byte-identical to pre-B4 output.
   - `IndexedLineSet`: each -1-delimited `coordIndex` run becomes consecutive vertex pairs; `topology=Lines`, `hasNormals=false`, `solid=false`.
   - `IndexedLineSet` honors per-vertex `Color` and `ColorRGBA` (alpha preserved).
@@ -81,7 +81,7 @@ Both fields default to `Triangles`, so code written before B4 is unaffected.
   - `PointSet`: whole point array becomes a 0..N-1 `GL_POINTS` run; `topology=Points`; `Color` honored.
   - Degenerate guards: 1-vertex polyline, out-of-range indices, and empty `PointSet` all yield empty meshes with no out-of-bounds read, and the geometry type remains recognized.
 
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_tc1_test`) — texcoord path (`runtime/extract/tests/mesh_builder_tc1_test.cpp`). Asserts that `IndexedLineSet` and `PointSet` carry `topology=Lines`/`topology=Points` and that no implicit UVs are generated for non-triangle primitives.
+- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_tc1_test`) — texcoord path (`runtime/extract/tests/mesh_builder_default_texcoords_test.cpp`). Asserts that `IndexedLineSet` and `PointSet` carry `topology=Lines`/`topology=Points` and that no implicit UVs are generated for non-triangle primitives.
 
 - `ctest --preset dev -R x3d_extract_tests` (doctest case: `text_extract_test`) — Text extraction (`runtime/extract/tests/text_extract_test.cpp`). Asserts `topology == Topology::Triangles` on glyph-quad output, confirming the explicit assignment in `TextExtract.hpp` is in force.
 

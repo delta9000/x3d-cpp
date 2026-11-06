@@ -16,5 +16,5 @@ _Generated. Levels 1,2 · 6 nodes · profiles: Full._
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **CAD-1** [minor/FIXED] — §32.4.2: CADFace.shape type constraint ([Shape|LOD|Transform]) is unenforced.
-  - Fixed: SceneExtractor::walk generic loop now skips a CADFace.shape child whose nodeTypeName is not Shape|LOD|Transform, mirroring the Collision.proxy guard. Tested in scene_extractor_cad1_test.cpp. (sweep 2026-06-25, fixed same day)
+  - Fixed: SceneExtractor::walk generic loop now skips a CADFace.shape child whose nodeTypeName is not Shape|LOD|Transform, mirroring the Collision.proxy guard. Tested in scene_extractor_cad_face_test.cpp. (sweep 2026-06-25, fixed same day)
 
