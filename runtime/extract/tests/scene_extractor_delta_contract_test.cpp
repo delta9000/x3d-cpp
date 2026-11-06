@@ -448,3 +448,144 @@ TEST_CASE("geometry delta: geometry-owned index emptiness is incremental") {
     mirror.apply(delta, ex, ctx, f.scene);
   }
 }
+
+TEST_CASE("delta oracle: shared humanoid scalar edit preserves every placement") {
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  auto humanoid = createX3DNode("HAnimHumanoid");
+  setF(humanoid, "skin", MFNode{shape});
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(left, "translation", SFVec3f{-10,0,0});
+  setF(right, "translation", SFVec3f{10,0,0});
+  addChild(left, humanoid); addChild(right, humanoid);
+  Scene scene; scene.rootNodes = {left, right};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  mirror.apply(ex.fullSnapshot(), ex, ctx, scene);
+  REQUIRE(mirror.items.size() == 2);
+  ctx.postEvent(humanoid.get(), "name", SFString{"renamed"});
+  ctx.tick(1);
+  mirror.apply(ex.delta(), ex, ctx, scene);
+  CHECK(mirror.items.size() == 2);
+}
+
+TEST_CASE("delta oracle: LayerSet order edits reach delta membership") {
+  auto first = createX3DNode("Layer"), second = createX3DNode("Layer");
+  auto firstShape = createX3DNode("Shape"), secondShape = createX3DNode("Shape");
+  setF(firstShape, "geometry", createX3DNode("Box"));
+  setF(secondShape, "geometry", createX3DNode("Sphere"));
+  addChild(first, firstShape); addChild(second, secondShape);
+  auto layers = createX3DNode("LayerSet");
+  setF(layers, "layers", MFNode{first, second});
+  setF(layers, "order", MFInt32{0});
+  Scene scene; scene.rootNodes = {layers};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 1);
+  ctx.postEvent(layers.get(), "order", MFInt32{1}); ctx.tick(1);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK(d.removed.size() == 1);
+  CHECK(d.added.size() == 1);
+  if (!d.added.empty()) CHECK(ex.item(d.added.front()).path[1] == second.get());
+  auto full = ex.fullSnapshot();
+  REQUIRE(full.added.size() == 1);
+  CHECK(ex.item(full.added.front()).path[1] == second.get());
+}
+
+TEST_CASE("delta oracle: GeoOrigin movement invalidates geographic mesh and placement") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoSystem", MFString{"GC"});
+  setF(origin, "geoCoords", SFVec3d{6378137,0,0});
+  auto coord = createX3DNode("GeoCoordinate");
+  setF(coord, "geoSystem", MFString{"GC"}); setF(coord, "geoOrigin", origin);
+  setF(coord, "point", MFVec3d{{6378137,0,0},{6378137,1,0},{6378137,0,1}});
+  auto geom = createX3DNode("TriangleSet"), shape = createX3DNode("Shape");
+  setF(geom, "coord", coord); setF(shape, "geometry", geom);
+  auto location = createX3DNode("GeoLocation");
+  setF(location, "geoSystem", MFString{"GC"});
+  setF(location, "geoCoords", SFVec3d{6378137,0,0});
+  setF(location, "geoOrigin", origin);
+  auto boxShape = createX3DNode("Shape");
+  setF(boxShape, "geometry", createX3DNode("Box")); addChild(location, boxShape);
+  Scene scene; scene.rootNodes = {location, shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene); GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 2);
+  ctx.postEvent(origin.get(), "geoCoords", SFVec3d{6378138,0,0}); ctx.tick(1);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK((!d.updatedTransform.empty() || !d.added.empty()));
+  CHECK((!d.updatedGeometry.empty() || !d.added.empty()));
+  CHECK(ex.item(0).worldTransform.m[12] == doctest::Approx(-1));
+  CHECK(ex.item(1).mesh->positions.front().x == doctest::Approx(-1));
+  ex.fullSnapshot();
+  CHECK(ex.item(0).worldTransform.m[12] == doctest::Approx(-1));
+  CHECK(ex.item(1).mesh->positions.front().x == doctest::Approx(-1));
+}
+
+TEST_CASE("delta oracle: swept trajectory coordinate edits rebuild the surface") {
+  auto cross = createX3DNode("NurbsCurve2D");
+  setF(cross, "controlPoint", MFVec2d{{1,0},{1,1}});
+  setF(cross, "order", SFInt32{2}); setF(cross, "tessellation", SFInt32{1});
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point", MFVec3f{{0,0,0},{0,0,1}});
+  auto trajectory = createX3DNode("NurbsCurve");
+  setF(trajectory, "controlPoint", coord);
+  setF(trajectory, "order", SFInt32{2}); setF(trajectory, "tessellation", SFInt32{1});
+  auto surface = createX3DNode("NurbsSweptSurface"), shape = createX3DNode("Shape");
+  setF(surface, "crossSectionCurve", cross); setF(surface, "trajectoryCurve", trajectory);
+  setF(shape, "geometry", surface);
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx;
+  SceneExtractor ex(ctx, scene); GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 1);
+  ctx.tick(1);
+  REQUIRE(ctx.writeField(coord.get(), "point", MFVec3f{{0,0,5},{0,0,6}}) ==
+          FieldWriteResult::Ok);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK((!d.updatedGeometry.empty() || !d.added.empty()));
+  CHECK(ex.item(0).mesh->positions.front().z == doctest::Approx(5));
+  ex.fullSnapshot();
+  CHECK(ex.item(0).mesh->positions.front().z == doctest::Approx(5));
+}
+
+TEST_CASE("delta oracle: shared GeoOrigin invalidates GeoTransform and GeoElevationGrid") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoSystem", MFString{"GC"});
+  setF(origin, "geoCoords", SFVec3d{6378137,0,0});
+  auto transform = createX3DNode("GeoTransform");
+  setF(transform, "geoSystem", MFString{"GC"});
+  setF(transform, "geoCenter", SFVec3d{6378137,0,0});
+  setF(transform, "geoOrigin", origin);
+  setF(transform, "scale", SFVec3f{2,2,2});
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  addChild(transform, shape);
+  auto grid = createX3DNode("GeoElevationGrid");
+  setF(grid, "geoSystem", MFString{"GC"});
+  setF(grid, "geoOrigin", origin);
+  setF(grid, "geoGridOrigin", SFVec3d{6378137,0,0});
+  setF(grid, "xDimension", SFInt32{2});
+  setF(grid, "zDimension", SFInt32{2});
+  setF(grid, "height", MFDouble{0,0,0,0});
+  auto gridShape = createX3DNode("Shape");
+  setF(gridShape, "geometry", grid);
+  Scene scene; scene.rootNodes = {transform, gridShape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  mirror.apply(ex.fullSnapshot(), ex, ctx, scene);
+  REQUIRE(mirror.items.size() == 2);
+  ctx.postEvent(origin.get(), "geoCoords", SFVec3d{6378138,0,0}); ctx.tick(1);
+  mirror.apply(ex.delta(), ex, ctx, scene);
+}

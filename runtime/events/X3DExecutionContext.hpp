@@ -862,6 +862,9 @@ private:
     // visible changes active traversal even when the hidden branch emitted no
     // RenderItems, so it must invalidate the extraction baseline like Switch.
     if (a.field == "visible") flags |= DirtyChildren;
+    // ISO/IEC 19775-1 §35.4.2: order selects the rendered Layer placements.
+    if (a.field == "order" && a.node->nodeTypeName() == "LayerSet")
+      flags |= DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;

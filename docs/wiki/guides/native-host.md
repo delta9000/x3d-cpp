@@ -192,12 +192,15 @@ for every resource type. Defaults do not fetch images or open devices. A
 texture callback receives authored URL strings; resolve their base/path and
 allowlisted schemes in the host.
 
-`Pending` does not create a background job. Ready texture results are memoized;
-Pending/Failed results are not, but an unchanged material is not necessarily
-re-extracted by a later delta. Arrange an explicit material refresh or use a
-full snapshot after asynchronous completion, and replace host state accordingly.
-Likewise, changing bytes behind an unchanged Ready URL needs explicit cache
-invalidation/rebaselining. The host owns timeouts, cancellation and diagnostics.
+`Pending` does not create a background job. On later ticks, `delta()` retries
+Pending textures, glyphs, and packed geometry without a field edit or full
+snapshot. Apply its `updatedMaterial`, `updatedGeometry`, and `added` channels
+when resources complete. Ready results leave the retry set; Ready texture
+results are memoized and shared across placements. Failed texture results are
+not polled automatically; an explicit material refresh or full snapshot retries
+them. Changing bytes behind an unchanged Ready URL requires a full snapshot,
+which clears the texture memo. The host owns timeouts, cancellation, and
+diagnostics.
 
 Catch parse/create exceptions before replacing an active session. Inspect
 `rangeWarnings`, `protoWarnings`, `session.routes().rejected`,

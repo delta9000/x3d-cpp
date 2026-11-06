@@ -26,7 +26,8 @@ what needs to be drawn, and how has that changed since last frame?" It produces
 flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc`,
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
-an incremental `delta()` keeps scalar/TRS updates proportional to affected items.
+an incremental `delta()` keeps geometry and material refreshes proportional to
+the affected items. Active lights are collected separately on each tick.
 Structural/active-child and scoped-descriptor changes take one bounded full-scene
 replacement walk per affected tick; correctness comes before preserving the old subtree optimization.
 
@@ -76,7 +77,7 @@ FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-sc
 int           lf   = it.localFog; // §24.4.3: nearest in-scope LocalFog index, or -1.
 const std::vector<LocalFogDesc>& localFogs = ex.snapshotLocalFogs(); // resolve lf here.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
-const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // from last fullSnapshot()
+const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // current snapshot/delta light cache
 
 // World-bounds (per-path-correct, not first-path-only).
 Aabb bounds = ex.sceneWorldBounds();
@@ -161,7 +162,9 @@ addition is published, including tracked motion while it was absent. Regression:
 ### Structural delta replacement contract
 
 Any `DirtyChildren` (including SFNode/MFNode writes, `visible` changes and
-Switch/LOD active-child changes), or a scene topology revision, replaces the extraction baseline once:
+Switch/LOD active-child changes and `LayerSet.order` edits), a scalar
+`HAnimHumanoid` configuration edit, or a scene topology revision replaces the
+extraction baseline once:
 `removed` contains every previously live ID and `added` contains the complete
 current snapshot. **Apply removals before additions**; dense IDs can occur in
 both. Release their live content-cache entries before accepting new records;
@@ -173,7 +176,7 @@ The full walk uses the existing traversal budget and may report a partial view
 through `budgetExceeded()`. It intentionally costs O(visited scene paths) plus
 mesh/material extraction, including unchanged placements, on structural ticks.
 Scalar geometry/material/TRS ticks retain the incremental and shared-mesh paths
-except for the descriptor dependencies described below.
+except for humanoid configuration and the descriptor dependencies described below.
 This avoids stale dependencies after geometry replacement, forgotten reattachment
 of a removed path, last-writer-only USE-group placement rebuilding, and walking
 raw path pointers after a removed subtree has already been destroyed.
@@ -298,6 +301,8 @@ a separate seam.
 - `material` (`MaterialDesc`) — full Phong/Physical/Unlit descriptor with textures.
 - `mesh` (`MeshRef` = `shared_ptr<const MeshData>`) — local-frame triangles, **shared** across every placement of one `GeomId` ([ADR-0045](../decisions/0045-shared-mesh-instancing.md)), so host RAM is O(distinct content) rather than O(placements). Never null (a Packed item points at `emptyMeshRef()`), so `item.mesh->positions` needs no null check. `external_geom_seam_test.cpp` verifies this on emitted packed items and checks their empty AoS scene-bounds channel. Immutable by contract: a content change builds a **new** mesh and bumps `GeomId::contentVersion` rather than editing one a co-owner can see.
 - `lights` — indices into `snapshotLights()` for lights whose scope covers this placement.
+  When `lightsChanged` is set, re-read the cache and each placement's `lightsOf()`
+  indices together.
 - `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
 - `LocalFogSystem` collects a bound-independent `LocalFog` for each enclosing grouping **placement**. `LocalFogDesc::scopePath` contains the complete root-to-enclosing-group node-pointer chain; matching requires an exact prefix of the item path. The longest matching prefix wins, so USE-shared enclosing groups keep their own world-scaled `visibilityRange`, including shared nested scopes. An empty scope path is scene-wide root fog. Disabled fogs are skipped, leaving the nearest outer enabled fog or global `Fog`; `RenderItem::localFog == -1` selects global `Fog`. Existing equal-scope tie behavior is retained: the last collected scoped fog wins, while the first root fog supplies the scene-wide fallback. The walk keeps its shared visit budget and depth cap and rejects containment back-edges without deduplicating separate USE paths. This does not change light scoping.
 
@@ -384,7 +389,16 @@ is in [ADR-0040](../decisions/0040-nurbs-tessellation-first-party.md).
 
 - **`TextureResolver` (embedder-configured)** — supplied at `SceneExtractor` construction; the SDK never decodes image bytes. The resolver is called per `TextureRef` with `Source::Url`; its result is threaded onto `TextureRef::resolvedPixels`. Default is `makeNullTextureResolver()` (always `Failed`; PoC white-fallback). See [Texture extraction](extract-textures.md).
 
-- **`externalGeometryResolver` / `PackedMesh`** — Phase 1 binary geometry path. When `buildLocalMesh` returns `recognized=false` and an `externalGeometryResolver` is wired, the extractor calls it with the unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers `emitPacked()`, producing a `RenderItem` with `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` omits the placement as Pending. Once the host has geometry ready, take a fresh `fullSnapshot()` to retry the resolver. See [Ext firewall](ext-firewall.md).
+- **`externalGeometryResolver` / `PackedMesh`** — Phase 1 binary geometry path.
+  When `buildLocalMesh` returns `recognized=false` and an
+  `externalGeometryResolver` is wired, the extractor calls it with the
+  unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible
+  byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers
+  `emitPacked()`, producing a `RenderItem` with
+  `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` omits the
+  placement as Pending. `delta()` retries Pending placements on later ticks and
+  refreshes packed payloads after geometry field edits; Ready payloads need no
+  readiness polling. See [Ext firewall](ext-firewall.md).
 
 - **`X3DExecutionContext` (runtime dependency)** — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `tickGeneration()` (the monotonic advance count the one-delta-per-tick guard keys on — deliberately not `now()`, which an embedder may pause or replay), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
 

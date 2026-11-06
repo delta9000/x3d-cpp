@@ -178,3 +178,35 @@ TEST_CASE("scene_extractor_m25_5_test") {
 
   return;
 }
+
+TEST_CASE("delta oracle: lightsChanged exposes current cached descriptors and scope") {
+  int edit = 0;
+  SUBCASE("on") {}
+  SUBCASE("global") { edit = 1; }
+  SUBCASE("color") { edit = 2; }
+  SUBCASE("ancestor translation") { edit = 3; }
+  SUBCASE("enabled from empty cache") { edit = 4; }
+  auto light = createX3DNode("PointLight"), parent = createX3DNode("Transform");
+  setF(light, "global", false);
+  if (edit == 4) setF(light, "on", false);
+  addChild(parent, light); addChild(parent, makeTriShape());
+  Scene scene; scene.rootNodes = {parent,makeTriShape()};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  REQUIRE(ex.fullSnapshot().added.size() == 2);
+  if (edit == 0) ctx.postEvent(light.get(), "on", false);
+  if (edit == 1) ctx.postEvent(light.get(), "global", true);
+  if (edit == 2) ctx.postEvent(light.get(), "color", SFColor{1,0,0});
+  if (edit == 3) ctx.postEvent(parent.get(), "translation", SFVec3f{3,0,0});
+  if (edit == 4) ctx.postEvent(light.get(), "on", true);
+  ctx.tick(1); CHECK(ex.delta().lightsChanged);
+  auto current = ex.lights();
+  CHECK(ex.snapshotLights().size() == current.size());
+  if (!current.empty() && !ex.snapshotLights().empty()) {
+    CHECK(ex.snapshotLights()[0].global == current[0].global);
+    CHECK(ex.snapshotLights()[0].color.g == doctest::Approx(current[0].color.g));
+    CHECK(ex.snapshotLights()[0].worldLocation.x == doctest::Approx(current[0].worldLocation.x));
+  }
+  const std::size_t outsideCount = !current.empty() && current[0].global ? 1 : 0;
+  CHECK(ex.item(1).lights.size() == outsideCount);
+}

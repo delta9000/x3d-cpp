@@ -136,9 +136,11 @@ Repeated `now` values are allowed because the guard does not key on the clock.
 have changed. The guard keys on `ctx.tickGeneration()`, a monotonic advance count.
 
 Callbacks run synchronously on the caller's thread; their IO can block that
-thread. `Pending` is available only on seams whose result supports it, and does
-not itself schedule a retry or background work. In particular, unchanged
-materials are not automatically re-extracted for pending textures. See the
+thread. `Pending` is available only on seams whose result supports it and does
+not create background work. On later ticks, `SceneExtractor::delta()` retries
+Pending textures, glyphs, and packed geometry without a field edit. Completion
+reaches the host through `updatedMaterial`, `updatedGeometry`, or `added`. Ready
+resources leave the retry set. See the
 [native host resource contract](../wiki/guides/native-host.md#resources-and-errors-are-explicit).
 
 ## The seams (embedder-supplied IO)

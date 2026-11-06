@@ -3319,3 +3319,64 @@
   severity: major
   status: fixed
   summary: JSON writer retains empty numeric multi-fields that differ from their node defaults.
+
+- id: DELTA-LAYERSET-ORDER
+  nodes: [LayerSet]
+  clause: "ISO/IEC 19775-1 35.4.2"
+  severity: major
+  status: fixed
+  summary: LayerSet.order edits replace incremental render membership.
+- id: DELTA-GEOORIGIN
+  nodes: [GeoOrigin, GeoLocation, GeoTransform, GeoCoordinate, GeoElevationGrid]
+  clause: "ISO/IEC 19775-1 25.2.3, 25.3.1, 25.3.2, 25.3.3, 25.3.10"
+  severity: major
+  status: fixed
+  summary: GeoOrigin edits refresh dependent geographic placements and meshes.
+- id: DELTA-SWEPT-TRAJECTORY
+  nodes: [NurbsSweptSurface, NurbsCurve, Coordinate]
+  clause: "ISO/IEC 19775-1 27.4"
+  severity: major
+  status: fixed
+  summary: Swept-surface deltas include the trajectory control-point dependency.
+- id: DELTA-SHARED-HUMANOID
+  nodes: [HAnimHumanoid]
+  clause: "ISO/IEC 19775-1 26.3.2"
+  severity: major
+  status: fixed
+  summary: Scalar humanoid edits preserve every shared render placement.
+- id: DELTA-SKIN-BINDING
+  nodes: [HAnimHumanoid, HAnimJoint, HAnimDisplacer]
+  clause: "ISO/IEC 19775-1 26.3.1, 26.3.2, 26.3.3"
+  severity: major
+  status: fixed
+  summary: Joint binding-frame and displacer payload edits invalidate cached skin bindings.
+- id: DELTA-SITE-POSE
+  nodes: [HAnimHumanoid, HAnimJoint, HAnimSite]
+  clause: "ISO/IEC 19775-1 26.3.2, 26.3.3, 26.3.6"
+  severity: major
+  status: fixed
+  summary: Motion of skeletal frames above joints publishes dependent skin-pose updates.
+- id: DELTA-PACKED-PAYLOAD
+  nodes: [NurbsTrimmedSurface]
+  clause: "ISO/IEC 19775-1 4.4.8, 27.4"
+  severity: major
+  status: fixed
+  summary: Packed geometry deltas refresh resolver payloads and retry Pending placements.
+- id: DELTA-TEXT-OUTPUTS
+  nodes: [Text, FontStyle]
+  clause: "ISO/IEC 19775-1 15.4.1, 15.4.2"
+  severity: minor
+  status: fixed
+  summary: Incremental Text rebuilds refresh textBounds, lineBounds, and origin outputs.
+- id: DELTA-PENDING-RESOURCES
+  nodes: [ImageTexture, MultiTexture, ComposedCubeMapTexture, Text]
+  clause: "ISO/IEC 19775-1 15.4.2, 18.4.6"
+  severity: major
+  status: fixed
+  summary: Pending textures and glyphs retry on later ticks and publish incremental completion.
+- id: DELTA-LIGHT-CACHE
+  interfaces: [X3DLightNode]
+  clause: "ISO/IEC 19775-1 17.3.1"
+  severity: minor
+  status: fixed
+  summary: Light-change deltas refresh cached descriptors and per-placement scope indices.

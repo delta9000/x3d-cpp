@@ -332,9 +332,6 @@ void exerciseResourcesAndDiagnostics() {
   cache->ready = true; // the host's resource work completed outside the SDK
   textured->tick(0);
   host.apply(textured->delta(), textured->extractor());
-  // Completion is a deliberate rebaseline. Pending does not schedule work and
-  // an unchanged material need not be re-extracted by delta().
-  host.replace(*textured);
   const auto &a = host.placements.begin()->second.material.textures.front().resolvedPixels;
   const auto &b = std::next(host.placements.begin())->second.material.textures.front().resolvedPixels;
   require(a.ready() && a.pixels == b.pixels && cache->decoded == 1,

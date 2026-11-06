@@ -341,3 +341,53 @@ TEST_CASE("instancing: GeomId cache distinguishes baked variants and revised con
   upload(delta.updatedGeometry);
   CHECK(uploads.size() == 4); // old resources retained here to detect key reuse
 }
+
+TEST_CASE("delta oracle: pending texture completion reaches delta without a field edit") {
+  auto shape = makeQuadShape(), texture = createX3DNode("ImageTexture");
+  auto appearance = createX3DNode("Appearance");
+  setF(texture, "url", MFString{"slow.png"}); setF(appearance, "texture", texture);
+  SUBCASE("single texture") {}
+  SUBCASE("multi texture stage") {
+    auto multi = createX3DNode("MultiTexture");
+    setF(multi, "texture", MFNode{texture});
+    setF(appearance, "texture", multi);
+  }
+  SUBCASE("cube face") {
+    auto cube = createX3DNode("ComposedCubeMapTexture");
+    setF(cube, "frontTexture", texture);
+    setF(appearance, "texture", cube);
+  }
+  setF(shape, "appearance", appearance);
+  Scene scene = makeInstancedScene(shape, 1);
+  bool ready = false;
+  int calls = 0;
+  TextureResolver resolver = [&](const std::string &) {
+    ++calls;
+    if (!ready) return TexturePixelResult::makePending();
+    TexturePixels p; p.width = 1; p.height = 1; p.rgba.assign(4,255);
+    return TexturePixelResult::makeReady(std::move(p));
+  };
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene, MeshBuildOptions{}, resolver);
+  REQUIRE(ex.fullSnapshot().added.size() == 1);
+  auto pixels = [&](const SceneExtractor &source) -> const TexturePixelResult & {
+    const auto &ref = source.item(0).material.textures.at(0);
+    if (ref.source == TextureRef::Source::Multi) return ref.multiStages.at(0).resolvedPixels;
+    if (!ref.cubeFaces.empty()) return ref.cubeFaces.at(0).resolvedPixels;
+    return ref.resolvedPixels;
+  };
+  CHECK(pixels(ex).pending());
+  auto mirror = pixels(ex);
+  ready = true; ctx.tick(1); auto d = ex.delta();
+  CHECK(d.updatedMaterial == std::vector<RenderItemId>{0});
+  if (!d.updatedMaterial.empty()) mirror = pixels(ex);
+  CHECK(pixels(ex).ready());
+  CHECK(calls == 2);
+  ctx.tick(2);
+  CHECK(ex.delta().updatedMaterial.empty());
+  CHECK(calls == 2);
+  SceneExtractor oracle(ctx, scene, MeshBuildOptions{}, resolver);
+  REQUIRE(oracle.fullSnapshot().added.size() == 1);
+  CHECK(mirror.status == pixels(oracle).status);
+  CHECK(mirror.pixels->rgba == pixels(oracle).pixels->rgba);
+}

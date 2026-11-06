@@ -105,11 +105,13 @@ Each skin item carries `RenderItem::SkinDesc`:
   indices when authored);
 - a pose version.
 
-A joint transform or Joint-displacer weight change advances the version and
-lists the item in `RenderDelta::updatedSkinPose`. The geometry ID and mesh stay
-the same, so a GPU consumer uploads only the palette. The binding is recompiled
-only when a binding field changes: the humanoid's skin or binding fields, a
-joint's `skinCoordIndex` / `skinCoordWeight`, or the skeleton structure.
+Motion of a skeletal frame, including an HAnimSite above a joint, or a
+Joint-displacer weight change advances the version and lists the item in
+`RenderDelta::updatedSkinPose`. Pose-only changes retain the geometry ID, mesh,
+and binding, so a GPU consumer uploads only the palette. Binding edits recompile
+the binding: the humanoid's skin or binding fields, a joint's `skinCoordIndex`,
+`skinCoordWeight`, `center`, or `scaleOrientation`, a Joint-displacer's
+`coordIndex` or `displacements`, or the skeleton structure.
 
 CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
 deforms the source coordinates and maps them to the expanded corners. Each

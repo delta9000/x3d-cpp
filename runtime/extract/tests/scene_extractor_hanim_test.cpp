@@ -254,3 +254,72 @@ TEST_CASE("HAnimSite transforms its child geometry") {
   CHECK(origin.y == doctest::Approx(3));
   CHECK(origin.z == doctest::Approx(4));
 }
+
+TEST_CASE("delta oracle: compiled skin inputs match a fresh extractor after edits") {
+  int edit = 0;
+  SUBCASE("joint displacement payload") {}
+  SUBCASE("joint displacement indices") { edit = 1; }
+  SUBCASE("joint bind center") { edit = 2; }
+  SUBCASE("joint bind scale orientation") { edit = 3; }
+  auto coord = createX3DNode("Coordinate");
+  set(coord, "point", MFVec3f{{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
+  auto joint = createX3DNode("HAnimJoint"), displacer = createX3DNode("HAnimDisplacer");
+  set(joint, "skinCoordIndex", MFInt32{0,1,2,3});
+  set(joint, "skinCoordWeight", MFFloat{1,1,1,1});
+  set(displacer, "coordIndex", MFInt32{0});
+  set(displacer, "displacements", MFVec3f{{0,0,1}}); set(displacer, "weight", 1.0f);
+  set(joint, "displacers", MFNode{displacer});
+  auto h = createX3DNode("HAnimHumanoid");
+  set(h, "skinCoord", coord); set(h, "skin", MFNode{shapeWith(coord)});
+  set(h, "skeleton", MFNode{joint}); set(h, "joints", MFNode{joint});
+  if (edit == 2) {
+    set(joint, "rotation", SFRotation{0,0,1,1.57079632679f});
+    set(h, "jointBindingRotations", MFRotation{{0,0,1,1.57079632679f}});
+  }
+  if (edit == 3) {
+    set(joint, "scale", SFVec3f{2,1,1});
+    set(h, "jointBindingScales", MFVec3f{{2,1,1}});
+  }
+  Scene scene; scene.rootNodes = {h};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene); REQUIRE(ex.fullSnapshot().added.size() == 1);
+  if (edit == 0) ctx.postEvent(displacer.get(), "displacements", MFVec3f{{0,0,2}});
+  if (edit == 1) ctx.postEvent(displacer.get(), "coordIndex", MFInt32{1});
+  if (edit == 2) ctx.postEvent(joint.get(), "center", SFVec3f{1,0,0});
+  if (edit == 3) ctx.postEvent(joint.get(), "scaleOrientation", SFRotation{0,0,1,0.78539816339f});
+  ctx.tick(1); auto d = ex.delta();
+  CHECK((!d.updatedSkinPose.empty() || !d.added.empty()));
+  SceneExtractor oracle(ctx, scene); REQUIRE(oracle.fullSnapshot().added.size() == 1);
+  auto actual = ex.deformedMesh(0), expected = oracle.deformedMesh(0);
+  REQUIRE(actual.positions.size() == expected.positions.size());
+  for (std::size_t i = 0; i < actual.positions.size(); ++i) {
+    CHECK(std::fabs(actual.positions[i].x - expected.positions[i].x) < 1e-4f);
+    CHECK(std::fabs(actual.positions[i].y - expected.positions[i].y) < 1e-4f);
+    CHECK(std::fabs(actual.positions[i].z - expected.positions[i].z) < 1e-4f);
+  }
+}
+
+TEST_CASE("delta oracle: skeletal Site motion publishes the dependent skin pose") {
+  auto coord = createX3DNode("Coordinate");
+  set(coord, "point", MFVec3f{{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
+  auto root = createX3DNode("HAnimJoint"), joint = createX3DNode("HAnimJoint");
+  auto site = createX3DNode("HAnimSite");
+  set(joint, "skinCoordIndex", MFInt32{0,1,2,3});
+  set(joint, "skinCoordWeight", MFFloat{1,1,1,1});
+  set(root, "children", MFNode{site}); set(site, "children", MFNode{joint});
+  auto h = createX3DNode("HAnimHumanoid");
+  set(h, "skinCoord", coord); set(h, "skin", MFNode{shapeWith(coord)});
+  set(h, "skeleton", MFNode{root}); set(h, "joints", MFNode{root,joint});
+  Scene scene; scene.rootNodes = {h};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene); REQUIRE(ex.fullSnapshot().added.size() == 1);
+  auto mirror = ex.deformedMesh(0);
+  ctx.postEvent(site.get(), "translation", SFVec3f{0,3,0}); ctx.tick(1);
+  auto d = ex.delta();
+  CHECK((!d.updatedSkinPose.empty() || !d.added.empty()));
+  if (!d.updatedSkinPose.empty() || !d.added.empty()) mirror = ex.deformedMesh(0);
+  SceneExtractor oracle(ctx, scene);
+  REQUIRE(oracle.fullSnapshot().added.size() == 1);
+  CHECK(mirror.positions == oracle.deformedMesh(0).positions);
+  CHECK(mirror.positions.front().y == doctest::Approx(3));
+}

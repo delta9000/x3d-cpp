@@ -18,6 +18,7 @@
 #include "X3DScene.hpp"
 
 #include "x3d/nodes/Text.hpp"
+#include "x3d/nodes/FontStyle.hpp"
 
 #include <any>
 #include "doctest/doctest.h"
@@ -328,4 +329,67 @@ TEST_CASE("text_extract_test") {
   test_failed_glyph_skipped();
   test_screenfontstyle_pointsize();
   return;
+}
+
+TEST_CASE("delta oracle: Text delta refreshes every layout output including emptiness") {
+  auto font = createX3DNode("FontStyle");
+  auto text = makeText({"a"}, font), shape = createX3DNode("Shape");
+  setF(shape, "geometry", text);
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene); REQUIRE(ex.fullSnapshot().added.size() == 1);
+  auto *typed = dynamic_cast<Text *>(text.get()); REQUIRE(typed);
+  for (int edit = 0; edit != 4; ++edit) {
+    if (edit == 0) ctx.postEvent(text.get(), "string", MFString{"abcd"});
+    if (edit == 1) ctx.postEvent(font.get(), "justify",
+        std::vector<JustifyChoices>{JustifyChoices::END, JustifyChoices::END});
+    if (edit == 2) ctx.postEvent(text.get(), "string", MFString{});
+    if (edit == 3) ctx.postEvent(text.get(), "string", MFString{"a"});
+    ctx.tick(1);
+    const auto d = ex.delta();
+    CHECK_FALSE((d.updatedGeometry.empty() && d.added.empty() && d.removed.empty()));
+    const auto bounds = typed->getTextBounds();
+    const auto lines = typed->getLineBounds();
+    const auto origin = typed->getOrigin();
+    SceneExtractor oracle(ctx, scene);
+    const auto full = oracle.fullSnapshot();
+    CHECK(bounds == typed->getTextBounds());
+    CHECK(lines == typed->getLineBounds());
+    CHECK(origin == typed->getOrigin());
+    if (!full.added.empty())
+      CHECK(ex.item(0).mesh->positions == oracle.item(full.added[0]).mesh->positions);
+  }
+}
+
+TEST_CASE("delta oracle: pending glyph completion activates or refreshes Text") {
+  bool partial = false;
+  SUBCASE("initially empty") {}
+  SUBCASE("partially available") { partial = true; }
+  auto text = makeText({"ab"}), shape = createX3DNode("Shape");
+  setF(shape, "geometry", text);
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  bool ready = false;
+  int calls = 0;
+  MeshBuildOptions options;
+  options.fontMetrics = [&](const FontKey &key) {
+    ++calls;
+    return ready || (partial && key.codepoint == 'a')
+        ? makeMonospaceStub()(key) : GlyphResult::makePending();
+  };
+  SceneExtractor ex(ctx, scene, options);
+  const auto initial = ex.fullSnapshot();
+  CHECK(initial.added.size() == (partial ? 1 : 0));
+  ready = true; ctx.tick(1);
+  const auto d = ex.delta();
+  CHECK((d.added.size() == 1 || d.updatedGeometry.size() == 1));
+  REQUIRE(ex.itemCount() == 1);
+  const auto actual = ex.item(0).mesh;
+  const int resolvedCalls = calls;
+  ctx.tick(2);
+  CHECK(ex.delta().updatedGeometry.empty());
+  CHECK(calls == resolvedCalls);
+  SceneExtractor oracle(ctx, scene, options);
+  REQUIRE(oracle.fullSnapshot().added.size() == 1);
+  CHECK(actual->positions == oracle.item(0).mesh->positions);
 }
