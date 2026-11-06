@@ -9,7 +9,9 @@
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "FieldValueIO.hpp"
+#include "ClassicVrmlReader.hpp"
 #include "VrmlWriter.hpp"
+#include "XmlReader.hpp"
 
 #include "x3d/nodes/PixelTexture.hpp"    // SFImage field + SFBool repeatS/repeatT
 #include "x3d/nodes/WorldInfo.hpp"       // SFString title for VRML escaping test
@@ -26,6 +28,56 @@ using namespace x3d;
 using namespace x3d::codec;
 using namespace x3d::core;
 using namespace x3d::nodes;
+
+TEST_CASE("XML and Classic readers accept signed decimal and hexadecimal numbers") {
+  for (bool xml : {true, false}) {
+    CAPTURE(xml);
+    auto doc = xml ? XmlReader().readDocument(
+        "<X3D version='4.0'><Scene>"
+        "<Transform translation='+1 +.5 -2'/>"
+        "<TimeSensor cycleInterval='+2.5'/>"
+        "<IntegerTrigger triggerValue='+42'/>"
+        "<IntegerTrigger triggerValue='0x2A'/>"
+        "<MetadataInteger value='+42 0x2A 0X2a -0x2A +0X2A -0x80000000 0x7fffffff'/>"
+        "</Scene></X3D>") : ClassicVrmlReader().readDocument(
+        "#X3D V4.0 utf8\nPROFILE Full\n"
+        "Transform { translation +1 +.5 -2 }\n"
+        "TimeSensor { cycleInterval +2.5 }\n"
+        "IntegerTrigger { triggerValue +42 }\n"
+        "IntegerTrigger { triggerValue 0x2A }\n"
+        "MetadataInteger { value [ +42 0x2A 0X2a -0x2A +0X2A -0x80000000 0x7fffffff ] }\n");
+    REQUIRE(doc.scene.rootNodes.size() == 5);
+    auto field = [&](std::size_t index, const char *name) -> std::any {
+      const auto &node = *doc.scene.rootNodes.at(index);
+      for (const auto &f : node.fields())
+        if (f.x3dName == name) return f.get(node);
+      return {};
+    };
+    const auto translation = std::any_cast<SFVec3f>(field(0, "translation"));
+    CHECK(translation.x == 1.f);
+    CHECK(translation.y == .5f);
+    CHECK(translation.z == -2.f);
+    CHECK(std::any_cast<double>(field(1, "cycleInterval")) == 2.5);
+    CHECK(std::any_cast<int>(field(2, "triggerValue")) == 42);
+    CHECK(std::any_cast<int>(field(3, "triggerValue")) == 42);
+    CHECK(std::any_cast<std::vector<int>>(field(4, "value")) ==
+          std::vector<int>{42, 42, 42, -42, 42, -2147483647 - 1, 2147483647});
+  }
+}
+
+TEST_CASE("Numeric lexeme parsing preserves zero fallback for invalid input") {
+  for (const std::string token : {"", "bad", "+", "++1", "+-1", "--1"}) {
+    CAPTURE(token);
+    CHECK(parseFloat(token) == 0.f);
+    CHECK(parseDouble(token) == 0.);
+    CHECK(parseInt(token) == 0);
+  }
+  for (const std::string token : {"0x", "0x-1", "0x80000000", "-0x80000001",
+                                  "2147483648", "-2147483649"}) {
+    CAPTURE(token);
+    CHECK(parseInt(token) == 0);
+  }
+}
 
 namespace {
 

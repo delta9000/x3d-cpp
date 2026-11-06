@@ -742,12 +742,17 @@
   note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
 - id: FOL-4
   interfaces: [X3DFollowerNode]
-  clause: "39.3.3"
+  clause: "ISO/IEC 19775-1 39.3.3"
   severity: critical
   status: fixed
   wave: 3
-  summary: Initialization (initialValue/initialDestination → one value_changed; isActive seed) unimplemented.
-  note: "Followers runtime shipped — DamperSystem (IIR cascade) + ChaserSystem (cosine-response FIR taps); all 14 nodes wired via makeFollowerSystems/attachFollowers. Chaser sums overlapping destination deltas, composing SFRotation taps with quaternion slerp."
+  summary: Equal initial follower values emit one value_changed event on initialization.
+  note: >-
+    DamperSystem and ChaserSystem publish initialValue once when it equals
+    initialDestination and remain inactive. Unequal initial values start a
+    transition with isActive TRUE before animation output. The equal-value and
+    unequal-value initialization cases in follower_conformance_test.cpp verify
+    node readback, cascade event counts, and activation ordering for both systems.
 - id: FOL-5
   interfaces: [X3DChaserNode]
   clause: "39.3.1"
@@ -1972,6 +1977,31 @@
 # ══ ENCODING ROUND-TRIP (ISO 19776) — proven by the 422-scene round-trip sweep ══
 # Sweep result: 378/422 round-trip byte-identical (89.6%); the 44 failures below.
 
+- id: READ-NUMERIC-LEXEMES
+  nodes: [Transform, TimeSensor, IntegerTrigger, MetadataInteger]
+  clause: "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4"
+  severity: major
+  status: fixed
+  summary: Numeric field readers accept leading plus signs and signed hexadecimal integers.
+  note: >-
+    FieldValueIO accepts optional leading plus signs for floats, doubles, and
+    integers, and 0x/0X integer prefixes with either sign. XML and Classic reader
+    tests in codec_conformance_test.cpp cover scalar and vector fields, MFInt32,
+    and signed integer boundaries. Malformed and out-of-range values retain the
+    zero fallback. ISO/IEC 19776-5 5.8 specifies decimal JSON integers; JSON
+    numeric tokenization is unchanged.
+- id: XML-ATTRIBUTE-WHITESPACE
+  nodes: [WorldInfo]
+  clause: "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3"
+  severity: minor
+  status: fixed
+  summary: Literal XML attribute whitespace normalizes to spaces before reference decoding.
+  note: >-
+    XmlLite folds literal CRLF to one space and literal CR, LF, and tab to spaces,
+    preserving character references and leading, trailing, or repeated spaces.
+    codec_string_hardening_test.cpp verifies both attribute quote styles,
+    decimal and hexadecimal character references, and nonrecursive decoding.
+
 - id: ENC-VRML-STRING
   nodes: [MetadataString]
   interfaces: [X3DMetadataObject]
@@ -2407,16 +2437,16 @@
 - id: VIS-ELEV-SPACING-EMPTY
   nodes: [ElevationGrid]
   component: Geometry3D
-  clause: "13.3.4"
+  clause: "ISO/IEC 19775-1 13.3.4"
   severity: major
   status: fixed
-  summary: "ElevationGrid with non-default xSpacing/zSpacing extracts NO geometry (render_items=0) — test_xSpacing.x3d, test_zSpacing.x3d render blank, while test_color (default spacing) extracts fine. FIXED: both now render 3 grids each."
+  summary: ElevationGrid infers one omitted dimension from a divisible height count.
   note: >-
-    Not a spacing bug: test_{x,z}Spacing author only ONE dimension (xDimension=12, height=24 values) and OMIT the other,
-    leaving zDimension at its 0 default so the xd>=2 && zd>=2 guard in the ElevationGrid dispatch (MeshBuilder.hpp) zeroed
-    the output. Per spec both dimensions are required, but the NIST reference renders expect inference. Fixed by deriving the
-    missing dimension from height.size() when it divides evenly by the authored dimension (conservative — only fires when a
-    dimension is < 2 and the height array is an exact multiple of the other). Deliberate, documented leniency.
+    NIST test_xSpacing and test_zSpacing scenes omit one required dimension.
+    MeshBuilder.cpp infers a dimension below two when the height count divides
+    evenly by the other dimension, preserving these reference renders as a
+    deliberate leniency. The omitted-dimension regression in mesh_builder_t2_test.cpp
+    checks both axes with non-default spacing, triangle counts, and corner heights.
 - id: VIS-SPHERE-NOUV
   nodes: [Sphere]
   component: Texturing

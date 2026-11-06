@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <locale>
 #include <sstream>
 #include <stdexcept>
@@ -88,6 +89,11 @@ float parseFloat(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
+  // ISO/IEC 19776-2 A.4 permits an optional leading plus sign.
+  if (begin < end && *begin == '+') {
+    ++begin;
+    if (begin < end && *begin == '-') return 0.0f;
+  }
   float v = 0.0f;
   auto [ptr, ec] = std::from_chars(begin, end, v);
   if (ec != std::errc{})
@@ -101,6 +107,10 @@ double parseDouble(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
+  if (begin < end && *begin == '+') {
+    ++begin;
+    if (begin < end && *begin == '-') return 0.0;
+  }
   double v = 0.0;
   auto [ptr, ec] = std::from_chars(begin, end, v);
   if (ec != std::errc{})
@@ -128,11 +138,22 @@ int parseInt(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
-  int v = 0;
-  auto [ptr, ec] = std::from_chars(begin, end, v);
-  if (ec != std::errc{})
+  const bool negative = begin < end && *begin == '-';
+  if (begin < end && (*begin == '+' || *begin == '-')) ++begin;
+  // ISO/IEC 19776-1/-2 5.8 permits decimal and hexadecimal integers.
+  int base = 10;
+  if (end - begin >= 2 && begin[0] == '0' &&
+      (begin[1] == 'x' || begin[1] == 'X')) {
+    begin += 2;
+    base = 16;
+  }
+  std::uint64_t v = 0;
+  auto [ptr, ec] = std::from_chars(begin, end, v, base);
+  if (ec != std::errc{} ||
+      v > static_cast<std::uint64_t>(std::numeric_limits<int>::max()) + negative)
     return 0;
-  return v;
+  return negative ? static_cast<int>(-static_cast<std::int64_t>(v))
+                  : static_cast<int>(v);
 }
 
 std::vector<std::string> parseMFString(const std::string &s) {

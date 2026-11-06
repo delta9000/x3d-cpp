@@ -59,6 +59,29 @@ static bool posEq(const MeshData &m, std::size_t i, const SFVec3f &p) {
          feq(m.positions[i].z, p.z);
 }
 
+TEST_CASE("ElevationGrid infers an omitted dimension from its height count") {
+  auto grid = createX3DNode("ElevationGrid");
+  SUBCASE("omitted zDimension") {
+    setF(grid, "xDimension", std::any(3));
+  }
+  SUBCASE("omitted xDimension") {
+    setF(grid, "zDimension", std::any(2));
+  }
+  setF(grid, "xSpacing", std::any(2.f));
+  setF(grid, "zSpacing", std::any(4.f));
+  setF(grid, "height", std::any(std::vector<float>{1, 2, 3, 4, 5, 6}));
+  const auto mesh = buildLocalMesh(grid.get(), geo::builtinProjection());
+  REQUIRE(mesh.indices.size() == 12);
+  REQUIRE(mesh.positions.size() == 12);
+  for (const SFVec3f corner : {SFVec3f{0, 1, 0}, SFVec3f{4, 3, 0},
+                              SFVec3f{0, 4, 4}, SFVec3f{4, 6, 4}}) {
+    bool found = false;
+    for (std::size_t i = 0; i < mesh.positions.size(); ++i)
+      if (posEq(mesh, i, corner)) found = true;
+    CHECK(found);
+  }
+}
+
 TEST_CASE("mesh_builder_t2_test") {
   // Five distinct points; fans/strips index into these.
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0}, P4{-1, 1, 0};

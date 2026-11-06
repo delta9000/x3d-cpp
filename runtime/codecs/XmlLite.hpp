@@ -353,7 +353,15 @@ private:
           // accept the original (narrow) value, matching prior behavior.
         }
       }
-      std::string raw = src_.substr(vstart, pos_ - vstart);
+      std::string raw;
+      raw.reserve(pos_ - vstart);
+      // ISO/IEC 19776-1 4.3 uses XML 1.0: normalize literal whitespace
+      // before decoding references (XML 1.0 2.11 and 3.3.3).
+      for (std::size_t i = vstart; i < pos_; ++i) {
+        const char c = src_[i];
+        if (c == '\r' && i + 1 < pos_ && src_[i + 1] == '\n') ++i;
+        raw += isSpace(c) ? ' ' : c;
+      }
       ++pos_; // closing quote
       el->attributes.emplace_back(key, unescape(raw));
     }

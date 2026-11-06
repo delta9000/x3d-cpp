@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <memory>
 #include <numbers>
+#include <string>
 #include <vector>
 using namespace x3d::runtime;
 using namespace x3d;
@@ -23,6 +24,71 @@ using namespace x3d::nodes;
 static int g_fail = 0;
 #define XCHECK(c, m) do{ if(!(c)){ std::fprintf(stderr,"FAIL: %s (%s:%d)\n",m,__FILE__,__LINE__); ++g_fail; } }while(0)
 static bool feq(float a, float b, float e=1e-4f){ return std::fabs(a-b) < e; }
+
+TEST_CASE("Followers publish one value on equal-value initialization") {
+  auto verify = [](auto &node, auto &system) {
+    X3DExecutionContext ctx;
+    std::vector<std::string> events;
+    std::vector<float> values;
+    ctx.addFieldWriteListener([&](const FieldAddress &address) {
+      if (address.node != &node) return;
+      events.push_back(address.field);
+      if (address.field == "value_changed") values.push_back(node.getValue_changed());
+    });
+    node.setInitialValueUnchecked(7.f);
+    node.setInitialDestinationUnchecked(7.f);
+    system.attach(&node, ctx);
+    CHECK(node.getValue_changed() == 7.f);
+    CHECK_FALSE(node.getIsActive());
+    ctx.tick(0.0);
+    CHECK(events == std::vector<std::string>{"value_changed"});
+    CHECK(values == std::vector<float>{7.f});
+    system.update(1.0, ctx);
+    ctx.tick(1.0);
+    CHECK(events == std::vector<std::string>{"value_changed"});
+  };
+  SUBCASE("Damper") {
+    ScalarDamper node;
+    DamperSystem<ScalarDamper, float> system;
+    verify(node, system);
+  }
+  SUBCASE("Chaser") {
+    ScalarChaser node;
+    ChaserSystem<ScalarChaser, float> system;
+    verify(node, system);
+  }
+}
+
+TEST_CASE("Followers activate before animating unequal initial values") {
+  auto verify = [](auto &node, auto &system) {
+    X3DExecutionContext ctx;
+    std::vector<std::string> events;
+    ctx.addFieldWriteListener([&](const FieldAddress &address) {
+      if (address.node == &node) events.push_back(address.field);
+    });
+    node.setInitialValueUnchecked(7.f);
+    node.setInitialDestinationUnchecked(9.f);
+    system.attach(&node, ctx);
+    CHECK(node.getIsActive());
+    ctx.tick(0.0);
+    REQUIRE(events == std::vector<std::string>{"isActive"});
+    system.update(0.1, ctx);
+    ctx.tick(0.1);
+    CHECK(events == std::vector<std::string>{"isActive", "value_changed"});
+    CHECK(node.getValue_changed() > 7.f);
+    CHECK(node.getValue_changed() < 9.f);
+  };
+  SUBCASE("Damper") {
+    ScalarDamper node;
+    DamperSystem<ScalarDamper, float> system;
+    verify(node, system);
+  }
+  SUBCASE("Chaser") {
+    ScalarChaser node;
+    ChaserSystem<ScalarChaser, float> system;
+    verify(node, system);
+  }
+}
 
 static void test_arith() {
   // float

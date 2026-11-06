@@ -49,6 +49,10 @@ public:
     if (initiallyActive) {
       d->emitIsActive(SFBool{true});
       ctx.postEvent(d, "isActive", std::any(SFBool{true}));
+    } else {
+      // ISO/IEC 19775-1 39.3.3: equal initial values produce one event.
+      d->emitValue_changed(d->getInitialValue());
+      ctx.postEvent(d, "value_changed", std::any(d->getInitialValue()));
     }
     // set_destination: update target, activate if not already active.
     d->setOnSet_destinationHandler(ctx.guardCallback(*this, [ep, d, &ctx](const ValueT &v) {
@@ -196,6 +200,9 @@ public:
     if (initiallyActive) {
       c->emitIsActive(SFBool{true});
       ctx.postEvent(c, "isActive", std::any(SFBool{true}));
+    } else {
+      c->emitValue_changed(c->getInitialValue());
+      ctx.postEvent(c, "value_changed", std::any(c->getInitialValue()));
     }
 
     // Keep each event's delta; transitions inside duration add independently.

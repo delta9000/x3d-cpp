@@ -389,3 +389,21 @@ TEST_CASE("codec_string_hardening_test") {
   std::cout << (failures == 0 ? "ALL OK" : "FAILURES") << "\n";
   CHECK(failures == 0);
 }
+
+TEST_CASE("XML literal attribute whitespace normalizes but references survive") {
+  for (const std::string quote : {"'", "\""}) {
+    CAPTURE(quote);
+    const auto raw = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><WorldInfo title=" + quote +
+        "  a\tb\nc\rd\r\ne  " + quote + "/></Scene></X3D>");
+    const auto refs = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><WorldInfo title=" + quote +
+        "a&#10;b&#x9;c&#13;d&amp;#10;" + quote + "/></Scene></X3D>");
+    const auto literal = findNode<WorldInfo>(raw.scene);
+    const auto referenced = findNode<WorldInfo>(refs.scene);
+    REQUIRE(literal);
+    REQUIRE(referenced);
+    CHECK(literal->getTitle() == "  a b c d e  ");
+    CHECK(referenced->getTitle() == "a\nb\tc\rd&#10;");
+  }
+}
