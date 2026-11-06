@@ -318,6 +318,9 @@ CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 
 [tasks.cli-gate-regression]
 description = "Local corpus regression gate: both cli_gate + canon_gate in --gate mode. Fails if any baseline-PASS item now fails. Requires: corpus at default path + committed baselines."
+# Shares build/ with the build task; wait for it when both run, so the two
+# configures do not race on the same Ninja files.
+wait_for = ["build"]
 run = """
 cmake --preset dev
 cmake --build --preset dev --target x3d_cli x3d_cli_gate x3d_canon_gate
