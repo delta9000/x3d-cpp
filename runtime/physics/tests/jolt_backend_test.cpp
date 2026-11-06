@@ -83,10 +83,10 @@ int main() {
           "two identical sims are bit-identical");
   }
 
-  // (4) PointConstraint pendulum: a dynamic ball pinned to a WORLD anchor at the
+  // (4) PointConstraint pendulum: a dynamic ball pinned to a world anchor at the
   //     origin, started 1 unit to the side, swings under gravity. The constraint
   //     must hold the bob ~1 unit from the anchor throughout (it does not fall
-  //     freely, does not fly off) AND the bob must actually swing (y drops, x
+  //     freely, does not fly off) and the bob must actually swing (y drops, x
   //     moves toward the anchor).
   {
     JoltBackend backend;
@@ -122,9 +122,9 @@ int main() {
   }
 
   // (5) HingeConstraint, free vs limited: two bobs hinged at the origin about z,
-  //     each started horizontally at +x. A FREE hinge (limits ±pi) swings down to
-  //     the bottom (y -> ~-1). A LOCKED hinge (minLimit == maxLimit == 0 — the
-  //     start angle) is held at the stop and CANNOT swing (y stays ~0). The
+  //     each started horizontally at +x. A free hinge (limits ±pi) swings down to
+  //     the bottom (y -> ~-1). A locked hinge (minLimit == maxLimit == 0 — the
+  //     start angle) is held at the stop and cannot swing (y stays ~0). The
   //     contrast proves the limits are honored. Both hold ~1 unit from the anchor.
   auto hingeRun = [&](float minLim, float maxLim) {
     JoltBackend backend;
@@ -168,10 +168,10 @@ int main() {
           "the limit demonstrably restricts the swing");
   }
 
-  // (6) Asymmetric but SPEC-VALID hinge limits (minAngle <= 0 <= maxAngle, so the
+  // (6) Asymmetric but spec-valid hinge limits (minAngle <= 0 <= maxAngle, so the
   //     initial pose is in range — §37: limits are measured from the initial
   //     position). This proves §37 minAngle/maxAngle map to Jolt with the correct
-  //     SIGN: Jolt's hinge angle is the NEGATIVE of the body's rotation about the
+  //     sign: Jolt's hinge angle is the negative of the body's rotation about the
   //     axis, so the limits must be negated when handed to Jolt. Bob hinged about
   //     z, started at +x (angle 0), limited to [-0.3, 1.0]. Gravity pulls the
   //     angle down, so it must rest at the -0.3 lower stop and never pass it.
@@ -208,7 +208,7 @@ int main() {
     CHECK(finalAngle > -0.45f && finalAngle < -0.15f,
           "asymmetric hinge rests at the -0.3 lower stop (correct sign)");
     // The soft limit permits a small transient overshoot as the bob swings into
-    // it; a SIGN bug would instead let it swing all the way to ~-1.0..-1.35.
+    // it; a sign bug would instead let it swing all the way to ~-1.0..-1.35.
     CHECK(minAngle > -0.7f,
           "asymmetric hinge does not swing far past the -0.3 stop (no sign flip)");
   }
@@ -249,7 +249,7 @@ int main() {
 
   // (7) Sleeping / auto-disable (§37 autoDisable). A ball resting on the ground:
   //     with allow-sleeping ON (world + body) and a short disableTime it goes to
-  //     sleep (isBodyActive false); with allow-sleeping OFF it keeps integrating
+  //     sleep (isBodyActive false); with allow-sleeping off it keeps integrating
   //     (isBodyActive stays true) after the very same number of steps.
   {
     auto restIsActiveAfter = [](bool allowSleeping) {

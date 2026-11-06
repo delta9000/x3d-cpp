@@ -1,6 +1,6 @@
 // transform_system_test.cpp — transform-hierarchy index + incremental world
 // propagation. Builds A>B>C plus a sibling D under A; dirties B; asserts B and C
-// world transforms update and the sibling D is NOT re-propagated.
+// world transforms update and the sibling D is not re-propagated.
 #include "TransformSystem.hpp"
 #include "DirtyTracker.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -77,7 +77,7 @@ TEST_CASE("transform_system_test") {
   CHECK((feq(bw2.x,1) && feq(bw2.y,10) && feq(bw2.z,0)));
   auto cw2 = ts.worldTransform(C.get()).transformPoint({0,0,0});
   CHECK((feq(cw2.x,1) && feq(cw2.y,10) && feq(cw2.z,3)));
-  // Incremental: B and C marked DirtyWorldTransform; D and A are NOT.
+  // Incremental: B and C marked DirtyWorldTransform; D and A are not.
   CHECK((dirty.flags(B.get()) & DirtyWorldTransform));
   CHECK((dirty.flags(C.get()) & DirtyWorldTransform));
   CHECK((!(dirty.flags(D.get()) & DirtyWorldTransform)));
@@ -85,7 +85,7 @@ TEST_CASE("transform_system_test") {
   return;
 }
 
-// M2C-2 structural re-index — add a child Transform under a Group at runtime.
+// structural re-index — add a child Transform under a Group at runtime.
 TEST_CASE("transform_system_structural_add") {
   auto R = createX3DNode("Transform"); // root, translation (10,0,0)
   auto G = createX3DNode("Group");     // grouping node under R
@@ -112,7 +112,7 @@ TEST_CASE("transform_system_structural_add") {
   return;
 }
 
-// M2C-2 — remove a runtime-added child: the index drops its subtree.
+// remove a runtime-added child: the index drops its subtree.
 TEST_CASE("transform_system_structural_remove") {
   auto R = createX3DNode("Transform");
   auto G = createX3DNode("Group");
@@ -135,14 +135,14 @@ TEST_CASE("transform_system_structural_remove") {
   rem.markDirty(G.get(), DirtyChildren);
   ts.propagate(rem);
 
-  // C is no longer indexed (identity), and the revision bumped.
+  // C is unindexed (identity), and the revision increases.
   CHECK((feq(ts.worldTransform(C.get()).transformPoint({5,5,5}).x, 5))); // identity
   CHECK((ts.worldTransformUnder(R.get(), C.get()).transformPoint({5,5,5}).x == 5));
   CHECK((ts.revision() > rev1));
   return;
 }
 
-// M2C-2 — a DEF/USE Transform under two parents has a world per parent.
+// a DEF/USE Transform under two parents has a world per parent.
 TEST_CASE("transform_system_defuse_two_parents") {
   auto P1 = createX3DNode("Transform");
   auto P2 = createX3DNode("Transform");
@@ -151,7 +151,7 @@ TEST_CASE("transform_system_defuse_two_parents") {
   setTranslation(P2, {10,0,0});
   setTranslation(T,  {0,2,0});
   addChild(P1, T);
-  addChild(P2, T); // USE: the SAME shared node under a second parent
+  addChild(P2, T); // USE: the same shared node under a second parent
 
   Scene scene; scene.addRootNode(P1); scene.addRootNode(P2);
   TransformSystem ts; ts.buildIndex(scene);
@@ -165,8 +165,8 @@ TEST_CASE("transform_system_defuse_two_parents") {
   return;
 }
 
-// M2C-2 regression — a shared Transform moved from one parent Transform to
-// another within a single tick must resolve to the SAME world regardless of
+// regression — a shared Transform moved from one parent Transform to
+// another within a single tick must resolve to the same world regardless of
 // which grouping node is marked DirtyChildren first. During processing both
 // parents keep it (refCount_ stays > 1), so the canonical parent must be
 // re-derived once every structural change is applied.
@@ -203,7 +203,7 @@ TEST_CASE("transform_system_move_between_parents_dirty_order") {
   return;
 }
 
-// M2C-2 regression — removing a shared Transform from its canonical parent while
+// regression — removing a shared Transform from its canonical parent while
 // another parent still reaches it re-points the canonical parent/world.
 TEST_CASE("transform_system_remove_canonical_parent_repoints") {
   auto P1 = createX3DNode("Transform");
@@ -232,7 +232,7 @@ TEST_CASE("transform_system_remove_canonical_parent_repoints") {
   return;
 }
 
-// M2C-2 — revision bumps on transform and structural changes, not on a no-op.
+// revision bumps on transform and structural changes, not on a no-op.
 TEST_CASE("transform_system_revision") {
   auto R = createX3DNode("Transform");
   auto C = createX3DNode("Transform");

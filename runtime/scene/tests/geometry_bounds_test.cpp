@@ -1,4 +1,3 @@
-// geometry_bounds_test.cpp
 #include "GeoFrame.hpp"
 #include "GeometryBounds.hpp"
 #include "BoundsSystem.hpp"
@@ -74,7 +73,7 @@ TEST_CASE("geometry_bounds_test") {
   Aabb tb2 = localGeometryBounds(te.get(), geo::builtinProjection());
   CHECK((tb2.size().x <= 6.01f)); // width capped by 2*maxExtent (symmetric box)
 
-  // GEO-2 sibling: a GeoCoordinate coord (MFVec3d) must yield real bounds, not
+  // sibling: a GeoCoordinate coord (MFVec3d) must yield real bounds, not
   // an empty AABB (it was read as MFVec3f and silently dropped).
   auto gifs = createX3DNode("IndexedFaceSet");
   auto gcoord = createX3DNode("GeoCoordinate");
@@ -115,10 +114,9 @@ TEST_CASE("geometry_bounds_test") {
   return;
 }
 
-// ===========================================================================
-// Exact Text bounds via the FontMetrics seam (T-TEXT-D2 / M2B-1).
+// Exact Text bounds via FontMetrics.
 // A fake FontMetrics with known, non-uniform advances: 'W' -> 1.0 em, else 0.5.
-// ===========================================================================
+
 static FontMetrics fakeMetrics() {
   return [](const FontKey &k) -> GlyphResult {
     const float adv = (k.codepoint == 'W') ? 1.0f : 0.5f;

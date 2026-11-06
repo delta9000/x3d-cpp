@@ -1,5 +1,5 @@
 // Mat4.hpp — minimal column-major 4x4 float matrix for world-transform math.
-// Storage: std::array<float,16>, COLUMN-MAJOR. Element (row r, col c) is m[c*4+r].
+// Storage: std::array<float,16>, column-major. Element (row r, col c) is m[c*4+r].
 // A column vector p (w=1) transforms as out = M * p. Builders + X3D Transform
 // composition. No external dependency. namespace x3d::runtime.
 #ifndef X3D_RUNTIME_MAT4_HPP
@@ -128,7 +128,7 @@ struct Mat4 {
   }
 };
 
-// Transform a plane (a,b,c,d), with a point X VISIBLE when a*X.x+b*X.y+c*X.z+d
+// Transform a plane (a,b,c,d), with a point X visible when a*X.x+b*X.y+c*X.z+d
 // >= 0, from the frame of plane p into the frame of matrix M: n' = M^-T n, so
 // (M^-T n)·(M X) = n·X (the visible half-space is preserved). Used to carry a
 // ClipPlane equation from its local frame to world (extraction) or eye (render).

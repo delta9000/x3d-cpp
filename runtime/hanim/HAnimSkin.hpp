@@ -23,9 +23,6 @@
 //
 // Space: everything here is humanoid-local (the HAnimHumanoid's own frame, its
 // TRS excluded); the HAnimHumanoid's world transform places the result.
-//
-// This header is the frozen contract between the deformation core, extraction
-// and the motion system. The (header-only) implementation is HAnimSkinImpl.hpp.
 #ifndef X3D_RUNTIME_HANIM_SKIN_HPP
 #define X3D_RUNTIME_HANIM_SKIN_HPP
 

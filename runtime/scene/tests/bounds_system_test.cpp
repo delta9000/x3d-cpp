@@ -1,4 +1,3 @@
-// bounds_system_test.cpp
 #include "BoundsSystem.hpp"
 #include "TransformSystem.hpp"
 #include "DirtyTracker.hpp"
@@ -57,7 +56,7 @@ TEST_CASE("bounds_system_test") {
   CHECK((feq(bs2.localBounds(G.get()).size().x, 2))); // author bbox, not 100
 
   // Incremental: grow the box, mark dirty, propagate -> Transform bounds grow.
-  setF(box, "size", std::any(SFVec3f{4,4,4})); // box now [-2,2]
+  setF(box, "size", std::any(SFVec3f{4,4,4})); // box bounds [-2,2]
   DirtyTracker dirty; dirty.markDirty(box.get(), DirtyBounds);
   bs.propagate(dirty, ts);
   CHECK((feq(bs.localBounds(T.get()).max.x, 2))); // grew from 1 to 2

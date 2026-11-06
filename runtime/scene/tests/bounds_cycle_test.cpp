@@ -1,5 +1,4 @@
-// bounds_cycle_test.cpp
-// Regression for the corpus-smoke SEGV (stack overflow) on a CONTAINMENT CYCLE.
+// Regression for the corpus-smoke SEGV (stack overflow) on a containment cycle.
 // A node that USEs its own DEF name (e.g. the deliberately-malformed
 // TestSchematronDiagnostics.x3d: <TouchSensor DEF='X' USE='X'/>) resolves to
 // itself, so the scene graph contains a cycle A->B->A. BoundsSystem::index() is
@@ -57,9 +56,8 @@ TEST_CASE("bounds_cycle_test") {
   Scene scene; scene.addRootNode(a);
 
   TransformSystem ts; ts.buildIndex(scene);
-  BoundsSystem bs; bs.buildBounds(scene, ts);   // pre-fix: stack overflow (SEGV)
+  BoundsSystem bs; bs.buildBounds(scene, ts);
 
-  // Reaching here proves the cycle no longer recurses forever; bounds finite.
   Aabb rb = bs.localBounds(a.get());
   CHECK((!rb.empty));
   CHECK((std::isfinite(rb.min.x) && std::isfinite(rb.max.x)));
@@ -68,7 +66,7 @@ TEST_CASE("bounds_cycle_test") {
   // Teardown hygiene: the assertions above deliberately keep the containment
   // cycles intact (proving BoundsSystem's in-progress guard is cycle-safe), but
   // those shared_ptr back-edges (b -> a, selfie -> selfie) would keep the nodes
-  // alive past scope exit -> LeakSanitizer leak. Sever them now that bounds are
+  // alive past scope exit -> LeakSanitizer leak. Sever them after bounds are
   // checked.
   setF(b, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   setF(selfie, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));

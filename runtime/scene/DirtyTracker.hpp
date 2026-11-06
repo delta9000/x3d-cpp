@@ -21,7 +21,7 @@ enum DirtyFlags : unsigned {
   DirtyWorldTransform = 1u << 1, // world matrix recomputed this tick
   DirtyChildren       = 1u << 2, // node-reference, active child selection, or visibility changed
   DirtyField          = 1u << 3, // any other field changed
-  DirtyBounds         = 1u << 4, // a node's local/world AABB needs recompute (M2b)
+  DirtyBounds         = 1u << 4, // a node's local/world AABB needs recompute
 };
 
 class DirtyTracker {

@@ -1,22 +1,17 @@
-// PickSystem.hpp — on-demand ray pick over the scene graph. Broad phase by M2b
-// world AABBs; narrow phase against geometry in its local frame. Accumulates the
-// world transform during the traversal (no per-node world table needed).
-// M2D-2: analytic ray-Cone/Cylinder; strip/fan triangle extraction via
-// buildLocalMesh (TriangleStripSet/TriangleFanSet/IndexedTriangleStripSet/
-// IndexedTriangleFanSet). AABB proxy remains the fallback for unhandled types.
-// namespace x3d::runtime.
+// Ray picking: world-space AABB broad phase and local-space geometry tests.
+// Accumulate transforms per path so shared nodes retain each placement.
 #ifndef X3D_RUNTIME_PICK_SYSTEM_HPP
 #define X3D_RUNTIME_PICK_SYSTEM_HPP
 
 #include "FieldRead.hpp"
-#include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1, M2e)
+#include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1)
 #include "BoundsSystem.hpp"
-#include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
+#include "RecursionLimits.hpp" // kMaxNestingDepth (walk DoS guard)
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
 #include "LODSelection.hpp"
 #include "Intersect.hpp"
 #include "Mat4.hpp"
-#include "MeshBuilder.hpp" // extract::buildLocalMesh — promoted exact-triangle extraction
+#include "MeshBuilder.hpp" // extract::buildLocalMesh
 #include "Ray.hpp"
 #include "RenderItem.hpp"  // extract::PathKey (root→hit node chain)
 #include "TransformSystem.hpp"
@@ -43,22 +38,20 @@ struct PickResult {
   X3DNode *node = nullptr;
   SFVec3f point{0,0,0};
   float distance = 0.0f;
-  // M2.5 (TouchSensor seam): the root→hit-geometry node chain (mirrors how
-  // SceneExtractor builds a PathKey), the WORLD-space surface normal at the
-  // hit, and the surface texture coordinate at the hit (§13 parameterization
-  // for analytic primitives; barycentric-interpolated for mesh geometry).
+  // Root-to-hit path, world-space normal and texture coordinate at the hit.
+  // Analytic primitives use §13 parameterization; meshes use barycentric interpolation.
   extract::PathKey path;
   SFVec3f normal{0,0,0};
   SFVec2f texCoord{0,0};
-  // #21: true if the pick walk hit maxVisits and stopped early — the result is a
+  // True if the pick walk hit maxVisits and stopped early — the result is a
   // partial best-so-far over a pathologically wide (acyclic "doubling DAG") scene.
   bool budgetExceeded = false;
 };
 
-// Narrow-phase result: entry parameter t plus the LOCAL-frame surface normal
+// Narrow-phase result: entry parameter t plus the local-frame surface normal
 // and the surface texture coordinate at the hit. The caller transforms the
 // normal to world (inverse-transpose of the node's world matrix); texCoord is a
-// surface attribute and is NOT spatially transformed (§5.1 of the M2.5 design).
+// surface attribute and is not spatially transformed.
 struct NarrowHit {
   float t = 0.0f;
   SFVec3f normal{0,0,0}; // local frame
@@ -85,7 +78,7 @@ public:
   // Placements broadphase-tested during the last pick. O(candidate leaves).
   std::uint64_t lastCandidateTests() const { return lastCandidateTests_; }
 
-  // M2e: the bound viewer pose threaded in by the caller (X3DExecutionContext::
+  // The bound viewer pose threaded in by the caller (X3DExecutionContext::
   // pick) so Billboard nodes orient view-facing during the pick-path world
   // accumulation, matching the extractor's per-path billboard rotation. The
   // default camera is inert for non-billboard scenes; a scene with a Billboard
@@ -93,15 +86,13 @@ public:
   // geometry.
   //
   // The pick runs over a PickSystem-owned, lazily maintained index of
-  // geometry-bearing placements (one per PATH — DEF/USE instances each keep their
+  // geometry-bearing placements (one per path — DEF/USE instances each keep their
   // own entry + world AABB). It is rebuilt only when `ts`'s revision changes (a
   // structural re-index or a transform re-accumulation) or `maxVisits` changes;
   // its world AABBs are refit only when the BoundsSystem revision changes.
   // Billboard-affected placements are view-dependent, so they live in a separate
   // list recomputed from the path on every pick. Pass `ts` to enable the cache;
-  // with `ts == nullptr` the index is rebuilt every call (exactly the old walk's
-  // result, no caching) — the direct-call API stays correct with no lifetime
-  // coupling.
+  // with `ts == nullptr` the index is rebuilt every call, with no lifetime coupling.
   PickResult pickClosest(const Ray &worldRay, const BoundsSystem &bounds,
                          const SFVec3f &cameraPos = {0, 0, 0},
                          const SFVec3f &cameraUp = {0, 1, 0},
@@ -154,8 +145,8 @@ public:
   // matrices). Identity if not found. Used for camera pose in viewMatrix.
   Mat4 worldOf(const X3DNode *target) const {
     Mat4 out = Mat4::identity();
-    // #21: memoize fully-explored subtrees so a wide (acyclic "doubling") DAG is
-    // searched in O(nodes), not O(paths). worldOf returns the FIRST-found
+    // Memoize fully-explored subtrees so a wide (acyclic "doubling") DAG is
+    // searched in O(nodes), not O(paths). worldOf returns the first-found
     // placement, so pruning already-explored subtrees never changes the result.
     std::unordered_set<const X3DNode *> visited;
     bool incomplete = false;
@@ -202,23 +193,17 @@ public:
 
 private:
   // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard's view-dependent rotation is applied separately in pickNode (it
-  // depends on the live camera pose, not just the static node fields).
+  // Billboard rotation is applied separately using the live camera pose.
   static bool isTransform(const X3DNode *n) { return TransformSystem::isTransform(n); }
 
-  // Mesh narrow-phase against triangle-bearing types handled by
-  // extract::buildLocalMesh. Includes the original three (IndexedFaceSet /
-  // IndexedTriangleSet / TriangleSet) plus the four strip/fan variants added in
-  // M2D-2 (TriangleStripSet / TriangleFanSet / IndexedTriangleStripSet /
-  // IndexedTriangleFanSet).
+  // Triangle-bearing types supported by extract::buildLocalMesh.
   static bool isMeshType(const std::string &t) {
     return t == "IndexedFaceSet" || t == "IndexedTriangleSet" || t == "TriangleSet"
         || t == "TriangleStripSet" || t == "TriangleFanSet"
         || t == "IndexedTriangleStripSet" || t == "IndexedTriangleFanSet";
   }
 
-  // §13 texture-coordinate generation for the analytic primitives, evaluated at
-  // the local hit point P. Verified against ISO/IEC 19775-1 §13 (M2.5 design).
+  // ISO/IEC 19775-1 §13 texture coordinates at the analytic primitive's local hit point.
   static constexpr float kPi = 3.14159265358979323846f;
 
   // Longitude → s for the body-of-revolution surfaces (Sphere/Cone/Cylinder
@@ -241,13 +226,13 @@ private:
     const float hy = half.y > 0 ? half.y : 1.0f;
     const float hz = half.z > 0 ? half.z : 1.0f;
     const float ax = std::fabs(p.x / hx), ay = std::fabs(p.y / hy), az = std::fabs(p.z / hz);
-    if (az >= ax && az >= ay) { // FRONT/BACK (±Z)
+    if (az >= ax && az >= ay) { // front/back (±Z)
       if (p.z >= 0) { n = {0,0,1};  return SFVec2f{( p.x/hx + 1)/2, (p.y/hy + 1)/2}; }
       else          { n = {0,0,-1}; return SFVec2f{(-p.x/hx + 1)/2, (p.y/hy + 1)/2}; }
-    } else if (ax >= ay) { // RIGHT/LEFT (±X)
+    } else if (ax >= ay) { // right/left (±X)
       if (p.x >= 0) { n = {1,0,0};  return SFVec2f{(-p.z/hz + 1)/2, (p.y/hy + 1)/2}; }
       else          { n = {-1,0,0}; return SFVec2f{( p.z/hz + 1)/2, (p.y/hy + 1)/2}; }
-    } else { // TOP/BOTTOM (±Y)
+    } else { // top/bottom (±Y)
       if (p.y >= 0) { n = {0,1,0};  return SFVec2f{( p.x/hx + 1)/2, (-p.z/hz + 1)/2}; }
       else          { n = {0,-1,0}; return SFVec2f{( p.x/hx + 1)/2, ( p.z/hz + 1)/2}; }
     }
@@ -271,7 +256,7 @@ private:
       }
       return hit;
     }
-    // M2D-2: analytic Cone — axis=Y, apex at (0,+height/2,0), base radius.
+    // Analytic Cone — axis=Y, apex at (0,+height/2,0), base radius.
     if (t == "Cone") {
       const float r = geombounds::getField<float>(*geom, "bottomRadius", 1.0f);
       const float h = geombounds::getField<float>(*geom, "height", 2.0f);
@@ -303,7 +288,7 @@ private:
       }
       return hit;
     }
-    // M2D-2: analytic Cylinder — axis=Y, caps at ±height/2.
+    // Analytic Cylinder — axis=Y, caps at ±height/2.
     if (t == "Cylinder") {
       const float r = geombounds::getField<float>(*geom, "radius", 1.0f);
       const float h = geombounds::getField<float>(*geom, "height", 2.0f);
@@ -337,9 +322,7 @@ private:
     }
     if (isMeshType(t)) {
       extract::MeshData mesh = extract::buildLocalMesh(geom, projection);
-      // Behavior-identical to the promoted inline extraction: when the type
-      // yields triangles, pick against them; when it yields NONE (e.g. missing
-      // coord), fall through to the rayAabb proxy exactly as before.
+      // Use triangles when available; otherwise fall back to the geometry AABB.
       if (!mesh.indices.empty()) {
         bool found = false;
         for (std::size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
@@ -406,7 +389,7 @@ private:
     return hit;
   }
 
-  // Lazily-maintained index entry: one per geometry-bearing placement (per PATH).
+  // Lazily-maintained index entry: one per geometry-bearing placement (per path).
   struct Placement {
     extract::PathKey path; // root→geometry-bearing node chain
     X3DNode *node = nullptr;
@@ -415,11 +398,9 @@ private:
     std::size_t order = 0; // global DFS order (tie-break parity with the walk)
   };
 
-  // DFS the graph once, recording a Placement for every geometry-bearing node,
-  // exactly the node set the reflective walk used to test in order. Billboards do
-  // NOT contribute a rotation here — their descendants are view-dependent, so
-  // they go to the separate billboards_ list and are recomputed live per pick.
-  // Same #21 budget + MEM-1 depth/cycle guards as the old pickNode.
+  // Record geometry placements in DFS order. Billboard descendants are kept
+  // separately and recomputed from the live camera pose for each pick.
+  // Bound traversal by node visits and nesting depth; reject cycles.
   void enumerate(const X3DNode *n, const Mat4 &worldM, bool billboardSeen,
                  const BoundsSystem &bounds, extract::PathKey &path,
                  WalkBudget &budget) const {
@@ -455,7 +436,7 @@ private:
     path.pop_back();
   }
 
-  // Accumulate the world matrix at a placement's node from its PATH, applying each
+  // Accumulate the world matrix at a placement's node from its path, applying each
   // ancestor transform and (view-dependently) each Billboard rotation with the
   // live camera pose. The final element is the geometry-bearing node itself,
   // whose own TRS the walk never folds into its geometry.
@@ -559,7 +540,6 @@ private:
       p.aabb = bounds.localBounds(p.node).transformed(p.worldM);
   }
 
-
   // Inverse-transpose of the upper-left 3x3 (carried in a Mat4) for transforming
   // surface normals to world space. Translation is irrelevant for directions.
   static Mat4 invTranspose(const Mat4 &m) {
@@ -578,24 +558,24 @@ private:
   }
 
   // Pure Transform accumulation: the product of ancestor Transform local
-  // matrices to `target`. Deliberately does NOT fold in Billboard view-facing
+  // matrices to `target`. Deliberately does not fold in Billboard view-facing
   // rotation — its sole caller (X3DExecutionContext::viewMatrix) uses this to
   // compute the bound Viewpoint's world frame, and injecting view-dependent
   // billboard orientation here would feed camera pose back into the very
   // computation that defines it.
-  // `incomplete` is set true if this subtree was NOT fully explored (a descendant
-  // hit the depth cap). Such a subtree is NOT memoized — `target` could still lie
+  // `incomplete` is set true if this subtree was not fully explored (a descendant
+  // hit the depth cap). Such a subtree is not memoized — `target` could still lie
   // within it via a shallower path that stays under the cap.
   bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target,
                   Mat4 &out, std::unordered_set<const X3DNode *> &visited,
                   bool &incomplete, std::size_t depth = 0) const {
-    // MEM-1: a hard depth cap stops a USE-cyclic / pathologically deep graph from
+    // a hard depth cap stops a USE-cyclic / pathologically deep graph from
     // overrunning the stack when `target` is absent (full traversal). The cap also
     // breaks containment cycles (a node re-reached before it completes recurses to
     // the cap, then stops). Mark this exploration incomplete so an ancestor is not
     // memoized on the strength of a truncated subtree.
     if (depth >= kMaxNestingDepth) { incomplete = true; return false; }
-    // #21: skip a subtree already FULLY explored without finding `target`. A
+    // skip a subtree already fully explored without finding `target`. A
     // completed false return proves `target` is not under `n`; a depth-truncated
     // one does not, so only complete subtrees are inserted below.
     if (visited.count(n)) return false;
@@ -608,7 +588,7 @@ private:
         found = true;
     });
     if (found) return true;
-    if (childIncomplete) incomplete = true; // truncated -> do NOT memoize n
+    if (childIncomplete) incomplete = true; // truncated -> do not memoize n
     else visited.insert(n);                 // fully explored, target absent -> memoize
     return false;
   }

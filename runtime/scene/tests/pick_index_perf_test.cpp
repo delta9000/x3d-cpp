@@ -1,9 +1,5 @@
-// pick_index_perf_test.cpp
-// Performance-invariant lock for the lazily-indexed PickSystem. On an UNCHANGED
-// scene the reflective per-pick node walk must amortize to zero: the index is
-// rebuilt once (O(nodes)), and every later pick touches only the flat candidate
-// list (O(candidate leaves)). The counters are exposed as lastIndexVisits() /
-// lastCandidateTests().
+// Repeated picks over an unchanged scene reuse geometry placements without
+// repeating the graph walk; transform revisions invalidate the index.
 #include "PickSystem.hpp"
 #include "TransformSystem.hpp"
 #include "BoundsSystem.hpp"
@@ -77,7 +73,7 @@ TEST_CASE("pick_index_walk_amortizes_to_candidate_leaves") {
   CHECK(firstVisits >= static_cast<std::uint64_t>(N)); // visited at least every leaf
   CHECK(firstVisits > static_cast<std::uint64_t>(3 * N)); // far more than leaves
 
-  // Second pick, scene unchanged: NO graph walk — only the flat candidate list.
+  // Second pick, scene unchanged: no graph walk — only the flat candidate list.
   ps.pickClosest(ray, bs, {0, 0, 0}, {0, 1, 0}, x3d::kMaxGraphWalkVisits, &ts);
   CHECK(ps.lastIndexVisits() == 0);                              // O(1), not O(nodes)
   CHECK(ps.lastCandidateTests() == static_cast<std::uint64_t>(N)); // O(candidate leaves)

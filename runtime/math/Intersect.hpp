@@ -74,7 +74,7 @@ inline std::optional<float> rayTriangle(const Ray &ray, const SFVec3f &v0,
 // rayTriangleBary — like rayTriangle, but also returns the barycentric
 // coordinates (u, v) of the hit relative to (v0, v1, v2): the hit point is
 // (1-u-v)·v0 + u·v1 + v·v2. Used by the pick narrow-phase to interpolate
-// per-vertex texcoords at the hit (M2.5 TouchSensor seam).
+// per-vertex texcoords at the hit (TouchSensor seam).
 inline std::optional<float> rayTriangleBary(const Ray &ray, const SFVec3f &v0,
                                             const SFVec3f &v1, const SFVec3f &v2,
                                             float &u, float &v) {
@@ -121,7 +121,7 @@ inline std::optional<float> rayCone(const Ray &ray, float bottomRadius,
     if (t >= 0.0f && (!best || t < *best)) best = t;
   };
 
-  // --- Lateral surface ---
+  // Lateral surface
   if (side) {
     // Signed y-distance from apex (apex is at y = +halfH in local space).
     const float ay = halfH - oy; // = apex_y - oy
@@ -146,7 +146,7 @@ inline std::optional<float> rayCone(const Ray &ray, float bottomRadius,
         const float t2 = (-B + sq) / A;
         for (float t : {t1, t2}) {
           float hy = oy + t * dy;
-          // Must be within the valid cone segment and NOT on the mirror sheet
+          // Must be within the valid cone segment and not on the mirror sheet
           // (y must be <= halfH — the apex).
           if (t >= 0.0f && hy >= -halfH && hy <= halfH) keep(t);
         }
@@ -154,7 +154,7 @@ inline std::optional<float> rayCone(const Ray &ray, float bottomRadius,
     }
   }
 
-  // --- Bottom disk cap (y = -halfH, x²+z² <= bottomRadius²) ---
+  // Bottom disk cap (y = -halfH, x²+z² <= bottomRadius²)
   if (bottom && std::fabs(dy) > 1e-12f) {
     float t = (-halfH - oy) / dy;
     if (t >= 0.0f) {
@@ -183,7 +183,7 @@ inline std::optional<float> rayCylinder(const Ray &ray, float radius,
     if (t >= 0.0f && (!best || t < *best)) best = t;
   };
 
-  // --- Lateral surface: x²+z² = r², quadratic in xz ---
+  // Lateral surface: x²+z² = r², quadratic in xz
   if (side) {
     const float A = dx*dx + dz*dz;
     if (A > 1e-12f) {
@@ -202,7 +202,7 @@ inline std::optional<float> rayCylinder(const Ray &ray, float radius,
     }
   }
 
-  // --- Cap intersections (ray vs horizontal disk) ---
+  // Cap intersections (ray vs horizontal disk)
   if (std::fabs(dy) > 1e-12f) {
     if (top) {
       float t = (halfH - oy) / dy;

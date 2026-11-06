@@ -1,4 +1,3 @@
-// vec_math_audit_test.cpp — AUD-VEC-MATH regression tests.
 // Covers edge cases in quaternion construction, matrix inversion, slerp,
 // transform composition, and ray-intersection degeneracy.
 #include "Mat4.hpp"

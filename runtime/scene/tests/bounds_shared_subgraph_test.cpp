@@ -1,11 +1,5 @@
-// bounds_shared_subgraph_test.cpp
-// Regression for the buildSceneGraph HANG (browser-level B1): BoundsSystem's
-// index()/compute() recursed every graph EDGE, so a USE-shared node reachable by
-// K root-to-node paths was visited K times — multiplicative explosion with nesting
-// depth (real corpus: DirtBike 61 USE / Church 884 shapes hung indefinitely at
-// 100% CPU). Here a depth-50 "diamond" makes the leaf reachable by 2^50 paths:
-// pre-fix this test never returns (a true hang); post-fix it is O(nodes+edges) and
-// completes instantly with correct bounds.
+// Bounds traversal visits each node and edge once. A depth-50 shared diamond
+// has 2^50 root-to-leaf paths without increasing the number of nodes exponentially.
 #include "BoundsSystem.hpp"
 #include "TransformSystem.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -38,9 +32,8 @@ TEST_CASE("bounds_shared_subgraph_test") {
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
   addChild(leaf, shape);
 
-  // 50 stacked Groups, each holding the SAME next-level node TWICE (a shared edge):
-  // paths(root->leaf) = 2^50. Only the per-path-explosion bug makes this diverge;
-  // all nodes share one frame (Groups, no Transforms) so bounds stay the box bounds.
+  // Each Group holds the next node twice, producing 2^50 root-to-leaf paths.
+  // Groups share one frame, so bounds stay equal to the box bounds.
   std::shared_ptr<X3DNode> cur = leaf;
   for (int i = 0; i < 50; ++i) {
     auto g = createX3DNode("Group");
@@ -51,9 +44,8 @@ TEST_CASE("bounds_shared_subgraph_test") {
   Scene scene; scene.addRootNode(cur);
 
   TransformSystem ts; ts.buildIndex(scene);
-  BoundsSystem bs; bs.buildBounds(scene, ts);   // pre-fix: never returns
+  BoundsSystem bs; bs.buildBounds(scene, ts);
 
-  // Reaching here at all proves the hang is fixed; bounds must still be correct.
   Aabb rb = bs.localBounds(cur.get());
   CHECK((feq(rb.min.x, -1) && feq(rb.max.x, 1)));
   CHECK((feq(rb.min.y, -1) && feq(rb.max.y, 1)));

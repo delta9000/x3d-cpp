@@ -11,9 +11,7 @@
 // ellipsoid table, and the backend interface. A backend implements only the
 // ellipsoid mathematics (geodetic <-> geocentric, geodetic <-> UTM) and an
 // optional geoid; axis ordering, units, Web Mercator and the local frames are
-// SDK-side and identical for every backend. The default backend is the
-// first-party BuiltinGeoProjection (GeoBuiltinProjection.hpp); a PROJ-backed
-// one is optional (runtime/io/proj/) and proves the seam in a swap-test.
+// SDK-side and identical for every backend. See ADR-0053.
 //
 // No datum transformation is performed: a GD coordinate on (say) Clarke 1866
 // is converted with that ellipsoid's geometry into the same earth-fixed frame

@@ -62,7 +62,7 @@ T getField(const X3DNode &n, const char *name, T dflt) {
 // Reads an SFVec3f field, also accepting an SFVec3d-typed field (double-precision
 // geospatial coordinates — GeoViewpoint.position, GeoOrigin, etc.) by narrowing to
 // float. Without this, a plain getField<SFVec3f> on a double field reads the default
-// (GEO-1: bound GeoViewpoint pinned to the origin).
+// (bound GeoViewpoint pinned to the origin).
 inline SFVec3f getVec3fLenient(const X3DNode &n, const char *name, SFVec3f dflt) {
   SFVec3f f = dflt;
   if (readField(n, name, f) == FieldRead::Ok) return f;
@@ -74,7 +74,7 @@ inline SFVec3f getVec3fLenient(const X3DNode &n, const char *name, SFVec3f dflt)
 
 // Reads an MFVec3f "point"-style field, also accepting MFVec3d. GeoCoordinate
 // points use the supplied world projection; other double points are narrowed.
-// Empty if absent or another type (GEO-2).
+// Empty if absent or another type.
 inline std::vector<SFVec3f> getPointsLenient(const X3DNode &n, const char *name,
                                            const geo::GeoProjection &projection) {
   std::vector<SFVec3f> f;
@@ -142,12 +142,11 @@ inline std::vector<SFVec2f> getControlCurvePoints(const std::shared_ptr<X3DNode>
   return out;
 }
 
-// ---------------------------------------------------------------------------
 // Geometry2D (§14) local-bounds helpers. The eight 2D nodes carry no `coord`,
-// so each needs an explicit arm. The circular primitives get EXACT bounds from
+// so each needs an explicit arm. The circular primitives get exact bounds from
 // the arc's cardinal extremes (angles 0, ±π/2, π) whenever they fall inside the
 // swept range, plus both endpoints.
-// ---------------------------------------------------------------------------
+
 constexpr float kGeom2DPi = 3.14159265358979323846f;
 
 inline float geom2DArcSweep(float startAngle, float endAngle) {
@@ -178,11 +177,9 @@ inline void geom2DExpandArc(Aabb &out, float radius, float startAngle,
   }
 }
 
-// ---------------------------------------------------------------------------
 // Text-layout inputs read off a Text node by reflection. Mirrors the extraction
 // layer's readers (TextExtract.hpp) so the bounds path lays the glyphs out with
 // exactly the same FontStyleParams/TextParams the renderer uses.
-// ---------------------------------------------------------------------------
 
 // Split an X3D enum token string on whitespace/quotes/commas (justify is
 // "MAJOR" or "MAJOR MINOR"; family/style are MFEnum token lists).
@@ -254,10 +251,8 @@ inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
   if (!jt.empty()) fs.justifyMajor = jt[0];
   if (jt.size() >= 2) fs.justifyMinor = jt[1];
 
-  // family is an MFString fallback list (§15.4.1), read as the MFString it
-  // is: it has no enum-string accessor, so an enum-token read returns empty
-  // and every Text fell back to SERIF (TXT-5). The caller resolves it against
-  // the FontMetrics backend with resolveFontFamily.
+  // Read family as an MFString fallback list (§15.4.1); it has no enum-string accessor.
+  // The caller resolves it against FontMetrics with resolveFontFamily.
   const auto fam = getField<std::vector<std::string>>(*fsNode, "family", {});
   if (!fam.empty()) familyOut = fam[0];
   if (familiesOut) *familiesOut = fam;
@@ -279,7 +274,7 @@ inline extract::TextParams readTextParams(const X3DNode &textNode) {
 // Bridge the per-codepoint FontMetrics seam to the per-line callback the layout
 // engine needs: natural advance = sum of each ready codepoint's advanceEm*size
 // (Pending/Failed contribute 0). Vertical proportions are fixed (0.8 / -0.2 of
-// size) — the seam exposes no per-line vertical metrics in v1.
+// size); FontMetrics exposes no per-line vertical metrics.
 inline extract::FontMetricsCallback makeLayoutMetricsAdapter(
     const extract::FontMetrics &fm, const std::string &family,
     const std::string &style) {
@@ -439,8 +434,7 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
     return r;
   }
   if (t == "ElevationGrid") {
-    // Best-effort grid bound in the raw local frame (Geo* is not geo-projected —
-    // see backlog M2B-2). x/z from dimensions*spacing, y from the height range.
+    // Grid bounds use dimensions*spacing in x/z and the authored height range in y.
     int xd = getField<int>(*geom, "xDimension", 0);
     int zd = getField<int>(*geom, "zDimension", 0);
     // GeoElevationGrid spacing/height are SFDouble/MFDouble; read leniently.
@@ -498,11 +492,9 @@ inline Aabb localGeometryBoundsImpl(const X3DNode *geom,
         r.expand({ext.maxX, ext.maxY, 0.0f});
         return r;
       }
-      // No glyphs laid out (e.g. an empty string list): fall through to the
-      // heuristic so the bound is never tighter than before.
+      // With no laid-out glyphs, fall back to the conservative estimate.
     }
-    // Conservative symmetric estimate. Exact glyph bounds need a font engine
-    // (backlog M2B-1). width ~ longest-string * size * 0.6, capped by maxExtent;
+    // Without font metrics, estimate width as longest-string * size * 0.6, capped by maxExtent;
     // height ~ lineCount * size * spacing. Centered box (justification-agnostic).
     auto strs = getField<std::vector<std::string>>(*geom, "string", {});
     float size = 1.0f, spacing = 1.0f;

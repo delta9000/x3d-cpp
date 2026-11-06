@@ -26,7 +26,7 @@ TEST_CASE("mat4_test") {
   Mat4 r = Mat4::rotation(SFRotation{0,0,1, static_cast<float>(std::numbers::pi/2.0)});
   CHECK((veq(r.transformPoint({1,0,0}), {0,1,0})));
 
-  // multiply order: (T * S) applied to p scales THEN translates
+  // multiply order: (T * S) applied to p scales then translates
   Mat4 ts = t * s;
   CHECK((veq(ts.transformPoint({1,1,1}), {12,23,34}))); // (2,3,4) then +(10,20,30)
 

@@ -1,19 +1,6 @@
-// CycleBreaker.hpp — sanitize a parsed Scene into a containment DAG.
-//
-// Malformed input can create a CONTAINMENT CYCLE: a node that is its own
-// ancestor. The canonical case is a node that USEs its own DEF name
-//   <TouchSensor DEF='a' USE='a'/>
-// (and ancestor-USE: a descendant USE'ing an enclosing DEF). USE resolves to an
-// existing node reference, so the in-memory graph genuinely points A -> ... -> A.
-//
-// Every recursive scene-graph walker (BindingSystem::walk, PickSystem::worldOfRec,
-// SceneExtractor::walk, BoundsSystem) follows SFNode/MFNode child references; a
-// cycle makes them recurse forever -> stack overflow (SEGV). Rather than guard
-// each walker (and the PATH-based walkers cannot use a naive visited-set without
-// wrongly pruning legitimate USE/DAG sharing), we fix it at the source: run one
-// DFS that severs only the back-edges, leaving a DAG that every consumer can walk
-// safely. Legitimate USE-sharing (a node reached by several DISTINCT paths, none
-// of which is an ancestor) is untouched.
+// Sever containment back-edges while preserving shared DAG paths.
+// Path-based walks cannot use a global visited set.
+// See docs/wiki/decisions/0016-cycle-breaker.md.
 #ifndef X3D_RUNTIME_CYCLE_BREAKER_HPP
 #define X3D_RUNTIME_CYCLE_BREAKER_HPP
 
@@ -41,7 +28,7 @@ inline int breakContainmentCycles(Scene &scene) {
     if (!n) return;
     onStack.insert(n);
     for (const auto &f : n->fields()) {
-      if (!f.get || !f.set) continue;  // need read AND write to re-seat the field
+      if (!f.get || !f.set) continue;  // need read and write to re-seat the field
       if (f.type == X3DFieldType::SFNode) {
         auto c = std::any_cast<std::shared_ptr<X3DNode>>(f.get(*n));
         if (!c) continue;

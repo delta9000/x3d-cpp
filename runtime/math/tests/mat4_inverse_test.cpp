@@ -1,4 +1,3 @@
-// mat4_inverse_test.cpp
 #include "Mat4.hpp"
 #include "Ray.hpp"
 #include "doctest/doctest.h"
@@ -25,9 +24,9 @@ TEST_CASE("mat4_inverse_test") {
   Mat4 zero; // all-zero (empty Mat4)
   Mat4 zi = zero.inverse();
   CHECK((feq(zi.m[0],1) && feq(zi.m[5],1) && feq(zi.m[15],1)));
-  CHECK((!zero.tryInverse().has_value())); // MEM-4: singular -> nullopt.
+  CHECK((!zero.tryInverse().has_value())); // singular -> nullopt.
 
-  // MEM-4: a uniform 1e-7 scale is NOT singular. M*inv ~ I (relative tolerance).
+  // A uniform 1e-7 scale is not singular. M*inv ~ I (relative tolerance).
   {
     const float s = 1e-7f;
     Mat4 S = Mat4::scale({s, s, s});
@@ -46,8 +45,8 @@ TEST_CASE("mat4_inverse_test") {
     CHECK((!sing.tryInverse().has_value()));
   }
 
-  // Anisotropic scales: the old max-magnitude test wrongly called these
-  // singular; the column-norm ratio is scale-invariant per axis.
+  // Anisotropic scales remain invertible despite unequal column magnitudes.
+  // det/(n0*n1*n2) == 1 for any diagonal scale.
   const auto checkInverts = [](const Mat4 &M) {
     auto inv = M.tryInverse();
     REQUIRE(inv.has_value());

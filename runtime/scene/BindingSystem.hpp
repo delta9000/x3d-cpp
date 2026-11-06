@@ -1,7 +1,7 @@
 // BindingSystem.hpp — owns one BindingStack per bindable category, enrols bindable
 // nodes from a Scene, wires each node's set_bind handler to drive its stack, and
 // default-binds the first of each category. Decoupled from X3DExecutionContext via
-// a Poster (post an event) + Clock (current time) callback — so there is NO include
+// a Poster (post an event) + Clock (current time) callback — so there is no include
 // cycle with the context. Context-owned, purely event-driven. namespace x3d::runtime.
 #ifndef X3D_RUNTIME_BINDING_SYSTEM_HPP
 #define X3D_RUNTIME_BINDING_SYSTEM_HPP
@@ -82,8 +82,8 @@ public:
     return it == stacks_.end() ? nullptr : it->second.top();
   }
 
-  // BIND-06 §7.2.2 r9 / §23.3.1 r9: a deleted bound node behaves as set_bind FALSE
-  // — pop it from its stack so the next entry becomes bound (isBound/bindTime).
+  // §7.2.2 r9 / §23.3.1 r9: a deleted bound node behaves as set_bind FALSE
+  // pop it from its stack so the next entry becomes bound (isBound/bindTime).
   void removeNode(X3DNode *node) {
     if (!node || !poster_) return;
     const std::string cat = category(node);
@@ -105,7 +105,7 @@ public:
         poster_(t, "bindTime", std::any(SFTime(clock_())));
       }
     };
-    // BIND-09: signal Pop before unbinding (after, the top has changed).
+    // signal Pop before unbinding (after, the top has changed).
     if (sink_ && it->first == "Viewpoint" && it->second.top() == node)
       sink_(BindTransition::Pop);
     it->second.unbind(node, emit);
@@ -137,7 +137,7 @@ private:
     enrolled_[cat].push_back(node);
     b->setOnSet_bindHandler(callbacks_.guard([this, node, cat](const SFBool &v) {
       BindingStack::Emit emit = [this](X3DNode *t, bool bound) {
-        // §23.3.1: bindTime fires on EVERY isBound transition (bind AND unbind).
+        // §23.3.1: bindTime fires on every isBound transition (bind and unbind).
         poster_(t, "isBound", std::any(SFBool(bound)));
         poster_(t, "bindTime", std::any(SFTime(clock_())));
       };

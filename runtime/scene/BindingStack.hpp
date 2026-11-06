@@ -13,7 +13,7 @@ namespace x3d::nodes { class X3DNode; }
 namespace x3d::runtime {
 using x3d::nodes::X3DNode;
 
-// BIND-09: kind of the latest viewpoint bind transition. Set by BindingSystem
+// kind of the latest viewpoint bind transition. Set by BindingSystem
 // when a viewpoint stack mutation emits a bound/unbound transition; read by
 // ViewpointBindSystem to distinguish §23.3.1 r5.1 (push: apply jump/retain)
 // from r6.3 (pop: restore stored offset). Reset to None after each post-cascade.

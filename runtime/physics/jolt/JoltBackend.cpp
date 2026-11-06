@@ -4,7 +4,7 @@
 // compiled with -w (Jolt headers are warning-noisy) and only when
 // X3D_CPP_BUILD_PHYSICS=ON. The layer/broadphase filter boilerplate is the
 // canonical Jolt HelloWorld pattern (two object layers: NON_MOVING / MOVING),
-// and these filter objects must OUTLIVE every JPH::PhysicsSystem, so they are
+// and these filter objects must outlive every JPH::PhysicsSystem, so they are
 // owned by the backend Impl (not per-world locals).
 
 #include <mutex>
@@ -45,14 +45,14 @@ using namespace JPH::literals;
 namespace x3d::runtime {
 namespace {
 
-// ── Collision layers: a body is either NON_MOVING (static) or MOVING (dynamic).
+// Collision layers: a body is either NON_MOVING (static) or MOVING (dynamic).
 namespace Layers {
 static constexpr ObjectLayer NON_MOVING = 0;
 static constexpr ObjectLayer MOVING = 1;
 static constexpr ObjectLayer NUM_LAYERS = 2;
 } // namespace Layers
 
-// ── Broadphase layers (one per object layer is fine for this MVP).
+// Broadphase layers.
 namespace BroadPhaseLayers {
 static constexpr BroadPhaseLayer NON_MOVING(0);
 static constexpr BroadPhaseLayer MOVING(1);
@@ -134,7 +134,7 @@ public:
 
   // Map a Jolt BodyID to the runtime's BodyHandle (index+1 into world.bodies).
   // Bound once after the world is in impl_->worlds (see createWorld). This vector
-  // is mutated only by addBody at ATTACH time; it is fully populated and
+  // is mutated only by addBody at attach time; it is fully populated and
   // thereafter immutable before any step()/Update runs, so the contact callbacks
   // (which fire only during Update) always read a stable vector — safe even under
   // a thread-pool job system without locking handleFor's read.
@@ -214,7 +214,7 @@ inline SFRotation toRotation(const Quat &q) {
 
 } // namespace
 
-// ── World: one JPH::PhysicsSystem + the bodies created in it.
+// World: one JPH::PhysicsSystem + the bodies created in it.
 struct JoltWorld {
   std::unique_ptr<PhysicsSystem> physics;
   std::vector<BodyID> bodies;       // index+1 is the BodyHandle we hand out
@@ -224,7 +224,7 @@ struct JoltWorld {
   bool optimized = false;           // broadphase optimized after bulk insertion
 };
 
-// ── pImpl: all Jolt-owning state. The filter interfaces are members (they must
+// pImpl: all Jolt-owning state. The filter interfaces are members (they must
 //    outlive every JPH::PhysicsSystem). Globals (Factory, types) are init'd once
 //    per process here; refcounted so multiple backends don't double-init.
 struct JoltBackend::Impl {
@@ -251,10 +251,10 @@ struct JoltBackend::Impl {
   }
 };
 
-// ── Process-wide Jolt globals (Factory + type registration), refcounted so
+// Process-wide Jolt globals (Factory + type registration), refcounted so
 //    constructing/destroying multiple backends is safe.
 namespace {
-std::mutex g_joltMutex;       // guards the refcount AND the register/unregister blocks:
+std::mutex g_joltMutex;       // guards the refcount and the register/unregister blocks:
 int g_joltRefCount = 0;       // an atomic alone is insufficient — the init/teardown must be
                               // mutually exclusive so two threads can't both run RegisterTypes.
 void acquireJoltGlobals() {
@@ -325,7 +325,7 @@ WorldHandle JoltBackend::createWorld(const SFVec3f &gravity) {
   WorldHandle h = impl_->nextWorld++;
   auto [it, ok] = impl_->worlds.emplace(h, std::move(world));
   // The collector resolves BodyID -> handle via the world's bodies vector;
-  // bind it now that the world (and its bodies vector) lives in the map.
+  // bind it after the world and its bodies vector have stable addresses in the map.
   it->second.contacts->bodies = &it->second.bodies;
   return h;
 }
@@ -482,7 +482,7 @@ ConstraintHandle JoltBackend::addConstraint(WorldHandle world,
     // §37 SingleAxisHingeJoint limits are measured from the initial pose: a valid
     // hinge has minAngle <= 0 <= maxAngle and travels at most pi each way. Clamp
     // into that domain (out-of-domain input is malformed — the initial pose must
-    // be reachable — and is clamped + warned; see CONF-RBP-HINGE-LIMITS).
+    // be reachable — and is clamped + warned; see §37 SingleAxisHingeJoint).
     float lo = std::clamp(desc.minLimit, -JPH_PI, 0.0f);
     float hi = std::clamp(desc.maxLimit, 0.0f, JPH_PI);
     constexpr float kMinGap = 1e-4f;
@@ -498,7 +498,7 @@ ConstraintHandle JoltBackend::addConstraint(WorldHandle world,
                    "CONF-RBP-HINGE-LIMITS\n",
                    desc.minLimit, desc.maxLimit, lo, hi);
     }
-    // Jolt's hinge angle is the NEGATIVE of the body's rotation about the axis
+    // Jolt's hinge angle is the negative of the body's rotation about the axis
     // (theta = -authoredAngle), so negate: authored [lo, hi] -> Jolt [-hi, -lo].
     // (-hi in [-pi,0], -lo in [0,pi] — Jolt's required ranges still hold.)
     hs.mLimitsMin = -hi;
@@ -638,8 +638,8 @@ void JoltBackend::setSolverSettings(WorldHandle world,
   if (settings.maxCorrectionSpeed >= 0.0f) {
     // §37 maxCorrectionSpeed (>=0) -> Jolt's max penetration distance corrected
     // per position iteration (the closest real setting capping how aggressively
-    // position error is resolved). NOTE: Jolt's value is a per-iteration
-    // DISTANCE (m); §37's is a SPEED (m/s) — Jolt has no speed-based cap.
+    // position error is resolved). Jolt's value is a per-iteration
+    // distance (m); §37's is a speed (m/s) — Jolt has no speed-based cap.
     js.mMaxPenetrationDistance = settings.maxCorrectionSpeed;
     changed = true;
   }
@@ -695,9 +695,9 @@ void JoltBackend::getBodyTransform(WorldHandle world, BodyHandle body,
   if (id.IsInvalid()) return;
   const BodyInterface &bi = w.physics->GetBodyInterface();
   // §37 RigidBody.position is the body's origin (the authored reference point),
-  // NOT its center of mass — these differ when centerOfMass is offset. Report
+  // not its center of mass — these differ when centerOfMass is offset. Report
   // the origin so a routed Transform tracks the authored placement. For centered
-  // bodies origin == COM, so existing golden traces are unchanged.
+  // bodies the origin equals the center of mass.
   RVec3 p = bi.GetPosition(id);
   Quat q = bi.GetRotation(id);
   pos = SFVec3f{static_cast<float>(p.GetX()), static_cast<float>(p.GetY()),

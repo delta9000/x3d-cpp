@@ -1,15 +1,5 @@
-// ContactReporter.hpp
-// Translates already-resolved §37 collision contacts into X3D events on the
-// watching CollisionSensor nodes. ENGINE-AGNOSTIC and HANDLE-FREE: it names no
-// physics-engine type and no backend handle — the PhysicsSystem resolves each
-// drained ContactPoint to scene nodes (RigidBody + CollidableShape) and a stable
-// pair ordinal before handing a vector of ResolvedContact here. This file builds
-// without X3D_CPP_BUILD_PHYSICS. A seam-purity check greps it for engine leakage.
-//
-// §37.4.5: the collision system runs regardless of any CollisionSensor; the
-// sensor only REPORTS. We never feed contacts back into the solver (the spec
-// strongly advises against routing contacts -> set_contacts). This is pure
-// read-only output: build Contact nodes, emit contacts/intersections/isActive.
+// §37.4.5: CollisionSensor reports resolved contacts without feeding them back
+// into the solver. PhysicsSystem resolves backend handles to scene nodes.
 #ifndef X3D_RUNTIME_PHYSICS_CONTACT_REPORTER_HPP
 #define X3D_RUNTIME_PHYSICS_CONTACT_REPORTER_HPP
 
@@ -36,7 +26,7 @@ using namespace x3d::core;
 /**
  * @brief One contact resolved to scene nodes, ready to report.
  * @details The PhysicsSystem fills this from a backend ContactPoint: handles ->
- *          the RigidBody + CollidableShape SFNodes, plus a STABLE pairKey built
+ *          the RigidBody + CollidableShape SFNodes, plus a stable pairKey built
  *          from enrollment ordinals (min<<32 | max) so dedupe + ordering are
  *          deterministic regardless of pointer addresses or engine callback order.
  */
@@ -51,17 +41,8 @@ struct ResolvedContact {
   std::uint64_t pairKey = 0;
 };
 
-/**
- * @brief Emits §37 CollisionSensor outputs from resolved contacts.
- * @details Per frame, report() is called once with all resolved contacts. For
- *          each enrolled sensor it: gates on sensor/collection enabled + a
- *          non-null collider; flattens collider->collidables (descending nested
- *          CollisionSpaces) into a CollidableShape set; keeps contacts whose both
- *          geometries are in that set; dedupes per body-pair (max depth) and
- *          sorts by pairKey; builds Contact nodes (geometry from the engine,
- *          response fields from the collection defaults); and posts contacts /
- *          intersections / isActive (isActive only on change).
- */
+/** §37 CollisionSensor outputs are deduplicated per body pair by maximum depth
+ *  and sorted by pairKey. isActive is emitted only on transitions. */
 class ContactReporter {
 public:
   /** @brief Enroll a CollisionSensor to watch (idempotent per pointer). */
@@ -76,7 +57,6 @@ public:
     active_.erase(sensor);
   }
 
-  /** @brief Build + emit this frame's contact outputs for every sensor. */
   void report(const std::vector<ResolvedContact> &contacts,
               X3DExecutionContext &ctx) {
     for (x3d::nodes::CollisionSensor *sensor : sensors_) {
@@ -104,7 +84,7 @@ private:
     collectCollidables(collection->getCollidables(), watched);
     visitedSpaces_.clear();  // reset the per-sensor recursion guard
 
-    // Filter to contacts whose BOTH geometries are in the watched set, deduped
+    // Keep contacts with both geometries in the watched set, deduped
     // per pairKey keeping the deepest, then ordered by pairKey (deterministic).
     std::unordered_map<std::uint64_t, const ResolvedContact *> byPair;
     for (const ResolvedContact &c : contacts) {

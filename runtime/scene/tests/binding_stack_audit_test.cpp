@@ -1,4 +1,3 @@
-// binding_stack_audit_test.cpp — AUD-BIND-STACK regression tests.
 // Covers empty-stack unbind, rapid transitions, bindTime precision,
 // event ordering, and default-vs-explicit bind interaction.
 #include "BindingStack.hpp"
@@ -20,7 +19,7 @@ static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
 }
 
 TEST_CASE("binding_stack_audit_test") {
-  // ── 1. Empty binding stack: unbind when nothing bound → no-op ─────────────
+  // Empty binding stack: unbind when nothing bound → no-op
   {
     int a=0;
     X3DNode* A = reinterpret_cast<X3DNode*>(&a);
@@ -33,7 +32,7 @@ TEST_CASE("binding_stack_audit_test") {
     CHECK((s.top() == nullptr));
   }
 
-  // ── 2. Multiple rapid bind/unbind transitions ─────────────────────────────
+  // Multiple rapid bind/unbind transitions
   {
     int a=0,b=0,c=0;
     X3DNode* A = reinterpret_cast<X3DNode*>(&a);
@@ -70,7 +69,7 @@ TEST_CASE("binding_stack_audit_test") {
     CHECK((ev.size() == 1 && ev[0] == std::make_pair(C, false)));
   }
 
-  // ── 3. bindTime precision: fractional seconds preserved ───────────────────
+  // bindTime precision: fractional seconds preserved
   {
     auto vp = createX3DNode("Viewpoint");
     Scene scene; scene.addRootNode(vp);
@@ -82,7 +81,7 @@ TEST_CASE("binding_stack_audit_test") {
     CHECK((bnd(vp)->getBindTime() == kFrac && "fractional bindTime must be exact"));
   }
 
-  // ── 4. isBound event ordering: isBound before bindTime ────────────────────
+  // isBound event ordering: isBound before bindTime
   {
     auto vp1 = createX3DNode("Viewpoint");
     auto vp2 = createX3DNode("Viewpoint");
@@ -109,7 +108,7 @@ TEST_CASE("binding_stack_audit_test") {
     }
   }
 
-  // ── 5. Default bind vs explicit bind: re-binding top is no-op ─────────────
+  // Default bind vs explicit bind: re-binding top is no-op
   {
     auto vp1 = createX3DNode("Viewpoint");
     auto vp2 = createX3DNode("Viewpoint");

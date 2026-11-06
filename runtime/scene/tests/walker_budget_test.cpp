@@ -1,11 +1,5 @@
-// walker_budget_test.cpp
-// Regression for #21: an acyclic "doubling DAG" (G0->[G1,G1], G1->[G2,G2], ...)
-// has no containment back-edge and stays shallow, so the MEM-1 cycle+depth guards
-// leave it alone — but its leaf is reachable via 2^depth distinct paths, so the
-// per-path graph walks fan out exponentially (a CPU/memory DoS). worldOf is a
-// first-found *search*, fixed by visited-set memoization (this file's first
-// cases); the per-path *emitters* (extractor/pick/light) are bounded by a
-// WalkBudget with a graceful budgetExceeded signal (the later cases).
+// A shallow acyclic doubling DAG has exponentially many paths. Search memoization
+// and per-path WalkBudget limits must bound work and report incomplete results.
 #include "PickSystem.hpp"
 #include "SceneExtractor.hpp"
 #include "TransformSystem.hpp"
@@ -38,7 +32,7 @@ static void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3
     }
 }
 
-// A doubling DAG `depth` levels tall over `leaf`: each Group lists `node` TWICE,
+// A doubling DAG `depth` levels tall over `leaf`: each Group lists `node` twice,
 // so the leaf is reachable by 2^depth distinct paths from the returned root,
 // using only depth+1 distinct nodes (no cycle, all forward edges).
 static std::shared_ptr<X3DNode> makeDoublingDag(int depth,
@@ -81,9 +75,9 @@ TEST_CASE("worldof_finds_present_target_in_wide_dag") {
 }
 
 TEST_CASE("worldof_depth_truncated_subtree_is_not_falsely_memoized") {
-  // The memoization must not collude with the MEM-1 depth cap. A node `P` is
-  // reachable BOTH near the cap (where its subtree truncates unexplored) AND
-  // shallowly (where the target IS findable). Marking `P` visited on the deep,
+  // The memoization must not collude with the depth cap. A node `P` is
+  // reachable both near the cap (where its subtree truncates unexplored) and
+  // shallowly (where the target is findable). Marking `P` visited on the deep,
   // truncated path would wrongly prune the shallow path and lose the target.
   auto target = createX3DNode("Transform");
   setF(target, "translation", std::any(SFVec3f{5, 0, 0}));
@@ -99,7 +93,7 @@ TEST_CASE("worldof_depth_truncated_subtree_is_not_falsely_memoized") {
     chain = g;
   }
   auto root = createX3DNode("Group");
-  addChild(root, chain); // deep path FIRST — truncates P's subtree
+  addChild(root, chain); // deep path first — truncates P's subtree
   addChild(root, p);     // shallow path: target findable at depth 2
   Scene scene;
   scene.addRootNode(root);
@@ -119,7 +113,7 @@ static std::shared_ptr<X3DNode> makeBoxShape() {
 }
 
 TEST_CASE("scene_extractor_budget_bounds_doubling_dag") {
-  // 2^22 paths to one Shape: the extractor's exponential cost here is the WALK
+  // 2^22 paths to one Shape: the extractor's exponential cost here is the walk
   // (2^22 node-visits), not emission — every path reuses the same node pointers,
   // so all paths share one PathKey and emit() interns them to a single
   // RenderItem. The small budget stops the walk early and latches budgetExceeded.

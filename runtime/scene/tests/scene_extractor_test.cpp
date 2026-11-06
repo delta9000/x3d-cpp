@@ -1,10 +1,4 @@
-// scene_extractor_test.cpp — M2.5 T7a acceptance: the M2C-1 per-path proof.
-//
-// A single DEF'd Shape (one shared X3DNode) USE'd under TWO different Transforms
-// must yield TWO RenderItems with DISTINCT per-path worldTransforms, while the
-// first-path-only ctx.worldTransform(thatNode) collapses to ONE matrix. The
-// extractor re-accumulates worldM down each PATH (the worldOfRec pattern) and
-// must NEVER read TransformSystem.world_ for an item matrix.
+// A shared Shape yields one RenderItem per placement, each with its own world matrix.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp" // Scene::addRootNode definition.
@@ -39,9 +33,9 @@ static void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3
 }
 
 TEST_CASE("scene_extractor_test") {
-  // --- The M2C-1 scene ---------------------------------------------------
+  // The scene
   // Root group holds two Transforms (Tx at +10x, Ty at -10x). A single DEF'd
-  // Shape (TriangleSet, one triangle) is USE'd under BOTH — i.e. the SAME
+  // Shape (TriangleSet, one triangle) is USE'd under both — i.e. the same
   // shared_ptr node appears in both Transforms' children.
   auto tri = createX3DNode("TriangleSet");
   auto coord = createX3DNode("Coordinate");
@@ -72,56 +66,55 @@ TEST_CASE("scene_extractor_test") {
   extract::SceneExtractor ex(ctx, scene);
   extract::RenderDelta snap = ex.fullSnapshot();
 
-  // TWO RenderItems for the one DEF'd Shape — one per placement PATH.
+  // Two RenderItems for the one DEF'd Shape — one per placement path.
   CHECK((snap.added.size() == 2));
   CHECK((snap.removed.empty()));
 
   const extract::RenderItem &a = ex.item(snap.added[0]);
   const extract::RenderItem &b = ex.item(snap.added[1]);
 
-  // Distinct DENSE ids.
+  // Distinct dense ids.
   CHECK((snap.added[0] != snap.added[1]));
 
-  // Both reference the SAME geometry content (one upload, instanced twice).
+  // Both reference the same geometry content (one upload, instanced twice).
   CHECK((a.geometry.node == b.geometry.node));
   CHECK((a.geometry.node == tri.get()));
 
-  // DISTINCT per-path world transforms: translations +10x and -10x.
+  // distinct per-path world transforms: translations +10x and -10x.
   float ax = a.worldTransform.transformPoint({0, 0, 0}).x;
   float bx = b.worldTransform.transformPoint({0, 0, 0}).x;
   CHECK((feq(std::fabs(ax), 10.0f)));
   CHECK((feq(std::fabs(bx), 10.0f)));
-  CHECK((!feq(ax, bx))); // the two placements differ — THE M2C-1 proof.
+  CHECK((!feq(ax, bx))); // the two placements differ — the proof.
   CHECK((feq(ax + bx, 0.0f)));
 
-  // The first-path-only context view collapses the USE'd node to ONE transform.
+  // The first-path-only context view collapses the USE'd node to one transform.
   Mat4 oneWorld = ctx.worldTransform(shape.get());
   // shape is not a Transform, so the ctx table has no entry => identity; the key
-  // point is it is a SINGLE answer, not the two distinct per-path matrices above.
+  // point is it is a single answer, not the two distinct per-path matrices above.
   (void)oneWorld;
 
   // Both items unlit-white stub material (no MaterialSystem yet).
   CHECK((a.material.model == extract::MaterialModel::Unlit));
   CHECK((b.material.model == extract::MaterialModel::Unlit));
 
-  // --- sceneWorldBounds over the two placements --------------------------
+  // sceneWorldBounds over the two placements
   Aabb wb = ex.sceneWorldBounds();
   CHECK((!wb.empty));
   // Triangle x in [0,1] local; placed at +10 and -10 => world x in [-10, 11].
   CHECK((feq(wb.min.x, -10.0f)));
   CHECK((feq(wb.max.x, 11.0f)));
 
-  // --- interning is stable: a second snapshot reuses the same ids --------
+  // interning is stable: a second snapshot reuses the same ids
   extract::RenderDelta snap2 = ex.fullSnapshot();
   CHECK((snap2.added.size() == 2));
 
-  // --- camera() reads viewMatrix + Viewpoint.fieldOfView -----------------
+  // camera() reads viewMatrix + Viewpoint.fieldOfView
   // No bound Viewpoint => identity view + default FOV; just exercise the path.
   extract::CameraDesc cam = ex.camera();
   CHECK((feq(cam.fieldOfView, 0.7854f)));
 
-  // --- primitive sanity: Box is now tessellated by MeshBuilder (T4) so a Box
-  //     Shape DOES emit one RenderItem with a non-empty local mesh (12 tris). --
+  // A Box yields one RenderItem with a 12-triangle mesh.
   {
     auto box = createX3DNode("Box");
     auto bshape = createX3DNode("Shape");
@@ -132,7 +125,7 @@ TEST_CASE("scene_extractor_test") {
     c2.buildSceneGraph(s2);
     extract::SceneExtractor ex2(c2, s2);
     extract::RenderDelta d2 = ex2.fullSnapshot();
-    CHECK((d2.added.size() == 1)); // Box now tessellates (T4 primitive support).
+    CHECK((d2.added.size() == 1));
     const extract::RenderItem &bi = ex2.item(d2.added[0]);
     CHECK((bi.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
   }
