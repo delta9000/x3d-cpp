@@ -4,20 +4,20 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| CollisionSensor | 1 | ✓ | — | ? | CONF-NAV-COLLISION, CONF-RBP, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
-| CollisionSpace | 1 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
-| Contact | 2 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS |  |
-| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DAMP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| CollisionSensor | 1 | ✓ | — | ? | CONF-NAV-COLLISION, CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
+| CollisionSpace | 1 | ✓ | — | — | CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
+| Contact | 2 | ✓ | — | — | CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS |  |
+| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DAMP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
 
 ## Findings
 
@@ -41,6 +41,8 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
   - PhysicsSystem sums forces+torques and applies the resultant before each substep. TDD — zero-g body under 10 N reaches y=4.997 after 1 s (analytic 5).
 - **CONF-RBP-ENABLED** [major/FIXED `75a7878`] — §37: RigidBody.enabled was ignored — a body with enabled=FALSE was still simulated. Now excluded from the calculations per §37.
   - Fixed under TDD in x3d_physics_system (disabled body not enrolled, does not fall).
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **CONF-RBP-HINGE-LIMITS** [minor/FIXED] — §37: SingleAxisHingeJoint minAngle/maxAngle are honored with the correct sign. §37 limits are measured from the initial pose (valid range minAngle<=0<=maxAngle, <=pi each way) — exactly Jolt's hinge convention. Spec-valid ranges, including asymmetric ones, are honored; out-of-domain/malformed limits are clamped to the valid domain + warned.
   - Jolt's hinge angle is the NEGATIVE of the body's rotation about the axis, so the authored limits are negated before being handed to Jolt ([lo,hi] -> [-hi,-lo]); a TDD asymmetric-limit test caught a latent sign bug that symmetric ranges (the default -pi..pi and the locked 0,0) had hidden. A zero-width (locked) range is widened by a 1e-4 gap (Jolt asserts on min==max). Out-of-domain input (initial pose outside the limits, |angle|>pi) is malformed per §37 and clamped + warned. stopBounce / stopErrorCorrection (limit softness/overshoot) remain deferred under CONF-RBP-SOLVER.
 - **CONF-RBP-FRICTION-BOUNCE** [minor/CLOSED `e038494`] — §37: CollisionCollection.frictionCoefficients (scalar, .x) and bounce are applied as per-contact combined friction/restitution via the Jolt ContactListener, now HONORING appliedParameters: FRICTION_COEFFICIENT-2 gates frictionCoefficients, BOUNCE gates bounce (default ["BOUNCE"]). Demonstrated by a rear-wheel-drive vehicle that drives under tyre friction + a rebounding ball.

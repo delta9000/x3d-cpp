@@ -4,17 +4,17 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| GeoCoordinate | 1 | ✓ | — | — | GEO-2, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
-| GeoElevationGrid | 1 | ✓ | ✓ | — | EXT-001, EXT-003, GEO-2, GEO-AUDIT-1, GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS | X3DGeometryNode |
-| GeoLOD | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOLOD-1, NATIVE-AUTHOR-FIELD-OWNERSHIP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| GeoLocation | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoMetadata | 1 | ✓ | — | — | GEO-AUDIT-2, REQ-FTP, ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode, X3DUrlObject |
-| GeoOrigin | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS |  |
-| GeoPositionInterpolator | 1 | ✓ | — | ? | CONF-GEO, GEO-AUDIT-3, GEO-GEOID-DEFAULT, INTERP-02, PIV-1, ROUTE-IO-ALIAS | X3DChildNode, X3DInterpolatorNode |
-| GeoProximitySensor | 2 | ✓ | — | ? | CONF-GEO, ENV-02, ENV-03, GEO-AUDIT-3, GEO-AUDIT-5, GEO-AUDIT-6, GEO-GEOID-DEFAULT, GEOSYSTEM, ROUTE-IO-ALIAS | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| GeoTouchSensor | 1 | ✓ | — | ? | GEO-AUDIT-3, GEO-GEOID-DEFAULT, ROUTE-IO-ALIAS, TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
-| GeoTransform | 2 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoViewpoint | 1 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEO-AUDIT-3, GEO-AUDIT-4, GEO-AUDIT-5, GEO-GEOID-DEFAULT, GEOSYSTEM, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| GeoCoordinate | 1 | ✓ | — | — | DELTA-GEOORIGIN, GEO-2, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
+| GeoElevationGrid | 1 | ✓ | ✓ | — | DELTA-GEOORIGIN, EXT-001, EXT-003, GEO-2, GEO-AUDIT-1, GEO-AUDIT-3, GEO-GEOID-DEFAULT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DGeometryNode |
+| GeoLOD | 1 | ✓ | — | — | GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOLOD-1, META-EXTENDED-ATTRIBUTES-WRITE, NATIVE-AUTHOR-FIELD-OWNERSHIP, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| GeoLocation | 1 | ✓ | — | — | DELTA-GEOORIGIN, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GEOSYSTEM, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| GeoMetadata | 1 | ✓ | — | — | GEO-AUDIT-2, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS | X3DChildNode, X3DInfoNode, X3DUrlObject |
+| GeoOrigin | 1 | ✓ | — | — | DELTA-GEOORIGIN, GEO-AUDIT-3, GEO-GEOID-DEFAULT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS |  |
+| GeoPositionInterpolator | 1 | ✓ | — | ? | CONF-GEO, GEO-AUDIT-3, GEO-GEOID-DEFAULT, INTERP-02, META-EXTENDED-ATTRIBUTES-WRITE, PIV-1, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DInterpolatorNode |
+| GeoProximitySensor | 2 | ✓ | — | ? | CONF-GEO, ENV-02, ENV-03, GEO-AUDIT-3, GEO-AUDIT-5, GEO-AUDIT-6, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| GeoTouchSensor | 1 | ✓ | — | ? | GEO-AUDIT-3, GEO-GEOID-DEFAULT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
+| GeoTransform | 2 | ✓ | — | — | DELTA-GEOORIGIN, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| GeoViewpoint | 1 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEO-AUDIT-3, GEO-AUDIT-4, GEO-AUDIT-5, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
@@ -57,6 +57,9 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - NavigationSystem converts the picked pivot with geo::fromWorld and writes SFVec3d. Regression: GeoViewpoint LOOKAT updates geographic centerOfRotation. This completes the GeoViewpoint centerOfRotation path after GEO-1.
 - **GEO-AUDIT-6** [major/CLOSED] — §25.3.8: GeoProximitySensor.geoCoord_changed dropped the sensor ancestor transform.
   - Reviewed, convention kept (ADR-0053): geographic coordinates are placed in the node's local frame, with ancestor transforms applied on top as for any geometry, so geoCoord_changed converts the viewer position in the sensor's frame (it agrees with GeoCoordinate content displaced by the same Transform). The audit's world-frame reading was not adopted; GeoTouchSensor.hitGeoCoord_changed was aligned to the same local frame. Tests: GeoProximitySensor geoCoord is in the sensor's local geo frame; test_geo_touch_under_transform.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **DELTA-GEOORIGIN** [major/FIXED] — §ISO/IEC 19775-1 25.2.3, 25.3.1, 25.3.2, 25.3.3, 25.3.10: GeoOrigin edits refresh dependent geographic placements and meshes.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **PIV-1** [minor/CLOSED `07c31ca`] — §—: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.

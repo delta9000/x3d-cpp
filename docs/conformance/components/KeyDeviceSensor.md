@@ -4,8 +4,8 @@ _Generated. Levels 1,2 · 2 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| KeySensor | 1 | ✓ | — | ? | KDS-1, KDS-10, KDS-2, KDS-3, KDS-4, KDS-5, KDS-6, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
-| StringSensor | 2 | ✓ | — | ? | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
+| KeySensor | 1 | ✓ | — | ? | KDS-1, KDS-10, KDS-2, KDS-3, KDS-4, KDS-5, KDS-6, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
+| StringSensor | 2 | ✓ | — | ? | AUD-KDS-1, AUD-KDS-2, KDS-1, KDS-10, KDS-6, KDS-7, KDS-8, KDS-9, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DKeyDeviceSensorNode, X3DSensorNode |
 
 ## Findings
 
@@ -21,6 +21,8 @@ _Generated. Levels 1,2 · 2 nodes · profiles: Interactive, Immersive, Full._
 - **KDS-4** [major/CLOSED `85b90b0`] — §21.4.1: shiftKey/controlKey/altKey TRUE-on-press / FALSE-on-release modifier events not emitted.
 - **KDS-10** [major/CLOSED `85b90b0`] — §21.2: The keyboard input seam must serve BOTH NavigationSystem and the key-device sensors; currently KeyState is nav-only.
   - Shared seam extension underpinning KDS-1..9.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **KDS-6** [minor/CLOSED] — §21.2: Key-device exclusive-focus arbitration — enabling one sensor must send enabled=FALSE to the others — unimplemented.
   - Enabling a KeySensor/StringSensor sends enabled FALSE to every other enabled key device sensor (§21.2 'only one key device sensor may be active at a time'), via a field-write listener (events_misc_test).
 - **AUD-KDS-1** [minor/CLOSED] — §21.4.2: Deletion removes one UTF-8 byte instead of one character.

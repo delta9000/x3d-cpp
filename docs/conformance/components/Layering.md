@@ -4,9 +4,9 @@ _Generated. Levels 1 · 3 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Layer | 1 | ✓ | — | — | LAY-2, LAY-3, REQ-LAYER, ROUTE-IO-ALIAS | X3DLayerNode, X3DPickableObject |
-| LayerSet | 1 | ✓ | — | — | LAY-1, REQ-LAYER, ROUTE-IO-ALIAS |  |
-| Viewport | 1 | ✓ | — | — | GRP-ADDCHILDREN, LAY-3, ROUTE-IO-ALIAS, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
+| Layer | 1 | ✓ | — | — | LAY-2, LAY-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-LAYER, ROUTE-IO-ALIAS | X3DLayerNode, X3DPickableObject |
+| LayerSet | 1 | ✓ | — | — | DELTA-LAYERSET-ORDER, LAY-1, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-LAYER, ROUTE-IO-ALIAS |  |
+| Viewport | 1 | ✓ | — | — | GRP-ADDCHILDREN, LAY-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, VIEWPORT-CLIP | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DViewportNode |
 
 ## Findings
 
@@ -20,4 +20,7 @@ _Generated. Levels 1 · 3 nodes · profiles: Full._
   - Closed 2026-09-26: SceneExtractor follows only LayerSet.layers ordinals listed in order (zero-based per §35.4.2; invalid ordinals are ignored). Covered by scene_extractor_layers_respect_layerset_order in scene_extractor_b2_test.cpp.
 - **LAY-2** [major/CLOSED] — §35.3.1: Layer.pickable is never consulted by PickSystem.
   - Closed 2026-09-26: PickSystem filters candidates through live Layer.pickable values on each query, so cached geometry indexes honor runtime changes. Covered by pick_system_skips_non_pickable_layer_and_hits_layer_behind in pick_system_test.cpp.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **DELTA-LAYERSET-ORDER** [major/FIXED] — §ISO/IEC 19775-1 35.4.2: LayerSet.order edits replace incremental render membership.
 

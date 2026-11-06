@@ -4,9 +4,9 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ProximitySensor | 1 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| TransformSensor | 3 | ✓ | — | ? | ENV-01, ROUTE-IO-ALIAS, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| VisibilitySensor | 2 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| ProximitySensor | 1 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| TransformSensor | 3 | ✓ | — | ? | ENV-01, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| VisibilitySensor | 2 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 
 ## Findings
 
@@ -20,6 +20,8 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - TransformSensor now orthonormalizes the relative matrix basis before extracting orientation; degenerate zero-scale bases retain the last valid rotation (identity initially). Covered by testTransformSensorScaleRotation in view_dependent_test.cpp (uniform and non-uniform scale, plus zero scale).
 - **AUD-ENV-3** [major/CLOSED] — §22.4.1, 22.4.3: DEF/USE sensor instances are evaluated through one transform path, not the union of all instances.
   - ProximitySensor and VisibilitySensor now evaluate the union of per-path boxes, limited to active paths by ADR-0034. Covered by proximity_sensor_uses_union_of_active_instances and visibility_sensor_uses_union_of_active_instances.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **ENV-04** [minor/CLOSED `2b84a99`] — §22.4.1: position/orientation_changed fire every tick even when the viewer is still (no change-gate).

@@ -4,13 +4,13 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Billboard | 2 | ✓ | — | — | EXTRACT-VISIBILITY-HINT-DELTA, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| Collision | 2 | ✓ | — | ? | COL-1, COL-2, COL-3, CONF-NAV-COLLISION, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
-| LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
-| OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, EXTRACT-VISIBILITY-HINT-DELTA, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| ViewpointGroup | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
+| Billboard | 2 | ✓ | — | — | EXTRACT-VISIBILITY-HINT-DELTA, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| Collision | 2 | ✓ | — | ? | COL-1, COL-2, COL-3, CONF-NAV-COLLISION, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
+| LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, JSON-EMPTY-NUMERIC-MF, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
+| OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, EXTRACT-VISIBILITY-HINT-DELTA, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| ViewpointGroup | 3 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode |
 
 ## Findings
 
@@ -42,6 +42,9 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
   - Implemented per ADR-0034. Each tick ViewDependentSystem::update computes active-path reachability from ctx.sceneRoots() (Switch descends only children[whichChoice]; LOD only the level the extractor would choose), and deactivates any attached sensor not reached (isActive=FALSE + exitTime once, then suppressed). A reselected branch re-evaluates and re-fires enter. Script and time-dependent nodes are not gated (per 10.4.3). No detach hook was needed; the gate lives in update().
 - **AUD-NAV-1** [major/CLOSED] — §23.3.1: A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound.
   - ViewpointBindSystem now sends set_bind FALSE to a Viewpoint's dedicated NavigationInfo when its parent is unbound. Covered by viewpoint_unbinds_its_navigation_info.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **JSON-EMPTY-NUMERIC-MF** [major/FIXED] — §ISO/IEC 19775-1, 5.1; ISO/IEC 19776-1, 5.1.2: JSON writer retains empty numeric multi-fields that differ from their node defaults.
 - **LOD-1** [minor/CLOSED `2b84a99`] — §23.4.3: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
 - **LOD-DELTA-1** [minor/FIXED] — §23.4.3: LOD active-level changes were invisible to the incremental delta() channel — the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped.
   - ViewDependentSystem marks node-level selection changes. The previously deferred per-path residual is now covered by SceneExtractor: it records each LOD placement, including empty selected branches, checks its selection in its current world frame each delta, and replaces the baseline when a path changes. Billboard descendants recompute view-dependent per-path transforms without rebuilding meshes. Regression: scene_extractor_view_delta_test.cpp covers shared translated LODs, ancestor motion, empty branches, shared Billboards, tracked eye/up and no-motion stability (#136). The per-node level_changed event remains distinct from per-path rendering.

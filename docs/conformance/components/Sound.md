@@ -4,27 +4,27 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Analyser | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| AudioClip | 1 | ✓ | — | ? | AUD-MEDIA-2, AUD-TIME-3, MULTI-INHERIT, REQ-FTP, ROUTE-IO-ALIAS, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
-| AudioDestination | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
-| BiquadFilter | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| BufferAudioSource | 2 | ✓ | — | ◑ | REQ-FTP, ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
-| ChannelMerger | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
-| ChannelSelector | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
-| ChannelSplitter | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-6, UOM-SND-1 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
-| Convolver | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| Delay | 2 | ✓ | — | ◑ | ROUTE-IO-ALIAS, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| DynamicsCompressor | 2 | ✓ | — | ◑ | ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| Gain | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
-| ListenerPointSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-3, SND-GAIN-TYPE, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| MicrophoneSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| OscillatorSource | 2 | ✓ | — | ◑ | AUD-TIME-3, ROUTE-IO-ALIAS, SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| PeriodicWave | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-9 | X3DChildNode, X3DSoundNode |
-| Sound | 1 | ✓ | — | — | AUD-MEDIA-4, ROUTE-IO-ALIAS, UOM-SND-1 | X3DChildNode, X3DSoundNode |
-| SpatialSound | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-3 | X3DChildNode, X3DSoundNode |
-| StreamAudioDestination | 2 | ✓ | — | — | ROUTE-IO-ALIAS, SND-7, UOM-SND-1 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
-| StreamAudioSource | 2 | ✓ | — | ? | ROUTE-IO-ALIAS, SND-4, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
-| WaveShaper | 2 | ✓ | — | ◑ | ROUTE-IO-ALIAS, SND-5, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| Analyser | 2 | ✓ | — | ? | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| AudioClip | 1 | ✓ | — | ? | AUD-MEDIA-2, AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, MULTI-INHERIT, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, TDN-5 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
+| AudioDestination | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-7 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
+| BiquadFilter | 2 | ✓ | — | ◑ | AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| BufferAudioSource | 2 | ✓ | — | ◑ | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode, X3DUrlObject |
+| ChannelMerger | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
+| ChannelSelector | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-6 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
+| ChannelSplitter | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-6, UOM-SND-1 | X3DChildNode, X3DSoundChannelNode, X3DSoundNode |
+| Convolver | 2 | ✓ | — | ? | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| Delay | 2 | ✓ | — | ◑ | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| DynamicsCompressor | 2 | ✓ | — | ◑ | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-5 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| Gain | 2 | ✓ | — | ◑ | AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-1, SND-2, SND-8 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
+| ListenerPointSource | 2 | ✓ | — | ? | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-3, SND-GAIN-TYPE, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| MicrophoneSource | 2 | ✓ | — | ? | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-4 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| OscillatorSource | 2 | ✓ | — | ◑ | AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-1, SND-2, SND-9 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| PeriodicWave | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-9 | X3DChildNode, X3DSoundNode |
+| Sound | 1 | ✓ | — | — | AUD-MEDIA-4, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, UOM-SND-1 | X3DChildNode, X3DSoundNode |
+| SpatialSound | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-3 | X3DChildNode, X3DSoundNode |
+| StreamAudioDestination | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-7, UOM-SND-1 | X3DChildNode, X3DSoundDestinationNode, X3DSoundNode |
+| StreamAudioSource | 2 | ✓ | — | ? | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-4, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundSourceNode, X3DTimeDependentNode |
+| WaveShaper | 2 | ✓ | — | ◑ | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SND-5, UOM-SND-1 | X3DChildNode, X3DSoundNode, X3DSoundProcessingNode, X3DTimeDependentNode |
 
 ## Findings
 
@@ -52,6 +52,8 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
   - Active AudioClip pitch deliveries are ignored; MediaTimeSystem and SoundSystem use the activation pitch for timing and PlaybackRate. Tests: AudioClip ignores pitch changes while active; sound_immersive_test activation pitch case. Completes TDN-5/ADR-0050.
 - **AUD-MEDIA-4** [major/CLOSED] — §16.4.17: Sound.source may be a MovieTexture, but SoundSystem builds only AudioClip sources.
   - SoundSystem resolves MovieTexture media through an injected movie-audio decoder and creates a PCM Buffer driven by isActive/isPaused and activation speed (ADR-0052). Tests: testMovieTextureSourceLifecycle and pl_mpeg decodes a movie MP2 track to mono PCM.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **SND-7** [minor/CLOSED] — §16.4.3, 16.4.19: AudioDestination.gain applied; maxChannelCount remains read but unused (mono); StreamAudioDestination not built.
   - SoundSystem pushes AudioDestination.gain to the backend destination. sound_system_test verifies output scaling. maxChannelCount remains read but unused by mono render, and StreamAudioDestination remains unbuilt.
 - **MULTI-INHERIT** [minor/CLOSED] — §16.4.2, 18.4.2: MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association).

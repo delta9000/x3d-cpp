@@ -4,9 +4,9 @@ _Generated. Levels 1,2 · 3 nodes · profiles: Interchange, Interactive, Immersi
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, LGT-1, LGT-2, LGT-3, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
-| PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
-| SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, LGT-1, LGT-2, LGT-3, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
 
 ## Findings
 
@@ -20,8 +20,11 @@ _Generated. Levels 1,2 · 3 nodes · profiles: Interchange, Interactive, Immersi
   - LightSystem and SceneExtractor share Switch and LOD branch selection. Covered by light_under_inactive_switch_does_not_illuminate and light_under_unselected_lod_level_does_not_illuminate.
 - **REQ-SHADOW** [major/FIXED] — §17.2.2.8; 17.3.1: Both reference hosts apply per-light occlusion by castShadow shapes and shadowIntensity.
   - CPU renderScene collects visible triangle occluders with castShadow TRUE and traces each shadow-enabled light in normalized scene coordinates. Visibility multiplies the light contribution by 1-shadowIntensity for an occluded fragment. Tests exercise enabled/disabled shadows, intermediate intensity, hidden and non-casting occluders, and equivalent very small/large scenes. Soft-shadow fidelity is optional. The OpenGL PoC renders a 1024x1024 depth map per shadow-enabled light before the scene pass (one orthographic layer over the scene bounds for DirectionalLight, one perspective layer over the cone for SpotLight with cutOffAngle below 1.4 rad, six 92-degree cube faces for PointLight and wider spots) from castShadow triangle shapes; its Phong and PBR programs scale the light reaching an occluded fragment by 1-shadowIntensity (examples/poc_renderer/shaders/shadow.glsl). Limits: at most 24 depth layers per frame (lights past that are unshadowed), shadow-map resolution and bilinear depth comparison rather than an exact ray query, and the headlight never shadows. examples/poc_renderer/tests/shadow_gl_test.py (run by validate-examples) checks all three light types in both programs, shadowIntensity 0.5, castShadow FALSE and shadows FALSE. (2026-10-10)
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **LGT-1** [minor/FIXED] — §17.3.1: shadows / shadowIntensity now extracted onto LightDesc.
   - §17.3.1 defines shadows (SFBool, default FALSE) + shadowIntensity (SFFloat, default 1, [0,1]) on every light. FIXED: LightDesc (runtime/extract/RenderItem.hpp) gained bool shadows + float shadowIntensity members; LightSystem::makeLight reads both in the shared X3DLightNode block via getField, so all three light types carry them. Consumers can now honor authored shadow-casting + darkness (a downstream renderer chooses the technique). (sweep 2026-06-25; resolved 2026-07-02)
+- **DELTA-LIGHT-CACHE** [minor/FIXED] — §ISO/IEC 19775-1 17.3.1: Light-change deltas refresh cached descriptors and per-placement scope indices.
 - **ENVLIGHT-ORPHAN** [low/CLOSED] — §17.5 Table 17.6: EnvironmentLight orphaned in 4.0 Table 17.6 only; removed from the 4.0 body and X3DUOM. Engine correctly omits it for 4.0.
   - For 4.0 the engine is correct (no EnvironmentLight in the 4.0 UOM); ensure conformance tooling derives expected nodes from the X3DUOM, not prose tables, so this stale row is not mis-flagged. 4.1 - FLIPS to an implementation task. The committee RESTORED EnvironmentLight as a full IBL node in 4.1 (fields ambientIntensity, color, diffuseCoefficients, diffuseTexture, specularTexture, global, intensity, on, origin, rotation, shadowIntensity, shadows). When x3d-cpp targets 4.1, regenerate from the 4.1 UOM and implement it (Holger Seelig already had an X_ITE impl the 4.0 removal stranded). Tracked here for the 4.1 bump.
 

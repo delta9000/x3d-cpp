@@ -4,12 +4,14 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, IACC-4, NSN-11, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
-| Inline | 2 | ✓ | — | — | ASSET-LOADER-TRANSITIVE-POLICY, AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, NATIVE-AUTHOR-FIELD-OWNERSHIP, NSN-12, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DUrlObject |
-| LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
+| Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, IACC-4, META-EXTENDED-ATTRIBUTES-WRITE, NSN-11, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
+| Inline | 2 | ✓ | — | — | ASSET-LOADER-TRANSITIVE-POLICY, AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, JSON-STATEMENT-PLACEMENT, META-EXTENDED-ATTRIBUTES-WRITE, NATIVE-AUTHOR-FIELD-OWNERSHIP, NSN-12, PROTO-BODY-IMPORT-MODEL, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, VRML-IMPORT-EXPORT-WRITE | X3DBoundedObject, X3DChildNode, X3DUrlObject |
+| LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, META-EXTENDED-ATTRIBUTES-WRITE, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
 ## Findings
 
+- **PROTO-BODY-IMPORT-MODEL** [minor/OPEN] — §ISO/IEC 19775-1 9.2.5: Prototype-local IMPORT records are lost across all encodings because ProtoBody has no imports collection.
+  - Readers collect prototype-local imports in a temporary Scene, but the shared ProtoBody model cannot retain them. Extending that model and expansion is separate from capturing JSON statement wrappers.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.
@@ -27,6 +29,11 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule.
 - **REQ-FTP** [major/FIXED] — §B.6 Table B.4; F.6 Table F.4; 9.2.1: The optional curl backend supplies separate HTTP/HTTPS and FTP adapters; the CPU reference host routes these alongside confined local files.
   - Annex B also requires FTP; the earlier Full-only classification was incorrect. makeFtpResolver shares the bounded curl transport and post-DNS address policy but permits FTP only. makeHttpResolver remains restricted to HTTP/HTTPS. Hermetic passive-FTP tests cover successful bytes, missing files, size limits and private-network policy. The CPU host wires file/http/https/ftp through SchemeRouter and decodes fetched PNG/JPEG bytes through the stb adapter. Private networks require explicit opt-in by an embedder; the reference executable uses the default public-network policy. (2026-10-02)
+- **JSON-STATEMENT-PLACEMENT** [major/FIXED] — §ISO/IEC 19776-5 Annex A: JSON statement wrappers in child arrays retain ROUTE, IMPORT, and EXPORT records.
+  - ROUTE wrappers inside ProtoBody child arrays and nested body nodes belong to the enclosing prototype, while scene routes remain in the scene. Test: reader_audit_test.cpp, JSON statement wrappers in children retain their execution scope.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **VRML-IMPORT-EXPORT-WRITE** [major/FIXED] — §ISO/IEC 19776-2, A.2: Classic writer emits IMPORT and EXPORT statements with their effective aliases.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **NSN-1** [minor/CLOSED `9bb71c2`] — §9.4.3: LoadSensor not wired as an active System observing child URL-object load state per tick.
   - Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.
 - **NSN-11** [minor/CLOSED] — §9.4.3, 9.4.1: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.

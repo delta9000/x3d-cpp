@@ -4,8 +4,8 @@ _Generated. Levels 1 · 2 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| FontStyle | 1 | ✓ | — | — | ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DFontStyleNode |
-| Text | 1 | ✓ | ✓ | — | ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DGeometryNode |
+| FontStyle | 1 | ✓ | — | — | DELTA-TEXT-OUTPUTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DFontStyleNode |
+| Text | 1 | ✓ | ✓ | — | DELTA-PENDING-RESOURCES, DELTA-TEXT-OUTPUTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DGeometryNode |
 
 ## Findings
 
@@ -17,8 +17,12 @@ _Generated. Levels 1 · 2 nodes · profiles: Immersive, Full._
   - Fixed: END with leftToRight FALSE puts the left edge of the last column at X=0, a column spanning [baseline + descender, baseline + ascender] as its quads do (text_layout_test minor-justify table).
 - **TXT-ATLAS-LATIN1** [major/FIXED] — §15.4.1, 15.4.2; Annex E FontStyle support: The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font.
   - Fixed for the helper's bounded repertoire: makeStbttGlyphAtlas bakes U+0020–U+007E and U+00A0–U+00FF, preserving raw advances and packing complete raster glyph boxes so accents/overhangs are not cut off. x3d_text_atlas_tests checks every supported glyph's pixels, UVs, and baseline-relative geometry metrics against isolated rasterization across all three bundled Liberation faces at 8/17/64 px per em; blank spaces, range boundaries, missing families/files and unsupported codepoints are covered. DEL/C1 controls, out-of-range codepoints and .notdef still fail; styles still use the supplied PLAIN face. No claim of general Unicode/shaping support or whole-browser Immersive conformance. The headless SDK continues to use the consumer's FontMetrics seam; the CPU consumer's independent 8x8 font is still ASCII-only. Issue https://github.com/delta9000/x3d-cpp/issues/141.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **DELTA-PENDING-RESOURCES** [major/FIXED] — §ISO/IEC 19775-1 15.4.2, 18.4.6: Pending textures and glyphs retry on later ticks and publish incremental completion.
 - **TXT-5** [minor/CLOSED] — §15.2.2.2: family[] MFString fallback not iterated — should skip unsupported families and fall back to the next entry via the FontMetrics seam.
   - Fixed: FontStyle.family is read as the MFString it is (the enum-token read returned nothing, so every Text used SERIF) and resolved with resolveFontFamily — the first family the FontMetrics backend supports, else SERIF (text_extract_test family fallback).
 - **SEAM-TEXT-METRICS** [minor/CLOSED] — §15.4.2, 15.4.1: Text glyphs are stretched to the advance cell and ascender/descender are hard-coded — GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas.
   - Closed: GlyphMetrics now carries the normalized glyph box and font ascent/descent, populated by stb_truetype and FreeType; buildTextMesh places the quad at that box within the advance cell. The text_extract_test atlas-UV case checks the offset, narrower glyph box; vertical extraction tests verify legacy stub coordinates, Y-axis length compression, and real glyph-box placement. font_metrics_tests extends the backend swap proof across all added fields. Metrics without hasGlyphBox retain advance-cell geometry.
+- **DELTA-TEXT-OUTPUTS** [minor/FIXED] — §ISO/IEC 19775-1 15.4.1, 15.4.2: Incremental Text rebuilds refresh textBounds, lineBounds, and origin outputs.
 
