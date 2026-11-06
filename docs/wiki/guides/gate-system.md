@@ -112,15 +112,18 @@ consumer. Two differential harnesses compare the SDK's `validate`, `convert`, an
 
 - `tools/x3d-cli/goldens/cli-gate-baseline.tsv` — validate agreement + convert round-trip
   results over the curated corpus subset
-- `tools/x3d-cli/goldens/canon-gate-baseline.tsv` — X3DC14N idempotence (Tier 1) +
-  tolerant-diff vs X3DJSAIL (Tier 2) results
+- `tools/x3d-cli/goldens/canon-gate-baseline.tsv` — X3DC14N tolerant-diff vs
+  X3DJSAIL (Tier 2) results
 
 The regression gate runs both harnesses in `--gate` mode. It fails if **any item that was
 PASS in the baseline is now FAIL** — new failures are never silently absorbed. Items that
 were already FAIL in the baseline are allowed (they represent known/justified divergences).
 
 The canon Tier-1 (idempotence) check is a **hard 100% gate**: every file in the corpus must
-canonicalize to the same output twice. This is Java-free and always runs.
+canonicalize to the same output twice. This is Java-free and always runs; it
+does not need per-file baseline rows. Tier 2 checks still require a nonempty
+baseline. A baseline refresh without executed Tier 2 checks refuses to erase
+existing Tier 2 results.
 
 **Running it.**
 

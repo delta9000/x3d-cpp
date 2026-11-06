@@ -11,11 +11,10 @@
 #include "x3d/nodes/{{ dep }}.hpp"
 {% endfor %}
 
-{% if namespace %}
-namespace {{ namespace }} {
+namespace x3d::nodes {
 using namespace x3d::core;
-{% endif %}
-{#- UOM descriptions require comment escaping; cpp_str only escapes string literals. #}
+
+{# UOM descriptions require comment escaping; cpp_str only escapes string literals. #}
 /**
  * @class {{ class_name }}
  * @brief {{ class_description }}
@@ -254,6 +253,6 @@ private:
     {% endif %}
     {% endfor %}
 };
-{% if namespace %}
-} // namespace {{ namespace }}
-{% endif %}
+
+} // namespace x3d::nodes
+{# Preserve the final newline in generated C++. #}

@@ -25,80 +25,6 @@ using namespace x3d::core;
 static bool g_all_tests_passed = true;
 static long g_assertions_run = 0;
 
-// Generic fallback covers all scalar/string/vector/enum-class field types that
-// model operator==. Struct defaults use member-wise overloads below.
-template <typename T>
-static bool defaultsEqual(const T& a, const T& b) {
-  return a == b;
-}
-
-static bool defaultsEqual(const SFVec2f& a, const SFVec2f& b) {
-  return a.x == b.x && a.y == b.y;
-}
-static bool defaultsEqual(const SFVec3f& a, const SFVec3f& b) {
-  return a.x == b.x && a.y == b.y && a.z == b.z;
-}
-static bool defaultsEqual(const SFVec4f& a, const SFVec4f& b) {
-  return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
-}
-static bool defaultsEqual(const SFVec2d& a, const SFVec2d& b) {
-  return a.x == b.x && a.y == b.y;
-}
-static bool defaultsEqual(const SFVec3d& a, const SFVec3d& b) {
-  return a.x == b.x && a.y == b.y && a.z == b.z;
-}
-static bool defaultsEqual(const SFVec4d& a, const SFVec4d& b) {
-  return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
-}
-static bool defaultsEqual(const SFColor& a, const SFColor& b) {
-  return a.r == b.r && a.g == b.g && a.b == b.b;
-}
-static bool defaultsEqual(const SFColorRGBA& a, const SFColorRGBA& b) {
-  return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
-}
-static bool defaultsEqual(const SFRotation& a, const SFRotation& b) {
-  return a.x == b.x && a.y == b.y && a.z == b.z && a.angle == b.angle;
-}
-template <std::size_t N>
-static bool matEqual(const double (&a)[N][N], const double (&b)[N][N]) {
-  for (std::size_t i = 0; i < N; ++i)
-    for (std::size_t j = 0; j < N; ++j)
-      if (a[i][j] != b[i][j]) return false;
-  return true;
-}
-template <std::size_t N>
-static bool matEqual(const float (&a)[N][N], const float (&b)[N][N]) {
-  for (std::size_t i = 0; i < N; ++i)
-    for (std::size_t j = 0; j < N; ++j)
-      if (a[i][j] != b[i][j]) return false;
-  return true;
-}
-static bool defaultsEqual(const SFMatrix3f& a, const SFMatrix3f& b) {
-  return matEqual(a.matrix, b.matrix);
-}
-static bool defaultsEqual(const SFMatrix4f& a, const SFMatrix4f& b) {
-  return matEqual(a.matrix, b.matrix);
-}
-static bool defaultsEqual(const SFMatrix3d& a, const SFMatrix3d& b) {
-  return matEqual(a.matrix, b.matrix);
-}
-static bool defaultsEqual(const SFMatrix4d& a, const SFMatrix4d& b) {
-  return matEqual(a.matrix, b.matrix);
-}
-static bool defaultsEqual(const SFImage& a, const SFImage& b) {
-  return a.width == b.width && a.height == b.height &&
-         a.numComponents == b.numComponents && a.data == b.data;
-}
-
-// Vector-of-struct overloads (MF* struct defaults): element-wise via the above.
-template <typename T>
-static bool defaultsEqual(const std::vector<T>& a, const std::vector<T>& b) {
-  if (a.size() != b.size()) return false;
-  for (std::size_t i = 0; i < a.size(); ++i)
-    if (!defaultsEqual(a[i], b[i])) return false;
-  return true;
-}
-
 {% for n in nodes_ctx %}
 static void test_{{ n.name }}() {
   std::cout << "\nTesting {{ n.name }}..." << std::endl;
@@ -107,7 +33,7 @@ static void test_{{ n.name }}() {
     (void)inst;
     {% for f in n.default_fields %}
     TEST_ASSERT(
-        defaultsEqual(inst.{{ f.getter_name }}(), x3d::nodes::{{ n.name }}::getDefault{{ f.name_pascal }}()),
+        inst.{{ f.getter_name }}() == x3d::nodes::{{ n.name }}::getDefault{{ f.name_pascal }}(),
         "{{ n.name }}.{{ f.x3d_name }} default mismatch");
     {% endfor %}
   } catch (const std::exception& e) {

@@ -2,9 +2,8 @@ from lxml import etree
 from dataclasses import dataclass, field as dataclass_field
 from typing import List, Optional, Dict
 
-# Naming canonicalization lives in emit.naming (single source of truth). These
-# re-exports preserve the `from x3d_cpp_gen.parser import ...` API.
-from x3d_cpp_gen.emit.naming import CPP_RESERVED_KEYWORDS, sanitize_field_name
+# Naming canonicalization is shared with the emitter.
+from x3d_cpp_gen.emit.naming import sanitize_field_name
 
 @dataclass
 class X3DField:
@@ -27,8 +26,6 @@ class X3DField:
     # The raw SimpleType name (field/@simpleType), e.g. "alphaModeChoices". When
     # this names a BOUNDED enumeration the field is typed as that enum class.
     simple_type: Optional[str] = None
-    # Populated by the code generator: the C++ default initializer expression.
-    default_expr: Optional[str] = None
 
 
 @dataclass

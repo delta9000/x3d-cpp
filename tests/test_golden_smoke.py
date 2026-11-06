@@ -37,8 +37,7 @@ def api_generated_tree(tmp_path_factory, pinned_clang_format):
     core_dir = out / "x3d" / "core"
     core_dir.mkdir(parents=True, exist_ok=True)
     write_types_header(str(core_dir))
-    generate_cpp_bindings(nodes, graph, str(out), clang_format=pinned_clang_format,
-                          namespace="x3d::nodes")
+    generate_cpp_bindings(nodes, graph, str(out), clang_format=pinned_clang_format)
     return out
 
 

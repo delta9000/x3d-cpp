@@ -15,12 +15,14 @@ import os
 import re
 import shutil
 import subprocess
+import tomllib
+from pathlib import Path
 
 import pytest
 
-# Keep in sync with mise.toml [tools] and scripts/check_golden.sh
-# (test_formatter_pin.py asserts the mise pin).
-PINNED_CLANG_FORMAT = "22.1.8"
+PINNED_CLANG_FORMAT = tomllib.loads(
+    (Path(__file__).resolve().parent.parent / "mise.toml").read_text()
+)["tools"]["clang-format"]
 
 _INSTALL_HINT = (
     f"install the pin with `mise install clang-format@{PINNED_CLANG_FORMAT}`, "

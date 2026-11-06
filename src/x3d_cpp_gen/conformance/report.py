@@ -68,11 +68,7 @@ def build_report(corpus_root: str) -> Dict[str, Any]:
         if m is None:
             totals["skippedNoManifest"] += 1  # version with no committed manifest
             continue
-        try:
-            findings = validate_document(xml, m)
-        except Exception:
-            totals["parseError"] += 1
-            continue
+        findings = validate_document(xml, m)
 
         stamp_tally[res.stamp] += 1
         if res.declared:

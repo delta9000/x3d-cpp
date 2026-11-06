@@ -24,7 +24,7 @@ This boundary is the design invariant: when a C++ API changes (e.g., adding a mo
 |---|---|
 | `src/x3d_cpp_gen/templates/class_template.hpp.jinja` | Per-node `<Node>.hpp`: class declaration with typed accessors (getters, setters, event handlers, emitters), static default/containerField/component helpers, acceptable-node-type vectors, reflection virtual declarations (`nodeTypeName`, `defaultContainerField`, `fields`, `accept`, `validateRanges`), and range-checker statics. |
 | `src/x3d_cpp_gen/templates/class_template.cpp.jinja` | Per-node `<Node>.cpp`: reflection virtual implementations — `nodeTypeName`, `defaultContainerField`, `fields()` (function-local static `FieldTable` built with type-erased get/set/enum thunks), `accept`, `validateRanges`, and `checkRanges<Name>` static definitions. |
-| `src/x3d_cpp_gen/templates/test_template.cpp.jinja` | Single aggregate test file covering all concrete nodes: default-constructs each node, asserts every getter-with-default matches the static `getDefault<Name>()` via a type-correct `defaultsEqual` family, and runs a set of well-known explicit literal pins (e.g. `Box.size == {2,2,2}`). |
+| `src/x3d_cpp_gen/templates/test_template.cpp.jinja` | Single aggregate test file covering all concrete nodes: default-constructs each node, asserts every getter-with-default matches the static `getDefault<Name>()` using the generated equality operators, and runs a set of well-known explicit literal pins (e.g. `Box.size == {2,2,2}`). |
 | `src/x3d_cpp_gen/backends/cpp_header.py` | `CppHeaderBackend`: loads both class templates into a Jinja2 `Environment`, runs the per-node render loop, calls clang-format in place. Resolves the packaged templates directory as `TEMPLATES_DIR` relative to the package file, never the CWD. |
 | `src/x3d_cpp_gen/generator.py` | `generate_test_file()`: loads the test template into a separate `Environment`, builds per-node context from concrete nodes only, renders `test.cpp`. |
 
@@ -43,7 +43,6 @@ class CppHeaderBackend:
         templates_dir=None,          # overrides packaged dir; defaults to TEMPLATES_DIR
         clang_format: str = "clang-format",
         enum_defs=None,
-        namespace: str = "",         # optional C++ namespace; empty = no namespace (golden default)
     ): ...
 
     def emit(
@@ -68,7 +67,9 @@ def generate_test_file(
 
 ### Template context variables
 
-`class_template.hpp.jinja` and `class_template.cpp.jinja` receive a per-node render context assembled in `CppHeaderBackend.emit()`:
+`class_template.hpp.jinja` and `class_template.cpp.jinja` always emit node
+classes in `x3d::nodes`. They receive a per-node render context assembled in
+`CppHeaderBackend.emit()`:
 
 | Variable | Type | Source |
 |---|---|---|
@@ -84,7 +85,6 @@ def generate_test_file(
 | `specification_url` | `str` | Doxygen `@details` |
 | `container_field` | object or None | static `getContainerFieldType` / `getDefaultContainerField` / `isValidContainerField` |
 | `component` | object or None | static `componentName` / `componentLevel` |
-| `namespace` | `str` | wraps entire class in `namespace { }` if non-empty |
 
 The `FieldDescriptor` objects passed as `fields` and `reflection_fields` are produced by `build_descriptors()` in `src/x3d_cpp_gen/emit/descriptors.py`. The template only reads predicate properties (`is_readable`, `is_readonly`, `is_event`, `is_settable`, `is_enum`, `has_member`, `has_default`, `has_constraints`, `has_data_setter`, `has_acceptable_node_types`) and string properties (`getter_name`, `setter_name`, `handler_name`, `emitter_name`, `setter_unchecked_name`, `handler_setter_name`, `handler_member`, `validator_name`, `range_checker_name`, `range_collect_body`, `constraint_checks`, `getter_call`, `reader_setter_call`, `handler_call`, `emitter_call`, `runtime_field_type`, `runtime_access`, `container_field_default`, `enum_cpp_name`) — the template never branches on raw type strings.
 

@@ -72,6 +72,7 @@ _x3d_classify_present_targets(behavior
     x3d_scene_equiv_test
     x3d_gate_baseurl_roundtrip_test
     x3d_canonicalize_unit_test
+    x3d_canon_gate_fixture
     x3d_geometry_scene_tests
     x3d_namespace_taxonomy
     x3d_codecs_tests
@@ -203,6 +204,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_scene_equiv_test
         x3d_gate_baseurl_roundtrip_test
         x3d_canonicalize_unit_test
+        x3d_canon_gate_test
         x3d_geometry_scene
         x3d_namespace_taxonomy
         x3d_codecs_tests

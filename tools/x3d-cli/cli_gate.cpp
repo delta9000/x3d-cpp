@@ -1,14 +1,9 @@
 // Compare SDK validation verdicts with X3DJSAIL references and check encoding round trips.
 // --gate rejects regressions against the saved baseline; --write-baseline saves results.
 #include "scene_equiv.hpp"
-#include "proto_use.hpp"
+#include "validate.hpp"
 #include "x3d/sdk.hpp"
 #include "Encoding.hpp"
-
-// Generated node headers for conformance checks (mirrors x3d_cli.cpp).
-#include "x3d/nodes/Coordinate.hpp"
-#include "x3d/nodes/IndexedFaceSet.hpp"
-#include "x3d/nodes/IndexedLineSet.hpp"
 
 #include <algorithm>
 #include <any>
@@ -82,83 +77,7 @@ static std::vector<GoldenVerdict> loadVerdicts(const std::string &tsvPath) {
 
 // (loadSubset removed: dead — no callers after the gate stopped reading subset.txt)
 
-// Conformance checks (mirrors conformance_checks namespace in x3d_cli.cpp)
-
-static bool hasDuplicateMeta(const sdk::X3DDocument &doc) {
-    const auto &metas = doc.head.meta;
-    for (size_t i = 0; i < metas.size(); ++i)
-        for (size_t j = i + 1; j < metas.size(); ++j)
-            if (metas[i].name == metas[j].name && metas[i].content == metas[j].content)
-                return true;
-    return false;
-}
-
-static bool hasUnusedProtoDeclare(const sdk::X3DDocument &doc) {
-    const auto &scene = doc.scene;
-    const auto used = x3d::cli_detail::collectProtoUse(doc);
-    for (const auto &pd : scene.protoDeclarations)
-        if (pd && !used.local.contains(pd.get()))
-            return true;
-    for (const auto &epd : scene.externProtoDeclarations)
-        if (epd && !used.external.contains(epd.get()))
-            return true;
-    return false;
-}
-
-static bool walkCoordCheck(const X3DNode &node,
-                            std::unordered_set<const X3DNode *> &visited) {
-    if (!visited.insert(&node).second) return false;
-
-    const std::string typeName = node.nodeTypeName();
-    if (typeName == "IndexedFaceSet") {
-        const auto *ifs = dynamic_cast<const x3d::nodes::IndexedFaceSet *>(&node);
-        if (ifs && ifs->getCoordIndex().empty()) {
-            auto coordNode = ifs->getCoord();
-            if (coordNode) {
-                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
-                if (coord && !coord->getPoint().empty()) { visited.erase(&node); return true; }
-            }
-        }
-    } else if (typeName == "IndexedLineSet") {
-        const auto *ils = dynamic_cast<const x3d::nodes::IndexedLineSet *>(&node);
-        if (ils && ils->getCoordIndex().empty()) {
-            auto coordNode = ils->getCoord();
-            if (coordNode) {
-                const auto *coord = dynamic_cast<const x3d::nodes::Coordinate *>(coordNode.get());
-                if (coord && !coord->getPoint().empty()) { visited.erase(&node); return true; }
-            }
-        }
-    }
-
-    for (const FieldInfo &f : node.fields()) {
-        if (!f.isNode() || !f.isReadable()) continue;
-        std::any v = f.get(node);
-        if (f.type == X3DFieldType::SFNode) {
-            auto child = std::any_cast<std::shared_ptr<X3DNode>>(v);
-            if (child && walkCoordCheck(*child, visited)) { visited.erase(&node); return true; }
-        } else {
-            auto vec = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(v);
-            for (const auto &child : vec)
-                if (child && walkCoordCheck(*child, visited)) { visited.erase(&node); return true; }
-        }
-    }
-    visited.erase(&node);
-    return false;
-}
-
-static bool hasIndexedGeomCoordIssue(const sdk::X3DDocument &doc) {
-    // Only flag on X3D 4.0+; older versions treat missing coordIndex as valid
-    // (renders nothing). Parser normalises absent attributes to empty arrays, so
-    // we can't distinguish them for pre-4.0 files.
-    const std::string &ver = doc.version;
-    if (ver.empty() || ver < "4.0") return false;
-    std::unordered_set<const X3DNode *> visited;
-    for (const auto &root : doc.scene.rootNodes)
-        if (root && walkCoordCheck(*root, visited)) return true;
-    return false;
-}
-
-// Our validate logic (mirrors cmdValidate in x3d_cli.cpp)
+// Validation uses the same diagnostics as cmdValidate, with gate reason categories.
 // Returns "VALID" or "INVALID", and populates reason on INVALID.
 static std::string ourValidate(const std::string &path, std::string &reason,
                                const std::string &confineRoot) {
@@ -174,40 +93,22 @@ static std::string ourValidate(const std::string &path, std::string &reason,
         return "PARSE_FAIL";
     }
 
-    // Collect diagnostics (same order as cmdValidate)
-    if (!doc.rangeWarnings.empty()) {
-        reason = "range: " + doc.rangeWarnings[0].message();
-        return "INVALID";
-    }
-    if (!doc.protoWarnings.empty()) {
-        reason = "proto: " + doc.protoWarnings[0].instanceName + ": " +
-                 doc.protoWarnings[0].detail;
-        return "INVALID";
-    }
-    if (!doc.inlineWarnings.empty()) {
-        reason = "inline: " + doc.inlineWarnings[0].detail;
-        return "INVALID";
-    }
-    // Reader-recovery diagnostics (unknown node element, coerced profile), same
-    // as cmdValidate — keeps the two validate paths in step.
-    if (!doc.readerWarnings.empty()) {
-        reason = "reader: " + doc.readerWarnings[0].detail;
-        return "INVALID";
-    }
-
-    // Conformance checks (Check 1: duplicate meta)
-    if (hasDuplicateMeta(doc)) {
-        reason = "dup-meta: duplicate <meta> statement";
-        return "INVALID";
-    }
-    // Conformance check 2: unused ProtoDeclare
-    if (hasUnusedProtoDeclare(doc)) {
-        reason = "unused-proto: ProtoDeclare with no ProtoInstance";
-        return "INVALID";
-    }
-    // Conformance check 3: IFS/ILS coord without coordIndex
-    if (hasIndexedGeomCoordIssue(doc)) {
-        reason = "coord-index: IndexedFaceSet/IndexedLineSet has Coordinate but empty coordIndex";
+    std::vector<x3d::cli_detail::Diag> diags;
+    x3d::cli_detail::collectDiagnostics(doc, diags);
+    if (!diags.empty()) {
+        const auto &d = diags.front();
+        if (d.category == "inline")
+            reason = "inline: " + doc.inlineWarnings.front().detail;
+        else if (d.category == "node" || d.category == "profile")
+            reason = "reader: " + d.message;
+        else if (d.category == "dup-meta")
+            reason = "dup-meta: duplicate <meta> statement";
+        else if (d.category == "unused-proto")
+            reason = "unused-proto: ProtoDeclare with no ProtoInstance";
+        else if (d.category == "ifs-coord-index" || d.category == "ils-coord-index")
+            reason = "coord-index: IndexedFaceSet/IndexedLineSet has Coordinate but empty coordIndex";
+        else
+            reason = d.category + ": " + d.message;
         return "INVALID";
     }
 

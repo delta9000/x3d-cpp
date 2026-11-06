@@ -36,7 +36,6 @@ class FieldDescriptor:
     access_type: str
     description: str
     default_init_expr: Optional[str]
-    value_init: bool                      # member uses {} (no spec default)
     constraint_checks: Optional[str]      # rendered C++ validator body, or None
     range_collect_body: Optional[str]     # rendered C++ for checkRanges<Name>(), or None
     getter_name: str
@@ -62,12 +61,6 @@ class FieldDescriptor:
         if self.inherited_from:
             return f"{self.inherited_from}::{self.getter_name}"
         return self.getter_name
-
-    @property
-    def setter_call(self) -> str:
-        if self.inherited_from:
-            return f"{self.inherited_from}::{self.setter_name}"
-        return self.setter_name
 
     @property
     def handler_setter_name(self) -> str:
@@ -411,7 +404,6 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
         access_type=access,
         description=field.description or "",
         default_init_expr=default_expr,
-        value_init=default_expr is None,
         constraint_checks=constraint_checks,
         range_collect_body=range_collect_body,
         getter_name=f"get{name_pascal}",
@@ -453,7 +445,6 @@ def _build_enum_descriptor(field, enum_def, access, is_event,
         access_type=access,
         description=field.description or "",
         default_init_expr=default_expr,
-        value_init=default_expr is None,
         constraint_checks=None,
         range_collect_body=None,
         getter_name=f"get{name_pascal}",

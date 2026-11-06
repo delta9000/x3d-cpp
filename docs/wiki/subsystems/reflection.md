@@ -156,7 +156,8 @@ public:
 
 - **`tests/test_golden_tree.py`** — full-tree golden-drift test: regenerates the entire `generated_cpp_bindings/` directory (including `X3DReflection.hpp`, `X3DNodeFactory.{hpp,cpp}`, `X3DInterfaceRegistry.{hpp,cpp}`, and every node `.{hpp,cpp}`) and asserts byte-for-byte equality with the committed golden files.
 
-- **`scripts/check_golden.sh`** — called by `test_check_golden_script_passes()` in the same file; the conformance gate runs this as an additional drift check.
+- **`scripts/check_golden.sh`** — standalone drift check run by `mise run golden`;
+  pytest compares the full generated tree directly without invoking the shell gate.
 
 - **C++ ctest** — the compiled golden files are exercised by the full runtime ctest suite (50 registered ctest targets, each a grouped doctest binary covering many cases), which links `x3d_cpp_nodes` and exercises factory creation, field get/set thunks, and visitor dispatch indirectly through every codec and extraction test.
 

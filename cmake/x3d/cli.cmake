@@ -119,3 +119,12 @@ add_executable(x3d_canon_gate EXCLUDE_FROM_ALL
 target_include_directories(x3d_canon_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
 target_link_libraries(x3d_canon_gate PRIVATE x3d_cpp::sdk)
+
+if(X3D_CPP_BUILD_TESTS)
+    add_executable(x3d_canon_gate_fixture
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canon_gate.cpp")
+    target_link_libraries(x3d_canon_gate_fixture PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_canon_gate_test
+        COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/canon_gate_test.sh"
+                "$<TARGET_FILE:x3d_cli>" "$<TARGET_FILE:x3d_canon_gate_fixture>")
+endif()

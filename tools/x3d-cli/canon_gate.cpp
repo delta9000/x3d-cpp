@@ -332,7 +332,7 @@ static std::pair<bool, std::string> tolerantDiff(const std::string &jsail,
 
 // Baseline PASS/FAIL state (regression gate)
 //
-// Key format: "canon-t1\t<relpath>" or "canon-t2\t<relpath>"
+// Key format: "canon-t2:<relpath>"
 // Value: "PASS" or "FAIL"
 using BaselineMap = std::unordered_map<std::string, std::string>;
 
@@ -341,10 +341,8 @@ static BaselineMap loadBaseline(const std::string &path) {
     std::ifstream f(path);
     if (!f) return out;
     std::string line;
-    bool header = true;
     while (std::getline(f, line)) {
-        if (header) { header = false; continue; }
-        if (line.empty() || line[0] == '#') continue;
+        if (line.empty() || line[0] == '#' || line == "check_key\tresult") continue;
         auto tab = line.find('\t');
         if (tab == std::string::npos) continue;
         out[line.substr(0, tab)] = line.substr(tab + 1);
@@ -397,18 +395,6 @@ int main(int argc, char **argv) {
     else if (writeBaselineMode)
         std::cout << "[--write-baseline mode] Capturing current state to: " << baselinePath << "\n\n";
 
-    // Load baseline if in gate mode.
-    BaselineMap baseline;
-    if (gateMode) {
-        baseline = loadBaseline(baselinePath);
-        if (baseline.empty()) {
-            std::cerr << "ERROR: baseline not found or empty: " << baselinePath << "\n";
-            std::cerr << "Run 'mise run cli-gate-baseline' first.\n";
-            return 1;
-        }
-        std::cout << "Loaded " << baseline.size() << " baseline entries.\n\n";
-    }
-
     const std::string subsetTxt     = goldensDir + "/subset.txt";
     const std::string canonGoldDir  = goldensDir + "/canonical-goldens";
 
@@ -448,11 +434,9 @@ int main(int argc, char **argv) {
             ++t1total;
             if (c1 == c2) {
                 ++t1pass;
-                currentState["canon-t1:" + rel] = "PASS";
             } else {
                 ++t1fail;
                 t1failures.push_back(rel);
-                currentState["canon-t1:" + rel] = "FAIL";
             }
         } catch (const std::exception &e) {
             ++t1skip; // parse/IO error — not recorded in state (can't distinguish from missing file)
@@ -562,6 +546,16 @@ int main(int argc, char **argv) {
 
     // Write baseline mode
     if (writeBaselineMode) {
+        if (t2total == 0) {
+            const auto existing = loadBaseline(baselinePath);
+            if (std::any_of(existing.begin(), existing.end(), [](const auto &row) {
+                    return row.first.rfind("canon-t2:", 0) == 0;
+                })) {
+                std::cerr << "ERROR: no Tier-2 checks ran; refusing to overwrite the existing "
+                             "Tier-2 baseline: " << baselinePath << "\n";
+                return 1;
+            }
+        }
         writeBaseline(baselinePath, currentState, t1pass, t1total, t2pass, t2total);
         std::cout << "Baseline written: " << baselinePath
                   << " (" << currentState.size() << " entries)\n";
@@ -571,40 +565,32 @@ int main(int argc, char **argv) {
     // Gate mode: regression check
     if (gateMode) {
         // A gate that cannot find its inputs must not green. If every subset file
-        // was skipped (e.g. the corpus dir is absent), currentState is empty —
+        // was skipped (e.g. the corpus dir is absent), both totals are zero —
         // refuse to pass rather than silently report "no regressions".
-        if (currentState.empty()) {
+        if (t1total == 0 && t2total == 0) {
             std::cerr << "ERROR: canon gate ran 0 checks — no corpus files found. "
                          "Refusing to pass (a gate with no inputs must not green).\n";
             return 1;
         }
+        BaselineMap baseline;
+        if (t2total > 0) {
+            baseline = loadBaseline(baselinePath);
+            if (baseline.empty()) {
+                std::cerr << "ERROR: baseline not found or empty: " << baselinePath << "\n";
+                std::cerr << "Run 'mise run cli-gate-baseline' first.\n";
+                return 1;
+            }
+            std::cout << "Loaded " << baseline.size() << " baseline entries.\n\n";
+        }
         std::vector<std::string> regressions;
         std::vector<std::string> improvements;
 
-        // Tier 1 is a hard gate: any failure is a regression (100% required).
-        // In addition, check per-item against baseline.
         for (const auto &[key, curVal] : currentState) {
             auto it = baseline.find(key);
             if (it == baseline.end()) continue;
             const std::string &baseVal = it->second;
             if (baseVal == "PASS" && curVal == "FAIL") regressions.push_back(key);
             else if (baseVal == "FAIL" && curVal == "PASS") improvements.push_back(key);
-        }
-
-        // Also report any T1 failure that wasn't in baseline (new failing file).
-        // But since T1 is a hard 100% gate, add any T1 failure to regressions
-        // regardless of baseline presence.
-        for (const auto &rel : t1failures) {
-            std::string key = "canon-t1:" + rel;
-            auto it = baseline.find(key);
-            // Only add if not already in regressions (would have been caught above)
-            if (it == baseline.end() || it->second == "PASS") {
-                // Already in regressions list if was PASS. If missing from baseline
-                // entirely, it's a new entry that's broken — also a regression.
-                bool already = false;
-                for (const auto &r : regressions) if (r == key) { already = true; break; }
-                if (!already) regressions.push_back(key);
-            }
         }
 
         std::sort(regressions.begin(), regressions.end());

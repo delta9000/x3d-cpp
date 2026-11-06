@@ -64,15 +64,6 @@ bool anyEqual(X3DFieldType type, const std::any &a, const std::any &b,
         return false;
     }
 
-    // Helper macros for scalar comparison
-#define CMP_SCALAR(T, expr)                                       \
-    case X3DFieldType::T: {                                       \
-        auto va = std::any_cast<decltype(expr)>(a);              \
-        auto vb = std::any_cast<decltype(expr)>(b);              \
-        if (!(va == vb)) { why = #T " scalar mismatch"; return false; } \
-        return true;                                              \
-    }
-
     switch (type) {
         case X3DFieldType::SFBool: {
             auto va = std::any_cast<SFBool>(a);
@@ -380,7 +371,6 @@ bool anyEqual(X3DFieldType type, const std::any &a, const std::any &b,
         default:
             return true;
     }
-#undef CMP_SCALAR
 }
 
 // node pair comparison

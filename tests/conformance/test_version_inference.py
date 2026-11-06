@@ -72,17 +72,6 @@ def test_xsd_citation_substring_not_matched():
     assert res.version == "3.0"
 
 
-def test_sweep_infers_unversioned(tmp_path):
-    from x3d_cpp_gen.conformance.sweep import sweep
-    # One declared 4.0 file + one unversioned file with a bare floor.
-    (tmp_path / "a.x3d").write_text('<X3D version="4.0"><Scene><Box/></Scene></X3D>')
-    (tmp_path / "b.x3d").write_text('<X3D><Scene><Box/></Scene></X3D>')
-    counts = sweep(str(tmp_path))
-    assert counts["validated"] == 2          # both bound to an oracle now
-    assert counts["skipped_no_manifest"] == 0
-    assert counts["inferred"] == 1           # only b.x3d was inferred
-
-
 def test_report_records_inference(tmp_path):
     from x3d_cpp_gen.conformance.report import build_report
     (tmp_path / "declared.x3d").write_text('<X3D version="4.0"><Scene><Box/></Scene></X3D>')

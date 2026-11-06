@@ -44,11 +44,6 @@ class SpecVersion:
         """Filesystem/namespace-safe form, e.g. ``"4.1"`` -> ``"4_1"``."""
         return self.version.replace(".", "_").replace("-", "_")
 
-    @property
-    def cpp_namespace(self) -> str:
-        """Suggested C++ namespace component, e.g. ``"v4_1"``."""
-        return f"v{self.slug}"
-
     @classmethod
     def detect(cls, spec_path) -> "SpecVersion":
         """Auto-detect the version from a UOM XML file.

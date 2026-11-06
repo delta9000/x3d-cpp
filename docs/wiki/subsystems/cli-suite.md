@@ -37,6 +37,7 @@ coverage over the CLI as a whole.
 | `tools/x3d-cli/sim_tracer.hpp` | `x3d::sim::FieldTracer` — snapshot-diff field-change tracer |
 | `tools/x3d-cli/scene_equiv.hpp` | `x3d_cli::sceneEquivalent()` — reflection-based scene comparison for the convert round-trip gate |
 | `tools/x3d-cli/proto_use.hpp` | Shared declaration-identity use analysis for CLI validation and the differential gate |
+| `tools/x3d-cli/validate.hpp` | Shared parser-warning and semantic validation diagnostics for the CLI and gate |
 | `tools/x3d-cli/cli_gate.cpp` | Differential validation gate: validate-diff vs X3DJSAIL + convert round-trip |
 | `tools/x3d-cli/canon_gate.cpp` | X3DC14N tiered gate: idempotence (T1) + tolerant diff vs X3DJSAIL (T2) + byte-exact (T3) |
 | `tools/x3d-cli/goldens/` | Committed gate artifacts: `subset.txt`, `validate-verdicts.tsv`, `cli-gate-baseline.tsv`, `canon-gate-baseline.tsv`, golden sim traces. (`canonical-goldens/` is generated on demand by `mise run canon-golden-gen` — needs JDK 25 — and is not committed.) |
@@ -229,7 +230,10 @@ Two gate binaries enforce permanent regression protection, both wired into `mise
 **`x3d_cli_gate` (`tools/x3d-cli/cli_gate.cpp`)**
 
 - Reads `tools/x3d-cli/goldens/subset.txt` (204 files) and `validate-verdicts.tsv` (X3DJSAIL reference verdicts).
-- Phase 1: validate-diff — runs our validate logic over each subset file, compares VALID/INVALID verdict to the golden, classifies disagreements by category.
+- Phase 1: validate-diff — uses the CLI's shared diagnostics from `validate.hpp`
+  over each subset file, compares VALID/INVALID verdict to the golden, and
+  classifies disagreements by category. The gate keeps its corpus-root
+  confinement and reason categories; profile-fit reporting stays in the CLI.
 - Phase 2: convert round-trip — for up to 80 parseable files, converts to each other encoding, reparses with the source `baseUrl`, and asserts `sceneEquivalent`. The `baseUrl` symmetry is critical: without it, `Inline`/`EXTERNPROTO` expand on the source side but stay as stubs on reparse, producing spurious failures.
 - Modes: default (informative, exit 0); `--write-baseline` (writes `cli-gate-baseline.tsv`); `--gate` (regression check: baseline-PASS→FAIL = exit 1; FAIL→PASS = noted improvement). A gate with 0 checks (corpus absent) exits 1, never false-greens.
 
@@ -237,6 +241,10 @@ Two gate binaries enforce permanent regression protection, both wired into `mise
 
 - Runs the three-tier canonicalize check over the XML-only subset.
 - Tier 1 (idempotence) is a hard CI gate: ANY failure exits non-zero regardless of baseline. Uses subprocess invocation (`popen`) to avoid the `DynamicFieldStore` global singleton accumulating stale entries across two in-process parse calls.
+- Only Tier 2 results need per-file baseline rows. Tier 1-only runs accept an
+  empty baseline; baseline refresh refuses to erase existing Tier 2 rows if
+  no Tier 2 checks execute. `x3d_canon_gate_test` checks these rules with local
+  synthetic fixtures, including missing and empty differential baselines.
 - Tier 2 uses `tolerantDiff()` — normalizes both XML strings to semantic token streams (element names, attribute names, split attribute values), then compares with 1e-5 numeric tolerance; `containerField` and `xmlns:xsd`/`xsd:noNamespaceSchemaLocation` are stripped from both sides.
 - Mode flags are identical to `cli_gate`.
 

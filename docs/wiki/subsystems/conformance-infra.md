@@ -42,6 +42,11 @@ The conformance infrastructure is the SDK's quality signal: it answers "does thi
 
 ### L2 structural validator
 
+`conformance.report.build_report()` is the Python corpus walker. It resolves
+each file's version, caches manifests, and reports validation results. Malformed
+XML counts as a parse error; internal validator exceptions propagate so a broken
+validator cannot appear as malformed corpus input.
+
 The Python validator takes an XML bytestring and a `Manifest` object; returns a list of `Finding` records.
 
 ```python

@@ -111,6 +111,7 @@ def test_mfstring_quoted_and_empty():
     assert (default_expr_for(X3DType.MFString, '"a b" "c"')
             == 'std::vector<std::string>{"a b", "c"}')
     assert default_expr_for(X3DType.MFString, "") == "std::vector<std::string>{}"
+    assert default_expr_for(X3DType.MFString, '""') == 'std::vector<std::string>{""}'
 
 
 def test_xs_nmtoken_quoted_like_string():
@@ -212,3 +213,26 @@ def test_every_matrix_shaped_special_struct_has_a_struct_arity_entry():
     # must actually be a real SPECIAL_STRUCTS entry (catches typos).
     extra = covered_struct_names - set(generator.SPECIAL_STRUCTS)
     assert not extra, f"_STRUCT_ARITY names a struct SPECIAL_STRUCTS doesn't define: {extra}"
+
+
+def test_sfint32_and_sffloat():
+    assert default_expr_for(X3DType.SFInt32, "42") == "42"
+    assert default_expr_for(X3DType.SFFloat, "3.5") == "3.5"
+
+
+def test_mfvec3f_multi_element():
+    # Multi-element defaults preserve every element
+    # (Extrusion.spine = the 2-point segment [0 0 0, 0 1 0]).
+    assert (default_expr_for(X3DType.MFVec3f, "0 0 0 0 1 0")
+            == "std::vector<SFVec3f>{SFVec3f{0, 0, 0}, SFVec3f{0, 1, 0}}")
+
+
+def test_mfvec2f_multi_element_crosssection():
+    # Extrusion.crossSection default = the closed 5-point unit square.
+    assert (default_expr_for(X3DType.MFVec2f, "1 1 1 -1 -1 -1 -1 1 1 1")
+            == "std::vector<SFVec2f>{SFVec2f{1, 1}, SFVec2f{1, -1}, "
+               "SFVec2f{-1, -1}, SFVec2f{-1, 1}, SFVec2f{1, 1}}")
+
+
+def test_tokenize_single_quoted():
+    assert tokenize_mfstring('"CENTER"') == ["CENTER"]

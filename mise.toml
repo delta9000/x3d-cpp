@@ -4,7 +4,7 @@
 # Keep the uv pin synchronized with setup-uv in CI.
 uv = "0.10.4"
 # Formatter output is part of the byte-exact generated tree. Update the full
-# version here and in CI together, and regenerate the bindings when it changes.
+# version here, and regenerate the bindings when it changes.
 clang-format = "22.1.8"
 
 [tasks.sync]

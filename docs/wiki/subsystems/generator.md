@@ -36,7 +36,7 @@ The pipeline owns everything from the spec XML to the `.hpp`/`.cpp` files in `ge
 | `src/x3d_cpp_gen/model/version.py` | `SpecVersion`: auto-detect spec version from the UOM root attribute or fallback comment; threaded through parse → emit |
 | `src/x3d_cpp_gen/templates/` | Jinja2 templates — `class_template.hpp.jinja`, `class_template.cpp.jinja`, `test_template.cpp.jinja` — see [Templates](templates.md) |
 | `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml` | Packaged default UOM spec; resolved via `importlib.resources`, never relative to CWD |
-| `src/x3d_cpp_gen/cli.py` | `x3d-cpp-gen` CLI entry point: wires parser → generator → `write_*` calls; `--out`, `--spec`, `--no-test`, `--namespace` flags |
+| `src/x3d_cpp_gen/cli.py` | `x3d-cpp-gen` CLI entry point: wires parser → generator → `write_*` calls; `--out`, `--spec`, `--no-test` flags |
 
 ## Interfaces and seams
 
@@ -56,8 +56,7 @@ enum_defs: Dict[str, EnumDef] = parse_enum_definitions(uom_file)
 
 # Emit per-node .hpp + .cpp (delegates to CppHeaderBackend)
 generate_cpp_bindings(nodes, graph, output_dir,
-                      clang_format="clang-format", enum_defs=enum_defs,
-                      namespace="")
+                      clang_format="clang-format", enum_defs=enum_defs)
 
 # Emit shared headers
 write_types_header(output_dir)       # X3Dtypes.hpp
@@ -80,7 +79,8 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 - **clang-format** — `CppHeaderBackend._format()` runs `clang-format -i` in place after each file. Degrades gracefully: if the binary is absent the file is left unformatted (golden byte-equality requires clang-format). Callers pass `clang_format=""` to disable (e.g. in unit tests).
 
-- **Namespace wrapping** — `generate_cpp_bindings(..., namespace="")` accepts an optional C++ namespace name. The empty default keeps output byte-identical to the 4.0 golden baseline. The Jinja template wraps each class in `namespace { ... }` only when non-empty.
+- **Fixed namespace** — generated node classes use `x3d::nodes`; value and
+  reflection types use `x3d::core`. The Python API and CLI use the same layout.
 
 - **`FIELD_TYPE_MAPPING` / `XS_TYPES`** — the type allowlists in `generator.py` act as a seam: adding a new UOM field type requires an entry here (and in `model/types.py`) before the parser will accept it. Unknown types are logged and skipped rather than crashing.
 
@@ -94,7 +94,7 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 - `uv run pytest tests/test_descriptors.py` — unit tests for `build_descriptor` / `build_descriptors`: type resolution, constraint rendering, enum-descriptor path.
 
-- `uv run pytest tests/test_defaults.py` + `tests/test_default_expr.py` — default-literal generation for every X3D type.
+- `uv run pytest tests/test_defaults.py` — default-literal generation for every X3D type.
 
 - `uv run pytest tests/test_naming.py` — `pascal()` and `sanitize_field_name()` edge cases including C++ reserved keywords.
 
@@ -108,7 +108,9 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 - `uv run pytest tests/test_interface_registry.py` — `X3DInterfaceRegistry` generation: verifies interface sets are computed from the transitive closure of the inheritance graph.
 
-- `mise run golden` — shell-based drift gate (`scripts/check_golden.sh`); equivalent to the golden-tree pytest but usable standalone.
+- `mise run golden` — shell-based drift gate (`scripts/check_golden.sh`);
+  equivalent to the golden-tree pytest but usable standalone. Both gates read
+  the exact formatter version from `[tools]` in `mise.toml`.
 
 - `mise run gen` — regenerates `generated_cpp_bindings/` from the packaged 4.0 UOM. Must be run (and output committed) whenever a template or emitter changes.
 

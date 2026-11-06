@@ -2,17 +2,7 @@
 
 import pytest
 
-from x3d_cpp_gen.generator import pascal
-from x3d_cpp_gen.parser import sanitize_field_name, CPP_RESERVED_KEYWORDS
-# emit.naming is the single canonicalizer; parser/generator must re-export it.
-from x3d_cpp_gen.emit import naming as naming_mod
-
-
-def test_naming_is_single_source_of_truth():
-    # The functions exposed via parser/generator must BE the ones in emit.naming.
-    assert sanitize_field_name is naming_mod.sanitize_field_name
-    assert pascal is naming_mod.pascal
-    assert CPP_RESERVED_KEYWORDS is naming_mod.CPP_RESERVED_KEYWORDS
+from x3d_cpp_gen.emit.naming import pascal, sanitize_field_name, CPP_RESERVED_KEYWORDS
 
 
 def test_pascal_capitalizes_first_only():

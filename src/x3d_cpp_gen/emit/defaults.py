@@ -9,7 +9,7 @@ case the member value-initializes with ``{}``).
 import math
 from typing import List, Optional
 
-from x3d_cpp_gen.model.types import X3DType, TypeRegistry, resolve_x3d_type
+from x3d_cpp_gen.model.types import X3DType, TypeRegistry
 from x3d_cpp_gen.emit.naming import cpp_str as cpp_string_literal  # noqa: F401
 
 
@@ -289,31 +289,3 @@ def enum_default_expr(enum_def, default: Optional[str]) -> Optional[str]:
         return f"std::vector<{cpp}>{{}}"
     body = ", ".join(f"{cpp}::{m.cpp_name}" for m in members)
     return f"std::vector<{cpp}>{{{body}}}"
-
-
-def compute_default_expr(field) -> Optional[str]:
-    """Backwards-compatible field-keyed entry point.
-
-    Resolves ``field.type`` (a stored type string) to its :class:`X3DType` and
-    delegates to :func:`default_expr_for`. Kept so existing call sites and tests
-    that pass a field with a ``.type`` string continue to work unchanged.
-    """
-    if field.default is None:
-        return None
-    x3d_type = resolve_x3d_type(field.type)
-    if x3d_type is not None:
-        return default_expr_for(x3d_type, field.default)
-    # Field type was given as a raw C++ type string rather than an X3D name.
-    # Generator fields store X3D type names; other callers may pass C++ spellings.
-    t = field.type
-    d = field.default
-    if t == "SFNode" or t.startswith("std::shared_ptr"):
-        return "nullptr"
-    if t in ("int", "float", "double", "std::string"):
-        if t == "std::string":
-            return f'"{cpp_string_literal(d)}"'
-        return str(d).strip() or "0"
-    if t == "bool":
-        return "true" if str(d).strip().lower() == "true" else "false"
-    # Unknown type string: preserve the old raw-default fallback.
-    return str(d).strip()

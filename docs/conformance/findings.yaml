@@ -2467,7 +2467,7 @@
     collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted
     crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment).
     An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2
-    guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_default_expr.py) and
+    guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_defaults.py) and
     regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED
     1-point spine still culls (the documented "< 2 spine points => empty" contract, mesh_builder_extrusion_test.cpp).
 - id: VIS-ELEV-SPACING-EMPTY

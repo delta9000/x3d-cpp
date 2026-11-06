@@ -124,9 +124,8 @@ def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
         if target == "x3d_cpp_all_headers" or target.startswith("x3d_example_"):
             continue
         targets.add(target)
-    # x3d_cli_test is shell-driven, but its owning production target must still
-    # be built by the behavior/sanitizer aggregate.
-    targets.add("x3d_cli")
+    # Shell-driven tests still need their owning binaries in both aggregates.
+    targets.update({"x3d_cli", "x3d_canon_gate_fixture"})
     return targets
 
 

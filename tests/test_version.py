@@ -53,7 +53,6 @@ def test_autodetect_41_from_synthetic_fixture():
 def test_specversion_helpers():
     sv = SpecVersion(version="4.1")
     assert sv.slug == "4_1"
-    assert sv.cpp_namespace == "v4_1"
     assert sv.minor == 1
 
 
@@ -121,25 +120,6 @@ def test_synthetic_41_generates_and_emits_new_content(tmp_path):
 
     enums_text = (out / "x3d" / "core" / "X3Denums.hpp").read_text()
     assert "SUPERSHARP" in enums_text
-
-
-def test_synthetic_41_namespace_isolation(tmp_path):
-    # A namespaced emission wraps each class; the default 4.0 path (namespace="")
-    # is exercised by the golden tests and stays unnamespaced.
-    nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
-    assert skipped == []
-    graph = build_dependency_graph(nodes)
-    out = tmp_path / "v41ns"
-    out.mkdir()
-    core_dir = out / "x3d" / "core"
-    core_dir.mkdir(parents=True, exist_ok=True)
-    write_types_header(str(core_dir))
-    write_enums_header(str(core_dir), {})
-    generate_cpp_bindings(nodes, graph, str(out), clang_format="",
-                          enum_defs={}, namespace="x3d::v4_1")
-    text = (out / "x3d" / "nodes" / "QuantumWidget.hpp").read_text()
-    assert "namespace x3d::v4_1 {" in text
-    assert "} // namespace x3d::v4_1" in text
 
 
 # Real 4.1 UOM (only if the large fixture is present)

@@ -41,13 +41,10 @@ class CppHeaderBackend:
     """Renders one ``<Node>.hpp`` per node using precomputed descriptors."""
 
     def __init__(self, templates_dir=None, clang_format: str = "clang-format",
-                 enum_defs=None, namespace: str = ""):
+                 enum_defs=None):
         self.templates_dir = str(templates_dir) if templates_dir else str(TEMPLATES_DIR)
         self.clang_format = clang_format
         self.enum_defs = enum_defs or {}
-        # Optional C++ namespace to wrap each emitted class in. Empty (default)
-        # means NO namespace, which keeps the 4.0 golden output byte-identical.
-        self.namespace = namespace or ""
         env = Environment(
             loader=FileSystemLoader(self.templates_dir),
             extensions=['jinja2.ext.loopcontrols'],
@@ -55,7 +52,6 @@ class CppHeaderBackend:
         from x3d_cpp_gen.emit.naming import cpp_str
         env.filters['pascal'] = pascal
         env.filters['cpp_str'] = cpp_str
-        self._env = env
         self._template = env.get_template('class_template.hpp.jinja')
         self._source_template = env.get_template('class_template.cpp.jinja')
 
@@ -156,7 +152,6 @@ class CppHeaderBackend:
                 specification_url=node.specification_url,
                 container_field=node.container_field,
                 component=node.component,
-                namespace=self.namespace,
             )
 
             output_file = os.path.join(nodes_dir, f"{node.name}.hpp")
@@ -172,7 +167,6 @@ class CppHeaderBackend:
                 is_root=is_root,
                 emit_reflection=emit_reflection,
                 is_abstract=node.is_abstract,
-                namespace=self.namespace,
             )
             source_file = os.path.join(nodes_dir, f"{node.name}.cpp")
             with open(source_file, 'w') as f:
@@ -222,19 +216,4 @@ class CppHeaderBackend:
                       f"(exit {result.returncode}); batch formatting did not "
                       f"complete successfully.\n"
                       f"{result.stderr}")
-        return clang_format
-        style_arg = (f"--style=file:{_STYLE_FILE}" if _STYLE_FILE.exists()
-                     else "--style=LLVM")
-        try:
-            result = subprocess.run([clang_format, style_arg, "-i", *output_files],
-                                   capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"WARNING: {clang_format} failed on {len(output_files)} files "
-                      f"(exit {result.returncode}); batch formatting did not "
-                      f"complete successfully.\n"
-                      f"{result.stderr}")
-        except FileNotFoundError:
-            print(f"WARNING: '{clang_format}' not found; skipping formatting. "
-                  f"Output will not match the clang-formatted golden baseline.")
-            return None  # stop retrying for remaining files
         return clang_format

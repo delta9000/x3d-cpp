@@ -163,15 +163,6 @@ def main(argv=None) -> int:
         print(f"Auto-detected X3D spec version {spec_version.version} "
               f"(from <X3dUnifiedObjectModel version=...> in {spec.name}).")
 
-    # Generated node classes always live in x3d::nodes: the vocabulary
-    # value/reflection types are x3d::core and the node classes are x3d::nodes.
-    # The layout is fixed so the in-tree and installed include spellings
-    # ("x3d/core/...", "x3d/nodes/...") are uniform. generate_cpp_bindings()
-    # still takes a `namespace` parameter -- tests/test_version.py exercises it
-    # directly -- but the CLI does not expose it, because a CLI option the tool
-    # then overrides is a lie to the caller.
-    namespace = "x3d::nodes"
-
     out_dir.mkdir(parents=True, exist_ok=True)
     core_dir = out_dir / "x3d" / "core"
     nodes_dir = out_dir / "x3d" / "nodes"
@@ -204,7 +195,7 @@ def main(argv=None) -> int:
     generate_cpp_bindings(nodes, dependency_graph, str(out_dir),
                           templates_dir=templates_dir,
                           clang_format=args.clang_format,
-                          enum_defs=enum_defs, namespace=namespace)
+                          enum_defs=enum_defs)
     write_node_factory(str(out_dir), nodes)
     write_interface_registry(str(out_dir), nodes, dependency_graph)
 

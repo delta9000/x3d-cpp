@@ -4,8 +4,7 @@
 passing it silently did nothing. An ignored compatibility option is worse than
 no option: it tells the caller a lie the tool cannot honour.
 
-Note this is about the CLI surface only. generate_cpp_bindings(namespace=...)
-remains a real, exercised parameter -- see tests/test_version.py.
+Generated nodes use the fixed x3d::nodes namespace.
 """
 
 import subprocess

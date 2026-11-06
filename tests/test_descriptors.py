@@ -35,7 +35,6 @@ def test_sfvec3f_with_default():
     assert d.getter_name == "getBboxCenter"
     assert d.setter_name == "setBboxCenter"
     assert d.default_init_expr == "SFVec3f{1, 2, 3}"
-    assert d.value_init is False
     assert d.has_default is True
     assert d.is_readable and d.is_settable and d.has_member
     assert d.needs_move_overload is True       # struct type -> move overload

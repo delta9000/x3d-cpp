@@ -26,9 +26,8 @@ fi
 # The golden tree is byte-exact, so the formatter is part of the contract and
 # the full version is what we pin: clang-format's default style can shift in any
 # release, not just a major. A mismatch would surface as "golden drift" that is
-# really a toolchain mismatch -- fail loudly with the real reason instead. Keep
-# this in sync with mise.toml [tools] and tests/test_formatter_pin.py.
-EXPECTED_CLANG_FORMAT_VERSION=22.1.8
+# really a toolchain mismatch -- fail loudly with the real reason instead.
+EXPECTED_CLANG_FORMAT_VERSION="$(cd "${REPO_ROOT}" && uv run python -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["tools"]["clang-format"])' "${REPO_ROOT}/mise.toml")"
 # Exported so the generator below formats with the same binary we just verified
 # (it reads CLANG_FORMAT from the environment); otherwise this check could pass
 # while generation silently used a different formatter off PATH.

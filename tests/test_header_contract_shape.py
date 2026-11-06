@@ -174,6 +174,12 @@ def test_ci_cpp_job_builds_scoped_aggregates_in_one_tree() -> None:
 
     build_lines = [line for line in lines if line.startswith("cmake --build")]
     assert all("--target" in line for line in build_lines)
+    assert "--target x3d_behavior_tests" in build_lines[0]
+    assert "--target x3d_compile_contracts" in build_lines[1]
+    behavior = next(i for i, line in enumerate(build_ci) if "-L behavior" in line)
+    contracts = next(i for i, line in enumerate(build_ci) if "x3d_compile_contracts" in line)
+    assert behavior < contracts
+    assert "-L compile-contract" in build_ci[-1]
 
 
 def test_cpp_job_ccache_namespaces_are_separate_and_bounded() -> None:
@@ -187,21 +193,6 @@ def test_cpp_job_ccache_namespaces_are_separate_and_bounded() -> None:
         cache_step = next(step for step in job["steps"] if "with" in step)
         assert cache_step["with"]["key"].startswith(prefix)
         assert "ccache --max-size=750M" in job_run_lines(job)
-
-
-def test_build_ci_mirrors_both_aggregates_in_order() -> None:
-    lines = [
-        line.strip()
-        for line in MISE["tasks"]["build-ci"]["run"].splitlines()
-        if line.strip()
-    ]
-    assert lines == [
-        "cmake --preset ci",
-        "cmake --build --preset ci --target x3d_behavior_tests",
-        'ctest --preset ci -L behavior --output-on-failure -j "$(nproc)"',
-        "cmake --build --preset ci --target x3d_compile_contracts",
-        'ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"',
-    ]
 
 
 def test_compiled_parser_headers_do_not_export_implementation_dependencies() -> None:
