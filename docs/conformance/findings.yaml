@@ -3380,3 +3380,12 @@
   severity: minor
   status: fixed
   summary: Light-change deltas refresh cached descriptors and per-placement scope indices.
+
+- id: XML-WRITER-ATTRIBUTE-WHITESPACE
+  nodes: [WorldInfo]
+  interfaces: [X3DNode]
+  clause: "ISO/IEC 19776-1 4.3; XML 1.0 3.3.3"
+  severity: minor
+  status: fixed
+  summary: XmlWriter writes tab, LF and CR in attribute values as character references so they survive attribute-value normalization on reparse.
+  note: "The canonical writer already escaped them. Test: codec_string_hardening_test 'XmlWriter keeps tab, LF and CR in attribute values across reparse'."

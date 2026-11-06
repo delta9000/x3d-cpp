@@ -11,7 +11,7 @@ _Generated. Levels 1,2 · 8 nodes · profiles: Interchange, Interactive, Immersi
 | MetadataSet | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DMetadataObject |
 | MetadataString | 1 | ✓ | — | — | ENC-C14N-ATTR, ENC-JSON-CTRL, ENC-MFSTRING-READ, ENC-VRML-STRING, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DMetadataObject |
 | ProtoInstance | 2 | ✓ | — | — | AUD-PROTO-1, DIAG-NESTED-PROTO-USE, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-CHILD-ORDER, PROTO-DIRECT-DEFAULT, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, PROTO-INTERFACE-STATE, PROTO-IS-001, PROTO-NESTED-ROUTE, PROTO-NESTED-WRITE, PROTO-NODE-INIT, PROTO-NODE-VALUE-INSTANCE, PROTO-PARSE-SCOPE, PROTO-PRIMARY-ORDER, PROTO-SCENE-ORDER, PROTO-SHADOW, PROTO-WRITE-DEF-SCOPE, ROUTE-IO-ALIAS | X3DChildNode, X3DPrototypeInstance |
-| WorldInfo | 1 | ✓ | — | — | DIAG-PROFILE-COERCE, DIAG-UNKNOWN-NODE, ENC-JSON-UNIT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, XML-ATTRIBUTE-WHITESPACE | X3DChildNode, X3DInfoNode |
+| WorldInfo | 1 | ✓ | — | — | DIAG-PROFILE-COERCE, DIAG-UNKNOWN-NODE, ENC-JSON-UNIT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, XML-ATTRIBUTE-WHITESPACE, XML-WRITER-ATTRIBUTE-WHITESPACE | X3DChildNode, X3DInfoNode |
 
 ## Findings
 
@@ -70,4 +70,6 @@ _Generated. Levels 1,2 · 8 nodes · profiles: Interchange, Interactive, Immersi
   - The CLI and differential gate now share declaration-identity use analysis. It scans locally authored declaration bodies, retained nested declarations, and locally bound instance declarations with a visited worklist; external instances count only their external declaration. CLI regressions cover nested use, a node-contained declaration retained only by its instance, unused outer declaration with a used shadowing inner declaration, and an unresolved but used external declaration. The existing unused-declaration warning remains unchanged.
 - **META-EXTENDED-ATTRIBUTES-WRITE** [minor/FIXED] — §ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2: JSON writer retains dir, lang, scheme, and http-equiv metadata attributes.
   - Classic META has only name/content strings under ISO/IEC 19776-2 A.2; extended attributes have no standard Classic representation.
+- **XML-WRITER-ATTRIBUTE-WHITESPACE** [minor/FIXED] — §ISO/IEC 19776-1 4.3; XML 1.0 3.3.3: XmlWriter writes tab, LF and CR in attribute values as character references so they survive attribute-value normalization on reparse.
+  - The canonical writer already escaped them. Test: codec_string_hardening_test 'XmlWriter keeps tab, LF and CR in attribute values across reparse'.
 

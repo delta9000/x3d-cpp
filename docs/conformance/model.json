@@ -201,7 +201,8 @@
         "READ-NUMERIC-LEXEMES",
         "REQ-UNIT",
         "ROUTE-IO-ALIAS",
-        "XML-ATTRIBUTE-WHITESPACE"
+        "XML-ATTRIBUTE-WHITESPACE",
+        "XML-WRITER-ATTRIBUTE-WHITESPACE"
       ],
       "levels": [
         1,
@@ -413,7 +414,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19776-1 4.3; XML 1.0 3.3.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -424,7 +425,8 @@
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
-            "XML-ATTRIBUTE-WHITESPACE"
+            "XML-ATTRIBUTE-WHITESPACE",
+            "XML-WRITER-ATTRIBUTE-WHITESPACE"
           ],
           "geometry": false,
           "interfaces": [
@@ -12878,6 +12880,20 @@
       "severity": "minor",
       "status": "fixed",
       "summary": "Light-change deltas refresh cached descriptors and per-placement scope indices."
+    },
+    {
+      "clause": "ISO/IEC 19776-1 4.3; XML 1.0 3.3.3",
+      "id": "XML-WRITER-ATTRIBUTE-WHITESPACE",
+      "interfaces": [
+        "X3DNode"
+      ],
+      "nodes": [
+        "WorldInfo"
+      ],
+      "note": "The canonical writer already escaped them. Test: codec_string_hardening_test 'XmlWriter keeps tab, LF and CR in attribute values across reparse'.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "XmlWriter writes tab, LF and CR in attribute values as character references so they survive attribute-value normalization on reparse."
     }
   ],
   "meta": {
@@ -13055,10 +13071,10 @@
     ]
   },
   "summary": {
-    "closed_count": 312,
+    "closed_count": 313,
     "component_count": 36,
     "deferred_count": 21,
-    "finding_count": 343,
+    "finding_count": 344,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

@@ -73,7 +73,9 @@ struct Element {
   }
 };
 
-/// Escape a string for use as XML element text / attribute value content.
+/// Escape a string for use as an XML attribute value. Tab, LF and CR become
+/// character references because attribute-value normalization (XML 1.0
+/// §3.3.3) turns the literal characters into spaces on reparse.
 inline std::string escape(const std::string &s) {
   std::string out;
   out.reserve(s.size());
@@ -84,6 +86,9 @@ inline std::string escape(const std::string &s) {
     case '>': out += "&gt;"; break;
     case '"': out += "&quot;"; break;
     case '\'': out += "&apos;"; break;
+    case '\t': out += "&#x9;"; break;
+    case '\n': out += "&#xA;"; break;
+    case '\r': out += "&#xD;"; break;
     default: out += c; break;
     }
   }

@@ -411,6 +411,17 @@ TEST_CASE("XML literal attribute whitespace normalizes but references survive") 
   }
 }
 
+TEST_CASE("XmlWriter keeps tab, LF and CR in attribute values across reparse") {
+  const auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><WorldInfo title='a&#x9;b&#xA;c&#xD;d'/>"
+      "</Scene></X3D>");
+  const auto output = codec::XmlWriter().writeDocument(before);
+  const auto after = codec::XmlReader().readDocument(output);
+  const auto info = findNode<WorldInfo>(after.scene);
+  REQUIRE(info);
+  CHECK(info->getTitle() == "a\tb\nc\rd");
+}
+
 TEST_CASE("JSON retains an explicitly empty numeric MF field") {
   auto before = codec::XmlReader().readDocument(
       "<X3D version='4.0'><Scene><NavigationInfo avatarSize=''/></Scene></X3D>");
