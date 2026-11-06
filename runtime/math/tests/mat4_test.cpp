@@ -42,3 +42,26 @@ TEST_CASE("mat4_test") {
   CHECK((veq(mc.transformPoint({2,0,0}), {4,0,0})));   // (2-1)*3 + 1 = 4
   return;
 }
+
+TEST_CASE("rotationFromMatrix preserves the transformed basis") {
+  for (const SFVec3f axis : {SFVec3f{1,0,0}, SFVec3f{0,1,0},
+                            SFVec3f{0,0,1}, SFVec3f{1,2,3}}) {
+    float maxDelta = 0.0f;
+    for (int i = -10000; i <= 10004; ++i) {
+      // Sweep small angles, then exercise each branch at ordinary rotations.
+      const float angle = i <= 10000 ? i * 1e-7f :
+          (i - 10000) * static_cast<float>(std::numbers::pi / 2.0);
+      const Mat4 input = Mat4::rotation({axis.x, axis.y, axis.z, angle});
+      const Mat4 result = Mat4::rotation(rotationFromMatrix(input));
+      for (const SFVec3f basis : {SFVec3f{1,0,0}, SFVec3f{0,1,0}, SFVec3f{0,0,1}}) {
+        const SFVec3f expected = input.transformDirection(basis);
+        const SFVec3f actual = result.transformDirection(basis);
+        const float dx = actual.x - expected.x, dy = actual.y - expected.y,
+                    dz = actual.z - expected.z;
+        maxDelta = std::max(maxDelta, std::sqrt(dx*dx + dy*dy + dz*dz));
+      }
+    }
+    // The inputs have unit-length basis vectors; 1e-6 allows float rounding.
+    CHECK_MESSAGE(maxDelta <= 1e-6f, "axis: ", axis.x, ", ", axis.y, ", ", axis.z);
+  }
+}

@@ -2,7 +2,7 @@
 title: Navigation System
 summary: EXAMINE, FLY, WALK, LOOKAT and NONE navigation modes, avatar collision (Collision node) and terrain following, plus head-pose integration for the CAVE consumer.
 tags: [subsystem, navigation, examine, fly, walk, lookat, collision, head-pose]
-updated: 2026-09-26
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../subsystems/system-viewpointbind.md
@@ -30,6 +30,10 @@ The parse-time range diagnostic walk also checks orthographic `fieldOfView` valu
 | `runtime/events/ViewpointOffset.hpp` | Per-viewpoint user offset (`Mat4 local`); navigation accumulates into this rather than the authored fields |
 | `runtime/events/tests/navigation_test.cpp` | Unit test (doctest case `navigation_test` in the `x3d_events_tests` target) covering the modes |
 | `runtime/events/tests/collision_test.cpp` | Unit test (doctest case `collision_test`): FLY/WALK collision, Collision events, enabled gating, proxy, step height, line geometry |
+
+Camera rotations use the shared `rotationFromMatrix` in `Mat4.hpp` and `quatMul`
+in `Interpolation.hpp`. Pointer state is polled each tick without revision
+tracking; drag deltas depend on the current and previous screen positions.
 
 ## Interfaces and seams
 
@@ -98,7 +102,7 @@ FLY and WALK moves are collision-checked; EXAMINE orbits and LOOKAT transitions 
 
 ### LOOKAT transition
 
-On button-down edge, the system picks the ray (`ctx.pick`), computes the target world position as `bbox_center - dir * (radius / tan(fov/2))`, converts to viewpoint-local frame, and starts a linear position/`slerp`-rotation animation from the current effective eye to the target. The transition runs over `NavigationInfo.transitionTime` seconds. `TELEPORT` transition type completes in a single tick. `transitionComplete` is posted to the bound `NavigationInfo` at the end.
+On button-down edge, the system picks the ray (`ctx.pick`), computes the target world position as `bbox_center - dir * (radius / tan(fov/2))`, converts to viewpoint-local frame, and starts a linear position/`slerp`-rotation animation from the current effective eye to the target. The transition reads `NavigationInfo.transitionTime` when it starts, using one second when no NavigationInfo is bound. `TELEPORT` transition type completes in a single tick. `transitionComplete` is posted to the bound `NavigationInfo` at the end.
 
 ## How it is tested
 

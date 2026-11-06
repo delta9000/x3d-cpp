@@ -1106,6 +1106,13 @@
   summary: LOOKAT framing distance mixes a world-space radius with a local-frame eye placement, so a non-uniformly-scaled ancestor Transform mis-sizes the framed object.
   note: Pre-existing; compute the framing distance in the same (local) frame as the placement, or scale by the ancestor factor.
   resolution: "Fixed in af673bf — X3DExecutionContext::worldBounds now composes ancestor transforms via PickSystem::worldOf (was returning local AABB for non-Transform nodes). Test (6) in navigation_test.cpp asserts scaled framing distance."
+- id: NAV-SMALL-ROTATION
+  interfaces: [X3DViewpointNode]
+  clause: "ISO/IEC 19775-1 §23.2.3"
+  severity: minor
+  status: fixed
+  summary: Matrix-to-rotation conversion lost small camera rotations through an unnormalized quaternion.
+  note: "rotationFromMatrix normalizes the Shepperd quaternion; mat4_test.cpp checks transformed basis vectors within 1e-6 for signed small-angle sweeps and ordinary rotations."
 - id: NAV-FLY-ROLL
   interfaces: [X3DViewpointNode]
   clause: "23.4.4"

@@ -2,7 +2,7 @@
 title: Math Core
 summary: SF*-native math module (Mat4, Aabb, Ray, Intersect) — no external math library in the core runtime.
 tags: [subsystem, math, mat4, aabb, ray, intersect]
-updated: 2026-06-20
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../decisions/0012-no-external-math-lib.md
@@ -27,6 +27,9 @@ The boundary this module owns: anything that takes two or more SF*/MF* values an
 | `runtime/math/tests/` | Unit test executables: `mat4_test.cpp`, `mat4_inverse_test.cpp`, `aabb_test.cpp`, `intersect_test.cpp`, `vec_math_audit_test.cpp`. |
 
 `Mat4.hpp` has one intra-runtime dependency: `runtime/events/Interpolation.hpp` for the `Quat` type and `quatFromRotation`/`rotationFromQuat` helpers it uses in `Mat4::rotation` and `rotationFromMatrix`. All other math headers depend only on `Mat4.hpp` (and transitively `X3Dtypes.hpp` and `Interpolation.hpp`).
+
+`rotationFromMatrix` normalizes its extracted quaternion before converting to
+axis-angle so float matrix rounding does not erase small rotations.
 
 ## Interfaces and seams
 
@@ -112,7 +115,7 @@ The math module has no upward dependencies. It sits at the bottom of the depende
 
 Five doctest case files cover the math module, all compiled into the `x3d_geometry_scene` ctest executable; they pass without golden files (assert-based, self-contained):
 
-- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `mat4_test`) — identity, translation, scale, rotation (90° about Z), matrix multiply order, `transformMatrix` with center offset, `transformMatrix` with translation+scale.
+- `ctest --preset dev -R x3d_geometry_scene` (doctest cases: `mat4_test`, `rotationFromMatrix preserves the transformed basis`) — identity, translation, scale, rotation (90° about Z), matrix multiply order, `transformMatrix` with center offset, `transformMatrix` with translation+scale; matrix-to-rotation basis round-trips within `1e-6` for small signed angles and ordinary rotations about coordinate and oblique axes.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `mat4_inverse_test`) — round-trip `M * M.inverse() ≈ I` for a translate+rotate+scale matrix; `transformDirection` ignores translation; `transformPoint` does not; singular (all-zero) matrix returns `identity()`; `Ray::pointAt` parametric evaluation.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `aabb_test`) — empty union identity, `fromCenterSize`, `center()`, `size()`, `unionWith` grows extents correctly, `transformed` with 45° Z rotation, empty box stays empty after transform.
 - `ctest --preset dev -R x3d_geometry_scene` (doctest case: `intersect_test`) — `rayAabb` (front face hit, miss, origin-inside); `raySphere` (hit, miss, zero radius); `rayTriangle` (hit, outside); `rayCone` (lateral surface, corner AABB miss, bottom cap, `side`/`bottom` flag combinations, degenerate inputs); `rayCylinder` (lateral hit, height miss, top cap, bottom cap, flag combinations, degenerate inputs).

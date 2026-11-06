@@ -208,7 +208,8 @@ inline SFRotation rotationFromMatrix(const Mat4 &mat) {
     double s = std::sqrt(1.0 + m22 - m00 - m11) * 2.0;
     q.w = (m10 - m01) / s; q.x = (m02 + m20) / s; q.y = (m12 + m21) / s; q.z = 0.25 * s;
   }
-  return rotationFromQuat(q);
+  const double length = std::sqrt(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+  return rotationFromQuat({q.x/length, q.y/length, q.z/length, q.w/length});
 }
 
 } // namespace x3d::runtime

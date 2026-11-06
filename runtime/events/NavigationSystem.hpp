@@ -115,8 +115,6 @@ public:
 
     // Use screen deltas; camera-derived rays would feed camera motion back into navigation.
     const PointerState &ps = ctx.pointerState();
-    const bool pointerChanged = ps.revision != lastPointerRev_;
-    lastPointerRev_ = ps.revision;
     float dx = 0.0f, dy = 0.0f;
     // Arbitration: a pointing-device sensor grab owns the pointer (§20.2.1);
     // do not also drag-navigate this tick.
@@ -129,7 +127,6 @@ public:
     } else {
       dragActive_ = false;
     }
-    (void)pointerChanged;
 
     // An in-flight `LOOKAT` transition takes precedence (it owns the pose until
     // it completes), regardless of the current mode — it was committed at click.
@@ -249,13 +246,6 @@ private:
     ctx.setViewpointOffset(vp, off);
   }
 
-  static Quat quatMul(const Quat &a, const Quat &b) {
-    return Quat{
-      a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
-      a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
-      a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
-      a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z};
-  }
   static Quat axisAngleQuat(const SFVec3f &axis, float angle) {
     return quatFromRotation(SFRotation{axis.x, axis.y, axis.z, angle});
   }
@@ -294,32 +284,7 @@ private:
     m.m[0]=r.x;  m.m[1]=r.y;  m.m[2]=r.z;
     m.m[4]=u.x;  m.m[5]=u.y;  m.m[6]=u.z;
     m.m[8]=-f.x; m.m[9]=-f.y; m.m[10]=-f.z;
-    return rotationFromQuat(quatFromMat(m));
-  }
-
-  // Rotation matrix (upper-left 3x3, column-major) -> unit quaternion (Shepperd).
-  static Quat quatFromMat(const Mat4 &m) {
-    const float m00=m.m[0], m01=m.m[4], m02=m.m[8];
-    const float m10=m.m[1], m11=m.m[5], m12=m.m[9];
-    const float m20=m.m[2], m21=m.m[6], m22=m.m[10];
-    const float tr = m00 + m11 + m22;
-    double x,y,z,w;
-    if (tr > 0.0f) {
-      float s = std::sqrt(tr + 1.0f) * 2.0f;
-      w = 0.25 * s; x = (m21 - m12)/s; y = (m02 - m20)/s; z = (m10 - m01)/s;
-    } else if (m00 > m11 && m00 > m22) {
-      float s = std::sqrt(1.0f + m00 - m11 - m22) * 2.0f;
-      w = (m21 - m12)/s; x = 0.25 * s; y = (m01 + m10)/s; z = (m02 + m20)/s;
-    } else if (m11 > m22) {
-      float s = std::sqrt(1.0f + m11 - m00 - m22) * 2.0f;
-      w = (m02 - m20)/s; x = (m01 + m10)/s; y = 0.25 * s; z = (m12 + m21)/s;
-    } else {
-      float s = std::sqrt(1.0f + m22 - m00 - m11) * 2.0f;
-      w = (m10 - m01)/s; x = (m02 + m20)/s; y = (m12 + m21)/s; z = 0.25 * s;
-    }
-    double l = std::sqrt(x*x+y*y+z*z+w*w);
-    if (l < 1e-12) return Quat{0,0,0,1};
-    return Quat{x/l, y/l, z/l, w/l};
+    return rotationFromMatrix(m);
   }
 
   // `EXAMINE` (orbit/turntable)
@@ -644,7 +609,7 @@ private:
     lookat_.endPos = targetLocal;
     lookat_.endOri = targetOri;
     lookat_.t0 = now;
-    lookat_.duration = resolveTransitionTime(nav);
+    lookat_.duration = nav ? nav->getTransitionTime() : 1.0;
     lookat_.teleport = isTeleport(nav) || lookat_.duration <= 0.0;
     lookat_.active = true;
     buttonWasDown_ = ps.buttonDown;
@@ -674,9 +639,6 @@ private:
     }
   }
 
-  static double resolveTransitionTime(NavigationInfo *nav) {
-    return nav ? nav->getTransitionTime() : 1.0;
-  }
   // First recognized transitionType wins; default `LINEAR` (§23.4.4).
   // transitionType is an open MFString vocabulary — match tokens, skip unknown.
   static bool isTeleport(NavigationInfo *nav) {
@@ -699,7 +661,6 @@ private:
   bool geoScaled_ = false;
   float geoAvatarFactor_ = 1.0f;
   bool haveTime_ = false;
-  unsigned long lastPointerRev_ = static_cast<unsigned long>(-1);
   bool dragActive_ = false;
   float lastPx_ = 0.0f, lastPy_ = 0.0f;
   bool buttonWasDown_ = false;
