@@ -1,4 +1,4 @@
-"""Headless GL regression for LocalFog in the OpenGL PoC (REQ-LOCALFOG, §24.4.3).
+"""Headless GL regression for LocalFog in the OpenGL PoC (§24.4.3).
 
 A LocalFog fogs only the geometry of its enclosing grouping node, in place of
 the bound global Fog. Two boxes stand side by side, both well past a short

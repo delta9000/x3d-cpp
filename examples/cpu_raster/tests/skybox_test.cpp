@@ -21,7 +21,7 @@ static int failures = 0;
   } while (0)
 
 int main() {
-  // ---- Face selection: principal axes pick the expected faces. ----
+  // Face selection: principal axes pick the expected faces.
   auto fr = render_detail::cubeFaceUv({0, 0, -1}); // down -Z -> front, centred
   CHECK(fr.face == CubeFace::Front);
   CHECK(fr.uv.x > 0.45f && fr.uv.x < 0.55f && fr.uv.y > 0.45f && fr.uv.y < 0.55f);
@@ -31,12 +31,12 @@ int main() {
   CHECK(render_detail::cubeFaceUv({0, -1, 0}).face == CubeFace::Bottom);
   CHECK(render_detail::cubeFaceUv({0, 0, 1}).face == CubeFace::Back);
 
-  // ---- UV moves the right way: biasing +X off the -Z axis moves the front
-  // face U toward the right edge (the +X side is the right of the 2D image). ----
+  // UV moves the right way: biasing +X off the -Z axis moves the front
+  // face U toward the right edge (the +X side is the right of the 2D image).
   CHECK(render_detail::cubeFaceUv({0.4f, 0, -1}).uv.x > 0.55f);
 
-  // ---- Compositing: an opaque front-face texel replaces the gradient; alpha<1
-  // lets the gradient show through; an empty face falls back to the gradient. ----
+  // Compositing: an opaque front-face texel replaces the gradient; alpha<1
+  // lets the gradient show through; an empty face falls back to the gradient.
   {
     render_detail::SkyboxTextures sb;
     std::uint8_t green[4] = {0, 255, 0, 255};

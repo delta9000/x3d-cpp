@@ -1,20 +1,20 @@
 #version 330 core
 // usd_preview_surface.frag — the PORTABLE UsdPreviewSurface reference shader.
 //
-// This is the frozen contract of the USD→realtime material seam: ONE fragment
+// This is the frozen contract of the USD→realtime material seam: one fragment
 // shader that runs BOTH in the CPU rasterizer's GlslInterpreter (--frag) AND on
 // desktop OpenGL (examples/poc_renderer). It implements the metallic-roughness
 // subset of the UsdPreviewSurface reference BRDF (Pixar Storm previewSurface.glslfx
 // / glTF 2.0 Appendix B): GGX(Trowbridge-Reitz) D + Schlick-GGX Smith G +
 // Schlick F, alpha = roughness^2, F0 = mix(0.04, baseColor, metallic).
 //
-// Interpreter-legality (see GlslInterpreter.hpp envelope): uses ONLY the shared
+// Interpreter-legality (see GlslInterpreter.hpp envelope): uses only the shared
 // varying/uniform contract and the interpreter's builtin set. Deliberately avoids
 // vector-relational builtins (lessThan/bvec3) — the sRGB encode uses the scalar
 // pow() form, which is bit-portable to desktop GL too. Texture slots are guarded
 // by uHas*Tex so an unbound sampler is never sampled.
 //
-// TEXTURE SLOTS (host binds these; interpreter seeds uHas*Tex + samplers):
+// texture slots (host binds these; interpreter seeds uHas*Tex + samplers):
 //   uBaseColorTex          sRGB   base color / albedo
 //   uNormalTex             linear tangent-space normal (xyz*2-1)
 //   uEmissiveTex           sRGB   emissive
@@ -28,7 +28,7 @@ in vec2 vTexCoord;
 
 out vec4 FragColor;
 
-// ---- Material params (UsdPreviewSurface metallic workflow) ------------------
+// Material params (UsdPreviewSurface metallic workflow)
 uniform vec4  uBaseColor;         // rgb = diffuseColor, a = opacity
 uniform float uMetallic;
 uniform float uRoughness;
@@ -39,10 +39,10 @@ uniform int   uAlphaMode;         // 0=Opaque, 1=Mask, 2=Blend (matches ex::Alph
 uniform float uAlphaCutoff;
 uniform int   uHasColors;
 
-// ---- UsdPreviewSurface fidelity params (X3D PhysicalMaterial cannot carry
+// UsdPreviewSurface fidelity params (X3D PhysicalMaterial cannot carry
 // these; seedUniforms defaults them to the spec fallbacks, so the cpuraster
 // direct path stays metallic-workflow/ior=1.5/no-clearcoat. The --emit-glsl
-// path bakes real values here.) ----------------------------------------------
+// path bakes real values here.)
 uniform int   uUseSpecularWorkflow; // 0=metallic (use uMetallic), 1=specular
 uniform vec3  uSpecularColor;       // specular-workflow F0
 uniform float uIor;                 // dielectric index of refraction (drives F0)
@@ -51,7 +51,7 @@ uniform float uClearcoatRoughness;
 uniform int   uOpacityMode;         // 0=transparent (diffuse-only), 1=presence
 uniform float uOpacityThreshold;
 
-// ---- Texture slots ----------------------------------------------------------
+// Texture slots
 uniform int       uHasBaseColorTex;
 uniform sampler2D uBaseColorTex;
 uniform int       uHasNormalTex;
@@ -63,7 +63,7 @@ uniform sampler2D uMetallicRoughnessTex;
 uniform int       uHasOcclusionTex;
 uniform sampler2D uOcclusionTex;
 
-// ---- Lights -----------------------------------------------------------------
+// Lights
 uniform int  uNumLights;
 uniform vec3 uLightDirEye[8];     // direction of travel, eye space
 uniform vec3 uLightColor[8];      // rgb * intensity
@@ -97,7 +97,7 @@ vec3 toSRGB(vec3 c) {
 }
 
 void main() {
-    // ---- Base color ---------------------------------------------------------
+    // Base color
     vec4 baseCol = uBaseColor;
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
     if (uHasBaseColorTex != 0) baseCol *= texture(uBaseColorTex, vTexCoord);
@@ -106,7 +106,7 @@ void main() {
     // falls through and lets the returned alpha composite in the blend pass.
     if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard;
 
-    // ---- Metallic / roughness (glTF ORM packing) ----------------------------
+    // Metallic / roughness (glTF ORM packing)
     float metallic  = uMetallic;
     float roughness = uRoughness;
     if (uHasMetallicRoughnessTex != 0) {
@@ -117,7 +117,7 @@ void main() {
     float alpha2 = max(roughness * roughness, 0.001);
     alpha2 = alpha2 * alpha2;
 
-    // ---- Occlusion ----------------------------------------------------------
+    // Occlusion
     float ao = 1.0;
     if (uHasMetallicRoughnessTex != 0) {
         ao = texture(uMetallicRoughnessTex, vTexCoord).r;
@@ -126,11 +126,11 @@ void main() {
     }
     ao = mix(1.0, ao, uOcclusionStrength);
 
-    // ---- Geometric normal (two-sided) ---------------------------------------
+    // Geometric normal (two-sided)
     vec3 Ngeo = normalize(vNormalEye);
     if (!gl_FrontFacing) Ngeo = -Ngeo;
 
-    // ---- Normal mapping (derivative TBN; dFdx exact for vPosEye/vTexCoord) ---
+    // Normal mapping (derivative TBN; dFdx exact for vPosEye/vTexCoord)
     vec3 N = Ngeo;
     if (uHasNormalTex != 0) {
         vec3 tsN = texture(uNormalTex, vTexCoord).rgb * 2.0 - 1.0;
@@ -150,7 +150,7 @@ void main() {
         }
     }
 
-    // ---- PBR setup: workflow-dependent F0 / diffuse -------------------------
+    // PBR setup: workflow-dependent F0 / diffuse
     // At the spec-default uniforms (metallic workflow, ior 1.5, no clearcoat,
     // opacityMode transparent) every branch below collapses to the plain glTF
     // metallic-roughness path — i.e. bit-parity with the native fixed-function
@@ -177,7 +177,7 @@ void main() {
     float opacity = alpha;
     if (uOpacityMode == 0) diffColor = diffColor * opacity;
 
-    // ---- Emissive -----------------------------------------------------------
+    // Emissive
     vec3 emissive = uEmissive;
     if (uHasEmissiveTex != 0) emissive = emissive * texture(uEmissiveTex, vTexCoord).rgb;
 
@@ -185,7 +185,7 @@ void main() {
     float ccAlpha = max(uClearcoatRoughness * uClearcoatRoughness, 0.001);
     ccAlpha = ccAlpha * ccAlpha;
 
-    // ---- Analytic GGX accumulation (directional lights) ---------------------
+    // Analytic GGX accumulation (directional lights)
     vec3 color = emissive;
     for (int i = 0; i < uNumLights; ++i) {
         vec3 L = normalize(-uLightDirEye[i]);
@@ -212,7 +212,7 @@ void main() {
         color += lobe * uLightColor[i] * NdL;
     }
 
-    // ---- Ambient (AO-modulated), opacityMode "presence", sRGB out -----------
+    // Ambient (AO-modulated), opacityMode "presence", sRGB out
     color += 0.03 * diffColor * ao;
     if (uOpacityMode == 1) color = color * opacity; // presence scales everything
     FragColor = vec4(toSRGB(color), opacity);

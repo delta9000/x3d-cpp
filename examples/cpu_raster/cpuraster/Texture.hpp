@@ -2,7 +2,7 @@
 // from the extraction seam's two inline pixel sources (PixelTexture SFImage, or
 // an embedder-resolved TexturePixels via TextureRef::resolvedPixels) and
 // samples it with bilinear filtering + repeat/clamp/mirror/border wrap, origin
-// bottom-left (X3D == GL, NO V-flip — same invariant the PoC honors).
+// bottom-left (X3D == GL, no V-flip — same invariant the PoC honors).
 //
 // SAMPLER STATE: the §18.4.9 wrap/filter modes the extractor surfaces on
 // TextureRef::extSampler are honored: REPEAT, CLAMP, CLAMP_TO_EDGE,
@@ -169,7 +169,7 @@ public:
     return fromRGBA8(rgba.data(), w, h, sampler, srgb);
   }
 
-  // Resolve a TextureRef to a CPU texture using ONLY the seam's inline sources:
+  // Resolve a TextureRef to a CPU texture using only the seam's inline sources:
   //   Source::Inline  -> SFImage pixels.
   //   Source::Url     -> resolvedPixels (the embedder-decoded RGBA8 the SDK
   //                      threaded on, when a TextureResolver was wired).

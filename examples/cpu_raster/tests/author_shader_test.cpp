@@ -1,4 +1,4 @@
-// author_shader_test.cpp — REQ-SHADER observable output: a scene-authored
+// author_shader_test.cpp — observable output: a scene-authored
 // ComposedShader selected by the SDK (RenderItem::shaderProgram) runs in the
 // CPU reference host, its author <field> uniforms (SF values, MF arrays and
 // texture samplers) reach the pixels, a uniform
@@ -100,7 +100,7 @@ int main() {
     CHECK(near(h.center(), 0, 1, 0));
   }
 
-  // REQ-SHADER-2: texture (SFNode -> sampler2D, MFNode -> sampler2D[]) and
+  // texture (SFNode -> sampler2D, MFNode -> sampler2D[]) and
   // array (MF -> float[] / vec3[]) fields reach the program; an MF event too.
   {
     const std::string frag =

@@ -1,18 +1,6 @@
-// SceneRender.hpp — orchestration: turn a snapshotted SceneExtractor into a
-// Framebuffer. This is the CPU-rasterizer analogue of the PoC's render loop, and
-// it deliberately reuses the PoC's conventions so a CPU frame matches the GL one:
-//   * perspective() maps X3D's MIN-dimension fieldOfView to the shorter axis.
-//   * a "view-all" fit camera frames the scene's per-path world bounds when no
-//     Viewpoint is authored (X3DExecutionContext::viewMatrix() is identity then).
-//   * eye-space directional + positional (point/spot) lights + the §23.4.4
-//     NavigationInfo headlight (on whenever headlight is TRUE, the default).
-//   * opaque pass (depth-write) then a back-to-front transparency pass.
-//
-// Per item the shader is chosen by MaterialModel (Phong/Physical/Unlit) unless an
-// author program override is supplied (the GLSL interpreter path) — see
-// makeAuthorShader in main.cpp, plumbed via the `authorShaderFor` hook.
-//
-// Out-of-SDK consumer code. namespace x3d::cpuraster.
+// Render a SceneExtractor snapshot to a framebuffer.
+// Use a fitted camera when no Viewpoint is authored. Draw opaque items first,
+// then blended items back-to-front. An author program can override the material.
 #ifndef X3D_CPURASTER_SCENE_RENDER_HPP
 #define X3D_CPURASTER_SCENE_RENDER_HPP
 
@@ -59,7 +47,7 @@ struct RenderOptions {
   // instead of solid cells. Must be paired with the matching FontMetrics passed
   // to the extractor via MeshBuildOptions. Null => glyph cells fill flat.
   const Texture *glyphAtlas = nullptr;
-  // Optional hook: given a RenderItem, return a FragmentShader to use INSTEAD of
+  // Optional hook: given a RenderItem, return a FragmentShader to use instead of
   // the material model (the GLSL-interpreter author path). Return a default-
   // constructed (empty) std::function to fall through to the material shader.
   std::function<FragmentShader(const rt::extract::RenderItem &,
@@ -333,7 +321,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
 
   Framebuffer fb(width, height);
 
-  // ---- Background flat clear (bound Background's first skyColor) -------------
+  // Background flat clear (bound Background's first skyColor)
   // The full sky/ground gradient is painted per-pixel below once the camera is
   // known; this flat fill is the fallback (no Background, or a single skyColor)
   // and the initial clear under the gradient.
@@ -348,7 +336,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
   const rt::Aabb bounds = extractor.sceneWorldBounds();
   const glsl::mat4 viewG(viewRT), projG(projRT);
 
-  // ---- Background sky/ground gradient (overwrites the flat clear) -----------
+  // Background sky/ground gradient (overwrites the flat clear)
   // When the bound Background carries a real ramp (>1 sky colour or any ground),
   // each pixel's view ray is unprojected to a world direction whose angle from
   // +Y selects the §Background sky/ground colour. A single skyColor stays flat.
@@ -377,7 +365,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
     }
   }
 
-  // ---- Lights ---------------------------------------------------------------
+  // Lights
   bool headlightOn = true;
   if (const X3DNode *nav = ctx.boundNavigationInfo())
     headlightOn = rt::geombounds::getField<bool>(*nav, "headlight", true);
@@ -450,7 +438,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
 
   Rasterizer raster(fb);
 
-  // ---- Partition opaque vs transparent (PoC B7 rule) ------------------------
+  // Partition opaque and transparent items.
   std::vector<ex::RenderItemId> opaque;
   std::vector<std::pair<float, ex::RenderItemId>> blended; // (eyeZ, id)
   for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
@@ -522,7 +510,7 @@ inline Framebuffer renderView(const rt::X3DExecutionContext &ctx,
     const glsl::vec4 baseColor = glsl::vec4(it.material.toRGBA());
     const ex::FillPropertiesDesc &fill = it.material.fill;
 
-    // REQ-CLIP (§11.4.1): the descriptor carries WORLD-space clip planes;
+    // (§11.4.1): the descriptor carries world-space clip planes;
     // the rasterizer tests them in eye space, so map each through the view
     // matrix as a plane (p_eye = view^-T p_world).
     std::vector<glsl::vec4> clipEye;
@@ -611,7 +599,7 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
                       opt.height, nullptr, none);
   }
 
-  // ---- Camera: bound Viewpoint, else a view-all fit of the scene bounds -----
+  // Camera: bound Viewpoint, else a view-all fit of the scene bounds
   const rt::Aabb bounds = extractor.sceneWorldBounds();
   ex::CameraDesc cam = extractor.camera();
   const bool noViewpoint = (ctx.boundViewpoint() == nullptr);
@@ -646,7 +634,7 @@ inline Framebuffer renderScene(const rt::X3DExecutionContext &ctx,
   }
   const rt::Mat4 projRT = perspective(cam.fieldOfView, aspect, zNear, zFar);
 
-  // ---- §34.4.2 GeneratedCubeMapTexture faces ---------------------------------
+  // §34.4.2 GeneratedCubeMapTexture faces
   // Each cube whose update is not NONE is re-rendered before the frame: six
   // size x size views with a pi/2 field of view from the local origin of the
   // first Shape using it, along that Shape's local axes (ADR-0060), in Figure

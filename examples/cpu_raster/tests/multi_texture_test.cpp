@@ -1,13 +1,7 @@
 // multi_texture_test.cpp — §18.4.3 MultiTexture stage combining in the CPU
 // rasterizer. Stages come from the extraction seam as one TextureRef per channel
 // on the base-colour slot; MaterialShader::detail::combineBaseStages folds them
-// with the OpenGL texture-environment convention (see REQ-MULTITEXTURE).
-//
-// Fail-before/pass-after:
-//   * two-stage MODULATE gives the PRODUCT of the two textures (previously only
-//     the first matching slot was sampled),
-//   * REPLACE takes the SECOND stage,
-//   * a single texture is unchanged (base * texel, i.e. one MODULATE stage).
+// with the OpenGL texture-environment convention.
 #include "RenderItem.hpp"
 #include "cpuraster/MaterialShader.hpp"
 
@@ -81,14 +75,14 @@ int main() {
   const float k2 = 64.0f / 255.0f;  // 0.251
   const float k3 = 192.0f / 255.0f; // 0.753
 
-  // ---- Single texture unchanged: base(white) * texel(k1) = k1 --------------
+  // Single texture unchanged: base(white) * texel(k1) = k1
   {
     g::vec4 o = shadeUnlit(unlitWhite({stage(128, 0, "MODULATE")}));
     CHECK(near(o.x, k1) && near(o.y, k1) && near(o.z, k1));
     CHECK(near(o.w, 1.0f)); // opaque.
   }
 
-  // ---- Two-stage MODULATE: product k1 * k2 (NOT just the first stage) -------
+  // Two-stage MODULATE: product k1 * k2 (not just the first stage)
   {
     g::vec4 o = shadeUnlit(
         unlitWhite({stage(128, 0, "MODULATE"), stage(64, 1, "MODULATE")}));
@@ -96,7 +90,7 @@ int main() {
     CHECK(!near(o.x, k1)); // fail-before: first slot alone would be k1.
   }
 
-  // ---- REPLACE takes the SECOND stage --------------------------------------
+  // REPLACE takes the second stage
   {
     g::vec4 o = shadeUnlit(
         unlitWhite({stage(64, 0, "REPLACE"), stage(192, 1, "REPLACE")}));
@@ -104,7 +98,7 @@ int main() {
     CHECK(!near(o.x, k2)); // fail-before: first slot alone would be k2.
   }
 
-  // ---- OFF disables a stage (leaves the accumulation) ----------------------
+  // OFF disables a stage (leaves the accumulation)
   {
     // Stage 0 OFF (ignored), stage 1 MODULATE k2 -> white * k2.
     g::vec4 o = shadeUnlit(
@@ -112,14 +106,14 @@ int main() {
     CHECK(near(o.x, k2));
   }
 
-  // ---- source=FACTOR selects arg2 from MultiTexture color/alpha -----------
+  // source=FACTOR selects arg2 from MultiTexture color/alpha
   {
     // White texel * factor 0.5, MODULATE against white base -> 0.5.
     g::vec4 o = shadeUnlit(unlitWhite({stage(255, 0, "MODULATE", "FACTOR", "", 0.5f)}));
     CHECK(near(o.x, 0.5f));
   }
 
-  // ---- ADD / ADDSIGNED / SUBTRACT / SELECTARG2 on a non-white base ---------
+  // ADD / ADDSIGNED / SUBTRACT / SELECTARG2 on a non-white base
   {
     ex::MaterialDesc m = unlitWhite({stage(128, 0, "ADD")}); // base 0.2 + k1.
     m.emissive = {0.2f, 0.2f, 0.2f};
@@ -144,7 +138,7 @@ int main() {
     CHECK(near(shadeUnlit(m).x, 0.2f));
   }
 
-  // ---- function=COMPLEMENT: (1 - result) -----------------------------------
+  // function=COMPLEMENT: (1 - result)
   {
     // MODULATE white*k1 -> k1, COMPLEMENT -> 1 - k1.
     g::vec4 o = shadeUnlit(unlitWhite({stage(128, 0, "MODULATE", "", "COMPLEMENT")}));

@@ -5,7 +5,7 @@
 // out of main.cpp) so the projection math is unit-testable — see
 // tests/project_test.cpp.
 //
-// Everything here consumes ONLY the public SDK façade (`x3d/sdk.hpp`), with the
+// Everything here consumes only the public SDK façade (`x3d/sdk.hpp`), with the
 // single documented exception of the `x3d::core::SFVec3f` value type, which the
 // façade does not re-export but which `Mat4::transformPoint` requires.
 #ifndef X3D2SVG_HPP

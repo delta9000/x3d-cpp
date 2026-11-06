@@ -1,4 +1,4 @@
-"""Headless GL regression for eye-space TextureCoordinateGenerator modes (#140)."""
+"""Headless GL regression for eye-space TextureCoordinateGenerator modes."""
 import math
 import pathlib
 import subprocess
@@ -56,7 +56,7 @@ with tempfile.TemporaryDirectory() as directory:
     fallback = render(tmp, 'authored', authored)
     assert blue(fallback(0.25)), fallback(0.25)
     for mode in ('CAMERASPACEPOSITION', 'COORD-EYE'):
-        # u = eye x = 0.25 -> red. COORD-EYE used to fall back to authored UVs.
+        # u = eye x = 0.25 -> red.
         pixel = render(tmp, mode, f'<TextureCoordinateGenerator mode="{mode}"/>')
         assert red(pixel(0.25)), (mode, pixel(0.25))
     # Facing quad, N = (0, 0, 1): at eye x = 2, E = normalize(-2, 0, 8) and

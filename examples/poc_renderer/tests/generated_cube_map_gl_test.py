@@ -1,4 +1,4 @@
-"""Headless GL regression for GeneratedCubeMapTexture (REQ-CUBE, §34.4.2).
+"""Headless GL regression for GeneratedCubeMapTexture (§34.4.2).
 
 A radius-2 sphere (solid FALSE, so visible from inside) at the origin carries
 a GeneratedCubeMapTexture and is surrounded by six unlit boxes, one per axis,

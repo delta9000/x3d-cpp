@@ -17,7 +17,7 @@ namespace {
 // Fully compose a non-USDZ USD file (USDA/USDC) into a flattened Stage:
 // subLayers, then iterate references/payloads/inherits/variants to a fixpoint
 // (LIVRPS strength ordering), then bake the Layer into a Stage. tinyusdz'
-// LoadUSDFromFile does NOT resolve these composition arcs, so a plain load of a
+// LoadUSDFromFile does not resolve these composition arcs, so a plain load of a
 // composed scene (the production norm — external references + payloads) yields
 // empty Xforms with no geometry. USDZ archives are self-contained and keep the
 // direct LoadUSDFromFile path.
@@ -78,7 +78,7 @@ bool loadComposedStage(const std::string& path, tinyusdz::Stage& stage,
 // (translation lives in m[3][0..2]; value-types.hh:650). Our Mat4 is
 // column-major with column-vector semantics (translation in m[12..14]). The
 // same transform for column vectors is the transpose of the USD matrix, so the
-// column-major element [c*4+r] reads t.m[c][r] — NOT t.m[r][c]. Reading [r][c]
+// column-major element [c*4+r] reads t.m[c][r] — not t.m[r][c]. Reading [r][c]
 // transposes twice (a no-op on storage), which inverts every rotation and drops
 // translation into the always-zero last column.
 Mat4 toColumnMajor(const tinyusdz::value::matrix4d& t) {
@@ -317,7 +317,7 @@ ImportScene UsdSource::load(const std::string& path) {
     mat.opacity = pbr.opacity.value;
     mat.shininess = pbr.roughness.value;
 
-    // UsdPreviewSurface-grade fields tydra populates but the legacy loop dropped.
+    // Preserve the UsdPreviewSurface material fields supplied by tydra.
     // These cannot be expressed in the X3D PhysicalMaterial node; they reach a
     // renderer only through the specialized `--emit-glsl` path.
     mat.useSpecularWorkflow = pbr.useSpecularWorkflow;

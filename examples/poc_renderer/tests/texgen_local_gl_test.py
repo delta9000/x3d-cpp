@@ -1,5 +1,5 @@
 """Headless GL regression for the local, noise and refraction
-TextureCoordinateGenerator modes and generated-coordinate transforms (TXF-2).
+TextureCoordinateGenerator modes and generated-coordinate transforms.
 
 A quad faces the camera through a rotated, translated Transform, so its local
 positions and normals differ from the eye-space ones. Its 4x1 clamped texture
@@ -32,7 +32,7 @@ def to_local(p):
 NORMAL_LOCAL = (-SIN, 0.0, COS)  # R(-ANGLE) * (0, 0, 1)
 
 
-# ---- Table 18.6 as cpu_raster implements it --------------------------------
+# Table 18.6 as cpu_raster implements it
 def u32(v):
     return v & 0xFFFFFFFF
 

@@ -85,7 +85,7 @@ int main() {
   int inkFont = 0;
   double ratioFont = fillRatio(fbFont, inkFont);
 
-  // WITHOUT the atlas: the SDK-stub behavior -> solid filled cells (a bar).
+  // without the atlas: the SDK-stub behavior -> solid filled cells (a bar).
   cr::RenderOptions noFont = withFont;
   noFont.glyphAtlas = nullptr;
   cr::Framebuffer fbBar = cr::renderScene(ctx, extractor, noFont);

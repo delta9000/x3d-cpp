@@ -1,5 +1,5 @@
-// linepoint_style_test.cpp — SEAM-LINEPOINT: §12.4.6 LineProperties /
-// §12.4.8 PointProperties now reach the seam (MaterialDesc::line / ::point) and
+// linepoint_style_test.cpp — §12.4.6 LineProperties /
+// §12.4.8 PointProperties reach the seam (MaterialDesc::line / ::point) and
 // the line/point raster honours them. Before the fix every IndexedLineSet drew
 // 1px and every PointSet a single pixel regardless of the authored properties.
 #include "MaterialSystem.hpp"
@@ -59,7 +59,7 @@ static std::vector<Vertex> hline() {
 int main() {
   const g::mat4 I = g::mat4::identity();
 
-  // ---- Line width: a wider line covers more pixels -----------------------
+  // Line width: a wider line covers more pixels
   {
     Framebuffer fb1(32, 32);
     fb1.clear({0, 0, 0});
@@ -78,7 +78,7 @@ int main() {
     CHECK(thick > thin * 3); // ~5x, allow slack.
   }
 
-  // ---- Point size + attenuation: a larger point covers more pixels --------
+  // Point size + attenuation: a larger point covers more pixels
   {
     std::vector<Vertex> pt = {{{0, 0, 0}, {0, 0, 1}, {1, 1, 1, 1}, {0, 0}}};
     Framebuffer fb1(32, 32);
@@ -111,7 +111,7 @@ int main() {
     CHECK(clamped == 9);
   }
 
-  // ---- Extraction: LineProperties / PointProperties surface on MaterialDesc
+  // Extraction: LineProperties / PointProperties surface on MaterialDesc
   {
     auto lp = createX3DNode("LineProperties");
     setF(lp, "linewidthScaleFactor", std::any(4.0f));
@@ -134,7 +134,7 @@ int main() {
     CHECK(std::fabs(m.point.attenuation.y - 0.1f) < 1e-4f);
   }
 
-  // ---- Extraction defaults: no LineProperties/PointProperties => identity ----
+  // Extraction defaults: no LineProperties/PointProperties => identity
   {
     auto app = createX3DNode("Appearance");
     ex::MaterialDesc m = ex::materialOf(app.get());

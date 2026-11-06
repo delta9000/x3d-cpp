@@ -5,7 +5,7 @@
 // detail::textureCoordinates and detail::texCoordGenUv, including the
 // deterministic Perlin noise and the generated-coordinate TextureTransform.
 //
-// Every texture the programs sample has its own mapping (REQ-MULTITEXTURE-2):
+// Every texture the programs sample has its own mapping:
 // mapping k < 5 is the material slot on texture unit k (base colour, normal,
 // emissive, specular or metallic-roughness, occlusion); mapping 5 + i is
 // MultiTexture stage i. A mapping samples UV set uMapInfo.x (clamped to the
@@ -13,8 +13,8 @@
 // the unused attributes) unless it has a generator. Generator modes are
 // TexCoordGenMode + 1 (0 = none):
 //  1 SPHERE  2 CAMERASPACENORMAL  3 CAMERASPACEPOSITION
-//  4 CAMERASPACEREFLECTIONVECTOR  5 SPHERE-LOCAL  6 COORD  7 COORD-EYE
-//  8 NOISE  9 NOISE-EYE  10 SPHERE-REFLECT  11 SPHERE-REFLECT-LOCAL
+//  4 CAMERASPACEREFLECTIONVECTOR  5 SPHERE-local  6 COORD  7 COORD-eye
+//  8 NOISE  9 NOISE-eye  10 SPHERE-REFLECT  11 SPHERE-REFLECT-local
 // The vertex shaders still write vTexCoord from the material's first generator
 // for modes 1-4 and 7 (the fallback a fragment shader without this file uses).
 
@@ -117,7 +117,7 @@ vec3 generatedVec(int k, int mode, vec3 posEye, vec3 normalEye) {
 // its mapping's generator (s, t, r), or with no generator the camera-space
 // reflection vector. Generated-coordinate TextureTransforms are 2D and do not
 // apply. The cube is fixed to the geometry's local frame (ADR-0060): eye-space
-// modes (CAMERASPACENORMAL/POSITION/REFLECTIONVECTOR, COORD-EYE, NOISE-EYE,
+// modes (CAMERASPACENORMAL/POSITION/REFLECTIONVECTOR, COORD-eye, NOISE-eye,
 // SPHERE-REFLECT) are carried there by uEyeToLocal, the inverse of the upper
 // 3x3 of view * model; local modes and the biased SPHERE are used as is.
 uniform mat3 uEyeToLocal;

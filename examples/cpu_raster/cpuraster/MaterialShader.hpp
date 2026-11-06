@@ -1,20 +1,6 @@
-// MaterialShader.hpp — CPU ports of the PoC's three GLSL material programs,
-// covering ALL THREE MaterialModels the extraction seam emits:
-//
-//   * Unlit    (unlit.frag)  — UnlitMaterial / lines / points / normal-less.
-//   * Phong    (lit.frag)    — Material: Blinn-Phong + textures + normal map.
-//   * Physical (pbr.frag)    — PhysicalMaterial: metallic-roughness GGX BRDF.
-//
-// Each is written against glsl.hpp so it reads as a near-verbatim transcription
-// of the GLSL — this is the "GLSL emulation" of the fixed-function programs:
-// same lighting math, same texture-slot semantics, same screen-space-derivative
-// TBN normal mapping, same colour-space rules (ADR-0027: Phong/Unlit in display
-// space, PhysicalMaterial linear with sRGB output), so a CPU frame matches the GL PoC.
-//
-// Each factory returns a Rasterizer::FragmentShader closure capturing the
-// resolved material + lights + textures by value.
-//
-// Out-of-SDK consumer code. namespace x3d::cpuraster.
+// CPU implementations of the Phong, Physical, and Unlit material shaders.
+// Colour-space policy: ADR-0027.
+// Factories capture resolved materials, lights, and textures by value.
 #ifndef X3D_CPURASTER_MATERIAL_SHADER_HPP
 #define X3D_CPURASTER_MATERIAL_SHADER_HPP
 
@@ -39,7 +25,7 @@ namespace ex = x3d::runtime::extract;
 // directional ones.
 //
 //   * Directional (positional=false): `dirEye` is the eye-space direction of
-//     TRAVEL; the light vector L = normalize(-dirEye) is constant per fragment.
+//     travel; the light vector L = normalize(-dirEye) is constant per fragment.
 //   * Positional (positional=true): `posEye` is the eye-space light position;
 //     per fragment L = normalize(posEye - fragPosEye), with X3D distance
 //     attenuation 1/max(c0 + c1·d + c2·d², 1) and no contribution past
@@ -354,14 +340,12 @@ inline MaterialTextures buildTextures(const ex::MaterialDesc &m, bool linearWork
 
 namespace detail {
 
-// ---------------------------------------------------------------------------
 // §18.4.3 MultiTexture stage combiner. The X3D `mode` names are the OpenGL /
 // D3D fixed-function texture-environment operators, so this follows that
-// convention (an ISO-vs-convention caveat is recorded in REQ-MULTITEXTURE):
+// convention:
 // arg1 = this stage's texture operand, arg2 = the running accumulation from the
 // previous stage (seeded with the surface base colour). Each stage output is
 // clamped to [0,1], as the fixed-function pipeline does.
-// ---------------------------------------------------------------------------
 inline glsl::vec4 clamp01(const glsl::vec4 &v) {
   return {glsl::clampf(v.x, 0.0f, 1.0f), glsl::clampf(v.y, 0.0f, 1.0f),
           glsl::clampf(v.z, 0.0f, 1.0f), glsl::clampf(v.w, 0.0f, 1.0f)};
@@ -570,11 +554,9 @@ inline glsl::vec3 F_Schlick(float VdotH, glsl::vec3 F0) {
 
 } // namespace detail
 
-// ---------------------------------------------------------------------------
 // UNLIT (unlit.frag): per-vertex Color or material baseColor; no lighting.
 // alpha = 1 - transparency carried on baseColor.a. Used for UnlitMaterial AND
 // the lines/points/normal-less paths (caller forces it).
-// ---------------------------------------------------------------------------
 inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
                                       const FogParams &fog = {}) {
   const glsl::vec4 baseColor = glsl::vec4(m.toRGBA());
@@ -595,10 +577,8 @@ inline FragmentShader makeUnlitShader(const ex::MaterialDesc &m, bool hasColors,
   };
 }
 
-// ---------------------------------------------------------------------------
 // PHONG (lit.frag): Blinn-Phong, two-sided, textures, normal map. Display
 // space: no sRGB decode or encode, so it matches UnlitMaterial (ADR-0027).
-// ---------------------------------------------------------------------------
 inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
                                       std::vector<EyeLight> lights,
                                       bool hasColors,
@@ -608,9 +588,6 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   const float ai = m.phong.ambientIntensity;
   const glsl::vec3 uSpecular = glsl::vec3(m.phong.specular);
   const float uShininess = m.phong.shininess;
-  // Compare the enum directly. AlphaMode is {Opaque=0, Mask=1, Blend=2}; the PoC
-  // GLSL now gates MASK on `uAlphaMode == 1` to match (RenderItem.hpp static_asserts
-  // pin the wire contract). This path is convention-agnostic — it never touches the int.
   const bool maskMode = (m.alphaMode == ex::AlphaMode::Mask);
   const float alphaCutoff = m.alphaCutoff;
   const float normalScale = m.normalScale;
@@ -693,11 +670,9 @@ inline FragmentShader makePhongShader(const ex::MaterialDesc &m,
   };
 }
 
-// ---------------------------------------------------------------------------
 // PHYSICAL (pbr.frag): metallic-roughness analytic GGX over directional and
 // positional (point/spot) lights (no IBL, matching the PoC). Two-sided, normal
 // map, sRGB output.
-// ---------------------------------------------------------------------------
 inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
                                     std::vector<EyeLight> lights, bool hasColors,
                                     const FogParams &fog = {}) {
@@ -740,9 +715,9 @@ inline FragmentShader makePbrShader(const ex::MaterialDesc &m,
     float alpha2 = glsl::maxf(roughness * roughness, 0.001f);
     alpha2 = alpha2 * alpha2;
 
-    // AO comes ONLY from the occlusion slot (PhysicalMaterial.occlusionTexture,
+    // AO comes only from the occlusion slot (PhysicalMaterial.occlusionTexture,
     // §12.4.6). The metallic-roughness texture carries roughness in G and
-    // metallic in B; its R channel is NOT an occlusion source unless the map is
+    // metallic in B; its R channel is not an occlusion source unless the map is
     // explicitly ORM-packed (the extractor emits no such marker, so we never
     // derive AO from tx.mr). Matches pbr.frag.
     float ao = 1.0f;
@@ -819,16 +794,13 @@ inline FragmentShader makeModelShader(const ex::MaterialDesc &m,
   return makePhongShader(m, lights, hasColors, fog);
 }
 
-// ---------------------------------------------------------------------------
-// Dispatcher: pick the shader for a material model. `forceUnlit` is the B4
-// consumer contract (lines/points/normal-less route to Unlit regardless of
-// model); the caller computes it from topology + hasNormals.
+// Lines, points, and meshes without normals use Unlit regardless of material.
+// The caller computes forceUnlit from topology and hasNormals.
 //
-// X3D v4 Appearance.backMaterial (MAT-006): when present and model-compatible,
+// X3D v4 Appearance.backMaterial: when present and model-compatible,
 // back-facing fragments are shaded with the back material. The per-model shaders
 // already flip the geometric normal for !frontFacing, so each side lights
 // correctly.
-// ---------------------------------------------------------------------------
 inline FragmentShader makeMaterialShader(const ex::MaterialDesc &m,
                                          const std::vector<EyeLight> &lights,
                                          bool hasColors, bool forceUnlit,

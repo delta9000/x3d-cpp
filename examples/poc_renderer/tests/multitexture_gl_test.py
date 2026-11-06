@@ -1,4 +1,4 @@
-"""Headless GL regression for MultiTexture in the OpenGL PoC (REQ-MULTITEXTURE).
+"""Headless GL regression for MultiTexture in the OpenGL PoC.
 
 §18.4.3: each MultiTexture stage combines its texture (arg1) with the previous
 result or the colour its source selects (arg2), using the UV set its
@@ -11,7 +11,7 @@ set 0 samples the left texel of 2x1 textures, set 1 the right texel.
   * source: one white stage MODULATEs the FACTOR colour (blue) instead of the
     surface colour, so the quad is blue.
 
-REQ-MULTITEXTURE-2 (the PoC matches cpu_raster beyond four stages and sets):
+Additional stages, UV sets, and coordinate generators:
 
   * eight stages over eight UV sets: stage 0 REPLACEs with red (set 0), six
     white MODULATE stages follow, and stage 7 ADDs green from set 7 (the right

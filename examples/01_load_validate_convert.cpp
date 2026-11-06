@@ -1,5 +1,4 @@
 // examples/01_load_validate_convert.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // Headless LOAD → VALIDATE → CONVERT using only the x3d::sdk façade.
 //
 //   • Load any of the 4 X3D encodings (XML/ClassicVRML/VRML97/JSON, + gzip)
@@ -11,7 +10,6 @@
 //
 // Build: configured automatically when X3D_CPP_BUILD_EXAMPLES=ON.
 // Run:   01_load_validate_convert [path/to/scene.x3d|.x3dv|.wrl|.json]
-// ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
 #include <iostream>

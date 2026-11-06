@@ -4,7 +4,7 @@
 // otherwise uBaseColor.rgb. For lines and points, the caller supplies the
 // material emissiveColor (§11.2.2.5). Alpha is uBaseColor.a.
 //
-// A textured Appearance with NO Material is unlit per spec (§12.2.5): the
+// A textured Appearance with no Material is unlit per spec (§12.2.5): the
 // extractor surfaces it as MaterialModel::Unlit with the image on the Emissive
 // slot. When uHasTexture != 0 the texture modulates the (white) surface color so
 // the unlit textured surface shows the image — without it the sphere/texture-style
@@ -46,7 +46,7 @@ bool hatchPixel() {
     return positive || negative;
 }
 
-// ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
+// Fog (§24.4.2 / §17 Table 17.5)
 // visibilityRange is already world-scaled by the extractor; 0 disables fog.
 uniform vec3  uFogColor;
 uniform int   uFogType;            // 0 = LINEAR, 1 = EXPONENTIAL.

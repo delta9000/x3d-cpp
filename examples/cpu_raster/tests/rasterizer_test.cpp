@@ -39,7 +39,7 @@ int main() {
   const g::mat4 I = g::mat4::identity();
   const g::mat3 I3 = g::mat3::identity();
 
-  // ---- Coverage: a red quad fills the framebuffer ----
+  // Coverage: a red quad fills the framebuffer
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});
@@ -54,7 +54,7 @@ int main() {
     CHECK(near(corner.x, 1.0f));
   }
 
-  // ---- Depth occlusion: a nearer blue quad wins; the farther red is hidden ----
+  // Depth occlusion: a nearer blue quad wins; the farther red is hidden
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});
@@ -67,13 +67,13 @@ int main() {
                     BlendMode::Opaque, blue); // nearer (z=-0.5)
     g::vec4 ctr = fb.colorAt(8, 8);
     CHECK(near(ctr.z, 1.0f) && near(ctr.x, 0.0f)); // blue, red occluded.
-    // Draw red again farther — must NOT overwrite the nearer blue.
+    // Draw red again farther — must not overwrite the nearer blue.
     r.drawTriangles(quad(0.9f), quadIdx(), I, I, I, I3, true, true,
                     BlendMode::Opaque, red);
     CHECK(near(fb.colorAt(8, 8).z, 1.0f));
   }
 
-  // ---- Back-face cull: a CW (back-facing) solid quad draws nothing ----
+  // Back-face cull: a CW (back-facing) solid quad draws nothing
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});
@@ -106,7 +106,7 @@ int main() {
     CHECK(near(fb.colorAt(8, 8).y, 1.0f));
   }
 
-  // ---- Perspective-correct varying: interpolate texcoord across the quad ----
+  // Perspective-correct varying: interpolate texcoord across the quad
   {
     Framebuffer fb(32, 32);
     fb.clear({0, 0, 0});

@@ -1,4 +1,4 @@
-"""Headless GL regression for light shadows in the OpenGL PoC (REQ-SHADOW).
+"""Headless GL regression for light shadows in the OpenGL PoC.
 
 §17.2.2.8 / §17.3.1: a light with shadows TRUE does not reach a fragment that a
 Shape with castShadow TRUE hides from it; shadowIntensity sets how dark the

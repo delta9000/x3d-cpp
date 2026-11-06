@@ -1,4 +1,4 @@
-"""Headless GL regression for scene-authored shaders (REQ-SHADER, §31).
+"""Headless GL regression for scene-authored shaders (§31).
 
 The SDK selects each Appearance's shader against the PoC's GL compiler and
 hands the program over on RenderItem::shaderProgram. A selected program draws
@@ -77,7 +77,7 @@ with tempfile.TemporaryDirectory() as directory:
     invalid = center(tmp, 'invalid', composed('FragColor = vec4(uColor, 1.0) +;'))
     assert near(invalid, (0, 0, 255)), invalid
 
-    # REQ-SHADER-2: SFNode -> sampler2D, MFNode -> sampler2D[], MF -> arrays.
+    # SFNode -> sampler2D, MFNode -> sampler2D[], MF -> arrays.
     arrays = center(tmp, 'arrays', f'''<ComposedShader language="GLSL">
 <field name="uTex" type="SFNode" accessType="inputOutput">
 <PixelTexture image="1 1 3 0x00FF00"/></field>

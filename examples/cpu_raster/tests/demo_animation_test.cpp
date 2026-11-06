@@ -1,5 +1,5 @@
 // demo_animation_test.cpp — the interpolator demo scenes actually animate over
-// time (TimeSensor -> interpolator -> field ROUTE moves pixels), and (Task 3)
+// time (TimeSensor -> interpolator -> field ROUTE moves pixels), and
 // fixed sample frames match committed golden PPMs byte-for-byte.
 #include "RenderItem.hpp"
 #include "SceneExtractor.hpp"
@@ -38,19 +38,10 @@ constexpr int kW = 256, kH = 144, kFps = 30;
 // step from t=0 frame-by-frame to stay byte-identical to the binary's --animate
 // output, even though the interpolators themselves only depend on `now`.
 //
-// NB: the demo scenes' ROUTE `toField`s use BARE field names
-// (translation / rotation / diffuseColor), NOT the `set_`-prefixed aliases —
-// buildFrom() route validation rejects the `set_` aliases on those inputOutput
-// fields (they are not in the generated field table). The `set_fraction` input
-// on the interpolators IS a real inputOnly field, so it is accepted as-is.
-//
-// IMPORTANT: this test intentionally builds the extractor with the DEFAULT
-// (null) texture resolver and a bare RenderOptions (no glyph atlas, no skybox) —
-// UNLIKE main.cpp's --animate path, which uses cr::makeTextureResolver(...). So
-// the goldens are NOT the literal WebM frames; they are a deterministic
-// render-path check, blessed via this exact path. Do NOT "align" this with
-// main.cpp's extractor/RenderOptions setup — doing so invalidates all six
-// committed goldens.
+// ROUTE targets use bare inputOutput field names, because buildFrom() validates
+// against the generated field table. set_fraction is a real inputOnly field.
+// Goldens use a null texture resolver and no glyph atlas or skybox;
+// changing these inputs requires regenerating them.
 [[nodiscard]] cr::Framebuffer renderFrame(const std::string &name,
                                           int frameIndex) {
   const std::string scenePath =

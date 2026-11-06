@@ -1,4 +1,4 @@
-"""Headless GL regression for ClipPlane in the OpenGL PoC (REQ-CLIP, §11.4.1).
+"""Headless GL regression for ClipPlane in the OpenGL PoC (§11.4.1).
 
 A ClipPlane keeps the half-space a*x + b*y + c*z + d >= 0 of its siblings.
 Each built-in program (Phong, PBR, unlit) must cut a box at x = 0 when the

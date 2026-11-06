@@ -36,7 +36,7 @@ static cr::Texture toTex(const ex::TexturePixels &p, bool srgb = false) {
 }
 
 int main() {
-  // ---- UV-grid orientation: red=U (→right), green=V (→up), bottom-left origin.
+  // UV-grid orientation: red=U (→right), green=V (→up), bottom-left origin.
   {
     cr::Texture uv = toTex(cr::makeUvGrid(), /*srgb=*/false);
     g::vec4 bl = uv.sample({0.12f, 0.12f}); // bottom-left: low u, low v.
@@ -48,7 +48,7 @@ int main() {
     CHECK(tl.y > tl.x);        // top-left is green-dominant.
   }
 
-  // ---- Checker: two distinct tones, adjacent cells differ.
+  // Checker: two distinct tones, adjacent cells differ.
   {
     cr::Texture ck = toTex(cr::makeChecker(256, 8));
     float a = ck.sample({0.0625f, 0.0625f}).x; // centre of cell (0,0).
@@ -56,7 +56,7 @@ int main() {
     CHECK(std::fabs(a - b) > 0.4f);            // light vs dark.
   }
 
-  // ---- Resolver: proc: synthesizes; unknown ext fails.
+  // Resolver: proc: synthesizes; unknown ext fails.
   {
     cr::ex::TextureResolver r = cr::makeTextureResolver(".");
     CHECK(r("proc:checker").ready() && !r("proc:checker").pixels->rgba.empty());
@@ -64,7 +64,7 @@ int main() {
     CHECK(r("missing.png").failed());
   }
 
-  // ---- PPM round-trip preserves orientation (bottom-left corner pixel).
+  // PPM round-trip preserves orientation (bottom-left corner pixel).
   {
     ex::TexturePixels src = cr::makeUvGrid(64, 4);
     const std::string tmp = "._cpuraster_tex_test.ppm";
@@ -76,7 +76,7 @@ int main() {
     CHECK(rd.rgba[0] == src.rgba[0] && rd.rgba[1] == src.rgba[1]);
   }
 
-  // ---- End-to-end: textured scene resolves + renders with detail.
+  // End-to-end: textured scene resolves + renders with detail.
   {
     const std::string scene = std::string(X3D_CPURASTER_ASSET_DIR) + "/textured_scene.x3d";
     x3d::runtime::X3DDocument doc;
@@ -133,7 +133,7 @@ int main() {
     CHECK(var > 0.01); // visible texture contrast.
   }
 
-  // ---- Wrap modes (§18.4.9): REPEAT / MIRRORED_REPEAT / CLAMP_TO_EDGE /
+  // Wrap modes (§18.4.9): REPEAT / MIRRORED_REPEAT / CLAMP_TO_EDGE /
   // CLAMP_TO_BOUNDARY on a tiny synthetic 4x1 ramp. Texture::fromRGBA8 takes a
   // Sampler so we can drive each mode directly (no scene needed).
   {
@@ -170,7 +170,7 @@ int main() {
     CHECK(bd.sample({-0.25f, 0.5f}).x < 0.1f + 1e-4f); // also out on the left.
     CHECK(bd.sample({0.5f, 0.5f}).x > 0.1f);           // in range -> sampled, not border.
 
-    // Magnification NEAREST_PIXEL fetches one texel; DEFAULT stays bilinear.
+    // Magnification NEAREST_PIXEL fetches one texel; the default stays bilinear.
     s.wrapS = ex::BoundaryMode::Repeat;
     s.nearestMagnification = true;
     cr::Texture nn = cr::Texture::fromRGBA8(px, 4, 1, s, false);

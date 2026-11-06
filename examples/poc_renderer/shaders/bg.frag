@@ -1,11 +1,11 @@
 #version 330 core
-// bg.frag — X3D Background sky/ground gradient (§Background, issue #39),
+// bg.frag — X3D Background sky/ground gradient (§Background),
 // painted as an infinite dome behind the scene. Each pixel's view ray is
 // unprojected to a world direction (mirrors the perspective() matrix built
 // on the C++ side: xn/proj[0][0], yn/proj[1][1], -1, then rotated by the
 // inverse view). The angle from +Y (0 = zenith, pi = nadir) selects the sky
 // band; groundColor only covers [0, last groundAngle] measured from the
-// nadir and does NOT extend past it — beyond that (when the last
+// nadir and does not extend past it — beyond that (when the last
 // groundAngle < pi/2) the sky shows through, per the NIST
 // verify_lastground.x3d conformance case.
 //

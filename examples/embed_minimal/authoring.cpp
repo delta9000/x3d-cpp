@@ -1,4 +1,4 @@
-// The README "hello world" (§Quickstart 2), built against the SLIM authoring
+// The README "hello world" (§Quickstart 2), built against the slim authoring
 // surface: x3d/authoring.hpp + the x3d_cpp::authoring target (no runtime, no
 // extraction). The README shows the same program with x3d/sdk.hpp — the
 // graph-building lines are identical; only the umbrella header differs.

@@ -1,8 +1,5 @@
-# ---------------------------------------------------------------------------
-# Asset-import authoring footprint smoke. Builds a tiny consumer against ONLY
+# Asset-import authoring footprint smoke. Builds a tiny consumer against only
 # x3d_cpp::authoring to prove the slim surface links and serializes a scene.
-# Task 11 finalizes the full asset-import subdirectory.
-# ---------------------------------------------------------------------------
 add_executable(x3d_authoring_smoke
     "${CMAKE_CURRENT_SOURCE_DIR}/footprint/authoring_smoke.cpp")
 target_link_libraries(x3d_authoring_smoke PRIVATE x3d_cpp::authoring)
@@ -11,11 +8,7 @@ target_link_options(x3d_authoring_smoke PRIVATE -Wl,--gc-sections -Wl,-Map=$<TAR
 add_test(NAME x3d_assetimport_authoring_smoke COMMAND x3d_authoring_smoke)
 
 
-# ---------------------------------------------------------------------------
-# ImportScene IR + ImportSource seam, backed by the dependency-free
-# FixtureSource (Task 4) — synthetic scenes for CI without assimp and for
-# every emit test (Tasks 5-8).
-# ---------------------------------------------------------------------------
+# FixtureSource supplies synthetic scenes without assimp.
 add_executable(x3d_assetimport_fixture_source
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/fixture_source.cpp"
@@ -26,10 +19,8 @@ target_include_directories(x3d_assetimport_fixture_source PRIVATE
 target_compile_features(x3d_assetimport_fixture_source PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_fixture_source COMMAND x3d_assetimport_fixture_source)
 
-# ---------------------------------------------------------------------------
 # BackendRegistry: pure priority/name selection over ImportSource backends.
 # Unit-tested with fake backends — no concrete backend build gate required.
-# ---------------------------------------------------------------------------
 add_executable(x3d_assetimport_backend_registry
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/backend_registry_test.cpp")
@@ -39,11 +30,9 @@ target_include_directories(x3d_assetimport_backend_registry PRIVATE
 target_compile_features(x3d_assetimport_backend_registry PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_backend_registry COMMAND x3d_assetimport_backend_registry)
 
-# ---------------------------------------------------------------------------
-# emit(): ImportScene IR -> x3d::runtime::X3DDocument, geometry core (Task 5).
-# Links ONLY x3d_cpp::authoring — proves the consumer never needs parse/
+# emit(): ImportScene IR -> x3d::runtime::X3DDocument, geometry core.
+# Links only x3d_cpp::authoring — proves the consumer never needs parse/
 # execution/extract/sdk to build a document from scratch.
-# ---------------------------------------------------------------------------
 add_executable(x3d_assetimport_emit
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
@@ -58,12 +47,10 @@ target_link_libraries(x3d_assetimport_emit PRIVATE x3d_cpp::authoring)
 target_compile_features(x3d_assetimport_emit PRIVATE cxx_std_20)
 add_test(NAME x3d_assetimport_emit COMMAND x3d_assetimport_emit)
 
-# ---------------------------------------------------------------------------
-# Texture pipeline (Task 9): decode/dedup/re-encode ImportScene textures into
+# Texture pipeline: decode/dedup/re-encode ImportScene textures into
 # <outDir>/assets/, returning a TexturePlan emit() threads into ImageTexture
 # slots. Decodes through the x3d_stb seam; re-encodes PNG via the vendored
 # stb_image_write.h. Only available when -DX3D_CPP_BUILD_STB=ON.
-# ---------------------------------------------------------------------------
 if(TARGET x3d_stb)
     add_executable(x3d_assetimport_texture
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
@@ -85,12 +72,7 @@ else()
                    "skipping the texture_pipeline test target.")
 endif()
 
-# ---------------------------------------------------------------------------
-# assimp ImportSource backend (Task 10): gated behind X3D_CPP_BUILD_ASSIMP.
-# Only compiles/links assimp when the option is ON and find_package(assimp)
-# succeeds; otherwise skipped with a clear message (never a hard failure on
-# the absence of assimp — Task 13's CI handles the no-assimp job).
-# ---------------------------------------------------------------------------
+# Build the assimp backend when enabled and found.
 if(X3D_CPP_BUILD_ASSIMP)
     find_package(assimp CONFIG QUIET)
     if(TARGET assimp::assimp)
@@ -118,11 +100,9 @@ else()
                    "(-DX3D_CPP_BUILD_ASSIMP=ON to enable).")
 endif()
 
-# ---------------------------------------------------------------------------
 # cgltf ImportSource backend: gated behind X3D_CPP_BUILD_CGLTF (default ON).
 # Header-only (vendored third_party/cgltf.h); the load test drives the
 # committed twobox.glb fixture through the full ImportScene surface.
-# ---------------------------------------------------------------------------
 if(X3D_CPP_BUILD_CGLTF)
     add_executable(x3d_assetimport_cgltf
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
@@ -141,11 +121,9 @@ else()
                    "(-DX3D_CPP_BUILD_CGLTF=ON to enable).")
 endif()
 
-# ---------------------------------------------------------------------------
-# Backend swap-test (seam genericity, U1-U4): loads the SAME twobox.glb through
+# Backend swap-test (seam genericity, U1-U4): loads the same twobox.glb through
 # both cgltf and assimp and asserts their ImportScenes agree on structural
 # invariants. Compiles only when BOTH backends are available.
-# ---------------------------------------------------------------------------
 if(X3D_CPP_BUILD_CGLTF AND X3D_CPP_BUILD_ASSIMP)
     find_package(assimp CONFIG QUIET)
     if(TARGET assimp::assimp)
@@ -166,10 +144,8 @@ if(X3D_CPP_BUILD_CGLTF AND X3D_CPP_BUILD_ASSIMP)
     endif()
 endif()
 
-# ---------------------------------------------------------------------------
 # USD ImportSource backend: gated behind X3D_CPP_BUILD_USD.
 # Compiles/links tinyusdz static library when the option is ON.
-# ---------------------------------------------------------------------------
 option(X3D_CPP_BUILD_USD "Build USD (USDA/USDC/USDZ) asset import backend" OFF)
 
 if(X3D_CPP_BUILD_USD)
@@ -222,14 +198,12 @@ if(X3D_CPP_BUILD_USD)
     add_subdirectory(${tinyusdz_SOURCE_DIR} ${tinyusdz_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
-# ---------------------------------------------------------------------------
 # --emit-glsl support: embed the canonical portable UsdPreviewSurface shader
 # (examples/cpu_raster/shaders/usd_preview_surface.frag) into a generated
 # header via configure_file, so glsl_emit.cpp can text-transform select
 # `uniform` lines into `const` without a runtime file dependency on the
 # sibling example. Cross-example coupling: cpu_raster owns the frozen shader
 # contract; asset_import only reads it at CMake configure time.
-# ---------------------------------------------------------------------------
 set(X3D_USD_PREVIEW_SURFACE_FRAG "${CMAKE_CURRENT_SOURCE_DIR}/../cpu_raster/shaders/usd_preview_surface.frag")
 file(READ "${X3D_USD_PREVIEW_SURFACE_FRAG}" X3D_USD_PREVIEW_SURFACE_FRAG_CONTENT)
 configure_file(
@@ -237,9 +211,7 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/generated/usd_preview_surface_embed.hpp"
     @ONLY)
 
-# ---------------------------------------------------------------------------
-# final target: x3d_asset_import (Task 11)
-# ---------------------------------------------------------------------------
+# final target: x3d_asset_import
 set(ASSET_IMPORT_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"
@@ -309,9 +281,7 @@ if(HAVE_CGLTF)
     target_compile_definitions(x3d_asset_import PRIVATE X3D_ASSET_IMPORT_HAVE_CGLTF=1)
 endif()
 
-# ---------------------------------------------------------------------------
 # USD unit test
-# ---------------------------------------------------------------------------
 if(HAVE_USD)
     add_executable(x3d_assetimport_usd
         "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
@@ -330,9 +300,7 @@ if(HAVE_USD)
     add_test(NAME x3d_assetimport_usd COMMAND x3d_assetimport_usd)
 endif()
 
-# ---------------------------------------------------------------------------
-# round-trip test: x3d_assetimport_roundtrip (Task 11)
-# ---------------------------------------------------------------------------
+# round-trip test: x3d_assetimport_roundtrip
 add_executable(x3d_assetimport_roundtrip
     "${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/test_support/doctest_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/emit.cpp"

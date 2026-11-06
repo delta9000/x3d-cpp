@@ -8,7 +8,7 @@
 
 namespace x3d::asset_import {
 
-// One selectable import backend. `priority` inspects the WHOLE input string
+// One selectable import backend. `priority` inspects the whole input string
 // (so a "fixture:" prefix and a ".glb" extension resolve through one path); it
 // returns a positive score when it can handle the input, <=0 to decline.
 struct ImportBackend {
@@ -17,9 +17,6 @@ struct ImportBackend {
   std::function<std::unique_ptr<ImportSource>()> make;
 };
 
-// Resolves which backend loads a given input. Pure (holds only its vector) so
-// the selection/override/decline logic is unit-testable with fake backends,
-// independent of any concrete backend's build gate.
 class BackendRegistry {
 public:
   void add(ImportBackend b) { backends_.push_back(std::move(b)); }

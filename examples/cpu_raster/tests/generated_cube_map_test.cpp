@@ -1,4 +1,4 @@
-// generated_cube_map_test.cpp — REQ-CUBE: §34.4.2 GeneratedCubeMapTexture
+// generated_cube_map_test.cpp — §34.4.2 GeneratedCubeMapTexture
 // rendered by the CPU reference host.
 //
 // An unlit radius-2 sphere at the origin carries a GeneratedCubeMapTexture and
@@ -17,7 +17,6 @@
 //   * With a persistent GeneratedCubeCache, NEXT_FRAME_ONLY keeps the faces
 //     after GeneratedCubeMapSystem resets it to NONE: a box changed later is
 //     not seen until update is set again.
-// Before this change the generated cube was an empty ref that sampled white.
 #include "RuntimeSession.hpp"
 #include "X3DParse.hpp"
 #include "cpuraster/SceneRender.hpp"

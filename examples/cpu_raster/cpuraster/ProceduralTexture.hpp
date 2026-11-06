@@ -1,22 +1,6 @@
-// ProceduralTexture.hpp — generated test textures + a TextureResolver, so
-// ImageTexture scenes render WITHOUT any committed binary asset or image decoder.
-//
-// Two sources, both dependency-free:
-//   * "proc:<name>"  — synthesized on the fly (checker / uvgrid / gradient /
-//                       brick / bars). No files, no decode.
-//   * "*.ppm"        — a binary PPM (P6) file next to the scene (a format we can
-//                       decode in ~20 lines). Lets you drop in real images too.
-// Everything else (png/jpg/http) -> Failed (the renderer falls back to flat
-// color), matching the seam's documented behavior.
-//
-// Pixel format follows the seam contract: RGBA8, tightly packed, origin
-// BOTTOM-LEFT (GL convention — matches MeshData::texcoords, no V-flip).
-//
-// The "uvgrid" texture is a deliberate orientation probe: red = U, green = V, so
-// bottom-left reads dark, bottom-right red, top-left green, top-right yellow —
-// a no-V-flip check you can read straight off the rendered image.
-//
-// Out-of-SDK consumer code. namespace x3d::cpuraster.
+// Procedural textures and file texture resolution for the CPU renderer.
+// Pixels are tightly packed RGBA8 with a bottom-left origin.
+// The uvgrid probe maps U to red and V to green to expose orientation errors.
 #ifndef X3D_CPURASTER_PROCEDURAL_TEXTURE_HPP
 #define X3D_CPURASTER_PROCEDURAL_TEXTURE_HPP
 
@@ -51,7 +35,7 @@ inline ex::TexturePixels rgbaSurface(int W, int H, std::vector<std::uint8_t> px)
 
 } // namespace texgen
 
-// ---- Generators -----------------------------------------------------------
+// Generators
 
 // Checkerboard of `cells` x `cells` squares in two colors.
 inline ex::TexturePixels makeChecker(int size = 256, int cells = 8) {
@@ -132,7 +116,7 @@ inline ex::TexturePixels makeNamed(const std::string &name) {
   return makeChecker();
 }
 
-// ---- PPM (P6) IO ----------------------------------------------------------
+// PPM (P6) IO
 
 // Decode a binary PPM (P6) into a bottom-left-origin RGBA surface (alpha=255).
 // PPM is top-down, so rows are flipped. Returns empty on malformed input.
@@ -189,7 +173,7 @@ inline bool writePpm(const std::string &path, const ex::TexturePixels &t) {
   return static_cast<bool>(out);
 }
 
-// ---- The resolver ---------------------------------------------------------
+// The resolver
 
 // A TextureResolver bound to a scene dir: "proc:<name>" -> generated; "*.ppm" ->
 // decoded file; anything else -> Failed (flat-color fallback).

@@ -1,104 +1,51 @@
-// examples/poc_renderer/main.cpp
-//
-// PoC OpenGL renderer — an out-of-SDK CONSUMER of the headless x3d_cpp runtime
-// SDK. The renderer is NOT part of the SDK; it links only the INTERFACE alias
-// x3d_cpp::x3d_cpp across the extraction seam and is firewalled behind
-// X3D_CPP_BUILD_POC=OFF so it never touches the default build/golden/ctest path.
-//
-// MILESTONE COVERAGE
-//   M0 (task T9): Wayland GLFW window + glad core-3.3 context + camera + a
-//     clear-to-Background-color render loop with a GL_KHR_debug callback and a
-//     forced full-screen clear sanity step (so a black screen is diagnosable).
-//   M1 (task T10): draw one extracted mesh, unlit-flat, via the T7a minimal
-//     SceneExtractor (GpuMesh cache keyed by GeomId, GL_CULL_FACE OFF).
-//   M2 (task T11): incremental delta()-driven GpuMesh cache + a USE'd shape
-//     rendered at both per-path world transforms.
-//   M3 (task T12): per-pixel LIGHTING (Lambert + ambient, two-sided
-//     N=gl_FrontFacing?N:-N via lit.vert/lit.frag), MaterialDesc color
-//     (diffuse/emissive/transparency + per-vertex Color override), and per-draw
-//     back-face CULLING honoring MeshData.ccw/solid. The bound NavigationInfo
-//     headlight (§23.4.4) is an additional camera-space directional light
-//     whenever headlight is TRUE (default), independent of the scene's lights;
-//     the extractor's world-resolved LightDescs (global=false lights
-//     are NOT promoted to scene-wide) light the scene too.
-//
-// PHASE 5 (material-shader PoC program):
-//   Per-program dispatch in drawItem: unlit / phong / pbr / author-shader.
-//   lit.frag extended: normal-map + emissive-tex + specular-tex + slot uniforms.
-//   pbr.frag: metallic-roughness analytic BRDF (NO IBL — Phase 4 deferred).
-//   author-shader: ComposedShader dispatch via ShaderBindingPlan vocabulary.
-//   Gamma/sRGB: LINEARtoSRGB at fragment output; sRGB texture internal format.
-//
-// #39 (Background gradient): the M0 flat clear above only ever painted the
-// bound Background's first skyColor. bg.vert/bg.frag now paint the FULL
-// sky/ground gradient (skyColor/skyAngle/groundColor/groundAngle) as a
-// depth-test-disabled fullscreen dome drawn before scene geometry, ported
-// independently from examples/cpu_raster's skyGroundColor()/colorRamp() (same
-// §Background semantics: groundColor never extends past its last groundAngle,
-// so a last angle < pi/2 leaves that band showing sky through it — pinned by
-// the NIST verify_lastground.x3d conformance case). The flat clear remains
-// the fast path for a single-skyColor Background (or none bound).
-//
-// The M0 GATE is configure+build+LINK. The interactive GUI is run by the user on
-// a real Wayland session, but CI's `examples-gate` (and `mise run validate-examples`)
-// now also exercise the GL pipeline headlessly: the --screenshot path runs under
-// Xvfb + mesa software GL (llvmpipe), so a renderer-side break can no longer hide.
-//
-// USAGE:  x3d_poc_renderer [--headless] [scene.x3d]
-//   With no scene argument it loads the bundled assets/triangle.x3d (first-light).
-//   --headless parses + extracts the scene, prints the RenderItem count, the
-//     first item's vertex count, and the T12 lit self-check (headlight flag,
-//     active light count incl. the §23.4.4 headlight, and item[0]'s material
-//     color + whether its mesh carries shading normals), then exits 0 WITHOUT
-//     ever creating a GL context or a window. This is the build-side acceptance
-//     probe: it runs in CI / over SSH with no display, proving the asset parses
-//     and SceneExtractor yields a lit-drawable mesh, independent of the
-//     on-screen visual verify.
+// OpenGL consumer of the headless runtime extraction API.
+// Usage: x3d_poc_renderer [--headless] [scene.x3d]
+// --headless parses and extracts the scene without creating a window or GL context.
 
-#include <glad/gl.h>     // MUST precede GLFW so GLFW does not pull in <GL/gl.h>.
+#include <glad/gl.h> // Must precede GLFW to prevent inclusion of <GL/gl.h>.
 #include <GLFW/glfw3.h>
 
-#include "imgui.h"                   // Dear ImGui overlay (PoC-owned).
+#include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "stb_image.h"   // B8 texture decode (PoC-owned; the SDK never decodes).
+#include "stb_image.h"
 
-#include "AssetResolver.hpp"        // B8 asset-resolver seam (the bytes path)
-#include "GeometryBounds.hpp"      // geombounds::getField (Background skyColor read)
-#include "Mat4.hpp"                 // x3d::runtime::Mat4 (column-major, GL-native)
+#include "AssetResolver.hpp"
+#include "GeometryBounds.hpp"
+#include "Mat4.hpp"
 #include "MovieDecoder.hpp"         // MovieTexture frame-decode seam (ADR-0041)
-#include "PlMpegMovieDecoder.hpp"   // MovieDecoder backend A (x3d_plmpeg io backend)
-#include "RenderItem.hpp"          // extract descriptors
-#include "SceneExtractor.hpp"      // T7a minimal extractor
+#include "PlMpegMovieDecoder.hpp"
+#include "RenderItem.hpp"
+#include "SceneExtractor.hpp"
 #include "ShaderOptions.hpp"        // §31 shader validator/resolver seam
 #include "io/file/FileResolver.hpp" // §31 ShaderPart urls (scene-relative files)
-#include "ShaderBindingPlan.hpp"   // Phase 5 author-shader vocab dispatch
-#include "StbttGlyphAtlas.hpp"     // T-TEXT glyph atlas (x3d_stbtt io backend)
-#include "TextureResolver.hpp"     // T-TEX decoded-pixel seam (the consumer decode)
+#include "ShaderBindingPlan.hpp"
+#include "StbttGlyphAtlas.hpp"
+#include "TextureResolver.hpp"
 #include "DdsDecode.hpp"           // DDS 2D / cube-map images (§34.4.3)
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
-#include "X3DParse.hpp"            // x3d::codec::parseFile
-#include "X3DSceneBridge.hpp"     // BridgeResult + buildFrom + attachInteractive
-#include "draw_math.hpp"          // renderer-side hot-path normal-matrix helper
-#include "input.hpp"              // InputBridge + unproject + keycode map
+#include "X3DParse.hpp"
+#include "X3DSceneBridge.hpp"
+#include "draw_math.hpp"
+#include "input.hpp"
 
-#include <algorithm> // std::sort (B7 back-to-front transparency sort)
+#include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef> // offsetof
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
-#include <iterator> // std::istreambuf_iterator (B8 local-file resolver)
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
-#include <utility> // std::pair (B7 blended-item sort key)
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -107,18 +54,13 @@ namespace {
 using x3d::runtime::Mat4;
 using x3d::runtime::Aabb;
 namespace ex = x3d::runtime::extract;
-// ADR-0039 moved the value types to x3d::core and the node types to x3d::nodes.
-// This out-of-SDK consumer names SFVec3f/SFColor/SFImage/X3DNode &c. unqualified,
-// so pull both namespaces in (scoped to this anonymous namespace).
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-// --------------------------------------------------------------------------
 // Small GL helpers. PoC-local; nothing here belongs in the SDK.
-// --------------------------------------------------------------------------
 
-// PoC perspective. fieldOfView from CameraDesc is X3D's MIN-dimension FOV; we
-// map it to the SHORTER window dimension and derive the other axis by aspect.
+// PoC perspective. fieldOfView from CameraDesc is X3D's min-dimension FOV; we
+// map it to the shorter window dimension and derive the other axis by aspect.
 // Right-handed, Y-up, clip-z in [-1,1] (GL convention). Column-major so it
 // uploads directly via .m.data().
 Mat4 perspective(float minFov, float aspect, float zNear, float zFar) {
@@ -126,7 +68,7 @@ Mat4 perspective(float minFov, float aspect, float zNear, float zFar) {
   // Map the min-dimension FOV to vertical/horizontal depending on orientation.
   float fovY = minFov;
   if (aspect < 1.0f) {
-    // Portrait: the shorter dimension is the WIDTH, so minFov is horizontal.
+    // Portrait: the shorter dimension is the width, so minFov is horizontal.
     // fovY = 2*atan(tan(fovX/2)/aspect).
     fovY = 2.0f * std::atan(std::tan(minFov * 0.5f) / aspect);
   }
@@ -140,7 +82,7 @@ Mat4 perspective(float minFov, float aspect, float zNear, float zFar) {
 }
 
 // Minimal vec3 helpers + a right-handed, Y-up, column-major lookAt (GL convention,
-// camera looks down its -Z). Used to FRAME a scene that authors no Viewpoint —
+// camera looks down its -Z). Used to frame a scene that authors no Viewpoint —
 // X3DExecutionContext::viewMatrix() returns identity in that case (eye at origin),
 // so a large/offset model would sit mostly behind or far from the camera. A real
 // browser "views all"; we do the same: place the eye back along a 3/4 direction at
@@ -344,8 +286,7 @@ GLuint linkProgram(GLuint vs, GLuint fs) {
   return p;
 }
 
-// GL_KHR_debug callback. Wired in M0 so a wrong winding / matrix / state bug
-// surfaces as a logged message instead of a silent black screen.
+// Report GL errors and state diagnostics.
 void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id,
                               GLenum severity, GLsizei /*length*/,
                               const GLchar *message, const void * /*user*/) {
@@ -358,20 +299,12 @@ void glfwErrorCallback(int code, const char *desc) {
   std::fprintf(stderr, "[GLFW] error %d: %s\n", code, desc);
 }
 
-// One GPU mesh per GeomId (upload-once / instance-N). M3 (T12) interleaves
-// position + normal + color per vertex so the lit shader has a shading normal
-// and an optional per-vertex Color override. Texcoords land at M4.
-//
-// The extractor guarantees parallel arrays: normals is either empty or the same
-// length as positions (flat per-face normals, EXPANDED so every vertex has one),
-// and colors likewise. When a stream is absent we synthesize a sane default
-// (up-normal / opaque-white) so the attribute layout is uniform — the shader
-// gates on uHasColors / a degenerate-normal guard rather than on buffer shape.
+// Missing vertex streams use defaults to keep a uniform attribute layout.
 struct GpuVertex {
   SFVec3f pos;
   SFVec3f normal;
   SFColorRGBA color;
-  SFVec2f texcoord; // B8: X3D LOCAL origin = bottom-left = GL; NO v-flip here.
+  SFVec2f texcoord; // X3D texture origin is bottom-left, matching GL; no flip.
   // §18.4.3 MultiTexture: UV sets 1..7 (aTexCoord1..7); a missing set repeats
   // the last authored set, so a channel beyond them samples that set, as
   // cpu_raster clamps it.
@@ -379,19 +312,20 @@ struct GpuVertex {
   float fogDepth; // §24.4.3 FogCoordinate depth (aFogDepth); -1 = none.
 };
 
+// GPU buffers are shared by all instances with the same GeomId.
 struct GpuMesh {
   GLuint vao = 0;
   GLuint vbo = 0;
   GLuint ebo = 0;
   GLsizei indexCount = 0;
-  ex::Topology topology = ex::Topology::Triangles; // B4: draw-call primitive.
+  ex::Topology topology = ex::Topology::Triangles; // Draw-call primitive.
   bool ccw = true;       // winding: front face is CCW when true.
   bool solid = true;     // solid => back-face cullable; false => double-sided.
-  bool hasNormals = false; // false => route to the unlit program (B4 contract).
+  bool hasNormals = false; // false => route to the unlit program.
   bool hasColors = false; // per-vertex Color present => overrides Material diffuse.
-  bool hasTexcoords = false; // B8: authored TextureCoordinate present => sampleable.
-  bool isGlyphMesh = false;  // T-TEXT: texcoords index the font atlas, not a material slot.
-  // B7: the mesh's LOCAL-frame centroid (mean of positions). Transformed by the
+  bool hasTexcoords = false; // Authored TextureCoordinate present => sampleable.
+  bool isGlyphMesh = false;  // Texcoords index the font atlas, not a material slot.
+  // the mesh's local-frame centroid (mean of positions). Transformed by the
   // per-path worldTransform at draw time to get a world-space sort key for the
   // back-to-front transparency pass. Cheap to keep here (computed once on upload).
   SFVec3f localCentroid{0.0f, 0.0f, 0.0f};
@@ -428,7 +362,7 @@ GpuSkin uploadSkin(const ex::RenderItem &item, const ex::MeshData &mesh,
   if (cpuFallback) return s;
   const auto &b = *item.skin->binding;
   // Per corner: (offset, count) into the influence buffer for the corner's
-  // source COORDINATE. Its normal is skinned with the same influences.
+  // source coordinate. Its normal is skinned with the same influences.
   std::vector<std::uint32_t> ranges(item.skin->sourceCoordIndex.size() * 2);
   for (std::size_t i = 0; i < item.skin->sourceCoordIndex.size(); ++i) {
     auto source = item.skin->sourceCoordIndex[i];
@@ -492,7 +426,7 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
   g.hasTexcoords = !m.texcoords.empty();
   g.isGlyphMesh = m.isGlyphMesh;
 
-  // LOCAL-frame centroid for the B7 transparency back-to-front sort.
+  // local-frame centroid for the transparency back-to-front sort.
   if (!m.positions.empty()) {
     SFVec3f sum{0.0f, 0.0f, 0.0f};
     for (const SFVec3f &p : m.positions) { sum.x += p.x; sum.y += p.y; sum.z += p.z; }
@@ -511,8 +445,8 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
     verts[i].color = (m.hasColors && i < m.colors.size())
                          ? m.colors[i]
                          : SFColorRGBA{1.0f, 1.0f, 1.0f, 1.0f};
-    // B8: texcoords are parallel to positions when authored (X3D bottom-left =
-    // GL convention; NO v-flip). Default (0,0) when the mesh has none.
+    // texcoords are parallel to positions when authored (X3D bottom-left =
+    // GL convention; no v-flip). Default (0,0) when the mesh has none.
     verts[i].texcoord =
         (i < m.texcoords.size()) ? m.texcoords[i] : SFVec2f{0.0f, 0.0f};
     const std::size_t lastSet = m.texcoordSets.empty() ? 0 : m.texcoordSets.size() - 1;
@@ -544,7 +478,7 @@ GpuMesh uploadMesh(const ex::MeshData &m) {
   glEnableVertexAttribArray(2); // aColor (rgba)
   glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
                         reinterpret_cast<void *>(offsetof(GpuVertex, color)));
-  glEnableVertexAttribArray(3); // aTexCoord (B8)
+  glEnableVertexAttribArray(3); // aTexCoord
   glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(GpuVertex),
                         reinterpret_cast<void *>(offsetof(GpuVertex, texcoord)));
   for (GLuint s = 0; s < 7; ++s) { // aTexCoord1..7 (§18.4.3 UV sets)
@@ -587,7 +521,7 @@ struct EyeLight {
   float cutOffAngle = 0.7854f;
 };
 
-// §31 MF author fields as a uniform array (REQ-SHADER-2): the elements share
+// §31 MF author fields as a uniform array: the elements share
 // one type, flattened in the element order the SF uploads use.
 void uploadAuthorArray(GLint loc, const std::vector<ex::X3DFieldValue> &elements) {
   std::vector<float> f;
@@ -621,25 +555,11 @@ void uploadAuthorArray(GLint loc, const std::vector<ex::X3DFieldValue> &elements
 
 inline constexpr int kMaxLights = 8;
 
-// #39: max sky/ground color bands the background gradient shader (bg.frag)
-// accepts, mirrored there as `kMaxBands`. NIST conformance content never
-// comes close; extra bands beyond this are silently dropped (matches the
-// existing kMaxLights convention above).
+// Must match bg.frag kMaxBands; additional color bands are ignored.
 inline constexpr int kMaxBgBands = 8;
 
-// Build the active eye-space light set for this frame from the
-// extractor's world-resolved LightDesc list and the bound NavigationInfo
-// headlight flag.
-//
-// HEADLIGHT (§23.4.4): headlight TRUE (default) means the browser turns the
-// headlight ON regardless of the scene's own lights; FALSE turns it off. So the
-// camera-space headlight is added whenever headlightOn, on top of any authored
-// directional lights (it is not a no-lights fallback). global=false
-// DirectionalLights are NOT promoted to scene-wide here; for this PoC we still
-// draw them (the dominant corpus case is a single global headlight-style light),
-// but a scoped light's scopeRoot is carried on LightDesc for a future
-// per-subtree pass — we do not blanket-illuminate from it beyond the documented
-// PoC simplification.
+// §23.4.4 adds the headlight independently of authored lights.
+// All authored lights are included here, without per-subtree scoping.
 std::vector<EyeLight> buildEyeLights(const std::vector<ex::LightDesc> &lights,
                                      const Mat4 &view, bool headlightOn) {
   std::vector<EyeLight> out;
@@ -678,23 +598,7 @@ std::vector<EyeLight> buildEyeLights(const std::vector<ex::LightDesc> &lights,
   return out;
 }
 
-// ==========================================================================
-// B8 TEXTURE PATH (PoC-owned consumer layer; the SDK never does I/O / decode).
-//
-// The SDK surfaces a TextureRef per material slot: Source::Url carries the URL
-// list VERBATIM, Source::Inline carries PixelTexture bytes. The PoC:
-//   * Source::Url   -> the asset RESOLVER (a local-file resolver relative to the
-//       scene dir, OWNED here, NOT the SDK) yields encoded bytes -> stb_image
-//       decode (NO vertical flip — X3D texcoords are already GL bottom-left).
-//   * Source::Inline-> decode the SFImage pixels directly (no resolver call).
-// then upload a GL texture cached by URL, wrap from repeatS/T + mipmap. When the
-// resolver returns Pending/Failed (or no texture slot exists) the draw falls
-// back to the flat material color.
-//
-// Contract (A) (render-time, MAY be Pending) is the one wired here. Contract (B)
-// (parse-time Inline/EXTERNPROTO node bytes, SYNC) is out of this PoC's scope —
-// the SDK already had nodes materialized before extraction.
-// ==========================================================================
+// Resolve URL or inline textures; pending/failed textures use the material fallback.
 
 // Directory portion of the scene path (so a relative texture URL resolves next
 // to the scene file, like a browser resolves relative to the document).
@@ -703,10 +607,7 @@ std::string dirOf(const std::string &path) {
   return (slash == std::string::npos) ? std::string(".") : path.substr(0, slash);
 }
 
-// A local-file asset resolver bound to the scene directory. This is the
-// CONSUMER's resolver (Decision B8: owned outside the SDK). It honors contract
-// (A): a missing file => Failed (the draw falls back to flat color); a real
-// async backend would return Pending here without blocking the frame.
+// Missing files fail resolution so the draw uses the material fallback.
 ex::AssetResolver makeLocalFileResolver(const std::string &sceneDir) {
   return [sceneDir](const std::string &url, ex::AssetKind /*kind*/) -> ex::AssetResult {
     // data: URIs and absolute http(s) are out of PoC scope -> Failed (flat color).
@@ -725,19 +626,9 @@ ex::AssetResolver makeLocalFileResolver(const std::string &sceneDir) {
   };
 }
 
-// A TextureResolver (T-TEX seam) bound to the scene directory. This is the
-// CONSUMER's decode path (the SDK never decodes image bytes): it reads the file
-// next to the scene, decodes it with stb_image to RGBA8, and hands the SDK the
-// decoded surface. The SDK threads it onto TextureRef.resolvedPixels so the draw
-// loop binds the GPU texture WITHOUT re-running the resolver itself.
-//
-// Pixel format contract (TextureResolver.hpp): RGBA8, tightly packed, origin
-// bottom-left = GL convention. stb_image decodes rows TOP-first, but GL treats
-// the first row as the texture's BOTTOM, so we flip on load to land bottom-up
-// (without this, file textures render vertically mirrored: see ConformanceNist
-// Geometry/Box/texture.x3d, where the VTS decal appeared upside-down).
-// http(s)/data: URIs and missing files => Failed (the PoC falls back to white);
-// a real async backend would return Pending here without blocking the frame.
+// Resolve scene-relative files to tightly packed RGBA8 pixels with bottom-left origin.
+// stb_image decodes top-first, so flip rows to match the TextureResolver contract.
+// Unsupported URLs and missing files fail resolution; the draw falls back to white.
 ex::TextureResolver makeLocalTextureResolver(const std::string &sceneDir) {
   return [sceneDir](const std::string &url) -> ex::TexturePixelResult {
     if (url.empty() || url.rfind("http://", 0) == 0 ||
@@ -803,10 +694,10 @@ std::map<std::string, std::string> resolveFontFaces() {
 }
 
 // Upload one decoded RGBA8 image to a GL texture; wrap + mipmap from sampler.
-// Phase 5.5: srgb=true → GL_SRGB8_ALPHA8 internal format so the driver
+// srgb=true → GL_SRGB8_ALPHA8 internal format so the driver
 // linearises the texels on sample (correct for BaseColor/Diffuse/Emissive).
 // srgb=false → GL_RGBA (data textures: Normal, MetallicRoughness, Occlusion,
-// Specular — stored in linear space already; must NOT be decoded again).
+// Specular — stored in linear space already; must not be decoded again).
 GLuint uploadGlTexture(const unsigned char *rgba, int w, int h, bool repeatS,
                        bool repeatT, bool mipmap, bool srgb = false) {
   GLuint tex = 0;
@@ -830,8 +721,8 @@ GLuint uploadGlTexture(const unsigned char *rgba, int w, int h, bool repeatS,
   return tex;
 }
 
-// Decode an inline X3D SFImage (1..4 components, row-major, BOTTOM-UP per the
-// X3D convention so it matches GL with NO flip) into a GL texture. Returns 0 on
+// Decode an inline X3D SFImage (1..4 components, row-major, bottom-up per the
+// X3D convention so it matches GL with no flip) into a GL texture. Returns 0 on
 // a malformed image.
 std::vector<unsigned char> sfImageRGBA(const SFImage &img) {
   const int w = img.width, h = img.height, nc = img.numComponents;
@@ -889,7 +780,7 @@ const ex::TextureRef *findTexSlot(const ex::MaterialDesc &mat,
   return nullptr;
 }
 
-// TXF-2: the material's first §18.4.8 TextureCoordinateGenerator, or null.
+// The material's first §18.4.8 TextureCoordinateGenerator, or null.
 // Only the vertex shaders' per-vertex vTexCoord fallback uses it; texgen.glsl
 // gives each texture its own mapping.
 const ex::TextureRef *texCoordGenRef(const ex::MaterialDesc &mat) {
@@ -946,7 +837,7 @@ int multiTextureModeCode(std::string token) {
 }
 
 // MovieTexture decode state (ADR-0041). The MovieDecoder owns per-URL codec
-// contexts; here we own ONE persistent GL texture per movie URL that we RE-UPLOAD
+// contexts; here we own one persistent GL texture per movie URL that we re-upload
 // each frame — unlike a still image, a movie frame changes every tick, so the
 // upload-once Url cache does not apply.
 struct MovieState {
@@ -984,11 +875,11 @@ GLuint uploadMovieFrame(GLuint tex, const ex::VideoFrame &f, bool repeatS,
   return tex;
 }
 
-// Resolve+upload (or fetch cached) a SINGLE TextureRef. Returns a GL texture id,
+// Resolve+upload (or fetch cached) a single TextureRef. Returns a GL texture id,
 // or 0 when there is no usable texture this frame (Pending / Failed / no slot).
 // This is the shared resolution core; per-program bind helpers call it with a
 // specific TextureRef they already located (via findTexSlot).
-// Phase 5.5: srgb=true → GL_SRGB8_ALPHA8 (color textures: BaseColor/Diffuse/
+// srgb=true → GL_SRGB8_ALPHA8 (color textures: BaseColor/Diffuse/
 // Emissive); srgb=false → GL_RGBA (data textures: Normal/MetallicRoughness/
 // Occlusion/Specular — linear space, no driver decode).
 // `movie` (when non-null) routes Source::Movie refs through the MovieDecoder seam.
@@ -1000,11 +891,11 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
 
   // §33 3D texture (T3D-1): the descriptor carries voxel bytes / slice refs, but
   // this renderer has no sampler3D path — return 0 so the caller uses the flat
-  // material color (same as the white fallback). 3D sampling is NOT wired here.
+  // material color (same as the white fallback). 3D sampling is not wired here.
   if (pick->source == ex::TextureRef::Source::Tex3D) return 0;
 
   // MovieTexture (ADR-0041): decode this frame's image via the MovieDecoder seam
-  // and (re)upload it. Pending holds the previously uploaded frame; Failed falls
+  // and upload it. Pending holds the cached frame; Failed falls
   // through the url fallback list (and ultimately to the white fallback).
   if (pick->source == ex::TextureRef::Source::Movie) {
     if (!movie || !movie->decoder) return 0;
@@ -1036,13 +927,8 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
 
   if (pick->source != ex::TextureRef::Source::Url || pick->url.empty()) return 0;
 
-  // v1 T-TEX: PREFER the SDK-threaded decoded pixels (TextureRef.resolvedPixels)
-  // from the embedder's TextureResolver seam. The SDK already decoded the bytes
-  // for us; the consumer just uploads them. Key the GL upload by the first url so
-  // it is shared/upload-once like the legacy path. A Pending resolve leaves the
-  // cache key absent (retry next frame, contract A). Only when the seam yielded
-  // nothing (Failed/no resolver wired) do we fall through to the legacy
-  // AssetResolver bytes path below (PoC-side stb_image decode).
+  // Use resolved pixels first, sharing the upload by URL. Pending URLs retry
+  // next frame; unresolved pixels fall through to the encoded-byte path.
   if (pick->resolvedPixels.ready() && !pick->resolvedPixels.pixels->rgba.empty()) {
     const std::string &key = pick->url.front();
     auto it = cache.byUrl.find(key);
@@ -1070,7 +956,7 @@ GLuint resolveTexRef(const ex::TextureRef *pick, TextureCache &caches,
 
     int w = 0, h = 0, comp = 0;
     // No vertical flip: X3D texcoords are bottom-left = GL; a reflexive flip
-    // would double-flip and break every texture (B8 invariant).
+    // would flip the texture a second time.
     stbi_set_flip_vertically_on_load(0);
     unsigned char *px = stbi_load_from_memory(res.bytes.data(),
                                               static_cast<int>(res.bytes.size()),
@@ -1247,15 +1133,13 @@ bool writeFramebufferPPM(const std::string &path, int w, int h) {
 } // namespace
 
 int main(int argc, char **argv) {
-  // ----------------------------------------------------------------------
   // 0. Argument parsing. `--headless` (anywhere) runs the no-GL extraction
   //    probe; the first non-flag argument is the scene path.
-  // ----------------------------------------------------------------------
   bool headless = false;
   std::string scenePath;
   std::string screenshotPath; // --screenshot <path>: render a few frames, dump a
                               // PPM via glReadPixels, then exit (GL acceptance).
-  // --animate <dir>: drive the event graph at a FIXED dt (frame/fps) and dump
+  // --animate <dir>: drive the event graph at a fixed dt (frame/fps) and dump
   // every frame as <dir>/frame_NNNN.ppm, then exit. Deterministic capture of the
   // realtime GL loop (interpolators/sequencers/ROUTEs) for headless demo reels.
   bool animate = false;
@@ -1267,13 +1151,8 @@ int main(int argc, char **argv) {
   // Mirrors how the Web3D/NIST conformance set generates its `*-front.jpg`
   // reference views, so screenshots line up apples-to-apples for the visual sweep.
   bool frontView = false;
-  // --pbr-shader <name> (or X3D_POC_PBR_SHADER env var): swap the PBR fragment
-  // program's source file. "pbr.frag" (the default, also what an unset/empty
-  // value resolves to) loads poc's native shaders/pbr.frag exactly as before —
-  // byte-identical to pre-flag behavior. Any other name is looked up in the
-  // sibling cpu_raster example's shaders dir (X3D_POC_PORTABLE_SHADER_DIR), so
-  // the SAME usd_preview_surface.frag source that runs in the CPU rasterizer's
-  // GLSL interpreter can also be swap-tested on real desktop GL here.
+  // --pbr-shader or X3D_POC_PBR_SHADER selects a PBR fragment source.
+  // pbr.frag loads from this example; other names load from cpu_raster/shaders.
   std::string pbrShaderName;
   if (const char *e = std::getenv("X3D_POC_PBR_SHADER"); e && *e) pbrShaderName = e;
   for (int i = 1; i < argc; ++i) {
@@ -1290,9 +1169,7 @@ int main(int argc, char **argv) {
   if (scenePath.empty())
     scenePath = std::string(X3D_POC_ASSET_DIR) + "/multishape.x3d";
 
-  // ----------------------------------------------------------------------
   // 1. Parse the scene and bring up the runtime context (SDK side).
-  // ----------------------------------------------------------------------
   std::fprintf(stderr, "[poc] loading %s\n", scenePath.c_str());
 
   x3d::runtime::X3DDocument doc;
@@ -1307,9 +1184,7 @@ int main(int argc, char **argv) {
   x3d::runtime::X3DExecutionContext ctx;
   ctx.buildSceneGraph(scene);
 
-  // CHECK the BridgeResult and bail/log on failure (unresolved EXTERNPROTO,
-  // rejected ROUTEs, ...). A bad bridge is a load-time error, not a draw-time
-  // surprise.
+  // Report rejected routes before drawing the remaining scene.
   x3d::runtime::BridgeResult bridge = ctx.buildFrom(scene);
   if (!bridge.ok()) {
     std::fprintf(stderr,
@@ -1326,17 +1201,11 @@ int main(int argc, char **argv) {
 
   ctx.tick(0.0); // resolve bindings + initial transforms/bounds.
 
-  // v1 T-TEX: hand the SDK a real TextureResolver so it decodes Source::Url
-  // ImageTexture bytes (PoC-owned, relative to the scene dir) and threads the
-  // RGBA8 surface onto each TextureRef.resolvedPixels. The draw loop then binds
-  // resolvedPixels directly — no per-frame re-decode. The default ctor's null
-  // resolver always-Failed => white fallback; this replaces it end-to-end.
-  // (FontMetrics for Text uses the SDK's default monospace stub: glyph cells
-  // render flat-colored until an embedder supplies an atlas via the seam.)
+  // Decode scene-relative image files once and retain the resolved pixels.
   ex::TextureResolver textureResolver =
       makeLocalTextureResolver(dirOf(scenePath));
 
-  // T-TEXT: bake a glyph atlas (stb_truetype, via the SDK's x3d_stbtt io module)
+  // bake a glyph atlas (stb_truetype, via the SDK's x3d_stbtt io module)
   // and wire it into the FontMetrics seam so Text renders real letterforms. The
   // CPU bake needs no GL; the atlas texture is uploaded later (GL path only).
   // If no font is found, fontMetrics is null and the SDK's monospace stub stands.
@@ -1349,12 +1218,7 @@ int main(int argc, char **argv) {
   meshOptions.shaders.validator = makeGlShaderValidator(glReady);
   ex::SceneExtractor extractor(ctx, scene, meshOptions, textureResolver);
 
-  // ----------------------------------------------------------------------
-  // 1b. Headless probe (T10 build-side acceptance). Extract once and report
-  //     item/vertex counts, then exit WITHOUT touching GLFW/glad/GL. This path
-  //     never opens a display, so it runs in CI / over SSH. Exit 0 only when at
-  //     least one RenderItem was produced.
-  // ----------------------------------------------------------------------
+  // Extract diagnostics without creating a GL context or opening a display.
   if (headless) {
     ex::RenderDelta snap = extractor.fullSnapshot();
     std::size_t items = extractor.itemCount();
@@ -1372,10 +1236,7 @@ int main(int argc, char **argv) {
                      it.skin->binding->displacers.size());
     }
 
-    // T11 acceptance probe: count items that SHARE a GeomId node with another
-    // item but carry a DISTINCT worldTransform. A DEF'd Shape USE'd under two
-    // Transforms is exactly this: one geometry node, two per-path world matrices.
-    // This proves the per-PATH transform model end-to-end at the seam.
+    // Count shared geometry with distinct per-path transforms.
     std::unordered_map<const X3DNode *, std::vector<ex::RenderItemId>> byGeomNode;
     for (ex::RenderItemId id = 0; id < items; ++id)
       byGeomNode[extractor.item(id).geometry.node].push_back(id);
@@ -1392,10 +1253,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    // B8 texture self-check (no GL): count items whose MaterialDesc carries a
-    // BaseColor/Diffuse texture AND whose mesh carries texcoords — exactly the
-    // items the lit draw would resolve+sample. Proves the texture DESCRIPTOR path
-    // reaches the consumer (the GL upload visual is the user's check).
+    // Count base-color/diffuse textures with usable texture coordinates.
     std::size_t texturedItems = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       const ex::RenderItem &it = extractor.item(id);
@@ -1410,12 +1268,7 @@ int main(int argc, char **argv) {
     }
     std::fprintf(stderr, "[poc] headless b8: textured_items=%zu\n", texturedItems);
 
-    // v1 T-TEX self-check (no GL): count BaseColor/Diffuse Source::Url textures
-    // the embedder's TextureResolver seam decoded onto TextureRef.resolvedPixels
-    // (status Ready, non-empty RGBA). This is the seam the PoC binds in the draw
-    // loop; reporting it here proves the decoded-pixel path reaches the consumer
-    // independent of GL. Source::Inline textures are NOT counted (they carry
-    // inlinePixels, never go through the resolver).
+    // Count URL textures with decoded pixels; inline textures bypass the resolver.
     std::size_t resolvedTextures = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       for (const ex::TextureRef &t : extractor.item(id).material.textures) {
@@ -1427,22 +1280,12 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "[poc] headless t-tex: resolved_textures=%zu\n",
                  resolvedTextures);
 
-    // v1 T-TEXT self-check (no GL): count glyph-quad meshes the Text extraction
-    // path emitted (MeshData.isGlyphMesh). Each carries +Z normals + texcoords so
-    // it routes through the lit/textured draw path; the atlas (when a font
-    // resolver supplies one) binds via MaterialDesc.textures like any texture.
     std::size_t glyphMeshItems = 0;
     for (ex::RenderItemId id = 0; id < items; ++id)
       if (extractor.item(id).mesh->isGlyphMesh) ++glyphMeshItems;
     std::fprintf(stderr, "[poc] headless t-text: glyph_mesh_items=%zu\n",
                  glyphMeshItems);
-    // T12 lit self-check (no GL): confirm the shading inputs the lit path needs
-    // are present at the seam — the bound NavigationInfo headlight flag, the
-    // active world-resolved light count, and the first item's material color +
-    // whether its mesh carries normals (a lit draw needs a shading normal). Per
-    // §23.4.4 the headlight is added on top of authored lights when TRUE.
-    // The effective count caps all authored light types and reserves one
-    // of the kMaxLights slots.
+    // §23.4.4: reserve a slot for the headlight independently of authored lights.
     bool headlightOn = true;
     if (const X3DNode *nav = ctx.boundNavigationInfo())
       headlightOn =
@@ -1462,10 +1305,6 @@ int main(int argc, char **argv) {
         items ? extractor.item(snap.added.front()).material.toRGBA()
               : SFColorRGBA{0, 0, 0, 0};
 
-    // B7 transparency self-check (no GL): count items the renderer would route
-    // to the BLEND pass — material alphaMode == Blend OR transparency > 0. These
-    // are the items the draw loop alpha-blends back-to-front; reporting the count
-    // here makes the transparency partition observable in the headless probe.
     std::size_t transparentItems = 0;
     for (ex::RenderItemId id = 0; id < items; ++id) {
       const ex::MaterialDesc &mat = extractor.item(id).material;
@@ -1493,9 +1332,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  // ----------------------------------------------------------------------
   // 2. GLFW + GL core-3.3 context (Wayland-native, X11/XWayland fallback).
-  // ----------------------------------------------------------------------
   glfwSetErrorCallback(glfwErrorCallback);
   if (!glfwInit()) {
     std::fprintf(stderr, "[poc] glfwInit failed\n");
@@ -1530,7 +1367,7 @@ int main(int argc, char **argv) {
     glfwTerminate();
     return 1;
   }
-  *glReady = true; // author shaders now validate by compiling.
+  *glReady = true; // Author shaders validate by compiling in this context.
   {
     GLint units = 0;
     glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &units);
@@ -1575,16 +1412,14 @@ int main(int argc, char **argv) {
     ImGui_ImplOpenGL3_Init("#version 330");
   }
 
-  // ----------------------------------------------------------------------
   // 3. Shaders.
   //   phongProg (lit.vert / lit.frag) — Blinn-Phong + textures + normal-map.
-  //   unlitProg (unlit.vert / unlit.frag) — B4: lines/points/normal-less.
+  //   unlitProg (unlit.vert / unlit.frag) — lines/points/normal-less.
   //   pbrProg (lit.vert / pbr.frag) — metallic-roughness analytic BRDF.
   //   authorProg — compiled on demand per ComposedShader (cached by source hash).
-  // ----------------------------------------------------------------------
   const std::string shaderDir = X3D_POC_SHADER_DIR;
 
-  // ---- Phong / lit program (was `prog`; renamed phongProg for clarity) -----
+  // Phong program
   GLuint vs = compileShader(GL_VERTEX_SHADER,
                             readTextFile(shaderDir + "/lit.vert"), "lit.vert");
   GLuint fs = compileShader(GL_FRAGMENT_SHADER,
@@ -1607,18 +1442,18 @@ int main(int argc, char **argv) {
   const GLint uLightDirEye = phongProg ? glGetUniformLocation(phongProg, "uLightDirEye") : -1;
   const GLint uLightColor = phongProg ? glGetUniformLocation(phongProg, "uLightColor") : -1;
   const GLint uLightAmbient = phongProg ? glGetUniformLocation(phongProg, "uLightAmbient") : -1;
-  // B7 Blinn-Phong specular + alpha-mask uniforms.
+  // Blinn-Phong specular + alpha-mask uniforms.
   const GLint uSpecular = phongProg ? glGetUniformLocation(phongProg, "uSpecular") : -1;
   const GLint uShininess = phongProg ? glGetUniformLocation(phongProg, "uShininess") : -1;
   const GLint uAlphaMode = phongProg ? glGetUniformLocation(phongProg, "uAlphaMode") : -1;
   const GLint uAlphaCutoff = phongProg ? glGetUniformLocation(phongProg, "uAlphaCutoff") : -1;
-  // B8 + Phase 5.2 texture uniforms (diffuse/normal/emissive/specular).
+  // Material texture uniforms (diffuse/normal/emissive/specular).
   const GLint uHasTexture = phongProg ? glGetUniformLocation(phongProg, "uHasTexture") : -1;
   const GLint uTexture = phongProg ? glGetUniformLocation(phongProg, "uTexture") : -1;
-  // T-TEXT: when set, uTexture is the font coverage atlas (sample .r as alpha).
+  // when set, uTexture is the font coverage atlas (sample .r as alpha).
   const GLint uGlyphAtlas = phongProg ? glGetUniformLocation(phongProg, "uGlyphAtlas") : -1;
 
-  // T-TEXT: upload the baked glyph coverage atlas as an R8 texture (rows already
+  // upload the baked glyph coverage atlas as an R8 texture (rows already
   // bottom-up, so no flip). Bound on unit 0 only for glyph-mesh draws.
   GLuint glyphAtlasTex = 0;
   if (glyphAtlas.atlas.ok) {
@@ -1636,7 +1471,7 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "[poc] glyph atlas %dx%d uploaded\n",
                  glyphAtlas.atlas.width, glyphAtlas.atlas.height);
   }
-  // Phase 5.2 extended texture slots.
+  // extended texture slots.
   const GLint uHasNormalTex   = phongProg ? glGetUniformLocation(phongProg, "uHasNormalTex") : -1;
   const GLint uNormalTex      = phongProg ? glGetUniformLocation(phongProg, "uNormalTex") : -1;
   const GLint uNormalScale    = phongProg ? glGetUniformLocation(phongProg, "uNormalScale") : -1;
@@ -1644,14 +1479,14 @@ int main(int argc, char **argv) {
   const GLint uEmissiveTex    = phongProg ? glGetUniformLocation(phongProg, "uEmissiveTex") : -1;
   const GLint uHasSpecularTex = phongProg ? glGetUniformLocation(phongProg, "uHasSpecularTex") : -1;
   const GLint uSpecularTex    = phongProg ? glGetUniformLocation(phongProg, "uSpecularTex") : -1;
-  // Phase 5.5 gamma toggle for Phong.
+  // gamma toggle for Phong.
   const GLint uGammaOutput    = phongProg ? glGetUniformLocation(phongProg, "uGammaOutput") : -1;
   // Fog (§24.4.2): the bound Fog's colour/type/world-scaled visibilityRange.
   const GLint uFogColor       = phongProg ? glGetUniformLocation(phongProg, "uFogColor") : -1;
   const GLint uFogType        = phongProg ? glGetUniformLocation(phongProg, "uFogType") : -1;
   const GLint uFogRange       = phongProg ? glGetUniformLocation(phongProg, "uFogVisibilityRange") : -1;
 
-  // ---- B4 UNLIT program — lines/points/normal-less meshes ------------------
+  // unlit program — lines/points/normal-less meshes
   GLuint uvs = compileShader(GL_VERTEX_SHADER,
                              readTextFile(shaderDir + "/unlit.vert"), "unlit.vert");
   GLuint ufs = compileShader(GL_FRAGMENT_SHADER,
@@ -1670,13 +1505,13 @@ int main(int argc, char **argv) {
   const GLint uUnlitFogColor = unlitProg ? glGetUniformLocation(unlitProg, "uFogColor") : -1;
   const GLint uUnlitFogType  = unlitProg ? glGetUniformLocation(unlitProg, "uFogType") : -1;
   const GLint uUnlitFogRange = unlitProg ? glGetUniformLocation(unlitProg, "uFogVisibilityRange") : -1;
-  // SEAM-LINEPOINT: §12.4.8 PointProperties → gl_PointSize (unlit.vert).
+  // §12.4.8 PointProperties → gl_PointSize (unlit.vert).
   const GLint uUnlitPointScale = unlitProg ? glGetUniformLocation(unlitProg, "uPointSizeScale") : -1;
   const GLint uUnlitPointAtten = unlitProg ? glGetUniformLocation(unlitProg, "uPointAttenuation") : -1;
   const GLint uUnlitPointMin   = unlitProg ? glGetUniformLocation(unlitProg, "uPointSizeMin") : -1;
   const GLint uUnlitPointMax   = unlitProg ? glGetUniformLocation(unlitProg, "uPointSizeMax") : -1;
 
-  // ---- Phase 5.3 PBR program (lit.vert / pbr.frag) -------------------------
+  // PBR program (lit.vert / pbr.frag)
   // Swap-test seam: --pbr-shader / X3D_POC_PBR_SHADER selects an alternate
   // fragment source (e.g. the portable usd_preview_surface.frag) from the
   // sibling cpu_raster shaders dir; empty/"pbr.frag" resolves to the native
@@ -1779,9 +1614,9 @@ int main(int argc, char **argv) {
   const GLint uUsdOpacityMode         = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityMode") : -1;
   const GLint uUsdOpacityThreshold    = pbrProg ? glGetUniformLocation(pbrProg, "uOpacityThreshold") : -1;
 
-  // ---- #39 Background gradient program (bg.vert/bg.frag) --------------------
+  // Background gradient program (bg.vert/bg.frag)
   // Paints the bound Background's full sky/ground gradient as a fullscreen
-  // dome BEFORE scene geometry (see the render loop below). No VBO — the
+  // dome before scene geometry (see the render loop below). No VBO — the
   // vertex shader synthesizes a covering triangle from gl_VertexID, so a bare
   // VAO is enough to issue the draw call.
   GLuint bvs = compileShader(GL_VERTEX_SHADER, readTextFile(shaderDir + "/bg.vert"), "bg.vert");
@@ -1807,27 +1642,23 @@ int main(int argc, char **argv) {
   GLuint bgVao = 0;
   glGenVertexArrays(1, &bgVao);
 
-  // ---- Phase 5.4 author-shader cache (ComposedShader, compiled on demand) ---
+  // author-shader cache (ComposedShader, compiled on demand)
   // Key: combined VS+FS source string. Value: linked GL program (or 0 = failed).
   std::unordered_map<std::string, GLuint> authorProgCache;
 
-  // ----------------------------------------------------------------------
   // 4. Extract once (frame-0 full snapshot) and upload each GeomId once.
   //
   // The GpuMesh cache is keyed by GeomId (node* + contentVersion). Several
   // RenderItems (e.g. a DEF'd Shape USE'd under two Transforms) legitimately
-  // share ONE GeomId — they upload once and instance N times, each with its own
+  // share one GeomId — they upload once and instance N times, each with its own
   // per-path model uniform. We refcount by GeomId so a GpuMesh is GC'd only when
-  // the LAST item referencing it leaves the scene (delta.removed), and a geometry
-  // CONTENT change (delta.updatedGeometry bumps contentVersion -> a NEW GeomId
+  // the last item referencing it leaves the scene (delta.removed), and a geometry
+  // content change (delta.updatedGeometry bumps contentVersion -> a new GeomId
   // key) re-extracts + re-uploads under the new key while the stale key is GC'd.
-  // ----------------------------------------------------------------------
   std::unordered_map<ex::GeomId, GpuMesh, ex::GeomIdHash> gpuMeshes;
   std::unordered_map<ex::GeomId, int, ex::GeomIdHash> meshRefs;
   std::unordered_map<ex::RenderItemId, GpuSkin> gpuSkins;
 
-  // Ensure a GpuMesh exists for an item's GeomId, uploading on first reference
-  // and bumping its refcount. Returns nothing; gpuMeshes/meshRefs are mutated.
   auto acquireMesh = [&](const ex::RenderItem &it) {
     if (gpuMeshes.find(it.geometry) == gpuMeshes.end())
       gpuMeshes.emplace(it.geometry, uploadMesh(*it.mesh));
@@ -1880,7 +1711,7 @@ int main(int argc, char **argv) {
   };
 
   // Per-item GeomId shadow: the GeomId each RenderItemId currently references on
-  // the GPU. delta() reports CHANGED ids, not their previous GeomId, so we track
+  // the GPU. delta() reports changed ids, not their previous GeomId, so we track
   // it consumer-side to know which GpuMesh to release on a content bump / removal.
   std::unordered_map<ex::RenderItemId, ex::GeomId> itemGeom;
 
@@ -1894,10 +1725,10 @@ int main(int argc, char **argv) {
   std::fprintf(stderr, "[poc] extracted %zu render item(s), %zu unique mesh(es)\n",
                extractor.itemCount(), gpuMeshes.size());
 
-  // near/far fit from the per-path scene world bounds (NOT ctx.worldBounds()).
+  // near/far fit from the per-path scene world bounds (not ctx.worldBounds()).
   Aabb sceneBounds = extractor.sceneWorldBounds();
 
-  // "View all" default camera: when the scene authors NO Viewpoint, viewMatrix()
+  // "View all" default camera: when the scene authors no Viewpoint, viewMatrix()
   // is identity (eye at origin), which mis-frames any large/offset model (e.g. the
   // SanCarlos cathedral spans 97 units centered at z=-23.5 — most of it would sit
   // behind/far from an origin camera). Frame the bounding sphere from a 3/4 angle.
@@ -1938,10 +1769,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  // A 1x1 opaque-white texture bound to unit 0 whenever a draw has NO real
+  // A 1x1 opaque-white texture bound to unit 0 whenever a draw has no real
   // texture. The lit shader statically samples uTexture (guarded at runtime by
   // uHasTexture), and GL's debug validation flags a sampler whose bound texture
-  // is incomplete/zero EVEN when that branch is skipped — so keep unit 0 always
+  // is incomplete/zero even when that branch is skipped — so keep unit 0 always
   // complete to silence the "no defined base level" warning flood. White means a
   // stray sample (shouldn't happen) is a no-op multiply.
   GLuint whiteTex = 0;
@@ -1954,9 +1785,9 @@ int main(int argc, char **argv) {
   glBindTexture(GL_TEXTURE_2D, 0);
 
   glEnable(GL_DEPTH_TEST);
-  // B4: let the unlit vertex shader size GL_POINTS (PointSet) via gl_PointSize.
+  // let the unlit vertex shader size GL_POINTS (PointSet) via gl_PointSize.
   glEnable(GL_PROGRAM_POINT_SIZE);
-  // M3: culling is now per-draw, driven by MeshData.ccw/solid (set in the draw
+  // Culling is per-draw, driven by MeshData.ccw/solid (set in the draw
   // loop). Leave it disabled here as the default state; each draw enables/disables
   // and picks the front-face winding for its own mesh.
   glDisable(GL_CULL_FACE);
@@ -1971,8 +1802,8 @@ int main(int argc, char **argv) {
   std::fprintf(stderr, "[poc] NavigationInfo headlight=%s\n",
                headlightOn ? "true" : "false");
 
-  // B8: the CONSUMER's asset resolver (local-file, relative to the scene dir)
-  // and a URL/inline-keyed GL texture cache. Both live OUTSIDE the SDK; the SDK
+  // the consumer's asset resolver (local-file, relative to the scene dir)
+  // and a URL/inline-keyed GL texture cache. Both live outside the SDK; the SDK
   // surfaced only URLs/inline-pixels. A future async/http backend would swap in
   // a resolver that returns Pending without blocking the frame.
   ex::AssetResolver assetResolver = makeLocalFileResolver(dirOf(scenePath));
@@ -1982,9 +1813,7 @@ int main(int argc, char **argv) {
   MovieState movieState;
   movieState.decoder = x3d::runtime::io::plmpeg::makePlMpegMovieDecoder(assetResolver);
 
-  // ----------------------------------------------------------------------
   // 5. Render loop.
-  // ----------------------------------------------------------------------
   double t0 = glfwGetTime();
   double lastFrameClock = t0;
   int frameNo = 0;
@@ -2086,13 +1915,13 @@ int main(int argc, char **argv) {
     // a generated cube does not see the geometry it is applied to).
     auto renderView = [&](const Mat4 &view, const Mat4 &proj, int w, int h,
                           const void *exclude) {
-      // Forced full-screen clear sanity step: if NOTHING else draws, the window
-      // is still the Background color, proving context + swap work (M0 gate).
+      // Forced full-screen clear sanity step: if nothing else draws, the window
+      // uses the Background color.
       glClearColor(clearR, clearG, clearB, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      // #39: paint the bound Background's full sky/ground gradient as a
-      // depth-test-disabled fullscreen dome, BEFORE scene geometry. A single
+      // Paint the bound Background's full sky/ground gradient as a
+      // depth-test-disabled fullscreen dome, before scene geometry. A single
       // skyColor (or no Background at all) is already exactly the flat clear
       // above, so the shader pass only runs when there's a real ramp to paint
       // (matches examples/cpu_raster's same "stay flat" fast path).
@@ -2395,7 +2224,7 @@ int main(int argc, char **argv) {
           if ((!mesh.hasTexcoords && !anyCube) || mesh.isGlyphMesh ||
               !needsStageCombiner(stages))
             stages.clear();
-          // Stages past gMaxStages are ignored (REQ-MULTITEXTURE-2).
+          // Stages past gMaxStages are ignored.
           const int n = std::min(static_cast<int>(stages.size()), gMaxStages);
           glUniform1i(locNum, n);
           GLuint cubeTex = 0;
@@ -2436,7 +2265,7 @@ int main(int argc, char **argv) {
           glActiveTexture(GL_TEXTURE0);
         };
 
-        // TXF-2 (texgen.glsl): the vertex shaders' first-generator fallback,
+        // (texgen.glsl): the vertex shaders' first-generator fallback,
         // the eye-to-local rotation cube lookups use, and the mappings of the
         // material slots on units 0-4 (`slots`, null where nothing is bound).
         auto uploadTexGen = [&](GLuint program, const ex::RenderItem &item,
@@ -2545,16 +2374,14 @@ int main(int argc, char **argv) {
         // view/proj uniforms (and re-glUseProgram) when the path actually changes.
         GLuint boundProg = 0;
 
-        // ------------------------------------------------------------------
-        // Phase 5.1: Per-program dispatch selector.
-        //   UNLIT  — topology!=Triangles OR !hasNormals OR model==Unlit.
+        // Per-program dispatch selector.
+        //   unlit  — topology!=Triangles or !hasNormals OR model==Unlit.
         //   PHONG  — model == Phong (or Physical fallback if pbrProg unavailable).
-        //   PBR    — model == Physical AND pbrProg compiled.
+        //   PBR    — model == Physical and pbrProg compiled.
         //   AUTHOR — it.shaderProgram.has_value() (overrides material model).
-        // ------------------------------------------------------------------
 
         // Draw one render item under the current GL/pass state. Factored out of the
-        // loop so the B7 opaque pass and the back-to-front BLEND pass share exactly
+        // loop so the opaque pass and the back-to-front BLEND pass share exactly
         // one code path; the only per-pass difference is GL_BLEND + depth-mask state
         // set by the caller around each pass.
         auto drawItem = [&](ex::RenderItemId id) {
@@ -2565,7 +2392,7 @@ int main(int argc, char **argv) {
           auto skinIt = gpuSkins.find(id);
           const GpuMesh &g = skinIt == gpuSkins.end() ? mit->second : skinIt->second.mesh;
           const ex::MaterialDesc &mat = it.material;
-          // REQ-CLIP (§11.4.1): the extractor carries WORLD planes; the shaders
+          // §11.4.1: the extractor carries world planes; the shaders
           // and the vocabulary's `clipPlane` uniform take them in eye space.
           const int numClips = static_cast<int>(it.clipPlanes.size);
           std::array<float, 4 * ex::ClipPlaneList::kMaxClipPlanes> clipEye{};
@@ -2583,9 +2410,7 @@ int main(int argc, char **argv) {
           if (g.topology != ex::Topology::Triangles && !g.hasNormals)
             c = mat.unlitGeometryRGBA();
 
-          // ----------------------------------------------------------------
           // Determine which shader path to take.
-          // ----------------------------------------------------------------
           const bool forceUnlit = !g.hasNormals
                                    || (mat.model == ex::MaterialModel::Unlit);
           const bool hasAuthor = it.shaderProgram.has_value()
@@ -2609,9 +2434,7 @@ int main(int argc, char **argv) {
                           mat.point.attenuation.z);
           };
 
-          // ----------------------------------------------------------------
-          // PATH 1: UNLIT — normal-less geometry / UnlitMaterial.
-          // ----------------------------------------------------------------
+          // Unlit — normal-less geometry / UnlitMaterial.
           if ((forceUnlit || (!wantPbr && !wantPhong && !hasAuthor)) && unlitProg) {
             if (boundProg != unlitProg) {
               glUseProgram(unlitProg);
@@ -2623,14 +2446,14 @@ int main(int argc, char **argv) {
             uploadFog(it, uUnlitFogColor, uUnlitFogType, uUnlitFogRange);
             glUniform4f(uUnlitBaseColor, c.r, c.g, c.b, c.a);
             glUniform1i(uUnlitHasColors, g.hasColors ? 1 : 0);
-            // SEAM-LINEPOINT: §12.4.8 PointProperties → gl_PointSize (unlit.vert).
+            // §12.4.8 PointProperties → gl_PointSize (unlit.vert).
             if (uUnlitPointScale >= 0) glUniform1f(uUnlitPointScale, mat.point.pointSizeScaleFactor);
             if (uUnlitPointAtten >= 0)
               glUniform3f(uUnlitPointAtten, mat.point.attenuation.x,
                           mat.point.attenuation.y, mat.point.attenuation.z);
             if (uUnlitPointMin >= 0) glUniform1f(uUnlitPointMin, mat.point.pointSizeMinValue);
             if (uUnlitPointMax >= 0) glUniform1f(uUnlitPointMax, mat.point.pointSizeMaxValue);
-            // A textured Appearance with NO Material is Unlit with the image on the
+            // A textured Appearance with no Material is Unlit with the image on the
             // Emissive slot (§12.2.5); also covers UnlitMaterial.emissiveTexture and
             // any Diffuse/BaseColor texture that lands on the unlit path. srgb=false:
             // raw passthrough to match unlit's no-gamma direct color output.
@@ -2653,9 +2476,7 @@ int main(int argc, char **argv) {
                           nullptr, nullptr, nullptr, nullptr});
             glDisable(GL_CULL_FACE); // lines/points/normal-less always double-sided.
 
-          // ----------------------------------------------------------------
-          // PATH 2: PHONG (Blinn-Phong + textures + normal-map).
-          // ----------------------------------------------------------------
+          // Phong (Blinn-Phong + textures + normal-map).
           } else if (wantPhong) {
             if (boundProg != phongProg) {
               glUseProgram(phongProg);
@@ -2680,7 +2501,7 @@ int main(int argc, char **argv) {
             // shader multiplies by the textured/vertex-coloured base itself.
             glUniform3f(uAmbientColor, ai, ai, ai);
             glUniform1i(uHasColors, g.hasColors ? 1 : 0);
-            // TXF-2: §18.4.8 TextureCoordinateGenerator (texgen.glsl).
+            // §18.4.8 TextureCoordinateGenerator (texgen.glsl).
             if (g.isGlyphMesh)
               uploadTexGen(phongProg, it, {});
             else
@@ -2703,7 +2524,7 @@ int main(int argc, char **argv) {
             if (uNormalScale >= 0) glUniform1f(uNormalScale, mat.normalScale);
 
             if (g.isGlyphMesh && glyphAtlasTex) {
-              // T-TEXT: texcoords index the font coverage atlas; bind it on unit 0
+              // texcoords index the font coverage atlas; bind it on unit 0
               // and flag the shader to read .r as alpha-tested glyph coverage with
               // the material color. No material texture slots apply to glyph meshes.
               bindTex(0, uTexture, uHasTexture, glyphAtlasTex);
@@ -2741,9 +2562,7 @@ int main(int argc, char **argv) {
             uploadStages(phongProg, it, g, /*srgb=*/false);
             applyCull(g, it.worldTransform);
 
-          // ----------------------------------------------------------------
-          // PATH 3: PBR — metallic-roughness analytic BRDF (no IBL: Phase 4 deferred).
-          // ----------------------------------------------------------------
+          // PBR uses an analytic metallic-roughness BRDF without environment lighting.
           } else if (wantPbr) {
             if (boundProg != pbrProg) {
               glUseProgram(pbrProg);
@@ -2829,8 +2648,7 @@ int main(int argc, char **argv) {
             uploadStages(pbrProg, it, g, /*srgb=*/true);
             applyCull(g, it.worldTransform);
 
-          // ----------------------------------------------------------------
-          // PATH 4: AUTHOR-SHADER (ComposedShader/ProgramShader via
+          // Author shader (ComposedShader/ProgramShader via
           // ShaderBindingPlan). The SDK selects each Appearance's shader
           // (§31.2.2.3) against makeGlShaderValidator, so a program reaching here
           // compiled in this context; an invalid one was skipped for the next
@@ -2899,7 +2717,6 @@ int main(int argc, char **argv) {
             // multitexture units, which every built-in draw rebinds.
             static constexpr std::array<int, 9> kAuthorUnits{0, 1, 2, 3, 4, 8, 9, 10, 11};
             int authorUnit = 0;
-            // Upload each vocab entry the author declared.
             Mat4 viewModel = view * it.worldTransform;
             std::array<float, 9> nrm = poc::normalMatrix3(view, it.worldTransform);
             for (const auto &e : plan.entries) {
@@ -2956,7 +2773,7 @@ int main(int argc, char **argv) {
                 case S::ClipPlane:
                   if (numClips > 0) glUniform4fv(loc, numClips, clipEye.data());
                   break;
-                default: break; // EnvDiffuse/IBL etc. left unbound (Phase 4 deferred)
+                default: break; // Environment lighting uniforms remain unbound.
               }
               // Author <field> values.
               if (e.isAuthorField) {
@@ -3027,7 +2844,7 @@ int main(int argc, char **argv) {
                                           mat.line.linewidthScaleFactor > 0.0f
                                       ? mat.line.linewidthScaleFactor : 1.0f;
           glLineWidth(lineWidth);
-          // B4: branch the draw-call primitive on topology.
+          // branch the draw-call primitive on topology.
           GLenum mode = (g.topology == ex::Topology::Lines)    ? GL_LINES
                         : (g.topology == ex::Topology::Points) ? GL_POINTS
                                                                : GL_TRIANGLES;
@@ -3048,7 +2865,7 @@ int main(int argc, char **argv) {
               glBindTexture(GL_TEXTURE_BUFFER, skinIt->second.palette);
             }
           }
-          // REQ-CLIP: the built-in vertex shaders write gl_ClipDistance; an
+          // the built-in vertex shaders write gl_ClipDistance; an
           // author program receives the planes as `clipPlane`/`numClipPlanes`
           // and clips itself, so its clip distances stay disabled.
           const bool builtinProgram =
@@ -3070,22 +2887,9 @@ int main(int argc, char **argv) {
           glDrawElements(mode, g.indexCount, GL_UNSIGNED_INT, nullptr);
         };
 
-        // ----------------------------------------------------------------------
-        // B7 TRANSPARENCY: partition items into OPAQUE vs BLENDED, draw opaque
-        // first (depth writes on, no blend), then sort the blended set back-to-
-        // front by world-space centroid depth and draw it with GL_BLEND (srcAlpha,
-        // oneMinusSrcAlpha) and the depth MASK off (depth TEST still on, so opaque
-        // geometry still occludes transparent surfaces behind it).
-        //
-        // An item is BLENDED when its material alphaMode == Blend OR transparency
-        // > 0. alphaMode == Mask stays in the OPAQUE pass — its cutoff discard in
-        // the fragment shader yields hard edges that need no blending or sorting.
-        //
-        // The centroid sort is exact for SEPARABLE/convex meshes; interpenetrating
-        // transparent surfaces (or large concave ones) show the usual sort
-        // artifacts — this is browser-parity (X3DOM/X_ITE behave the same), NOT
-        // order-independent transparency (OIT is out of scope for the PoC).
-        // ----------------------------------------------------------------------
+        // Draw opaque and masked items first, then blended items back-to-front.
+        // Blended items keep depth testing but disable depth writes.
+        // Centroid sorting can produce artifacts for intersecting or concave meshes.
         std::vector<ex::RenderItemId> opaqueItems;
         std::vector<std::pair<float, ex::RenderItemId>> blendedItems; // (depthEye, id)
         for (ex::RenderItemId id = 0; id < extractor.itemCount(); ++id) {
@@ -3110,13 +2914,13 @@ int main(int argc, char **argv) {
         std::sort(blendedItems.begin(), blendedItems.end(),
                   [](const auto &a, const auto &b) { return a.first < b.first; });
 
-        // OPAQUE pass: depth writes on, blending off.
+        // opaque pass: depth writes on, blending off.
         glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
         for (ex::RenderItemId id : opaqueItems) drawItem(id);
 
-        // BLENDED pass: back-to-front, GL_BLEND on, depth-MASK off (test still on).
+        // blended pass: back-to-front, GL_BLEND on, depth-MASK off (test still on).
         if (!blendedItems.empty()) {
           glEnable(GL_BLEND);
           glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -3134,7 +2938,7 @@ int main(int argc, char **argv) {
       }
     };
 
-    // --animate advances time at a FIXED dt so the capture is deterministic and
+    // --animate advances time at a fixed dt so the capture is deterministic and
     // loop-seamless (independent of the software-GL frame rate under Xvfb). Start
     // at +dt (not 0): the bring-up tick(0.0) already consumed t=0, and delta()
     // enforces a strictly-increasing time per tick (as the interactive path gets
@@ -3150,20 +2954,19 @@ int main(int argc, char **argv) {
     // last frame at EOF so a non-looping clip holds, not blanks). --screenshot
     // captures ~t=0 -> the clip's first frame.
     movieState.mediaTime = now;
-    // Feed the cursor ray into the SDK seam BEFORE tick, unprojected against the
-    // PREVIOUS frame's camera (the image the user is pointing at). Keys + mouse
+    // Feed the cursor ray into the SDK seam before tick, unprojected against the
+    // previous frame's camera (the image the user is pointing at). Keys + mouse
     // buttons arrive via glfw callbacks (fired during glfwPollEvents below).
     int fbw = 0, fbh = 0;
     glfwGetFramebufferSize(win, &fbw, &fbh);
     input.feedPointerRay(lastView, lastProj, fbw, fbh);
     ctx.tick(now); // exactly one tick per frame (seam contract).
 
-    // ------------------------------------------------------------------
-    // INCREMENTAL UPDATE: exactly ONE delta() per tick (the seam contract —
+    // Call delta() exactly once per tick (the seam contract —
     // tick() clears the dirty set at its end, so delta() reads it once). Apply
     // the buckets to the GPU caches before drawing:
-    //   * updatedGeometry: the GeomId.contentVersion bumped, so the item now
-    //       references a NEW GeomId. Release the stale GeomId, acquire the new
+    //   * updatedGeometry: the GeomId.contentVersion changed, so the item
+    //       references a new GeomId. Release the stale GeomId, acquire the new
     //       one (re-extract+re-upload via uploadMesh; glBufferData orphans the
     //       old buffer store implicitly under the new VBO).
     //   * updatedTransform: the per-path worldTransform changed — no GPU upload,
@@ -3171,7 +2974,6 @@ int main(int argc, char **argv) {
     //       nothing to do here beyond the (free) re-read in the draw loop.
     //   * added: a new placement — acquire its mesh, shadow its GeomId.
     //   * removed: a placement left — release its mesh, drop the shadow.
-    // ------------------------------------------------------------------
     ex::RenderDelta d = extractor.delta();
 
     for (ex::RenderItemId id : d.removed) {
@@ -3216,12 +3018,7 @@ int main(int argc, char **argv) {
     if (h == 0) h = 1;
     glViewport(0, 0, w, h);
 
-    // Camera: the bound Viewpoint's view matrix, else the view-all fit framed
-    // once above. Computed every frame regardless of gpuMeshes — #39: a
-    // geometry-less scene (e.g. a bare Background, as in the NIST
-    // verify_lastground.x3d conformance case) still needs a real camera for
-    // the background gradient pass below, which used to be skipped entirely
-    // because it lived inside the "has meshes" gate.
+    // Background-only scenes still need a camera for the gradient pass.
     ex::CameraDesc cam = extractor.camera();
     const Mat4 view = (useFitCamera && !sceneBounds.empty)
                           ? fitView : cam.viewMatrix;
@@ -3332,9 +3129,7 @@ int main(int argc, char **argv) {
     glfwPollEvents();
   }
 
-  // ----------------------------------------------------------------------
   // 6. Teardown.
-  // ----------------------------------------------------------------------
   if (uiEnabled) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

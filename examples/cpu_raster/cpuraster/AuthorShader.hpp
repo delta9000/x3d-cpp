@@ -1,21 +1,7 @@
-// AuthorShader.hpp — the CPU reference host's §31 author-shader path.
-//
-// The SDK selects each Appearance's shader and hands the program over on
-// RenderItem::shaderProgram (ShaderExtract.hpp). This host runs the program's
-// FRAGMENT stage through the GLSL-subset interpreter (GlslInterpreter.hpp),
-// with the item's author <field> values as uniforms; the VERTEX stage is
-// accepted but not executed (the rasterizer's fixed transform supplies the
-// interpreter's varyings vPosEye/vNormalEye/vColor/vTexCoord).
-//
-//   * interpreterShaderValidator(): the host's §31.3.2 isValid check — the
-//     structural one (a VERTEX and a FRAGMENT part) plus "the fragment stage
-//     compiles in the interpreter". Pass it as MeshBuildOptions::shaders.
-//     validator so selection falls through to the next shader, or to the
-//     material, when this host cannot run a program.
-//   * AuthorShaderCache::hook(): a RenderOptions::authorShaderFor that binds
-//     an item's selected program, compiling each distinct source once.
-//
-// Out-of-SDK consumer code. namespace x3d::cpuraster.
+// CPU implementation of the §31 author-shader path.
+// Execute the fragment stage through the GLSL interpreter; the vertex stage is
+// validated but the rasterizer supplies its own transform and varyings.
+// Compile each distinct source once and bind author fields as uniforms.
 #ifndef X3D_CPURASTER_AUTHOR_SHADER_HPP
 #define X3D_CPURASTER_AUTHOR_SHADER_HPP
 

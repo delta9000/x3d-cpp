@@ -1,6 +1,5 @@
 // examples/02_extract_render_feed.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// EXTRACT → FEED-A-RENDERER, headless, using only the x3d::sdk façade.
+// extract → feed-a-renderer, headless, using only the x3d::sdk façade.
 //
 // This is the path a real renderer embeds: load a scene, build an execution
 // context, take a full snapshot, then "upload" each RenderItem. Instead of
@@ -10,7 +9,6 @@
 // stays headless (no GL) so it runs in CI.
 //
 // Run: 02_extract_render_feed [path/to/scene]
-// ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
 #include <iostream>

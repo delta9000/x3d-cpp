@@ -1,5 +1,5 @@
 """Headless GL regression for §42 texture projectors in the OpenGL PoC
-(REQ-PROJECTION, ADR-0061).
+(ADR-0061).
 
 A white plane at z = 0 faces a camera on +Z with the headlight off and no
 other light. A projector 5 in front of it casts a 2 x 2 PixelTexture (red,

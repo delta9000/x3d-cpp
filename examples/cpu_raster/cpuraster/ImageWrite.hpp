@@ -1,4 +1,4 @@
-// ImageWrite.hpp — PNG output for the CPU rasterizer. Encoding is a CONSUMER
+// ImageWrite.hpp — PNG output for the CPU rasterizer. Encoding is a consumer
 // concern (not an SDK seam), so the stb_image_write implementation is vendored
 // locally under examples/cpu_raster/third_party and compiled in the single TU
 // ImageWrite.cpp. namespace x3d::cpuraster.

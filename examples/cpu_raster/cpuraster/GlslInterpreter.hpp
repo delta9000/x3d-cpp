@@ -4,7 +4,7 @@
 // MaterialShader.hpp's compiled-in ports: same value runtime (glsl.hpp), same
 // fragment-shader plug (Rasterizer::FragmentShader).
 //
-// SUPPORTED SUBSET (enough for real ComposedShader fragment shaders):
+// supported subset (enough for real ComposedShader fragment shaders):
 //   types     : void float int bool vec2 vec3 vec4 mat3 mat4 sampler2D
 //   top-level : #..., precision, layout/in/out/uniform/varying decls (consumed),
 //               const + global var decls, function definitions.
@@ -18,7 +18,7 @@
 //               abs sqrt sin cos tan exp log floor ceil fract mod step smoothstep
 //               sign radians degrees texture/texture2D dFdx dFdy fwidth.
 //
-// HOST CONVENTION: author fragment shaders read the same `in` varyings the PoC's
+// host convention: author fragment shaders read the same `in` varyings the PoC's
 // lit.vert emits — vPosEye, vNormalEye, vColor, vTexCoord (+ gl_FrontFacing) —
 // and write `FragColor` (or gl_FragColor). makeInterpretedShader() seeds those
 // plus a generous uniform set from the MaterialDesc + eye-space lights.
@@ -50,9 +50,7 @@
 
 namespace x3d::cpuraster {
 
-// ===========================================================================
 // Value — the interpreter's runtime value.
-// ===========================================================================
 enum class VT : std::uint8_t { Void, Float, Int, Bool, Vec2, Vec3, Vec4, Mat3, Mat4, Sampler, Array };
 
 struct Value {
@@ -86,14 +84,11 @@ struct Value {
   glsl::vec4 vec4v() const { return {f[0], f[1], f[2], f[3]}; }
 };
 
-// Control-flow status returned up through statement execution (a status enum
-// rather than C++ exceptions, which were the per-fragment hot-path cost).
+// Propagate control flow without exceptions in the per-fragment loop.
 enum class Flow : std::uint8_t { Normal, Return, Break, Continue, Discard };
 struct GlslError : std::runtime_error { using std::runtime_error::runtime_error; };
 
-// ===========================================================================
 // AST
-// ===========================================================================
 struct Expr;
 using ExprP = std::shared_ptr<Expr>;
 struct Expr {
@@ -122,9 +117,7 @@ struct Function {
   std::vector<StmtP> body;
 };
 
-// ===========================================================================
 // Lexer
-// ===========================================================================
 struct Token {
   enum class T { Id, Num, Punct, End };
   T t = T::End; std::string s; double num = 0; bool isInt = false;
@@ -201,9 +194,7 @@ private:
   std::vector<Token> toks_;
 };
 
-// ===========================================================================
 // Parser — recursive descent + precedence climbing.
-// ===========================================================================
 class Parser {
 public:
   Parser(const std::vector<Token> &toks) : t_(toks) {}
@@ -238,7 +229,7 @@ public:
   }
 
 private:
-  // ---- token helpers ----
+  // token helpers
   const Token &peek(int o = 0) const { return t_[std::min(i_ + o, t_.size() - 1)]; }
   const Token &next() { return t_[i_ < t_.size() ? i_++ : i_]; }
   bool at(Token::T tt) const { return peek().t == tt; }
@@ -266,7 +257,7 @@ private:
     }
   }
 
-  // ---- declarations ----
+  // declarations
   StmtP parseDeclRest(bool /*isConst*/) {
     std::string type = expectType();
     std::string name = expectId();
@@ -372,7 +363,7 @@ private:
     return s;
   }
 
-  // ---- expressions (precedence climbing) ----
+  // expressions (precedence climbing)
   ExprP parseExpr() { return parseAssign(); }
 
   ExprP parseAssign() {
@@ -479,9 +470,7 @@ private:
   std::size_t i_ = 0;
 };
 
-// ===========================================================================
 // Interpreter
-// ===========================================================================
 class Interpreter {
 public:
   Interpreter(const std::unordered_map<std::string, Function> &funcs) : funcs_(funcs) {}
@@ -528,7 +517,7 @@ public:
     return f;
   }
 
-  // ---- statement execution ----
+  // statement execution
   Flow exec(const StmtP &s) {
     if (++steps_ > kStepCap) throw GlslError("step limit exceeded (runaway shader)");
     switch (s->k) {
@@ -589,7 +578,7 @@ public:
     return Flow::Normal;
   }
 
-  // ---- expression evaluation ----
+  // expression evaluation
   Value eval(const ExprP &e) {
     switch (e->k) {
       case Expr::K::Num: return e->isInt ? Value::integer((int)e->num) : Value::flt((float)e->num);
@@ -785,7 +774,7 @@ private:
   static glsl::mat3 toMat3(const Value &v) { glsl::mat3 m; for (int i = 0; i < 9; ++i) m.m[i] = v.f[i]; return m; }
   static glsl::mat4 toMat4(const Value &v) { glsl::mat4 m; for (int i = 0; i < 16; ++i) m.m[i] = v.f[i]; return m; }
 
-  // ---- calls: constructors, builtins, user functions ----
+  // calls: constructors, builtins, user functions
   Value evalCall(const ExprP &e) {
     const std::string &name = e->name;
 
@@ -967,9 +956,7 @@ private:
   bool discarded_ = false; // a discard inside a called-from-expression function.
 };
 
-// ===========================================================================
 // InterpretedProgram — parse once, run many fragments.
-// ===========================================================================
 class InterpretedProgram {
 public:
   bool compile(const std::string &src, std::string *err = nullptr) {
@@ -998,9 +985,7 @@ private:
   bool compiled_ = false;
 };
 
-// ===========================================================================
 // Host glue: seed uniforms/varyings, run main(), read FragColor.
-// ===========================================================================
 
 // Build the per-draw constant uniform environment from the material + lights.
 inline std::unordered_map<std::string, Value>

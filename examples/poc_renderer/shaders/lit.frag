@@ -8,13 +8,13 @@
 //   camera-space light whenever headlight=TRUE (default), independent of the
 //   scene's lights.
 //
-// TEXTURE SLOTS (units match the PoC bind order in main.cpp):
+// texture slots (units match the PoC bind order in main.cpp):
 //   Unit 0 — diffuse / base-color (uTexture / uHasTexture)
 //   Unit 1 — normal map (uNormalTex / uHasNormalTex)      — tangent-space RGB
 //   Unit 2 — emissive texture (uEmissiveTex / uHasEmissiveTex)
 //   Unit 3 — specular texture (uSpecularTex / uHasSpecularTex)
 //
-// NORMAL MAPPING: when uHasNormalTex != 0 the tangent-space normal from the
+// normal mapping: when uHasNormalTex != 0 the tangent-space normal from the
 // map is decoded ([0,1]^3 -> [-1,1]^3), scaled by uNormalScale, and transformed
 // into eye space via a TBN built from the geometric normal and a synthesized
 // tangent frame (Gram-Schmidt from the screen-space derivatives of the position).
@@ -63,7 +63,7 @@ bool hatchPixel() {
     return positive || negative;
 }
 
-// ---- Texture slots (all optional — shader guards on Has* flags) -------------
+// Texture slots (all optional — shader guards on Has* flags)
 uniform int       uHasTexture;   // 0: diffuse slot absent.
 uniform sampler2D uTexture;      // unit 0: diffuse / base-color (or glyph atlas).
 uniform int       uGlyphAtlas;   // 1: uTexture is a font coverage atlas (.r = alpha).
@@ -78,13 +78,13 @@ uniform sampler2D uEmissiveTex;    // unit 2: emissive texture.
 uniform int       uHasSpecularTex; // 0: no specular texture.
 uniform sampler2D uSpecularTex;    // unit 3: specular texture.
 
-// ---- Material params --------------------------------------------------------
+// Material params
 uniform vec3  uSpecular;     // X3D specularColor (Blinn-Phong tint).
 uniform float uShininess;    // X3D shininess [0,1] — exponent = *128.
 uniform int   uAlphaMode;    // 0=Opaque, 1=Mask, 2=Blend (matches ex::AlphaMode).
 uniform float uAlphaCutoff;  // Mask threshold.
 
-// ---- Lights -----------------------------------------------------------------
+// Lights
 uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity, premultiplied.
@@ -121,10 +121,10 @@ bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
 }
 
 
-// ---- Output -----------------------------------------------------------------
+// Output
 uniform int uGammaOutput; // 1 => apply LINEARtoSRGB before writing FragColor.
 
-// ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
+// Fog (§24.4.2 / §17 Table 17.5)
 // visibilityRange is already world-scaled by the extractor; 0 disables fog.
 uniform vec3  uFogColor;
 uniform int   uFogType;            // 0 = LINEAR, 1 = EXPONENTIAL.
@@ -160,7 +160,7 @@ void main() {
     vec2 uv = mapUv(0, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
-    // ---- Base color from diffuse slot ± per-vertex Color -------------------
+    // Base color from diffuse slot ± per-vertex Color
     vec3 base  = (uHasColors != 0) ? vColor.rgb : uDiffuse.rgb;
     float alpha = uDiffuse.a;
     if (uGlyphAtlas != 0) {
@@ -179,14 +179,14 @@ void main() {
         alpha *= texel.a;
     }
 
-    // ---- Alpha cut / blend gate --------------------------------------------
+    // Alpha cut / blend gate
     if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard; // MASK (== ex::AlphaMode::Mask).
 
-    // ---- Geometric normal in eye space (two-sided) -------------------------
+    // Geometric normal in eye space (two-sided)
     vec3 Ngeo = normalize(vNormalEye);
     if (!gl_FrontFacing) Ngeo = -Ngeo;
 
-    // ---- Normal mapping (tangent-space, screen-space TBN approximation) ----
+    // Normal mapping (tangent-space, screen-space TBN approximation)
     vec3 N = Ngeo;
     if (uHasNormalTex != 0) {
         // Decode tangent-space normal: [0,1]^3 -> [-1,1]^3.
@@ -212,17 +212,17 @@ void main() {
         }
     }
 
-    // ---- Emissive: material emissive modulated by emissive texture ----------
+    // Emissive: material emissive modulated by emissive texture
     vec3 emissive = uEmissive;
     if (uHasEmissiveTex != 0)
         emissive *= texture(uEmissiveTex, mapUv(2, vPosEye, vNormalEye)).rgb;
 
-    // ---- Specular color: material specular ± specular texture ---------------
+    // Specular color: material specular ± specular texture
     vec3 specCol = uSpecular;
     if (uHasSpecularTex != 0)
         specCol *= texture(uSpecularTex, mapUv(3, vPosEye, vNormalEye)).rgb;
 
-    // ---- Lighting accumulation (Blinn-Phong) --------------------------------
+    // Lighting accumulation (Blinn-Phong)
     vec3 V       = normalize(-vPosEye);
     float expo   = max(uShininess * 128.0, 1.0);
     vec3 lit     = emissive;
@@ -248,7 +248,7 @@ void main() {
         }
     }
 
-    // ---- sRGB output encoding (Phase 5.5) -----------------------------------
+    // sRGB output encoding
     if (uGammaOutput != 0)
         lit = linearToSRGB(lit);
 

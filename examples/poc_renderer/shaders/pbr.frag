@@ -2,8 +2,7 @@
 // pbr.frag — PoC PhysicalMaterial (metallic-roughness) fragment shader.
 //
 // Implements the glTF 2.0 §3.9 metallic-roughness BRDF using analytic
-// directional and positional lights. Phase 4 (IBL / environment lighting) is deferred;
-// there is NO envDiffuse / envSpecular / brdfLUT term here.
+// directional and positional lights, without environment lighting.
 //
 // BRDF summary:
 //   f = f_diffuse + f_specular
@@ -13,7 +12,7 @@
 //   G = Schlick-Smith GGX: separate NdotV and NdotL terms with k=alpha/2
 //   F = Schlick: F0 + (1-F0)*(1-VdotH)^5; F0 = mix(0.04, baseColor, metallic)
 //
-// TEXTURE SLOTS (units match the PoC bind order in main.cpp):
+// texture slots (units match the PoC bind order in main.cpp):
 //   Unit 0 — base-color (uBaseColorTex / uHasBaseColorTex)   — sRGB
 //   Unit 1 — normal map (uNormalTex / uHasNormalTex)         — linear
 //   Unit 2 — emissive   (uEmissiveTex / uHasEmissiveTex)     — sRGB
@@ -21,9 +20,9 @@
 //             G=roughness, B=metallic (R unused — see unit 4).
 //   Unit 4 — occlusion  (uOcclusionTex / uHasOcclusionTex)   — linear (R only)
 //
-// OUTPUT: always sRGB (linearToSRGB applied at the end).
-// TWO-SIDED: N flipped via gl_FrontFacing, same as lit.frag.
-// NORMAL MAPPING: same screen-space derivative TBN as lit.frag.
+// output: always sRGB (linearToSRGB applied at the end).
+// two-sided: N flipped via gl_FrontFacing, same as lit.frag.
+// normal mapping: same screen-space derivative TBN as lit.frag.
 
 out vec4 FragColor;
 
@@ -38,7 +37,7 @@ in vec2 vTexCoord;
 #include "texgen.glsl"
 #include "multitexture.glsl"
 
-// ---- Material params (physical model) --------------------------------------
+// Material params (physical model)
 uniform vec4  uBaseColor;    // rgb = baseColor, a = 1 - transparency.
 uniform float uMetallic;     // [0,1].
 uniform float uRoughness;    // [0,1] — remapped to alpha = roughness^2.
@@ -46,11 +45,11 @@ uniform vec3  uEmissive;     // emissive contribution (pre-multiplied).
 uniform float uNormalScale;  // normal map strength.
 uniform float uOcclusionStrength; // AO strength.
 
-// ---- Alpha ------------------------------------------------------------------
+// Alpha
 uniform int   uAlphaMode;    // 0=Opaque, 1=Mask, 2=Blend (matches ex::AlphaMode).
 uniform float uAlphaCutoff;
 
-// ---- Vertex color override --------------------------------------------------
+// Vertex color override
 uniform int uHasColors;
 
 uniform int uFillMode;       // bit 1: fill; bit 2: hatch (polygons only).
@@ -72,7 +71,7 @@ bool hatchPixel() {
     return positive || negative;
 }
 
-// ---- Texture slots ----------------------------------------------------------
+// Texture slots
 uniform int       uHasBaseColorTex;
 uniform sampler2D uBaseColorTex;    // unit 0.
 
@@ -88,7 +87,7 @@ uniform sampler2D uMetallicRoughnessTex; // unit 3: ORM (R=AO, G=rough, B=metal)
 uniform int       uHasOcclusionTex;
 uniform sampler2D uOcclusionTex;    // unit 4: separate occlusion (R channel).
 
-// ---- Lights -----------------------------------------------------------------
+// Lights
 uniform int  uNumLights;
 uniform vec3 uLightDirEye[kMaxLights]; // direction of TRAVEL, eye space.
 uniform vec3 uLightColor[kMaxLights];  // rgb * intensity.
@@ -125,13 +124,13 @@ bool resolveLight(int i, vec3 posEye, out vec3 L, out float atten) {
 }
 
 
-// ---- Fog (§24.4.2 / §17 Table 17.5) -----------------------------------------
+// Fog (§24.4.2 / §17 Table 17.5)
 // visibilityRange is already world-scaled by the extractor; 0 disables fog.
 uniform vec3  uFogColor;
 uniform int   uFogType;            // 0 = LINEAR, 1 = EXPONENTIAL.
 uniform float uFogVisibilityRange;
 
-// ---- GGX BRDF helpers -------------------------------------------------------
+// GGX BRDF helpers
 
 // GGX normal distribution function (Trowbridge-Reitz).
 float D_GGX(float NdotH, float alpha2) {
@@ -183,7 +182,7 @@ void main() {
     vec2 uv = mapUv(0, vPosEye, vNormalEye);
     bool hatch = (uFillMode & 2) != 0 && hatchPixel();
     if ((uFillMode & 1) == 0 && !hatch) discard;
-    // ---- Base color ---------------------------------------------------------
+    // Base color
     vec4 baseCol = uBaseColor;
     if (uHasColors != 0) baseCol.rgb = vColor.rgb;
     if (uNumStages > 0) {
@@ -192,14 +191,14 @@ void main() {
                                    vNormalEye);
     } else if (uHasBaseColorTex != 0) {
         // Base-color textures are uploaded as GL_SRGB8_ALPHA8, so the GPU already
-        // linearizes on sample — do NOT pow(2.2) again here (that double-decodes
+        // linearizes on sample — do not pow(2.2) again here (that double-decodes
         // and darkens). Matches lit.frag, which also trusts the hardware decode.
         baseCol *= texture(uBaseColorTex, uv);
     }
     float alpha = baseCol.a;
     if (uAlphaMode == 1 && alpha < uAlphaCutoff) discard; // MASK (== ex::AlphaMode::Mask).
 
-    // ---- Metallic / roughness from ORM texture or uniforms ------------------
+    // Metallic / roughness from ORM texture or uniforms
     float metallic  = uMetallic;
     float roughness = uRoughness;
     if (uHasMetallicRoughnessTex != 0) {
@@ -211,10 +210,10 @@ void main() {
     float alpha2 = max(roughness * roughness, 0.001);
     alpha2 = alpha2 * alpha2; // perceptual roughness -> linear alpha^2
 
-    // ---- Occlusion ----------------------------------------------------------
-    // AO comes ONLY from the occlusion slot (PhysicalMaterial.occlusionTexture,
+    // Occlusion
+    // AO comes only from the occlusion slot (PhysicalMaterial.occlusionTexture,
     // §12.4.6). The metallic-roughness texture carries roughness in G and
-    // metallic in B; its R channel is NOT an occlusion source unless the map is
+    // metallic in B; its R channel is not an occlusion source unless the map is
     // explicitly ORM-packed (the extractor emits no such marker).
     float ao = 1.0;
     if (uHasOcclusionTex != 0) {
@@ -222,11 +221,11 @@ void main() {
     }
     ao = mix(1.0, ao, uOcclusionStrength);
 
-    // ---- Geometric normal (two-sided) ---------------------------------------
+    // Geometric normal (two-sided)
     vec3 Ngeo = normalize(vNormalEye);
     if (!gl_FrontFacing) Ngeo = -Ngeo;
 
-    // ---- Normal mapping (same derivative-TBN approach as lit.frag) ----------
+    // Normal mapping (same derivative-TBN approach as lit.frag)
     vec3 N = Ngeo;
     if (uHasNormalTex != 0) {
         vec2 nuv = mapUv(1, vPosEye, vNormalEye);
@@ -246,7 +245,7 @@ void main() {
         }
     }
 
-    // ---- PBR setup ----------------------------------------------------------
+    // PBR setup
     vec3 V    = normalize(-vPosEye);
     float NdV = max(dot(N, V), 0.0);
     // Dielectric base reflectance 0.04; metals absorb diffuse.
@@ -254,7 +253,7 @@ void main() {
     // Diffuse color for non-metals.
     vec3 diffColor = (1.0 - metallic) * baseCol.rgb;
 
-    // ---- Emissive -----------------------------------------------------------
+    // Emissive
     vec3 emissive = uEmissive;
     if (uHasEmissiveTex != 0) {
         // Emissive textures are uploaded sRGB (GL_SRGB8_ALPHA8) → GPU linearizes
@@ -263,9 +262,7 @@ void main() {
         emissive *= et;
     }
 
-    // ---- Light accumulation (analytic GGX BRDF, directional and positional lights) ----
-    // NOTE: Phase 4 IBL (envDiffuse SH + prefiltered specular + brdfLUT) is
-    // DEFERRED; there is no environment term here.
+    // Light accumulation (analytic GGX BRDF, directional and positional lights)
     vec3 color = emissive;
 
     for (int i = 0; i < uNumLights && i < kMaxLights; ++i) {
@@ -298,12 +295,12 @@ void main() {
         color += (kD * diffColor / PI + spec) * lightColor * NdL;
     }
 
-    // ---- Apply AO on the diffuse component (ambient occlusion) -------------
+    // Apply AO on the diffuse component (ambient occlusion)
     // A simple ambient term to make unlit areas not pitch-black.
     vec3 ambient = 0.03 * diffColor * ao;
     color += ambient;
 
-    // ---- sRGB output --------------------------------------------------------
+    // sRGB output
     color = linearToSRGB(color);
 
     // §17: fog is the final step, applied to the output (display) colour.

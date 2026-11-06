@@ -20,21 +20,21 @@ int glfwToX3DNavKey(int glfwKey);
 struct GLFWwindow;
 
 // Installs glfw callbacks that translate device input into the SDK input seam,
-// and feeds the per-frame pointer ray. Holds NO scene logic — pure device→seam
+// and feeds the per-frame pointer ray. Holds no scene logic — pure device→seam
 // translation. The consumer constructs one after the window + attachInteractive.
 class InputBridge {
 public:
   InputBridge(x3d::runtime::X3DExecutionContext &ctx, GLFWwindow *win,
               std::shared_ptr<x3d::runtime::NavigationSystem> nav);
 
-  // Call once per frame BEFORE ctx.tick(), with the PREVIOUS frame's view/proj
+  // Call once per frame before ctx.tick(), with the previous frame's view/proj
   // (the image the user is pointing at) and the current framebuffer size.
   void feedPointerRay(const x3d::runtime::Mat4 &view,
                       const x3d::runtime::Mat4 &proj, int w, int h);
 
   // Per-frame UI capture gate: when the ImGui overlay owns the mouse/keyboard
   // this frame, the bridge swallows that device input so the camera/nav and the
-  // overlay don't both consume it. Default false ⇒ no overlay ⇒ original path.
+  // overlay don't both consume it. Defaults to false when no overlay is present.
   void setUiCapture(bool mouse, bool keyboard) {
     captureMouse_ = mouse;
     captureKeyboard_ = keyboard;

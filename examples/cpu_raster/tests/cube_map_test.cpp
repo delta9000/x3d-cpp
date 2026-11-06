@@ -1,4 +1,4 @@
-// cube_map_test.cpp — REQ-CUBE: §34.4.1 ComposedCubeMapTexture sampled as an
+// cube_map_test.cpp — §34.4.1 ComposedCubeMapTexture sampled as an
 // environment map by the CPU reference host.
 //
 // An unlit Sphere of radius 2 faces a camera on +Z. Its cube map has six 1x1
@@ -16,7 +16,6 @@
 //   * Inside a MultiTexture, a cube stage combines like any other stage.
 //   * §34.4.3 ImageCubeMapTexture: a DDS cube file with the same six colours
 //     decodes (x3d_stb) to the same faces.
-// Before this change the cube ref sampled white, so every pixel was white.
 #include "RuntimeSession.hpp"
 #include "StbTextureResolver.hpp"
 #include "X3DParse.hpp"

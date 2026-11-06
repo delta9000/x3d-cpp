@@ -1,8 +1,8 @@
 // texture_pipeline.cpp — consumer-owned texture handling for asset_import.
 // Decodes via the x3d_stb seam (TextureResolver), re-encodes PNG via the
-// vendored stb_image_write.h. Lives OUTSIDE the x3d_cpp::authoring slim
+// vendored stb_image_write.h. Lives outside the x3d_cpp::authoring slim
 // target (emit.cpp links only the slim surface); the pipeline is consumer
-// glue that the CLI (Task 11) threads into emit() via EmitOptions::textures.
+// glue that the CLI threads into emit() via EmitOptions::textures.
 #include "texture_pipeline.hpp"
 
 #include "StbTextureResolver.hpp"  // x3d::runtime::io::stb — the decode seam

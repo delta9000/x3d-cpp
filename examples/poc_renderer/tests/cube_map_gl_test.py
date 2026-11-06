@@ -1,4 +1,4 @@
-"""Headless GL regression for ComposedCubeMapTexture environment mapping (REQ-CUBE).
+"""Headless GL regression for ComposedCubeMapTexture environment mapping.
 
 §34.2.2: an environment texture is indexed by a direction, the (s, t, r)
 coordinate its TextureCoordinateGenerator produces, or with no generator the

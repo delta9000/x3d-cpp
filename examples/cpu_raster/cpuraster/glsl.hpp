@@ -1,21 +1,6 @@
-// glsl.hpp — a GLSL-emulation math layer for the headless CPU rasterizer.
-//
-// This is the "GLSL emulation" substrate: C++ vector/matrix types and free
-// functions whose names and semantics mirror GLSL (vec3, dot, normalize, mix,
-// clamp, pow, reflect, texture(), …). It lets the fixed-function material
-// shaders (MaterialShader.hpp) be written as near-verbatim CPU ports of the
-// PoC's lit.frag / pbr.frag / unlit.frag GLSL, and it is the value runtime the
-// author-shader interpreter (GlslInterpreter.hpp) evaluates against.
-//
-// This file is OUT-OF-SDK consumer code (examples/cpu_raster/) — it never lands
-// in the x3d_cpp SDK. It depends ONLY on the SDK's POD value types (SFVec*,
-// SFColor*) and Mat4 across the extraction seam, plus <cmath>.
-//
-// CONVENTIONS (match the SDK + the PoC GLSL):
-//   * mat4 is COLUMN-MAJOR, element (row r, col c) = m[c*4+r] — identical to
-//     x3d::runtime::Mat4 so a Mat4 converts in with no transpose.
-//   * A column vector p transforms as out = M * p (right-to-left), GL style.
-//   * texture() origin is bottom-left (X3D LOCAL == GL); NO implicit V-flip.
+// GLSL-style math shared by the material shaders and interpreter.
+// Matrices are column-major: m[c*4+r] is row r, column c, matching Mat4.
+// Column vectors transform as M * p; texture coordinates use a bottom-left origin.
 #ifndef X3D_CPURASTER_GLSL_HPP
 #define X3D_CPURASTER_GLSL_HPP
 
@@ -29,10 +14,8 @@
 namespace x3d::cpuraster::glsl {
 using namespace x3d::core;
 
-// ---------------------------------------------------------------------------
 // Scalar helpers (GLSL-named so ports read 1:1). These also overload for the
 // vector types below via component-wise application.
-// ---------------------------------------------------------------------------
 inline float clampf(float x, float lo, float hi) {
   return x < lo ? lo : (x > hi ? hi : x);
 }
@@ -41,11 +24,9 @@ inline float stepf(float edge, float x) { return x < edge ? 0.0f : 1.0f; }
 inline float fractf(float x) { return x - std::floor(x); }
 inline float signf(float x) { return (x > 0.0f) - (x < 0.0f); }
 
-// ---------------------------------------------------------------------------
 // vec2 / vec3 / vec4 — POD-ish value types with GLSL component access (.x/.y/.z
 // /.w and .r/.g/.b/.a aliases via accessor methods) and the arithmetic GLSL
 // uses. Kept deliberately small: only what the shaders + interpreter need.
-// ---------------------------------------------------------------------------
 struct vec2 {
   float x = 0.0f, y = 0.0f;
   vec2() = default;
@@ -54,7 +35,6 @@ struct vec2 {
   vec2(const SFVec2f &v) : x(v.x), y(v.y) {}
   float &operator[](int i) { return i == 0 ? x : y; }
   float operator[](int i) const { return i == 0 ? x : y; }
-  // .r/.g aliases (GLSL color swizzle on a vec2).
   float r() const { return x; }
   float g() const { return y; }
 };
@@ -70,7 +50,6 @@ struct vec3 {
   float &operator[](int i) { return i == 0 ? x : (i == 1 ? y : z); }
   float operator[](int i) const { return i == 0 ? x : (i == 1 ? y : z); }
   vec2 xy() const { return {x, y}; }
-  // color aliases.
   float r() const { return x; }
   float g() const { return y; }
   float b() const { return z; }
@@ -102,7 +81,7 @@ struct vec4 {
   SFColorRGBA toRGBA() const { return {x, y, z, w}; }
 };
 
-// ---- vec2 arithmetic -------------------------------------------------------
+// vec2 arithmetic
 inline vec2 operator+(vec2 a, vec2 b) { return {a.x + b.x, a.y + b.y}; }
 inline vec2 operator-(vec2 a, vec2 b) { return {a.x - b.x, a.y - b.y}; }
 inline vec2 operator*(vec2 a, vec2 b) { return {a.x * b.x, a.y * b.y}; }
@@ -111,7 +90,7 @@ inline vec2 operator*(float s, vec2 a) { return {a.x * s, a.y * s}; }
 inline vec2 operator/(vec2 a, float s) { return {a.x / s, a.y / s}; }
 inline vec2 operator-(vec2 a) { return {-a.x, -a.y}; }
 
-// ---- vec3 arithmetic -------------------------------------------------------
+// vec3 arithmetic
 inline vec3 operator+(vec3 a, vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
 inline vec3 operator-(vec3 a, vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
 inline vec3 operator*(vec3 a, vec3 b) { return {a.x * b.x, a.y * b.y, a.z * b.z}; }
@@ -124,7 +103,7 @@ inline vec3 &operator+=(vec3 &a, vec3 b) { a = a + b; return a; }
 inline vec3 &operator*=(vec3 &a, vec3 b) { a = a * b; return a; }
 inline vec3 &operator*=(vec3 &a, float s) { a = a * s; return a; }
 
-// ---- vec4 arithmetic -------------------------------------------------------
+// vec4 arithmetic
 inline vec4 operator+(vec4 a, vec4 b) { return {a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w}; }
 inline vec4 operator-(vec4 a, vec4 b) { return {a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w}; }
 inline vec4 operator*(vec4 a, vec4 b) { return {a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w}; }
@@ -132,9 +111,7 @@ inline vec4 operator*(vec4 a, float s) { return {a.x*s, a.y*s, a.z*s, a.w*s}; }
 inline vec4 operator*(float s, vec4 a) { return {a.x*s, a.y*s, a.z*s, a.w*s}; }
 inline vec4 &operator*=(vec4 &a, vec4 b) { a = a * b; return a; }
 
-// ---------------------------------------------------------------------------
 // GLSL builtins — scalar + vector overloads.
-// ---------------------------------------------------------------------------
 inline float dot(vec2 a, vec2 b) { return a.x * b.x + a.y * b.y; }
 inline float dot(vec3 a, vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 inline float dot(vec4 a, vec4 b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
@@ -158,7 +135,6 @@ inline vec3 normalize(vec3 v) {
 // reflect(I, N) = I - 2*dot(N,I)*N (GLSL).
 inline vec3 reflect(vec3 I, vec3 N) { return I - 2.0f * dot(N, I) * N; }
 
-// clamp.
 inline float clamp(float x, float lo, float hi) { return clampf(x, lo, hi); }
 inline vec3 clamp(vec3 v, float lo, float hi) {
   return {clampf(v.x, lo, hi), clampf(v.y, lo, hi), clampf(v.z, lo, hi)};
@@ -168,7 +144,6 @@ inline vec4 clamp(vec4 v, float lo, float hi) {
           clampf(v.w, lo, hi)};
 }
 
-// mix.
 inline float mix(float a, float b, float t) { return mixf(a, b, t); }
 inline vec3 mix(vec3 a, vec3 b, float t) {
   return {mixf(a.x, b.x, t), mixf(a.y, b.y, t), mixf(a.z, b.z, t)};
@@ -193,10 +168,8 @@ inline vec3 pow_(vec3 v, vec3 y) {
 
 inline vec3 absv(vec3 v) { return {std::fabs(v.x), std::fabs(v.y), std::fabs(v.z)}; }
 
-// ---------------------------------------------------------------------------
 // mat3 / mat4 — column-major, GL-native. mat3 multiplies a vec3 (M*v); mat4
 // multiplies a vec4. from(Mat4) imports the SDK matrix with no transpose.
-// ---------------------------------------------------------------------------
 struct mat3 {
   std::array<float, 9> m{}; // column-major: (r,c) = m[c*3+r]
   mat3() = default;
@@ -205,7 +178,6 @@ struct mat3 {
     r.m[0] = r.m[4] = r.m[8] = 1.0f;
     return r;
   }
-  // columns as vec3.
   vec3 col(int c) const { return {m[c * 3 + 0], m[c * 3 + 1], m[c * 3 + 2]}; }
 };
 
@@ -255,9 +227,7 @@ inline mat3 normalMatrix(const x3d::runtime::Mat4 &viewModel) {
   return out;
 }
 
-// ---------------------------------------------------------------------------
 // linearToSRGB — the exact piecewise encode the PoC shaders use at output.
-// ---------------------------------------------------------------------------
 inline vec3 linearToSRGB(vec3 lin) {
   auto enc = [](float c) {
     return c < 0.0031308f ? c * 12.92f

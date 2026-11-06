@@ -86,7 +86,7 @@ static cr::Framebuffer renderFillShape(const char *geometryType, int mode) {
   return cr::renderScene(ctx, extractor, opt);
 }
 
-// REQ-LOCALFOG consumer check: a green Box under a disabled global Fog (range 0)
+// consumer check: a green Box under a disabled global Fog (range 0)
 // and, when withLocalFog, inside a Group whose LocalFog is red with a tiny
 // visibilityRange so the surface saturates to the LocalFog colour. Without the
 // LocalFog the Box stays its unfogged green.

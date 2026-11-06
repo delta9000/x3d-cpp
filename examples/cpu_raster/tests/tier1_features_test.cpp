@@ -1,4 +1,4 @@
-// tier1_features_test.cpp — extracted-but-ignored seam data the rasterizer now
+// tier1_features_test.cpp — extracted scene data the rasterizer
 // consumes: (A) the Background sky/ground gradient, (B) two-sided materials via
 // Appearance.backMaterial, and (C) TextureCoordinateGenerator (Sphere) UVs.
 // Behavioural assertions through the public render/shader API.
@@ -47,7 +47,7 @@ static std::vector<EyeLight> ambientOnlyLight() {
 }
 
 int main() {
-  // ===================================================================== A) ==
+  // A) ==
   // Background sky/ground gradient: zenith=sky[0], nadir=ground, mid-sky blends.
   {
     const float PI = 3.14159265358979f;
@@ -71,7 +71,7 @@ int main() {
     CHECK(flat.x > 0.19f && flat.x < 0.21f && flat.z > 0.39f && flat.z < 0.41f);
   }
 
-  // ===================================================================== B) ==
+  // B) ==
   // Two-sided material: front face uses the material, back face uses
   // backMaterial (different colour).
   {
@@ -95,7 +95,7 @@ int main() {
     CHECK(ob.z > ob.x + 0.1f); // back blue-dominant
   }
 
-  // ===================================================================== C) ==
+  // C) ==
   // TextureCoordinateGenerator (Sphere): base-texture UVs come from the
   // camera-space normal, not the (here zero) authored texcoord. A 2x1 red|green
   // texture sampled with a +X normal (sphere u=1) reads GREEN; without UV-gen the

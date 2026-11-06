@@ -1,4 +1,4 @@
-// fog_shader_test.cpp — ENV-10: the §17 fog term in the CPU material shaders.
+// fog_shader_test.cpp — the §17 fog term in the CPU material shaders.
 //
 // applyFog is the final step of every model (unlit/phong/pbr). Checked here
 // directly against the spec formulas at d = 0, V/2 and d >= V, for LINEAR and
@@ -38,7 +38,7 @@ int main() {
   const g::vec3 surface{0.2f, 0.4f, 0.6f};
   const g::vec3 fogCol{1.0f, 1.0f, 1.0f};
 
-  // ---- LINEAR (type 0) at d = 0, V/2, V, >V -------------------------------
+  // LINEAR (type 0) at d = 0, V/2, V, >V
   {
     FogParams fog; fog.color = fogCol; fog.type = 0; fog.visibilityRange = 10.0f;
     CHECK(feq(g::length(detail::applyFog(surface, 0.0f, fog) - surface), 0.0f));
@@ -50,7 +50,7 @@ int main() {
     CHECK(feq(g::length(detail::applyFog(surface, 5.0f, fog) - (surface * 0.5f + fogCol * 0.5f)), 0.0f));
   }
 
-  // ---- EXPONENTIAL (type 1) at d = 0, V/2, V, >V --------------------------
+  // EXPONENTIAL (type 1) at d = 0, V/2, V, >V
   {
     FogParams fog; fog.color = fogCol; fog.type = 1; fog.visibilityRange = 10.0f;
     CHECK(feq(g::length(detail::applyFog(surface, 0.0f, fog) - surface), 0.0f)); // exp(0)=1.
@@ -62,14 +62,14 @@ int main() {
               surface.x * std::exp(-1.0f) + fogCol.x * (1.0f - std::exp(-1.0f)), 1e-4f));
   }
 
-  // ---- visibilityRange 0 disables fog (all distances unchanged) -----------
+  // visibilityRange 0 disables fog (all distances unchanged)
   {
     FogParams fog; fog.color = fogCol; fog.type = 0; fog.visibilityRange = 0.0f;
     CHECK(feq(g::length(detail::applyFog(surface, 0.0f, fog) - surface), 0.0f));
     CHECK(feq(g::length(detail::applyFog(surface, 1000.0f, fog) - surface), 0.0f));
   }
 
-  // ---- Fog reaches the material models as the final step ------------------
+  // Fog reaches the material models as the final step
   // Unlit: emissive green at d=0 stays green; far away it becomes fog white.
   {
     ex::MaterialDesc m;
