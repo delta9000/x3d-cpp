@@ -111,19 +111,6 @@ protected:
     (void)node;
     return 1.0;
   }
-  double readStartTime(x3d::nodes::X3DTimeDependentNode *node) const {
-    return node->getStartTime();
-  }
-  double readStopTime(x3d::nodes::X3DTimeDependentNode *node) const {
-    return node->getStopTime();
-  }
-  double readPauseTime(x3d::nodes::X3DTimeDependentNode *node) const {
-    return node->getPauseTime();
-  }
-  double readResumeTime(x3d::nodes::X3DTimeDependentNode *node) const {
-    return node->getResumeTime();
-  }
-
   /**
    * @brief Derived hook: emit the node's continuous outputs for this tick.
    * @param frac    Cycle fraction in [0,1] (already loop-wrapped / clamped).
@@ -197,13 +184,13 @@ private:
     // 8.2.4.3: an active node ignores set_startTime — use the value snapshotted
     // at activation, not the live (possibly ROUTE-mutated) field, so a
     // set_startTime delivered mid-run cannot corrupt the deactivation guard.
-    const double startTime = st.active ? st.activeStartTime : readStartTime(node);
-    const double stopTime = readStopTime(node);
+    const double startTime = st.active ? st.activeStartTime : node->getStartTime();
+    const double stopTime = node->getStopTime();
     // Raw cycle drives the non-looping completion threshold (cycle <= 0 must
     // deactivate after one tick: sinceStart >= cycle is immediately true).
     // gCycle is the divide-by-zero-guarded value used for ALL index / fraction
     // / cycle-start division math.
-    const double cycle = effectiveCycle(node);
+    const double cycle = readCycleInterval(node);
     const double gCycle = guardCycle(cycle);
     if (st.active && gCycle != st.cycleInterval) {
       // §8.4.1: retain the reached phase when cycleInterval changes.
@@ -229,7 +216,7 @@ private:
       // run begins at that instant. The pair usually arrives by
       // ROUTE during a cascade, after this System ran, so it is recognised on
       // the next tick by stopTime == startTime rather than by == now.
-      const double liveStart = readStartTime(node);
+      const double liveStart = node->getStartTime();
       if (!stoppedByDisable && stoppedByStopTime && liveStart == stopTime &&
           liveStart > st.activeStartTime) {
         if (st.paused) {
@@ -262,7 +249,7 @@ private:
                        static_cast<SFTime>(elapsed));
           emitCycleOutputs(node, frac, finalNow, elapsed, ctx);
         }
-        deactivate(node, st, now, cycle, ctx);
+        deactivate(node, st, ctx);
         return;
       }
     }
@@ -313,7 +300,7 @@ private:
         emitCycleOutputs(node, 1.0, boundaryNow, elapsed, ctx);
         st.completed = true;
         st.completedStartTime = st.activeStartTime;
-        deactivate(node, st, now, cycle, ctx);
+        deactivate(node, st, ctx);
         return;
       }
     }
@@ -343,7 +330,7 @@ private:
     st.paused = false;
     st.timeBase = startTime;
     st.cycleBase = startTime;
-    st.cycleInterval = guardCycle(effectiveCycle(node));
+    st.cycleInterval = guardCycle(readCycleInterval(node));
     st.lastCycleTick = now;
     st.activeStartTime = startTime;
     st.completed = false;
@@ -356,10 +343,8 @@ private:
     emitCycleTime(node, startTime, ctx);
   }
 
-  void deactivate(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
-                  double cycle, X3DExecutionContext &ctx) {
-    (void)now;
-    (void)cycle;
+  void deactivate(x3d::nodes::X3DTimeDependentNode *node, State &st,
+                  X3DExecutionContext &ctx) {
     if (st.paused) {
       emit<SFBool>(ctx, node, "isPaused", false);
       st.paused = false;
@@ -373,8 +358,8 @@ private:
 
   void handlePauseResume(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
                          X3DExecutionContext &ctx) {
-    const double pauseTime = readPauseTime(node);
-    const double resumeTime = readResumeTime(node);
+    const double pauseTime = node->getPauseTime();
+    const double resumeTime = node->getResumeTime();
 
     if (!st.paused) {
       // Pause when pauseTime is in (resumeTime, now]. (pauseTime > resumeTime
@@ -414,10 +399,6 @@ private:
   // fraction math; a non-looping sensor with cycle <= 0 deactivates after one
   // tick because sinceStart >= cycle is immediately true).
   static double guardCycle(double cycle) { return cycle > 0.0 ? cycle : 1.0; }
-
-  double effectiveCycle(x3d::nodes::X3DTimeDependentNode *node) const {
-    return readCycleInterval(node);
-  }
 
   // fraction in [0,1]: looped → wrap (boundary maps to 1.0 momentarily handled
   // by the single-shot/cycle-boundary paths above); non-looped → clamp.

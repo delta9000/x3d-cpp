@@ -34,6 +34,10 @@ identical observable behavior over shared fixtures. Until a seam reaches two bac
 swap-test it is **NOT-YET-PROVEN** — one backend (or pending) is not a genericity proof, only
 an unverified claim. This matrix is the live record the Seam-harness card formalizes.
 
+Behavior registration uses `System` and `X3DExecutionContext::addSystem`.
+The unused per-node compatibility path has been removed; see the
+[registration amendment](decisions/0011-ecs-flavored-not-ecs.md#amendment-2026-11-05).
+
 ## The matrix
 
 | Seam | Interface | Backend A | Backend B | Swap-test | Findings |

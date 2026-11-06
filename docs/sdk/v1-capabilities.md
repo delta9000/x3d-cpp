@@ -27,7 +27,7 @@ CAVEOS validation.
 | Scene graph | DEF/USE, Transform hierarchy (+ HAnimHumanoid/HAnimJoint/CADPart), bounds, binding stacks |
 | View-dependent nodes | LOD, Billboard, ProximitySensor, VisibilitySensor. Render deltas track per-placement LOD selection and Billboard orientation under tracked-head and ancestor motion |
 | Animation | TimeSensor, full interpolator family, Followers (§39 Damper + Chaser, all 14 node types), ROUTE cascade (§4.4.2.2 `set_`/`_changed` aliases accepted) |
-| Custom behavior | subclass `System`, `ctx.addSystem`, dirty-aware `ctx.writeField` |
+| Custom behavior | subclass `System`, `ctx.addSystem`, dirty-aware `ctx.writeField`; the unused per-node compatibility API has been removed ([migration](../wiki/decisions/0011-ecs-flavored-not-ecs.md#amendment-2026-11-05)) |
 | Input seam | `setPointer` / `setPointerButton` / `setPointerPresent` / `setPointerScreen` / `setKey`, key-device `push*` events; `SessionOptions::anchorHandler` receives non-`#Viewpoint` Anchor activations |
 | Pointing-device sensors | TouchSensor, PlaneSensor, CylinderSensor, SphereSensor (drag); CylinderSensor rotation is right-handed about +Y (IACC-1) |
 | Navigation | EXAMINE, FLY, WALK, LOOKAT, NONE; avatar collision (Collision node: enabled, proxy, isActive/collideTime), WALK gravity and terrain following with step height |

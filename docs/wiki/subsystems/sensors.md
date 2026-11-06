@@ -34,23 +34,14 @@ responsibilities:
 - **`update(now, ctx)`** — run per-tick work (only time-driven systems do real
   work here; event-driven systems leave this as the default no-op).
 
-The `ActiveNode` interface in `runtime/events/X3DActiveNode.hpp` is the earlier,
-per-node form of the same protocol: one `ActiveNode` per node instance, with a
-single `update(now, ctx)` method. It has been superseded by `System` for all
-production use but is retained for the `animation_test` (via `TimeSensorBehavior`)
-and wrapped by `ActiveNodeAdapter` inside `X3DExecutionContext` so that legacy
-callers still compile. New sensor families implement `System` directly.
-
 ## Key files
 
 | File | Role |
 |---|---|
-| `runtime/events/X3DActiveNode.hpp` | `ActiveNode` — legacy per-node update protocol (superseded by `System`; retained for backward compat + one test). |
 | `runtime/events/X3DSystem.hpp` | `System` — the current behavior-family abstraction: `attach(X3DNode*, X3DExecutionContext&)` + default no-op `update(double, X3DExecutionContext&)`. All sensor systems derive from this. |
 | `runtime/events/X3DExecutionContext.hpp` | Owns the System list; `addSystem(shared_ptr<System>)` registers a family; `tick(now)` calls every system's `update` before draining the cascade. |
 | `runtime/events/X3DTimeDependentSystem.hpp` | Reusable base for time-dependent nodes: the full ISO clock state machine (activation/pause/deactivation/elapsed-time/cycle-index). `TimeSensorSystem` extends it. |
 | `runtime/events/TimeSensorSystem.hpp` | `TimeSensor` driver: guards `attach` to `TimeSensor*`, reads `enabled`/`loop`/`cycleInterval`, and implements `emitCycleOutputs` (→ `fraction_changed`, `time`) and `emitCycleTime` (→ `cycleTime`). |
-| `runtime/events/TimeSensorBehavior.hpp` | Legacy `ActiveNode`: drives `fraction_changed` only, no `isActive`/pause/`cycleTime`. Used by `animation_test`; superseded by `TimeSensorSystem`. |
 | `runtime/events/PointingSensorSystem.hpp` | Pointing-device sensor driver: `TouchSensor` + drag sensors (`PlaneSensor`, `SphereSensor`, `CylinderSensor`). Resolves pointer ray vs. scene each tick via `ctx.pick()`; manages the grab. No `attach` enrollment needed — sensors are resolved live from the pick path. |
 | `runtime/events/KeyDeviceSensorSystem.hpp` | Key-device sensor driver: `KeySensor` (§21.4.1) + `StringSensor` (§21.4.2). Drains `ctx.keyState().events` on each tick and emits spec-mandated outputs to every enrolled enabled sensor. |
 | `runtime/scene/ViewDependentSystem.hpp` | View-dependent sensor driver: `ProximitySensor` (viewer-in-box) + `VisibilitySensor` (sensor box vs. six view-frustum planes) + `TransformSensor` (targetObject-AABB-in-sensor-box) enter/exit. Also drives LOD level selection and gates all three sensor types to the active transformation hierarchy (ADR-0034: a non-selected `Switch` child / inactive `LOD` level counts as removed). Runs in `update(now, ctx)` using the camera pose and per-path transforms from `ctx.sceneRoots()`; TransformSensor also uses `ctx.worldTransformAny(...)`. |
@@ -80,24 +71,6 @@ public:
 
 } // namespace x3d::runtime
 ```
-
-### The `ActiveNode` base (legacy)
-
-```cpp
-// runtime/events/X3DActiveNode.hpp
-namespace x3d::runtime {
-
-class ActiveNode {
-public:
-  virtual ~ActiveNode() = default;
-  virtual void update(double now, X3DExecutionContext &ctx) = 0;
-};
-
-} // namespace x3d::runtime
-```
-
-One `ActiveNode` per node; the context wraps each in an `ActiveNodeAdapter` that
-forwards to a one-element `System`. New code uses `System` directly.
 
 ### Registration and tick wiring
 

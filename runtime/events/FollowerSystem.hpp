@@ -168,7 +168,7 @@ class ChaserSystem : public System {
     NodeT *node;
     ValueT baseline, destination;
     std::vector<Tap> taps;
-    bool active = false, started = false;
+    bool active = false;
     double lastTick = -1.0;
   };
   std::vector<std::unique_ptr<Entry>> entries_;
@@ -191,9 +191,6 @@ public:
       e->taps.push_back({delta, e->destination, 0.0});
     }
     e->active = initiallyActive;
-    // On the initial-active path mark started so a mid-transition set_destination
-    // re-bases from the current output rather than from initialValue.
-    if (initiallyActive) e->started = true;
     Entry *ep = e.get();
     entries_.push_back(std::move(e)); // push before handlers capture ep
 
@@ -212,7 +209,6 @@ public:
       Delta delta = Arith::delta(previous, next);
       ep->taps.push_back({delta, next, (ep->lastTick < 0) ? 0.0 : ep->lastTick});
       ep->destination = v;
-      ep->started = true;
       if (!ep->active) {
         ep->active = true;
         c->emitIsActive(SFBool{true});

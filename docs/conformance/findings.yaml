@@ -351,7 +351,7 @@
   status: closed
   wave: 5
   commit: 07c31ca
-  summary: registerInterpolatorSystems had no production caller; added attachInterpolators scene-walk wiring + makeInterpolatorSystems factory.
+  summary: attachInterpolators enrolls scene nodes using the makeInterpolatorSystems factory; the unused add-only registration helper was removed.
 
 # ── Behavioral-family deferrals (explain the inert nodes) ───────────────────
 # These cover whole un-implemented behavioral components so each inert node has a
@@ -1809,8 +1809,9 @@
     Spec self-contradiction (Mantis 1106) - 8.4.1's wall-clock fraction formula vs 8.2.4.4
     "continues from its value when paused". x3d-cpp already conforms -
     X3DTimeDependentSystem.hpp:226 sinceStart = now - timeBase, :321 timeBase += (resumeTime -
-    pauseTime). Corollary of TDN-1/2/6. Follow-ups - retire the naive legacy seed
-    TimeSensorBehavior.hpp:39; add a fraction-continuity regression test. 4.1 - partial upstream
+    pauseTime). Corollary of TDN-1/2/6. The unused legacy clock seed was removed;
+    animation tests use TimeSensorSystem. Follow-up: add a fraction-continuity
+    regression test. 4.1 - partial upstream
     (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.
 - id: TIME-ORIGIN-1
   nodes: [TimeSensor]

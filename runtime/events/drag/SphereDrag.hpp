@@ -44,14 +44,6 @@ inline SFVec3f scross(const SFVec3f &a, const SFVec3f &b) {
 }
 inline float slen(const SFVec3f &a) { return std::sqrt(sdot(a, a)); }
 
-// Hamilton product of two quaternions (x,y,z,w): result = a * b.
-inline Quat qmul(const Quat &a, const Quat &b) {
-  return Quat{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-              a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-              a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-              a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
-}
-
 } // namespace detail
 
 // sphereDrag — one pointer-motion evaluation.
@@ -120,7 +112,7 @@ inline SphereDragResult sphereDrag(const Mat4 &sensorFrame,
   }
 
   // rotation_changed = q_rel * q_offset (offset is the base, drag on top).
-  const Quat qOut = qmul(quatFromRotation(rRel), quatFromRotation(offset));
+  const Quat qOut = quatMul(quatFromRotation(rRel), quatFromRotation(offset));
   out.rotation = rotationFromQuat(qOut);
   return out;
 }

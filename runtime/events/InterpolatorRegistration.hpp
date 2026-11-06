@@ -3,8 +3,7 @@
 // the registry-of-behavior seam that replaces 8 separate per-type files.
 // makeInterpolatorSystems() is the single source of truth for the system list
 // (the 8 linear interpolators + the 5 non-linear ones: 3 spline + squad + ease);
-// registerInterpolatorSystems() add-only-registers them, and X3DSceneBridge's
-// attachInterpolators() (the production caller) attaches them to every node.
+// X3DSceneBridge's attachInterpolators() attaches them to every node.
 #ifndef X3D_RUNTIME_INTERPOLATOR_REGISTRATION_HPP
 #define X3D_RUNTIME_INTERPOLATOR_REGISTRATION_HPP
 
@@ -67,12 +66,6 @@ inline std::vector<std::shared_ptr<System>> makeInterpolatorSystems() {
   systems.push_back(std::make_shared<NurbsOrientationInterpolatorSystem>());
   systems.push_back(std::make_shared<NurbsSurfaceInterpolatorSystem>());
   return systems;
-}
-
-/// Register every interpolator System (add-only; attach per node separately, or
-/// use attachInterpolators() for the production scene-walk wiring).
-inline void registerInterpolatorSystems(X3DExecutionContext &ctx) {
-  for (auto &s : makeInterpolatorSystems()) ctx.addSystem(std::move(s));
 }
 
 } // namespace x3d::runtime

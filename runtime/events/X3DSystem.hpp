@@ -1,8 +1,6 @@
 // X3DSystem.hpp
 // The System abstraction: a behavior family operating over a *collection* of
-// nodes of one kind. Generalizes the per-node `ActiveNode` (see
-// X3DActiveNode.hpp) so a browser registers one System per behavior family
-// rather than one object per node.
+// nodes of one kind. A browser registers one System per behavior family.
 // Two styles, both supported by the same base:
 //   - Time-driven systems (e.g. TimeSensor) do their work in `update(now,
 //   ctx)`,

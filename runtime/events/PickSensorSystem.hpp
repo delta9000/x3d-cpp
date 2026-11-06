@@ -46,7 +46,8 @@ using namespace x3d::core;
 class PickSensorSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext & /*ctx*/) override {
-    if (node && node->nodeTypeName() == "LinePickSensor" && !contains(sensors_, node))
+    if (node && node->nodeTypeName() == "LinePickSensor" &&
+        std::find(sensors_.begin(), sensors_.end(), node) == sensors_.end())
       sensors_.push_back(node);
   }
 
@@ -61,10 +62,6 @@ public:
   }
 
 private:
-  static bool contains(const std::vector<X3DNode *> &v, X3DNode *n) {
-    return std::find(v.begin(), v.end(), n) != v.end();
-  }
-
   // A pickingGeometry segment, in the pickingGeometry's local frame.
   struct Segment { SFVec3f a, b; };
 

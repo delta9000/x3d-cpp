@@ -19,11 +19,11 @@ The Interpolator System animates scene-graph field values by responding to `set_
 
 | File | Role |
 |---|---|
-| `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion SLERP (`Quat`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
-| `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatMul`, `quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
+| `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion multiplication and SLERP (`Quat`, `quatMul`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
+| `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
 | `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). On attach they initialize output readback from the first authored keyValue without sending an event; their `set_fraction` handlers post later `value_changed` events through the cascade. |
 | `runtime/events/SplineInterpolatorSystem.hpp` | Three concrete `System` subclasses for the non-linear family: `SplineInterpolatorSystem<NodeT,ValueT>` (Hermite spline), `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` (emits `modifiedFraction_changed`). |
-| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `registerInterpolatorSystems(ctx)` add-registers them. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
+| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
 | `runtime/events/NurbsInterpolatorSystem.hpp` | Three §27 systems reuse `runtime/extract/NurbsEval.hpp` for curve positions, tangent orientations, and surface positions/normals. |
 
 ## Interfaces and seams
@@ -118,8 +118,6 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 - **AUD-INTERP-1** (§19.3.1): before a `set_fraction` input, output readback is the first authored keyValue (or first multi-value row). Linear, spline, and Squad attachment initialize that stored readback directly and emit no ROUTE event.
 
 - **INTERP-01** (§19.2.4, §19.4.10-13): the Hermite Spline, Squad, and EaseInEaseOut nodes previously had no System; `set_fraction` fired a no-op generated default. `SplineInterpolatorSystem`, `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` close this gap.
-
-- **PIV-1**: `registerInterpolatorSystems` (add-only) was never wired to attach nodes; `attachInterpolators` (scene-walk + add) is the correct production call.
 
 - **ColorInterpolator** interpolates in HSV, not RGB, lerping hue along the shorter arc (Foley & van Dam conversion). `lerpColorHsv` in `Interpolation.hpp`.
 

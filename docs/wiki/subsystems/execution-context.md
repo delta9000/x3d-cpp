@@ -154,7 +154,6 @@ tightening; downstream applications need a rebuild and call-site audit.
 |---|---|
 | `runtime/events/X3DExecutionContext.hpp` | Primary type: owns route graph, cascade, System list, post-cascade hooks, and all scene-level subsystem instances; exposes `tick`, `buildSceneGraph`, `buildFrom`, `postEvent`, `writeField`, and pull surfaces |
 | `runtime/events/X3DSceneBridge.hpp` | Free functions that bridge a parsed `Scene`'s DEF-named ROUTEs onto a context (`buildRoutes`), and convenience attach helpers for view-dependent, interpolator, event-utility, and key-device Systems |
-| `runtime/events/X3DActiveNode.hpp` | `ActiveNode` — the legacy per-node behavior protocol (deprecated; wrapped by `ActiveNodeAdapter` inside `X3DExecutionContext`) |
 | `runtime/events/CallbackLifetime.hpp` | Weak serial callback leases, terminal revocation and in-flight teardown checks |
 | `runtime/events/X3DSystem.hpp` | `System` — the current behavior-family abstraction; `attach(node, ctx)` + `update(now, ctx)` |
 
@@ -212,8 +211,6 @@ void addScriptSystem(std::shared_ptr<ScriptSystemT> sys);
 // Registers a hook run after the cascade drains each tick (ISO §29.2.4).
 void addPostCascadeHook(std::function<void(X3DExecutionContext &)> hook);
 
-// Deprecated: wraps an ActiveNode in a one-node System via ActiveNodeAdapter.
-[[deprecated]] void addActiveNode(std::shared_ptr<ActiveNode> node);
 ```
 
 **Event injection (push surface):**
@@ -311,7 +308,6 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 
 - **`System` abstraction** — behavior families implement `System::attach(X3DNode*, X3DExecutionContext&)` and `System::update(double, X3DExecutionContext&)`, then register via `addSystem`. The context calls every System's `update` each tick before draining the cascade. Event-driven systems (interpolators, event utilities) do all work in `attach`-wired inputOnly handlers and leave `update` a no-op.
 
-- **`ActiveNode` (deprecated)** — the legacy one-node behavior protocol; wrapped by `ActiveNodeAdapter` inside the context. New code implements `System` directly.
 
 - **`postEvent` / inputOnly handlers** — behaviors emit output events by calling `ctx.postEvent(node, field, value)`. The cascade delivers these to registered ROUTEs and wired inputOnly handlers within the same tick drain.
 

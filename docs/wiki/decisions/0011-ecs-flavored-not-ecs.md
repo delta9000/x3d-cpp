@@ -59,3 +59,11 @@ Concretely:
 - `runtime/events/X3DActiveNode.hpp` — the predecessor per-node `ActiveNode` protocol that `System` generalizes.
 - `docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md` — the deep-research validation that confirmed "ECS-flavored batching only at hot paths, NOT a full ECS" (§1, finding 3) and the Castle/USD/Hydra prior-art sweep.
 - `docs/superpowers/specs/2026-06-03-event-system-design.md` — the original event-system design where the node-as-truth + System decision was first made.
+
+## Amendment (2026-11-05)
+
+Removed the `ActiveNode` protocol, `TimeSensorBehavior`, and the
+`addActiveNode` compatibility adapter. No independent consumer uses them.
+The two animation tests now register `TimeSensorSystem` through `addSystem`
+and retain their animation and routing assertions. Behavior families use
+`System` as the registration interface.

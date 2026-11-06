@@ -20,7 +20,6 @@
 #include "ViewpointOffset.hpp"
 #include "TransformSystem.hpp"
 #include "UnitConversion.hpp"
-#include "X3DActiveNode.hpp"
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
 #include "X3DFieldAddress.hpp"
@@ -88,9 +87,7 @@ public:
                                std::shared_ptr<const geo::GeoProjection> projection = {})
       : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()),
         authorFields_(std::move(fields)), authorOwnerFixed_(true),
-        cascade_(graph_, authorFields_) {
-    if (!authorFields_) throw std::invalid_argument("null author-field owner");
-  }
+        cascade_(graph_, authorFields_) {}
 
   /// Immutable backend selection shared by all runtime paths in this context.
   const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
@@ -281,12 +278,6 @@ public:
     for (const auto &system : systems_)
       if (auto *match = dynamic_cast<T *>(system.get())) return match;
     return nullptr;
-  }
-
-  /// Compatibility adapter; the retained ActiveNode is updated each tick.
-  [[deprecated("use addSystem(std::shared_ptr<System>) instead")]]
-  void addActiveNode(std::shared_ptr<ActiveNode> node) {
-    systems_.push_back(std::make_shared<ActiveNodeAdapter>(std::move(node)));
   }
 
   /**
@@ -802,24 +793,6 @@ private:
     if (nodeReferencesChanged) synchronizeSceneNodes();
     dirty_.markDirty(a.node, flags);
   }
-
-  /**
-   * @brief One-node System wrapping a legacy ActiveNode (for `addActiveNode`).
-   */
-  class ActiveNodeAdapter : public System {
-  public:
-    explicit ActiveNodeAdapter(std::shared_ptr<ActiveNode> node)
-        : node_(std::move(node)) {}
-    void attach(X3DNode *, X3DExecutionContext &) override {}
-    void update(double now, X3DExecutionContext &ctx) override {
-      if (node_) {
-        node_->update(now, ctx);
-      }
-    }
-
-  private:
-    std::shared_ptr<ActiveNode> node_;
-  };
 
   // Declare before every dependent system so the owner also survives their teardown.
   const std::shared_ptr<const geo::GeoProjection> geoProjection_ = geo::builtinProjectionOwner();

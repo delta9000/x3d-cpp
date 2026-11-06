@@ -15,7 +15,7 @@ related:
 
 ## Purpose
 
-The Time System advances time-dependent nodes one tick at a time and emits their spec-mandated output events into the cascade. It owns the X3D clock state machine for every node that carries `startTime`/`stopTime`/`pauseTime`/`resumeTime` fields (`X3DTimeDependentNode`), driving the full lifecycle: idle → active → (paused) → deactivated. For the `TimeSensor` node specifically it also computes and posts `fraction_changed`, `time`, `cycleTime`, and `elapsedTime` on every relevant tick edge. `TimeSensorBehavior` is an earlier, minimal active-node seed that drives only `fraction_changed` over a single cycle; it is retained for the `animation_test` but superseded by `TimeSensorSystem` for production use.
+The Time System advances time-dependent nodes one tick at a time and emits their spec-mandated output events into the cascade. It owns the X3D clock state machine for every node that carries `startTime`/`stopTime`/`pauseTime`/`resumeTime` fields (`X3DTimeDependentNode`), driving the full lifecycle: idle → active → (paused) → deactivated. For the `TimeSensor` node specifically it also computes and posts `fraction_changed`, `time`, `cycleTime`, and `elapsedTime` on every relevant tick edge.
 
 ## Key files
 
@@ -23,11 +23,10 @@ The Time System advances time-dependent nodes one tick at a time and emits their
 |---|---|
 | `runtime/events/X3DTimeDependentSystem.hpp` | Base `System` implementing the full X3D clock state machine (activation/pause/deactivation/elapsed-time) shared by every time-dependent node. Per-node state is held in the system, not on the node. |
 | `runtime/events/TimeSensorSystem.hpp` | Concrete `X3DTimeDependentSystem` for `TimeSensor`. Guards `attach` to `TimeSensor*`, reads `enabled`/`loop`/`cycleInterval`, and implements `emitCycleOutputs` (→ `fraction_changed`, `time`) and `emitCycleTime` (→ `cycleTime`). |
-| `runtime/events/TimeSensorBehavior.hpp` | Earlier, minimal `ActiveNode` seed: drives `fraction_changed` only, over one cycle (or looped), with no `isActive`/pause/`cycleTime`/`elapsedTime` support. Used by `animation_test`; superseded by `TimeSensorSystem`. |
 | `runtime/events/X3DSystem.hpp` | `System` base class — defines `attach(node, ctx)` and the default no-op `update(now, ctx)`. `X3DTimeDependentSystem` inherits from `System`. |
 | `runtime/events/tests/timesensor_test.cpp` | Lifecycle edge-case test suite (doctest case `timesensor_test` in the `x3d_events_tests` target). |
 | `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for RTC-1..RTC-4 and the AUD-TIME clock/input cases in `x3d_events_tests`. |
-| `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorBehavior` (doctest case `animation_test` in the `x3d_events_tests` target). |
+| `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorSystem` (doctest case `animation_test` in the `x3d_events_tests` target). |
 
 ## Interfaces and seams
 
@@ -75,7 +74,7 @@ State lives in the system, never on the node — the node and its reflection `Fi
 - **Timing input filter** — The shared base registers a filter with the execution context when a node is attached. It rejects active `startTime` and `stopTime <= startTime` input events before the cascade writes or routes them (§8.2.4.3). This covers TimeSensor, AudioClip, MovieTexture, and SoundTimeSystem's v4 sound nodes; ordered stop-then-start restart remains accepted. `MediaTimeSystem` adds its own filter on the same hook for active `set_pitch` / `set_speed`.
 - **`ctx.postEvent`** — All output writes go through `X3DExecutionContext::postEvent`; the cascade fans them out to connected ROUTEs in the same tick. See [Routes](../subsystems/routes.md).
 - **Interpolator downstream** — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolator System](../subsystems/system-interpolators.md).
-- **Sensor layer** — `TimeSensorSystem` is one of the sensor-like systems registered through the `System`/`X3DActiveNode` pattern. See [Sensors](../subsystems/sensors.md).
+- **Sensor layer** — `TimeSensorSystem` is one of the sensor-like systems registered through the `System` pattern. See [Sensors](../subsystems/sensors.md).
 
 ## Time origin (absolute epoch vs. application-relative)
 
@@ -117,7 +116,7 @@ absolute instant. This is a deliberate contract, not a bug — see finding `TIME
   - **RTC-3**: `cycleTime` value equals `startTime + cycleIndex * cycleInterval` (the cycle-start time), not the tick's `now`.
   - **RTC-4**: `set_enabled FALSE` while active emits the final `time`/`fraction_changed`/`elapsedTime` outputs **before** `isActive=FALSE`.
 - The same test file has named cases for AUD-TIME-1..5: late resume uses the observed paused span, scheduled stop evaluates at stopTime, active timing inputs are ignored across time-dependent node families, negative absolute pause/resume times work, and a changed cycleInterval preserves fraction continuity or completes a cycle when shortened below its elapsed duration.
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `animation_test`) — `runtime/events/tests/animation_test.cpp`. End-to-end chain test: `TimeSensorBehavior` → `PositionInterpolator` → `Transform.translation`, confirming the full clock → cascade → interpolator → field-write pipeline.
+- `ctest --preset dev -R x3d_events_tests` (doctest case: `animation_test`) — `runtime/events/tests/animation_test.cpp`. End-to-end chain test: `TimeSensorSystem` → `PositionInterpolator` → `Transform.translation`, confirming the full clock → cascade → interpolator → field-write pipeline.
 
 ## Related specs and ADRs
 

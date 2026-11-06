@@ -5,8 +5,7 @@
 // and emits the TimeSensor-specific continuous outputs — fraction_changed,
 // time, and the cycleTime pulse — while the base owns isActive/isPaused and the
 // elapsed-time clock.
-// This supersedes the minimal TimeSensorBehavior (which only mapped the clock
-// to fraction_changed over one cycle). A browser registers one TimeSensorSystem
+// A browser registers one TimeSensorSystem
 // and `attach`es every TimeSensor; each `tick(now)` advances them all and the
 // emitted outputs cascade onward (typically to an interpolator).
 #ifndef X3D_RUNTIME_TIME_SENSOR_SYSTEM_HPP

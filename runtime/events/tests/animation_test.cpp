@@ -3,13 +3,13 @@
 // End-to-end proof that the event foundation drives a real X3D animation:
 // a clock tick drives a TimeSensor, whose fraction_changed ROUTEs to a
 // PositionInterpolator, whose value_changed ROUTEs to a Transform's translation.
-// This exercises every layer: clock -> active-node update -> outputOnly emit ->
+// This exercises every layer: clock -> system update -> outputOnly emit ->
 // cascade -> inputOnly handler -> outputOnly emit -> cascade -> inputOutput sink.
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
-#include "TimeSensorBehavior.hpp"
+#include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/PositionInterpolator.hpp"
@@ -50,12 +50,9 @@ void test_animation_chain() {
   X3DExecutionContext ctx;
   ctx.addRoute({ts.get(), "fraction_changed"}, {interp.get(), "set_fraction"});
   ctx.addRoute({interp.get(), "value_changed"}, {target.get(), "translation"});
-  // The deprecation shim wraps an ActiveNode in a one-node System; new code
-  // should implement System directly. Tracked for migration.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(ts.get()));
-#pragma GCC diagnostic pop
+  auto timeSys = std::make_shared<TimeSensorSystem>();
+  timeSys->attach(ts.get(), ctx);
+  ctx.addSystem(timeSys);
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(interp.get(), ctx);

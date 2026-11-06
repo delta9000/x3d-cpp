@@ -138,7 +138,6 @@ private:
     bool active = false;
     bool terminal = false;           // burst emitted; idle until a watched-child reset
     bool everEvaluated = false;      // R7 first-evaluation
-    bool enabled = true;
     double activatedAt = 0.0;
     float lastProgress = -1.0f;
     std::uint64_t lastGen = 0;       // tick this sensor was last processed

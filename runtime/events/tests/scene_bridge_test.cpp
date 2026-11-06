@@ -2,7 +2,7 @@
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
-#include "TimeSensorBehavior.hpp"
+#include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
@@ -163,12 +163,9 @@ void test_load_and_tick() {
   }
 
   // cycleInterval 4.0, loop `TRUE`; key 0/0.5/1 -> value (0,0,0)/(10,0,0)/(0,0,0).
-  // The deprecation shim wraps an ActiveNode in a one-node System; new code
-  // should implement System directly. Tracked for migration.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(clock.get()));
-#pragma GCC diagnostic pop
+  auto timeSys = std::make_shared<TimeSensorSystem>();
+  timeSys->attach(clock.get(), ctx);
+  ctx.addSystem(timeSys);
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(path.get(), ctx);
@@ -185,7 +182,7 @@ void test_load_and_tick() {
   ctx.tick(2.0);
   check(veq(tr(mover), 10, 0, 0), "tick(2): translation animated to (10,0,0)");
 
-  // t=4 -> looped fraction 0 -> back to (0,0,0).
+  // t=4 -> cycle-boundary fraction 1 -> final keyValue (0,0,0).
   ctx.tick(4.0);
   check(veq(tr(mover), 0, 0, 0), "tick(4): loop wraps back to (0,0,0)");
 }
