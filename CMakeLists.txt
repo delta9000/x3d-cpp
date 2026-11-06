@@ -8,7 +8,6 @@ project(x3d_cpp
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/X3DTargetPurpose.cmake")
 
 # Before 1.0, sonames track major.minor so the loader enforces minor-version
 # ABI separation. From 1.0, the major version is the ABI boundary.
@@ -37,4 +36,4 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/consumers.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/ext.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/doctest-suites.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/fuzz.cmake")
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/target-purposes.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/x3d/test-suites.cmake")

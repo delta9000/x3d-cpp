@@ -6,7 +6,6 @@ if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_structural_lifetime
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/events_misc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_callback_retirement_test.cpp")
-    x3d_set_target_purpose(x3d_structural_lifetime behavior)
     target_link_libraries(x3d_structural_lifetime PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_structural_lifetime
         COMMAND x3d_structural_lifetime
@@ -14,14 +13,12 @@ if(X3D_CPP_BUILD_TESTS)
 
     add_executable(x3d_hanim_skin_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim/tests/hanim_skin_test.cpp")
-    x3d_set_target_purpose(x3d_hanim_skin_tests behavior)
     target_link_libraries(x3d_hanim_skin_tests PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_hanim_skin_tests COMMAND x3d_hanim_skin_tests)
 
     # A recording backend checks solver settings without requiring Jolt.
     add_executable(x3d_physics_solver_settings_test
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_solver_settings_test.cpp")
-    x3d_set_target_purpose(x3d_physics_solver_settings_test behavior)
     target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp)
     target_include_directories(x3d_physics_solver_settings_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
@@ -148,7 +145,6 @@ if(X3D_CPP_BUILD_TESTS)
 
         add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL
             ${X3D_CPP_HEADER_ISOLATION_SOURCES})
-        x3d_set_target_purpose(x3d_header_isolation compile-contract)
         target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::headers)
         add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

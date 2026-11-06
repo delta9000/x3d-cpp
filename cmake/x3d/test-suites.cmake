@@ -1,0 +1,146 @@
+# Build inputs for the behavior suite, shared by ordinary and sanitizer builds.
+if(X3D_CPP_BUILD_TESTS)
+    set(_x3d_behavior_targets
+        x3d_structural_lifetime
+        x3d_hanim_skin_tests
+        x3d_physics_solver_settings_test
+        x3d_cli
+        x3d_codec_roundtrip_audit
+        x3d_xml_script_field
+        x3d_xml_composed_shader
+        x3d_vrml_script_field
+        x3d_json_script_field
+        x3d_contact_reporter
+        x3d_physics_contact_wiring
+        x3d_inertia_massprops
+        x3d_contact_response
+        x3d_event_scene_bridge
+        x3d_sai_context
+        x3d_script_system
+        x3d_parse_reader
+        x3d_classic_vrml_reader
+        x3d_proto_front_door
+        x3d_proto_expand_audit
+        x3d_inline_roundtrip
+        x3d_inline_routes
+        x3d_inline_cycle
+        x3d_inflate_bomb
+        x3d_path_confine
+        x3d_inline_containment_cycle
+        x3d_vrml97_reader
+        x3d_json_reader
+        x3d_sdk_facade
+        x3d_authoring_link_contract
+        x3d_native_host_contract
+        x3d_sound_system
+        x3d_sound_immersive
+        x3d_sound_delay
+        x3d_sound_dynamics
+        x3d_sound_periodicwave
+        x3d_sound_waveshaper
+        x3d_corpus_sweep
+        x3d_corpus_audit
+        x3d_corpus_audit_selftest
+        x3d_sim_behavior_test
+        x3d_scene_equiv_test
+        x3d_gate_baseurl_roundtrip_test
+        x3d_canonicalize_unit_test
+        x3d_canon_gate_fixture
+        x3d_geometry_scene_tests
+        x3d_namespace_taxonomy
+        x3d_codecs_tests
+        x3d_parse_tests
+        x3d_extract_tests
+        x3d_events_tests
+        x3d_fileresolver_test)
+    if(TARGET x3d_ecmascript_backend)
+        list(APPEND _x3d_behavior_targets
+            x3d_ecmascript_backend_test
+            x3d_ecmascript_corpus_smoke_test
+            x3d_script_author_runtime
+            x3d_script_corpus_e2e)
+    endif()
+    add_custom_target(x3d_behavior_tests DEPENDS ${_x3d_behavior_targets})
+    add_custom_target(x3d_sanitizer_tests DEPENDS ${_x3d_behavior_targets})
+
+    add_custom_target(x3d_compile_contracts DEPENDS x3d_cpp_all_headers)
+    if(X3D_CPP_PER_HEADER_CHECKS)
+        add_dependencies(x3d_compile_contracts x3d_header_isolation)
+    endif()
+
+    # Keep execution selection as explicit as build selection. Some test names
+    # differ from their owning targets, and shell-driven tests have no owning
+    # executable, so CTest labels are assigned from the public test names.
+    set(_x3d_behavior_tests
+        x3d_structural_lifetime
+        x3d_codec_roundtrip_audit
+        x3d_xml_script_field
+        x3d_xml_composed_shader
+        x3d_vrml_script_field
+        x3d_json_script_field
+        x3d_contact_reporter
+        x3d_physics_contact_wiring
+        x3d_physics_solver_settings
+        x3d_inertia_massprops
+        x3d_contact_response
+        x3d_event_scene_bridge
+        x3d_sai_context
+        x3d_script_system
+        x3d_parse_reader
+        x3d_classic_vrml_reader
+        x3d_proto_front_door
+        x3d_proto_expand_audit
+        x3d_inline_roundtrip
+        x3d_inline_routes
+        x3d_inline_cycle
+        x3d_inflate_bomb
+        x3d_path_confine
+        x3d_inline_containment_cycle
+        x3d_vrml97_reader
+        x3d_json_reader
+        x3d_sdk_facade
+        x3d_authoring_link_contract
+        x3d_native_host_contract
+        x3d_sound_system
+        x3d_sound_immersive
+        x3d_sound_delay
+        x3d_sound_dynamics
+        x3d_sound_periodicwave
+        x3d_sound_waveshaper
+        x3d_corpus_smoke
+        x3d_corpus_audit_smoke
+        x3d_corpus_audit_selftest
+        x3d_corpus_tools_cli_test
+        x3d_cli_test
+        x3d_sim_behavior_test
+        x3d_scene_equiv_test
+        x3d_gate_baseurl_roundtrip_test
+        x3d_canonicalize_unit_test
+        x3d_canon_gate_test
+        x3d_geometry_scene
+        x3d_namespace_taxonomy
+        x3d_codecs_tests
+        x3d_parse_tests
+        x3d_extract_tests
+        x3d_events_tests
+        x3d_hanim_skin_tests
+        x3d_fileresolver_test)
+    if(TARGET x3d_ecmascript_backend)
+        list(APPEND _x3d_behavior_tests
+            x3d_ecmascript_backend
+            x3d_ecmascript_corpus_smoke
+            x3d_script_author_runtime
+            x3d_script_corpus_e2e)
+    endif()
+    if(NOT X3D_CPP_SAN)
+        list(APPEND _x3d_behavior_tests x3d_install_embed_smoke)
+    endif()
+    set_tests_properties(${_x3d_behavior_tests} PROPERTIES LABELS behavior)
+
+    set(_x3d_compile_contract_tests x3d_cpp_all_headers)
+    if(X3D_CPP_PER_HEADER_CHECKS)
+        list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
+    endif()
+    set_tests_properties(
+        ${_x3d_compile_contract_tests} PROPERTIES LABELS compile-contract)
+endif()

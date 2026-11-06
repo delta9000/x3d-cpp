@@ -3,8 +3,7 @@
 Regenerates the ENTIRE generated C++ source tree into a temp dir and asserts
 every generated source file (*.hpp and *.cpp) matches the committed
 generated_cpp_bindings/ byte-for-byte (in both directions: no missing, no extra,
-no drifted files). This is the pytest twin of scripts/check_golden.sh, so
-`uv run pytest` alone catches codegen drift.
+no drifted files). Both `uv run pytest` and scripts/check_golden.sh use this comparator.
 
 Codegen changes are intentional: change a template/emitter, regenerate with
 `uv run x3d-cpp-gen --out generated_cpp_bindings`, and commit the new sources.
@@ -15,7 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 
-def test_golden_tree_matches(generated_tree, pinned_clang_format):
+def test_golden_tree_matches(pinned_clang_format, generated_tree):
     # generated_tree (conftest.py) used the pinned formatter, which the
     # pinned_clang_format fixture guarantees is available.
     assert GOLDEN_DIR.is_dir(), f"golden dir missing: {GOLDEN_DIR}"

@@ -32,7 +32,7 @@ SVG=build-x3d2svg/examples/x3d2svg/x3d_x3d2svg
 
 echo "== build poc_renderer (X3D_CPP_BUILD_POC=ON; FetchContent GLFW) =="
 cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON >/dev/null
-cmake --build build-poc --target x3d_poc_renderer
+cmake --build build-poc --target x3d_poc_renderer x3d_poc_input x3d_poc_draw_math
 POC=build-poc/examples/poc_renderer/x3d_poc_renderer
 
 echo "== cpu_raster --headless (no GL) =="
@@ -134,40 +134,8 @@ xvfb-run -a env \
   LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
   python3 scripts/check_poc_fill_properties.py "$POC"
 
-# texturing eye-space texgen GL pixel regression
-echo "== poc eye-space TextureCoordinateGenerator gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
-
-echo "== poc local/noise/refraction TextureCoordinateGenerator gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texgen_local_gl_test.py "$POC"
-
-# lighting shadow GL pixel regression
-echo "== poc light shadow gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/shadow_gl_test.py "$POC"
-
-# cube map environment texture GL pixel regression
-echo "== poc ComposedCubeMapTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/cube_map_gl_test.py "$POC"
-echo "== poc GeneratedCubeMapTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/generated_cube_map_gl_test.py "$POC"
-echo "== poc TextureProjector gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texture_projector_gl_test.py "$POC"
-
-# rendering ClipPlane GL pixel regression
-echo "== poc ClipPlane gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"
-
-# environmental effects LocalFog GL pixel regression
-echo "== poc LocalFog gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/local_fog_gl_test.py "$POC"
-
-# texturing MultiTexture GL pixel regression
-echo "== poc MultiTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/multitexture_gl_test.py "$POC"
-
-# shaders scene-authored program GL pixel regression
-echo "== poc author-shader selection gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/author_shader_gl_test.py "$POC"
+echo "== registered PoC regressions (including software GL) =="
+ctest --test-dir build-poc -R '^x3d_poc_' --output-on-failure --no-tests=error
 
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null

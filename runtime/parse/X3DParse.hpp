@@ -13,28 +13,9 @@
 
 namespace x3d::codec {
 
-/// Strip a single leading UTF-8 BOM (EF BB BF) in place, if present. Only the
-/// UTF-8 BOM is handled: it is the one whose bytes are valid leading XML text
-/// once removed. UTF-16/UTF-32 BOMs (FF FE / FE FF / 00 00 FE FF) would require
-/// transcoding the whole byte stream to UTF-8 and are intentionally left intact
-/// here (the readers will then fail/sniff Unknown rather than be mis-stripped).
-/// Stripping at the front door means every encoding/reader receives BOM-free
-/// bytes; content sniffing is unaffected because sniff()/sniffByContent()
-/// already skip a BOM internally (see Encoding.hpp skipBomAndSpace), so
-/// removing it first is idempotent.
-void stripUtf8Bom(std::string &s);
-
-/// Construct the reader for a known encoding, or null for Unknown. Throws
-/// std::runtime_error for an encoding whose reader has not landed yet (so the
-/// failure names the gap rather than silently dropping the document).
+/// Construct the reader for a known encoding, or null for Unknown.
 std::unique_ptr<X3DReader> makeReader(Encoding enc);
 
-// Forward declarations: parseDocument's default resolver is
-// localFileProtoResolver, which calls parseFile, which calls parseDocument — a
-// definition cycle broken by declaring the latter two ahead of parseDocument's
-// signature.
-runtime::X3DDocument parseFile(const std::string &path,
-                               const std::string &confineRoot = "");
 namespace detail {
 /// Confinement root for the default local resolvers (ADR-0038). The
 /// outermost parseFile/parseDocument sets it (default: the top-level file's own
@@ -47,33 +28,6 @@ inline std::string &activeConfineRoot() {
   return r;
 }
 } // namespace detail
-
-std::shared_ptr<runtime::ProtoDeclaration>
-localFileProtoResolver(const std::vector<std::string> &urls,
-                       const std::string &baseUrl);
-std::shared_ptr<runtime::Scene>
-localFileInlineResolver(const std::vector<std::string> &urls,
-                        const std::string &baseUrl);
-
-/// Parse a document from in-memory text. If `hint` is Unknown the encoding is
-/// resolved by content sniffing. After the document is built (and range
-/// warnings collected) any captured PROTO/EXTERNPROTO instances are expanded in
-/// place via `resolver`, with relative EXTERN urls resolved against `baseUrl`
-/// (the directory of the source file when called through parseFile). Throws
-/// std::runtime_error when the encoding cannot be determined (or its reader has
-/// not landed yet); PROTO expansion itself is lenient (diagnostics land in
-/// doc.protoWarnings). `inlineResolver` mirrors the proto resolver seam: an
-/// embedder can supply a custom Inline loader (network fetch, virtual FS,
-/// etc.); the default falls back to the file-local resolver. Recursive custom
-/// loaders must pass both intended callbacks on every nested parse; use
-/// AssetDocumentResolvers.hpp's paired assetResolversFrom for one asset policy
-/// across both kinds of load, without an implicit local-file fallback.
-runtime::X3DDocument parseDocument(
-    const std::string &text, Encoding hint = Encoding::Unknown,
-    const std::string &baseUrl = "",
-    const ProtoDeclarationResolver &resolver = localFileProtoResolver,
-    const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
-    const std::string &confineRoot = "");
 
 /// Default EXTERNPROTO resolver: resolves file-like urls relative to `baseUrl`,
 /// parses the target, and returns its matching ProtoDeclaration. http/https/urn
@@ -93,6 +47,25 @@ std::shared_ptr<runtime::Scene>
 localFileInlineResolver(const std::vector<std::string> &urls,
                         const std::string &baseUrl);
 
+/// Parse a document from in-memory text. If `hint` is Unknown the encoding is
+/// resolved by content sniffing. After the document is built (and range
+/// warnings collected) any captured PROTO/EXTERNPROTO instances are expanded in
+/// place via `resolver`, with relative EXTERN urls resolved against `baseUrl`
+/// (the directory of the source file when called through parseFile). Throws
+/// std::runtime_error when the encoding cannot be determined; PROTO expansion itself is lenient (diagnostics land in
+/// doc.protoWarnings). `inlineResolver` mirrors the proto resolver seam: an
+/// embedder can supply a custom Inline loader (network fetch, virtual FS,
+/// etc.); the default falls back to the file-local resolver. Recursive custom
+/// loaders must pass both intended callbacks on every nested parse; use
+/// AssetDocumentResolvers.hpp's paired assetResolversFrom for one asset policy
+/// across both kinds of load, without an implicit local-file fallback.
+runtime::X3DDocument parseDocument(
+    const std::string &text, Encoding hint = Encoding::Unknown,
+    const std::string &baseUrl = "",
+    const ProtoDeclarationResolver &resolver = localFileProtoResolver,
+    const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
+    const std::string &confineRoot = "");
+
 /// Read a file, sniff its encoding from path + content (content wins when
 /// confident), and parse it. gzip-compressed input (gzip magic 0x1f 0x8b) is
 /// inflated in memory before sniffing, so a `.wrl.gz` / `.x3d.gz` / `.x3dv.gz`
@@ -107,7 +80,7 @@ localFileInlineResolver(const std::vector<std::string> &urls,
 /// the root are rejected either way. Only the outermost parseFile establishes
 /// the root; nested re-parses driven by the resolvers inherit it.
 runtime::X3DDocument parseFile(const std::string &path,
-                               const std::string &confineRoot);
+                             const std::string &confineRoot = "");
 
 } // namespace x3d::codec
 

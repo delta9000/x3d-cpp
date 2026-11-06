@@ -26,20 +26,20 @@ option(X3D_CPP_BUILD_PHYSICS "Build Jolt Physics backend (OFF default; fetches J
 
 if(X3D_CPP_BUILD_PHYSICS)
     include(FetchContent)
-    # Jolt's CMake honors these toggles; force them so they cannot clobber our
-    # flags (OVERRIDE_CXX_FLAGS), apply -Werror (ENABLE_ALL_WARNINGS), or trip an
-    # LTO archive-format mismatch at link (INTERPROCEDURAL_OPTIMIZATION).
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(OVERRIDE_CXX_FLAGS OFF CACHE BOOL "" FORCE)
-    set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
-    set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
-    set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
-    set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
-    set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
-    set(TARGET_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
-    set(GENERATE_DEBUG_SYMBOLS OFF CACHE BOOL "" FORCE)
+    # Jolt honors normal variables (CMP0077); keep these defaults in our subtree
+    # while preserving the parent's cache. Disable upstream flag overrides,
+    # -Werror, and LTO to avoid applying them to SDK compilation.
+    set(BUILD_SHARED_LIBS OFF)
+    set(OVERRIDE_CXX_FLAGS OFF)
+    set(ENABLE_ALL_WARNINGS OFF)
+    set(INTERPROCEDURAL_OPTIMIZATION OFF)
+    set(ENABLE_INSTALL OFF)
+    set(TARGET_UNIT_TESTS OFF)
+    set(TARGET_HELLO_WORLD OFF)
+    set(TARGET_PERFORMANCE_TEST OFF)
+    set(TARGET_SAMPLES OFF)
+    set(TARGET_VIEWER OFF)
+    set(GENERATE_DEBUG_SYMBOLS OFF)
     # Jolt's CMakeLists lives in Build/ (SOURCE_SUBDIR), and its target is "Jolt".
     FetchContent_Declare(JoltPhysics
         GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
@@ -87,13 +87,15 @@ option(X3D_CPP_BUILD_QUICKJS "Build QuickJS ScriptEngine backend (OFF default)" 
 
 if(X3D_CPP_BUILD_QUICKJS)
     include(FetchContent)
-    # quickjs-ng's CMake honors these toggles; force them so the engine builds as
+    # quickjs-ng predates CMP0077; ask its option() calls to honor our scoped
+    # defaults without rewriting the parent's cache. The engine builds as
     # a static lib only (no shared, no examples/libc/install) and cannot clobber
     # our build. Its main library target is `qjs` (see its CMakeLists).
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(QJS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(QJS_BUILD_LIBC OFF CACHE BOOL "" FORCE)
-    set(QJS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF)
+    set(QJS_BUILD_EXAMPLES OFF)
+    set(QJS_BUILD_LIBC OFF)
+    set(QJS_ENABLE_INSTALL OFF)
+    set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
     FetchContent_Declare(quickjs_ng
         GIT_REPOSITORY https://github.com/quickjs-ng/quickjs.git
         GIT_TAG v0.15.1

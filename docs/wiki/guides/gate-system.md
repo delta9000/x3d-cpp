@@ -10,11 +10,10 @@ related:
 
 # Gate System
 
-The project enforces four gates, each protecting a different correctness axis. All four run
-together in `mise run ci`. Understanding what each gate protects — and how to update a
-baseline when a divergence is intentional — is the discipline backbone for working on the
-codebase. A fifth, the **gallery asset-hygiene gate**, protects the first-party showcase
-scenes and runs via ctest + `mise run validate-examples`; it is described at the end.
+These gates protect generator output, conformance records, CLI behavior, and wiki
+links. `mise run ci` runs the Python, C++, and local corpus checks described below.
+Run `docs-build` separately for the wiki and `validate-examples` for renderer
+consumers.
 
 ---
 
@@ -41,12 +40,13 @@ This makes codegen changes **opt-in**: you must regenerate and commit the new he
 the gate passes. The canonical header `generated_cpp_bindings/x3d/nodes/X3DNode.hpp` (the base class
 for all instantiable nodes) is a representative example of generator-emitted output.
 
-**Script.** The gate is implemented in `scripts/check_golden.sh`. It:
-1. Runs `uv run x3d-cpp-gen --out <tmp> --no-test` (omits the smoke test binary, which is
-   gitignored and not golden).
-2. Walks the committed `generated_cpp_bindings/` tree checking every `*.hpp`/`*.cpp` against
-   the regen output, and vice versa (catches additions and deletions).
-3. Prints a diff snippet for each drifted file and exits non-zero.
+**Implementation.** `tests/test_golden_tree.py` compares the regenerated and
+committed source trees in both directions, including byte content.
+`scripts/check_golden.sh` runs that test for `mise run golden`, requiring the
+pinned formatter. The full Python suite shares one regenerated tree and runs the
+same comparison once; `ci` does not invoke `golden` separately. Local pytest skips
+golden tests when the pin is unavailable; the `test` task, standalone `golden`,
+and CI fail.
 
 **Running it.**
 
@@ -55,7 +55,7 @@ mise run golden
 ```
 
 **What golden drift means.** If a template or emitter change causes drift, the gate output
-names every drifted file with a short unified diff. Drift is always intentional after a
+names every drifted file. Drift is always intentional after a
 deliberate codegen change, and accidental otherwise (e.g. a whitespace-only template
 formatting change that was not committed).
 
@@ -250,7 +250,7 @@ mise run validate-examples                # part 2 (builds cpu_raster; also need
                                           #   for the unrelated poc_renderer GL smoke)
 ```
 
-Both are wired into CI: part 1 rides the `cpp` job's ctest (via `mise run build`), and
+Both are wired into CI: part 1 rides the `cpp` job's behavior CTest selection, and
 `scripts/validate-examples.sh` is the single source of truth shared by `mise run
 validate-examples` and the `examples-gate` GitHub job.
 
@@ -260,15 +260,20 @@ validate-examples` and the `examples-gate` GitHub job.
 
 ```bash
 mise run ci        # the standard pre-push pipeline
-mise run ci-all    # ci + build-san (ASan/UBSan) + validate-examples — the full blocking-job set
+mise run ci-all    # ci + build-san (ASan/UBSan) + validate-examples
 ```
 
-`ci` depends on `test`, `golden`, `conformance-gate`, `coverage-gate`, `doc-ctest-gate`, `build`, and `cli-gate-regression` (in
-that order, with the C++ build providing the compiled gate binaries). `ci-all`
-adds the sanitizer build and the example-renderer gates on top, matching every
-blocking GitHub Actions job; a local `ci-all` green is the strongest pre-PR
-signal. The DOCS gate (`docs-build`) is separate and should also be run before
-any wiki PR merge.
+`ci` depends on `test` (including golden drift), `conformance-gate`,
+`doc-ctest-gate`, `build-ci`, `cli-gate-regression`, and `authoring-footprint`.
+These are sibling dependencies, not an execution sequence. The corpus task
+builds only `x3d_cli`, `x3d_cli_gate`, and `x3d_canon_gate` before running them.
+`authoring-footprint` rejects excluded runtime symbols in the authoring consumer;
+it has no absolute executable-size threshold.
+
+`ci-all` adds sanitizer behavior tests and example consumers. It does not mirror
+every GitHub job: `docs-build` and backend configurations such as STB/Wuffs,
+QuickJS, and PROJ require separate runs. GitHub's current workflow does not run
+the external-corpus CLI/canonical gates; those belong to local `ci`.
 
 ---
 

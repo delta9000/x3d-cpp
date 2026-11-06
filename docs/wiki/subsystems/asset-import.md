@@ -132,8 +132,11 @@ The interface target `x3d_cpp::authoring` acts as a firewall separating authorin
 
 ### Footprint Gate
 The automated footprint gate ([scripts/authoring-footprint.sh](file:///home/ben/code/x3d-cpp/scripts/authoring-footprint.sh)) protects the slim target from transitively linking in unwanted dependencies:
-- **Symbol Scan**: Validates that the stripped binary contains zero occurrences of forbidden symbols like `SceneExtractor`, `parseDocument`, `parseFile`, or `ScriptSystem`.
-- **Size Baseline**: Compares the `.text` segment size of the compiled smoke test against the baseline in [baseline.tsv](file:///home/ben/code/x3d-cpp/examples/asset_import/footprint/baseline.tsv), failing if size grows more than 10%.
+- **Symbol Scan**: Validates that the linked binary contains zero occurrences of forbidden symbols like `SceneExtractor`, `parseDocument`, `parseFile`, or `ScriptSystem`.
+
+There is no absolute executable-size threshold; shared libraries place runtime
+code outside the executable measurement. See the dated amendment in
+[ADR-0042](../decisions/0042-authoring-target.md).
 
 ## Key Files
 
@@ -143,7 +146,7 @@ The automated footprint gate ([scripts/authoring-footprint.sh](file:///home/ben/
 | [examples/asset_import/main.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/main.cpp) | CLI runner for file conversion, statistics logging, and `--verify` re-parsing. |
 | [examples/asset_import/emit.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/emit.cpp) | Direct mapping logic from IR to the node graph. |
 | [examples/asset_import/texture_pipeline.cpp](file:///home/ben/code/x3d-cpp/examples/asset_import/texture_pipeline.cpp) | Texture decoding, deduplication, and PNG re-encoding pipeline. |
-| [scripts/authoring-footprint.sh](file:///home/ben/code/x3d-cpp/scripts/authoring-footprint.sh) | Automated footprint gate script validating symbol purity and size constraints. |
+| [scripts/authoring-footprint.sh](file:///home/ben/code/x3d-cpp/scripts/authoring-footprint.sh) | Automated footprint gate script rejecting excluded subsystem symbols. |
 
 ## CLI Usage
 

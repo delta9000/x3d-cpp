@@ -19,9 +19,9 @@ uv run python scripts/gen_profile_tables.py
 """
 
 [tasks.test]
-description = "Run the Python test suite (pytest)."
+description = "Run Python tests, requiring the pinned formatter for golden drift."
 depends = ["sync"]
-run = "uv run pytest"
+run = "CI=1 uv run pytest"
 
 [tasks.golden]
 description = "Golden-drift gate: regenerate to a temp dir and diff every generated *.hpp/*.cpp."
@@ -87,7 +87,7 @@ fi
 # behavior first, then the per-header/install compile contracts. Separate build
 # dir (build-ci/) keeps the dev preset's cache warm for fast iteration.
 [tasks.build-ci]
-description = "Configure, build, and ctest the C++ side using the `ci` preset (mirrors GitHub Actions: per-header isolation checks ON)."
+description = "Configure, build, and test behavior and compile contracts with the `ci` preset; backend swap-tests run separately."
 run = """
 cmake --preset ci
 cmake --build --preset ci --target x3d_behavior_tests
@@ -159,7 +159,7 @@ ctest --test-dir build-asset-import -R x3d_assetimport --output-on-failure
 """
 
 [tasks.authoring-footprint]
-description = "Authoring slim-target footprint gate: symbol scan (no excluded subsystems) + .text size baseline."
+description = "Authoring slim-target gate: reject excluded subsystem symbols."
 run = "scripts/authoring-footprint.sh"
 
 [tasks.demos]
@@ -227,16 +227,12 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run Python tests, drift and coverage gates, C++ CI checks, and CLI differential regression gates."
-depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
+description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, corpus regressions, and authoring symbols."
+depends = ["test", "conformance-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
 description = "Run ci plus the sanitizer suite and CPU/OpenGL example gates."
 depends = ["ci", "build-san", "validate-examples"]
-
-[tasks.coverage-gate]
-description = "ADR coverage gate: cross-check docs/wiki/decisions/*.md against the Decisions table in coverage.md (no file unrowed, no row dangling, contiguous numbering)."
-run = "uv run python scripts/coverage_gate.py"
 
 [tasks.doc-ctest-gate]
 description = "Doc ctest-command gate: every `ctest -R x3d_*` in docs/wiki must match a real add_test(NAME …) target (doctest case names are not ctest targets)."
@@ -321,11 +317,10 @@ CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 """
 
 [tasks.cli-gate-regression]
-description = "REGRESSION gate (CI): both cli_gate + canon_gate in --gate mode. Fails if any baseline-PASS item now fails. Requires: corpus at default path + committed baselines."
-depends = ["build"]
+description = "Local corpus regression gate: both cli_gate + canon_gate in --gate mode. Fails if any baseline-PASS item now fails. Requires: corpus at default path + committed baselines."
 run = """
 cmake --preset dev
-cmake --build --preset dev --target x3d_cli_gate x3d_canon_gate
+cmake --build --preset dev --target x3d_cli x3d_cli_gate x3d_canon_gate
 CORPUS="${1:-${X3D_CORPUS_DIR:-$PWD/.x3d-corpus}}"
 echo "=== cli_gate regression gate ==="
 ./build/x3d_cli_gate ./build/x3d "$CORPUS" tools/x3d-cli/goldens --gate
@@ -355,7 +350,7 @@ bash tools/x3d-cli/gen_canon_goldens.sh
 """
 
 [tasks.canon-gate]
-description = "X3DC14N tiered gate: T1=idempotence (CI), T2=tolerant-diff vs X3DJSAIL, T3=byte-exact rate. Runs T1 always; T2/T3 need mise run canon-golden-gen first."
+description = "X3DC14N tiered gate: T1=idempotence, T2=tolerant-diff vs X3DJSAIL, T3=byte-exact rate. Runs T1 always; T2/T3 need mise run canon-golden-gen first."
 run = """
 cmake --preset dev
 cmake --build --preset dev --target x3d_cli x3d_canon_gate

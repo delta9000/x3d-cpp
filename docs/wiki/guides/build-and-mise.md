@@ -120,10 +120,13 @@ variables that earlier ones define, so keep the order.
 | `ext.cmake` | the opt-in `runtime/ext/` extensions and their tests |
 | `doctest-suites.cmake` | the grouped doctest binaries (`x3d_{codecs,parse,extract,events}_tests`, math/scene) |
 | `fuzz.cmake` | the libFuzzer `parseDocument` harness |
-| `target-purposes.cmake` | the per-target purpose inventory |
+| `test-suites.cmake` | behavior/compile-contract build inputs and CTest labels |
 
 A new test for an existing subsystem usually belongs in that subsystem's grouped
 doctest binary (`doctest-suites.cmake`) rather than a new executable.
+For a new behavior executable, add its target to `_x3d_behavior_targets` and its
+CTest name to `_x3d_behavior_tests` in `test-suites.cmake`. The behavior and
+sanitizer aggregates share the same target list.
 
 ## The compile-job pool
 
@@ -251,25 +254,25 @@ ctest --preset dev -j "$(nproc)"
 | Task | What it does |
 |---|---|
 | `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. Uses the `dev` preset (per-header checks OFF, fast). |
-| `mise run build-ci` | Same as `build` but uses the `ci` preset (per-header isolation checks ON, mirrors the GitHub Actions gate). Use before pushing. |
+| `mise run build-ci` | Build and run behavior and compile-contract suites with the `ci` preset (per-header isolation checks ON). GitHub also selects optional backend tests. |
 | `mise run gen` | Re-run the Python generator: `uv run x3d-cpp-gen --out generated_cpp_bindings`. Use this after changing a template or emitter. |
 | `mise run golden` | Golden-drift gate: regenerates to a temp dir and diffs `*.hpp`/`*.cpp` against the committed tree. Fails on any drift. |
-| `mise run test` | Run the Python test suite (`uv run pytest`). Depends on `sync`. |
+| `mise run test` | Run the Python suite (`CI=1 uv run pytest`), requiring the golden formatter pin. Depends on `sync`. |
 | `mise run sync` | `uv sync` — installs/refreshes the project env including the dev group. |
 
 ### CI and gate tasks
 
 | Task | What it does |
 |---|---|
-| `mise run ci` | Full pipeline: `test` + `golden` + `conformance-gate` + `build` + `cli-gate-regression`. Run before pushing. |
-| `mise run ci-all` | **Strongest local pre-PR verification**: everything `ci` runs plus `build-san` (ASan/UBSan) and `validate-examples` (example-renderer gates). Mirrors the full blocking GitHub job set; slower — use before pushing risky C++ changes. |
+| `mise run ci` | Local checks: `test` (including golden drift), `conformance-gate`, `doc-ctest-gate`, `build-ci`, `cli-gate-regression`, and `authoring-footprint`. Dependencies may run concurrently. |
+| `mise run ci-all` | Everything `ci` runs plus `build-san` (ASan/UBSan) and `validate-examples`. Run `docs-build` and optional backend checks separately. |
 | `mise run conformance` | Regenerate the conformance view (`docs/conformance/`) from `docs/conformance/findings.yaml` in place. |
 | `mise run conformance-gate` | Conformance gate: validate `findings.yaml` schema + check that the generated view matches the committed files. |
-| `mise run cli-gate-regression` | CLI regression gate: runs `x3d_cli_gate` + `x3d_canon_gate` in `--gate` mode. Depends on `build`. |
+| `mise run cli-gate-regression` | CLI regression gate: runs `x3d_cli_gate` + `x3d_canon_gate` in `--gate` mode. Builds only the CLI and the two gate executables. |
 | `mise run cli-gate` | Informative (non-failing) differential gate: produces `tools/x3d-cli/goldens/divergence-report.md`. |
 | `mise run canon-gate` | Informative tiered canonicalize gate (T1 idempotence + T2 tolerant-diff + T3 byte-exact rate). |
 | `mise run cli-gate-baseline` | Refresh the committed baseline TSVs after accepting new intentional divergences. |
-| `mise run build-san` | Sanitizer gate (BLD-2): rebuild every target with ASan + UBSan (`san` preset) and run every ctest against the sanitized binaries. Mirrors the GitHub Actions `cpp-san` job. Not part of `mise run ci` — run it explicitly, or via `ci-all`. |
+| `mise run build-san` | Sanitizer gate (BLD-2): build the behavior suite with ASan + UBSan (`san` preset) and run behavior-labeled CTests. Mirrors the GitHub Actions `cpp-san` job. Not part of `mise run ci` — run it explicitly, or via `ci-all`. |
 | `mise run build-fuzz` | Build the libFuzzer harness for `parseDocument` (`fuzz` preset, Clang-only). Run the binary directly to fuzz; the `cpp-fuzz` job runs a bounded smoke. |
 
 ### Corpus tasks

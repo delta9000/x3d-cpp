@@ -18,8 +18,7 @@ contact reporting shipped; Followers shipped with no page). When you change `run
 1. Run `mise run docs-drift` (uncommitted work; or `working` / `<rev>`). Check the `CITES`
    hits first; a `[NEW FILE]` with no citations probably needs a page. Advisory only.
 2. Update what it flags in the same change:
-   - `docs/wiki/subsystems/<name>.md` (new subsystem → new page + `mkdocs.yml` nav +
-     `docs/wiki/coverage.md` row)
+   - `docs/wiki/subsystems/<name>.md` (new subsystem → new page + `mkdocs.yml` nav)
    - `docs/conformance/findings.yaml`, then `mise run conformance` (never hand-edit the
      generated `.md`)
    - `docs/sdk/v1-capabilities.md`

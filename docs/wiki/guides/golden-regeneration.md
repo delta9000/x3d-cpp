@@ -57,35 +57,23 @@ for the full design rationale and file layout.
 
 ## How `mise run golden` works
 
-The gate is implemented in `scripts/check_golden.sh` and invoked by:
+`scripts/check_golden.sh` invokes the same full-tree pytest comparison that
+`uv run pytest` runs:
 
 ```bash
 mise run golden
 ```
 
-What it does:
+The test regenerates into a temporary directory and checks every `*.hpp` and
+`*.cpp` in both directions, excluding the gitignored `test.cpp` smoke artifact.
+It reports missing, extra, and changed file names and exits nonzero on drift.
+The Python suite shares the regenerated tree across its read-only tests; `ci`
+does not invoke `golden` a second time.
 
-1. Runs `uv run x3d-cpp-gen --out <tmp> --no-test` to regenerate the full tree
-   into a throwaway temp directory. (`--no-test` omits the smoke `test.cpp` binary,
-   which is gitignored and not golden.)
-2. Walks every `*.hpp` and `*.cpp` in the committed `generated_cpp_bindings/` and
-   checks that the regenerated copy exists and is **byte-for-byte identical**.
-3. Walks every `*.hpp` and `*.cpp` in the regenerated tree and checks that each
-   exists in the committed golden (catches newly added output files that were not
-   committed).
-4. On any drift: prints a report naming every drifted/missing/extra file with a
-   short unified diff snippet, then exits non-zero.
-5. On clean: prints `Golden tree OK: generated *.hpp/*.cpp match generated_cpp_bindings/ byte-for-byte.` and exits 0.
-
-There is **no sha256** step in the gate — comparison is a plain `diff -q` per file.
-The gate is also run by `uv run pytest` via `tests/test_golden_tree.py` (the pytest
-twin of the shell gate, which also covers both directions and is byte-exact).
-
-**clang-format dependency.** The generator runs `clang-format` as part of emission.
-Byte equality holds only when the same `clang-format` version that produced the
-committed golden is installed. If `clang-format` is absent, the shell gate and
-pytest skip rather than fail (the gate is conditionally disabled, not suppressed).
-A version mismatch will produce formatting drift — install the matching version.
+**clang-format dependency.** Byte equality requires the full version pinned in
+`mise.toml`. The `test` task, standalone `golden`, and CI fail if that formatter
+is missing or has the wrong version. Ordinary local pytest skips the golden comparison in that
+case, with install instructions.
 
 ---
 
@@ -95,9 +83,9 @@ If `mise run golden` exits non-zero, the report will say one of three things:
 
 | Report line | Meaning |
 |---|---|
-| `DRIFT: <file>` + unified diff | File exists in both trees but content differs |
-| `MISSING in regen: <file>` | File is committed but the regenerator no longer emits it |
-| `EXTRA (not committed): <file>` | Regenerator emits a new file that has not been committed |
+| `regenerated sources differ from committed golden` | File exists in both trees but content differs |
+| `generated sources in golden but not regenerated` | File is committed but the regenerator no longer emits it |
+| `generated sources regenerated but not committed to golden` | Regenerator emits a new file that has not been committed |
 
 Drift is always either **intentional** (you changed a template or emitter and need
 to commit the new output) or **accidental** (something changed the regeneration
@@ -152,7 +140,7 @@ The commit should include **both** the generator/template change and the regener
 `generated_cpp_bindings/` shows exactly what the emitter change produced across all
 nodes, and can be bisected later with `git log generated_cpp_bindings/`.
 
-The `--no-test` flag is already applied by `scripts/check_golden.sh` internally,
+The `--no-test` flag is already applied by the shared pytest generation fixture,
 but when you run `uv run x3d-cpp-gen --out generated_cpp_bindings` directly
 (without `--no-test`), the generator also writes a smoke `test.cpp` and its compiled
 binary, both of which are gitignored. They do not appear in the diff and need not be
@@ -190,7 +178,7 @@ See [Gate System](gate-system.md) for the full cli/canon gate workflow.
 |---|---|
 | Check whether the committed tree matches the generator | `mise run golden` |
 | Regenerate the committed tree after a template/emitter change | `uv run x3d-cpp-gen --out generated_cpp_bindings` |
-| Run the Python twin of the golden gate | `uv run pytest tests/test_golden_tree.py` |
+| Run the shared golden comparison directly | `uv run pytest tests/test_golden_tree.py` |
 | Run all gates together (includes golden) | `mise run ci` |
 | Refresh CLI/canon baselines after accepting new behavior | `mise run cli-gate-baseline` |
 

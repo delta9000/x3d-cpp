@@ -6,6 +6,12 @@
 cmake_minimum_required(VERSION 3.21)
 project(x3d_dev_tooling_fixture LANGUAGES CXX)
 
+# The host owns shared-library and generic backend cache choices.
+set(_host_options BUILD_SHARED_LIBS ENABLE_INSTALL GENERATE_DEBUG_SYMBOLS)
+foreach(_option IN LISTS _host_options)
+  set(${_option} ON CACHE BOOL "Host option")
+endforeach()
+
 # A target created before the subproject keeps an empty launcher.
 add_library(consumer_before STATIC consumer.cpp)
 
@@ -16,6 +22,12 @@ add_subdirectory("${X3D_CPP_SOURCE_DIR}" x3d_cpp_sub EXCLUDE_FROM_ALL)
 add_library(consumer_after STATIC consumer.cpp)
 
 set(_failures "")
+foreach(_option IN LISTS _host_options)
+  get_property(_cached CACHE ${_option} PROPERTY VALUE)
+  if(NOT _cached OR NOT ${_option})
+    list(APPEND _failures "x3d_cpp overwrote the parent's ${_option}=ON")
+  endif()
+endforeach()
 
 # 1. The cached launcher. This is the confirmed cross-project mutation:
 #    set(CMAKE_CXX_COMPILER_LAUNCHER ... CACHE STRING) makes ccache the default

@@ -65,7 +65,7 @@ jobs:
           enable-cache: true
       - name: Sync (incl dev group)
         run: uv sync
-      - name: Run pytest (incl. golden tree + check_golden.sh)
+      - name: Run pytest (including golden tree)
         run: uv run pytest
       - name: Check conformance view (schema + drift)
         run: uv run python scripts/conformance_view.py check

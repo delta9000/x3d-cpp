@@ -216,14 +216,15 @@ void quarantineBuiltinShadowingProtos(runtime::X3DDocument &doc) {
   }
 }
 
-} // namespace
-
+// Strip only the UTF-8 BOM; UTF-16/32 require transcoding.
 void stripUtf8Bom(std::string &s) {
   if (s.size() >= 3 && static_cast<unsigned char>(s[0]) == 0xEF &&
       static_cast<unsigned char>(s[1]) == 0xBB &&
       static_cast<unsigned char>(s[2]) == 0xBF)
     s.erase(0, 3);
 }
+
+} // namespace
 
 std::unique_ptr<X3DReader> makeReader(Encoding enc) {
   switch (enc) {

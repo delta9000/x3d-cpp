@@ -93,3 +93,24 @@ def generated_tree(tmp_path_factory):
         f"regeneration failed (exit {result.returncode}):\n"
         f"{result.stdout}\n{result.stderr}")
     return out
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_checked(*command: str) -> str:
+    result = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    return result.stdout
+
+
+@pytest.fixture(scope="session")
+def configured_ci(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    build_dir = tmp_path_factory.mktemp("cmake-aggregates")
+    run_checked("cmake", "--preset", "ci", "-B", str(build_dir))
+    return build_dir

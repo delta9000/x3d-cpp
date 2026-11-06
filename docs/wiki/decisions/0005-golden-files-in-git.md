@@ -66,3 +66,12 @@ The update workflow is intentional and explicit: change a template or emitter, r
 - `src/x3d_cpp_gen/emit/factory.py` — uses `sorted()` for the factory registry include list; the canonical determinism pattern
 - `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md` — the C1 spec that extended golden coverage from `*.hpp` to `*.hpp`+`*.cpp`
 - `docs/superpowers/plans/2026-06-16-c1-decl-def-split.md` — the C1 implementation plan
+
+## Amendment (2026-11-05)
+
+Both entry points now use `tests/test_golden_tree.py` as the full-tree comparator.
+`mise run golden` invokes it through `scripts/check_golden.sh` with the pinned
+formatter required. The Python suite runs it once using its shared regenerated
+tree, and local `ci` no longer also depends on `golden`. Missing, extra, and
+changed generated sources still fail. Local pytest retains its formatter skip;
+the `test` task, standalone `golden`, and CI fail if the pin is unavailable.

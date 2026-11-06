@@ -165,4 +165,4 @@ for the same reason ([ADR-0019](decisions/0019-physics-seam.md)).
 - [CLI Suite](subsystems/cli-suite.md) — the first SDK consumer and gate harness.
 - [ADR-0001: Ext Firewall](decisions/0001-ext-firewall.md) — the one-way `X3D_CPP_BUILD_EXT` boundary.
 - [Gate System](guides/gate-system.md) — golden / conformance / cli regression gates.
-- [Knowledge Map](knowledge-map.md) and [Coverage](coverage.md) for the wider page index, and the wiki [home](index.md).
+- [Knowledge Map](knowledge-map.md) and [Subsystem source map](coverage.md) for source paths, and the wiki [home](index.md).

@@ -43,7 +43,7 @@ The runtime is designed to be consumed by renderers (the first real consumer is 
 |---|---|
 | [Architecture](architecture.md) | System map: layers, seams, data flow end-to-end |
 | [Knowledge Map](knowledge-map.md) | The RAGs (spec_rag, code_rag): what each indexes and when to use which |
-| [Coverage Manifest](coverage.md) | Full target set — every subsystem, decision, and guide; tracks what is covered vs. missing |
+| [Subsystem source map](coverage.md) | Subsystem pages and their primary source paths |
 | [Seam-Status Matrix](seam-status.md) | The live genericity tracker — one row per renderer/engine seam; GREEN = interface frozen + ≥2 backends + a CI-gated swap-test |
 | [Decisions](decisions/0001-ext-firewall.md) | ADRs — the binding "why" behind design choices |
 | [Subsystems](subsystems/cli-suite.md) | One page per major functional area (purpose, key files, interfaces, tests) |
@@ -51,7 +51,8 @@ The runtime is designed to be consumed by renderers (the first real consumer is 
 
 ## Status & coverage
 
-All three build waves are complete: the [Architecture](architecture.md) spine, every subsystem and decision page, the operational guides, and the [Knowledge Map](knowledge-map.md). Completeness is tracked in the [Coverage Manifest](coverage.md) — the canonical target set (subsystems, ADRs, guides) with covered-vs-residual status. Any deferred area is named there rather than left implicit.
+The wiki navigation lists subsystem pages, decisions, and operational guides. The
+[Subsystem source map](coverage.md) connects subsystem pages to their source paths.
 
 The product's core thesis — that every renderer/engine seam is *proven generic* only with a second independent backend + a CI-gated swap-test — is tracked live in the [Seam-Status Matrix](seam-status.md) (ScriptEngine is the first GREEN row; see [ADR-0022](decisions/0022-scriptengine-second-backend-swap-test.md)).
 

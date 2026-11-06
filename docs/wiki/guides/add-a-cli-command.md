@@ -293,7 +293,10 @@ The first must list your command and its brief. The second must print your `kUsa
 mise run ci
 ```
 
-This runs (in order): `mise run test` → `mise run golden` → `mise run conformance-gate` → `mise run coverage-gate` → `mise run doc-ctest-gate` → `mise run build` (which includes `ctest`) → `mise run cli-gate-regression`. The CLI test (`x3d_cli_test`) is part of the CTest suite inside `mise run build`.
+This runs Python tests (including golden drift), conformance and documented-CTest
+checks, C++ behavior and compile contracts, local corpus regressions, and the
+authoring symbol check. Dependencies may run concurrently. The CLI test
+(`x3d_cli_test`) is in `build-ci`'s behavior suite.
 
 Also run `mise run docs-build` if you edited any wiki pages, since the DOCS gate checks internal link integrity independently.
 

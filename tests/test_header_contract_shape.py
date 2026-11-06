@@ -2,37 +2,12 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
-import tomllib
 from pathlib import Path
 
-import pytest
-import yaml
+from tests.conftest import run_checked
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-WORKFLOW = yaml.safe_load(
-    (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-)
-MISE = tomllib.loads((REPO_ROOT / "mise.toml").read_text(encoding="utf-8"))
-
-
-def run_checked(*command: str) -> str:
-    result = subprocess.run(
-        command,
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    return result.stdout
-
-
-@pytest.fixture(scope="module")
-def configured_ci(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    build_dir = tmp_path_factory.mktemp("header-contract")
-    run_checked("cmake", "--preset", "ci", "-B", str(build_dir))
-    return build_dir
 
 
 def contract_headers() -> list[tuple[str, Path, Path]]:
@@ -81,15 +56,6 @@ def isolation_source_path(
     relative = header.relative_to(include_root).as_posix()
     safe_name = re.sub(r"[^A-Za-z0-9_]", "_", relative)
     return build_dir / "header_isolation" / group / f"{safe_name}.cpp"
-
-
-def job_run_lines(job: dict[str, object]) -> list[str]:
-    return [
-        line.strip()
-        for step in job["steps"]
-        for line in step.get("run", "").splitlines()
-        if line.strip()
-    ]
 
 
 def test_header_contract_is_one_ctest_and_one_ninja_target(
@@ -149,50 +115,6 @@ def test_header_contract_graph_does_not_build_compiled_runtimes(
     ):
         assert f"{target}.dir" not in commands
         assert f"lib{target}" not in commands
-
-
-def test_ci_cpp_job_builds_scoped_aggregates_in_one_tree() -> None:
-    """The `cpp` job runs `mise run build-ci`'s exact sequence (behavior suite,
-    then compile contracts) in one build tree, then the hermetic swap-tests;
-    every build line names explicit targets."""
-    job = WORKFLOW["jobs"]["cpp"]
-    assert job["name"] == "C++ build + ctest (gcc, PR gate)"
-    assert job["needs"] == "changes"
-    assert job["if"] == "needs.changes.outputs.cpp == 'true'"
-
-    lines = job_run_lines(job)
-    build_ci = [
-        line.strip()
-        for line in MISE["tasks"]["build-ci"]["run"].splitlines()
-        if line.strip()
-    ]
-    configure = [line for line in lines if line.startswith("cmake --preset ci")]
-    assert len(configure) == 1
-    # Everything after configure, in order, starts with build-ci's sequence.
-    rest = lines[lines.index(configure[0]) + 1:]
-    assert rest[: len(build_ci) - 1] == build_ci[1:]
-
-    build_lines = [line for line in lines if line.startswith("cmake --build")]
-    assert all("--target" in line for line in build_lines)
-    assert "--target x3d_behavior_tests" in build_lines[0]
-    assert "--target x3d_compile_contracts" in build_lines[1]
-    behavior = next(i for i, line in enumerate(build_ci) if "-L behavior" in line)
-    contracts = next(i for i, line in enumerate(build_ci) if "x3d_compile_contracts" in line)
-    assert behavior < contracts
-    assert "-L compile-contract" in build_ci[-1]
-
-
-def test_cpp_job_ccache_namespaces_are_separate_and_bounded() -> None:
-    jobs = WORKFLOW["jobs"]
-    expected_key_prefixes = {
-        "cpp": "ccache-behavior-",
-        "cpp-san": "ccache-san-",
-    }
-    for job_name, prefix in expected_key_prefixes.items():
-        job = jobs[job_name]
-        cache_step = next(step for step in job["steps"] if "with" in step)
-        assert cache_step["with"]["key"].startswith(prefix)
-        assert "ccache --max-size=750M" in job_run_lines(job)
 
 
 def test_compiled_parser_headers_do_not_export_implementation_dependencies() -> None:
