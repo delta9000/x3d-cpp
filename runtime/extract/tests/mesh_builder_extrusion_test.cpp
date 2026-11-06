@@ -1,19 +1,3 @@
-// mesh_builder_b3_test.cpp — B3 acceptance: MeshBuilder Extrusion tessellation.
-//
-// Proofs:
-//   1) A unit-square cross-section swept along a straight 2-point spine yields a
-//      box-like solid: 4 side-wall quads (8 tris) + begin/end caps (2 tris each)
-//      = 12 triangles / 36 corners, with the (section,crossSectionVertex)
-//      lattice map retained parallel to positions and flat normals present.
-//   2) WINDING: with the default ccw=true, the begin cap (at spine[0], the -Y
-//      end) faces away from the end cap (at spine[last], the +Y end). The two
-//      caps' geometric normals are anti-parallel and roughly along the spine.
-//   3) ccw=false flips every emitted triangle's winding (geometric normal sign
-//      inverts relative to ccw=true), same triangle/vertex counts.
-//   4) <2 spine points => empty mesh.
-//   5) recognizedGeometryType("Extrusion") is true.
-//   6) Per-section scale shrinks the cross-section: a 2x-scaled section's verts
-//      sit at twice the radius of an unscaled one.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -64,7 +48,7 @@ TEST_CASE("mesh_builder_b3_test") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
   const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
 
-  // ---- 1. Box-like counts + lattice map + normals -----------------------
+  // 1. Box-like counts + lattice map + normals
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
@@ -76,13 +60,13 @@ TEST_CASE("mesh_builder_b3_test") {
     CHECK((m.positions.size() == 36));
     CHECK((m.hasNormals));
     CHECK((m.normals.size() == m.positions.size()));
-    // lattice-index-retaining form for B6.
+    // Retains source lattice ids for smoothing.
     CHECK((m.latticeIndex.size() == m.positions.size()));
     // lattice ids are section*nc + crossSectionVertex, within [0, ns*nc).
     for (auto id : m.latticeIndex) CHECK((id < 2u * 5u));
   }
 
-  // ---- 2. Cap winding: begin and end caps face opposite ways ------------
+  // 2. Cap winding: begin and end caps face opposite ways
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
@@ -102,7 +86,7 @@ TEST_CASE("mesh_builder_b3_test") {
     CHECK((dot(nBegin, nEnd) < 0.0f));
   }
 
-  // ---- 3. ccw=false flips winding ---------------------------------------
+  // 3. ccw=false flips winding
   {
     auto g1 = createX3DNode("Extrusion");
     setF(g1, "crossSection", std::any(unitSquare));
@@ -124,7 +108,7 @@ TEST_CASE("mesh_builder_b3_test") {
     }
   }
 
-  // ---- 4. <2 spine points => empty --------------------------------------
+  // 4. <2 spine points => empty
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
@@ -134,7 +118,7 @@ TEST_CASE("mesh_builder_b3_test") {
     CHECK((m.indices.empty()));
   }
 
-  // ---- 5. recognizedGeometryType -----------------------------------------
+  // 5. recognizedGeometryType
   {
     bool recognized = false;
     auto g = createX3DNode("Extrusion");
@@ -145,7 +129,7 @@ TEST_CASE("mesh_builder_b3_test") {
     CHECK((recognizedGeometryType("Extrusion")));
   }
 
-  // ---- 6. Per-section scale widens the cross-section ---------------------
+  // 6. Per-section scale widens the cross-section
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));

@@ -1,27 +1,3 @@
-// mesh_builder_b6_test.cpp — B6 acceptance: creaseAngle smooth-normal generation.
-//
-// The flat per-face normal fill is replaced by a creaseAngle-aware post-pass when
-// NO Normal node is authored. Adjacency is re-derived in SOURCE-index space
-// (coordIndex for IFS; the lattice id for ElevationGrid / Extrusion /
-// GeoElevationGrid) so coincident-but-distinct verts are NOT over-smoothed, and
-// the expand layout is preserved (the averaged normal is scattered back onto each
-// expanded corner; no re-indexing).
-//
-// Proofs:
-//   1) NON-REGRESSIVE: creaseAngle default 0 reproduces today's exact FLAT
-//      output. An IFS cube with creaseAngle absent/0 keeps per-face normals (each
-//      triangle's three corners share its geometric face normal).
-//   2) creaseAngle=PI smooths a sphere-of-quads (an octahedron IFS): every corner
-//      at a shared coordIndex vertex gets the AVERAGE of all incident face
-//      normals (== the outward radial direction for an origin-centred octahedron),
-//      so adjacent shared-edge normals are fused, NOT faceted.
-//   3) SOURCE-INDEX adjacency, not the expanded run: an IFS where two faces meet
-//      at a vertex authored as TWO DISTINCT coordIndex entries (a hard seam) does
-//      NOT fuse across the seam even at creaseAngle=PI (the design's
-//      coincident-distinct guard).
-//   4) ElevationGrid smooths keyed on the lattice id (row*xDim+col); creaseAngle=0
-//      stays byte-identical to the pre-B6 flat output.
-//   5) Authored Normal node WINS: creaseAngle is ignored when a Normal is present.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -95,7 +71,7 @@ TEST_CASE("mesh_builder_b6_test") {
       0, 1, 5, 4, -1, // -Y
   };
 
-  // ---- 1. NON-REGRESSIVE: creaseAngle absent (default 0) => FLAT --------------
+  // 1. non-regressive: creaseAngle absent (default 0) => flat
   {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
@@ -112,7 +88,7 @@ TEST_CASE("mesh_builder_b6_test") {
     }
   }
 
-  // ---- 1b. creaseAngle=0 EXPLICIT is identical to the default ---------------
+  // 1b. creaseAngle=0 explicit is identical to the default
   {
     auto g0 = createX3DNode("IndexedFaceSet");
     setF(g0, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
@@ -130,10 +106,10 @@ TEST_CASE("mesh_builder_b6_test") {
       CHECK((vecEq(a.normals[i], b.normals[i]))); // byte-identical flat fill.
   }
 
-  // ---- 1c. creaseAngle=PI on a CUBE: every shared corner FUSES (no longer
-  // faceted). The exact averaged direction is triangle-count-weighted across the
+  // creaseAngle=PI fuses each shared cube corner. The averaged direction is
+  // triangle-count-weighted across the
   // three incident faces, so we assert only that the corner normal points
-  // OUTWARD into the +++ octant and is NOT any single axis (i.e. it is smoothed).
+  // outward into the +++ octant and is not any single axis (i.e. it is smoothed).
   {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
@@ -154,7 +130,7 @@ TEST_CASE("mesh_builder_b6_test") {
     CHECK((sawCorner));
   }
 
-  // ---- 2. creaseAngle=PI octahedron => per-vertex radial (sphere-of-quads) ----
+  // 2. creaseAngle=PI octahedron => per-vertex radial (sphere-of-quads)
   // Octahedron: 6 verts on the axes, 8 triangular faces. At PI every face at a
   // shared coord vertex fuses; the averaged normal == the outward radial dir.
   {
@@ -176,7 +152,7 @@ TEST_CASE("mesh_builder_b6_test") {
       const SFVec3f rad = normz(m.positions[i]);
       CHECK((vecEq(m.normals[i], rad)));
     }
-    // And it is NOT the flat per-face normal anymore on at least one corner.
+    // And it is not the flat per-face normal anymore on at least one corner.
     bool differs = false;
     for (std::size_t t = 0; t + 2 < m.indices.size(); t += 3) {
       const SFVec3f fn = triGeoNormal(m, t);
@@ -185,12 +161,12 @@ TEST_CASE("mesh_builder_b6_test") {
     CHECK((differs));
   }
 
-  // ---- 3. SOURCE-INDEX adjacency: a hard seam (distinct coord entries) does
-  // NOT fuse even at PI. Two coplanar-adjacent triangles whose shared edge is
-  // authored with DUPLICATE coordinate points keep their own face normals. ----
+  // 3. source-index adjacency: a hard seam (distinct coord entries) does
+  // not fuse even at PI. Two coplanar-adjacent triangles whose shared edge is
+  // authored with duplicate coordinate points keep their own face normals.
   {
     // Two triangles forming a bent "tent": faces tilt opposite ways about the
-    // shared edge along X. The shared edge is authored as DISTINCT coord ids
+    // shared edge along X. The shared edge is authored as distinct coord ids
     // (2,3 for face A; 4,5 for face B) — a deliberate hard seam.
     const std::vector<SFVec3f> tent = {
         {0, 0, 0}, {0, 0, 0},   // apex-ish, two distinct entries
@@ -204,15 +180,15 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(g, "coordIndex", std::any(tIdx));
     setF(g, "creaseAngle", std::any(PI));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
-    // Faces A and B share NO coord id (2,3 vs 4,5 are distinct entries), so each
-    // corner keeps its OWN face normal — no cross-seam fusing.
+    // Faces A and B share no coord id (2,3 vs 4,5 are distinct entries), so each
+    // corner keeps its own face normal — no cross-seam fusing.
     const SFVec3f fnA = triGeoNormal(m, 0);
     const SFVec3f fnB = triGeoNormal(m, 3);
     for (std::size_t k = 0; k < 3; ++k) CHECK((vecEq(m.normals[k], fnA)));
     for (std::size_t k = 3; k < 6; ++k) CHECK((vecEq(m.normals[k], fnB)));
   }
 
-  // ---- 4. ElevationGrid: creaseAngle=0 flat is byte-identical; PI smooths -----
+  // 4. ElevationGrid: creaseAngle=0 flat is byte-identical; PI smooths
   {
     auto flat = createX3DNode("ElevationGrid");
     setF(flat, "xDimension", std::any(3));
@@ -241,7 +217,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(smooth, "creaseAngle", std::any(PI));
     MeshData b = buildLocalMesh(smooth.get(), geo::builtinProjection());
     // The raised centre vertex (lattice id 4) is shared by many cells; with PI
-    // its corners are smoothed to the AVERAGE of incident faces — NOT the flat
+    // its corners are smoothed to the average of incident faces — not the flat
     // per-face normal. Find a corner at the centre and confirm it changed.
     bool centreSmoothed = false;
     for (std::size_t i = 0; i < b.positions.size(); ++i)
@@ -252,11 +228,11 @@ TEST_CASE("mesh_builder_b6_test") {
         if (!vecEq(b.normals[i], fn)) centreSmoothed = true;
       }
     CHECK((centreSmoothed));
-    // Same vertex/triangle COUNT as the flat grid (expand layout preserved).
+    // Same vertex/triangle count as the flat grid (expand layout preserved).
     CHECK((b.positions.size() == a.positions.size()));
   }
 
-  // ---- 5. Authored Normal WINS over creaseAngle ------------------------------
+  // 5. Authored Normal wins over creaseAngle
   {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
@@ -271,13 +247,13 @@ TEST_CASE("mesh_builder_b6_test") {
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     // Every corner uses the authored normal (coord-indexed into a 1-entry list:
     // pickIndex returns coord which is >0 -> out of range -> flat fallback for
-    // most corners; the point is creaseAngle did NOT run, so corners are NOT the
+    // most corners; the point is creaseAngle did not run, so corners are not the
     // smooth radial). Assert at least one corner is the authored {0,0,1}.
     bool sawAuthored = false;
     for (const auto &n : m.normals)
       if (vecEq(n, SFVec3f{0, 0, 1})) sawAuthored = true;
     CHECK((sawAuthored));
-    // And NO corner is the smooth diagonal radial (creaseAngle was skipped).
+    // And no corner is the smooth diagonal radial (creaseAngle was skipped).
     const SFVec3f diag = normz(SFVec3f{1, 1, 1});
     for (const auto &n : m.normals) CHECK((!vecEq(n, diag)));
   }

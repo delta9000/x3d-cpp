@@ -1,4 +1,4 @@
-// #155: optional origin-distance hints must travel through advertised channels.
+// optional origin-distance hints must travel through advertised channels.
 #include "SceneExtractor.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -58,7 +58,7 @@ struct Fixture {
   void apply(const RenderDelta &delta) {
     for (auto id : delta.removed) REQUIRE(mirror.erase(id) == 1);
     for (auto id : delta.added) REQUIRE(mirror.emplace(id, ex.item(id)).second);
-    // Copy ONLY each advertised channel. A complete-record copy on an update
+    // Copy only each advertised channel. A complete-record copy on an update
     // would conceal the stale host hint even if the extractor changed it.
     for (auto id : delta.updatedTransform) mirror.at(id).worldTransform = ex.item(id).worldTransform;
     for (auto id : delta.updatedGeometry) {

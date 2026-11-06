@@ -1,38 +1,17 @@
-// LightSystem.hpp — M2.5 extraction (Layer A6): collect every active light in the
-// scene, resolved to WORLD space at collection time. namespace
-// x3d::runtime::extract. Header-only, golden-untouched, node-as-truth (no member
-// state on generated nodes; field reads go through geombounds reflection).
-//
-// WHY world-at-collection (the M2C-1 sidestep): a light's direction/location are
-// authored in its LOCAL frame. Like PickSystem::worldOfRec / SceneExtractor::walk,
-// this walk RE-ACCUMULATES worldM down EACH path via TransformSystem::localMatrix.
-// It NEVER reads ctx.worldTransform()/TransformSystem.world_ — that table is
-// first-path-only, so a USE'd light under two Transforms would collapse to one
-// placement. Re-accumulating keeps each placement's world frame distinct.
-//
-// FIDELITY (the spec-correctness pillar this task defends):
-//   * The authored `global` flag is CARRIED, NOT promoted. Verified spec
-//     defaults: DirectionalLight global=false, PointLight/SpotLight global=true.
-//     A consumer must NOT silently promote a global=false light to scene-wide;
-//     LightSystem reads the authored value and hands it through untouched.
-//   * scopeRoot is the enclosing grouping node the light was collected under, so
-//     a non-global light can be scoped to that subtree by a consumer.
-//   * worldDirection/worldLocation are world-frame; direction is renormalized
-//     after the (possibly non-uniformly scaled) transform.
-//   * on==false lights are skipped entirely.
-//
-// SEAM/THREADING: single-threaded; collect() is a pure read over the scene graph.
+// Collect active lights in world space, accumulating transforms per path so USE
+// placements retain distinct frames. Authored global flags and grouping scopes
+// are preserved. Collection reads the graph on the caller's thread.
 #ifndef X3D_RUNTIME_EXTRACT_LIGHT_SYSTEM_HPP
 #define X3D_RUNTIME_EXTRACT_LIGHT_SYSTEM_HPP
 
 #include "FieldRead.hpp"
-#include "GeometryBounds.hpp"  // geombounds::getField/getNode/hasField
-#include "Mat4.hpp"            // transformDirection/transformPoint
-#include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
-#include "RenderItem.hpp"      // LightDesc
-#include "TransformSystem.hpp" // localMatrix (static; per-path re-accumulation)
-#include "LODSelection.hpp" // traversedChild (§10.4.3 / §23.4.3)
-#include "MaterialSystem.hpp" // matsys::refOf (projector textures)
+#include "GeometryBounds.hpp"
+#include "Mat4.hpp"
+#include "RecursionLimits.hpp"
+#include "RenderItem.hpp"
+#include "TransformSystem.hpp"
+#include "LODSelection.hpp"
+#include "MaterialSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
@@ -63,8 +42,8 @@ public:
     return collect(scene, projection, budget, eyeWorld);
   }
 
-  // #21: collect against a shared node-visit budget — the extractor threads the
-  // SAME budget through light collection and its geometry walk, so one snapshot
+  // collect against a shared node-visit budget — the extractor threads the
+  // same budget through light collection and its geometry walk, so one snapshot
   // ceiling covers both. `budget.tripped` reports an early stop.
   std::vector<LightDesc> collect(const Scene &scene,
                                 const geo::GeoProjection &projection,
@@ -118,7 +97,6 @@ public:
 
 private:
   // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
   static bool isTransform(const X3DNode *n) {
     return x3d::runtime::TransformSystem::isTransform(n);
   }
@@ -154,11 +132,11 @@ private:
             const geo::GeoProjection &projection,
             std::size_t depth = 0) {
     if (!n) return;
-    // #21: bound total node-visits so a wide acyclic ("doubling DAG") light
+    // bound total node-visits so a wide acyclic ("doubling DAG") light
     // fan-out collects a bounded number of LightDescs (the shared budget makes
     // the extractor report the trip via budgetExceeded()).
     if (!budget.spend()) return;
-    // MEM-1: a hard depth cap keeps light collection from stack-overflowing on a
+    // a hard depth cap keeps light collection from stack-overflowing on a
     // USE-cyclic / pathologically deep graph (this walk runs before the
     // extractor's own walk in fullSnapshot, so it must be self-safe too).
     if (depth >= kMaxNestingDepth) return;
@@ -167,7 +145,7 @@ private:
 
     if (leaf(n, here, scopeRoot)) return;
 
-    // Descend. The scopeRoot handed to children is THIS node when it is a
+    // Descend. The scopeRoot handed to children is this node when it is a
     // grouping node, else the inherited one (a non-grouping passthrough keeps
     // the enclosing group as the scope anchor).
     const X3DNode *childScope = isGroupingNode(n) ? n : scopeRoot;
@@ -202,8 +180,8 @@ private:
     L.shadowIntensity =
         geombounds::getField<float>(n, "shadowIntensity", 1.0f);
 
-    // CARRIED authored global — verified defaults differ by type, so the
-    // fallback matches the spec for THIS node type (never blanket-promoted).
+    // carried authored global — verified defaults differ by type, so the
+    // fallback matches the spec for this node type (never blanket-promoted).
     bool defaultGlobal = (type != LightDesc::Type::Directional);
     L.global = geombounds::getField<bool>(n, "global", defaultGlobal);
     L.scopeRoot = scopeRoot;

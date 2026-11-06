@@ -1,20 +1,20 @@
-// mesh_builder_b7_test.cpp — spec-conformance fixes for GENERATED normals and
+// mesh_builder_normals_triangulation_test.cpp — spec-conformance fixes for generated normals and
 // non-convex face triangulation in the composed-geometry funnel.
 //
-// MSH-1: the `ccw` field must reverse the direction of a GENERATED face normal
+// the `ccw` field must reverse the direction of a generated face normal
 //   for IFS / triangle-set family / ElevationGrid, exactly as the Extrusion path
 //   already does (rendering.md §11.4.x: "the normal shall be generated for the
 //   triangle based on the ccw field"; geometry3D.md §13.3.4: ccw=FALSE reverses
-//   the normal direction). Author-supplied Normal-node normals are NEVER flipped.
+//   the normal direction). Author-supplied Normal-node normals are never flipped.
 //
-// MSH-2: the triangle/quad-set family (IndexedTriangleSet, TriangleSet,
+// the triangle/quad-set family (IndexedTriangleSet, TriangleSet,
 //   IndexedTriangleStripSet, IndexedTriangleFanSet, QuadSet, IndexedQuadSet) has
-//   NO creaseAngle field and normalPerVertex defaults TRUE, so §11.3.2/§11.4.9
-//   mandate the generated per-vertex normal be the AVERAGE of all triangles
-//   sharing that vertex — NOT the flat per-face normal. IFS and ElevationGrid
-//   (which carry creaseAngle, default 0 = faceted) are EXEMPT and unchanged.
+//   no creaseAngle field and normalPerVertex defaults TRUE, so §11.3.2/§11.4.9
+//   mandate the generated per-vertex normal be the average of all triangles
+//   sharing that vertex — not the flat per-face normal. IFS and ElevationGrid
+//   (which carry creaseAngle, default 0 = faceted) are exempt and unchanged.
 //
-// MSH-3: the `convex` field (SFBool, default TRUE) must be honored for IFS. When
+// the `convex` field (SFBool, default TRUE) must be honored for IFS. When
 //   convex==FALSE a concave polygon must be triangulated with ear-clipping, not a
 //   naive fan (which produces inverted/overlapping triangles). The total triangle
 //   area must equal the polygon area and all triangles share one winding.
@@ -65,12 +65,10 @@ static std::shared_ptr<X3DNode> makeCoord(std::vector<SFVec3f> pts) {
 }
 
 TEST_CASE("mesh_builder_b7_test") {
-  // =====================================================================
-  // MSH-1: ccw reverses the GENERATED normal for an IFS.
+  // ccw reverses the generated normal for an IFS.
   // A single CCW-as-authored triangle in the z=0 plane has geometric face
   // normal +Z. With ccw=TRUE the generated normal must be +Z; with ccw=FALSE
-  // it must be the EXACT opposite (-Z). The two runs differ only in `ccw`.
-  // =====================================================================
+  // it must be the exact opposite (-Z). The two runs differ only in `ccw`.
   {
     const std::vector<SFVec3f> tri = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
     const std::vector<int> idx = {0, 1, 2, -1};
@@ -97,7 +95,7 @@ TEST_CASE("mesh_builder_b7_test") {
                                           -mT.normals[i].z})));
   }
 
-  // MSH-1b: an AUTHORED Normal node is NEVER flipped by ccw=FALSE.
+  // an authored Normal node is never flipped by ccw=FALSE.
   {
     const std::vector<SFVec3f> tri = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
     const std::vector<int> idx = {0, 1, 2, -1};
@@ -114,13 +112,11 @@ TEST_CASE("mesh_builder_b7_test") {
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, 1})));
   }
 
-  // =====================================================================
-  // MSH-2: triangle-set family gets VERTEX-AVERAGED normals (smooth), not
+  // triangle-set family gets vertex-averaged normals (smooth), not
   // flat per-face. Two triangles sharing an edge with a real dihedral angle:
   // a "tent" / open book about the X axis. normalPerVertex defaults TRUE and
   // there is no creaseAngle field, so the shared-edge corners must carry the
-  // average of the two face normals (NOT either flat face normal).
-  // =====================================================================
+  // average of the two face normals (not either flat face normal).
   {
     // Shared edge along X at y=0,z=0 (verts 0,1). Two flaps tilt up in +/-Z.
     //  Tri A: 0,1,2  (flap toward +Z+Y)  Tri B: 1,0,3 (flap toward -Z+Y)
@@ -144,8 +140,8 @@ TEST_CASE("mesh_builder_b7_test") {
     const SFVec3f avg = normz(SFVec3f{fnA.x + fnB.x, fnA.y + fnB.y, fnA.z + fnB.z});
     CHECK((!vecEq(fnA, fnB))); // genuine dihedral, faces differ.
 
-    // Every corner sitting on the SHARED edge (coord 0 or 1) must carry the
-    // averaged normal, NOT the flat face normal of its own triangle.
+    // Every corner sitting on the shared edge (coord 0 or 1) must carry the
+    // averaged normal, not the flat face normal of its own triangle.
     int sharedChecked = 0;
     for (std::size_t i = 0; i < m.positions.size(); ++i) {
       if (vecEq(m.positions[i], pts[0]) || vecEq(m.positions[i], pts[1])) {
@@ -157,7 +153,7 @@ TEST_CASE("mesh_builder_b7_test") {
     CHECK((sharedChecked == 4)); // both shared verts appear once per triangle.
   }
 
-  // MSH-2b: an authored Normal still wins for triangle sets (no averaging).
+  // an authored Normal still wins for triangle sets (no averaging).
   {
     const std::vector<SFVec3f> pts = {
         {-1, 0, 0}, {1, 0, 0}, {0, 1, 1}, {0, 1, -1}};
@@ -173,15 +169,13 @@ TEST_CASE("mesh_builder_b7_test") {
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, 1})));
   }
 
-  // =====================================================================
-  // MSH-3: a CONCAVE polygon with convex=FALSE triangulates by ear-clipping,
+  // a CONCAVE polygon with convex=FALSE triangulates by ear-clipping,
   // so the total triangle area equals the polygon area and every triangle
   // shares one winding. An L / arrow polygon fanned naively would emit an
   // inverted triangle (area mismatch / flipped normal).
   //
   // Arrow / dart polygon in the z=0 plane (CCW), reflex vertex at index 2:
   //   (0,0) (4,2) (0,4) (1,2)      -- a concave "dart" (reflex at vertex 3).
-  // =====================================================================
   {
     const std::vector<SFVec3f> poly = {
         {0, 0, 0}, {4, 2, 0}, {0, 4, 0}, {1, 2, 0}};
@@ -238,7 +232,7 @@ TEST_CASE("mesh_builder_b7_test") {
     CHECK((allSameWinding));
   }
 
-  // MSH-3b: convex=TRUE (default) is unchanged — a convex quad still fans and
+  // convex=TRUE (default) is unchanged — a convex quad still fans and
   // covers its area with consistent winding.
   {
     const std::vector<SFVec3f> quad = {

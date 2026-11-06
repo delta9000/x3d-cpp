@@ -6,7 +6,7 @@
 //   - baseline_step = spacing × size
 //   - horizontal / vertical axes with leftToRight / topToBottom direction flags
 //   - justify[0] (major-axis, per-line) and justify[1] (minor-axis, whole block)
-//     per Tables 15.2–15.5, including the FIRST special case (baseline at Y=0)
+//     per Tables 15.2–15.5, including the `FIRST` special case (baseline at Y=0)
 //   - Text.length[] per-line stretch/compress (§15.4.2)
 //   - Text.maxExtent global compress-to-fit (§15.4.2)
 //   - textBounds / lineBounds / origin output fields
@@ -18,7 +18,7 @@
 //   ISO/IEC 19775-1:2023 §15.2.2.3  Direction and justification
 //   ISO/IEC 19775-1:2023 §15.4.1    FontStyle — size, spacing
 //   ISO/IEC 19775-1:2023 §15.4.2    Text — length, maxExtent, bounds outputs
-//   https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/text.html
+//   https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-is/Part01/components/text.html
 #ifndef X3D_RUNTIME_EXTRACT_TEXTLAYOUT_HPP
 #define X3D_RUNTIME_EXTRACT_TEXTLAYOUT_HPP
 
@@ -33,9 +33,7 @@
 
 namespace x3d::runtime::extract {
 
-// ---------------------------------------------------------------------------
 // FontStyleParams — maps directly to X3D FontStyle node fields (§15.4.1).
-// ---------------------------------------------------------------------------
 struct FontStyleParams {
     float       size        = 1.0f; // nominal glyph height in local coords (> 0)
     float       spacing     = 1.0f; // line-spacing multiplier (>= 0)
@@ -45,24 +43,19 @@ struct FontStyleParams {
 
     // justify[0] = major-axis alignment per line; justify[1] = minor-axis alignment
     // for the whole block. "" is treated as the slot default:
-    //   major default: "BEGIN"   minor default: "FIRST"
+    //   major default: "BEGIN"   minor default: "`FIRST`"
     std::string justifyMajor = "BEGIN";
     std::string justifyMinor = "FIRST";
 };
 
-// ---------------------------------------------------------------------------
 // TextParams — maps to X3D Text node fields (§15.4.2).
-// ---------------------------------------------------------------------------
 struct TextParams {
     std::vector<std::string> strings;
     std::vector<float>       length;    // MFFloat [0,∞); 0 = unconstrained
     float                    maxExtent = 0.0f; // [0,∞); 0 = unconstrained
 };
 
-// ---------------------------------------------------------------------------
 // Output types.
-// ---------------------------------------------------------------------------
-
 // 2D bounding box of one rendered line in local text space (Z=0 plane).
 struct LineBounds {
     float width  = 0.0f;
@@ -90,7 +83,6 @@ struct TextLayoutResult {
     std::vector<std::array<float, 2>> lineBaselineOrigins;
 };
 
-// ---------------------------------------------------------------------------
 // FontMetrics callback type.
 //
 // Signature: (string s, float size) -> (natural_advance, ascender, descender)
@@ -103,15 +95,12 @@ struct TextLayoutResult {
 //
 // A monospaced stub (e.g. advance = n_chars * size, ascender = 0.8*size,
 // descender = -0.2*size) satisfies all unit tests without real font data.
-// ---------------------------------------------------------------------------
 using FontMetricsCallback =
     std::function<std::tuple<float, float, float>(const std::string&, float)>;
 
-// ---------------------------------------------------------------------------
 // Internal helpers (anonymous namespace keeps them translation-unit local even
 // though this is a header-only implementation — each TU gets its own copy but
 // they are identical and the compiler inlines/eliminates them).
-// ---------------------------------------------------------------------------
 namespace detail {
 
 // Resolve "" justify values to their defaults per slot.
@@ -130,11 +119,9 @@ inline float safeDivide(float num, float den) {
 
 } // namespace detail
 
-// ---------------------------------------------------------------------------
 // computeTextLayout() — the complete §15 layout algorithm.
 //
-// ALGORITHM SUMMARY
-// =================
+// ALGORITHM summary
 // 1. Collect font metrics for every line via the callback.
 // 2. Compute per-line target lengths (applying length[] then maxExtent).
 // 3. Determine the minor-axis block offset (justify[1]).
@@ -142,7 +129,6 @@ inline float safeDivide(float num, float den) {
 // 5. Emit lineBaselineOrigins, lineBounds, textBounds, origin.
 //
 // The Z coordinate is always 0 (Text lives in the Z=0 plane, §15.2.1.2).
-// ---------------------------------------------------------------------------
 inline TextLayoutResult computeTextLayout(
     const FontStyleParams& fs,
     const TextParams&      t,
@@ -164,9 +150,7 @@ inline TextLayoutResult computeTextLayout(
     const float spacing = (fs.spacing >= 0.0f) ? fs.spacing : 1.0f;
     const float baselineStep = spacing * size; // §15.4.1 baseline distance
 
-    // -----------------------------------------------------------------------
     // Step 1: collect per-line font metrics.
-    // -----------------------------------------------------------------------
     struct LineMetrics {
         float naturalAdvance = 0.0f; // advance along the major axis
         float ascender       = 0.0f; // baseline → top (>= 0)
@@ -180,13 +164,11 @@ inline TextLayoutResult computeTextLayout(
         metrics[i].descender      = desc;
     }
 
-    // -----------------------------------------------------------------------
     // Step 2: per-line target lengths (length[] + maxExtent). §15.4.2
     //
     //   target[i] = (length[i] > 0) ? length[i] : naturalAdvance[i]
     //   global_scale = 1.0 unless maxExtent > 0 and max(target) > maxExtent
     //   effective[i] = target[i] * global_scale
-    // -----------------------------------------------------------------------
     std::vector<float> target(N);
     for (std::size_t i = 0; i < N; ++i) {
         float lenI = (i < t.length.size() && t.length[i] > 0.0f)
@@ -216,11 +198,10 @@ inline TextLayoutResult computeTextLayout(
                                                 metrics[i].naturalAdvance);
     }
 
-    // -----------------------------------------------------------------------
     // Step 3: minor-axis block offset (positions the whole block).
     //
     // horizontal = TRUE: minor axis is Y.
-    //   FIRST  → block_y_offset = 0 (baseline of first line at Y=0) [special case]
+    //   `FIRST`  → block_y_offset = 0 (baseline of first line at Y=0) [special case]
     //   BEGIN  + topToBottom=T → block_y_offset = +ascender[0]        (top of first line at Y=0 or above)
     //   BEGIN  + topToBottom=F → block_y_offset = -descender[0]       (bottom of first line at Y=0)
     //   MIDDLE → block_y_offset = totalBlockExtent / 2
@@ -232,10 +213,9 @@ inline TextLayoutResult computeTextLayout(
     // totalBlockExtent = (N-1)*baselineStep + lineHeight_last
     //   where lineHeight_last = ascender[N-1] - descender[N-1]
     //
-    // NOTE: the minor-axis offset is the Y (or X for vertical) coordinate of the
-    // BASELINE of the first line.  Each subsequent line's baseline is stepped from
+    // the minor-axis offset is the Y (or X for vertical) coordinate of the
+    // baseline of the first line.  Each subsequent line's baseline is stepped from
     // the first by ±baselineStep (sign determined by topToBottom / leftToRight).
-    // -----------------------------------------------------------------------
     const float lineHeight = size; // nominal height per §15.4.1; used for bounds
 
     // total block extent in the minor axis direction (absolute, unsigned)
@@ -243,13 +223,13 @@ inline TextLayoutResult computeTextLayout(
     float totalBlockExtent = (N > 1 ? static_cast<float>(N - 1) * baselineStep : 0.0f)
                            + lineHeight;
 
-    // minor-axis position of the FIRST line's baseline
+    // minor-axis position of the `FIRST` line's baseline
     float firstBaselineMinor = 0.0f;
 
     if (fs.horizontal) {
         // Minor axis = Y.
         if (minorJ == "FIRST") {
-            // §15.2.2.3 FIRST special case: first-line baseline at Y=0.
+            // §15.2.2.3 `FIRST` special case: first-line baseline at Y=0.
             firstBaselineMinor = 0.0f;
         } else if (minorJ == "BEGIN") {
             // Table 15.4: top edge (topToBottom=T) / bottom edge (F) of the
@@ -264,7 +244,7 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = -metrics[0].descender; // descender <= 0 => this >= 0
             }
         } else if (minorJ == "MIDDLE") {
-            // Centre of the BLOCK at Y=0 (§15.2.2.3). The block's vertical extent
+            // Centre of the block at Y=0 (§15.2.2.3). The block's vertical extent
             // runs from the top line's ascender to the bottom line's descender;
             // centring the baselines (extent/2) ignores the ascender/descender
             // asymmetry and lifts the block by ~one ascender. Solve center==0 for
@@ -289,8 +269,8 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].descender;
             } else {
-                // Top of last line at Y=0 (block entirely below Y=0), TXT-2.
-                // Lines stack UP (topToBottom=F): last baseline =
+                // Top of last line at Y=0 (block entirely below Y=0), .
+                // Lines stack up (topToBottom=F): last baseline =
                 // first + (N-1)*baselineStep; top of last line =
                 // last baseline + ascender[N-1] = 0
                 // => firstBaseline = -(N-1)*baselineStep - ascender[N-1]
@@ -304,7 +284,7 @@ inline TextLayoutResult computeTextLayout(
         // A column spans [baseline + descender, baseline + ascender] on X, as
         // its glyph quads do (Table 15.5 edges are those of that span).
         if (minorJ == "FIRST" || minorJ == "BEGIN") {
-            // Table 15.5: FIRST and BEGIN both put the left edge (leftToRight=T)
+            // Table 15.5: `FIRST` and BEGIN both put the left edge (leftToRight=T)
             // / right edge (F) of the first column at X=0.
             if (fs.leftToRight) {
                 firstBaselineMinor = -metrics[0].descender; // left edge at X=0
@@ -312,7 +292,7 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = -metrics[0].ascender;  // right edge at X=0
             }
         } else if (minorJ == "MIDDLE") {
-            // Centre the column BLOCK on X=0 (same block-centring as the
+            // Centre the column block on X=0 (same block-centring as the
             // horizontal axis; leftToRight plays topToBottom's role). The
             // leftmost column is line 0 when leftToRight, else N-1.
             if (fs.leftToRight) {
@@ -331,7 +311,7 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = -static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].ascender;
             } else {
-                // TXT-4: columns stack LEFTWARD (leftToRight=F); a column spans
+                // columns stack leftward (leftToRight=F); a column spans
                 // [baseline + descender, baseline + ascender] on X (as its
                 // glyph quads do). Left edge of the last column at X=0:
                 // first - (N-1)*step + descender[N-1] = 0
@@ -342,17 +322,15 @@ inline TextLayoutResult computeTextLayout(
         }
     }
 
-    // -----------------------------------------------------------------------
     // Step 4: per-line baseline positions.
     //
     // horizontal = TRUE:
     //   baseline.Y[i] = firstBaselineMinor + i * (topToBottom ? -baselineStep : +baselineStep)
-    //   baseline.X[i] from majorJ: FIRST/BEGIN→0, MIDDLE→∓eff/2, END→∓eff
+    //   baseline.X[i] from majorJ: `FIRST`/BEGIN→0, MIDDLE→∓eff/2, END→∓eff
     //
     // horizontal = FALSE:
     //   baseline.X[i] = firstBaselineMinor + i * (leftToRight ? +baselineStep : -baselineStep)
-    //   baseline.Y[i] from majorJ: FIRST/BEGIN→0, MIDDLE→±eff/2, END→±eff
-    // -----------------------------------------------------------------------
+    //   baseline.Y[i] from majorJ: `FIRST`/BEGIN→0, MIDDLE→±eff/2, END→±eff
     for (std::size_t i = 0; i < N; ++i) {
         float eff = effective[i];
         float baselineX = 0.0f;
@@ -409,7 +387,6 @@ inline TextLayoutResult computeTextLayout(
         result.lineBaselineOrigins[i] = {baselineX, baselineY};
     }
 
-    // -----------------------------------------------------------------------
     // Step 5: lineBounds, textBounds, origin.
     //
     // §15.4.2: lineBounds[i] = (width, height) 2D bbox of one rendered line.
@@ -425,10 +402,9 @@ inline TextLayoutResult computeTextLayout(
     //               textBoundsY = max(effective[i])
     //
     // origin: upper-left corner of textBounds in local text space (Z=0).
-    //   The "upper-left" is the corner with the MOST NEGATIVE X and MOST
-    //   POSITIVE Y (standard text convention matching §15 and the spec's
+    //   The "upper-left" is the corner with the MOST negative X and most
+    //   positive Y (standard text convention matching §15 and the spec's
     //   S-increases-right / T-increases-up texture orientation).
-    // -----------------------------------------------------------------------
     float maxEffective = 0.0f;
     for (std::size_t i = 0; i < N; ++i) {
         maxEffective = std::max(maxEffective, effective[i]);
@@ -493,11 +469,9 @@ inline TextLayoutResult computeTextLayout(
     return result;
 }
 
-// ---------------------------------------------------------------------------
 // TextExtent2D — axis-aligned 2D extent of a laid-out Text block in local text
 // space (the Z=0 plane). Shared by the Text geometry-bounds path so an injected
 // FontMetrics yields exact, culling-safe bounds without re-deriving the layout.
-// ---------------------------------------------------------------------------
 struct TextExtent2D {
     float minX = 0.0f;
     float minY = 0.0f;

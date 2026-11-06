@@ -1,7 +1,7 @@
-// material_system_test.cpp — M2.5 T5 acceptance: extract/MaterialSystem.hpp.
+// material_system_test.cpp —   acceptance: extract/MaterialSystem.hpp.
 //
 // Builds real generated Appearance/Material nodes and asserts materialOf()
-// resolves them to the right MaterialDesc per the locked spec cases:
+// resolves them to the right MaterialDesc for the spec cases:
 //   * Material diffuse + transparency (default toRGBA().a == 1.0).
 //   * PhysicalMaterial baseColor / metallic / roughness.
 //   * null material under a present Appearance => Phong 0.8 grey.
@@ -111,7 +111,7 @@ TEST_CASE("MultiTexture stages preserve blend controls") {
 }
 
 TEST_CASE("material_system_test") {
-  // --- null Appearance entirely => Unlit white ---------------------------
+  //   null Appearance entirely => Unlit white
   {
     MaterialDesc m = materialOf(nullptr);
     CHECK((m.model == MaterialModel::Unlit));
@@ -121,8 +121,8 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.toRGBA().a, 1.0f)));
   }
 
-  // --- present Appearance, null material => Unlit white (MAT-001; §12.4.2,
-  //     §12.2.5 rule 4: equivalent to a default UnlitMaterial, lighting off) ---
+  // present Appearance, null material => Unlit white (; §12.4.2,
+  //     §12.2.5 rule 4: equivalent to a default UnlitMaterial, lighting off)
   {
     auto app = createX3DNode("Appearance");
     MaterialDesc m = materialOf(app.get());
@@ -132,8 +132,8 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.emissive.r, 1.0f) && feq(m.emissive.g, 1.0f) &&
            feq(m.emissive.b, 1.0f)));
   }
-  // --- null material: Appearance.texture acts as the EMISSIVE (unlit) texture
-  //     (MAT-001 part 2; §12.2.5 rule 4) ----------------------------------
+  // null material: Appearance.texture acts as the emissive (unlit) texture
+  // ( part 2; §12.2.5 rule 4)
   {
     auto tex = createX3DNode("ImageTexture");
     setF(tex, "url", std::any(MFString{"u.png"}));
@@ -145,7 +145,7 @@ TEST_CASE("material_system_test") {
            m.textures[0].slot == TextureRef::Slot::Emissive));
   }
 
-  // --- Material diffuse + transparency -----------------------------------
+  // Material diffuse + transparency
   {
     auto mat = createX3DNode("Material");
     setF(mat, "diffuseColor", std::any(SFColor{0.2f, 0.4f, 0.6f}));
@@ -169,7 +169,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.phong.ambientIntensity, 0.3f)));
   }
 
-  // --- Material default toRGBA().a == 1.0 (the locked assertion) ---------
+  // Material default toRGBA().a == 1.0
   {
     auto mat = createX3DNode("Material");
     auto app = createX3DNode("Appearance");
@@ -178,7 +178,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.toRGBA().a, 1.0f)));
   }
 
-  // --- PhysicalMaterial baseColor / metallic / roughness -----------------
+  //   PhysicalMaterial baseColor / metallic / roughness
   {
     auto mat = createX3DNode("PhysicalMaterial");
     setF(mat, "baseColor", std::any(SFColor{0.1f, 0.2f, 0.3f}));
@@ -196,7 +196,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.toRGBA().a, 1.0f))); // default transparency 0.
   }
 
-  // --- UnlitMaterial: emissive IS the surface color ----------------------
+  // UnlitMaterial: emissive is the surface color
   {
     auto mat = createX3DNode("UnlitMaterial");
     setF(mat, "emissiveColor", std::any(SFColor{0.9f, 0.1f, 0.2f}));
@@ -209,9 +209,9 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.emissive.r, 0.9f)));
   }
 
-  // --- texturesOf: material-slot precedence over legacy Appearance.texture
+  // texturesOf: material-slot precedence over legacy Appearance.texture
   {
-    // A Material with a diffuseTexture AND a legacy Appearance.texture: the
+    // A Material with a diffuseTexture and a legacy Appearance.texture: the
     // material slot must win (D6) and the legacy texture must be ignored.
     auto diffuseTex = createX3DNode("ImageTexture");
     setF(diffuseTex, "url", std::any(MFString{"diffuse.png"}));
@@ -231,7 +231,7 @@ TEST_CASE("material_system_test") {
     CHECK((texs[0].url.size() == 1 && texs[0].url[0] == "diffuse.png"));
   }
 
-  // --- texturesOf: legacy Appearance.texture used when no material slot ---
+  // texturesOf: legacy Appearance.texture used when no material slot
   {
     auto legacyTex = createX3DNode("ImageTexture");
     setF(legacyTex, "url", std::any(MFString{"legacy.png"}));
@@ -246,7 +246,7 @@ TEST_CASE("material_system_test") {
     CHECK((texs[0].url.size() == 1 && texs[0].url[0] == "legacy.png"));
   }
 
-  // --- texturesOf: PixelTexture -> Inline (pixels verbatim) ---------------
+  // texturesOf: PixelTexture -> Inline (pixels verbatim)
   {
     auto px = createX3DNode("PixelTexture");
     setF(px, "image",
@@ -260,7 +260,7 @@ TEST_CASE("material_system_test") {
     CHECK((texs[0].inlinePixels.width == 2 && texs[0].inlinePixels.height == 2));
   }
 
-  // --- texturesOf: MovieTexture -> Movie ----------------------------------
+  // texturesOf: MovieTexture -> Movie
   {
     auto mv = createX3DNode("MovieTexture");
     setF(mv, "url", std::any(MFString{"clip.mp4"}));
@@ -272,7 +272,7 @@ TEST_CASE("material_system_test") {
     CHECK((texs[0].url.size() == 1 && texs[0].url[0] == "clip.mp4"));
   }
 
-  // --- texturesOf: MultiTexture -> one ref per channel --------------------
+  // texturesOf: MultiTexture -> one ref per channel
   {
     auto t0 = createX3DNode("ImageTexture");
     setF(t0, "url", std::any(MFString{"layer0.png"}));
@@ -290,7 +290,7 @@ TEST_CASE("material_system_test") {
     CHECK((texs[0].url[0] == "layer0.png" && texs[1].url[0] == "layer1.png"));
   }
 
-  // --- MAT-002/003/004/005: Phong Material extra texture slots + params ----
+  // /003/004/005: Phong Material extra texture slots + params
   {
     auto sh = createX3DNode("ImageTexture"); setF(sh, "url", std::any(MFString{"shin.png"}));
     auto am = createX3DNode("ImageTexture"); setF(am, "url", std::any(MFString{"amb.png"}));
@@ -302,18 +302,18 @@ TEST_CASE("material_system_test") {
     auto app = createX3DNode("Appearance");
     setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
     MaterialDesc m = materialOf(app.get());
-    CHECK((feq(m.phong.occlusionStrength, 0.5f))); // MAT-004
-    CHECK((feq(m.normalScale, 2.0f)));             // MAT-005
+    CHECK((feq(m.phong.occlusionStrength, 0.5f)));
+    CHECK((feq(m.normalScale, 2.0f)));
     bool hasShin = false, hasAmb = false;
     for (auto &t : m.textures) {
       if (t.slot == TextureRef::Slot::Shininess) hasShin = true;
       if (t.slot == TextureRef::Slot::Ambient) hasAmb = true;
     }
-    CHECK((hasShin)); // MAT-002
-    CHECK((hasAmb));  // MAT-003
+    CHECK((hasShin));
+    CHECK((hasAmb));
   }
 
-  // --- alphaMode / alphaCutoff read off the Appearance --------------------
+  // alphaMode / alphaCutoff read off the Appearance
   {
     auto app = createX3DNode("Appearance");
     setF(app, "alphaCutoff", std::any(0.3f));
@@ -326,7 +326,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.alphaCutoff, 0.3f)));
   }
 
-  // --- discriminated-union invariant: Phong model ignores physical block ----
+  // discriminated-union invariant: Phong model ignores physical block
   {
     auto mat = createX3DNode("Material");
     auto app = createX3DNode("Appearance");
@@ -337,7 +337,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.phong.shininess, 0.2f)));    // the field that actually matters
   }
 
-  // --- backMaterial (closes MAT-006) --------------------------------------
+  // Appearance.backMaterial.
   {
     auto frontMat = createX3DNode("Material");
     setF(frontMat, "diffuseColor", std::any(SFColor{0.2f, 0.4f, 0.6f}));
@@ -354,8 +354,8 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.backMaterial->phong.diffuse.r, 0.6f)));
   }
 
-  // --- backMaterialConstraintMet: matching front/back (same model type)
-  //     => constraint met (true) -------------------
+  // backMaterialConstraintMet: matching front/back (same model type)
+  // => constraint met (true)
   {
     auto frontMat = createX3DNode("Material");
     setF(frontMat, "diffuseColor", std::any(SFColor{0.3f, 0.3f, 0.3f}));
@@ -370,8 +370,8 @@ TEST_CASE("material_system_test") {
     CHECK((m.backMaterialConstraintMet == true));
   }
 
-  // --- backMaterialConstraintMet: mismatched model (front=Phong,
-  //     back=PhysicalMaterial) => constraint NOT met (false) ----------------
+  // backMaterialConstraintMet: mismatched model (front=Phong,
+  // back=PhysicalMaterial) => constraint not met (false)
   {
     auto frontMat = createX3DNode("Material");
     setF(frontMat, "diffuseColor", std::any(SFColor{0.3f, 0.3f, 0.3f}));
@@ -386,9 +386,9 @@ TEST_CASE("material_system_test") {
     CHECK((m.backMaterialConstraintMet == false));
   }
 
-  // --- MAT-010: backMaterialConstraintMet also compares the TEXTURE SET.
+  // backMaterialConstraintMet also compares the texture set.
   //     Front and back each bind a diffuseTexture => same model + same slot set
-  //     => met. Back textures are now populated from the back material node.
+  // => met. Back textures come from the back material node.
   {
     auto frontTex = createX3DNode("ImageTexture");
     auto backTex = createX3DNode("ImageTexture");
@@ -407,7 +407,7 @@ TEST_CASE("material_system_test") {
     CHECK((m.backMaterialConstraintMet == true));
   }
 
-  // --- MAT-010: front has a texture, back has none => slot set differs => NOT
+  // front has a texture, back has none => slot set differs => not
   //     met even though the model type matches.
   {
     auto frontTex = createX3DNode("ImageTexture");
@@ -424,7 +424,7 @@ TEST_CASE("material_system_test") {
     CHECK((m.backMaterialConstraintMet == false));
   }
 
-  // --- backMaterialConstraintMet: no backMaterial => trivially true --------
+  // backMaterialConstraintMet: no backMaterial => trivially true
   {
     auto frontMat = createX3DNode("Material");
     auto app = createX3DNode("Appearance");

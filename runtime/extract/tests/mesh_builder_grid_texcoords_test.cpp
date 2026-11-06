@@ -1,19 +1,3 @@
-// mesh_builder_tc2_test.cpp — M2.5 TC2 acceptance: DEFAULT (implicit) texture-
-// coordinate generation for the height grids (ElevationGrid / GeoElevationGrid)
-// whose texCoord field is NULL, by the NORMATIVE GRID PARAMETERIZATION.
-//
-// ISO/IEC 19775-1: for grid vertex (i,j), i in [0,xDim-1], j in [0,zDim-1]:
-//     s = i/(xDim-1),  t = j/(zDim-1)   (guard dimension<=1 -> 0).
-//
-// Proofs:
-//   1) A 3x3 ElevationGrid with NO TextureCoordinate -> the four CORNER lattice
-//      vertices carry texcoords (0,0),(1,0),(0,1),(1,1); the centre vertex
-//      (i=1,j=1) carries (0.5,0.5). texcoords is parallel to positions.
-//   2) An AUTHORED TextureCoordinate ALWAYS WINS (resolved per lattice vertex);
-//      the generated grid UVs are NOT applied.
-//   3) GeoElevationGrid gets the SAME grid parameterization when
-//      texCoord is NULL.
-//   4) A degenerate 1-wide axis guards the s/t along that axis to 0 (no div0).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -57,7 +41,7 @@ static bool hasUvAt(const MeshData &m, const SFVec3f &p, float s, float t) {
 }
 
 TEST_CASE("mesh_builder_tc2_test") {
-  // ---- 1. 3x3 ElevationGrid, flat (all heights 0), NO TextureCoordinate ------
+  // 1. 3x3 ElevationGrid, flat (all heights 0), no TextureCoordinate
   // xSpacing/zSpacing 1 => the (i,j) lattice positions are (i, 0, j). Corners:
   //   (0,0,0)->(0,0) (2,0,0)->(1,0) (0,0,2)->(0,1) (2,0,2)->(1,1)
   //   centre (1,0,1)->(0.5,0.5).
@@ -82,8 +66,8 @@ TEST_CASE("mesh_builder_tc2_test") {
     // The centre vertex.
     CHECK((hasUvAt(m, SFVec3f{1, 0, 1}, 0.5f, 0.5f)));
 
-    // Every UV is in [0,1] and the generation does NOT depend on spacing: a
-    // re-run with 10x spacing yields IDENTICAL texcoords for matching lattice ids.
+    // Every UV is in [0,1] and the generation does not depend on spacing: a
+    // re-run with 10x spacing yields identical texcoords for matching lattice ids.
     auto g2 = createX3DNode("ElevationGrid");
     setF(g2, "xDimension", std::any(3));
     setF(g2, "zDimension", std::any(3));
@@ -98,7 +82,7 @@ TEST_CASE("mesh_builder_tc2_test") {
              m.latticeIndex[i] == m2.latticeIndex[i]));
   }
 
-  // ---- 2. Authored TextureCoordinate WINS — generated UVs NOT applied --------
+  // 2. Authored TextureCoordinate wins — generated UVs not applied
   // 2x2 grid, 4 lattice verts; author a sentinel point per lattice vertex.
   // Lattice id lid = j*xDim+i: (0,0)=0 (1,0)=1 (0,1)=2 (1,1)=3.
   {
@@ -114,16 +98,16 @@ TEST_CASE("mesh_builder_tc2_test") {
 
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size()));
-    // lid 0 -> (0,0,0) carries authored (0.1,0.2), NOT the generated (0,0).
+    // lid 0 -> (0,0,0) carries authored (0.1,0.2), not the generated (0,0).
     CHECK((hasUvAt(m, SFVec3f{0, 0, 0}, 0.1f, 0.2f)));
-    // lid 3 -> (1,0,1) carries authored (0.7,0.8), NOT generated (1,1).
+    // lid 3 -> (1,0,1) carries authored (0.7,0.8), not generated (1,1).
     CHECK((hasUvAt(m, SFVec3f{1, 0, 1}, 0.7f, 0.8f)));
-    // The generated default (0,0) at the origin corner must NOT appear when an
+    // The generated default (0,0) at the origin corner must not appear when an
     // authored UV (0.1,0.2) replaced it.
     CHECK((!hasUvAt(m, SFVec3f{0, 0, 0}, 0.0f, 0.0f)));
   }
 
-  // ---- 3. GeoElevationGrid gets the same grid UV parameterization ----------
+  //   3. GeoElevationGrid gets the same grid UV parameterization
   // Geographic vertex positions differ from the planar ElevationGrid.
   {
     auto g = createX3DNode("GeoElevationGrid");
@@ -142,9 +126,9 @@ TEST_CASE("mesh_builder_tc2_test") {
     }
   }
 
-  // ---- 4. Degenerate 1-wide axis: s guards to 0 (no div-by-zero) -------------
+  // 4. Degenerate 1-wide axis: s guards to 0 (no div-by-zero)
   // A 1 x N grid has no valid cell (needs xDim>=2 && zDim>=2) so it produces an
-  // EMPTY mesh — but a 2 x 2 grid where we shrink one dim conceptually is covered
+  // empty mesh — but a 2 x 2 grid where we shrink one dim conceptually is covered
   // by the guard. Verify a thin 2x3 grid: s in {0,1}, t in {0,0.5,1}.
   {
     auto g = createX3DNode("ElevationGrid");

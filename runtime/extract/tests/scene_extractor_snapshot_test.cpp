@@ -1,21 +1,6 @@
-// scene_extractor_t7_test.cpp — M2.5 T7 acceptance: SceneExtractor FULL form.
-//
-// Proves the widenings T7 adds on top of the T7a spine:
-//   1) VISIBILITY-aware DFS special-casing Switch by nodeTypeName BEFORE the
-//      generic child loop:
-//        * whichChoice default -1 => draw NOTHING (not "the first child", which a
-//          blind forEachChild would produce).
-//        * whichChoice = 1 => draw ONLY children[1].
-//   2) LOD draws exactly ONE child (the level-0 static selection, documented).
-//   3) MeshBuilder[T4] is wired for ALL geometry: a Box Shape emits a tessellated
-//      (12-tri / 36-corner) RenderItem.
-//   4) MaterialSystem[T5] is wired: a Shape with a real Material yields a Phong
-//      MaterialDesc with the authored diffuse, NOT the Unlit-white stub.
-//   5) lights()/background() read-outs + camera() surfaces OrthoViewpoint ortho.
-//   6) The three reverse indices resolve a node -> its RenderItemIds.
 #include "SceneExtractor.hpp"
 
-#include "X3DDocument.hpp" // Scene::addRootNode definition.
+#include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
@@ -121,7 +106,7 @@ TEST_CASE("FillProperties field edits and replacement update render material") {
 }
 
 TEST_CASE("scene_extractor_t7_test") {
-  // === 1) Switch whichChoice = -1 (default) draws NOTHING ===================
+  // 1) Switch whichChoice = -1 (default) draws nothing
   {
     auto sw = createX3DNode("Switch");
     addChild(sw, makeTriShape());
@@ -136,7 +121,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((snap.added.empty())); // -1 => nothing (NOT the blind first child).
   }
 
-  // === 2) Switch whichChoice = 1 draws ONLY children[1] =====================
+  // 2) Switch whichChoice = 1 draws only children[1]
   {
     auto sw = createX3DNode("Switch");
     auto child0 = makeTriShape();
@@ -151,7 +136,7 @@ TEST_CASE("scene_extractor_t7_test") {
     extract::SceneExtractor ex(ctx, scene);
     auto snap = ex.fullSnapshot();
     CHECK((snap.added.size() == 1)); // exactly one drawn child.
-    // The drawn item's path passes through child1, NOT child0.
+    // The drawn item's path passes through child1, not child0.
     const extract::RenderItem &it = ex.item(snap.added[0]);
     bool throughChild1 = false, throughChild0 = false;
     for (const X3DNode *n : it.path) {
@@ -161,7 +146,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((throughChild1 && !throughChild0));
   }
 
-  // === 2b) GeoLOD draws its root tile once, not again via its children output ===
+  // 2b) GeoLOD draws its root tile once, not again via its children output
   {
     auto lod = std::make_shared<x3d::nodes::GeoLOD>();
     auto tile = makeTriShape();
@@ -176,7 +161,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((snap.added.size() == 1));
   }
 
-  // === 3) LOD draws exactly ONE child (level-0 static selection) ============
+  // 3) LOD draws exactly one child (level-0 static selection)
   {
     auto lod = createX3DNode("LOD");
     addChild(lod, makeTriShape()); // level 0 (highest detail)
@@ -191,7 +176,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((snap.added.size() == 1)); // exactly one level drawn (not all three).
   }
 
-  // === 4) Box now emits a tessellated RenderItem (MeshBuilder[T4] wired) =====
+  // 4) Box emits a tessellated RenderItem (MeshBuilder wired)
   {
     auto box = createX3DNode("Box");
     auto shape = createX3DNode("Shape");
@@ -207,7 +192,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((it.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
   }
 
-  // === 5) Shape with a real Material gets the real MaterialDesc (T5 wired) ===
+  // 5) Shape with a real Material gets the real MaterialDesc ( wired)
   {
     auto coord = createX3DNode("Coordinate");
     setF(coord, "point",
@@ -232,21 +217,21 @@ TEST_CASE("scene_extractor_t7_test") {
     auto snap = ex.fullSnapshot();
     CHECK((snap.added.size() == 1));
     const extract::RenderItem &it = ex.item(snap.added[0]);
-    // Real material: Phong, NOT the Unlit-white stub. (Material.diffuseColor
+    // Real material: Phong, not the Unlit-white stub. (Material.diffuseColor
     // maps to phong.diffuse in the discriminated-union MaterialDesc.)
     CHECK((it.material.model == extract::MaterialModel::Phong));
     CHECK((feq(it.material.phong.diffuse.r, 0.1f)));
     CHECK((feq(it.material.phong.diffuse.g, 0.2f)));
     CHECK((feq(it.material.phong.diffuse.b, 0.3f)));
 
-    // --- reverse indices: the material node resolves to this RenderItem ---
+    // reverse indices: the material node resolves to this RenderItem
     const auto &mids = ex.materialDepsOf(material.get());
     CHECK((mids.size() == 1 && mids[0] == snap.added[0]));
     const auto &gids = ex.geomDepsOf(tri.get());
     CHECK((gids.size() == 1 && gids[0] == snap.added[0]));
   }
 
-  // === 6) lights() + background() read-outs ================================
+  // 6) lights() + background() read-outs
   {
     auto dl = createX3DNode("DirectionalLight");
     auto bg = createX3DNode("Background");
@@ -269,7 +254,7 @@ TEST_CASE("scene_extractor_t7_test") {
     CHECK((bgDesc.backgroundChanged));
   }
 
-  // === 7) camera() surfaces OrthoViewpoint ortho=true =======================
+  // 7) camera() surfaces OrthoViewpoint ortho=true
   {
     auto ovp = createX3DNode("OrthoViewpoint");
     Scene scene;

@@ -1,87 +1,16 @@
-// MeshBuilder.hpp — M2.5 extraction (Layer A2): geometry node -> MeshData in
-// the geometry's LOCAL frame. namespace x3d::runtime::extract. Public value
-// types and declarations live here; implementation is compiled in
-// x3d_cpp_runtime. Generated nodes remain the source of truth.
-//
-// SCOPE — every triangle is funnelled through a single addTriangle with
-// ok()-bounds guards on EVERY index/count read; an unsupported type yields an
-// empty MeshData (positions/indices empty) so the caller can fall through to
-// its own proxy/analytic path.
-//
-// T1 (coord-fed, triangle-bearing):
-//   * IndexedFaceSet   : coordIndex, polygon TRIANGLE-FAN (v0,vk,vk+1), -1 ends
-//   a face.
-//   * IndexedTriangleSet: index, consecutive TRIPLES.
-//   * TriangleSet       : implicit consecutive TRIPLES of the coord points.
-//
-// T2 widened to the remaining indexed/strip/fan/quad sets + the height-grid
-// primitive:
-//   * IndexedTriangleFanSet  : index, fan (v0,vk,vk+1) per run, -1 separates
-//   fans.
-//   * IndexedTriangleStripSet: index, strip with PER-TRIANGLE WINDING FLIP
-//                              (odd triangle swaps its trailing pair), -1
-//                              separates.
-//   * IndexedQuadSet         : index, each consecutive 4 -> (0,1,2)+(0,2,3).
-//   * TriangleFanSet         : fanCount partitions the implicit coord run into
-//   fans.
-//   * TriangleStripSet       : stripCount partitions the implicit coord run;
-//   flip.
-//   * QuadSet                : implicit consecutive quads of 4 coord points.
-//   * ElevationGrid          : NO coord node — positions synthesized from
-//                              height/xDimension/zDimension/xSpacing/zSpacing;
-//                              each grid cell -> 2 triangles.
-//
-// T3 (this task) adds ATTRIBUTE RESOLUTION + FLAT-NORMAL GENERATION:
-//   * Authored Normal (vector: MFVec3f), Color (color: MFColor),
-//     ColorRGBA (color: MFColorRGBA) and TextureCoordinate (point: MFVec2f) are
-//     resolved per emitted corner, honoring normalPerVertex / colorPerVertex
-//     (default true) and the optional normalIndex / colorIndex / texCoordIndex.
-//   * SFColor is PROMOTED to SFColorRGBA with alpha = 1.
-//   * When NO Normal node is authored the builder GENERATES FLAT per-face
-//     normals (the geometric normal of each emitted triangle), so a consumer
-//     always has shading normals. (creaseAngle smoothing is deferred.)
-//   * MeshData.hasColors is set when a per-vertex/per-face Color or ColorRGBA
-//   was
-//     resolved; per X3D lighting a per-vertex Color OVERRIDES the Material
-//     diffuse (documented at this seam + on MeshData.hasColors).
-//   * ccw / solid are carried verbatim from
-//   getField<SFBool>(geom,"ccw"/"solid",
-//     true) (the X3DComposedGeometryNode defaults).
-//
-// BUFFER-EXPANSION POLICY: this builder ALWAYS expands — every triangle pushes
-// three fresh positions and a trivial 0..N-1 index run. That is the correct
-// layout the moment ANY of {flat per-face normals, per-face color/normal,
-// *PerVertex=false, per-corner texcoord with a distinct texCoordIndex} breaks
-// vertex sharing — which the default (flat normals) already does. Keeping a
-// single expanded path is simpler and matches T1/T2's emission contract; a
-// future task may add a shared-vertex fast path off the actual *PerVertex
-// flags.
-//
-// B4 adds LINE/POINT TOPOLOGY (MeshData.topology = Lines/Points):
-// IndexedLineSet (coordIndex -1-runs -> consecutive segment pairs), LineSet
-// (vertexCount partitions the coord run), PointSet (whole point array -> 0..N-1
-// GL_POINTS). These carry NO normals, set solid=false, and are ALWAYS unlit
-// (vertex Color / baseColor) — see the EXPLICIT CONSUMER CONTRACT on
-// MeshData::Topology.
-//
-// T4 adds PARAMETRIC TESSELLATION of the analytic primitives that
-// carry NO coord node — Box / Sphere / Cone / Cylinder — driven by
-// MeshBuildOptions density (sphere 16 rings x 16 segments, cone/cylinder 24
-// radial slices by default). Each is emitted EXPANDED with CCW-outward winding
-// and explicit OUTWARD per-corner normals, so a primitive composes under the
-// SAME cull rule as a composed mesh. (PickSystem's primitive proxies are left
-// untouched: the opt-in mesh-pick upgrade is a separate deferred follow-up.)
+// Build geometry in its local frame. Unsupported types return an empty mesh.
+// Triangle meshes expand each corner to preserve per-face and per-corner attributes.
 #ifndef X3D_RUNTIME_EXTRACT_MESH_BUILDER_HPP
 #define X3D_RUNTIME_EXTRACT_MESH_BUILDER_HPP
 
-#include "AssetResolver.hpp"   // AssetResolver (binary-geometry seam)
-#include "FontMetrics.hpp"     // T-TEXT: font-metrics seam (Text branch)
-#include "GeoProjection.hpp"   // explicit world-selected geographic backend
-#include "NurbsEval.hpp"       // NRB-4: NurbsWeightMode (controlPoint convention)
-#include "PackedMesh.hpp"      // PackedMesh (Phase 1 binary geometry)
-#include "RecursionLimits.hpp" // #21: kMaxGraphWalkVisits (walk budget default)
-#include "RenderItem.hpp"      // MeshData
-#include "ShaderOptions.hpp"   // §31 shader seams (extractor option bag)
+#include "AssetResolver.hpp"
+#include "FontMetrics.hpp"
+#include "GeoProjection.hpp"
+#include "NurbsEval.hpp"
+#include "PackedMesh.hpp"
+#include "RecursionLimits.hpp"
+#include "RenderItem.hpp"
+#include "ShaderOptions.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <atomic>
@@ -96,7 +25,6 @@ namespace x3d::runtime::extract {
 using namespace x3d::core;
 using x3d::nodes::X3DNode;
 
-// ---------------------------------------------------------------------------
 // Geographic geometry uses the caller's explicit backend in GeoNodes.hpp.
 // Mesh build options remain for tessellation and authored resource data.
 struct MeshBuildOptions {
@@ -104,14 +32,14 @@ struct MeshBuildOptions {
   int sphereSegments = 16; // longitude segments around Y, >= 3.
   int radialSlices = 24;   // cone/cylinder radial subdivisions, >= 3.
 
-  // Embedder font-metrics seam (T-TEXT). The Text branch resolves glyph
+  // Embedder font-metrics seam. The Text branch resolves glyph
   // advances
-  // + atlas UVs through this callback; the SDK NEVER opens font files. Defaults
+  // + atlas UVs through this callback; the SDK never opens font files. Defaults
   // to makeMonospaceStub() (advanceEm=0.6, no atlas UV) so Text layout + bounds
   // are exact without any real font wired. Copyable value type (std::function).
   FontMetrics fontMetrics{makeMonospaceStub()};
 
-  // Embedder external-geometry seam (Phase 1). When set, this is called for any
+  // Embedder external-geometry seam. When set, this is called for any
   // geometry node that buildLocalMesh returns recognized==false. An empty
   // PackedMesh (vertex_count==0) signals Pending (retry next tick); non-empty
   // signals Ready and triggers emitPacked(). Null by default (no ext, firewall
@@ -120,7 +48,7 @@ struct MeshBuildOptions {
   std::function<PackedMesh(const X3DNode *, AssetResolver)>
       externalGeometryResolver{};
 
-  // #21: ceiling on node-visits per fullSnapshot() walk (extractor + light
+  // ceiling on node-visits per fullSnapshot() walk (extractor + light
   // collection). Bounds an acyclic "doubling DAG" fan-out (2^depth paths) that
   // would otherwise emit billions of RenderItems/LightDescs. Default is far
   // above any legitimate placement count; raise it for a genuinely huge scene
@@ -133,11 +61,8 @@ struct MeshBuildOptions {
   // SceneExtractor; the authored Coordinate is never modified.
   const X3DNode *hanimSegment = nullptr;
 
-  // NRB-4: how NurbsCurve/NurbsPatchSurface interpret (controlPoint, weight).
-  // Default Premultiplied matches the entire shipping X3D ecosystem (FreeWRL,
-  // view3dscene/Castle, InstantPlayer, White Dune, X3DOM) so weighted NURBS
-  // tessellate to the same shape those browsers render. Set to Euclidean for the
-  // literal textbook/spec-formula reading. weight==1 content is identical either way.
+  // Premultiplied control points are used by default. Euclidean mode multiplies
+  // coordinates by weight; unit-weight content is identical in either mode.
   nurbs::NurbsWeightMode nurbsWeightMode = nurbs::NurbsWeightMode::Premultiplied;
 
   // §31 shaders: the url resolver for ShaderPart/ShaderProgram sources and the
@@ -149,110 +74,70 @@ struct MeshBuildOptions {
 
 namespace mesh_detail {
 
-// Promote an SFColor to SFColorRGBA with alpha = 1 (T3 promotion contract).
+// Promote an SFColor to SFColorRGBA with alpha = 1 .
 SFColorRGBA promote(const SFColor &c);
 
 // Geometric (flat) normal of a triangle (a,b,c). Returns {0,0,0} for a
 // degenerate triangle so a consumer can detect/skip it; otherwise normalized.
 SFVec3f faceNormal(const SFVec3f &a, const SFVec3f &b, const SFVec3f &c);
 
-// ---------------------------------------------------------------------------
-// MSH-3: PLANAR EAR-CLIP triangulation for a NON-CONVEX polygon (IFS convex
-// field FALSE). A naive fan from vertex 0 produces inverted/overlapping
-// triangles on a concave polygon; ear-clipping instead emits a valid fan-free
-// tessellation whose triangles all wind the same way and whose total area
-// equals the polygon's.
-//
-// Operates in the polygon's BEST-FIT plane: we sum the Newell normal of the
-// (possibly non-planar) ring, project each vertex onto two in-plane basis axes,
-// and run the standard O(n^2) ear-clip in that 2D frame. The returned triples
-// are LOCAL indices into `poly` (0..poly.size()-1), in CCW order with respect
-// to the Newell normal, so the caller maps them back to its Corner stream and
-// the existing addTriangle (which computes/flips the face normal) stays the
-// single source of truth for winding/normal direction.
+// Ear-clip non-convex polygons in their Newell-normal projection plane.
+// Returned triples are local indices into `poly`, counterclockwise relative to
+// that normal. The caller maps these to source corners before emission.
 std::vector<std::array<int, 3>>
 earClipPolygon(const std::vector<SFVec3f> &poly);
 
-// ---------------------------------------------------------------------------
-// creaseAngle SMOOTH-NORMAL POST-PASS (B6).
-//
-// The funnels ALWAYS emit FLAT per-face normals (the geometric normal of each
-// triangle, repeated on its three corners) AND, in parallel to `positions`, a
-// per-corner SOURCE index (`sourceId`): the coordIndex value for composed sets,
-// the row*xDim+col / section*csCount+csVertex lattice id for the grid/extrusion
-// emitters. `sourceId` is what lets us re-derive face ADJACENCY in source space
-// WITHOUT re-indexing the expanded buffer — two coincident-but-distinct source
-// verts (e.g. a hard UV seam authored as separate coordIndex entries) keep
-// distinct ids and are NOT fused, while genuinely-shared verts are.
-//
-// Algorithm (runs ONLY when no Normal node is authored):
-//   * Each triangle = a run of 3 consecutive expanded corners. Its flat face
-//     normal is mesh.normals[base] (all three corners share it at emit time).
-//   * For every source vertex, gather the list of incident triangles.
-//   * For each corner of each triangle T at source vertex V, sum the face
-//     normals of all triangles incident to V whose face normal is within
-//     creaseAngle of T's own face normal (dihedral test: dot >=
-//     cos(creaseAngle)), then normalize. A degenerate (zero-length) face normal
-//     contributes nothing and a corner whose accumulated sum is zero keeps its
-//     original flat normal.
-//
-// creaseAngle == 0 => cos(0) == 1 => only a triangle's OWN face (and any
-// exactly co-planar neighbour) fuses => output is byte-identical to the flat
-// fill today (NON-REGRESSIVE). creaseAngle >= PI => everything at a shared
-// source vertex fuses => fully smooth.
-// ---------------------------------------------------------------------------
+// Smooth generated normals using source-index adjacency, preserving distinct
+// coincident source vertices. Faces contribute when dot(n0,n1) >= cos(creaseAngle).
+// Degenerate faces contribute nothing; a zero sum retains the flat normal.
 void creaseSmoothNormals(MeshData &m,
                          const std::vector<std::uint32_t> &sourceId,
                          float creaseAngle);
 
-// ---------------------------------------------------------------------------
-// DEFAULT (implicit) TEXTURE-COORDINATE GENERATION (TC1).
+// default (implicit) texture-coordinate generation.
 //
-// ISO/IEC 19775-1: when a composed/triangle geometry node carries NO
+// ISO/IEC 19775-1: when a composed/triangle geometry node carries no
 // TextureCoordinate (its texCoord field is NULL) the implicit texture
-// coordinates are the NORMATIVE bounding-box projection of the geometry's coord
+// coordinates are the normative bounding-box projection of the geometry's coord
 // points:
-//   * Compute the LOCAL bbox of the points; dims = (sizeX,sizeY,sizeZ).
-//   * Sdim = the axis of the LARGEST dimension, Tdim = the SECOND-largest.
+//   * Compute the local bbox of the points; dims = (sizeX,sizeY,sizeZ).
+//   * Sdim = the axis of the largest dimension, Tdim = the second-largest.
 //     Ties prefer X, then Y, then Z (so equal X&Y => S=X, T=Y).
 //   * For an emitted vertex p:
 //       s = (p[Sdim] - min[Sdim]) / size[Sdim]              (ranges 0..1)
 //       t = (p[Tdim] - min[Tdim]) / size[Sdim]              (ranges
 //       0..size[T]/size[S])
-//     Both divided by size[Sdim] (the LARGEST dim) so the aspect ratio is
+//     Both divided by size[Sdim] (the largest dim) so the aspect ratio is
 //     preserved. size[Sdim]==0 (a degenerate point/line geometry) guards to 0.
 //
-// Emits ONE texcoord per ALREADY-EXPANDED position (mesh.positions), so it must
-// run AFTER all triangles are pushed and ONLY when no TextureCoordinate was
-// authored. An authored TextureCoordinate ALWAYS WINS (this is never called in
+// Emits one texcoord per already-expanded position (mesh.positions), so it must
+// run after all triangles are pushed and only when no TextureCoordinate was
+// authored. An authored TextureCoordinate always wins (this is never called in
 // that case) — meshes that already carry texcoords stay byte-unchanged.
-// ---------------------------------------------------------------------------
 void generateDefaultTexCoords(MeshData &m);
 
-// ---------------------------------------------------------------------------
-// DEFAULT (implicit) GRID TEXTURE-COORDINATE GENERATION (TC2).
+// default (implicit) grid texture-coordinate generation.
 //
 // ISO/IEC 19775-1: an ElevationGrid / GeoElevationGrid whose texCoord field is
-// NULL generates implicit texture coordinates by the GRID PARAMETERIZATION —
+// NULL generates implicit texture coordinates by the grid parameterization —
 // for the lattice vertex at column i (in [0,xDim-1]) and row j (in [0,zDim-1]):
 //     s = i / (xDim-1),  t = j / (zDim-1).
-// This is distinct from the composed-geometry bbox-projection (TC1): a height
+// This is distinct from the composed-geometry bbox-projection: a height
 // grid carries an explicit (i,j) parameterization, so each vertex's UV is its
 // fractional position in the lattice (so the texture maps once across the whole
 // grid regardless of spacing/elevation).
 //
-// The grid emitters expand each cell to fresh corners but retain the SOURCE
+// The grid emitters expand each cell to fresh corners but retain the source
 // lattice id (lid = j*xDim + i) per corner in MeshData.latticeIndex. We invert
 // that here: i = lid % xDim, j = lid / xDim. Guards xDim<=1 / zDim<=1 to 0 (a
-// degenerate 1-wide/1-tall grid has no extent along that axis). Emits ONE
-// texcoord per ALREADY-EXPANDED position, parallel to positions; runs ONLY when
-// no TextureCoordinate is authored (an authored one ALWAYS WINS).
-// ---------------------------------------------------------------------------
+// degenerate 1-wide/1-tall grid has no extent along that axis). Emits one
+// texcoord per already-expanded position, parallel to positions; runs only when
+// no TextureCoordinate is authored (an authored one always wins).
 void generateGridTexCoords(MeshData &m, int xDim, int zDim);
 
-// Resolve an AUTHORED ElevationGrid/GeoElevationGrid TextureCoordinate per
+// Resolve an authored ElevationGrid/GeoElevationGrid TextureCoordinate per
 // expanded corner. The spec indexes the texCoord `point` array by lattice
-// vertex in the SAME row-major order as height (lid = j*xDim + i), so we look
+// vertex in the same row-major order as height (lid = j*xDim + i), so we look
 // up point[lid] per corner via the retained latticeIndex. An out-of-range lid
 // (a short point array) falls back to (0,0). Returns whether it populated
 // texcoords (false => caller falls through to generateGridTexCoords).
@@ -261,7 +146,7 @@ bool resolveGridTexCoords(MeshData &m, const std::vector<SFVec2f> &point);
 // Resolved per-emit-corner attribute carrier. coord    = index into the coord
 // `point` array (already validated by ok()); pos       = the POSITIONAL index
 // of this corner within the index stream (for *Index lookups / per-vertex
-// non-indexed order); face      = the running FACE/primitive ordinal (per-face
+// non-indexed order); face      = the running face/primitive ordinal (per-face
 // attribute lookups). For non-indexed types pos == the running vertex ordinal
 // and the *Index resolvers fall back to it.
 struct Corner {
@@ -299,7 +184,7 @@ struct AttrResolvers {
   //   perVertex=true : pick attr[ attrIndex[corner.pos] ] if attrIndex present,
   //                    else attr[ corner.coord ] (coordIndex doubles as the
   //                    attr index — the X3D default when *Index is empty).
-  //   perVertex=false: PER-FACE — pick attr[ attrIndex[corner.face] ] if
+  //   perVertex=false: per-face — pick attr[ attrIndex[corner.face] ] if
   //                    attrIndex present, else attr[ corner.face ].
   //
   // Returns -1 when the resolved index is out of range (caller drops the
@@ -338,21 +223,18 @@ std::vector<std::vector<SFVec2f>> texturePointSets2D(const X3DNode &tc);
 // Build the attribute resolvers from a geometry node's child attribute nodes.
 AttrResolvers buildAttrs(const X3DNode &geom);
 
-// ---------------------------------------------------------------------------
-// Analytic primitive tessellation (T4): Box / Sphere / Cone / Cylinder.
+// Analytic primitive tessellation: Box / Sphere / Cone / Cylinder.
 //
-// Every primitive is emitted EXPANDED (three fresh positions + a trivial 0..N-1
-// index run per triangle) with EXPLICIT per-corner normals, matching the
-// composed-geometry funnel's layout. Winding is CCW as seen from OUTSIDE the
-// surface, and the stored normals point OUTWARD, so a primitive composes under
+// Every primitive is emitted expanded (three fresh positions + a trivial 0..N-1
+// index run per triangle) with explicit per-corner normals, matching the
+// composed-geometry funnel's layout. Winding is CCW as seen from outside the
+// surface, and the stored normals point outward, so a primitive composes under
 // the exact same cull rule as an extracted mesh (front = CCW, solid => cull
 // back). ccw/solid are carried verbatim by buildLocalMesh from the node fields
 // (primitive defaults solid=true).
-// ---------------------------------------------------------------------------
-
 // Push one CCW triangle (a,b,c) with its three already-outward corner normals
-// and its three per-corner DEFAULT texcoords (TC4). The analytic primitives
-// carry NO texCoord field, so the spec's per-primitive UV mapping is ALWAYS
+// and its three per-corner default texcoords. The analytic primitives
+// carry no texCoord field, so the spec's per-primitive UV mapping is always
 // generated here in lockstep with positions/normals (one texcoord per corner,
 // parallel to positions).
 void emitTri(MeshData &m, const SFVec3f &a, const SFVec3f &b, const SFVec3f &c,
@@ -361,8 +243,8 @@ void emitTri(MeshData &m, const SFVec3f &a, const SFVec3f &b, const SFVec3f &c,
 
 SFVec3f normalize(const SFVec3f &v);
 
-// TXC-1: default longitudinal texture S for the analytic primitives. ISO/IEC
-// 19775-1 §13.3.2/3/7 place the vertical texture seam at the BACK (X=0 plane,
+// default longitudinal texture S for the analytic primitives. ISO/IEC
+// 19775-1 §13.3.2/3/7 place the vertical texture seam at the back (X=0 plane,
 // -Z) and wrap S counterclockwise-from-above. The geometry rings start at +Z
 // (j=0), so shift by half a turn: S=0 lands on the -Z meridian (j = n/2 for an
 // even n). Callers apply a per-slice wrap fix (if sR <= sL, sR += 1) so the
@@ -393,24 +275,22 @@ void tessellateCone(MeshData &m, float bottomRadius, float height, int slices,
 void tessellateCylinder(MeshData &m, float radius, float height, int slices,
                         bool side, bool top, bool bottom);
 
-// ---------------------------------------------------------------------------
-// LATTICE-GRID EMITTER (B5). Shared by ElevationGrid and GeoElevationGrid.
+// lattice-grid emitter. Shared by ElevationGrid and GeoElevationGrid.
 //
 // A height grid is a regular xDim x zDim lattice of vertices; cell (i,j) is
 // split into two triangles (v00,v11,v10)+(v00,v01,v11). That winding is
 // CCW as seen from the +Y side, so with the default ccw=TRUE the surface is
-// front-facing and its generated normal points UP (+Y) per ISO/IEC 19775-1
+// front-facing and its generated normal points up (+Y) per ISO/IEC 19775-1
 // §13.3.4 — a consumer's default back-face cull (solid=TRUE) keeps the terrain
-// when viewed from above. The emitter EXPANDS each corner (three fresh
-// positions per triangle) BUT ALSO records, per expanded corner, the id of the
-// source LATTICE vertex (row*xDim+col) into MeshData.latticeIndex. That
-// retained map is what B6 needs to weld creaseAngle-smooth normals in source
+// when viewed from above. The emitter expands each corner (three fresh
+// positions per triangle) BUT also records, per expanded corner, the id of the
+// source lattice vertex (row*xDim+col) into MeshData.latticeIndex. That
+// retained map is what  needs to weld creaseAngle-smooth normals in source
 // space without re-indexing.
 //
-// `pos(i,j)` supplies the LOCAL-frame position of lattice vertex (col=i,
+// `pos(i,j)` supplies the local-frame position of lattice vertex (col=i,
 // row=j); GeoElevationGrid also reverses the triangle winding because its
 // rows advance north (local −Z). Caller pre-validates xDim>=2 && zDim>=2.
-// ---------------------------------------------------------------------------
 template <class PosFn>
 inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
                            float creaseAngle = 0.0f, bool ccw = true,
@@ -420,16 +300,16 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
   auto lid = [&](int i, int j) {
     return static_cast<std::uint32_t>(j * xDim + i);
   };
-  // EXT-001: authored Color/Normal honor colorPerVertex/normalPerVertex. Per
-  // §13.3.4 a per-vertex value indexes the LATTICE vertex (row*xDim+col); a
-  // per-quad (colorPerVertex/normalPerVertex FALSE) value indexes the CELL
+  // authored Color/Normal honor colorPerVertex/normalPerVertex. Per
+  // §13.3.4 a per-vertex value indexes the lattice vertex (row*xDim+col); a
+  // per-quad (colorPerVertex/normalPerVertex FALSE) value indexes the cell
   // (row*(xDim-1)+col). ElevationGrid carries no *Index fields, so the index is
   // the picked value directly.
   const bool authoredNormal = attrs && attrs->hasNormal;
   const bool authoredColor = attrs && attrs->hasColor;
   const int cellCols = xDim - 1; // cells per row.
   const auto pickVert = [&](int i, int j) { return static_cast<int>(lid(i, j)); };
-  // Per-quad (per-cell) attribute index: the CELL, indexed row*(xDim-1)+col. The
+  // Per-quad (per-cell) attribute index: the cell, indexed row*(xDim-1)+col. The
   // cell is identified by its lower-left lattice corner, so all six corners of a
   // cell's two triangles pick the same entry.
   const auto pickCell = [&](int ci, int cj) { return cj * cellCols + ci; };
@@ -447,7 +327,7 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
     m.latticeIndex.push_back(lid(ia, ja));
     m.latticeIndex.push_back(lid(ib, jb));
     m.latticeIndex.push_back(lid(ic, jc));
-    // Authored Normal node wins per §13.3.4; else GENERATED flat normal, whose
+    // Authored Normal node wins per §13.3.4; else generated flat normal, whose
     // direction ccw=FALSE reverses ("Setting the ccw field to FALSE reverses the
     // normal direction"). Negation keeps the lattice/index order.
     const SFVec3f flat = faceNormal(a, b, c);
@@ -488,9 +368,9 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
       addTriangle(i, j, i, j, i + 1, j + 1, i + 1, j); // v00, v11, v10
       addTriangle(i, j, i, j, i, j + 1, i + 1, j + 1); // v00, v01, v11
     }
-  // creaseAngle smoothing (B6) keyed on the SOURCE LATTICE id (row*xDim+col),
+  // creaseAngle smoothing keyed on the source lattice id (row*xDim+col),
   // not the expanded 0..N-1 run. creaseAngle==0 => byte-identical flat output.
-  // Runs ONLY when no Normal node is authored (authored normals must survive).
+  // Runs only when no Normal node is authored (authored normals must survive).
   (void)startCorner; // grids own the whole mesh; smoothing reads it wholesale.
   if (!authoredNormal && creaseAngle > 0.0f)
     creaseSmoothNormals(m, m.latticeIndex, creaseAngle);
@@ -498,8 +378,7 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
   m.hasColors = !m.colors.empty();
 }
 
-// ---------------------------------------------------------------------------
-// EXTRUSION (B3). Sweep a 2D crossSection along a 3D spine, building a
+// EXTRUSION. Sweep a 2D crossSection along a 3D spine, building a
 // Spine-aligned Cross-section Coordinate (SCP) frame at every spine point per
 // the X3D spec (19.4.5 / 13.3.5):
 //   * SCPyAxis = the spine TANGENT — for an interior point the normalized
@@ -507,7 +386,7 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
 //     of an OPEN spine the single adjacent edge; for the endpoints of a CLOSED
 //     spine (first==last) the wrap-around average. A spine that is collinear or
 //     has coincident points yields a degenerate tangent/Z — those sections
-//     INHERIT the previous section's SCP axes (spec rule).
+//     inherit the previous section's SCP axes (spec rule).
 //   * SCPzAxis = derived from the spine's local plane: for an interior point
 //   the
 //     normal of the plane through (prev, this, next); seeded from the first
@@ -516,30 +395,28 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
 //   * SCPxAxis = SCPyAxis × SCPzAxis.
 // Each crossSection vertex (cx, cy) maps into the SCP plane as
 //   cx along SCPxAxis, cy along SCPzAxis (the X3D cross-section X-Z plane),
-// THEN per-section scale (x->X, y->Z), THEN per-section orientation (a rotation
-// about an arbitrary axis), THEN translate to the spine point.
+// THEN per-section scale (x->X, y->Z), then per-section orientation (a rotation
+// about an arbitrary axis), then translate to the spine point.
 //
 // scale/orientation are SF-or-MF: length 1 applies to every section, otherwise
 // the value is clamped to the last for sections beyond the list end.
 //
-// Side walls are quad bands between consecutive sections (2 tris each, FLAT
-// normals — creaseAngle smoothing is B6). beginCap/endCap are fans over the
+// Side walls are quad bands between consecutive sections (2 tris each, flat
+// normals before crease-angle smoothing). beginCap/endCap are fans over the
 // (closed) cross-section at the first/last spine point. Winding honors ccw.
 //
-// CRITICAL for B6: a (section, crossSectionVertex) -> expanded-vertex lattice
+// A (section, crossSectionVertex) -> expanded-vertex lattice
 // map is retained on MeshData.latticeIndex (lid = section*csCount + csVertex),
-// so B6 can re-derive adjacency in source space WITHOUT re-indexing. <2 spine
+// so smoothing can recover adjacency without re-indexing. <2 spine
 // points => empty.
 //
-// TC3 adds DEFAULT (implicit) TEXTURE-COORDINATE generation (genTexCoords).
-// Extrusion has NO authored TextureCoordinate field — texcoords are implicit-
-// only per ISO/IEC 19775-1, so the dispatcher always requests them. SIDE walls:
-// S = accumulated cross-section CHORD length / perimeter, T = accumulated SPINE
-// length / total spine length. begin/end CAPS: the cross-section's own 2D
+// genTexCoords enables implicit texture-coordinate generation.
+// Extrusion has no authored TextureCoordinate field — texcoords are implicit-
+// only per ISO/IEC 19775-1, so the dispatcher always requests them. side walls:
+// S = accumulated cross-section chord length / perimeter, T = accumulated spine
+// length / total spine length. begin/end caps: the cross-section's own 2D
 // coords normalized to the cross-section bbox. Emitted per expanded corner,
 // parallel to positions (and reordered in lockstep with the ccw winding swap).
-// ---------------------------------------------------------------------------
-
 SFVec3f vsub(const SFVec3f &a, const SFVec3f &b);
 SFVec3f vcross(const SFVec3f &a, const SFVec3f &b);
 float vdot(const SFVec3f &a, const SFVec3f &b);
@@ -558,16 +435,16 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
 } // namespace mesh_detail
 
 // recognizedGeometryType — true iff `t` is a geometry nodeTypeName this builder
-// knows how to tessellate (B2). This is the static type-coverage oracle: it
-// does NOT imply the mesh is non-empty (a recognized IFS with an empty
-// coordIndex tessellates to nothing — legitimately empty, NOT unsupported). The
+// knows how to tessellate. This is the static type-coverage oracle: it
+// does not imply the mesh is non-empty (a recognized IFS with an empty
+// coordIndex tessellates to nothing — legitimately empty, not unsupported). The
 // two sets (analytic-no-coord + coord-fed) mirror the dispatch arms in
-// buildLocalMesh; keep them in lockstep when a new geometry arm lands (B3
+// buildLocalMesh; keep them in lockstep when a new geometry arm lands (
 // Extrusion/Text/... flips a name from absent->present here as it becomes
 // drawable).
 bool recognizedGeometryType(const std::string &t);
 
-// buildLocalMesh — extract LOCAL-frame triangle geometry from `geom`.
+// buildLocalMesh — extract local-frame triangle geometry from `geom`.
 //
 // Returns a MeshData whose `positions` are the triangle corners in emission
 // order and whose `indices` are a trivial 0..N-1 run (one index per emitted
@@ -578,25 +455,14 @@ bool recognizedGeometryType(const std::string &t);
 // The projection is borrowed for this call; world consumers pass their context's
 // immutable backend so geometry, bounds, transforms and picking agree.
 //
-// B2 observability: the optional `recognized` out-param is set to whether
-// `geom`'s nodeTypeName is a type this builder knows how to tessellate
-// (recognizedGeometry Type). It DISTINGUISHES an UNRECOGNIZED type (unknown
-// geometry node, e.g. an Extrusion still unsupported until B3 —
-// recognized=false) from a recognized type that legitimately produced no
-// triangles (IFS empty coordIndex, a degenerate ElevationGrid grid —
-// recognized=true, indices empty). The caller (SceneExtractor) uses it to count
-// ONLY genuinely-unsupported drops, never legitimately-empty ones.
+// `recognized` distinguishes an unsupported geometry type from supported
+// geometry that emits no triangles, such as an empty or degenerate grid.
 MeshData buildLocalMesh(const X3DNode *geom, const geo::GeoProjection &projection,
                         const MeshBuildOptions &opt = {},
                         bool *recognized = nullptr);
 
-/// Diagnostic counter: number of buildLocalMesh() tessellations performed
-/// process-wide. Tessellation is the dominant per-scene extraction cost (a
-/// six-figure-triangle IndexedFaceSet is milliseconds), so an instancing
-/// consumer must build one mesh per DISTINCT geometry node, never one per
-/// placement. Tests snapshot this around fullSnapshot()/delta() to assert the
-/// build stays O(distinct geometry), not O(placements) — the trap that made 200
-/// USEs of one DEF'd IFS cost ~1.08 s and 493 MiB (see ADR-0045).
+/// Process-wide number of buildLocalMesh() tessellations. Count builds per
+/// geometry rather than per placement to detect redundant work; see ADR-0045.
 // Independent owner-thread scenes share this diagnostic only; it is not a
 // scene synchronization mechanism or a per-world counter.
 inline std::atomic<std::uint64_t> buildLocalMeshCalls_{0};

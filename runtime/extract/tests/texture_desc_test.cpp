@@ -1,4 +1,4 @@
-// texture_desc_test.cpp — Phase 1: TextureDesc struct + mip math.
+// texture_desc_test.cpp — TextureDesc struct + mip math.
 #include "TextureDesc.hpp"
 #include "doctest/doctest.h"
 #include <vector>

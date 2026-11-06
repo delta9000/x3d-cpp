@@ -1,15 +1,15 @@
-// scene_extractor_fog_test.cpp — ENV-10: the bound Fog is surfaced on the
+// scene_extractor_fog_test.cpp — the bound Fog is surfaced on the
 // extraction seam as a FogDesc (§24.4.2), mirroring background().
 //
 //   1) No bound Fog -> FogDesc defaults (white, LINEAR, range 0 = disabled).
 //   2) A bound Fog's color/fogType/visibilityRange are surfaced verbatim.
-//   3) visibilityRange is in the Fog node's LOCAL frame: a world Transform
+//   3) visibilityRange is in the Fog node's local frame: a world Transform
 //      scale multiplies it (uniform scale exact).
 //   4) delta()/fullSnapshot() flag fogChanged for a caching consumer.
 #include "GeoFrame.hpp"
 #include "SceneExtractor.hpp"
 
-#include "X3DDocument.hpp" // Scene::addRootNode definition.
+#include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
@@ -42,7 +42,7 @@ static void addChild(const std::shared_ptr<X3DNode> &p,
 }
 
 TEST_CASE("scene_extractor_fog_test") {
-  // === 1) No bound Fog -> defaults, range 0 disables fog ====================
+  // 1) No bound Fog -> defaults, range 0 disables fog
   {
     auto tri = createX3DNode("TriangleSet");
     Scene scene;
@@ -57,7 +57,7 @@ TEST_CASE("scene_extractor_fog_test") {
     CHECK((fog.fogChanged));
   }
 
-  // === 2) Bound Fog surfaced verbatim (color/type/range) ====================
+  // 2) Bound Fog surfaced verbatim (color/type/range)
   {
     auto fogNode = createX3DNode("Fog");
     setF(fogNode, "color", std::any(SFColor{0.25f, 0.5f, 0.75f}));
@@ -74,7 +74,7 @@ TEST_CASE("scene_extractor_fog_test") {
     CHECK((feq(fog.visibilityRange, 20.0f))); // no transform: local == world.
   }
 
-  // === 3) visibilityRange is LOCAL: a Transform scale multiplies it =========
+  // 3) visibilityRange is local: a Transform scale multiplies it
   {
     auto xform = createX3DNode("Transform");
     setF(xform, "scale", std::any(SFVec3f{2.0f, 2.0f, 2.0f}));
@@ -90,7 +90,7 @@ TEST_CASE("scene_extractor_fog_test") {
     CHECK((feq(fog.visibilityRange, 20.0f))); // 10 * world scale 2.
   }
 
-  // === 4) fogChanged surfaced by both delta channels =======================
+  // 4) fogChanged surfaced by both delta channels
   {
     auto fogNode = createX3DNode("Fog");
     Scene scene;
@@ -106,10 +106,8 @@ TEST_CASE("scene_extractor_fog_test") {
   }
 }
 
-// ---------------------------------------------------------------------------
-// REQ-LOCALFOG §24.4.3: LocalFog is bound-independent and scoped to its
+// §24.4.3: LocalFog is bound-independent and scoped to its
 // enclosing grouping node; enabled==false is skipped so global Fog applies.
-// ---------------------------------------------------------------------------
 static std::shared_ptr<X3DNode> makeBoxShape() {
   auto shape = createX3DNode("Shape");
   auto geom = createX3DNode("Box");
@@ -118,7 +116,7 @@ static std::shared_ptr<X3DNode> makeBoxShape() {
 }
 
 TEST_CASE("scene_extractor_local_fog_test") {
-  // === 1) A LocalFog in a Group fogs only that Group's shapes ===============
+  // 1) A LocalFog in a Group fogs only that Group's shapes
   {
     auto group = createX3DNode("Group");
     auto lf = createX3DNode("LocalFog");
@@ -151,7 +149,7 @@ TEST_CASE("scene_extractor_local_fog_test") {
     CHECK((outScope == 1)); // the sibling Shape: global Fog governs.
   }
 
-  // === 2) enabled==false LocalFog is skipped (global Fog unchanged) =========
+  // 2) enabled==false LocalFog is skipped (global Fog unchanged)
   {
     auto group = createX3DNode("Group");
     auto lf = createX3DNode("LocalFog");
@@ -168,7 +166,7 @@ TEST_CASE("scene_extractor_local_fog_test") {
     CHECK((ex.item(0).localFog == -1));
   }
 
-  // === 3) visibilityRange is LOCAL: a Transform scale multiplies it =========
+  // 3) visibilityRange is local: a Transform scale multiplies it
   {
     auto xform = createX3DNode("Transform");
     setF(xform, "scale", std::any(SFVec3f{2.0f, 2.0f, 2.0f}));
@@ -187,7 +185,7 @@ TEST_CASE("scene_extractor_local_fog_test") {
     CHECK((ex.item(0).localFog == 0));
   }
 
-  // === 4) Nested LocalFogs: the innermost grouping scope wins ===============
+  // 4) Nested LocalFogs: the innermost grouping scope wins
   {
     auto outer = createX3DNode("Group");
     auto outerLf = createX3DNode("LocalFog");
@@ -250,7 +248,6 @@ TEST_CASE("local fog placement: a shared enclosing group preserves each world ra
     CHECK(desc.scopeRoot == shared.get());
     CHECK(desc.scopePath == extract::PathKey{item.path.front(), shared.get()});
   }
-  // Appending placement identity retains the previous four aggregate fields.
   const extract::LocalFogDesc legacy{SFColor{1, 1, 1}, extract::FogDesc::Type::Linear,
                                      10.0f, shared.get()};
   CHECK(legacy.scopeRoot == shared.get());

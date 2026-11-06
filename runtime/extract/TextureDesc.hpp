@@ -1,4 +1,4 @@
-// TextureDesc.hpp — Phase 1 binary texture descriptor. namespace
+// TextureDesc.hpp — binary texture descriptor. namespace
 // x3d::runtime::extract. Header-only, std-only (no node deps). Describes a
 // decoded or compressed texture image that an embedder can produce and attach
 // to a TextureRef::Source::Buffer ref. The SDK never decodes image bytes — the
@@ -14,13 +14,11 @@
 
 namespace x3d::runtime::extract {
 
-// ---------------------------------------------------------------------------
 // PixelFormat — texture pixel/block format. Uncompressed formats first;
 // compressed formats start at BC1_RGB. The boundary between uncompressed and
 // compressed is used by is_compressed() below.
 // BasisUniversal = 255 is a sentinel for a Basis Universal supercompressed blob
 // that the consumer must transcode to a GPU format before upload.
-// ---------------------------------------------------------------------------
 enum class PixelFormat : uint8_t {
   // Uncompressed
   R8         = 0,
@@ -53,9 +51,7 @@ enum class PixelFormat : uint8_t {
   BasisUniversal = 255,
 };
 
-// ---------------------------------------------------------------------------
 // TextureType — dimensionality / array kind.
-// ---------------------------------------------------------------------------
 enum class TextureType : uint8_t {
   Tex2D   = 0,
   Cube    = 1,
@@ -63,36 +59,28 @@ enum class TextureType : uint8_t {
   Tex3D   = 3,
 };
 
-// ---------------------------------------------------------------------------
 // ColorSpace — how to interpret stored values at sample time.
-// ---------------------------------------------------------------------------
 enum class ColorSpace : uint8_t {
   Linear = 0,
   sRGB   = 1,
 };
 
-// ---------------------------------------------------------------------------
 // WrapMode — texture coordinate wrapping.
-// ---------------------------------------------------------------------------
 enum class WrapMode : uint8_t {
   Repeat         = 0,
   ClampToEdge    = 1,
   MirroredRepeat = 2,
 };
 
-// ---------------------------------------------------------------------------
 // FilterMode — sampling filter.
-// ---------------------------------------------------------------------------
 enum class FilterMode : uint8_t {
   Nearest        = 0,
   Linear         = 1,
   LinearMipLinear = 2,
 };
 
-// ---------------------------------------------------------------------------
 // MipLevelDesc — extent + byte range for one mip level in TextureDesc::data.
 // mips[0] = full resolution.
-// ---------------------------------------------------------------------------
 struct MipLevelDesc {
   uint32_t byte_offset = 0;
   uint32_t byte_length = 0;
@@ -101,10 +89,8 @@ struct MipLevelDesc {
   uint32_t depth       = 1;
 };
 
-// ---------------------------------------------------------------------------
 // KhrTextureTransform — §KHR_texture_transform UV offset/rotation/scale.
 // Matches the glTF extension schema.
-// ---------------------------------------------------------------------------
 struct KhrTextureTransform {
   float offset[2]        = {0.0f, 0.0f};
   float rotation         = 0.0f;
@@ -112,10 +98,8 @@ struct KhrTextureTransform {
   int   texcoord_index   = 0;
 };
 
-// ---------------------------------------------------------------------------
 // TextureDesc — owned binary texture descriptor. Carries the raw pixel or
 // compressed bytes plus all metadata a consumer needs to upload it to a GPU.
-// ---------------------------------------------------------------------------
 struct TextureDesc {
   // Owned pixel / compressed bytes. All mip levels are concatenated here;
   // mips[i] carries the byte_offset + byte_length slice for each level.
@@ -144,9 +128,7 @@ struct TextureDesc {
   bool               has_khr_transform = false;
   KhrTextureTransform khr_transform{};
 
-  // ---------------------------------------------------------------------------
   // Predicate helpers
-  // ---------------------------------------------------------------------------
   bool has_mips()      const { return mips.size() > 1; }
   bool is_compressed() const { return format >= PixelFormat::BC1_RGB; }
   bool empty()         const { return data.empty(); }

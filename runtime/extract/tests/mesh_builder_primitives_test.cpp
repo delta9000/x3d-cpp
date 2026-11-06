@@ -1,22 +1,3 @@
-// mesh_builder_t4_test.cpp — M2.5 T4 acceptance: MeshBuilder parametric
-// tessellation of the analytic primitives Box / Sphere / Cone / Cylinder.
-//
-// Proofs:
-//   1) Box — 6 faces * 2 triangles = 12 triangles (36 corners). Every face
-//      normal points OUTWARD (sign(n . centroidDir) > 0 for the +X/-X/... slabs).
-//   2) Sphere — default density 16 (rings) x 16 (segments). Triangle count
-//      matches a UV-sphere with poles (caps fans + body quads). Every vertex
-//      normal is the OUTWARD radial direction (n . (p-center) > 0).
-//   3) Cone — 24 radial slices. Side normals point outward+up; bottom-cap
-//      normals point straight down. No top cap.
-//   4) Cylinder — 24 radial slices, side + top + bottom caps. Side normals
-//      radial-outward; top cap +Y; bottom cap -Y. Toggling side/top/bottom
-//      drops exactly those triangles.
-//   5) Density knobs — MeshBuildOptions.sphereRings/sphereSegments/radialSlices
-//      scale the triangle count.
-//   6) CCW outward winding — for every emitted triangle the geometric face
-//      normal (CCW cross product) agrees in sign with the stored per-corner
-//      normal, so the primitives compose under the SAME cull rule as meshes.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 
@@ -82,7 +63,7 @@ static void assertOutwardWinding(const MeshData &m) {
 TEST_CASE("mesh_builder_t4_test") {
   const SFVec3f center{0, 0, 0};
 
-  // ---- 1. Box: 12 triangles, all normals outward ------------------------
+  // 1. Box: 12 triangles, all normals outward
   {
     auto g = createX3DNode("Box");
     setF(g, "size", std::any(SFVec3f{2, 2, 2}));
@@ -97,7 +78,7 @@ TEST_CASE("mesh_builder_t4_test") {
     assertOutwardWinding(m);
   }
 
-  // ---- 2. Sphere: default 16x16 UV sphere, radial outward normals -------
+  // 2. Sphere: default 16x16 UV sphere, radial outward normals
   {
     auto g = createX3DNode("Sphere");
     setF(g, "radius", std::any(SFFloat(1.0f)));
@@ -117,7 +98,7 @@ TEST_CASE("mesh_builder_t4_test") {
     assertOutwardWinding(m);
   }
 
-  // ---- 3. Cone: 24 radial slices, side + bottom cap ---------------------
+  // 3. Cone: 24 radial slices, side + bottom cap
   {
     auto g = createX3DNode("Cone");
     setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
@@ -141,14 +122,14 @@ TEST_CASE("mesh_builder_t4_test") {
     assertOutwardWinding(m);
   }
 
-  // ---- 3b. Cone with side off -> only bottom cap ------------------------
+  // 3b. Cone with side off -> only bottom cap
   {
     auto g = createX3DNode("Cone");
     setF(g, "side", std::any(SFBool(false)));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 24 * 3)); // bottom cap only
   }
-  // ---- 3c. Cone with bottom off -> only side ----------------------------
+  // 3c. Cone with bottom off -> only side
   {
     auto g = createX3DNode("Cone");
     setF(g, "bottom", std::any(SFBool(false)));
@@ -156,7 +137,7 @@ TEST_CASE("mesh_builder_t4_test") {
     CHECK((m.indices.size() == 24 * 3)); // side only
   }
 
-  // ---- 4. Cylinder: 24 slices, side + top + bottom ----------------------
+  // 4. Cylinder: 24 slices, side + top + bottom
   {
     auto g = createX3DNode("Cylinder");
     setF(g, "radius", std::any(SFFloat(1.0f)));
@@ -176,7 +157,7 @@ TEST_CASE("mesh_builder_t4_test") {
     CHECK((sawUp && sawDown && sawRadial));
     assertOutwardWinding(m);
   }
-  // ---- 4b. Cylinder caps toggled off -> side only -----------------------
+  // 4b. Cylinder caps toggled off -> side only
   {
     auto g = createX3DNode("Cylinder");
     setF(g, "top", std::any(SFBool(false)));
@@ -185,7 +166,7 @@ TEST_CASE("mesh_builder_t4_test") {
     CHECK((m.indices.size() == 48 * 3)); // side quads only
   }
 
-  // ---- 5. Density knobs scale the triangle counts -----------------------
+  // 5. Density knobs scale the triangle counts
   {
     auto g = createX3DNode("Sphere");
     MeshBuildOptions opt;

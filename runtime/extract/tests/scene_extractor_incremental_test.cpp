@@ -1,22 +1,8 @@
-// scene_extractor_t8_test.cpp — M2.5 T8 acceptance: SceneExtractor delta()
-// incremental engine. Proves the four pillars of the per-path-correct,
-// pollution-safe delta channel:
-//
-//   1) A TRANSFORM-ONLY tick yields ONLY updatedTransform (no added/removed/
-//      geometry/material churn) AND a USE-shared placement under two Transforms
-//      re-accumulates each placement's world matrix correctly along its STORED
-//      PathKey — never the first-path ctx.worldTransform() table.
-//   2) PARENT SCALE animation does NOT mark updatedGeometry (the DirtyBounds-
-//      pollution guard: updatedGeometry fires on a content DirtyField, never the
-//      bare DirtyBounds bit ancestor-scale sets).
-//   3) A MATERIAL-COLOR change (diffuseColor delivered onto the Material) yields
-//      updatedMaterial with the new color re-read into the RenderItem.
-//   4) DirtyChildren yields an authoritative remove-all/add-all replacement.
 #include "SceneExtractor.hpp"
 
-#include "X3DDocument.hpp" // Scene::addRootNode definition.
+#include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
-#include "ViewDependentSystem.hpp" // LOD level tracking (case 6)
+#include "ViewDependentSystem.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
 
@@ -65,10 +51,10 @@ makeTriShape(std::shared_ptr<X3DNode> *geomOut = nullptr,
 }
 
 TEST_CASE("scene_extractor_t8_test") {
-  // === 1) Transform-only tick => ONLY updatedTransform; USE-shared placement ==
+  // 1) Transform-only tick => only updatedTransform; USE-shared placement ==
   //        re-accumulates each placement correctly (per-path, not first-path).
   {
-    // A single DEF'd Shape USE'd under TWO Transforms => two RenderItems sharing
+    // A single DEF'd Shape USE'd under two Transforms => two RenderItems sharing
     // one GeomId but distinct PathKeys / worldTransforms.
     auto shape = makeTriShape();
     auto tA = createX3DNode("Transform");
@@ -105,12 +91,12 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((feq(ex.item(idA).worldTransform.m[12], 10.0f)));
     CHECK((feq(ex.item(idB).worldTransform.m[13], 20.0f)));
 
-    // Animate ONLY tA's translation, then ONE tick + ONE delta().
+    // Animate only tA's translation, then one tick + one delta().
     ctx.postEvent(tA.get(), "translation", std::any(SFVec3f{99, 0, 0}));
     ctx.tick(1.0);
     auto d = ex.delta();
 
-    // ONLY the transform channel fired — no re-walk, no geometry/material churn.
+    // only the transform channel fired — no re-walk, no geometry/material churn.
     CHECK((d.added.empty()));
     CHECK((d.removed.empty()));
     CHECK((d.updatedGeometry.empty()));
@@ -126,7 +112,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((feq(ex.item(idB).worldTransform.m[12], 0.0f)));
   }
 
-  // === 2) Parent SCALE animation does NOT mark updatedGeometry ===============
+  // 2) Parent scale animation does not mark updatedGeometry
   {
     auto shape = makeTriShape();
     auto parent = createX3DNode("Transform");
@@ -140,7 +126,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((snap.added.size() == 1));
 
     // Animate the PARENT's scale: classifyDirty sets DirtyLocalTransform|
-    // DirtyBounds on the Transform and BoundsSystem walks DirtyBounds UP — the
+    // DirtyBounds on the Transform and BoundsSystem walks DirtyBounds up — the
     // geometry leaf is never DirtyField'd. updatedGeometry must stay empty.
     ctx.postEvent(parent.get(), "scale", std::any(SFVec3f{2, 2, 2}));
     ctx.tick(1.0);
@@ -149,7 +135,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((d.updatedTransform.size() == 1)); // scale IS a transform update.
   }
 
-  // === 2b) An ACTUAL geometry content change DOES mark updatedGeometry =======
+  // 2b) An ACTUAL geometry content change DOES mark updatedGeometry
   {
     std::shared_ptr<X3DNode> geom, coord;
     auto shape = makeTriShape(&geom, &coord);
@@ -173,7 +159,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((ex.item(snap.added[0]).geometry.contentVersion == v0 + 1));
   }
 
-  // === 3) Material-color change yields updatedMaterial =======================
+  // 3) Material-color change yields updatedMaterial
   {
     auto coord = createX3DNode("Coordinate");
     setF(coord, "point",
@@ -213,7 +199,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((feq(ex.item(snap.added[0]).material.phong.diffuse.b, 0.7f)));
   }
 
-  // === 4) DirtyChildren on a grouping node yields added/removed ==============
+  // 4) DirtyChildren on a grouping node yields added/removed
   {
     auto group = createX3DNode("Group");
     auto shape0 = makeTriShape();
@@ -227,7 +213,7 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((snap.added.size() == 1));
     extract::RenderItemId id0 = snap.added[0];
 
-    // --- 4a) ADD a child: replace children with {shape0, shape1} ------------
+    // 4a) ADD a child: replace children with {shape0, shape1}
     auto shape1 = makeTriShape();
     {
       // Build the new children vector and deliver it as a children change.
@@ -242,7 +228,7 @@ TEST_CASE("scene_extractor_t8_test") {
       CHECK((ex.item(d.added[1]).path.back() == shape1.get()));
     }
 
-    // --- 4b) REMOVE a child: children back to {shape1} ----------------------
+    // 4b) REMOVE a child: children back to {shape1}
     {
       std::vector<std::shared_ptr<X3DNode>> kids{shape1};
       ctx.postEvent(group.get(), "children", std::any(kids));
@@ -257,7 +243,7 @@ TEST_CASE("scene_extractor_t8_test") {
     }
   }
 
-  // === 5) Switch.whichChoice change yields added/removed (incremental delta) ==
+  // 5) Switch.whichChoice change yields added/removed (incremental delta) ==
   //        Regression: whichChoice was classified DirtyField, which delta()
   //        ignores for a grouping node (it is in neither geomDeps_ nor
   //        materialDeps_), so incremental consumers (the OpenGL PoC) never saw
@@ -302,13 +288,9 @@ TEST_CASE("scene_extractor_t8_test") {
     CHECK((removedId1));
   }
 
-  // === 6) LOD level change (camera motion) yields added/removed via delta() ===
-  //        View-dependent sibling of SW-DELTA-1 (see LOD-DELTA-1). The rendered
-  //        LOD level is computed from the camera, not a settable field, so it
-  //        never reaches classifyDirty. ViewDependentSystem marks the LOD subtree
-  //        dirty when its level flips, so delta() re-walks and swaps the active
-  //        child. Covers the camera-motion case; LOD under an animated parent
-  //        transform / multi-path USE is per-path and remains deferred.
+  // 6) LOD level change (camera motion) yields added/removed via delta()
+  // The rendered level is derived from camera motion rather than a settable
+  // field. ViewDependentSystem marks its subtree dirty when that level changes.
   {
     auto lod = createX3DNode("LOD");
     setF(lod, "range", std::any(std::vector<SFFloat>{5.0f})); // d<5->lvl0, >=5->lvl1

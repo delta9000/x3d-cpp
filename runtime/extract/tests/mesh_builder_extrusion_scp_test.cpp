@@ -1,11 +1,11 @@
-// mesh_builder_extrusion_scp_test.cpp — EXTRUSION-SCP regression (ADR-0031).
+// Extrusion cross-section frame regression; see ADR-0031.
 //
 // §13.3.5.4.5: a 2-distinct-point spine fixes only the SCP plane NORMAL; the
 // in-plane X/Z are engine-defined. ADR-0031 pins them to the local model axes:
 //   Y = unit spine tangent,
 //   Z = normalize(modelZ − (modelZ·Y)Y)  (fallback modelX when Y ∥ modelZ),
 //   X = normalize(Y × Z),  Z = X × Y.
-// It also requires that fewer than 2 DISTINCT (coincident-collapsed) spine
+// It also requires that fewer than 2 distinct (coincident-collapsed) spine
 // points render nothing.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
@@ -46,7 +46,7 @@ static bool cornerPos(const MeshData &m, std::uint32_t lid, SFVec3f &out) {
 }
 
 TEST_CASE("extrusion_scp_coincident_spine_culls") {
-  // 2 elements but only ONE distinct point -> no SCP -> empty (§13.3.5.4.5).
+  // 2 elements but only one distinct point -> no SCP -> empty (§13.3.5.4.5).
   auto g = createX3DNode("Extrusion");
   setF(g, "crossSection", std::any(kUnitSquare));
   setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 0, 0}}));

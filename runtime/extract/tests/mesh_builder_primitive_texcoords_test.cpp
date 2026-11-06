@@ -1,19 +1,3 @@
-// mesh_builder_tc4_test.cpp — M2.5 TC4 acceptance: DEFAULT (implicit) texture-
-// coordinate generation for the analytic primitives Box / Sphere / Cone /
-// Cylinder. These primitives carry NO texCoord field; the per-primitive mapping
-// is ALWAYS the spec default, generated during tessellation alongside the
-// positions+normals the T4 tessellators already produce (ISO/IEC 19775-1).
-//
-// Proofs:
-//   1) Box — each of the 6 faces' 4 corners cover {(0,0),(1,0),(1,1),(0,1)};
-//      texcoords parallel to positions (one per expanded corner).
-//   2) Sphere — t monotonic from ~0 (bottom/-Y pole ring) to ~1 (top/+Y pole
-//      ring); s wraps 0..1 around longitude. One texcoord per corner.
-//   3) Cylinder — side s = angle/(2pi) around, t = 0..1 bottom-to-top; caps
-//      mapped radially in [0,1]x[0,1]. One texcoord per corner.
-//   4) Cone — side s = angle/(2pi) around, t = 0 at base .. 1 at apex; bottom
-//      cap radial in [0,1]x[0,1]. One texcoord per corner.
-//   5) Toggling caps off keeps texcoords parallel to positions (no orphans).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -46,20 +30,20 @@ static bool hasUv(const MeshData &m, float s, float t) {
 }
 
 TEST_CASE("mesh_builder_tc4_test") {
-  // ---- 1. Box: every face's 4 corners cover {(0,0),(1,0),(1,1),(0,1)} -------
+  // 1. Box: every face's 4 corners cover {(0,0),(1,0),(1,1),(0,1)}
   {
     auto g = createX3DNode("Box");
     setF(g, "size", std::any(SFVec3f{2, 2, 2}));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((!m.texcoords.empty()));
     CHECK((m.texcoords.size() == m.positions.size())); // one per corner.
-    // The four canonical corners must ALL be present (each face maps the unit
+    // The four canonical corners must all be present (each face maps the unit
     // square; 12 triangles still only use the 4 corner UVs).
     CHECK((hasUv(m, 0.0f, 0.0f)));
     CHECK((hasUv(m, 1.0f, 0.0f)));
     CHECK((hasUv(m, 1.0f, 1.0f)));
     CHECK((hasUv(m, 0.0f, 1.0f)));
-    // EVERY box UV is a corner of the unit square (only 0/1 components).
+    // every box UV is a corner of the unit square (only 0/1 components).
     for (const auto &uv : m.texcoords) {
       CHECK((feq(uv.x, 0.0f) || feq(uv.x, 1.0f)));
       CHECK((feq(uv.y, 0.0f) || feq(uv.y, 1.0f)));
@@ -80,7 +64,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     }
   }
 
-  // ---- 2. Sphere: t monotonic bottom(~0)..top(~1); s wraps 0..1 ------------
+  // 2. Sphere: t monotonic bottom(~0)..top(~1); s wraps 0..1
   {
     auto g = createX3DNode("Sphere");
     setF(g, "radius", std::any(SFFloat(1.0f)));
@@ -100,7 +84,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     CHECK((feq(maxT, 1.0f)));
     CHECK((atMin.y < 0.0f));  // smallest-t vertex is near the -Y (bottom) pole.
     CHECK((atMax.y > 0.0f));  // largest-t vertex is near the +Y (top) pole.
-    // t is the spec LATITUDE mapping (linear in the polar angle, NOT in height),
+    // t is the spec LATITUDE mapping (linear in the polar angle, not in height),
     // so it is MONOTONIC with y: a higher vertex never has a smaller t. Check
     // every pair of corners that differ noticeably in height.
     for (std::size_t i = 0; i < m.positions.size(); ++i)
@@ -117,7 +101,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     CHECK((feq(maxS, 1.0f)));
   }
 
-  // ---- 3. Cylinder: side s=angle/2pi, t=0..1; caps radial in [0,1]^2 -------
+  // 3. Cylinder: side s=angle/2pi, t=0..1; caps radial in [0,1]^2
   {
     auto g = createX3DNode("Cylinder");
     setF(g, "radius", std::any(SFFloat(1.0f)));
@@ -153,7 +137,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     CHECK((hasUv(m, 1.0f, 1.0f)));
   }
 
-  // ---- 4. Cone: side t=0 base..1 apex; bottom cap radial -------------------
+  // 4. Cone: side t=0 base..1 apex; bottom cap radial
   {
     auto g = createX3DNode("Cone");
     setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
@@ -179,7 +163,7 @@ TEST_CASE("mesh_builder_tc4_test") {
     CHECK((hasUv(m, 0.5f, 0.5f)));
   }
 
-  // ---- 5. Caps off: texcoords stay parallel to positions -------------------
+  // 5. Caps off: texcoords stay parallel to positions
   {
     auto g = createX3DNode("Cylinder");
     setF(g, "top", std::any(SFBool(false)));

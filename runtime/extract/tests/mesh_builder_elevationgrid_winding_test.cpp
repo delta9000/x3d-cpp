@@ -3,11 +3,10 @@
 //
 // ISO/IEC 19775-1 §13.3.4: with the default ccw=TRUE the generated faces are
 // wound so the surface is front-facing (and its generated normal points) toward
-// the +Y side — i.e. a height grid is visible/lit from ABOVE by default. A
+// the +Y side — i.e. a height grid is visible/lit from above by default. A
 // reversed winding makes the generated normals point -Y, which (a) lights the
 // top from below and (b) makes the whole surface back-facing, so a consumer's
 // default back-face cull (solid=TRUE) erases the terrain when viewed from above.
-// That was the Kelp Forest RockFloor "holes" regression.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -45,7 +44,7 @@ TEST_CASE("elevationgrid_default_ccw_surface_faces_up") {
 
   MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
-  // For a flat grid every generated normal must point UP (+Y). A reversed
+  // For a flat grid every generated normal must point up (+Y). A reversed
   // winding yields n.y < 0 (the bug).
   for (const SFVec3f &n : m.normals)
     CHECK((n.y > 0.5f));

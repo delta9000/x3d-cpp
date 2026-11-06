@@ -1,7 +1,7 @@
-// texture_extract_test.cpp — T-TEX v1 end-to-end texture extraction.
+// End-to-end texture extraction.
 //
 // Covers the new TextureExtract.hpp seam that closes textures end-to-end:
-//   1. AUTHORED TextureCoordinate is extracted onto MeshData.texcoords
+//   1. authored TextureCoordinate is extracted onto MeshData.texcoords
 //      (texCoordIndex / coordIndex fallback per §13.3.6) — confirmed via the
 //      existing MeshBuilder path (authored coords WIN over default §13 coords).
 //      MultiTextureCoordinate and TextureCoordinate3D/4D are normalized onto the
@@ -17,7 +17,7 @@
 //   5. TextureCoordinateGenerator on a geometry's texCoord slot surfaces a
 //      TexCoordGenDesc descriptor (mode + parameter, §18.4.8).
 //   6. resolveTextureRefs() threads a consumer TextureResolver onto each
-//      TextureRef::resolvedPixels (Url goes through the resolver; Inline does NOT).
+//      TextureRef::resolvedPixels (Url goes through the resolver; Inline does not).
 #include "GeoFrame.hpp"
 #include "MaterialSystem.hpp"
 #include "MeshBuilder.hpp"
@@ -54,7 +54,7 @@ static void setEnum(const std::shared_ptr<X3DNode> &n, const char *nm,
     if (f.x3dName == nm && f.setEnumString) { f.setEnumString(*n, token); return; }
 }
 
-// --- 1. AUTHORED TextureCoordinate wins over default §13 coords -------------
+// 1. authored TextureCoordinate wins over default §13 coords
 static void testAuthoredTexCoord() {
   // A single triangle TriangleSet with an authored TextureCoordinate. The
   // authored point[] must surface verbatim (positional order for non-indexed).
@@ -139,7 +139,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
   CHECK((feq(m4.texcoords[2].x, 0.75f) && feq(m4.texcoords[2].y, 0.85f)));
 }
 
-// --- 2. applyTextureTransformToMesh bakes the transform into texcoords ------
+// 2. applyTextureTransformToMesh bakes the transform into texcoords
 static void testApplyTransformToMesh() {
   MeshData m;
   m.texcoords = {{0.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f}};
@@ -169,11 +169,11 @@ static void testApplyTransformToMesh() {
   CHECK((feq(m3.texcoords[0].x, 0.5f) && feq(m3.texcoords[0].y, 1.0f)));
 }
 
-// --- 2b. TXF-1: §18.4.10 application ORDER on a non-trivial transform --------
+// 2b. §18.4.10 application order on a non-trivial transform
 // The normative matrix Tc' = C⁻¹ · S · R · C · T · Tc applies, right-to-left,
-// translate → pivot → ROTATE → SCALE → un-pivot (rotation BEFORE scaling). A
+// translate → pivot → rotate → scale → un-pivot (rotation before scaling). A
 // rotation about a non-zero center plus a non-uniform scale makes the two orders
-// (rotate-then-scale vs the previously-coded scale-then-rotate) disagree. The
+// (rotate-then-scale vs scale-then-rotate) disagree. The
 // expected values below are the hand-expanded matrix result and differ from the
 // scale-then-rotate order's (-0.1, 0.2), so this test pins the order.
 static void testTextureTransformOrder() {
@@ -215,7 +215,7 @@ static void testTextureTransformOrder() {
   }
 }
 
-// --- 3. textureTransformParamsOf reads Appearance.textureTransform ---------
+// 3. textureTransformParamsOf reads Appearance.textureTransform
 static void testTextureTransformParamsOf() {
   // No appearance / no textureTransform => identity.
   CHECK((isIdentityTextureTransform(textureTransformParamsOf(nullptr))));
@@ -294,7 +294,7 @@ static void testTextureTransformParamsOf() {
   }
 }
 
-// --- 4. ExtendedSampler / TextureProperties boundary+filter modes ----------
+// 4. ExtendedSampler / TextureProperties boundary+filter modes
 static void testExtendedSampler() {
   // No TextureProperties: repeatS/T derive BoundaryMode (Repeat / ClampToEdge).
   {
@@ -328,7 +328,7 @@ static void testExtendedSampler() {
     CHECK((feq(s.anisotropicDegree, 4.0f)));
     CHECK((feq(s.borderColor.r, 0.2f) && feq(s.borderColor.a, 0.5f)));
   }
-  // 3D textures carry repeatR; without TextureProperties it derives boundaryModeR (T3D-2).
+  // 3D textures carry repeatR; without TextureProperties it derives boundaryModeR.
   {
     auto tex = createX3DNode("ComposedTexture3D");
     setF(tex, "repeatS", std::any(true));
@@ -337,7 +337,7 @@ static void testExtendedSampler() {
     CHECK((s.repeatR == false));
     CHECK((s.boundaryModeR == BoundaryMode::ClampToEdge));
   }
-  // With TextureProperties, boundaryModeR governs the R axis (T3D-2).
+  // With TextureProperties, boundaryModeR governs the R axis.
   {
     auto tp = createX3DNode("TextureProperties");
     setEnum(tp, "boundaryModeR", "MIRRORED_REPEAT");
@@ -348,7 +348,7 @@ static void testExtendedSampler() {
   }
 }
 
-// --- 5. TextureCoordinateGenerator surfaces a TexCoordGenDesc --------------
+// 5. TextureCoordinateGenerator surfaces a TexCoordGenDesc
 static void testTexCoordGen() {
   // Geometry whose texCoord is a TextureCoordinateGenerator (no point array).
   auto gen = createX3DNode("TextureCoordinateGenerator");
@@ -370,7 +370,7 @@ static void testTexCoordGen() {
   CHECK((!has2));
 }
 
-// --- 6. resolveTextureRefs threads a resolver onto resolvedPixels ----------
+// 6. resolveTextureRefs threads a resolver onto resolvedPixels
 static void testResolverRoundTrip() {
   // A stub resolver that returns a 1x1 magenta pixel for any URL.
   TextureResolver resolver = [](const std::string &url) -> TexturePixelResult {
@@ -409,7 +409,7 @@ static void testResolverRoundTrip() {
   CHECK((refs[0].resolvedPixels.pixels->rgba[0] == 255 &&
          refs[0].resolvedPixels.pixels->rgba[1] == 0));
 
-  // Inline => resolver NEVER called; stays Failed (consumer reads inlinePixels).
+  // Inline => resolver never called; stays Failed (consumer reads inlinePixels).
   CHECK((refs[1].resolvedPixels.failed()));
 
   // Url with empty url list => Failed.
@@ -422,7 +422,7 @@ static void testResolverRoundTrip() {
   CHECK((refs2[0].resolvedPixels.failed()));
 }
 
-// --- 3D textures (T3D-1): PixelTexture3D inline voxels; ComposedTexture3D stack
+// 3D textures: PixelTexture3D inline voxels; ComposedTexture3D stack
 static void test3DTextures() {
   // PixelTexture3D.image MFInt32: [numComponents, width, height, depth, packed
   // pixels]. 3 comps, 2x1x2 = 4 pixels.

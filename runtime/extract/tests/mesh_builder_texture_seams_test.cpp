@@ -1,4 +1,4 @@
-// mesh_builder_txc1_test.cpp — TXC-1: spec-exact seam placement for the
+// mesh_builder_texture_seams_test.cpp — spec-exact seam placement for the
 // analytic primitives Sphere / Cone / Cylinder.
 //
 // ISO/IEC 19775-1:
@@ -28,10 +28,10 @@
 //     => Side seam at -Z; S=0 there, increasing CCW. Top cap: +Z rim → T=1,
 //        -Z rim → T=0. Bottom cap: -Z rim → T=1, +Z rim → T=0.
 //
-//   §13.3.1 Box: (not in scope for seam — verified separately in TC4 and is
+//   §13.3.1 Box: (not in scope for seam — verified separately in  and is
 //     already spec-exact; no change needed).
 //
-// Tests fail against the pre-TXC-1 code (seam placed at +Z) and pass after.
+// Tests fail against the pre- code (seam placed at +Z) and pass after.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -87,7 +87,7 @@ static bool seamAtPosZ(const MeshData &m, float threshold = 0.05f) {
   return false;
 }
 
-// ---- 1. Sphere: seam at -Z, S=0; T=0 at -Y pole, T=1 at +Y pole ----------
+// 1. Sphere: seam at -Z, S=0; T=0 at -Y pole, T=1 at +Y pole
 static void testSphereSeam() {
   auto g = createX3DNode("Sphere");
   setF(g, "radius", std::any(SFFloat(1.0f)));
@@ -97,7 +97,7 @@ static void testSphereSeam() {
 
   // Seam is at -Z: there must be a vertex with z<0, x~0 that carries s=0.
   CHECK((seamAtNegZ(m)));
-  // The +Z meridian must NOT carry s=0 (that would be the old wrong seam).
+  // The +Z meridian must not carry s=0 (that would be the old wrong seam).
   CHECK((!seamAtPosZ(m)));
 
   // T=0 at the -Y pole (bottom), T=1 at +Y pole (top).
@@ -147,7 +147,7 @@ static void testSphereSeam() {
   CHECK((sawCCW));
 }
 
-// ---- 2. Cone: seam at -Z; bottom cap -Z → T=1, +Z → T=0 ------------------
+// 2. Cone: seam at -Z; bottom cap -Z → T=1, +Z → T=0
 static void testConeSeam() {
   auto g = createX3DNode("Cone");
   setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
@@ -199,7 +199,7 @@ static void testConeSeam() {
   CHECK((sawCapPosZRim));
 }
 
-// ---- 3. Cylinder: side seam at -Z; top +Z→T=1; bottom -Z→T=1 -------------
+// 3. Cylinder: side seam at -Z; top +Z→T=1; bottom -Z→T=1
 static void testCylinderSeam() {
   auto g = createX3DNode("Cylinder");
   setF(g, "radius", std::any(SFFloat(1.0f)));

@@ -1,9 +1,3 @@
-// background_desc_test.cpp — the panorama reaches the extraction seam
-// (SEAM-BACKGROUND, ENV-11) and ComposedCubeMapTexture surfaces its faces
-// (CMT-1): BackgroundDesc carries the six faces + transparency for Background
-// (*Url lists) and TextureBackground (*Texture nodes); refOf() maps a
-// ComposedCubeMapTexture to Source::Cube with six face refs, and an
-// ImageCubeMapTexture to a url Source::Cube ref (REQ-CUBE).
 #include "SceneExtractor.hpp"
 #include "TextureExtract.hpp"
 

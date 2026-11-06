@@ -2,17 +2,16 @@
 //
 // delta()'s per-tick world re-accumulation must MEMOIZE shared ancestor
 // transforms. A wide scene where M render items share one deep Transform prefix
-// must recompose each DISTINCT ancestor's local matrix once per delta(), not
+// must recompose each distinct ancestor's local matrix once per delta(), not
 // once per dependent item — the O(items * depth) trap that made the kelp PoC
 // run at ~25fps (delta() alone was ~19ms/frame, all in repeated localMatrix()
 // recomposition over shared ancestors).
 //
 // Guarded by TransformSystem::localMatrixCallCount(). A second case pins per-
-// PATH correctness under DEF/USE instancing so the memoization is never
+// path correctness under DEF/USE instancing so the memoization is never
 // "simplified" into ctx.worldTransform()/world_ (the first-path-only table that
 // holds a single matrix per node and would collapse all instances onto the
-// first path — the M2C-1 hazard called out in SceneExtractor.hpp).
-
+// first path — the first-path hazard called out in SceneExtractor.hpp).
 #include "SceneExtractor.hpp"
 
 #include "TransformSystem.hpp"
@@ -90,7 +89,7 @@ TEST_CASE("delta memoizes shared ancestor transforms (no per-item recompute)") {
   CHECK(d.updatedTransform.size() == static_cast<size_t>(M));
 
   // The contract: each of the D distinct ancestor transforms is recomposed at
-  // most a handful of times across the whole delta() — NOT once per dependent
+  // most a handful of times across the whole delta() — not once per dependent
   // item. O(items * depth) would be >= M * D = 96 here (in fact higher, since
   // propagate() flags every node in the subtree DirtyWorldTransform, so each
   // item is re-accumulated once per dirty ancestor). Memoized: ~D.
@@ -108,8 +107,8 @@ TEST_CASE("delta memoizes shared ancestor transforms (no per-item recompute)") {
 }
 
 TEST_CASE("delta keeps per-path world transforms under DEF/USE instancing") {
-  // One shared Shape instanced under TWO sibling transforms at different X. The
-  // per-path re-accumulation must give each instance its OWN world position; a
+  // One shared Shape instanced under two sibling transforms at different X. The
+  // per-path re-accumulation must give each instance its own world position; a
   // node-keyed first-path table (world_) could only hold one and would collapse
   // both onto the same point.
   auto shared = makeTriShape();
@@ -132,7 +131,7 @@ TEST_CASE("delta keeps per-path world transforms under DEF/USE instancing") {
   auto snap = ex.fullSnapshot();
   REQUIRE(snap.added.size() == 2);
 
-  // Dirty the common root so BOTH instances re-accumulate through delta().
+  // Dirty the common root so both instances re-accumulate through delta().
   ctx.postEvent(root.get(), "translation", std::any(SFVec3f{0, 1, 0}));
   ctx.tick(1.0);
   auto d = ex.delta();
@@ -144,7 +143,7 @@ TEST_CASE("delta keeps per-path world transforms under DEF/USE instancing") {
     CHECK(std::fabs(o.y - 1.0f) < 1e-4f); // shared root lift applies to both
     xs.push_back(o.x);
   }
-  // The two instances stay at DISTINCT, correct X (-5 and +5), not collapsed.
+  // The two instances stay at distinct, correct X (-5 and +5), not collapsed.
   std::sort(xs.begin(), xs.end());
   CHECK(std::fabs(xs[0] - (-5.0f)) < 1e-4f);
   CHECK(std::fabs(xs[1] - (5.0f)) < 1e-4f);

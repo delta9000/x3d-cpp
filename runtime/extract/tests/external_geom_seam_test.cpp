@@ -1,5 +1,5 @@
-// external_geom_seam_test.cpp — Phase 1: proves the externalGeometryResolver seam
-// end-to-end WITHOUT any ext module. A NurbsPatchSurface (recognized==false)
+// external_geom_seam_test.cpp — proves the externalGeometryResolver seam
+// end-to-end without any ext module. A NurbsPatchSurface (recognized==false)
 // triggers the resolver; a non-empty PackedMesh causes emitPacked(); the
 // RenderItem's geometry_ext.kind == Packed.
 #include "GeoFrame.hpp"
@@ -66,7 +66,7 @@ TEST_CASE("external_geom_seam_test") {
     CHECK((!rec && mesh.indices.empty())); // still unrecognized
   }
 
-  // === 1) Resolver NOT installed → NurbsPatchSurface still skipped (no change) =
+  // 1) Resolver not installed → NurbsPatchSurface still skipped (no change) =
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
@@ -83,7 +83,7 @@ TEST_CASE("external_geom_seam_test") {
     CHECK((snap.added.empty())); // no resolver → still skipped
   }
 
-  // === 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
+  // 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
@@ -116,7 +116,7 @@ TEST_CASE("external_geom_seam_test") {
     }
   }
 
-  // === 3) Resolver returning empty PackedMesh → Pending → NOT emitted ==========
+  // 3) Resolver returning empty PackedMesh → Pending → not emitted
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");

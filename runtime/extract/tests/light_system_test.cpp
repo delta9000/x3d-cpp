@@ -1,18 +1,7 @@
-// light_system_test.cpp — M2.5 T6 acceptance: LightSystem world-resolution +
-// authored-flag fidelity.
-//
-// Two proofs:
-//   1) A PointLight's `location` world-resolves under a TRANSLATING Transform —
-//      the LightSystem re-accumulates worldM down the PATH (the worldOfRec
-//      pattern, NOT the first-path TransformSystem.world_ table).
-//   2) A DirectionalLight's `global` reads its VERIFIED spec default (false) and
-//      is CARRIED verbatim — never silently promoted to scene-wide.
-// Plus: a Spot/Point direction world-resolves through rotation; on==false lights
-// are skipped; scopeRoot carries the enclosing grouping node.
 #include "GeoFrame.hpp"
 #include "LightSystem.hpp"
 
-#include "X3DDocument.hpp" // Scene::addRootNode definition.
+#include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DScene.hpp"
@@ -45,10 +34,10 @@ static void addChild(const std::shared_ptr<X3DNode> &p,
 }
 
 TEST_CASE("light_system_test") {
-  // --- PROOF 1: PointLight location world-resolves under a Transform --------
+  // PROOF 1: PointLight location world-resolves under a Transform
   // Group -> Transform(+10x) -> PointLight(location 1,2,3). The collected
   // worldLocation must be (11,2,3): the transform translation applied to the
-  // authored location via the per-PATH accumulation.
+  // authored location via the per-path accumulation.
   {
     auto pl = createX3DNode("PointLight");
     setF(pl, "location", std::any(SFVec3f{1, 2, 3}));
@@ -80,7 +69,7 @@ TEST_CASE("light_system_test") {
     CHECK((L.scopeRoot == T.get()));
   }
 
-  // --- PROOF 2: DirectionalLight 'global' reads false by default (no promote) -
+  // PROOF 2: DirectionalLight 'global' reads false by default (no promote) -
   {
     auto dl = createX3DNode("DirectionalLight"); // no fields set => spec defaults
     Scene scene;
@@ -93,7 +82,7 @@ TEST_CASE("light_system_test") {
     CHECK((lights.size() == 1));
     const extract::LightDesc &L = lights[0];
     CHECK((L.type == extract::LightDesc::Type::Directional));
-    // THE fidelity assertion: DirectionalLight global default is false, CARRIED
+    // the fidelity assertion: DirectionalLight global default is false, carried
     // verbatim — never silently promoted to scene-wide.
     CHECK((L.global == false));
     // Default direction (0,0,-1) world-resolves to itself under identity.
@@ -104,7 +93,7 @@ TEST_CASE("light_system_test") {
     CHECK((L.scopeRoot == nullptr));
   }
 
-  // --- on==false lights are skipped ----------------------------------------
+  // on==false lights are skipped
   {
     auto pl = createX3DNode("PointLight");
     setF(pl, "on", std::any(false));
@@ -116,7 +105,7 @@ TEST_CASE("light_system_test") {
     CHECK((ls.collect(scene, ctx.geoProjection()).empty()));
   }
 
-  // --- generic field reads: color/intensity/radius/attenuation ------------
+  // generic field reads: color/intensity/radius/attenuation
   {
     auto pl = createX3DNode("PointLight");
     setF(pl, "color", std::any(SFColor{0.2f, 0.4f, 0.6f}));
@@ -137,7 +126,7 @@ TEST_CASE("light_system_test") {
     CHECK((feq(L.attenuation.x, 0.0f) && feq(L.attenuation.y, 1.0f)));
   }
 
-  // --- X3D 4.0 §17.3.1 shadow controls: defaults + authored (all types) ----
+  // X3D 4.0 §17.3.1 shadow controls: defaults + authored (all types)
   {
     // Default: shadows FALSE, shadowIntensity 1 (spec X3DLightNode defaults).
     auto dl = createX3DNode("DirectionalLight");

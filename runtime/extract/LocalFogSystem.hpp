@@ -1,13 +1,13 @@
 // LocalFogSystem.hpp — §24.4.3 LocalFog extraction: collect every ENABLED
-// LocalFog in the scene, resolved to WORLD scale at collection time, each
+// LocalFog in the scene, resolved to world scale at collection time, each
 // carrying the full placement path of its enclosing grouping scope. namespace
 // x3d::runtime::extract. Header-only, node-as-truth (field reads go through
 // geombounds reflection).
 //
 // WHY a separate walk (the LightSystem pattern): LocalFog is bound-independent
-// — unlike global Fog it is NOT selected by the binding stack. It applies to
+// — unlike global Fog it is not selected by the binding stack. It applies to
 // geometry within its PARENT grouping node's scope. This walk re-accumulates
-// worldM and the enclosing grouping scope down EACH path (the
+// worldM and the enclosing grouping scope down each path (the
 // worldOfRec idiom) so a USE'd LocalFog under two Transforms keeps each
 // placement distinct.
 //
@@ -15,17 +15,17 @@
 // disabled LocalFog leaves the nearest outer enabled LocalFog, or global Fog,
 // unchanged within its scope.
 //
-// SEAM/THREADING: single-threaded; collect() is a pure read over the scene graph.
+// SEAM/threading: single-threaded; collect() is a pure read over the scene graph.
 #ifndef X3D_RUNTIME_EXTRACT_LOCAL_FOG_SYSTEM_HPP
 #define X3D_RUNTIME_EXTRACT_LOCAL_FOG_SYSTEM_HPP
 
-#include "FieldRead.hpp"       // geombounds::getField/enumToken/forEachChildNode
+#include "FieldRead.hpp"
 #include "GeometryBounds.hpp"
-#include "LODSelection.hpp"    // traversedChild (§10.4.3 / §23.4.3)
+#include "LODSelection.hpp"
 #include "Mat4.hpp"
-#include "RecursionLimits.hpp" // MEM-1: kMaxNestingDepth (walk DoS guard)
-#include "RenderItem.hpp"      // LocalFogDesc / FogDesc
-#include "TransformSystem.hpp" // isTransform/localMatrix (per-path re-accumulation)
+#include "RecursionLimits.hpp"
+#include "RenderItem.hpp"
+#include "TransformSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DScene.hpp"
 
@@ -46,7 +46,7 @@ public:
     return collect(scene, projection, budget, SFVec3f{0, 0, 0});
   }
 
-  // #21: collect against a shared node-visit budget (threaded with the geometry
+  // collect against a shared node-visit budget (threaded with the geometry
   // walk by the extractor), so one snapshot ceiling covers both. When requested,
   // dependencies receives every LocalFog (even disabled) and each of its static
   // Transform ancestors, independently of whether its scope emits any geometry.

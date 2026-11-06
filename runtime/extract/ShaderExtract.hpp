@@ -21,7 +21,7 @@
 //     validator is structural: one VERTEX and one FRAGMENT stage, and at most
 //     one stage of each type. The SDK cannot compile GLSL itself.
 //   * Uniforms: the shader's author <field>s (ProgramShader: each program's, in
-//     order) with their CURRENT values from the DynamicFieldStore. SF scalar,
+//     order) with their current values from the DynamicFieldStore. SF scalar,
 //     vector, colour and matrix fields map onto X3DFieldValue; SFDouble/SFTime
 //     narrow to float, SFRotation becomes (x,y,z,angle) and SFVec*d/SFMatrix*d
 //     narrow to float. SFNode/MF fields are listed with an empty value: the
@@ -30,7 +30,7 @@
 #define X3D_RUNTIME_EXTRACT_SHADER_EXTRACT_HPP
 
 #include "AssetResolver.hpp"
-#include "MaterialSystem.hpp" // matsys::refOf for texture fields
+#include "MaterialSystem.hpp"
 #include "DynamicField.hpp"
 #include "RenderItem.hpp"
 #include "ShaderOptions.hpp"

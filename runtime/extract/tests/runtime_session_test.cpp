@@ -1,11 +1,3 @@
-// runtime_session_test.cpp — RuntimeSession contract.
-//
-// The session exists to own the buildSceneGraph + buildFrom + SceneExtractor
-// ceremony and the unwritten lifetime contract between the three objects. These
-// cases pin that it is EQUIVALENT to the low-level path (it must not become a
-// policy layer with its own behaviour), that it does the wiring a caller can
-// silently forget, and that the pieces stay reachable.
-
 #include "RuntimeSession.hpp"
 
 #include "X3DParse.hpp"
@@ -25,7 +17,7 @@ using namespace x3d::core;
 namespace {
 
 // A Transform driven by a TimeSensor->PositionInterpolator ROUTE chain: renders
-// from buildSceneGraph, but only ANIMATES if buildFrom resolved the ROUTEs.
+// from buildSceneGraph, but only animates if buildFrom resolved the ROUTEs.
 const char *kScene = R"X3D(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
   <Scene>
@@ -59,7 +51,7 @@ TEST_CASE("RuntimeSession: wires both builds, so ROUTEs actually fire") {
   s->fullSnapshot();
   CHECK(s->extractor().itemCount() == 1);
 
-  // buildSceneGraph ran: the Viewpoint bound, so viewMatrix is NOT identity.
+  // buildSceneGraph ran: the Viewpoint bound, so viewMatrix is not identity.
   // (Skipping buildSceneGraph is silent -- it leaves the camera at identity.)
   const Mat4 view = s->context().viewMatrix();
   CHECK(view.m[14] != 0.0f);
@@ -127,7 +119,7 @@ TEST_CASE("RuntimeSession: owns the document, so the scene outlives the caller's
 TEST_CASE("RuntimeSession: SessionOptions.assetResolver drives LoadSensor (§9)") {
   // A LoadSensor watching one ImageTexture. The session's default standard
   // runtime attaches the LoadSensorSystem; SessionOptions.assetResolver is the
-  // byte oracle it resolves through. A Ready resolver → the NSN-9 success burst.
+  // byte oracle it resolves through. A Ready resolver → the success burst.
   const char *xml = R"X3D(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
   <Scene>

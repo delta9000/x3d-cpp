@@ -1,24 +1,3 @@
-// mesh_builder_b4_test.cpp — Browser-level B4 acceptance: MeshData Topology enum
-// + IndexedLineSet / LineSet / PointSet flow through the seam as Lines/Points,
-// always-unlit (hasNormals=false, solid=false), with vertex Color honored.
-//
-// Proofs:
-//   1) Default topology is Triangles and a triangle mesh is unchanged (the
-//      enum default keeps every pre-B4 path byte-identical).
-//   2) IndexedLineSet: each -1-delimited coordIndex run becomes consecutive
-//      vertex PAIRS (a 3-vertex polyline -> 2 segments -> 4 emitted indices),
-//      topology=Lines, hasNormals=false, solid=false. recognizedGeometryType
-//      ("IndexedLineSet") is true.
-//   3) IndexedLineSet honors per-vertex Color (colorPerVertex default true) so
-//      colors are parallel to positions and the segment endpoints carry the
-//      authored colors; ColorRGBA alpha is preserved.
-//   4) LineSet: vertexCount partitions the implicit coord run into polylines;
-//      a {3} count -> one polyline -> 2 segments.
-//   5) PointSet: the whole point array becomes a 0..N-1 GL_POINTS run,
-//      topology=Points, hasNormals=false, solid=false; Color honored.
-//   6) Empty/degenerate guards: a 1-vertex polyline / empty coordIndex / empty
-//      point array yields an empty mesh with NO OOB read, and the type stays
-//      recognized (legitimately empty, not an unsupported drop).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -72,12 +51,12 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
 TEST_CASE("mesh_builder_b4_test") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{2, 0, 0}, P3{3, 0, 0};
 
-  // recognizedGeometryType now lists all three line/point sets.
+  // recognizedGeometryType lists all three line/point sets.
   CHECK((recognizedGeometryType("IndexedLineSet")));
   CHECK((recognizedGeometryType("LineSet")));
   CHECK((recognizedGeometryType("PointSet")));
 
-  // ---- 1. Default topology is Triangles; triangle path unchanged ------------
+  // 1. Default topology is Triangles; triangle path unchanged
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, SFVec3f{1, 1, 0}});
@@ -88,7 +67,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((m.indices.size() == 3));
   }
 
-  // ---- 2. IndexedLineSet: one 3-vertex polyline -> 2 segments ---------------
+  // 2. IndexedLineSet: one 3-vertex polyline -> 2 segments
   {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1, P2});
@@ -110,7 +89,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((posEq(m, 2, P1) && posEq(m, 3, P2)));
   }
 
-  // ---- 3a. IndexedLineSet per-vertex Color (RGB promoted alpha=1) -----------
+  // 3a. IndexedLineSet per-vertex Color (RGB promoted alpha=1)
   {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1});
@@ -124,7 +103,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((rgbaEq(m.colors[1], 0, 1, 0, 1))); // P1 green
   }
 
-  // ---- 3b. IndexedLineSet ColorRGBA alpha preserved -------------------------
+  // 3b. IndexedLineSet ColorRGBA alpha preserved
   {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1});
@@ -137,7 +116,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((rgbaEq(m.colors[1], 0.1f, 0.2f, 0.3f, 0.25f)));
   }
 
-  // ---- 4. LineSet: vertexCount {3} partitions into one 3-vertex polyline ----
+  // 4. LineSet: vertexCount {3} partitions into one 3-vertex polyline
   {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2});
@@ -151,7 +130,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((posEq(m, 2, P1) && posEq(m, 3, P2)));
   }
 
-  // ---- 4b. LineSet two polylines {2,2} --------------------------------------
+  // 4b. LineSet two polylines {2,2}
   {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2, P3});
@@ -163,7 +142,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((posEq(m, 2, P2) && posEq(m, 3, P3)));
   }
 
-  // ---- 5. PointSet: whole array -> 0..N-1 GL_POINTS, Color honored ----------
+  // 5. PointSet: whole array -> 0..N-1 GL_POINTS, Color honored
   {
     auto g = createX3DNode("PointSet");
     attachCoord(g, {P0, P1, P2});
@@ -181,7 +160,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((rgbaEq(m.colors[2], 0, 0, 1, 1)));
   }
 
-  // ---- 6. Degenerate guards: no OOB, empty mesh, still recognized -----------
+  // 6. Degenerate guards: no OOB, empty mesh, still recognized
   {
     // 6a: 1-vertex "polyline" (no segment) + an out-of-range index.
     auto g = createX3DNode("IndexedLineSet");

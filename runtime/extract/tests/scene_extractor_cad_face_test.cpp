@@ -1,7 +1,3 @@
-// scene_extractor_cad1_test.cpp — CAD-1 (2026-06-25 sweep): CADFace.shape accepts
-// only Shape|LOD|Transform (ISO/IEC 19775-1 §32.4.2). A non-conforming node placed
-// in the shape slot must not be traversed/rendered, mirroring the Collision.proxy
-// and Switch guards.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp"
@@ -50,7 +46,7 @@ TEST_CASE("scene_extractor_cad1_test") {
   CHECK((renderedUnder(makeTriShape()) == 1));
 
   // Non-conforming: a Group is not Shape|LOD|Transform; the guard must skip it,
-  // so its renderable descendant is NOT emitted (would be 1 without the guard).
+  // so its renderable descendant is not emitted (would be 1 without the guard).
   auto group = createX3DNode("Group");
   setF(group, "children",
        std::any(std::vector<std::shared_ptr<X3DNode>>{makeTriShape()}));

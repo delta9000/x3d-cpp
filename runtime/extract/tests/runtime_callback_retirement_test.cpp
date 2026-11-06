@@ -522,7 +522,7 @@ TEST_CASE("Runtime retirement: standalone binding captures cannot reenter destro
       poster = [capture, &posted](X3DNode *, const std::string &, std::any) { ++posted; };
     bindings->enrollScene(scene, std::move(poster), std::move(clock), std::move(sink));
     bindings->bindDefaults();
-    capture.reset(); // BindingSystem now holds the only capture owner.
+    capture.reset(); // BindingSystem holds the only capture owner.
     bindings.reset();
     CHECK(captureDestructions == 1);
     CHECK(posted == 0);

@@ -1,15 +1,3 @@
-// render_item_test.cpp — T0 compile-only descriptor test.
-//
-// Statically constructs every descriptor in extract/RenderItem.hpp and exercises
-// the load-bearing contract bits (PathKey full-vector equality vs bucket-only
-// hash; GeomId content identity; MaterialDesc::toRGBA alpha = 1 - transparency).
-// This is the golden compile gate for the pure-POD descriptor layer: if the
-// header stops being a self-contained leaf (or a field's type drifts) this TU
-// fails to compile.
-//
-// v1-closure additions tested (2026-06-16):
-//   * TextureRef::resolvedPixels — defaults Failed; can carry a Ready result.
-//   * MeshData::isGlyphMesh — defaults false; set true for Text glyph quads.
 #include "RenderItem.hpp"
 #include "TextureResolver.hpp"
 
@@ -29,7 +17,7 @@ TEST_CASE("render_item_test") {
   const X3DNode *nA = reinterpret_cast<const X3DNode *>(0x1000);
   const X3DNode *nB = reinterpret_cast<const X3DNode *>(0x2000);
 
-  // --- PathKey: full-vector equality, bucket-only hash --------------------
+  // PathKey: full-vector equality, bucket-only hash
   PathKey p1{nA, nB};
   PathKey p2{nA, nB};
   PathKey p3{nB, nA}; // different order => different placement.
@@ -40,12 +28,12 @@ TEST_CASE("render_item_test") {
   (void)hash(p1);         // hash is a usable bucket key.
   CHECK((hash(p1) == hash(p2))); // equal keys must share a bucket.
 
-  // --- RenderItemId handle -------------------------------------------------
+  // RenderItemId handle
   RenderItemId id = 7;
   CHECK((id != kInvalidRenderItemId));
   static_assert(std::is_same_v<RenderItemId, std::uint32_t>);
 
-  // --- GeomId: content identity -------------------------------------------
+  // GeomId: content identity
   GeomId g1{nA, 0};
   GeomId g2{nA, 0};
   GeomId g3{nA, 1}; // bumped contentVersion => different content.
@@ -54,7 +42,7 @@ TEST_CASE("render_item_test") {
   GeomIdHash gh;
   CHECK((gh(g1) == gh(g2)));
 
-  // --- MeshData -----------------------------------------------------------
+  // MeshData
   MeshData mesh;
   mesh.positions = {SFVec3f{0, 0, 0}, SFVec3f{1, 0, 0}, SFVec3f{0, 1, 0}};
   mesh.indices = {0, 1, 2};
@@ -67,10 +55,10 @@ TEST_CASE("render_item_test") {
   mesh.hasColors = true;
   CHECK((mesh.indices.size() == 3));
 
-  // T-TEXT: isGlyphMesh defaults false for all non-text geometry.
+  // isGlyphMesh defaults false for all non-text geometry.
   CHECK((mesh.isGlyphMesh == false));
 
-  // T-TEXT: a glyph mesh is a plain MeshData with isGlyphMesh=true (routing flag).
+  // a glyph mesh is a plain MeshData with isGlyphMesh=true (routing flag).
   // Each quad: 4 positions (XY plane, Z=0), 4 texcoords (atlas UV), 6 indices.
   MeshData glyphMesh;
   glyphMesh.positions  = {SFVec3f{0,0,0}, SFVec3f{1,0,0}, SFVec3f{1,1,0}, SFVec3f{0,1,0}};
@@ -80,7 +68,7 @@ TEST_CASE("render_item_test") {
   CHECK((glyphMesh.isGlyphMesh == true));
   CHECK((glyphMesh.indices.size() == 6)); // 2 tris per glyph quad.
 
-  // --- TextureRef / SamplerParams -----------------------------------------
+  // TextureRef / SamplerParams
   SamplerParams sampler{};
   TextureRef tex;
   tex.slot = TextureRef::Slot::BaseColor;
@@ -91,12 +79,12 @@ TEST_CASE("render_item_test") {
   tex.channel = 0;
   CHECK((tex.url.size() == 1));
 
-  // T-TEX: resolvedPixels defaults to Failed (= PoC white-fallback contract).
+  // resolvedPixels defaults to Failed (= PoC white-fallback contract).
   CHECK((tex.resolvedPixels.failed()));
   CHECK((!tex.resolvedPixels.ready()));
   CHECK((!tex.resolvedPixels.pending()));
 
-  // T-TEX: extractor threads a Ready result onto the field after resolver call.
+  // extractor threads a Ready result onto the field after resolver call.
   TexturePixels px;
   px.width  = 2;
   px.height = 2;
@@ -107,12 +95,12 @@ TEST_CASE("render_item_test") {
   CHECK((tex.resolvedPixels.pixels->height == 2));
   CHECK((tex.resolvedPixels.pixels->rgba.size() == 16));
 
-  // T-TEX: Pending state is valid (atlas not yet uploaded; retry next frame).
+  // Pending state is valid (atlas not yet uploaded; retry next frame).
   TextureRef pendingTex;
   pendingTex.resolvedPixels = TexturePixelResult::makePending();
   CHECK((pendingTex.resolvedPixels.pending()));
 
-  // T-TEX: Source::Inline textures do NOT use the resolver; resolvedPixels stays
+  // Source::Inline textures do not use the resolver; resolvedPixels stays
   // Failed and the consumer reads inlinePixels instead.
   TextureRef inlineTex;
   inlineTex.source = TextureRef::Source::Inline;
@@ -120,7 +108,7 @@ TEST_CASE("render_item_test") {
   CHECK((inlineTex.inlinePixels.width == 2));
   CHECK((inlineTex.resolvedPixels.failed())); // never set for Inline sources.
 
-  // --- MaterialDesc + toRGBA documented alpha = 1 - transparency ----------
+  // MaterialDesc + toRGBA documented alpha = 1 - transparency
   MaterialDesc mat;
   CHECK((mat.model == MaterialModel::Phong));
   CHECK((feq(mat.toRGBA().a, 1.0f))); // default transparency=0 => alpha=1.
@@ -138,7 +126,7 @@ TEST_CASE("render_item_test") {
   // unlit bool dropped; model == Unlit is the discriminator.
   unlit.alphaMode = AlphaMode::Blend; // descriptor-only surface compiles.
 
-  // --- LightDesc: authored global carried, not promoted -------------------
+  // LightDesc: authored global carried, not promoted
   LightDesc dir;
   dir.type = LightDesc::Type::Directional;
   dir.global = false; // DirectionalLight spec default; carried verbatim.
@@ -157,7 +145,7 @@ TEST_CASE("render_item_test") {
   spot.cutOffAngle = 0.5f;
   (void)spot;
 
-  // --- CameraDesc: min-dimension FOV + descriptor-only ortho surface ------
+  // CameraDesc: min-dimension FOV + descriptor-only ortho surface
   CameraDesc cam;
   CHECK((feq(cam.fieldOfView, 0.7854f))); // X3D default min-dimension FOV.
   cam.viewMatrix = Mat4::identity();
@@ -165,7 +153,7 @@ TEST_CASE("render_item_test") {
   cam.ortho = true;                       // descriptor-only surface compiles.
   cam.orthoFieldOfView = {-1, -1, 1, 1};
 
-  // --- BackgroundDesc -----------------------------------------------------
+  // BackgroundDesc
   BackgroundDesc bg;
   bg.skyColor = {SFColor{0, 0, 0.2f}, SFColor{0, 0.5f, 1.0f}};
   bg.skyAngle = {1.2f};
@@ -173,7 +161,7 @@ TEST_CASE("render_item_test") {
   bg.backgroundChanged = true;
   CHECK((bg.skyColor.size() == 2));
 
-  // --- RenderDelta: the single authoritative change channel ---------------
+  // RenderDelta: the single authoritative change channel
   RenderDelta delta;
   delta.added = {id};
   delta.removed = {};
@@ -185,9 +173,8 @@ TEST_CASE("render_item_test") {
   delta.lightsChanged = true;
   CHECK((delta.added.size() == 1));
 
-  // RenderItem must NOT carry change bits — the design dropped any parallel
+  // RenderItem must not carry change bits — the design dropped any parallel
   // encoding. (No RenderItem struct exists in this header; change lives only in
   // RenderDelta. This is a contract assertion expressed by construction.)
-
   return;
 }

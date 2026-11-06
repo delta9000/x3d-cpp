@@ -1,4 +1,4 @@
-// mesh_builder_fog_coordinate_test.cpp — REQ-LOCALFOG: §24.4.3 FogCoordinate.
+// mesh_builder_fog_coordinate_test.cpp — §24.4.3 FogCoordinate.
 //
 // "One depth value per vertex shall be supplied. If the user does not provide a
 // sufficient number of depth values, the last value defined shall be replicated

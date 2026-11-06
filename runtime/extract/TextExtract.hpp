@@ -1,44 +1,13 @@
-// TextExtract.hpp — T-TEXT v1: Text node -> glyph render-items + Text outputs.
-//
-// namespace x3d::runtime::extract. Header-only, node-as-truth (reads the Text /
-// FontStyle nodes via reflection; adds NO members to generated nodes). This is
-// the INTEGRATION layer that binds the pure §15 layout engine (TextLayout.hpp)
-// and the consumer-supplied font-metrics seam (FontMetrics.hpp) to the geometry
-// extraction pipeline.
-//
-// WHAT IT DOES
-// ============
-//   1. Reads FontStyle (size/spacing/horizontal/leftToRight/topToBottom/justify/
-//      family/style) and Text (string/length/maxExtent) off the nodes by
-//      reflection — the FontStyle child via the Text node's `fontStyle` slot;
-//      justify/family/style enums via the node-agnostic getEnumString seam.
-//   2. Runs computeTextLayout() to place each line's baseline.
-//   3. Walks each line glyph-by-glyph using the FontMetrics seam: every Ready
-//      glyph with hasAtlasUv emits ONE textured quad (4 positions in the Text
-//      local Z=0 plane + 4 atlas texcoords from GlyphMetrics{u0,v0,u1,v1} + 6
-//      CCW indices). A glyph WITHOUT atlas UV (the monospace stub) still ADVANCES
-//      the pen and emits a quad with degenerate (0,0)-(0,0) UVs so the layout is
-//      testable with no real font (positions/advance are exact; the consumer
-//      simply samples nothing). A Pending glyph is skipped (advance still steps,
-//      retried next frame); a Failed glyph is skipped entirely.
-//   4. Sets the Text node's outputOnly fields textBounds / lineBounds / origin
-//      from the layout result, via the reflection `set` lambdas the generated
-//      Text node exposes for its emit* outputs.
-//
-// The produced MeshData carries isGlyphMesh=true so a consumer selects the text
-// shader branch; solid=false (Text is two-sided per §15.2.1.2); topology
-// Triangles. With the default monospace stub (advanceEm=0.6, no atlas UV) the
-// mesh has 4*G positions / 6*G indices for G non-space glyphs and the Text
-// outputs are exact — so the extraction path is fully unit-testable IO-free.
-//
-// Spec: ISO/IEC 19775-1:2023 §15 Text/FontStyle (layout in TextLayout.hpp).
+// Bind the §15 layout engine to glyph meshes and Text output fields.
+// Text meshes are two-sided (§15.2.1.2). Pending glyphs are retried each frame;
+// failed glyphs are skipped.
 #ifndef X3D_RUNTIME_EXTRACT_TEXT_EXTRACT_HPP
 #define X3D_RUNTIME_EXTRACT_TEXT_EXTRACT_HPP
 
-#include "FontMetrics.hpp" // FontMetrics seam + makeMonospaceStub()
-#include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
-#include "RenderItem.hpp"     // MeshData
-#include "TextLayout.hpp"     // computeTextLayout + FontStyleParams/TextParams
+#include "FontMetrics.hpp"
+#include "GeometryBounds.hpp"
+#include "RenderItem.hpp"
+#include "TextLayout.hpp"
 #include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
@@ -113,13 +82,11 @@ inline std::vector<std::uint32_t> utf8ToCodepoints(const std::string &s) {
 
 } // namespace text_detail
 
-// ---------------------------------------------------------------------------
 // readFontStyleParams — pull FontStyleParams + the resolved (family,style) off
 // the Text node's fontStyle child. A NULL fontStyle uses the spec defaults
 // (§15.4.1: SERIF/PLAIN, size 1, spacing 1, horizontal/leftToRight/topToBottom
-// all TRUE, justify {BEGIN, FIRST}). `family`/`style` out-params resolve the
+// all TRUE, justify {BEGIN, `FIRST`}). `family`/`style` out-params resolve the
 // FontMetrics FontKey lookup (first listed family wins; empty style => PLAIN).
-// ---------------------------------------------------------------------------
 inline FontStyleParams readFontStyleParams(const X3DNode &textNode,
                                            std::string &familyOut,
                                            std::string &styleOut,
@@ -146,11 +113,8 @@ inline FontStyleParams readFontStyleParams(const X3DNode &textNode,
   if (!jt.empty()) fs.justifyMajor = jt[0];
   if (jt.size() >= 2) fs.justifyMinor = jt[1];
   // ("" slots fall back to the slot default inside computeTextLayout.)
-
-  // family is an MFString fallback list (§15.4.1), read as the MFString it
-  // is: it has no enum-string accessor, so an enum-token read returns empty
-  // and every Text fell back to SERIF (TXT-5). The caller resolves it against
-  // the FontMetrics backend with resolveFontFamily.
+  // §15.4.1: family is an MFString fallback list, not an enum. The caller
+  // resolves it against FontMetrics with resolveFontFamily.
   const auto fam = geombounds::getField<std::vector<std::string>>(*fsNode, "family", {});
   if (!fam.empty()) familyOut = fam[0];
   if (familiesOut) *familiesOut = fam;
@@ -162,9 +126,7 @@ inline FontStyleParams readFontStyleParams(const X3DNode &textNode,
   return fs;
 }
 
-// ---------------------------------------------------------------------------
 // readTextParams — pull TextParams (string/length/maxExtent) off the Text node.
-// ---------------------------------------------------------------------------
 inline TextParams readTextParams(const X3DNode &textNode) {
   TextParams t;
   t.strings =
@@ -174,15 +136,13 @@ inline TextParams readTextParams(const X3DNode &textNode) {
   return t;
 }
 
-// ---------------------------------------------------------------------------
 // makeLayoutMetricsAdapter — bridge the per-codepoint FontMetrics seam to the
-// per-LINE (string,size)->(advance,ascender,descender) callback TextLayout
+// per-line (string,size)->(advance,ascender,descender) callback TextLayout
 // needs. The natural advance of a line is the sum of each codepoint's
 // advanceEm*size (Pending/Failed glyphs contribute 0 advance — they do not
 // occupy major-axis space). ascender/descender are fixed proportions of size
-// (0.8 / -0.2): the seam exposes no per-line vertical metrics in v1, and these
+// (0.8 / -0.2): these
 // match the monospace-stub test contract.
-// ---------------------------------------------------------------------------
 inline FontMetricsCallback makeLayoutMetricsAdapter(const FontMetrics &fm,
                                                     const std::string &family,
                                                     const std::string &style) {
@@ -197,7 +157,6 @@ inline FontMetricsCallback makeLayoutMetricsAdapter(const FontMetrics &fm,
   };
 }
 
-// ---------------------------------------------------------------------------
 // buildTextMesh — produce a glyph-quad MeshData for `textNode`.
 //
 // Layout (line baselines, bounds, origin) comes from computeTextLayout(); the
@@ -207,16 +166,15 @@ inline FontMetricsCallback makeLayoutMetricsAdapter(const FontMetrics &fm,
 // the rendered line fits its effective length (lineBounds[i].width for
 // horizontal, .height for vertical).
 //
-// Every NON-Pending/NON-Failed glyph emits one quad of height = size and width =
+// Every NON-Pending/non-Failed glyph emits one quad of height = size and width =
 // scaled advance. The quad spans the baseline-to-ascender box: for horizontal
-// text [penMajor, penMajor+adv] x [baseline-descender? ..]. v1 uses the simple
+// text uses the simple
 // glyph cell [pen, pen+adv] on the major axis and [baseline+descender,
 // baseline+ascender]≈[baseline, baseline+size] on the minor — exact for the
 // stub and a faithful textured-quad cell for a real atlas.
 //
 // `outLayout` (optional) receives the TextLayoutResult so the caller can set the
 // Text node outputs without recomputing.
-// ---------------------------------------------------------------------------
 inline MeshData buildTextMesh(const X3DNode &textNode, const FontMetrics &fm,
                               TextLayoutResult *outLayout = nullptr) {
   MeshData mesh;
@@ -350,14 +308,12 @@ inline MeshData buildTextMesh(const X3DNode &textNode, const FontMetrics &fm,
   return mesh;
 }
 
-// ---------------------------------------------------------------------------
 // setTextOutputs — write the layout result back onto the Text node's outputOnly
 // fields (textBounds: SFVec2f, lineBounds: MFVec2f, origin: SFVec3f) via the
 // reflection `set` lambdas the generated node exposes for its emit* outputs.
 // §15.4.2: these outputs are generated when length[] and maxExtent are default
 // and on redraws; we always populate them (a superset — harmless when set).
 // Returns the number of output fields successfully written.
-// ---------------------------------------------------------------------------
 inline int setTextOutputs(X3DNode &textNode, const TextLayoutResult &layout) {
   int written = 0;
   const auto setField = [&](const char *name, const std::any &v) -> bool {

@@ -1,38 +1,9 @@
-// AssetResolver.hpp — B8 asset-resolver seam (the BYTES path). namespace
-// x3d::runtime::extract. Header-only, golden-untouched, pure POD + one
-// std::function type. Depends ONLY on std; introduces no node/transform header
-// dependency, so it stays a leaf alongside RenderItem.hpp.
-//
-// WHY A SEAM: the SDK NEVER does I/O. TextureRef (RenderItem.hpp) already
-// surfaces a texture's URL VERBATIM and PixelTexture pixels INLINE; this header
-// adds the embedder-supplied callback by which a CONSUMER turns a URL into
-// bytes. The SDK does not own this callback's lifetime, does not call it itself
-// for the texture path, and never opens a file — MaterialSystem keeps its
-// bytes-not-loaded-here invariant.
-//
-// ONE CALLBACK TYPE, TWO INVOCATION CONTRACTS (locked B8 design). The SAME
-// AssetResolver signature serves two distinct call sites with DIFFERENT
-// lifetimes. Do NOT assume one async lifetime covers both:
-//
-//   (A) TEXTURE / MOVIE bytes — consumed at RENDER time, in the CONSUMER layer,
-//       AFTER extraction. The consumer holds the resolver and calls it per
-//       TextureRef::Source::Url. It MAY return Status::Pending (the bytes are
-//       not ready yet — e.g. a future async/http hook); the consumer simply
-//       retries on a later frame and renders the flat material color meanwhile.
-//       A Pending texture NEVER blocks a frame. (PixelTexture is Source::Inline
-//       and is decoded directly from inlinePixels — the resolver is NOT called.)
-//
-//   (B) Inline / EXTERNPROTO bytes — resolved at PARSE / scene-build time,
-//       BEFORE buildSceneGraph, SYNCHRONOUSLY. A pending result here is
-//       INCOHERENT: nodes must exist before extraction can walk them, so this
-//       call site requires Status::Ready (or Status::Failed) and treats Pending
-//       as a hard error. parse/AssetDocumentResolvers.hpp supplies paired
-//       loaders that retain this policy for every nested Inline/EXTERNPROTO;
-//       a Pending result aborts the active recursive asset load. The callback
-//       receives a fragment-free URL resolved against its source directory.
-//
-// The renderer PoC wires contract (A): a local-file resolver (relative to the scene
-// dir, owned by the PoC, NOT the SDK) feeds stb_image at upload time.
+// Caller-owned asset-byte callback; see ADR-0023.
+// Render-time requests may return Pending and are retried without blocking.
+// Inline/EXTERNPROTO requests run synchronously before buildSceneGraph: they
+// require Ready or Failed, because scene nodes must exist before extraction.
+// AssetDocumentResolvers supplies fragment-free URLs relative to the source
+// directory and aborts the recursive load on Pending.
 #ifndef X3D_RUNTIME_EXTRACT_ASSET_RESOLVER_HPP
 #define X3D_RUNTIME_EXTRACT_ASSET_RESOLVER_HPP
 
@@ -44,7 +15,7 @@
 
 namespace x3d::runtime::extract {
 
-// What KIND of asset is being requested. Lets one resolver branch on intent
+// What kind of asset is being requested. Lets one resolver branch on intent
 // (e.g. a texture cache vs an Inline scene-graph fetch) and pick a sync-vs-async
 // policy per the two invocation contracts documented above.
 enum class AssetKind {
@@ -57,7 +28,7 @@ enum class AssetKind {
   Shader,        // ShaderPart / ShaderProgram url — contract (A): Pending retries.
 };
 
-// The lifecycle state of a resolve. Pending is ONLY legal on the render-time
+// The lifecycle state of a resolve. Pending is only legal on the render-time
 // texture path (contract A); the parse-time path (contract B) must resolve to
 // Ready or Failed synchronously.
 enum class AssetStatus {
@@ -66,7 +37,7 @@ enum class AssetStatus {
   Failed,  // resolution failed (missing file, bad URL, IO error). `bytes` empty.
 };
 
-// The result of resolving ONE url. POD: a status + the raw bytes (still encoded,
+// The result of resolving one url. POD: a status + the raw bytes (still encoded,
 // e.g. a PNG/JPEG byte stream for a Texture — the consumer DECODES; the SDK
 // never decodes either). For Pending/Failed `bytes` is empty.
 struct AssetResult {
@@ -87,19 +58,15 @@ struct AssetResult {
   static AssetResult makeFailed() { return AssetResult{AssetStatus::Failed, {}}; }
 };
 
-// THE callback type. (url, kind) -> AssetResult. ONE type, TWO invocation
-// contracts (see the file header). Owned by the CONSUMER; the SDK never invokes
-// it for the texture path and never does I/O. Copyable value type (std::function
-// is copyable) so it threads through value-type option carriers identically to
-// the B5 GeoProjection seam.
+// Caller-owned, copyable callback with the render-time and parse-time contracts above.
 using AssetResolver =
     std::function<AssetResult(const std::string &url, AssetKind kind)>;
 
-// DEFAULT STUB: makeNullAssetResolver() returns a callable that always answers
+// default stub: makeNullAssetResolver() returns a callable that always answers
 // makeFailed() — the IO-free default, mirroring makeNullTextureResolver(). The
 // SDK ships no concrete backend (a local-file/HTTP/S3 resolver is a backend, kept
 // out of the public headers, ADR — IO-free SDK); an app or embedder injects one.
-// A null std::function is NOT legal to call — always use this stub as the default.
+// A null std::function is not legal to call — always use this stub as the default.
 inline AssetResolver makeNullAssetResolver() {
   return [](const std::string &, AssetKind) { return AssetResult::makeFailed(); };
 }

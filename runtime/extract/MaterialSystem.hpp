@@ -1,37 +1,12 @@
-// MaterialSystem.hpp — M2.5 extraction (Layer A4): an Appearance node -> a tagged
-// MaterialDesc + its TextureRefs. namespace x3d::runtime::extract. Header-only,
-// golden-untouched, node-as-truth (every read goes through the geombounds
-// reflection helpers / nodeTypeName() dispatch; adds NO members to generated
-// nodes; keyed only by const X3DNode*).
-//
-// SCOPE (locked by the M2.5 design spec, 2026-06-14):
-//   * materialOf(appearance) dispatches on the material node's nodeTypeName():
-//       - Material         -> Phong   (diffuse/emissive/specular/shininess/
-//                                       ambientIntensity/transparency)
-//       - PhysicalMaterial -> Physical(baseColor/metallic/roughness/emissive/
-//                                       occlusionStrength/transparency)
-//       - UnlitMaterial    -> Unlit   (emissive as baseColor/transparency)
-//   * null material under a PRESENT Appearance => Phong 0.8 grey (the spec
-//     default Material). null Appearance entirely => Unlit white (an always-draws
-//     debug fallback; non-spec, matches the SceneExtractor stub).
-//   * alphaMode/alphaCutoff are read off the Appearance (alphaMode via the
-//     reflection token string — no dependency on the generated enum type).
-//   * toRGBA() alpha = 1 - transparency lives on MaterialDesc (RenderItem.hpp);
-//     this file only fills `transparency` (and baseColor RGB).
-//   * texturesOf(appearance) resolves textures with MATERIAL-SLOT PRECEDENCE over
-//     the legacy Appearance.texture (locked D6): a material-borne texture slot
-//     (e.g. Material.diffuseTexture / PhysicalMaterial.baseTexture) wins; only if
-//     NO material slot is present is the legacy Appearance.texture surfaced.
-//     PixelTexture -> Inline (pixels carried verbatim), MovieTexture -> Movie,
-//     MultiTexture -> one TextureRef per channel, PixelTexture3D -> Tex3D (inline
-//     voxels), ComposedTexture3D -> Tex3D (2D slice refs). URLs are surfaced
-//     VERBATIM; bytes are NOT loaded here (asset resolution is OUTSIDE the SDK).
+// Extract material descriptors from Appearance fields without loading assets.
+// Material texture slots take precedence over Appearance.texture. A missing
+// material uses default Phong grey; a missing Appearance uses unlit white.
 #ifndef X3D_RUNTIME_EXTRACT_MATERIAL_SYSTEM_HPP
 #define X3D_RUNTIME_EXTRACT_MATERIAL_SYSTEM_HPP
 
-#include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField
-#include "RenderItem.hpp"     // MaterialDesc / TextureRef / SamplerParams
-#include "TextureExtract.hpp" // extendedSamplerOf (§18.4.9 sampler descriptor)
+#include "GeometryBounds.hpp"
+#include "RenderItem.hpp"
+#include "TextureExtract.hpp"
 #include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/core/X3Dtypes.hpp"
@@ -96,7 +71,7 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
   ref.sampler = samplerOf(texNode);
   ref.repeatS = ref.sampler.repeatS;
   ref.repeatT = ref.sampler.repeatT;
-  // T-TEX (v1-closure): full §18.4.9 sampler descriptor (TextureProperties
+  // full §18.4.9 sampler descriptor (TextureProperties
   // boundary/filter/mipmap/anisotropy) co-located with the legacy sampler read.
   ref.extSampler = extendedSamplerOf(texNode);
 
@@ -109,7 +84,7 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     if (geombounds::getField<bool>(*texNode, "load", true))
       ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   } else if (t == "ComposedCubeMapTexture") {
-    // §34.4.1: six SFNode face textures, no url (CMT-1).
+    // §34.4.1: six SFNode face textures, no url ().
     ref.source = TextureRef::Source::Cube;
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
@@ -129,13 +104,13 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     if (geombounds::getField<bool>(*texNode, "load", true))
       ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   } else if (t == "PixelTexture3D") {
-    // §33.4.3: inline voxel data — no IO, materialised verbatim (T3D-1).
+    // §33.4.3: inline voxel data — no IO, materialised verbatim.
     ref.source = TextureRef::Source::Tex3D;
     ref.repeatR = geombounds::getField<bool>(*texNode, "repeatR", true);
     ref.tex3d = pixelTexture3DDesc(
         geombounds::getField<MFInt32>(*texNode, "image", {}));
   } else if (t == "ComposedTexture3D") {
-    // §33.4.2: a stack of 2D texture nodes, one per depth slice (T3D-1). Reuses
+    // §33.4.2: a stack of 2D texture nodes, one per depth slice. Reuses
     // the 2D refOf path per slice; width/height resolve when the slices decode.
     ref.source = TextureRef::Source::Tex3D;
     ref.repeatR = geombounds::getField<bool>(*texNode, "repeatR", true);
@@ -199,8 +174,8 @@ inline bool appendSlot(const X3DNode &materialNode, const char *fieldName,
 
 // Populate `out` with the texture slots authored on a material NODE (the same
 // slot dispatch texturesOf uses for the front material). Returns true if any
-// slot was populated. Used for BOTH the front material and Appearance.backMaterial
-// so the §12.2.3 texture-set match (MAT-010) can be compared.
+// slot was populated. Used for both the front material and Appearance.backMaterial
+// so the §12.2.3 texture-set match can be compared.
 inline bool materialSlotTextures(const X3DNode &material,
                                  std::vector<TextureRef> &out) {
   const std::string t = material.nodeTypeName();
@@ -222,8 +197,8 @@ inline bool materialSlotTextures(const X3DNode &material,
     any |= appendSlot(material, "normalTexture", TextureRef::Slot::Normal, out);
     any |= appendSlot(material, "specularTexture", TextureRef::Slot::Specular, out);
     any |= appendSlot(material, "occlusionTexture", TextureRef::Slot::Occlusion, out);
-    any |= appendSlot(material, "shininessTexture", TextureRef::Slot::Shininess, out); // MAT-002
-    any |= appendSlot(material, "ambientTexture", TextureRef::Slot::Ambient, out);     // MAT-003
+    any |= appendSlot(material, "shininessTexture", TextureRef::Slot::Shininess, out);
+    any |= appendSlot(material, "ambientTexture", TextureRef::Slot::Ambient, out);
   }
   return any;
 }
@@ -253,7 +228,6 @@ inline bool sameTextureSlotSet(const std::vector<TextureRef> &a,
 // below) so the two free functions can reference each other.
 inline std::vector<TextureRef> texturesOf(const X3DNode *appearance);
 
-// ---------------------------------------------------------------------------
 // materialOf — resolve an Appearance node to a tagged MaterialDesc.
 //
 //   * appearance == nullptr        => Unlit white  (always-draws debug fallback).
@@ -262,7 +236,6 @@ inline std::vector<TextureRef> texturesOf(const X3DNode *appearance);
 //   * PhysicalMaterial => Physical.
 //   * UnlitMaterial    => Unlit.
 // alphaMode/alphaCutoff are read off the Appearance regardless of material type.
-// ---------------------------------------------------------------------------
 inline MaterialDesc materialOf(const X3DNode *appearance) {
   using namespace matsys;
   MaterialDesc m;
@@ -289,8 +262,8 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   }
 
   // §12.4.6 / §12.4.8: LineProperties / PointProperties children of the
-  // Appearance (SEAM-LINEPOINT) — read BEFORE the material dispatch so they are
-  // surfaced even when the Appearance has NO material (the usual lines/points
+  // Appearance — read before the material dispatch so they are
+  // surfaced even when the Appearance has no material (the usual lines/points
   // case, which hits the early "default UnlitMaterial" return below).
   if (auto lp = geombounds::getNode(*appearance, "lineProperties")) {
     m.line.applied = geombounds::getField<bool>(*lp, "applied", true);
@@ -313,7 +286,7 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   if (!material) {
     // Present Appearance, material=NULL => equivalent to a default UnlitMaterial:
     // lighting off, unlit object colour white (1,1,1), and Appearance.texture acts
-    // as the EMISSIVE (unlit) texture (MAT-001; §12.4.2, §12.2.5 rule 4).
+    // as the emissive (unlit) texture (; §12.4.2, §12.2.5 rule 4).
     m.model = MaterialModel::Unlit;
     m.emissive = SFColor{1.0f, 1.0f, 1.0f};
     for (TextureRef tr : texturesOf(appearance)) {
@@ -341,7 +314,7 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
     SFColor emis = geombounds::getField<SFColor>(*material, "emissiveColor",
                                                  SFColor{1.0f, 1.0f, 1.0f});
     m.transparency = geombounds::getField<float>(*material, "transparency", 0.0f);
-    // Unlit: the emissive color IS the surface color; toRGBA() reads emissive.
+    // Unlit: the emissive color is the surface color; toRGBA() reads emissive.
     m.emissive = emis;
   } else {
     // Material (Phong) — also the safe default for any other material-ish node.
@@ -358,15 +331,15 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
     m.phong.ambientIntensity =
         geombounds::getField<float>(*material, "ambientIntensity", 0.2f);
     m.phong.occlusionStrength =
-        geombounds::getField<float>(*material, "occlusionStrength", 1.0f); // MAT-004
+        geombounds::getField<float>(*material, "occlusionStrength", 1.0f);
   }
 
-  // normalScale (X3DOneSidedMaterialNode, all lit/unlit one-sided materials) — MAT-005.
+  // normalScale (X3DOneSidedMaterialNode, all lit/unlit one-sided materials) — .
   m.normalScale = geombounds::getField<float>(*material, "normalScale", 1.0f);
 
   m.textures = texturesOf(appearance);
 
-  // backMaterial (X3D v4 Appearance.backMaterial — MAT-006).
+  // X3D v4 Appearance.backMaterial.
   if (auto backNode = geombounds::getNode(*appearance, "backMaterial")) {
     MaterialDesc bm;
     const std::string bt = backNode->nodeTypeName();
@@ -396,11 +369,11 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
       bm.emissive = geombounds::getField<SFColor>(*backNode, "emissiveColor", SFColor{0.0f, 0.0f, 0.0f});
     }
     bm.normalScale = geombounds::getField<float>(*backNode, "normalScale", 1.0f);
-    // §12.2.3: the back MaterialDesc carries ITS OWN texture set (from the back
+    // §12.2.3: the back MaterialDesc carries ITS own texture set (from the back
     // material node's slots), so the constraint can compare both the model type
-    // AND the texture set against the front (MAT-010).
+    // and the texture set against the front.
     materialSlotTextures(*backNode, bm.textures);
-    // Constraint (design §2): backMaterial must be the same model type AND the
+    // Constraint (design §2): backMaterial must be the same model type and the
     // same texture-slot set as the front. Surfaced as a diagnostic; not enforced.
     m.backMaterialConstraintMet =
         (bm.model == m.model) && sameTextureSlotSet(m.textures, bm.textures);
@@ -411,18 +384,16 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   return m;
 }
 
-// ---------------------------------------------------------------------------
-// texturesOf — collect the Appearance's textures with MATERIAL-SLOT PRECEDENCE
-// over the legacy Appearance.texture (locked D6).
+// texturesOf — collect the Appearance's textures with material-slot precedence
+// over the legacy Appearance.texture .
 //
 //   * A material-borne texture slot wins: Material exposes diffuse/emissive/
 //     normal/occlusion/specular textures; PhysicalMaterial exposes base/
 //     metallicRoughness/normal/emissive/occlusion; UnlitMaterial exposes
 //     emissive/normal. MultiTexture in any slot expands to one TextureRef per
 //     channel.
-//   * ONLY if no material slot is populated is the legacy Appearance.texture
+//   * only if no material slot is populated is the legacy Appearance.texture
 //     surfaced (as a BaseColor slot).
-// ---------------------------------------------------------------------------
 inline std::vector<TextureRef> texturesOf(const X3DNode *appearance) {
   using namespace matsys;
   std::vector<TextureRef> out;
@@ -432,7 +403,7 @@ inline std::vector<TextureRef> texturesOf(const X3DNode *appearance) {
   if (auto material = geombounds::getNode(*appearance, "material"))
     anyMaterialSlot = materialSlotTextures(*material, out);
 
-  // Legacy Appearance.texture ONLY when no material slot was populated.
+  // Legacy Appearance.texture only when no material slot was populated.
   if (!anyMaterialSlot)
     appendSlot(*appearance, "texture", TextureRef::Slot::BaseColor, out);
 

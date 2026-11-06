@@ -1,4 +1,4 @@
-// render_item_geometry_test.cpp — Phase 1: Geometry union + TextureRef::Buffer.
+// render_item_geometry_test.cpp — Geometry union + TextureRef::Buffer.
 #include "RenderItem.hpp"
 #include "PackedMesh.hpp"
 #include "doctest/doctest.h"

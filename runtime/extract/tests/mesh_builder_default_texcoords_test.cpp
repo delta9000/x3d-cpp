@@ -1,21 +1,3 @@
-// mesh_builder_tc1_test.cpp — M2.5 TC1 acceptance: DEFAULT (implicit) texture-
-// coordinate generation for composed/triangle geometry whose texCoord field is
-// NULL. ISO/IEC 19775-1 normative bounding-box projection:
-//   * Sdim = axis of the LARGEST bbox dimension, Tdim = second-largest (ties
-//     prefer X, then Y, then Z).
-//   * s = (p[Sdim]-min[Sdim]) / size[Sdim]  (0..1)
-//   * t = (p[Tdim]-min[Tdim]) / size[Sdim]  (0..size[T]/size[S]; aspect preserved
-//     by dividing by the LARGEST dim).
-//
-// Proofs:
-//   1) Unit-square IFS in the XY plane (X,Y largest, Z=0), NO TextureCoordinate
-//      -> corners get s in {0,1} spanning X and t in {0,1} (unit aspect).
-//   2) A 2x1 quad (X largest) -> s in {0,1}, t in {0,0.5} (aspect preserved).
-//   3) An IFS that AUTHORS a TextureCoordinate is byte-UNCHANGED (authored wins):
-//      the generated UVs must NOT overwrite the authored ones.
-//   4) Generation spans EVERY composed/triangle geometry node type when texCoord
-//      is NULL (one texcoord per expanded position).
-//   5) Line/point sets get NO generated texcoords (spec carries none).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -66,7 +48,7 @@ static bool hasUvAt(const MeshData &m, const SFVec3f &p, float sx, float ty) {
 TEST_CASE("mesh_builder_tc1_test") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
-  // ---- 1. Unit-square IFS, XY plane, NO TextureCoordinate --------------------
+  // 1. Unit-square IFS, XY plane, no TextureCoordinate
   // size = (1,1,0). X & Y tie for largest -> S=X, T=Y. s=x, t=y. Corners span
   // s in {0,1}, t in {0,1}.
   {
@@ -82,7 +64,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((hasUvAt(m, P3, 0.0f, 1.0f)));
   }
 
-  // ---- 2. 2x1 quad (X largest) -> aspect preserved: t in {0,0.5} -------------
+  // 2. 2x1 quad (X largest) -> aspect preserved: t in {0,0.5}
   // points (0,0),(2,0),(2,1),(0,1): size=(2,1,0). S=X (size 2), T=Y (size 1).
   // s = x/2 -> {0,1}; t = y/2 -> {0,0.5}.
   {
@@ -98,15 +80,15 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((hasUvAt(m, Q3, 0.0f, 0.5f)));   // t = 1/2 (aspect preserved)
   }
 
-  // ---- 3. Authored TextureCoordinate WINS — byte-unchanged -------------------
-  // Build the SAME IFS twice: once with an authored TextureCoordinate, once with
-  // the matching authored UVs, and a control with NO texCoord. The authored case
-  // must equal the authored UVs (NOT the bbox projection).
+  // 3. Authored TextureCoordinate wins — byte-unchanged
+  // Build the same IFS twice: once with an authored TextureCoordinate, once with
+  // the matching authored UVs, and a control with no texCoord. The authored case
+  // must equal the authored UVs (not the bbox projection).
   {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
-    // Author DELIBERATELY non-bbox UVs (all 0.25,0.75) so a regression that lets
+    // Author deliberately non-bbox UVs (all 0.25,0.75) so a regression that lets
     // generation overwrite them would change the values.
     attachTexCoord(g, {SFVec2f{0.25f, 0.75f}, SFVec2f{0.25f, 0.75f},
                        SFVec2f{0.25f, 0.75f}, SFVec2f{0.25f, 0.75f}});
@@ -116,7 +98,7 @@ TEST_CASE("mesh_builder_tc1_test") {
       CHECK((feq(tc.x, 0.25f) && feq(tc.y, 0.75f))); // authored, NOT projected.
   }
 
-  // ---- 4. Generation spans every composed/triangle geometry type -------------
+  // 4. Generation spans every composed/triangle geometry type
   {
     // TriangleSet: 3 implicit coords -> 3 corners, all get a texcoord.
     auto g = createX3DNode("TriangleSet");
@@ -145,7 +127,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
 
-  // ---- 5. Line/point sets get NO generated texcoords -------------------------
+  // 5. Line/point sets get no generated texcoords
   {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1, P2});
@@ -162,7 +144,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((m.texcoords.empty()));
   }
 
-  // ---- 6. Sdim/Tdim selection: Z largest, X second (Y smallest) --------------
+  // 6. Sdim/Tdim selection: Z largest, X second (Y smallest)
   // points span X=2, Y=0, Z=4 -> S=Z (size4), T=X (size2). s=z/4, t=x/4.
   {
     const SFVec3f R0{0, 0, 0}, R1{2, 0, 0}, R2{2, 0, 4}, R3{0, 0, 4};

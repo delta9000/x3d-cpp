@@ -1,24 +1,9 @@
-// scene_extractor_delta_contract_test.cpp — DELTA-CONTRACT regression.
-//
-// delta()'s one-delta-per-tick guard used to key on ctx_.now() and enforce itself
-// with assert(). That was wrong twice over:
-//
-//   * `now` is embedder-supplied and may legitimately REPEAT — a paused scene
-//     that still ticks, a fixed-timestep driver, deterministic replay. Those
-//     consumers tripped `assert(now != lastDeltaNow_)` for doing nothing wrong.
-//   * assert() compiles out under NDEBUG, and this repo's `ci` preset is
-//     RelWithDebInfo. So the contract a consumer tested against in a debug build
-//     was not the contract it shipped with.
-//
-// The guard now keys on X3DExecutionContext::tickGeneration() — a monotonic
-// advance count that cannot repeat — and every previously-asserted misuse has a
-// defined answer. These cases pin that the contract is TOTAL: no call sequence
-// is undefined, and none of them depend on NDEBUG.
-
+// Delta consumption uses tick generation, including ticks with equal clock values.
+// Before a snapshot, delta() supplies one; repeated consumption yields no changes.
 #include "SceneExtractor.hpp"
 
 #include "X3DExecutionContext.hpp"
-#include "X3DSceneBridge.hpp" // BridgeResult (buildFrom's return type)
+#include "X3DSceneBridge.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
@@ -80,15 +65,13 @@ TEST_CASE("delta contract: tickGeneration is monotonic and clock-independent") {
   CHECK(ctx.tickGeneration() == 3);
   CHECK(ctx.now() == 1.0);
 
-  // Even a clock that goes BACKWARDS (replay/scrub) still advances generation.
+  // Even a clock that goes backwards (replay/scrub) still advances generation.
   ctx.tick(0.5);
   CHECK(ctx.tickGeneration() == 4);
 }
 
 TEST_CASE("delta contract: a PAUSED clock still yields deltas") {
-  // The regression that motivated this: tick() at an unchanging timestamp is a
-  // legitimate pattern (the cascade still runs), and every delta() after the
-  // first used to trip the now()-keyed assert.
+  // Equal timestamps still run the cascade and consume distinct generations.
   std::shared_ptr<X3DNode> xf;
   Scene scene = makeScene(xf);
 
@@ -144,7 +127,7 @@ TEST_CASE("delta contract: second delta() with no tick returns EMPTY, not garbag
 }
 
 TEST_CASE("delta contract: delta() with no prior fullSnapshot yields the baseline") {
-  // No baseline to diff against => a full snapshot IS the baseline. Every item
+  // No baseline to diff against => a full snapshot is the baseline. Every item
   // lands in `added`, which is the same upload path frame 0 uses, so a consumer
   // that skipped fullSnapshot() still gets a correct first frame rather than an
   // assert (debug) or a walk over zero-initialised state (NDEBUG).

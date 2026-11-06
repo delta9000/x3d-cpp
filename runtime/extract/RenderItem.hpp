@@ -1,50 +1,17 @@
-// RenderItem.hpp — M2.5 extraction descriptor layer (Layer A1), pure POD.
-//
-// namespace x3d::runtime::extract. Header-only, golden-untouched, node-as-truth.
-// This file is the renderer-facing CONTRACT of the extraction seam: a set of
-// plain-old-data descriptors a consumer (the out-of-SDK PoC renderer, or any
-// other renderer) reads. It depends ONLY on X3Dtypes (the SF/MF value types),
-// Mat4, Aabb, TextureResolver, and std. It pulls in NO Bounds/Transform/Pick
-// system header, so it introduces no cycle and stays a leaf of the dependency
-// graph.
-//
-// DESIGN NOTES (locked by the M2.5 design spec, 2026-06-14):
-//   * IDENTITY is per-PATH (RenderItemId/PathKey), while GEOMETRY and MATERIAL
-//     are content/node-keyed and legitimately shared across placements (USE).
-//   * RenderDelta is THE single authoritative change channel. RenderItem itself
-//     carries NO changeBits — there is exactly one encoding of "what changed".
-//   * Several fields here are descriptor-only superset surface, present so the
-//     contract is forward-stable but NOT exercised by the first PoC. Each such
-//     field is flagged `descriptor-only, not exercised by PoC` inline.
-//
-// v1-CLOSURE ADDITIONS (2026-06-16):
-//   * TextureRef::resolvedPixels — the result of the embedder's TextureResolver
-//     call, threaded onto the descriptor by TextureExtract.hpp so a consumer
-//     can bind without reinventing resolution. Defaults to makeFailed() (= the
-//     white-fallback PoC behaviour). Source::Inline textures are always decoded
-//     directly from inlinePixels and do NOT go through the resolver; for them
-//     resolvedPixels remains makeFailed() and the consumer reads inlinePixels
-//     instead.
-//   * MeshData::isGlyphMesh — marks a mesh produced by the Text extraction path
-//     (TextExtract.hpp). Each quad carries 4 positions (XY plane, Z=0) + 4 atlas
-//     texcoords from FontMetrics::GlyphMetrics {u0,v0,u1,v1} + 6 indices (two
-//     CCW tris). The associated TextureRef (in MaterialDesc::textures[0]) points
-//     to the consumer-managed glyph atlas. The existing MeshData fields suffice
-//     for the glyph-quad path; isGlyphMesh is a ROUTING FLAG so consumers can
-//     select the text-render shader branch without inspecting mesh topology.
-//     isGlyphMesh is false for all non-text meshes (no change to existing paths).
+// Renderer-facing descriptors. Placement identity is per path; geometry and
+// material content may be shared. RenderDelta is the authoritative change channel.
 #ifndef X3D_RUNTIME_EXTRACT_RENDERITEM_HPP
 #define X3D_RUNTIME_EXTRACT_RENDERITEM_HPP
 
-#include "Aabb.hpp"            // x3d::runtime::Aabb
-#include "Mat4.hpp"            // x3d::runtime::Mat4
-#include "PackedMesh.hpp"      // PackedMesh (Phase 1 binary geometry)
-#include "TextureDesc.hpp"     // TextureDesc (Phase 1 binary texture descriptor)
-#include "TextureResolver.hpp" // TexturePixelResult (resolved-pixel seam, T-TEX)
-#include "TextureTransform2D.hpp" // ExtendedSamplerParams / TexCoordGenDesc (T-TEX §18.4.8/9)
-#include "Topology.hpp"        // Topology enum (moved out of RenderItem.hpp, Phase 1)
-#include "x3d/core/X3Dtypes.hpp"        // SFVec2f, SFVec3f, SFColor, SFColorRGBA, SFImage, MF*
-#include "X3DFieldValue.hpp"   // X3DFieldValue discriminated union (Phase 3)
+#include "Aabb.hpp"
+#include "Mat4.hpp"
+#include "PackedMesh.hpp"
+#include "TextureDesc.hpp"
+#include "TextureResolver.hpp"
+#include "TextureTransform2D.hpp"
+#include "Topology.hpp"
+#include "x3d/core/X3Dtypes.hpp"
+#include "X3DFieldValue.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -62,17 +29,15 @@ namespace x3d::runtime::extract {
 using namespace x3d::core;
 using x3d::nodes::X3DNode;
 
-// ---------------------------------------------------------------------------
-// PathKey — the per-PATH identity of a renderable placement.
+// PathKey — the per-path identity of a renderable placement.
 //
 // A PathKey is the full root..leaf chain of node pointers leading to a
-// geometry-bearing Shape. Identity is the ENTIRE vector compared element-wise:
+// geometry-bearing Shape. Identity is the entire vector compared element-wise:
 // two PathKeys are equal iff they are the same length and every node pointer
-// matches. The hash below is a hashmap BUCKET key ONLY — it is intentionally
-// lossy and MUST NEVER be used as identity (a hash collision must fall through
+// matches. The hash below is a hashmap bucket key only — it is intentionally
+// lossy and must never be used as identity (a hash collision must fall through
 // to full-vector equality, never alias two distinct placements). This closes
 // the hash-collision-aliasing flaw from the design review.
-// ---------------------------------------------------------------------------
 using PathKey = std::vector<const X3DNode *>;
 
 // Full-vector equality functor for use as an unordered_map KeyEqual.
@@ -82,7 +47,7 @@ struct PathKeyEqual {
   }
 };
 
-// Bucket-only hash. NOT identity — combines the pointer chain into a bucket
+// Bucket-only hash. not identity — combines the pointer chain into a bucket
 // index; collisions are resolved by PathKeyEqual.
 struct PathKeyHash {
   std::size_t operator()(const PathKey &p) const {
@@ -95,22 +60,18 @@ struct PathKeyHash {
   }
 };
 
-// ---------------------------------------------------------------------------
 // RenderItemId — a dense uint32 handle into the extractor's path-interning
-// table. Stable across frames while topology is stable. NOT a raw hash and NOT
+// table. Stable across frames while topology is stable. not a raw hash and not
 // a pointer: it is an opaque dense index the consumer can use as an array key.
 // Structural replacement/fullSnapshot resets the baseline and may reuse IDs.
-// ---------------------------------------------------------------------------
 using RenderItemId = std::uint32_t;
 inline constexpr RenderItemId kInvalidRenderItemId = 0xFFFFFFFFu;
 
-// ---------------------------------------------------------------------------
 // GeomId — content identity of a mesh. Two placements with an equal GeomId
 // reference identical geometry content (upload-once / instance-N). contentVersion
 // is opaque: it distinguishes TextureTransform-baked / HAnimSegment-deformed
 // variants of one node as well as later content revisions. Do not interpret it
 // as a field-write count or require +1 arithmetic. A full baseline resets it.
-// ---------------------------------------------------------------------------
 struct GeomId {
   const X3DNode *node = nullptr;
   std::uint32_t contentVersion = 0;
@@ -131,32 +92,13 @@ struct GeomIdHash {
   }
 };
 
-// ---------------------------------------------------------------------------
-// MeshData — extracted triangle geometry in the geometry node's LOCAL frame.
-//
-//   * positions/normals are LOCAL-frame — NEVER world-baked. The per-path world
-//     transform lives on the RenderItem side (worldTransform), so one mesh is
-//     uploaded once and instanced across placements.
-//   * indices are ALWAYS populated. When a type is natively indexed they are the
-//     source indices; when flat/per-face normals or *PerVertex=false break vertex
-//     sharing the builder EXPANDS to non-indexed and writes a trivial 0..N-1
-//     index run. A consumer can therefore always issue an indexed draw.
-//   * texcoords use the X3D LOCAL origin, which is bottom-left = the GL
-//     convention. There is NO V-flip here and a consumer must NOT reflexively
-//     flip V (doing so double-flips and breaks textures).
-// ---------------------------------------------------------------------------
-// Primitive topology the `indices` run describes (B4). Default Triangles keeps
-// every pre-B4 mesh byte-for-byte the same. Lines = consecutive index PAIRS are
-// independent segments (GL_LINES); Points = each index is one vertex (GL_POINTS).
-//
-// EXPLICIT CONSUMER CONTRACT (do NOT overload topology to mean unlit): the
-// SHADING-PATH selector a consumer must honor is
-//     !hasNormals  =>  bind the UNLIT program and skip normal-matrix/light uniforms.
-// Lines and points with authored normals can be lit (§11.2.2.5). Without
-// normals, use per-vertex Color or MaterialDesc::unlitGeometryRGBA(). The
-// producer sets solid=false on every line/point mesh for cull-disabled drawing.
-// Topology enum is defined in Topology.hpp (included above).
-
+// Geometry stays in its local frame; RenderItem supplies the per-path transform.
+// Indices are always populated, including the trivial run for expanded meshes.
+// UVs use a bottom-left origin without a V flip.
+// Lines use consecutive index pairs; points use one index per vertex.
+// Without normals, use an unlit shader and omit normal-matrix/light uniforms.
+// Lines and points with authored normals can be lit (§11.2.2.5); all line/point
+// meshes disable culling with solid=false.
 struct MeshData {
   std::vector<SFVec3f> positions;
   std::vector<std::uint32_t> indices; // always populated (0..N-1 when expanded).
@@ -167,7 +109,7 @@ struct MeshData {
   // §24.4.3 FogCoordinate: the authored fog depth of each emitted position, in
   // [0,1] (0 = unfogged, 1 = the fog colour), replacing the depth derived from
   // the viewer distance and visibilityRange. Parallel to `positions` when the
-  // geometry's fogCoord holds depths; EMPTY otherwise. A short list repeats
+  // geometry's fogCoord holds depths; empty otherwise. A short list repeats
   // its last value; extra values are ignored.
   std::vector<float> fogDepths;
 
@@ -181,55 +123,48 @@ struct MeshData {
   };
   std::vector<VertexAttribute> vertexAttributes;
 
-  // LATTICE-INDEX-RETAINING form (B5/B6). For lattice-derived geometry
-  // (ElevationGrid, GeoElevationGrid, and B3 Extrusion) every EXPANDED corner in
-  // `positions` carries the id of the UNIQUE source lattice/control vertex it was
-  // synthesized from (e.g. row*xDim+col for a height grid). This is what lets B6
-  // re-derive face adjacency in SOURCE space and weld creaseAngle-smooth normals
-  // WITHOUT re-indexing the expanded buffer (coincident-distinct verts stay
-  // distinct). Parallel to `positions` when present; EMPTY for geometry whose
-  // corners have no shared-lattice identity (composed sets, analytic primitives).
+  // Source lattice id per expanded corner, e.g. row*xDim+col for height grids.
+  // Smoothing uses these ids to recover adjacency without merging distinct
+  // coincident vertices. Empty when the geometry has no shared lattice.
   std::vector<std::uint32_t> latticeIndex;
   // Source Coordinate and Normal indices for each expanded corner (§26.3.2).
   std::vector<std::uint32_t> sourceCoordIndex;
   std::vector<std::uint32_t> sourceNormalIndex;
 
-  Topology topology = Topology::Triangles; // B4: Triangles (default) / Lines / Points.
+  Topology topology = Topology::Triangles;
   bool ccw = true;        // winding: X3D default true (CCW front).
   bool solid = true;      // solid=true => back-face cullable.
   bool hasNormals = false;
   bool hasColors = false; // per-vertex Color present => OVERRIDES Material diffuse.
 
-  // T-TEXT (v1-closure): set to true for meshes produced by the Text extraction
+  // set to true for meshes produced by the Text extraction
   // path (TextExtract.hpp). Each glyph is a quad: 4 positions in the XY plane
   // (Z=0, in the Text node's local frame), 4 atlas texcoords from
   // GlyphMetrics::{u0,v0,u1,v1}, 6 indices (two CCW triangles). The associated
-  // glyph atlas is referenced via MaterialDesc::textures[0]. False for ALL
+  // glyph atlas is referenced via MaterialDesc::textures[0]. False for all
   // non-text geometry; existing consumers must check this flag before binding
   // the text-render shader branch.
   bool isGlyphMesh = false;
 };
 
-// ---------------------------------------------------------------------------
-// MeshRef — SHARED, immutable handle to one MeshData (ADR-0045).
+// MeshRef — shared, immutable handle to one MeshData (ADR-0045).
 //
-// A RenderItem is per-PLACEMENT; a MeshData is per-CONTENT. N placements of one
+// A RenderItem is per-placement; a MeshData is per-content. N placements of one
 // DEF'd geometry (the DEF/USE instancing shape, and the whole point of GeomId)
-// share ONE MeshData allocation, so host RAM stays O(distinct content) rather
+// share one MeshData allocation, so host RAM stays O(distinct content) rather
 // than O(placements). Before this was a handle, 200 USEs of one 19,602-triangle
 // IndexedFaceSet retained 493 MiB of duplicated vertex/index buffers and burned
 // ~1.08 s re-tessellating identical content.
 //
-// IMMUTABLE by contract (shared_ptr<CONST MeshData>): a mesh is never edited in
+// immutable by contract (shared_ptr<const MeshData>): a mesh is never edited in
 // place once emitted, because a co-owning placement would see the edit. The
 // delta() geometry-change path therefore builds a NEW MeshData and bumps
 // GeomId::contentVersion — which is exactly the signal a consumer's GeomId-keyed
 // GPU cache already uses to orphan the stale buffer.
 //
-// NEVER null on an emitted RenderItem: a Packed-geometry item (emitPacked) and a
+// never null on an emitted RenderItem: a Packed-geometry item (emitPacked) and a
 // default-constructed RenderItem both point at the shared empty mesh, so
 // `item.mesh->positions` is always safe to dereference without a null check.
-// ---------------------------------------------------------------------------
 using MeshRef = std::shared_ptr<const MeshData>;
 
 // The single shared empty mesh. Used as the never-null default so consumers can
@@ -239,38 +174,32 @@ inline const MeshRef &emptyMeshRef() {
   return kEmpty;
 }
 
-// ---------------------------------------------------------------------------
 // Geometry — union of AoS (array-of-structs MeshData) and Packed (binary slab
-// PackedMesh). Default is AoS to keep all pre-Phase-1 code unchanged.
-// Phase 1 adds the Packed variant for embedder-supplied binary geometry.
-// ---------------------------------------------------------------------------
+// PackedMesh). Packed stores embedder-supplied binary geometry.
 struct Geometry {
   enum class Kind { AoS, Packed };
   Kind kind = Kind::AoS;
-  MeshData aos;      // populated when kind == AoS (all pre-Phase-1 paths).
+  MeshData aos;      // populated when kind == AoS .
   PackedMesh packed; // populated when kind == Packed (binary geometry resolver).
   bool is_packed() const { return kind == Kind::Packed; }
 };
 
-// ---------------------------------------------------------------------------
-// Texture descriptor. URLs are surfaced VERBATIM; asset resolution (loading the
-// bytes) is OUTSIDE the SDK. descriptor-only for the first PoC (textures are M4).
-// ---------------------------------------------------------------------------
+// Texture descriptor. URLs are surfaced verbatim; asset resolution (loading the
+// bytes) is outside the SDK. descriptor-only for the first PoC (textures are M4).
 struct SamplerParams {
   bool repeatS = true;
   bool repeatT = true;
   bool generateMipmaps = true;
   float anisotropicDegree = 1.0f;
-  // descriptor-only, not exercised by PoC.
 };
 
-// §33 3D-texture descriptor (T3D-1). Carried by a TextureRef with
+// §33 3D-texture descriptor. Carried by a TextureRef with
 // source == Source::Tex3D. PixelTexture3D materialises the voxel bytes inline
 // (same ownership/immutability rules as SFImage for the 2D PixelTexture):
 // texels is width*height*depth*numComponents row-major component bytes.
 // ComposedTexture3D leaves texels empty and carries one 2D ref per depth slice
 // in TextureRef::tex3dSlices instead. ImageTexture3D (file-backed NRRD/DDS) is
-// NOT materialised here — the SDK has no 3D image decoder.
+// not materialised here — the SDK has no 3D image decoder.
 struct Texture3DDesc {
   uint32_t width = 0;
   uint32_t height = 0;
@@ -282,9 +211,9 @@ struct Texture3DDesc {
 struct TextureRef {
   // Slot identifies the semantic role of a texture within a material.
   //
-  // COLOR SPACE CONVENTION (ORM channel-packing, MAT-008):
+  // Color spaces for ORM channel packing:
   //   Slot          | Expected color space  | Notes
-  //   --------------|----------------------|--------------------------------------
+  // --------------|----------------------|
   //   BaseColor     | sRGB                 | Gamma-encoded; GPU samples & converts
   //   Emissive      | sRGB                 | Gamma-encoded
   //   Diffuse       | sRGB                 | Phong diffuse (sRGB)
@@ -293,13 +222,13 @@ struct TextureRef {
   //   MetallicRoughness | Linear           | ORM pack: R=occlusion, G=roughness,
   //                                        |   B=metallic (glTF §3.9.4 / X3D §17)
   //                                        |   One slot for the packed ORM texture;
-  //                                        |   NOT split into separate R/G/B slots.
+  //                                        |   not split into separate R/G/B slots.
   //   Specular      | sRGB                 | Phong specular
-  //   Shininess     | Linear               | Alpha modulates shininess — MAT-002
-  //   Ambient       | Linear               | RGB modulates ambient     — MAT-003
+  //   Shininess     | Linear               | Alpha modulates shininess
+  //   Ambient       | Linear               | RGB modulates ambient
   //
-  // Consumers MUST treat MetallicRoughness as a single packed ORM texture and
-  // NOT request separate Metallic / Roughness / Occlusion textures from the same
+  // Consumers must treat MetallicRoughness as a single packed ORM texture and
+  // not request separate Metallic / Roughness / Occlusion textures from the same
   // image. The SDK emits exactly one MetallicRoughness TextureRef per packed map.
   enum class Slot {
     BaseColor,
@@ -309,8 +238,8 @@ struct TextureRef {
     MetallicRoughness,
     Specular,
     Diffuse,
-    Shininess, // Material.shininessTexture (alpha modulates shininess) — MAT-002
-    Ambient    // Material.ambientTexture (RGB modulates ambient)       — MAT-003
+    Shininess, // Material.shininessTexture (alpha modulates shininess)
+    Ambient    // Material.ambientTexture (RGB modulates ambient)
   };
   enum class Source {
     Url,    // ImageTexture / url list — resolve outside the SDK.
@@ -322,9 +251,9 @@ struct TextureRef {
             // resolvedPixels with layers = 6 once decoded;
             // GeneratedCubeMapTexture (§34.4.2): generatedCube, rendered by
             // the consumer.
-    Buffer, // Phase 1 binary extension: raw bytes provided by the embedder.
+    Buffer, // Raw bytes provided by the embedder.
             // bufferBytes carries the raw encoded bytes; mimeHint is a MIME
-            // type hint ("image/png", "image/jpeg", etc.). The SDK does NOT
+            // type hint ("image/png", "image/jpeg", etc.). The SDK does not
             // decode them; the consumer decodes and uploads. resolved_desc
             // carries the decoded/structured TextureDesc once the embedder
             // materialises it (optional: empty = not yet decoded).
@@ -355,9 +284,9 @@ struct TextureRef {
   // renders the scene into the six faces (Figure 34.1 order) from the
   // geometry's local origin, along its local axes, with a pi/2 field of view
   // and size x size pixels per face, and does not draw the Shapes that use
-  // this texture into it (ADR-0060). `update` is the current NONE / NEXT_FRAME_ONLY /
-  // ALWAYS: re-render when it is not NONE, else keep the last faces.
-  // GeneratedCubeMapSystem resets NEXT_FRAME_ONLY to NONE at the start of the
+  // this texture into it (ADR-0060). `update` is the current none / NEXT_FRAME_ONLY /
+  // always: re-render when it is not none, else keep the last faces.
+  // GeneratedCubeMapSystem resets NEXT_FRAME_ONLY to none at the start of the
   // next frame. `node` identifies the texture across frames (the consumer's
   // render-target cache key); null when this is not a generated cube.
   struct GeneratedCube {
@@ -366,7 +295,7 @@ struct TextureRef {
     int size = 128;
   } generatedCube;
 
-  // §33 3D textures (T3D-1). repeatR is the third wrap axis (repeatS/T already
+  // §33 3D textures. repeatR is the third wrap axis (repeatS/T already
   // above; absent on 2D nodes, default true). Source::Tex3D carries either the
   // inline PixelTexture3D voxel descriptor (tex3d) or the ComposedTexture3D
   // depth-slice refs (tex3dSlices, one 2D TextureRef per slice in texture order).
@@ -374,11 +303,11 @@ struct TextureRef {
   Texture3DDesc tex3d;
   std::vector<TextureRef> tex3dSlices;
 
-  // T-TEX (v1-closure): resolved decoded pixels, threaded by TextureExtract.hpp
+  // resolved decoded pixels, threaded by TextureExtract.hpp
   // after the embedder's TextureResolver callback returns. Starts as makeFailed()
   // (= PoC white-fallback behaviour when no resolver is wired).
   //
-  // CONSUMER CONTRACT:
+  // consumer contract:
   //   - If resolvedPixels.ready()  → upload resolvedPixels.pixels as the GPU
   //     texture (width/height/rgba are valid RGBA8 data).
   //   - If resolvedPixels.pending() → atlas not yet ready; render flat baseColor
@@ -387,11 +316,11 @@ struct TextureRef {
   //     inlinePixels (for Source::Inline) as appropriate.
   //
   // Source::Inline textures are decoded directly from inlinePixels; the resolver
-  // is NEVER called for them and resolvedPixels remains makeFailed() for inline
+  // is never called for them and resolvedPixels remains makeFailed() for inline
   // sources — consumers must check source == Source::Inline first.
   TexturePixelResult resolvedPixels;
 
-  // T-TEX (v1-closure): the full §18.4.9 sampler descriptor. Populated by
+  // the full §18.4.9 sampler descriptor. Populated by
   // TextureExtract::enrichTextureRefs() from the source texture node's
   // repeatS/T + TextureProperties (boundary/filter/mipmap/anisotropy). The legacy
   // SamplerParams `sampler` + repeatS/T bools above stay populated for existing
@@ -400,7 +329,7 @@ struct TextureRef {
   // modes derive from repeatS/T (Repeat / ClampToEdge per §18.2.3).
   ExtendedSamplerParams extSampler;
 
-  // T-TEX (v1-closure): §18.4.8 TextureCoordinateGenerator descriptor. When the
+  // §18.4.8 TextureCoordinateGenerator descriptor. When the
   // geometry's texCoord field was a TextureCoordinateGenerator (rather than an
   // explicit TextureCoordinate), hasTexCoordGen is true and texCoordGen carries
   // the mode+parameter so the renderer computes per-vertex UVs from view state.
@@ -410,7 +339,7 @@ struct TextureRef {
   TextureTransform2DParams
       generatedTransform; // applied by consumer after generation
 
-  // Phase 1 binary extension: Source::Buffer fields.
+  // Source::Buffer fields.
   // Raw bytes provided by the embedder (encoded PNG/JPEG/KTX2/etc.).
   // Only meaningful when source == Source::Buffer.
   std::vector<uint8_t> bufferBytes;
@@ -421,25 +350,23 @@ struct TextureRef {
   std::optional<TextureDesc> resolved_desc;
 };
 
-// ---------------------------------------------------------------------------
 // MaterialDesc — one tagged superset descriptor read reflection-generic by spec
-// field name. Shared BY VALUE across RenderItems; NOT part of identity.
+// field name. Shared by value across RenderItems; not part of identity.
 //
 //   * MaterialModel selects how a consumer should interpret the fields: a Phong
 //     (X3D Material) path, a Physical (PhysicalMaterial / glTF-style) path, or
 //     Unlit (emissive-only debug / UnlitMaterial).
-//   * baseColor composes the diffuse/base RGB with alpha. toRGBA() DOCUMENTS the
+//   * baseColor composes the diffuse/base RGB with alpha. toRGBA() documents the
 //     X3D convention alpha = 1.0 - transparency (Material default transparency=0
 //     => alpha=1; a naive alpha=transparency would make spec-default materials
 //     fully invisible).
-//   * Null material under a PRESENT Appearance => Phong diffuse=0.8 grey (the
+//   * Null material under a present Appearance => Phong diffuse=0.8 grey (the
 //     spec default Material). Null Appearance entirely => Unlit white emissive,
 //     an absolute always-draws debug fallback (flagged non-spec).
-// ---------------------------------------------------------------------------
 enum class MaterialModel : uint8_t { Phong, Physical, Unlit };
 
 // Transparency/alpha handling mode read off the Appearance.
-// The integer values are a WIRE CONTRACT: consumers upload `int(alphaMode)` to a
+// The integer values are a wire contract: consumers upload `int(alphaMode)` to a
 // `uAlphaMode` shader uniform and gate the MASK cutout discard on `== 1`
 // (examples/poc_renderer/shaders/{lit,pbr}.frag). Do not reorder without updating
 // every shader that reads uAlphaMode; the static_asserts below pin the mapping.
@@ -464,22 +391,20 @@ struct PhysicalParams {
 
 struct MaterialExtensionField {
   std::string name;
-  X3DFieldType type = X3DFieldType::SFString;  // Phase 3: now live
-  X3DFieldValue value;  // replaced std::any placeholder (Phase 3)
+  X3DFieldType type = X3DFieldType::SFString;
+  X3DFieldValue value;
 };
 struct MaterialExtensionDesc {
   std::string typeName;
   std::vector<MaterialExtensionField> fields;
 };
 
-// ---------------------------------------------------------------------------
-// §12.4.6 LineProperties / §12.4.8 PointProperties (SEAM-LINEPOINT). These are
-// Appearance children that carry renderer styling the geometry seam previously
+// §12.4.6 LineProperties / §12.4.8 PointProperties. These are
+// Appearance children carrying renderer styling
 // had nowhere to put — so every IndexedLineSet drew 1px and every PointSet a
 // single pixel. Surfaced here (per-Appearance, alongside the material) and
 // honoured by the reference consumers (cpu_raster line/point raster; PoC
 // glLineWidth/gl_PointSize). Additive: defaults are the identity (no scaling).
-// ---------------------------------------------------------------------------
 struct LinePropertiesDesc {
   bool applied = true;              // LineProperties.applied
   int linetype = 1;                 // LineProperties.linetype (unused: only solid)
@@ -518,16 +443,16 @@ struct MaterialDesc {
   PhysicalParams  physical;
 
   std::vector<TextureRef> textures;
-  // backMaterial: X3D v4 Appearance.backMaterial (MAT-006). Uses unique_ptr to
+  // backMaterial: X3D v4 Appearance.backMaterial. Uses unique_ptr to
   // avoid incomplete-type issue with self-referential optional<MaterialDesc>.
   std::unique_ptr<MaterialDesc> backMaterial;
-  // backMaterialConstraintMet: true iff backMaterial is the same model type AND
+  // backMaterialConstraintMet: true iff backMaterial is the same model type and
   // the same texture slot set as the front (design §2 diagnostic — enforcement
   // is the consumer's call). Default true = no back material (trivially met).
   bool backMaterialConstraintMet = true;
   std::vector<MaterialExtensionDesc> extensions;
 
-  // §12.4.6 / §12.4.8 line + point styling (SEAM-LINEPOINT), read from the
+  // §12.4.6 / §12.4.8 line + point styling, read from the
   // Appearance's LineProperties / PointProperties children.
   LinePropertiesDesc line;
   PointPropertiesDesc point;
@@ -589,7 +514,6 @@ inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
   return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
 }
 
-// ---------------------------------------------------------------------------
 // Shader descriptors — ComposedShader / ShaderProgram introspection surface.
 // ShaderProgramDesc is assembled from the Appearance's selected ComposedShader
 // or ProgramShader (ShaderExtract.hpp, §31.2.2.3); each stage carries its
@@ -597,7 +521,6 @@ inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
 // <field> on the shader with its current value. ShaderProgramDesc on a
 // RenderItem means the renderer should bind this program instead of the
 // fixed-function material path.
-// ---------------------------------------------------------------------------
 struct ShaderStageDesc {
   enum class Stage { Vertex, Fragment, Geometry, TessControl, TessEval, Compute };
   Stage stage = Stage::Fragment;
@@ -632,16 +555,14 @@ struct ShaderProgramDesc {
   std::string language; // the selected shader's language ("GLSL")
 };
 
-// ---------------------------------------------------------------------------
-// LightDesc — a light resolved to WORLD space at collection time (sidesteps the
-// first-path M2C-1 issue: each light is accumulated fresh down its placement).
+// LightDesc — a light resolved to world space at collection time (sidesteps the
+// first-path  issue: each light is accumulated fresh down its placement).
 //
-//   * `global` is the AUTHORED flag, CARRIED not promoted. Verified spec
+//   * `global` is the authored flag, carried not promoted. Verified spec
 //     defaults: DirectionalLight global=false, PointLight/SpotLight global=true.
-//     A consumer must NOT silently promote a global=false light to scene-wide.
+//     A consumer must not silently promote a global=false light to scene-wide.
 //   * scopeRoot is the enclosing grouping node the light was collected under, so
 //     a non-global light can be scoped to descendants of its PathKey ancestor.
-// ---------------------------------------------------------------------------
 struct LightDesc {
   enum class Type { Directional, Point, Spot };
 
@@ -666,7 +587,6 @@ struct LightDesc {
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
 };
 
-// ---------------------------------------------------------------------------
 // ProjectorDesc — one active §42 texture projector (TextureProjector or
 // TextureProjectorParallel), world-resolved like a LightDesc (ADR-0061).
 //
@@ -683,7 +603,6 @@ struct LightDesc {
 // nearDistance > 0, d <= farDistance when farDistance > 0, and the clip-space
 // x, y of projection * p_eye fall within [-w, w]. (s, t) = ndc * 0.5 + 0.5,
 // t up along the projector's up vector. project() implements exactly that.
-// ---------------------------------------------------------------------------
 struct ProjectorDesc {
   enum class Type { Perspective, Parallel };
 
@@ -761,17 +680,15 @@ struct ProjectorDesc {
   }
 };
 
-// ---------------------------------------------------------------------------
 // CameraDesc — the bound viewpoint resolved for the frame.
 //
 //   * fieldOfView is X3D's MIN-dimension FOV (default 0.7854). A consumer maps
-//     it to the SHORTER window dimension and derives the other axis by aspect;
+//     it to the shorter window dimension and derives the other axis by aspect;
 //     treating it naively as vertical FOV makes wide windows look wrong.
 //   * viewMatrix is first-path-resolved (documented caveat — the bound Viewpoint
 //     is realistically never USE'd under two distinct frames).
 //   * ortho + the OrthoViewpoint projection params are descriptor-only surface:
 //     surfaced so the contract is stable, not exercised by the first PoC.
-// ---------------------------------------------------------------------------
 struct CameraDesc {
   Mat4 viewMatrix = Mat4::identity();
   float fieldOfView = 0.7854f; // X3D min-dimension FOV.
@@ -785,9 +702,7 @@ struct CameraDesc {
   bool cameraChanged = false;  // surfaced for a caching consumer.
 };
 
-// ---------------------------------------------------------------------------
 // BackgroundDesc — the bound Background's sky/ground gradient.
-// ---------------------------------------------------------------------------
 struct BackgroundDesc {
   std::vector<SFColor> skyColor;
   std::vector<float> skyAngle;
@@ -798,7 +713,7 @@ struct BackgroundDesc {
   // Background (from the six *Url MFString fields, Source::Url) and
   // TextureBackground (from the six *Texture SFNodes). Order is
   // front, back, left, right, top, bottom. A face is an empty (default) ref
-  // when unauthored; `hasPanorama` is true when ANY face carries content
+  // when unauthored; `hasPanorama` is true when any face carries content
   // (a url entry, inline pixels, or a resolved cube ref). Faces are displayed
   // as authored (no sRGB decode) per ADR-0027.
   TextureRef front, back, left, right, top, bottom;
@@ -823,13 +738,11 @@ struct BackgroundDesc {
   bool backgroundChanged = false; // surfaced for a caching consumer.
 };
 
-// ---------------------------------------------------------------------------
 // FogDesc — the bound Fog's colour/type/range (§24.4.2), read reflection-
-// generic. `visibilityRange` is surfaced already scaled into WORLD units: the
-// spec defines it in the Fog node's LOCAL frame, so the extractor multiplies it
+// generic. `visibilityRange` is surfaced already scaled into world units: the
+// spec defines it in the Fog node's local frame, so the extractor multiplies it
 // by the Fog's world scale (uniform scale exact; non-uniform uses the mean
 // upper-3x3 column norm). visibilityRange 0 disables fog.
-// ---------------------------------------------------------------------------
 struct FogDesc {
   // §24.4.2 fogType: LINEAR=0, EXPONENTIAL=1 (matches ShaderUniformVocabulary
   // "FogDesc.fogType enum (LINEAR=0, EXPONENTIAL=1)").
@@ -842,18 +755,16 @@ struct FogDesc {
   bool fogChanged = false; // surfaced for a caching consumer.
 };
 
-// ---------------------------------------------------------------------------
 // LocalFogDesc — the LocalFog's colour/type/range (§24.4.3), read
 // reflection-generic, scoped to its parent grouping node. Unlike global Fog,
 // which binds scene-wide, a LocalFog is bound-independent and applies only to
 // geometry within its enclosing grouping node's subtree. Same color/fogType/
 // visibilityRange semantics as FogDesc; visibilityRange is surfaced already
-// world-scaled (the spec defines it in the node's LOCAL frame). enabled==false
+// world-scaled (the spec defines it in the node's local frame). enabled==false
 // LocalFogs are skipped entirely, leaving an outer enabled LocalFog or global
-// Fog in scope. A consumer resolves the NEAREST
+// Fog in scope. A consumer resolves the nearest
 // enabled LocalFog whose scopePath is a prefix of the item's path. The full
 // root-to-group path distinguishes USE placements of the same enclosing group.
-// ---------------------------------------------------------------------------
 struct LocalFogDesc {
   SFColor color{1.0f, 1.0f, 1.0f};
   FogDesc::Type fogType = FogDesc::Type::Linear;
@@ -862,21 +773,19 @@ struct LocalFogDesc {
   PathKey scopePath{}; // full root..enclosing-group chain; empty = scene-wide.
 };
 
-// ---------------------------------------------------------------------------
 // ClipPlaneDesc / ClipPlaneList — the enabled ClipPlanes in scope for a
-// placement (§11.4.1). Like LightDesc, each plane is resolved to WORLD space at
-// collection time: the authored plane is in the ClipPlane's LOCAL frame (its
+// placement (§11.4.1). Like LightDesc, each plane is resolved to world space at
+// collection time: the authored plane is in the ClipPlane's local frame (its
 // parent grouping node's frame), so extraction maps it through that frame's
-// world matrix as a plane (n' = M^-T n). A point x is VISIBLE when
+// world matrix as a plane (n' = M^-T n). A point x is visible when
 // a*x.x + b*x.y + c*x.z + d >= 0; the opposite half-space is clipped. The
-// descriptor is WORLD-space (view-independent, so RenderItem identity/caching is
+// descriptor is world-space (view-independent, so RenderItem identity/caching is
 // unaffected); a GL-style consumer expecting the eye-space
 // ShaderUniformVocabulary `clipPlane` uniform maps it with the view matrix.
 //
 // Annex F.5 requires a host to support at least six simultaneously enabled
-// clip planes, so the carried list is FIXED CAPACITY kMaxClipPlanes (= 6);
+// clip planes, so the carried list is fixed capacity kMaxClipPlanes (= 6);
 // extraction ignores planes beyond the sixth.
-// ---------------------------------------------------------------------------
 struct ClipPlaneDesc {
   SFVec4f planeWorld{0.0f, 1.0f, 0.0f, 0.0f}; // (a,b,c,d), world frame.
   const X3DNode *node = nullptr;              // the source ClipPlane (identity).
@@ -896,24 +805,22 @@ struct ClipPlaneList {
   const ClipPlaneDesc *end() const { return items.data() + size; }
 };
 
-// ---------------------------------------------------------------------------
-// RenderDelta — THE single authoritative change channel.
+// RenderDelta — the single authoritative change channel.
 //
-// fullSnapshot() returns a RenderDelta with EVERY item in `added` (so frame 0
+// fullSnapshot() returns a RenderDelta with every item in `added` (so frame 0
 // and frame N share one upload path). delta() partitions changed RenderItemIds
 // into the buckets below; the scalar bits flag the full-recomputed camera/
 // background/lights surfaces for a caching consumer.
 //
-// RenderItem carries NO changeBits: this struct is the only encoding of change.
+// RenderItem carries no changeBits: this struct is the only encoding of change.
 // Structural/visibility and cached Shape/ClipPlane/LocalFog state changes remove
-// ALL previously live IDs and add the current snapshot. Indexed scoped ancestor
+// all previously live IDs and add the current snapshot. Indexed scoped ancestor
 // frame changes take the same conservative replacement path; unrelated TRS is
 // incremental. There is no implicit clip/shadow/local-fog-index update attached
 // to updatedTransform or updatedMaterial.
-// Apply removed BEFORE added; the same dense ID may occur in both. Drop stale
+// Apply removed before added; the same dense ID may occur in both. Drop stale
 // content-cache entries when their last live placement is removed (defer actual
 // GPU destruction according to host fences). A rebuild resets content versions.
-// ---------------------------------------------------------------------------
 struct RenderDelta {
   std::vector<RenderItemId> added;
   std::vector<RenderItemId> removed;

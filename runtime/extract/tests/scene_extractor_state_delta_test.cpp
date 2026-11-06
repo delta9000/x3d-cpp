@@ -343,7 +343,7 @@ TEST_CASE("render state delta: tracked Billboard clip frames replace world plane
   REQUIRE(f.mirror.items.size() == 1);
   REQUIRE(f.mirror.items.begin()->second.clipPlanes.size == 1);
   CHECK(f.mirror.items.begin()->second.clipPlanes.items[0].planeWorld.z == doctest::Approx(1));
-  f.ctx.setHeadPose({10, 0, -10}, {0, 1, 0, 0}); // tracked eye now at +X
+  f.ctx.setHeadPose({10, 0, -10}, {0, 1, 0, 0}); // tracked eye at +X
   f.ctx.tick(1.0);
   auto delta = f.ex.delta();
   replacement(delta, 1, 1);

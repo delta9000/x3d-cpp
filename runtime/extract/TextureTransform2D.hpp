@@ -11,13 +11,6 @@
 //   4. scale (non-uniform)                (S)
 //   5. pivot back from center      (C, +center)
 //
-// This header is PURE:
-//   - no X3D node types, no generated bindings, no scene-graph includes.
-//   - only <cmath> and <array>.
-//   - all functions are inline / constexpr where possible.
-//   - independently testable with a single g++ -std=c++20 -fsyntax-only invocation.
-//
-// namespace x3d::runtime::extract
 #ifndef X3D_RUNTIME_EXTRACT_TEXTURETRANSFORM2D_HPP
 #define X3D_RUNTIME_EXTRACT_TEXTURETRANSFORM2D_HPP
 
@@ -27,11 +20,9 @@
 
 namespace x3d::runtime::extract {
 
-// ---------------------------------------------------------------------------
 // TextureTransform2DParams — the four authored fields of an X3D TextureTransform
 // node (§18.4.10). All fields carry X3D defaults so a default-constructed
 // instance is the identity transform.
-// ---------------------------------------------------------------------------
 struct TextureTransform2DParams {
     float centerS     = 0.0f;  // TextureTransform.center.x
     float centerT     = 0.0f;  // TextureTransform.center.y
@@ -47,7 +38,6 @@ struct TextureTransform2DParams {
         0.0f, 0.0f, 1.0f};
 };
 
-// ---------------------------------------------------------------------------
 // applyTextureTransform — apply one X3D TextureTransform to a single (s,t) pair.
 //
 // Implements §18.4.10's normative matrix  Tc' = C · S · R · C⁻¹ · T · Tc, whose
@@ -62,12 +52,10 @@ struct TextureTransform2DParams {
 //
 // §18.4.10's prose "rotation ... after the scaling operation has been applied"
 // contradicts this order; the numbered list + the normative matrix (rotate
-// BEFORE scale) are followed here — see finding TXF-1.
+// before scale) are followed here.
 //
 // Returns: transformed (s', t') as std::array<float,2>.
 //
-// Zero-overhead inline: no heap, no branches beyond the trig intrinsics.
-// ---------------------------------------------------------------------------
 inline std::array<float, 2> applyTextureTransform(
     float s, float t,
     const TextureTransform2DParams& p) noexcept
@@ -103,10 +91,8 @@ inline std::array<float, 2> applyTextureTransform(
     return {ds3 + p.centerS, dt3 + p.centerT};
 }
 
-// ---------------------------------------------------------------------------
 // applyTextureTransformIdentity — returns true iff p is the identity transform
 // (all default values). Cheap early-exit for extraction loops.
-// ---------------------------------------------------------------------------
 inline bool isIdentityTextureTransform(
     const TextureTransform2DParams& p) noexcept
 {
@@ -117,7 +103,6 @@ inline bool isIdentityTextureTransform(
         && p.translationS == 0.0f && p.translationT == 0.0f;
 }
 
-// ---------------------------------------------------------------------------
 // makeTextureTransform3x3 — produce the 2D homogeneous matrix (row-major 3×3)
 // equivalent to applyTextureTransform, for shader upload.
 //
@@ -141,7 +126,6 @@ inline bool isIdentityTextureTransform(
 //   [0         0        1           ]
 //
 // (cx,cy) = center, (tx,ty) = translation, (sx,sy) = scale, angle = rotation.
-// ---------------------------------------------------------------------------
 inline std::array<float, 9> makeTextureTransform3x3(
     const TextureTransform2DParams& p) noexcept
 {
@@ -150,7 +134,7 @@ inline std::array<float, 9> makeTextureTransform3x3(
     float cs = std::cos(p.rotation);
     float ss = std::sin(p.rotation);
 
-    // M = S(scale) * R(rot) — scale AFTER rotate (right-to-left of S·R).
+    // M = S(scale) * R(rot) — scale after rotate (right-to-left of S·R).
     float m00 = p.scaleS * cs;
     float m01 = -p.scaleS * ss;
     float m10 = p.scaleT * ss;
@@ -170,7 +154,6 @@ inline std::array<float, 9> makeTextureTransform3x3(
     };
 }
 
-// ---------------------------------------------------------------------------
 // texelCoordRepeated / texelCoordClamped — §18.2.3 legacy wrap modes.
 //
 // These implement the X3D normative texel-location formulas that a consumer
@@ -181,8 +164,6 @@ inline std::array<float, 9> makeTextureTransform3x3(
 // and CPU-side bakes.
 //
 // N = texture dimension (width or height) in texels.
-// ---------------------------------------------------------------------------
-
 /// §18.2.3 — repeatS/T TRUE: fractional part → [0, N)
 inline float texelCoordRepeated(float C, int N) noexcept {
     return (C - std::floor(C)) * static_cast<float>(N);
@@ -195,7 +176,6 @@ inline float texelCoordClamped(float C, int N) noexcept {
     return C * static_cast<float>(N);
 }
 
-// ---------------------------------------------------------------------------
 // BoundaryMode / MagFilter / MinFilter / SamplerParams — §18.4.9
 //
 // Extended SamplerParams covers both legacy repeatS/T and full TextureProperties
@@ -204,8 +184,6 @@ inline float texelCoordClamped(float C, int N) noexcept {
 // §18.4.9). When textureProperties is null, derive:
 //   repeatS==TRUE  → BoundaryMode::Repeat
 //   repeatS==FALSE → BoundaryMode::ClampToEdge  (spec-compatible default)
-// ---------------------------------------------------------------------------
-
 enum class BoundaryMode {
     Repeat,           // "REPEAT"            → GL_REPEAT
     Clamp,            // "CLAMP"             → GL_CLAMP
@@ -235,7 +213,7 @@ enum class MinFilter {
 };
 
 // Extended sampler descriptor (replaces the minimal SamplerParams in RenderItem.hpp
-// for consumers that read TextureProperties). Carry BOTH the legacy bools and the
+// for consumers that read TextureProperties). Carry both the legacy bools and the
 // extended boundary enums so existing code that only touches repeatS/T is unaffected.
 struct ExtendedSamplerParams {
     bool            repeatS              = true;  // legacy; overridden by TextureProperties
@@ -256,14 +234,12 @@ inline BoundaryMode boundaryModeFromRepeat(bool repeat) noexcept {
     return repeat ? BoundaryMode::Repeat : BoundaryMode::ClampToEdge;
 }
 
-// ---------------------------------------------------------------------------
 // TexCoordGenMode / TexCoordGenDesc — §18.4.8 TextureCoordinateGenerator
 //
 // When a geometry node's texCoord field is a TextureCoordinateGenerator rather
 // than a TextureCoordinate, the renderer computes UVs per-vertex using view state.
 // Surface this descriptor on TextureRef (alongside or instead of explicit texcoords)
 // so the renderer can dispatch to the correct GPU-side generation path.
-// ---------------------------------------------------------------------------
 enum class TexCoordGenMode {
     Sphere,                     // u=Nx/2+0.5, v=Ny/2+0.5 (camera-space normal)
     CameraSpaceNormal,          // (Nx,Ny,Nz) camera-space normal → [−1,1]

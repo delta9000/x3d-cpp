@@ -1,22 +1,7 @@
-// scene_extractor_b2_test.cpp — Browser-level B2 acceptance: unsupported-geometry
-// signal. The silent empty-mesh drop in SceneExtractor::walk() is replaced by an
-// observable pull channel, skippedGeometryCounts() -> map<nodeTypeName,count>.
-//
-// Proves the load-bearing DISTINCTION:
-//   1) A Shape over a NurbsTrimmedSurface (an UNRECOGNIZED geometry type, still
-//      unsupported) is dropped AND increments
-//      skippedGeometryCounts()["NurbsTrimmedSurface"]. (Extrusion became a
-//      RECOGNIZED, drawable type at B3 and Text at T-TEXT, so the canonical
-//      "unsupported" example moved to NurbsTrimmedSurface.)
-//   2) A Shape over an empty-coordIndex IndexedFaceSet (a RECOGNIZED type that
-//      legitimately tessellates to nothing) is dropped but does NOT appear in the
-//      map — legitimate emptiness is not a coverage gap.
-//   3) A supported Shape (TriangleSet) still emits and is never counted.
-//   4) fullSnapshot() recounts from scratch (the map is cleared each full walk).
 #include "GeoFrame.hpp"
 #include "SceneExtractor.hpp"
 
-#include "MeshBuilder.hpp" // extract::recognizedGeometryType (the static oracle).
+#include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "X3DDocument.hpp"
 #include "X3DExecutionContext.hpp"
@@ -63,9 +48,7 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
-// A Shape over a NurbsTrimmedSurface — an UNRECOGNIZED geometry type (no
-// MeshBuilder arm). Extrusion became recognized + drawable at B3 and Text at
-// T-TEXT, so NurbsTrimmedSurface is now the canonical still-unsupported example.
+// NurbsTrimmedSurface has no MeshBuilder arm and exercises unsupported geometry.
 static std::shared_ptr<X3DNode> makeUnsupportedShape() {
   auto ex = createX3DNode("NurbsTrimmedSurface");
   auto shape = createX3DNode("Shape");
@@ -73,7 +56,7 @@ static std::shared_ptr<X3DNode> makeUnsupportedShape() {
   return shape;
 }
 
-// A Shape over an IndexedFaceSet with a coord node but EMPTY coordIndex — a
+// A Shape over an IndexedFaceSet with a coord node but empty coordIndex — a
 // RECOGNIZED type that legitimately produces no triangles.
 static std::shared_ptr<X3DNode> makeEmptyIfsShape() {
   auto coord = createX3DNode("Coordinate");
@@ -88,12 +71,12 @@ static std::shared_ptr<X3DNode> makeEmptyIfsShape() {
 }
 
 TEST_CASE("scene_extractor_b2_test") {
-  // === 0) The static oracle classifies types correctly =======================
+  // 0) The static oracle classifies types correctly
   CHECK((extract::recognizedGeometryType("TriangleSet")));
   CHECK((extract::recognizedGeometryType("IndexedFaceSet")));
   CHECK((extract::recognizedGeometryType("Box")));
   CHECK((extract::recognizedGeometryType("ElevationGrid")));
-  CHECK((extract::recognizedGeometryType("Extrusion"))); // recognized at B3.
+  CHECK((extract::recognizedGeometryType("Extrusion")));
   CHECK((extract::recognizedGeometryType("Text")));       // recognized at T-TEXT.
   CHECK((!extract::recognizedGeometryType("NurbsTrimmedSurface")));
 
@@ -113,7 +96,7 @@ TEST_CASE("scene_extractor_b2_test") {
     CHECK((m2.indices.empty() && rec)); // recognized-but-empty -> recognized=true.
   }
 
-  // === 1) NurbsTrimmedSurface increments the count; empty IFS does NOT ========
+  // 1) NurbsTrimmedSurface increments the count; empty IFS does not
   {
     auto root = createX3DNode("Group");
     addChild(root, makeUnsupportedShape()); // unsupported -> counted.
@@ -134,14 +117,14 @@ TEST_CASE("scene_extractor_b2_test") {
     // NurbsTrimmedSurface counted exactly once...
     auto it = counts.find("NurbsTrimmedSurface");
     CHECK((it != counts.end() && it->second == 1));
-    // ...and the legitimately-empty IFS is NOT a coverage gap.
+    // ...and the legitimately-empty IFS is not a coverage gap.
     CHECK((counts.find("IndexedFaceSet") == counts.end()));
     // ...and the supported TriangleSet never appears either.
     CHECK((counts.find("TriangleSet") == counts.end()));
     CHECK((counts.size() == 1));
   }
 
-  // === 2) Two unsupported shapes of the same type accumulate =================
+  // 2) Two unsupported shapes of the same type accumulate
   {
     auto root = createX3DNode("Group");
     addChild(root, makeUnsupportedShape());
@@ -154,7 +137,7 @@ TEST_CASE("scene_extractor_b2_test") {
     ex.fullSnapshot();
     CHECK((ex.skippedGeometryCounts().at("NurbsTrimmedSurface") == 2));
 
-    // === 3) fullSnapshot() recounts from scratch (map cleared each full walk) =
+    // 3) fullSnapshot() recounts from scratch (map cleared each full walk) =
     ex.fullSnapshot();
     CHECK((ex.skippedGeometryCounts().at("NurbsTrimmedSurface") == 2)); // not 4.
   }

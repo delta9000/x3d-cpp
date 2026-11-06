@@ -1,21 +1,3 @@
-// mesh_builder_t3_test.cpp — M2.5 T3 acceptance: MeshBuilder attribute
-// resolution (Normal / Color / ColorRGBA / TextureCoordinate) + flat-normal
-// generation + per-vertex/per-face expansion.
-//
-// Proofs:
-//   1) Flat-normal correctness — with NO Normal node the builder fills `normals`
-//      (one per corner) with the EXACT geometric normal of each triangle; a
-//      triangle in the z=0 plane (CCW) has normal +Z.
-//   2) Authored normalIndex honoring (per-vertex) — normalIndex remaps which
-//      Normal.vector entry each corner gets, independent of coordIndex.
-//   3) colorIndex honoring (per-vertex) — colorIndex selects the Color entry per
-//      corner; resolved colors are parallel to positions.
-//   4) Per-FACE expansion — colorPerVertex=false makes the whole face take one
-//      color (indexed by face / colorIndex[face]); both triangles of a quad-face
-//      get the same color.
-//   5) ColorRGBA carried vs Color promoted — a Color (MFColor) node yields
-//      alpha=1; a ColorRGBA (MFColorRGBA) node carries its authored alpha.
-//   6) hasColors / hasNormals flags + texCoord resolution.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 
@@ -79,7 +61,7 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
 TEST_CASE("mesh_builder_t3_test") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
-  // ---- 1. Flat-normal correctness: no Normal node -> +Z geometric normal -----
+  // 1. Flat-normal correctness: no Normal node -> +Z geometric normal
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2}); // CCW in z=0 plane.
@@ -90,7 +72,7 @@ TEST_CASE("mesh_builder_t3_test") {
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, 1})));
   }
 
-  // ---- 1b. Flat normal of a clockwise triangle points -Z ---------------------
+  // 1b. Flat normal of a clockwise triangle points -Z
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P2, P1}); // reversed winding.
@@ -98,12 +80,12 @@ TEST_CASE("mesh_builder_t3_test") {
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 0, -1})));
   }
 
-  // ---- 2. normalIndex honoring (per-vertex) ----------------------------------
+  // 2. normalIndex honoring (per-vertex)
   // 3 distinct normals; normalIndex remaps which Normal.vector entry each corner
-  // receives, independently of coordIndex. Uses IndexedFaceSet because ONLY the
+  // receives, independently of coordIndex. Uses IndexedFaceSet because only the
   // *Indexed*FaceSet family carries the separate normalIndex/colorIndex/
   // texCoordIndex fields (the IndexedTriangle*/Quad* family share the single
-  // `index` for coords AND attributes — proven in test 2b/3b below).
+  // `index` for coords and attributes — proven in test 2b/3b below).
   {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
@@ -119,7 +101,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((vecEq(m.normals[2], NB)));
   }
 
-  // ---- 2b. IndexedTriangleSet: no separate normalIndex -> `index` indexes -----
+  // 2b. IndexedTriangleSet: no separate normalIndex -> `index` indexes
   // the Normal array per corner (the value from `index` doubles as the normal
   // index). The triangle's coords are P0,P1,P2; normals NA,NB,NC pick by coord.
   {
@@ -135,7 +117,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((vecEq(m.normals[2], NB))); // coord 1 -> NB
   }
 
-  // ---- 3. colorIndex honoring (per-vertex, IndexedFaceSet) -------------------
+  // 3. colorIndex honoring (per-vertex, IndexedFaceSet)
   {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
@@ -151,7 +133,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((rgbaEq(m.colors[2], 1, 0, 0, 1)));
   }
 
-  // ---- 3b. colorIndex empty -> coordIndex doubles as the color index ---------
+  // 3b. colorIndex empty -> coordIndex doubles as the color index
   {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
@@ -164,7 +146,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((rgbaEq(m.colors[2], 0, 1, 0, 1))); // coord 1
   }
 
-  // ---- 4. Per-FACE expansion: colorPerVertex=false ---------------------------
+  // 4. Per-face expansion: colorPerVertex=false
   // An IndexedFaceSet quad-face -> 2 triangles (6 corners); with
   // colorPerVertex=false the WHOLE face takes a single color (face 0). Both
   // triangles' six corners must carry that one color.
@@ -180,7 +162,7 @@ TEST_CASE("mesh_builder_t3_test") {
     for (const auto &c : m.colors) CHECK((rgbaEq(c, 0.2f, 0.4f, 0.6f, 1)));
   }
 
-  // ---- 4b. Per-FACE with colorIndex selecting a face color -------------------
+  // 4b. Per-face with colorIndex selecting a face color
   {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
@@ -197,7 +179,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((rgbaEq(m.colors[3], 1, 0, 0, 1) && rgbaEq(m.colors[5], 1, 0, 0, 1)));
   }
 
-  // ---- 5. ColorRGBA carried vs Color promoted --------------------------------
+  // 5. ColorRGBA carried vs Color promoted
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
@@ -220,12 +202,12 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((rgbaEq(m.colors[2], 0, 0, 1, 1)));
   }
 
-  // ---- 6. TextureCoordinate resolution + authored Normal honored -------------
+  // 6. TextureCoordinate resolution + authored Normal honored
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     attachTexCoord(g, {SFVec2f{0, 0}, SFVec2f{1, 0}, SFVec2f{1, 1}});
-    // authored normals all +Y (NOT the geometric +Z) so we prove they're honored.
+    // authored normals all +Y (not the geometric +Z) so we prove they're honored.
     attachNormal(g, {SFVec3f{0, 1, 0}, SFVec3f{0, 1, 0}, SFVec3f{0, 1, 0}});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == 3));
@@ -235,7 +217,7 @@ TEST_CASE("mesh_builder_t3_test") {
     for (const auto &n : m.normals) CHECK((vecEq(n, SFVec3f{0, 1, 0})));
   }
 
-  // ---- 7. ccw / solid carried from reflection --------------------------------
+  // 7. ccw / solid carried from reflection
   {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});

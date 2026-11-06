@@ -1,9 +1,7 @@
 # cmake/x3d/doctest-suites.cmake — the grouped doctest binaries (math/scene, codecs,
 # parse, extract, events) and the namespace-taxonomy lock.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# --- PROTO: grouped doctest binary (math + scene tests, was 22 separate exes) ---
+# Math and scene doctest suite.
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_geometry_scene_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/math/tests/mat4_test.cpp"
@@ -42,14 +40,14 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     target_include_directories(x3d_geometry_scene_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/test_support"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tinygeoid")
-    # poc_triangle_asset_test needs its fixture path (was a per-target define).
+    # poc_triangle_asset_test needs its fixture path.
     target_compile_definitions(x3d_geometry_scene_tests PRIVATE
         "X3D_POC_TRIANGLE_ASSET=\"${CMAKE_CURRENT_SOURCE_DIR}/examples/poc_renderer/assets/triangle.x3d\"")
     add_test(NAME x3d_geometry_scene COMMAND x3d_geometry_scene_tests)
     set_tests_properties(x3d_geometry_scene PROPERTIES TIMEOUT 120)
 endif()
 
-# --- Namespace taxonomy lock (ADR-0039): pin x3d::core / x3d::nodes placement ---
+# Namespace taxonomy lock (ADR-0039): pin x3d::core / x3d::nodes placement
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_namespace_taxonomy
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/tests/namespace_taxonomy_test.cpp")
@@ -59,7 +57,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_test(NAME x3d_namespace_taxonomy COMMAND x3d_namespace_taxonomy)
 endif()
 
-# --- doctest grouped binary: codecs tests (19 cases, one link) ---
+# doctest grouped binary: codecs tests (19 cases, one link)
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_codecs_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/roundtrip_test.cpp"
@@ -97,7 +95,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_codecs_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# --- doctest grouped binary: parse tests (13 cases, one link) ---
+# doctest grouped binary: parse tests (13 cases, one link)
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_parse_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_clone_test.cpp"
@@ -126,7 +124,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_parse_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# --- doctest grouped binary: extract tests (35 cases, one link) ---
+# doctest grouped binary: extract tests (35 cases, one link)
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_extract_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_test.cpp"
@@ -145,47 +143,47 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/material_system_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_mapping_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_orm_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_t2_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_t3_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_t4_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b5_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_composed_geometry_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_attributes_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_primitives_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_geospatial_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_elevationgrid_winding_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_ext001_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_grid_attributes_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_fog_coordinate_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b3_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_extrusion_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_extrusion_scp_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b4_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b6_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_tc1_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_tc2_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_tc3_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_tc4_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_txc1_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_topology_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_crease_normals_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_default_texcoords_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_grid_texcoords_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_extrusion_texcoords_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_primitive_texcoords_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_texture_seams_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/text_layout_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/text_extract_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/asset_resolver_b8_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t7_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/asset_resolver_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_snapshot_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_fog_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_clip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/background_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/generated_cube_map_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_projector_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_t8_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_b2_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_col2_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_cad1_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_incremental_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_skipped_geometry_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_collision_proxy_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_cad_face_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_hanim_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/light_system_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_m25_5_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_light_scope_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_feed_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/packed_mesh_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/texture_desc_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_geometry_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/external_geom_seam_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_b7_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_ext002_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_normals_triangulation_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/mesh_builder_fan_strip_colors_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/shader_binding_plan_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/castshadow_extract_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/nurbs_eval_test.cpp"
@@ -202,7 +200,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_extract_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# --- doctest grouped binary: events tests (34 cases, one link) ---
+# doctest grouped binary: events tests (34 cases, one link)
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_events_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/dynamic_field_test.cpp"
@@ -212,11 +210,11 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_observer_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_conformance_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/cascade_alias_audit_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/m2a_tick_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/m2b_tick_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/m2c_tick_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/transform_dirty_tick_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/bounds_tick_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/bindable_tick_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/write_field_test.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/m2d_tick_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pick_view_tick_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/tick_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointer_state_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/pointing_sensor_test.cpp"

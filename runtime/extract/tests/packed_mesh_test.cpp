@@ -1,4 +1,4 @@
-// packed_mesh_test.cpp — Phase 1: PackedMesh struct round-trip.
+// packed_mesh_test.cpp — PackedMesh struct round-trip.
 #include "PackedMesh.hpp"
 #include "doctest/doctest.h"
 #include <cstdint>
@@ -55,10 +55,8 @@ TEST_CASE("packed_mesh_test") {
   std::memcpy(read_pos, ptr + pv.byte_offset, 3 * 3 * sizeof(float));
   CHECK((read_pos[3] == 1.0f)); // x of vertex 1
 
-  // -------------------------------------------------------------------------
   // Ownership-survival: COPY
   // Copy m into m2, then destroy m's data. m2 must remain independently valid.
-  // -------------------------------------------------------------------------
   PackedMesh m2 = m; // deep copy (std::vector members own their bytes)
   {
     // Destroy source data to prove m2 is independent.
@@ -76,10 +74,8 @@ TEST_CASE("packed_mesh_test") {
   CHECK((m2.has(VertexAttrib::Position)));
   CHECK((m2.is_indexed()));
 
-  // -------------------------------------------------------------------------
   // Ownership-survival: MOVE
   // Move a freshly-built PackedMesh into m3; original views must still resolve.
-  // -------------------------------------------------------------------------
   PackedMesh m3;
   {
     PackedMesh src;
@@ -92,9 +88,9 @@ TEST_CASE("packed_mesh_test") {
     pv3.vertex_count = 3;
     src.set_attrib(VertexAttrib::Position, pv3, std::move(pos3_bytes));
     src.vertex_count = 3;
-    m3 = std::move(src); // src is now in a valid-but-unspecified state
+    m3 = std::move(src); // src is in a valid-but-unspecified state
   }
-  // m3 now owns the data; resolve its view.
+  // m3 owns the data; resolve its view.
   {
     const VertexBufferView& pv3 = m3.attribute_views[static_cast<uint8_t>(VertexAttrib::Position)];
     const uint8_t* ptr3 = pv3.data_ptr(m3.attribute_data);

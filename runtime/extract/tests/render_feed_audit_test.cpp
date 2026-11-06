@@ -1,11 +1,3 @@
-// render_feed_audit_test.cpp — AUD-RENDER-FEED regression audit.
-//
-// Covers the five risk areas of render-feed consistency:
-//   1) Render item identity stability across frames.
-//   2) Path-key hashing correctness (collision behavior).
-//   3) Material descriptor consistency (same material -> same descriptor).
-//   4) Geometry buffer pointer stability.
-//   5) Dirty flag propagation to render feed.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp"
@@ -55,7 +47,7 @@ static std::shared_ptr<X3DNode> makeTriShape(std::shared_ptr<X3DNode> *geomOut =
 }
 
 TEST_CASE("render_feed_audit_test") {
-  // === 1) Render item identity stability across frames ======================
+  //   1) Render item identity stability across frames
   {
     auto shape = makeTriShape();
     Scene scene;
@@ -68,7 +60,7 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((snap1.added.size() == 1));
     extract::RenderItemId id1 = snap1.added[0];
 
-    // A second full snapshot must reuse the SAME dense id for the same path.
+    // A second full snapshot must reuse the same dense id for the same path.
     auto snap2 = ex.fullSnapshot();
     CHECK((snap2.added.size() == 1));
     extract::RenderItemId id2 = snap2.added[0];
@@ -78,10 +70,10 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((ex.item(id2).geometry.node == ex.item(id1).geometry.node));
   }
 
-  // === 2) Path-key hashing correctness (collision behavior) =================
+  //   2) Path-key hashing correctness (collision behavior)
   {
     // Construct two distinct paths that could conceivably hash-collide.
-    // We test the bucket+equal contract: different paths must NEVER alias.
+    // We test the bucket+equal contract: different paths must never alias.
     auto shapeA = makeTriShape();
     auto shapeB = makeTriShape();
     auto tA = createX3DNode("Transform");
@@ -113,9 +105,9 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((pathA != pathB));
   }
 
-  // === 3) Material descriptor consistency ===================================
+  // 3) Material descriptor consistency
   {
-    // Two Shapes sharing the SAME Appearance+Material node must yield
+    // Two Shapes sharing the same Appearance+Material node must yield
     // equivalent MaterialDesc values (the descriptor is content-keyed).
     auto coord = createX3DNode("Coordinate");
     setF(coord, "point",
@@ -167,10 +159,10 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((feq(matA.transparency, matB.transparency)));
   }
 
-  // === 4) Geometry buffer pointer stability =================================
+  //   4) Geometry buffer pointer stability
   {
     // A USE'd geometry node under two placements: GeomId.node must be the
-    // SAME raw pointer across both RenderItems.
+    // same raw pointer across both RenderItems.
     auto sharedGeom = createX3DNode("TriangleSet");
     auto coord = createX3DNode("Coordinate");
     setF(coord, "point",
@@ -211,7 +203,7 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((gA.contentVersion == gB.contentVersion));
   }
 
-  // === 5) Dirty flag propagation to render feed =============================
+  //   5) Dirty flag propagation to render feed
   {
     std::shared_ptr<X3DNode> geom, coord;
     auto shape = makeTriShape(&geom, &coord);
@@ -228,7 +220,7 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((snap.added.size() == 1));
     extract::RenderItemId id0 = snap.added[0];
 
-    // --- 5a) Transform dirty => updatedTransform only -----------------------
+    // 5a) Transform dirty => updatedTransform only
     ctx.postEvent(parent.get(), "translation", std::any(SFVec3f{5, 0, 0}));
     ctx.tick(1.0);
     auto d1 = ex.delta();
@@ -239,7 +231,7 @@ TEST_CASE("render_feed_audit_test") {
     CHECK((d1.added.empty()));
     CHECK((d1.removed.empty()));
 
-    // --- 5b) Geometry content dirty => updatedGeometry only -----------------
+    // 5b) Geometry content dirty => updatedGeometry only
     ctx.postEvent(coord.get(), "point",
                   std::any(std::vector<SFVec3f>{{0, 0, 0}, {2, 0, 0}, {0, 2, 0}}));
     ctx.tick(2.0);
@@ -253,7 +245,7 @@ TEST_CASE("render_feed_audit_test") {
     // contentVersion bumped.
     CHECK((ex.item(id0).geometry.contentVersion == 1));
 
-    // --- 5c) Full snapshot resets dirty state; stable id preserved ----------
+    // 5c) Full snapshot resets dirty state; stable id preserved
     auto snap2 = ex.fullSnapshot();
     CHECK((snap2.added.size() == 1));
     CHECK((snap2.added[0] == id0)); // stable identity.

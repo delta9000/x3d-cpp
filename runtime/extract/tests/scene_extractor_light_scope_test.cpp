@@ -1,9 +1,9 @@
-// scene_extractor_m25_5_test.cpp — M25-5 acceptance: non-global DirectionalLight
+// scene_extractor_light_scope_test.cpp —  acceptance: non-global DirectionalLight
 // scope is honored by tagging RenderItems with in-scope lights only.
 //
 // X3D §17 / X3DLightNode semantics:
 //   * global=TRUE  => light illuminates the WHOLE scene (all RenderItems).
-//   * global=FALSE => light illuminates ONLY geometry in the scope of its parent
+//   * global=FALSE => light illuminates only geometry in the scope of its parent
 //     grouping node (the scopeRoot). A RenderItem is in-scope iff the light's
 //     scopeRoot is an ANCESTOR (or equal to the last grouping node on the path)
 //     of that item's PathKey.
@@ -14,13 +14,13 @@
 //     ├─ Group (scopeGroup)            ← scopeRoot for the scoped DirectionalLight
 //     │    ├─ DirectionalLight(global=false)   [scoped light: only inside scopeGroup]
 //     │    └─ Shape (shapeInside)              [INSIDE scope]
-//     ├─ Shape (shapeOutside)                  [OUTSIDE scope]
+//     ├─ Shape (shapeOutside)                  [outside scope]
 //     └─ PointLight(global=true)               [global light: illuminates all]
 //
 // Assertions:
-//   A) shapeInside's RenderItem carries BOTH lights (scoped DL + global PL).
-//   B) shapeOutside's RenderItem carries ONLY the global PointLight (not the DL).
-//   C) A scene with ONLY a global=TRUE PointLight tags ALL render items.
+//   A) shapeInside's RenderItem carries both lights (scoped DL + global PL).
+//   B) shapeOutside's RenderItem carries only the global PointLight (not the DL).
+//   C) A scene with only a global=TRUE PointLight tags all render items.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp"
@@ -64,7 +64,7 @@ static std::shared_ptr<X3DNode> makeTriShape() {
 }
 
 TEST_CASE("scene_extractor_m25_5_test") {
-  // ===== A+B) Scoped light tags INSIDE shape but NOT outside shape ===========
+  // A+B) Scoped light tags INSIDE shape but not outside shape
   {
     // Build: outerGroup > { scopeGroup > { DL(global=false), shapeInside },
     //                       shapeOutside, PointLight(global=true) }
@@ -109,17 +109,17 @@ TEST_CASE("scene_extractor_m25_5_test") {
     CHECK((idOutside != extract::kInvalidRenderItemId));
 
     // Retrieve the tagged light lists. lightsOf() indices are positions in
-    // snapshotLights() (the cached snapshot from fullSnapshot), NOT lights().
+    // snapshotLights() (the cached snapshot from fullSnapshot), not lights().
     const auto &allLights = ex.snapshotLights();
     CHECK((allLights.size() == 2)); // DL + PL collected.
 
     const std::vector<std::size_t> &insideLights = ex.lightsOf(idInside);
     const std::vector<std::size_t> &outsideLights = ex.lightsOf(idOutside);
 
-    // A) shapeInside must be tagged with BOTH lights.
+    // A) shapeInside must be tagged with both lights.
     CHECK((insideLights.size() == 2));
 
-    // B) shapeOutside must be tagged with ONLY the global PointLight, NOT the DL.
+    // B) shapeOutside must be tagged with only the global PointLight, not the DL.
     CHECK((outsideLights.size() == 1));
     // The one light tagging shapeOutside must be global.
     CHECK((allLights[outsideLights[0]].global == true));
@@ -134,7 +134,7 @@ TEST_CASE("scene_extractor_m25_5_test") {
     CHECK((hasDir && hasPoint));
   }
 
-  // ===== C) global=TRUE PointLight alone tags ALL render items ===============
+  // C) global=TRUE PointLight alone tags all render items
   {
     auto pl = createX3DNode("PointLight");
     setF(pl, "global", std::any(true));
@@ -162,7 +162,7 @@ TEST_CASE("scene_extractor_m25_5_test") {
     }
   }
 
-  // ===== D) No lights => all items have empty light list =====================
+  // D) No lights => all items have empty light list
   {
     auto shape = makeTriShape();
     Scene scene;

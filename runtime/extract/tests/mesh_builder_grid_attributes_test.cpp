@@ -1,11 +1,3 @@
-// mesh_builder_ext001_test.cpp — EXT-001 regression: ElevationGrid (and the
-// GeoElevationGrid shared emitHeightGrid path) must honour authored Color and
-// Normal nodes and the colorPerVertex / normalPerVertex flags per §13.3.4.
-//
-// Before the fix the grid emitter only ever produced generated flat normals and
-// no colors: authored nodes were dropped entirely. §13.3.4 maps a per-vertex
-// value to the LATTICE vertex (row*xDim + col) and a per-quad value
-// (colorPerVertex/normalPerVertex FALSE) to the CELL (row*(xDim-1) + col).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -75,7 +67,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_vertex") {
   MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
   REQUIRE((m.latticeIndex.size() == m.normals.size()));
-  // Every emitted corner normal must equal the AUTHORED normal of its lattice
+  // Every emitted corner normal must equal the authored normal of its lattice
   // vertex (a generated flat grid normal would be +Y here).
   for (std::size_t c = 0; c < m.normals.size(); ++c)
     CHECK(vecEq(m.normals[c], nrm[m.latticeIndex[c]]));
@@ -90,7 +82,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_quad") {
   MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
   REQUIRE((!m.normals.empty()));
   // Emitted cell order is (0,0),(1,0),(0,1),(1,1) -> 2 triangles (6 corners)
-  // per cell, so every corner normal equals its CELL's entry.
+  // per cell, so every corner normal equals its cell's entry.
   for (std::size_t c = 0; c < m.normals.size(); ++c)
     CHECK(vecEq(m.normals[c], nrm[c / 6]));
 }

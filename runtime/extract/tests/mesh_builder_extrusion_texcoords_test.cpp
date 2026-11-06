@@ -1,27 +1,3 @@
-// mesh_builder_tc3_test.cpp — M2.5 TC3 acceptance: DEFAULT (implicit) texture-
-// coordinate generation for Extrusion (which has NO authored TextureCoordinate
-// field — texcoords are implicit-only per ISO/IEC 19775-1).
-//
-// NORMATIVE parameterization:
-//   * SIDE walls: S runs AROUND the cross-section by ACCUMULATED CHORD length
-//       (vertex k: s = sum |cs[m]-cs[m-1]|, m<=k, / total perimeter);
-//     T runs ALONG the spine by ACCUMULATED spine length
-//       (section i: t = spine length up to i / total spine length).
-//   * begin/end CAPS: the cross-section's own 2D coords normalized to the
-//     cross-section 2D bbox -> (s,t) in [0,1] across the cap.
-//
-// Proofs:
-//   1) ACCEPTANCE — a straight 2-section square-cross-section Extrusion with NO
-//      TextureCoordinate: side-wall T spans 0..1 along the spine and S spans
-//      0..1 around the (closed) cross-section; texcoords parallel to positions.
-//   2) S is by ACCUMULATED CHORD length: a NON-uniform cross-section gives
-//      non-uniform S steps proportional to edge length.
-//   3) T is by ACCUMULATED SPINE length: a non-uniform 3-section spine gives
-//      T proportional to cumulative spine distance, NOT section index.
-//   4) Caps map the cross-section's own 2D coords normalized to bbox: the
-//      square cap corners carry s,t in {0,1}.
-//   5) Zero-extent guards: a degenerate single-point-repeated cross-section /
-//      coincident spine does not divide by zero (no NaN/inf in texcoords).
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -55,13 +31,13 @@ TEST_CASE("mesh_builder_tc3_test") {
   //   k0: 0, k1: 2/8=0.25, k2: 4/8=0.5, k3: 6/8=0.75, k4: 8/8=1.0.
   const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
 
-  // ---- 1. ACCEPTANCE: side-wall S spans 0..1 around cs, T spans 0..1 spine --
+  // 1. ACCEPTANCE: side-wall S spans 0..1 around cs, T spans 0..1 spine --
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     // Straight 2-point spine of length 1 along +Y.
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
-    // Drop caps so EVERY corner is a side-wall corner -> isolate the side param.
+    // Drop caps so every corner is a side-wall corner -> isolate the side param.
     setF(g, "beginCap", std::any(SFBool(false)));
     setF(g, "endCap", std::any(SFBool(false)));
 
@@ -73,7 +49,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     // Side walls only: (ns-1)*(nc-1)*2 = 1*4*2 = 8 tris -> 24 corners.
     CHECK((m.indices.size() == 24));
 
-    // T (the spine axis) takes ONLY {0,1}: section 0 -> t=0, section 1 -> t=1.
+    // T (the spine axis) takes only {0,1}: section 0 -> t=0, section 1 -> t=1.
     // S (around the cross-section) sweeps the accumulated-chord set {0,.25,.5,
     // .75,1}. Verify the spanning extremes appear and T/S stay within [0,1].
     bool sawT0 = false, sawT1 = false, sawS0 = false, sawS1 = false;
@@ -105,7 +81,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     }
   }
 
-  // ---- 2. S by ACCUMULATED CHORD length (non-uniform cross-section) ----------
+  // 2. S by accumulated chord length (non-uniform cross-section)
   // An open L-shaped cross-section: edges of length 1, 3 => perimeter 4.
   //   verts (0,0),(1,0),(1,3) => accumulated chord {0, 1/4=0.25, 4/4=1.0}.
   {
@@ -124,9 +100,9 @@ TEST_CASE("mesh_builder_tc3_test") {
     }
   }
 
-  // ---- 3. T by ACCUMULATED SPINE length (non-uniform spine) ------------------
+  // 3. T by accumulated spine length (non-uniform spine)
   // 3-section spine with segment lengths 1 then 3 => total 4.
-  //   section 0 t=0, section 1 t=1/4=0.25, section 2 t=4/4=1.0 (NOT 0.5).
+  //   section 0 t=0, section 1 t=1/4=0.25, section 2 t=4/4=1.0 (not 0.5).
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
@@ -146,7 +122,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     CHECK((sawMid));
   }
 
-  // ---- 4. CAP mapping: cross-section coords normalized to bbox ---------------
+  // 4. CAP mapping: cross-section coords normalized to bbox
   // Caps ON. The square cross-section bbox is [-1,1]x[-1,1]; normalized corners
   // are the 4 combinations of {0,1}. A cap corner therefore carries s,t in {0,1}.
   {
@@ -181,7 +157,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     CHECK((saw00 && saw11));
   }
 
-  // ---- 5. Zero-extent guards: no div-by-zero / NaN ---------------------------
+  // 5. Zero-extent guards: no div-by-zero / NaN
   // A degenerate cross-section (all coincident) => zero perimeter & zero bbox;
   // a coincident spine => zero spine length. The builder must guard to finite UVs.
   {
@@ -195,7 +171,7 @@ TEST_CASE("mesh_builder_tc3_test") {
     }
   }
 
-  // ---- 6. ccw=false keeps texcoords parallel + finite (winding swap) ---------
+  // 6. ccw=false keeps texcoords parallel + finite (winding swap)
   {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));

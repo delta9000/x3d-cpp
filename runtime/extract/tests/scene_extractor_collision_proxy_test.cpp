@@ -1,5 +1,5 @@
-// scene_extractor_col2_test.cpp — COL-2 (campaign wave-4 fix): a Collision node's
-// `proxy` geometry is collision-only and must NEVER be emitted as a visible render
+// scene_extractor_collision_proxy_test.cpp —  (campaign wave-4 fix): a Collision node's
+// `proxy` geometry is collision-only and must never be emitted as a visible render
 // item (ISO/IEC 19775-1 §23.4.2). The Collision `children` still render normally.
 #include "SceneExtractor.hpp"
 
@@ -10,7 +10,6 @@
 
 #include <any>
 #include "doctest/doctest.h"
-#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -50,7 +49,5 @@ TEST_CASE("scene_extractor_col2_test") {
 
   // Only the child renders; the proxy is excluded (§23.4.2).
   CHECK((snap.added.size() == 1));
-
-  std::cout << "scene_extractor_col2: proxy excluded, child emitted (1 item)\n";
   return;
 }

@@ -1,25 +1,5 @@
-// runtime/extract/SchemeRouter.hpp
-//
-// makeSchemeRouter — compose per-scheme AssetResolver backends into one seam.
-//
-// THE RULE (mirroring makeMultiFormatTextureResolver, ADR-0024 §7): route by a
-// cheap key BEFORE calling a backend, never use Failed to route. AssetResolver
-// backends self-identify by URL scheme — HttpResolver owns http(s)://,
-// S3Resolver owns s3://, a local-file resolver owns relative/path-less urls —
-// and each returns Failed for everything else. Without a router, "wrong route"
-// and "right route, genuinely failed" are both Failed and a consumer stacking
-// backends cannot tell them apart. This composer dispatches by the URL's scheme
-// (RFC 3986 §3.1, case-insensitive) so each backend only ever sees urls it
-// owns and its Failed stays unambiguous. The frozen Ready/Pending/Failed seam
-// type is unchanged.
-//
-// std-only and IO-free: this header never opens a socket, file or stream — it
-// only compares a lexical prefix and calls a std::function. Unknown scheme ->
-// Failed WITHOUT calling any backend (the router never guesses). A url with no
-// scheme (relative / scheme-less) goes to the optional `fallback`, or Failed
-// when none was supplied. A Windows drive path ("C:\models\a.x3d") is treated as
-// scheme-less (its one-letter "scheme" is a drive designator) and so takes the
-// fallback — see urlScheme.
+// Route by URL scheme before fetching; unknown schemes fail without calling a
+// backend. Scheme-less URLs use the optional fallback. See ADR-0024 §7.
 #ifndef X3D_RUNTIME_EXTRACT_SCHEME_ROUTER_HPP
 #define X3D_RUNTIME_EXTRACT_SCHEME_ROUTER_HPP
 

@@ -127,7 +127,7 @@ void creaseSmoothNormals(MeshData &m,
   const std::size_t triCount = n / 3;
 
   // Per-triangle flat face normal == the (shared) normal of its first corner.
-  // Capture BEFORE we mutate, so accumulation reads the pristine flat normals.
+  // Capture before we mutate, so accumulation reads the pristine flat normals.
   std::vector<SFVec3f> faceN(triCount);
   for (std::size_t t = 0; t < triCount; ++t)
     faceN[t] = m.normals[t * 3];
@@ -140,7 +140,7 @@ void creaseSmoothNormals(MeshData &m,
   for (std::size_t c = 0; c < n; ++c)
     incident[sourceId[c]].push_back(static_cast<std::uint32_t>(c / 3));
 
-  // cos(creaseAngle): clamp the angle to [0, PI]. A NEGATIVE creaseAngle (or 0)
+  // cos(creaseAngle): clamp the angle to [0, PI]. A negative creaseAngle (or 0)
   // gives cosTheta >= 1 so only exactly-equal face normals fuse (faceted).
   const float pi = 3.14159265358979323846f;
   float ca = creaseAngle;
@@ -158,7 +158,7 @@ void creaseSmoothNormals(MeshData &m,
     const auto &tris = incident[sourceId[c]];
     for (std::uint32_t ot : tris) {
       const SFVec3f &on = faceN[ot];
-      // Dihedral test against THIS corner's face. A >= cosTheta dot means the
+      // Dihedral test against this corner's face. A >= cosTheta dot means the
       // angle between the two face normals is <= creaseAngle. ot == tri always
       // passes (dot 1 >= cosTheta for any clamped angle) so the corner's own
       // face is always counted. Degenerate (zero) normals dot to 0 and are
@@ -182,7 +182,7 @@ void generateDefaultTexCoords(MeshData &m) {
   if (m.positions.empty())
     return;
 
-  // Local bbox over the EXPANDED positions (same set of distinct points as the
+  // Local bbox over the expanded positions (same set of distinct points as the
   // coord array, just possibly repeated — min/max are identical either way).
   SFVec3f lo = m.positions[0], hi = m.positions[0];
   for (const SFVec3f &p : m.positions) {
@@ -432,8 +432,8 @@ void tessellateBox(MeshData &m, const SFVec3f &size) {
        {-hx, hy, -hz},
        {hx, hy, -hz}},
   };
-  // DEFAULT texcoords (TC4): each face maps the unit square [0,1]x[0,1] across
-  // its 4 corners, listed in the SAME CCW v0,v1,v2,v3 order as above:
+  // default texcoords: each face maps the unit square [0,1]x[0,1] across
+  // its 4 corners, listed in the same CCW v0,v1,v2,v3 order as above:
   //   v0->(0,0)  v1->(1,0)  v2->(1,1)  v3->(0,1).
   const SFVec2f t0{0.0f, 0.0f}, t1{1.0f, 0.0f}, t2{1.0f, 1.0f}, t3{0.0f, 1.0f};
   for (const Face &f : faces) {
@@ -457,8 +457,8 @@ void tessellateSphere(MeshData &m, float radius, int rings, int segments) {
     // Outward radial direction; +Y at i=0, -Y at i=rings.
     return SFVec3f{sinPhi * std::sin(theta), cosPhi, sinPhi * std::cos(theta)};
   };
-  // DEFAULT texcoords (TC4 + TXC-1). s wraps 0..1 CCW-from-above with the seam
-  // at the BACK (-Z meridian, §13.3.7), via seamShiftedS + the per-slice wrap
+  // default texcoords . s wraps 0..1 CCW-from-above with the seam
+  // at the back (-Z meridian, §13.3.7), via seamShiftedS + the per-slice wrap
   // fix. t = 0 at the -Y (south) pole .. 1 at the +Y (north) pole. Since phi
   // runs 0 at +Y to pi at -Y, t = 1 - i/rings.
   const auto tFor = [&](int i) {
@@ -478,7 +478,7 @@ void tessellateSphere(MeshData &m, float radius, int rings, int segments) {
         return SFVec3f{n.x * radius, n.y * radius, n.z * radius};
       };
       // CCW from outside. The top row (i==0) is a fan to the +Y pole and the
-      // bottom row (i==rings-1) a fan to the -Y pole — each contributes ONE
+      // bottom row (i==rings-1) a fan to the -Y pole — each contributes one
       // triangle; the (rings-2) middle bands contribute the full quad (two
       // triangles). Total = S*2*(rings-1).
       // Top row (i==0): n00 and n01 coincide at the +Y pole, so the
@@ -515,8 +515,8 @@ void tessellateCone(MeshData &m, float bottomRadius, float height, int slices,
         2.0f * pi * static_cast<float>(j) / static_cast<float>(slices);
     return normalize(SFVec3f{nR * std::sin(a), nY, nR * std::cos(a)});
   };
-  // DEFAULT texcoords (TC4 + TXC-1). Side: s wraps CCW-from-above with the seam
-  // at the BACK (-Z, §13.3.2) via seamShiftedS + per-slice wrap fix; t = 0 at
+  // default texcoords . Side: s wraps CCW-from-above with the seam
+  // at the back (-Z, §13.3.2) via seamShiftedS + per-slice wrap fix; t = 0 at
   // the base rim .. 1 at the apex. Bottom cap: a circle inscribed in [0,1]^2
   // centred at (0.5,0.5); the cap is right side up when the cone's top is
   // rotated toward -Z, so the -Z rim maps to t=1 and the +Z rim to t=0 (capUv
@@ -568,8 +568,8 @@ void tessellateCylinder(MeshData &m, float radius, float height, int slices,
   const auto at = [&](const SFVec3f &d, float y) {
     return SFVec3f{d.x * radius, y, d.z * radius};
   };
-  // DEFAULT texcoords (TC4 + TXC-1). Side: s wraps CCW-from-above with the seam
-  // at the BACK (-Z, §13.3.3) via seamShiftedS + per-slice wrap fix; t = 0 at
+  // default texcoords . Side: s wraps CCW-from-above with the seam
+  // at the back (-Z, §13.3.3) via seamShiftedS + per-slice wrap fix; t = 0 at
   // the bottom rim .. 1 at the top rim. Caps: a circle inscribed in [0,1]^2
   // centred at (0.5,0.5). The top is right side up when the cylinder top tilts
   // toward +Z
@@ -667,7 +667,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       std::fabs(crossSection[0].x - crossSection[nc - 1].x) < eps &&
       std::fabs(crossSection[0].y - crossSection[nc - 1].y) < eps;
 
-  // EXTRUSION-SCP (ADR-0031, §13.3.5.4.5): fewer than 2 DISTINCT
+  // (ADR-0031, §13.3.5.4.5): fewer than 2 distinct
   // (coincident-collapsed) spine points => nothing is rendered. The element
   // count guard above (ns<2) does not catch a spine of repeated coincident
   // points, which has no defined SCP plane.
@@ -703,7 +703,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
                            : static_cast<int>(orientation.size()) - 1];
   };
 
-  // --- Build the per-section SCP frame (Y tangent, Z plane-normal, X = YxZ).
+  // Build the per-section SCP frame (Y tangent, Z plane-normal, X = YxZ).
   // --
   std::vector<SFVec3f> axX(ns), axY(ns), axZ(ns);
   SFVec3f prevY{0, 1, 0}, prevZ{0, 0, 1};
@@ -740,8 +740,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       haveY = true;
     }
   }
-  // If NO tangent was ever valid, all Y default to +Y (already set).
-
+  // If no tangent was ever valid, all Y default to +Y (already set).
   // Second pass: plane-normal Z. For an interior point the normal of the plane
   // through (prev,this,next); endpoints inherit the adjacent interior Z; a
   // collinear/degenerate plane inherits the previous Z. A sign flip relative to
@@ -768,9 +767,9 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
       haveZ = true;
     }
   }
-  // If NO plane normal was ever valid (straight / 2-point spine): the spine
+  // If no plane normal was ever valid (straight / 2-point spine): the spine
   // tangent fixes the SCP plane normal but leaves the in-plane X/Z free. Per
-  // ADR-0031, align them to the LOCAL model axes: Y = unit tangent,
+  // ADR-0031, align them to the local model axes: Y = unit tangent,
   // Z = normalize(modelZ - (modelZ·Y)Y) (fall back to modelX when Y ∥ modelZ),
   // X = normalize(Y × Z), re-derive Z = X × Y. No arbitrary ref × Y sign flip.
   if (!haveZ) {
@@ -821,7 +820,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     axZ[i] = (lz > eps) ? SFVec3f{z.x / lz, z.y / lz, z.z / lz} : axZ[i];
   }
 
-  // --- Place every (section, crossSection vertex) into world-local space. ----
+  // Place every (section, crossSection vertex) into world-local space.
   // vertex[i*nc + k] = the position of cross-section vertex k at spine point i.
   std::vector<SFVec3f> verts(static_cast<std::size_t>(ns) * nc);
   for (int i = 0; i < ns; ++i) {
@@ -844,20 +843,20 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     }
   }
 
-  // --- DEFAULT (implicit) TEXTURE-COORDINATE PARAMETERIZATION (TC3). ---------
-  // ISO/IEC 19775-1 (Extrusion, texCoord NULL — Extrusion has NO authored
-  // TextureCoordinate field, so this is the ONLY mapping):
-  //   * SIDE walls: S runs AROUND the cross-section by ACCUMULATED CHORD length
+  // default (implicit) texture-coordinate parameterization.
+  // ISO/IEC 19775-1 (Extrusion, texCoord NULL — Extrusion has no authored
+  // TextureCoordinate field, so this is the only mapping):
+  //   * side walls: S runs around the cross-section by accumulated chord length
   //       sParam[k] = (sum |crossSection[m]-crossSection[m-1]|, m<=k) /
   //       perimeter;
-  //     T runs ALONG the spine by ACCUMULATED spine length
+  //     T runs along the spine by accumulated spine length
   //       tParam[i] = (spine length up to section i) / total spine length.
-  //   * begin/end CAPS: the cross-section's OWN 2D coordinates normalized to
+  //   * begin/end caps: the cross-section's own 2D coordinates normalized to
   //   the
   //     cross-section's 2D bbox -> (s,t) in [0,1] across the cap.
   // Guards a zero-length spine / cross-section to 0 (no div-by-zero).
   // genTexCoords is the dispatcher's "no authored TextureCoordinate" switch
-  // (always true for Extrusion); when false (B3/B6 paths that don't want UVs)
+  // (always true for Extrusion); when false (paths that do not need UVs)
   // texcoords stay empty.
   std::vector<float> sParam(
       nc, 0.0f); // per cross-section vertex, around-perimeter.
@@ -896,8 +895,8 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     }
   }
   const float csSizeX = csHi.x - csLo.x, csSizeY = csHi.y - csLo.y;
-  // Cap mapping per ISO/IEC 19775-1 (Extrusion): the cross-section is UNIFORMLY
-  // scaled so the LARGER dimension (X or Z) ranges 0..1 — aspect-preserved, NOT
+  // Cap mapping per ISO/IEC 19775-1 (Extrusion): the cross-section is uniformly
+  // scaled so the larger dimension (X or Z) ranges 0..1 — aspect-preserved, not
   // a per-axis stretch. The smaller axis then ranges 0..(smaller/larger).
   const float csMax = (std::max)(csSizeX, csSizeY);
   const float invCs = (csMax > 0.0f) ? 1.0f / csMax : 0.0f;
@@ -914,9 +913,9 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     return static_cast<std::uint32_t>(i * nc + k);
   };
   // Emit a flat-normal triangle (a,b,c) honoring ccw (swap b/c when !ccw),
-  // retaining the lattice id of each source (section,crossSectionVertex) AND,
+  // retaining the lattice id of each source (section,crossSectionVertex) and,
   // when genTexCoords, the per-corner UV (ua,ub,uc) parallel to positions. The
-  // ccw swap reorders b/c, the lattice ids AND the UVs in lockstep.
+  // ccw swap reorders b/c, the lattice ids and the UVs in lockstep.
   const auto emit = [&](int ia, int ka, int ib, int kb, int ic, int kc,
                         SFVec2f ua, SFVec2f ub, SFVec2f uc) {
     SFVec3f a = verts[lid(ia, ka)], b = verts[lid(ib, kb)],
@@ -949,8 +948,8 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     }
   };
 
-  // --- Side walls: quad band between section i and i+1, vertex k and k+1.
-  // ----- CCW-as-authored quad (k,i)-(k+1,i)-(k+1,i+1)-(k,i+1) split into two
+  // Side walls: quad band between section i and i+1, vertex k and k+1.
+  // CCW-as-authored quad (k,i)-(k+1,i)-(k+1,i+1)-(k,i+1) split into two
   // tris. Each corner's UV is the side parameterization at its (section,
   // csVertex).
   for (int i = 0; i + 1 < ns; ++i)
@@ -961,7 +960,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
            sideUv(i + 1, k));
     }
 
-  // --- Caps: fan over the closed cross-section at the first/last spine point.
+  // Caps: fan over the closed cross-section at the first/last spine point.
   // - The cap winding is the spec's: beginCap faces -Y (toward the spine
   // start), endCap faces +Y. We fan v0,vk,vk+1 over the cross-section; ccw is
   // honored by emit(). beginCap uses reversed order so its outward face opposes
@@ -992,27 +991,26 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
            capUv(tri[1]), capUv(tri[2]));
   }
 
-  // creaseAngle smoothing (B6) keyed on the SOURCE lattice id (section*nc +
+  // creaseAngle smoothing keyed on the source lattice id (section*nc +
   // crossSectionVertex), not the expanded run. creaseAngle==0 => flat output.
   if (creaseAngle > 0.0f)
     creaseSmoothNormals(m, m.latticeIndex, creaseAngle);
   m.hasNormals = !m.normals.empty();
 }
 
-// ---------------------------------------------------------------------------
 // Geometry2D (§14): the eight 2D nodes live in the XY plane (z = 0) and carry
-// NO `coord` child, so they are dispatched BEFORE the generic coord guard.
+// no `coord` child, so they are dispatched before the generic coord guard.
 // Arc2D/Circle2D/Polyline2D emit Topology::Lines and Polypoint2D emits
-// Topology::Points (both unlit, solid=false — the B4 convention).
+// Topology::Points (both unlit, solid=false).
 // ArcClose2D/Disk2D/Rectangle2D/TriangleSet2D emit Topology::Triangles with +Z
 // normals and `solid` carried verbatim from the node field. Texture coordinates
 // follow the §14 2D convention: the geometry's XY bounding box mapped to [0,1]^2
 // (Rectangle2D and Disk2D map their bounding square, which is the same box);
 // TriangleSet2D's authored texCoord, when present, wins.
 //
-// TESSELLATION COUNT: the circular primitives use one chord per
+// tessellation count: the circular primitives use one chord per
 // kGeometry2DAngleStep radians. A full circle therefore gets 64 chords
-// (5.625° each); a partial sweep rounds UP to at least one chord. This is
+// (5.625° each); a partial sweep rounds up to at least one chord. This is
 // finer than the analytic primitives' default radialSlices=24 because a 2D
 // circle is usually the whole silhouette, where a coarse chord count reads as
 // a polygon.
@@ -1154,7 +1152,7 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
       push2DTriangle(m, SFVec3f{v[i].x, v[i].y, 0.0f},
                      SFVec3f{v[i + 1].x, v[i + 1].y, 0.0f},
                      SFVec3f{v[i + 2].x, v[i + 2].y, 0.0f});
-    // Authored texCoord WINS; else the §14 bounding-box default. (The 4.0
+    // Authored texCoord wins; else the §14 bounding-box default. (The 4.0
     // binding carries no texCoord field for TriangleSet2D, so in practice the
     // default path runs; the authored branch keeps the seam honest if a future
     // binding adds it.)
@@ -1230,7 +1228,7 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
       for (int k = 0; k < segs; ++k)
         push2DTriangle(m, c, p[k], p[k + 1]);
     } else {
-      // CHORD: fan from the first arc endpoint; the closing edge p_segs -> p_0
+      // chord: fan from the first arc endpoint; the closing edge p_segs -> p_0
       // is the straight chord between the arc ends.
       for (int k = 1; k < segs; ++k)
         push2DTriangle(m, p[0], p[k], p[k + 1]);
@@ -1324,16 +1322,16 @@ bool recognizedGeometryType(const std::string &t) {
       // analytic primitives (no coord node)
       t == "ElevationGrid" || t == "GeoElevationGrid" || t == "Box" ||
       t == "Sphere" || t == "Cone" || t == "Cylinder" || t == "Extrusion" ||
-      // T-TEXT: Text (glyph-quad mesh via the font-metrics seam)
+      // Text (glyph-quad mesh via the font-metrics seam)
       t == "Text" ||
       // coord-fed indexed / strip / fan / quad sets
       t == "IndexedFaceSet" || t == "IndexedTriangleSet" ||
       t == "TriangleSet" || t == "IndexedTriangleFanSet" ||
       t == "IndexedTriangleStripSet" || t == "IndexedQuadSet" ||
       t == "TriangleFanSet" || t == "TriangleStripSet" || t == "QuadSet" ||
-      // B4 line/point sets (Topology::Lines / Topology::Points; always unlit)
+      // line/point sets (Topology::Lines / Topology::Points; always unlit)
       t == "IndexedLineSet" || t == "LineSet" || t == "PointSet" ||
-      // NURBS (T5): curve -> Lines, patch surface -> Triangles
+      // NURBS: curve -> Lines, patch surface -> Triangles
       t == "NurbsCurve" || t == "NurbsPatchSurface" ||
       // NURBS swept/swung surfaces -> Triangles (trimmed stays unrecognized)
       t == "NurbsSweptSurface" || t == "NurbsSwungSurface" ||
@@ -1406,7 +1404,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     c.knot = geombounds::getField<std::vector<double>>(*geom, "knot", {});
     c.order = geombounds::getField<SFInt32>(*geom, "order", 3);
     c.closed = geombounds::getField<SFBool>(*geom, "closed", false);
-    c.weightMode = opt.nurbsWeightMode; // NRB-4
+    c.weightMode = opt.nurbsWeightMode;
 
     if ((int)c.cp.size() < c.order)
       return mesh; // recognized, empty
@@ -1443,7 +1441,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     s.vOrder = geombounds::getField<SFInt32>(*geom, "vOrder", 3);
     s.uClosed = geombounds::getField<SFBool>(*geom, "uClosed", false);
     s.vClosed = geombounds::getField<SFBool>(*geom, "vClosed", false);
-    s.weightMode = opt.nurbsWeightMode; // NRB-4
+    s.weightMode = opt.nurbsWeightMode;
 
     if (s.uDim < s.uOrder || s.vDim < s.vOrder ||
         (int)s.cp.size() < s.uDim * s.vDim)
@@ -1484,7 +1482,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     if (!crossNode || !trajNode)
       return mesh; // recognized, empty
     nurbs::Curve2DDef cs = readControlCurve2D(*crossNode);
-    cs.weightMode = opt.nurbsWeightMode; // NRB-4
+    cs.weightMode = opt.nurbsWeightMode;
     nurbs::CurveDef tj = readTrajectoryCurve3D(*trajNode, projection);
     tj.weightMode = opt.nurbsWeightMode;
     if ((int)cs.cp.size() < cs.order || (int)tj.cp.size() < tj.order)
@@ -1510,7 +1508,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     if (!profNode || !trajNode)
       return mesh; // recognized, empty
     nurbs::Curve2DDef pf = readControlCurve2D(*profNode);
-    pf.weightMode = opt.nurbsWeightMode; // NRB-4
+    pf.weightMode = opt.nurbsWeightMode;
     nurbs::Curve2DDef tj = readControlCurve2D(*trajNode);
     tj.weightMode = opt.nurbsWeightMode;
     if ((int)pf.cp.size() < pf.order || (int)tj.cp.size() < tj.order)
@@ -1530,7 +1528,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     return mesh;
   }
 
-  // T-TEXT: Text carries NO coord node — its glyph-quad mesh is synthesized
+  // Text carries no coord node — its glyph-quad mesh is synthesized
   // from the §15 layout engine + the embedder's FontMetrics seam (held on opt).
   // The Text node's outputOnly fields (textBounds/lineBounds/origin) are set by
   // the SceneExtractor (it owns the non-const node); buildLocalMesh produces
@@ -1539,7 +1537,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     return buildTextMesh(*geom, opt.fontMetrics);
   }
 
-  // ElevationGrid is special: it carries NO coord node — positions are
+  // ElevationGrid is special: it carries no coord node — positions are
   // synthesized from the height grid. Handle it before the coord guard, with
   // its own funnel that pushes synthesized vertices (+ flat normals).
   if (t == "ElevationGrid") {
@@ -1550,7 +1548,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     const auto h =
         geombounds::getField<std::vector<float>>(*geom, "height", {});
     // Some conformance scenes (ConformanceNist ElevationGrid/test_{x,z}Spacing)
-    // author only ONE dimension and leave the other at its 0 default, relying
+    // author only one dimension and leave the other at its 0 default, relying
     // on the renderer to infer it from height.size(). Both are required per
     // spec, but the NIST reference renders expect the inference, so derive the
     // missing dimension from the height array when it divides evenly.
@@ -1563,12 +1561,12 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     if (xd >= 2 && zd >= 2 &&
         static_cast<std::size_t>(xd) * static_cast<std::size_t>(zd) <=
             h.size()) {
-      // Lattice-index-retaining emission (B5). Synthesize each lattice vertex
+      // Lattice-index-retaining emission. Synthesize each lattice vertex
       // (col=i, row=j) from height + spacing; the shared emitter records the
-      // (row*xDim+col) source id per expanded corner (for B6 smoothing).
+      // (row*xDim+col) source id per expanded corner (for crease-angle smoothing).
       const float crease =
           geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
-      // EXT-001: resolve authored color/normal + colorPerVertex/normalPerVertex
+      // resolve authored color/normal + colorPerVertex/normalPerVertex
       // (ElevationGrid is a grid node, not composed: no *Index fields).
       const AttrResolvers attrs = buildAttrs(*geom);
       emitHeightGrid(
@@ -1579,9 +1577,9 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
                            static_cast<float>(j) * zs};
           },
           crease, mesh.ccw, &attrs);
-      // DEFAULT (implicit) grid texcoords (TC2). An authored TextureCoordinate
-      // ALWAYS WINS (resolved per lattice vertex, lid = j*xDim+i); only when
-      // texCoord is NULL do we generate the NORMATIVE s=i/(xDim-1),
+      // default (implicit) grid texcoords. An authored TextureCoordinate
+      // always wins (resolved per lattice vertex, lid = j*xDim+i); only when
+      // texCoord is NULL do we generate the normative s=i/(xDim-1),
       // t=j/(zDim-1) grid parameterization. Either path leaves texcoords
       // parallel to positions.
       std::vector<SFVec2f> authored;
@@ -1595,7 +1593,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
 
   // §25.3.2 GeoElevationGrid: convert the geographic lattice through GeoOrigin.
   if (t == "GeoElevationGrid") {
-    // EXACT reflected field types (GeoElevationGrid stores SFInt32/SFDouble/
+    // exact reflected field types (GeoElevationGrid stores SFInt32/SFDouble/
     // MFDouble/SFVec3d/SFFloat); getField returns the default on a type
     // mismatch, so requesting the wrong T would silently zero the grid.
     const int xd = geombounds::getField<int>(*geom, "xDimension", 0);
@@ -1606,12 +1604,12 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     if (xd >= 2 && zd >= 2 &&
         static_cast<std::size_t>(xd) * static_cast<std::size_t>(zd) <=
             h.size()) {
-      // GeoElevationGrid stores creaseAngle as SFDouble (NOT SFFloat).
+      // GeoElevationGrid stores creaseAngle as SFDouble (not SFFloat).
       const float crease = static_cast<float>(
           geombounds::getField<double>(*geom, "creaseAngle", 0.0));
 
-      // EXT-001: same authored color/normal resolution as ElevationGrid (the
-      // shared emitHeightGrid now honors colorPerVertex/normalPerVertex).
+      // same authored color/normal resolution as ElevationGrid (the
+      // shared emitHeightGrid honors colorPerVertex/normalPerVertex).
       const AttrResolvers attrs = buildAttrs(*geom);
       emitHeightGrid(
           mesh, xd, zd,
@@ -1640,9 +1638,9 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
         }
       }
 
-      // DEFAULT (implicit) grid texcoords (TC2) — same parameterization as
+      // default (implicit) grid texcoords — same parameterization as
       // ElevationGrid (s=i/(xDim-1), t=j/(zDim-1)); an authored
-      // TextureCoordinate ALWAYS WINS, resolved per lattice vertex via
+      // TextureCoordinate always wins, resolved per lattice vertex via
       // latticeIndex.
       std::vector<SFVec2f> authored;
       if (auto tc = geombounds::getNode(*geom, "texCoord"))
@@ -1653,7 +1651,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     return mesh;
   }
 
-  // Analytic primitives (T4) — no coord node; tessellated parametrically with
+  // Analytic primitives — no coord node; tessellated parametrically with
   // CCW outward winding + outward per-corner normals (compose under the same
   // cull rule as composed meshes). Dispatched before the coord guard.
   if (t == "Box") {
@@ -1689,15 +1687,15 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     return mesh;
   }
 
-  // Extrusion (B3) — no coord node; swept solid. Dispatched before the coord
+  // Extrusion — no coord node; swept solid. Dispatched before the coord
   // guard. Reads crossSection/spine/orientation/scale/beginCap/endCap/ccw,
   // builds the Spine-aligned Cross-section frame and emits side walls + caps in
-  // lattice-index-retaining form (for B6). creaseAngle deferred to B6.
+  // Source lattice indices retain adjacency for crease-angle smoothing.
   if (t == "Extrusion") {
     // X3D spec defaults: crossSection = unit square (closed), spine =
-    // origin+up. The generated binding now carries these full multi-point
-    // defaults, so an UNauthored field already arrives complete; the .empty()
-    // fallback stays as a safety net. An AUTHORED degenerate (1-point)
+    // origin+up. The generated binding carries these full multi-point
+    // defaults, so an unauthored field already arrives complete; the .empty()
+    // fallback stays as a safety net. An authored degenerate (1-point)
     // crossSection/spine is left as-is so tessellateExtrusion's ns>=2/nc>=2
     // guard culls it (the documented
     // "< 2 spine points => empty" contract).
@@ -1718,9 +1716,9 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     const bool convex = geombounds::getField<SFBool>(*geom, "convex", true);
     const float crease =
         geombounds::getField<float>(*geom, "creaseAngle", 0.0f);
-    // DEFAULT (implicit) texcoords (TC3): Extrusion has NO authored
+    // default (implicit) texcoords: Extrusion has no authored
     // TextureCoordinate field (texcoords are implicit-only per the spec), so we
-    // ALWAYS generate the NORMATIVE side-wall (S around the cross-section by
+    // always generate the normative side-wall (S around the cross-section by
     // accumulated chord length, T along the spine by accumulated length) + cap
     // (cross-section coords normalized to the cross-section bbox)
     // parameterization, emitted parallel to positions inside
@@ -1756,9 +1754,9 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     return i >= 0 && i < static_cast<int>(pts.size());
   };
 
-  // B6 source-index adjacency: when no Normal is authored, record per emitted
-  // corner the COORD index it came from, so a creaseAngle post-pass can fuse
-  // face normals across shared coordinate verts WITHOUT re-indexing. Only
+  // source-index adjacency: when no Normal is authored, record per emitted
+  // corner the coord index it came from, so a creaseAngle post-pass can fuse
+  // face normals across shared coordinate verts without re-indexing. Only
   // IndexedFaceSet carries creaseAngle among composed sets; the funnel always
   // captures this (cheap) and the post-pass runs solely for IFS.
   std::vector<std::uint32_t> sourceId;
@@ -1806,7 +1804,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
       }
     }
 
-    // Normals: authored Normal node honored per corner; else FLAT per-face.
+    // Normals: authored Normal node honored per corner; else flat per-face.
     if (attrs.hasNormal) {
       const SFVec3f flat = faceNormal(pa, pb, pc); // fallback for OOB corners.
       const auto pickN = [&](const Corner &cr) {
@@ -1823,12 +1821,12 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
         mesh.sourceNormalIndex.push_back(s < 0 ? UINT32_MAX : static_cast<std::uint32_t>(s));
       }
     } else {
-      // GENERATED face normal. Per rendering.md §11.4.x / geometry3D.md
-      // §13.3.x, ccw=FALSE reverses the direction of the GENERATED normal. We
+      // generated face normal. Per rendering.md §11.4.x / geometry3D.md
+      // §13.3.x, ccw=FALSE reverses the direction of the generated normal. We
       // negate here (rather than swapping the winding) so the index/position
       // order stays the authored order; the Extrusion path achieves the same
       // net normal by swapping b/c. mesh.ccw is still reported verbatim, and
-      // authored Normal nodes (the branch above) are NEVER flipped.
+      // authored Normal nodes (the branch above) are never flipped.
       SFVec3f n = faceNormal(pa, pb, pc);
       if (!mesh.ccw)
         n = SFVec3f{-n.x, -n.y, -n.z};
@@ -1879,7 +1877,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
   if (t == "IndexedFaceSet") {
     const auto idx =
         geombounds::getField<std::vector<int>>(*geom, "coordIndex", {});
-    // MSH-3: the convex field (SFBool, default TRUE). When TRUE we keep the
+    // the convex field (SFBool, default TRUE). When TRUE we keep the
     // existing naive fan (byte-identical to before). When FALSE a face may be
     // concave, so we ear-clip in its best-fit plane to avoid the fan's
     // inverted/overlapping triangles.
@@ -1922,9 +1920,9 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     }
     if (face.size() >= 3)
       flush();
-    // creaseAngle smoothing (B6) — IFS is the only composed set with
-    // creaseAngle. Runs ONLY when no Normal node is authored (attrs.hasNormal
-    // false) and creaseAngle>0; keyed on the COORD source id so
+    // creaseAngle smoothing — IFS is the only composed set with
+    // creaseAngle. Runs only when no Normal node is authored (attrs.hasNormal
+    // false) and creaseAngle>0; keyed on the coord source id so
     // coincident-distinct verts stay distinct. creaseAngle==0 => byte-identical
     // flat output (non-regressive).
     if (!attrs.hasNormal) {
@@ -1957,7 +1955,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
         if (ok(fan[0].coord) && ok(fan[k].coord) && ok(fan[k + 1].coord))
           addTriangle(fan[0], fan[k], fan[k + 1]);
       if (!fan.empty())
-        ++faceNo; // EXT-002: one color/normal per FAN, not per triangle
+        ++faceNo; // One color/normal per fan, not per triangle.
       fan.clear();
     };
     for (std::size_t p = 0; p < idx.size(); ++p) {
@@ -1981,7 +1979,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
           addTriangle(a, b, c);
       }
       if (!strip.empty())
-        ++faceNo; // EXT-002: one color/normal per STRIP
+        ++faceNo; // One color/normal per strip.
       strip.clear();
     };
     for (std::size_t p = 0; p < idx.size(); ++p) {
@@ -2015,7 +2013,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
           addTriangle(Corner{v0, v0, faceNo}, Corner{v0 + k, v0 + k, faceNo},
                       Corner{v0 + k + 1, v0 + k + 1, faceNo});
       v0 += c;
-      ++faceNo; // EXT-002: one color/normal per FAN, not per triangle
+      ++faceNo; // One color/normal per fan, not per triangle.
     }
   } else if (t == "TriangleStripSet") {
     const auto counts =
@@ -2031,7 +2029,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
                       Corner{di, di, faceNo});
       }
       v0 += c;
-      ++faceNo; // EXT-002: one color/normal per STRIP, not per triangle
+      ++faceNo; // One color/normal per strip, not per triangle.
     }
   } else if (t == "QuadSet") {
     int faceNo = 0;
@@ -2044,15 +2042,13 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
                   Corner{d, d, faceNo});
     }
   } else if (t == "IndexedLineSet" || t == "LineSet" || t == "PointSet") {
-    // ----------------------------------------------------------------------
-    // B4 — line/point topology. Authored normals enable lighting (§11.2.2.5).
+    // line/point topology. Authored normals enable lighting (§11.2.2.5).
     //
-    // Each emitted index is its own EXPANDED corner (one fresh position + a
+    // Each emitted index is its own expanded corner (one fresh position + a
     // 0..N-1 index entry), matching the triangle funnel's layout so the GPU
     // upload path is identical. Color is resolved per corner via the shared
     // AttrResolvers (colorPerVertex / colorIndex honored); normals use the
     // coordinate index.
-    // ----------------------------------------------------------------------
     mesh.solid = false;
     const auto emitVertex = [&](const Corner &cr) {
       mesh.positions.push_back(pts[cr.coord]);
@@ -2074,7 +2070,7 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
 
     if (t == "IndexedLineSet") {
       // coordIndex: each -1-delimited run is a POLYLINE; emit it as consecutive
-      // vertex PAIRS (segment endpoints) so a GL_LINES draw renders the whole
+      // vertex pairs (segment endpoints) so a GL_LINES draw renders the whole
       // polyline (v0-v1, v1-v2, ...). colorPerVertex=false => one color per
       // polyline (face); colorPerVertex=true => per coordIndex element.
       mesh.topology = Topology::Lines;
@@ -2128,14 +2124,14 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
     }
   }
 
-  // MSH-2: VERTEX-AVERAGED normals for the triangle/quad-set family. Unlike IFS
+  // vertex-averaged normals for the triangle/quad-set family. Unlike IFS
   // and ElevationGrid (which carry a creaseAngle field — default 0 = faceted —
-  // and run their own creaseAngle pass above), these sets have NO creaseAngle
+  // and run their own creaseAngle pass above), these sets have no creaseAngle
   // and normalPerVertex defaults TRUE, so rendering.md §11.3.2/§11.4.9 require
-  // each GENERATED per-vertex normal to be the AVERAGE of all triangles sharing
-  // that vertex. We reuse the creaseSmoothNormals fuser keyed on the COORD
+  // each generated per-vertex normal to be the average of all triangles sharing
+  // that vertex. We reuse the creaseSmoothNormals fuser keyed on the coord
   // source id with angle PI (every incident face at a shared coord fuses). Runs
-  // ONLY when no Normal node is authored AND normalPerVertex is TRUE; an
+  // only when no Normal node is authored and normalPerVertex is TRUE; an
   // authored Normal or normalPerVertex=FALSE (faceted) leaves the flat per-face
   // fill untouched. The ccw negation already baked into addTriangle survives
   // averaging (the summed normals keep their reversed orientation).
@@ -2152,10 +2148,10 @@ static MeshData buildLocalMeshUnfogged(const X3DNode *geom,
       creaseSmoothNormals(mesh, sourceId, 3.14159265358979323846f);
   }
 
-  // DEFAULT (implicit) texcoords (TC1). When the geometry authored NO
-  // TextureCoordinate node, generate the NORMATIVE bounding-box-projection UVs
+  // default (implicit) texcoords. When the geometry authored no
+  // TextureCoordinate node, generate the normative bounding-box-projection UVs
   // so a consumer's texture path works even with no authored coords. An
-  // authored TextureCoordinate ALWAYS WINS (attrs.hasTexCoord true => skip,
+  // authored TextureCoordinate always wins (attrs.hasTexCoord true => skip,
   // byte-unchanged — the per-corner pickT path above already populated
   // mesh.texcoords). Only for triangle topology: line/point sets carry no
   // texcoords by spec.

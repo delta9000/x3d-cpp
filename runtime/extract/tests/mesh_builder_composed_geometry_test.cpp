@@ -1,19 +1,3 @@
-// mesh_builder_t2_test.cpp — M2.5 T2 acceptance: MeshBuilder widening to
-// strips / fans / quads / ElevationGrid.
-//
-// Proofs:
-//   1) Fan-triangulation counts — Indexed*FanSet and TriangleFanSet(fanCount)
-//      both fan a k-vertex polygon into (k-2) triangles, sharing the apex.
-//   2) Strip winding (EXPLICIT) — Indexed*StripSet and TriangleStripSet emit a
-//      consistent winding: odd-index triangles in the strip are flipped so a
-//      front-facing CCW strip stays CCW (a missing flip inverts every other
-//      normal). We assert the exact emitted corner ORDER, not just the count.
-//   3) Quad split — *QuadSet splits each quad into (0,1,2)+(0,2,3).
-//   4) ElevationGrid — (xDim-1)*(zDim-1) cells -> 2 triangles each, positions
-//      synthesized from the height grid (NO coord node required).
-//   5) Malformed-index / count safety — out-of-range indices, ragged counts,
-//      and too-short coord arrays never read out of bounds; they drop the bad
-//      primitive and keep the valid ones.
 #include "GeoFrame.hpp"
 #include "MeshBuilder.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -86,7 +70,7 @@ TEST_CASE("mesh_builder_t2_test") {
   // Five distinct points; fans/strips index into these.
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0}, P4{-1, 1, 0};
 
-  // ---- 1. IndexedTriangleFanSet: one 5-vertex fan -> 3 triangles ----------
+  // 1. IndexedTriangleFanSet: one 5-vertex fan -> 3 triangles
   {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
@@ -99,7 +83,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((posEq(m, 6, P0) && posEq(m, 7, P3) && posEq(m, 8, P4)));
   }
 
-  // ---- 1b. IndexedTriangleFanSet: two fans separated by -1 ----------------
+  // 1b. IndexedTriangleFanSet: two fans separated by -1
   {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
@@ -108,7 +92,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 6)); // 1 + 1 triangles
   }
 
-  // ---- 1c. TriangleFanSet(fanCount): implicit coords partitioned ----------
+  // 1c. TriangleFanSet(fanCount): implicit coords partitioned
   {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
@@ -126,7 +110,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 9)); // 5-vertex fan -> 3 triangles
   }
 
-  // ---- 2. IndexedTriangleStripSet: explicit winding flip ------------------
+  // 2. IndexedTriangleStripSet: explicit winding flip
   // Strip of 4 vertices [0,1,2,3] -> 2 triangles. Vertex order in a strip:
   //   tri0 (even): v0,v1,v2
   //   tri1 (odd) : flipped so winding stays consistent => v1,v3,v2
@@ -139,11 +123,11 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 6)); // (4-2)=2 triangles
     // tri0: P0,P1,P2
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
-    // tri1 (odd): flipped -> P1,P3,P2  (NOT P1,P2,P3, which would invert normal)
+    // tri1 (odd): flipped -> P1,P3,P2  (not P1,P2,P3, which would invert normal)
     CHECK((posEq(m, 3, P1) && posEq(m, 4, P3) && posEq(m, 5, P2)));
   }
 
-  // ---- 2b. TriangleStripSet(stripCount): two strips -----------------------
+  // 2b. TriangleStripSet(stripCount): two strips
   {
     auto g = createX3DNode("TriangleStripSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
@@ -155,7 +139,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((posEq(m, 3, P1) && posEq(m, 4, P3) && posEq(m, 5, P2))); // odd flip
   }
 
-  // ---- 3. IndexedQuadSet: each quad -> 2 triangles ------------------------
+  // 3. IndexedQuadSet: each quad -> 2 triangles
   {
     auto g = createX3DNode("IndexedQuadSet");
     attachCoord(g, {P0, P1, P2, P3});
@@ -167,7 +151,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((posEq(m, 3, P0) && posEq(m, 4, P2) && posEq(m, 5, P3)));
   }
 
-  // ---- 3b. QuadSet: implicit consecutive quads ----------------------------
+  // 3b. QuadSet: implicit consecutive quads
   {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3});
@@ -177,7 +161,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((posEq(m, 3, P0) && posEq(m, 4, P2) && posEq(m, 5, P3)));
   }
 
-  // ---- 4. ElevationGrid: 2x2 grid -> 1 cell -> 2 triangles ----------------
+  // 4. ElevationGrid: 2x2 grid -> 1 cell -> 2 triangles
   // No coord node; positions synthesized from height + spacing.
   {
     auto g = createX3DNode("ElevationGrid");
@@ -202,7 +186,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((sawOrigin));
   }
 
-  // ---- 4b. ElevationGrid larger: 3x2 -> (3-1)*(2-1)=2 cells -> 4 tris ------
+  // 4b. ElevationGrid larger: 3x2 -> (3-1)*(2-1)=2 cells -> 4 tris
   {
     auto g = createX3DNode("ElevationGrid");
     setF(g, "xDimension", std::any(3));
@@ -214,7 +198,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 12));
   }
 
-  // ---- 5. Malformed-index / count safety ----------------------------------
+  // 5. Malformed-index / count safety
   // 5a. Out-of-range fan index dropped, valid fan kept.
   {
     auto g = createX3DNode("IndexedTriangleFanSet");
