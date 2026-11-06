@@ -2,7 +2,7 @@
 title: Script / SAI Runtime
 summary: Script node runtime — ScriptEngine seam, SAI execution context, ECMAScript (Duktape) backend, and dynamic field marshalling.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
-updated: 2026-10-10
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../subsystems/routes.md
@@ -208,6 +208,18 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 ## How it is tested
 
+The Duktape and QuickJS backend binaries both run
+`runtime/script/tests/ScriptBackendTestCases.hpp` through `ScriptEngine`.
+The shared cases cover inline-source decoding, lifecycle, field round-trips,
+Browser queries, node handles, route validation, hostile readback values,
+`updateField`, output cascades and re-emission, and the deterministic clock.
+Round-trips use handler arguments and author-field readback in both engines.
+Each binary retains its own deadline, recursion, and memory-limit cases.
+Duktape also checks raw SFImage object shape;
+QuickJS separately checks ES2015 Date subclassing, which Duktape's ES5 parser
+doesn't support. These are standalone tests: each named `ok:` or `FAIL:` line
+records a check, rather than a doctest assertion.
+
 **Track-A (no JavaScript, uses `MockScriptEngine`):**
 
 - `ctest --preset dev -R x3d_sai_context` (`runtime/script/tests/sai_context_test.cpp`) — field get/set round-trip via reflection; `directOutput` write-gate (cross-node rejected/allowed); DO-CASCADE — a cross-node write mutates the target but fans out NO ROUTE, while a self-write to an `outputOnly` field still fans out; `addRoute`/`deleteRoute` gate and live-route effect; browser-info surface; full seam call-log ordering via the mock.
@@ -220,7 +232,7 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 **Track-C (second backend — QuickJS, built only with `-DX3D_CPP_BUILD_QUICKJS=ON`):**
 
-- `ctest -R x3d_quickjs_backend` (`runtime/script/tests/quickjs_backend_test.cpp`) — the QuickJS backend's own lifecycle + marshalling + Browser + handler-dispatch tests (mirrors the Duktape T1–T16 surface, including T15b–d, T15f–h).
+- `ctest -R x3d_quickjs_backend` (`runtime/script/tests/quickjs_backend_test.cpp`) — the shared backend cases plus QuickJS deadline, memory-limit, and Date-subclass checks.
 - `ctest -R x3d_quickjs_swap` (`runtime/script/tests/quickjs_swap_test.cpp`) — **the genericity proof**: drives identical fixtures through both the Duktape and QuickJS backends and asserts identical observable behavior (cascade field writes + ROUTE-target values). Gated in CI by the `QuickJS seam swap-test` job.
 
 **Integration (file-authored Script un-tabling, SCR-SAI-DYN S1):**
