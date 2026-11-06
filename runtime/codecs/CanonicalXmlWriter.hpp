@@ -23,23 +23,12 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
 namespace x3d::nodes {
-class Script;
 class X3DNode;
 } // namespace x3d::nodes
 
 namespace x3d::runtime {
-struct ExternProtoDeclaration;
-struct IsConnection;
-struct ProtoDeclaration;
-struct ProtoBody;
-struct ProtoField;
-class ProtoInstance;
 class Scene;
 class DynamicFieldStore;
 class X3DDocument;
@@ -47,7 +36,6 @@ class X3DDocument;
 
 namespace x3d::core {
 enum class X3DFieldType;
-struct FieldInfo;
 } // namespace x3d::core
 
 namespace x3d::xml {
@@ -56,7 +44,6 @@ struct Element;
 
 namespace x3d::codec {
 using namespace x3d::core;
-using x3d::nodes::Script;
 using x3d::nodes::X3DNode;
 // X3DC14N attribute escaping (single-quote context):
 //   &amp; for &, &lt; for <, &gt; for >, &apos; for ' (the delimiter).
@@ -89,53 +76,7 @@ public:
   std::string writeDocument(const runtime::X3DDocument &doc);
 
 private:
-  std::unordered_set<const X3DNode *> seen_;
-  std::unordered_map<std::string, std::shared_ptr<X3DNode>> defaults_;
-  const runtime::Scene *scene_ = nullptr;
-  const runtime::DynamicFieldStore *authorFields_ = nullptr;
-  const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
-  const runtime::ProtoBody *bodyOrder_ = nullptr;
-
-  void writeSceneInto(xml::Element *scene, const runtime::Scene &s);
-
-  X3DNode *defaultFor(const std::string &typeName);
-
-  std::unique_ptr<xml::Element>
-  writeNodeElement(const std::shared_ptr<X3DNode> &node,
-                   const std::string &containerOverride);
-
-  void writeAuthorFields(xml::Element &el, const X3DNode &node);
-
-  void writeNodeField(xml::Element &parent,
-                      const std::shared_ptr<X3DNode> &owner,
-                      const FieldInfo &f);
-
-  std::unique_ptr<xml::Element>
-  writeProtoInstanceElement(const runtime::ProtoInstance &src,
-                            const std::string &containerOverride);
-
-  std::unique_ptr<xml::Element>
-  writeProtoFieldElement(const runtime::ProtoField &f);
-
-  std::unique_ptr<xml::Element>
-  writeProtoDeclareElement(const runtime::ProtoDeclaration &d);
-
-  std::unique_ptr<xml::Element>
-  writeExternProtoDeclareElement(const runtime::ExternProtoDeclaration &d);
-
-  static void attachIsBlocks(xml::Element &nodeEl,
-                             const std::shared_ptr<X3DNode> &node,
-                             const std::vector<runtime::IsConnection> &isc);
-
-  static const runtime::ProtoField *
-  interfaceField(const runtime::ProtoInstance &src, const std::string &name);
-
   static void indentCan(std::ostringstream &os, int depth);
-
-  /// Collect and sort attrs alphabetically (stable — attr names are unique per
-  /// XML element; for canonical form identical-name attrs would be an error).
-  static std::vector<std::pair<std::string, std::string>>
-  sortedAttrs(const std::vector<std::pair<std::string, std::string>> &attrs);
 
   void renderCanonical(const xml::Element &el, std::ostringstream &os,
                        int depth);

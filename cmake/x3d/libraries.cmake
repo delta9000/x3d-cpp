@@ -44,6 +44,7 @@ target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 add_library(x3d_cpp_authoring_runtime ${_x3d_node_library_type}
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/FieldValueIO.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/ChildOrder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlGraphBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/JsonWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/VrmlWriter.cpp"

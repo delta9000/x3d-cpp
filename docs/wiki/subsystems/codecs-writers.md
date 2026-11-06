@@ -2,7 +2,7 @@
 title: Codec Writers
 summary: XML, VRML, and JSON serialization writers plus field-value IO — the full set of output codecs.
 tags: [subsystem, codecs, writers, xml, vrml, json, serialization]
-updated: 2026-07-17
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../subsystems/canonical-xml.md
@@ -30,10 +30,11 @@ the remaining cross-encoding ordering limits.
 | File | Role |
 |---|---|
 | `runtime/codecs/X3DCodecs.hpp` | Umbrella include that pulls in all codecs (writers + readers + XmlLite) |
-| `runtime/codecs/XmlWriter.hpp` | Runtime model → X3D-XML; header-only, `namespace x3d::codec` |
+| `runtime/codecs/XmlWriter.{hpp,cpp}` | Runtime model → X3D-XML; public entry points and ordinary renderer in `x3d::codec` |
 | `runtime/codecs/VrmlWriter.hpp` | Runtime model → ClassicVRML (X3D ClassicVRML / `.x3dv`); header-only |
 | `runtime/codecs/JsonWriter.hpp` | Runtime model → X3D-JSON; header-only (round-trip not required) |
-| `runtime/codecs/CanonicalXmlWriter.hpp` | Runtime model → X3D Canonical Form (X3DC14N); header-only, fully separate from `XmlWriter` |
+| `runtime/codecs/CanonicalXmlWriter.{hpp,cpp}` | X3DC14N entry point, renderer, and value-formatting helpers |
+| `runtime/codecs/XmlGraphBuilder.{hpp,cpp}` | Shared XML graph construction; explicit value-format/default-comparison and child/attribute-order policies |
 | `runtime/codecs/FieldValueIO.hpp` | Bidirectional field-value IO: `formatValue` (`std::any` → wire string) and `parseValue` (wire string → `std::any`), all type-switched on `X3DFieldType`; also low-level helpers (`fmtFloat`, `parseFloat`, `tokenize`, `parseMFString`, …). Floats/doubles serialize in **shortest round-trip form** (`std::to_chars`): authored digits like `0.9` survive a round-trip verbatim instead of expanding to `0.899999976`, and `parse(format(v)) == v` bit-exactly (pinned by `fval_extended_test`). `CanonicalXmlWriter`'s `canonFmtFloat` is deliberately separate — X3DC14N owns its own pinned formatting contract. |
 | `runtime/codecs/JsonString.hpp` | Shared JSON string escaping for JsonWriter and the two metadata strings in ClassicVRML comments; control characters never create extra comment lines |
 | `runtime/codecs/ProtoNameMaps.hpp` | `fieldTypeName()` and `accessTypeName()` — enum → string helpers shared by the writers; `fieldTypeFromName()` inverts `fieldTypeName()` for the XML, ClassicVRML and JSON readers; `accessTypeFromName()` accepts canonical names and VRML97 aliases |
@@ -41,12 +42,11 @@ the remaining cross-encoding ordering limits.
 | `runtime/codecs/XmlReader.hpp` | X3D-XML → runtime model (counterpart reader; out of scope for this page — see [Codec Readers](../subsystems/parse-readers.md)) |
 | `runtime/codecs/tests/` | Per-writer and cross-writer round-trip tests |
 
-The ordinary writers and the XML/Classic readers use
+The XML writers, Classic writer, and XML/Classic readers use
 `ProtoInstance::interfaceField()` for interface lookup. A local declaration
 takes precedence over an external declaration, even when the requested field
-is absent locally. JSON retains its existing external-field fallback;
-canonical XML keeps its separate lookup path. `x3d::codec::isMF` classifies
-multiple-value wire types for the Classic reader and writer; the writer also
+is absent locally. JSON retains its existing external-field fallback.
+`x3d::codec::isMF` classifies multiple-value wire types for the Classic reader and writer; the writer also
 handles MFNode structurally.
 
 ## Interfaces and seams
@@ -111,7 +111,16 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 2. **DEF/USE deduplication.** Node identity (raw pointer) is tracked in an `unordered_set<const X3DNode *>`. The first emission of a shared node writes a `DEF`; all subsequent references emit a `USE` reference with no fields or children.
 3. **PROTO / Inline round-trip redirect.** Before emitting a node the writer checks `scene.expandedSources` (for expanded `ProtoInstance`s) and `scene.expandedInlines` (for expanded `Inline` nodes). If a match is found, the original captured source structure is re-emitted instead of the expansion, so the written output can be re-parsed to re-expand rather than serializing the expanded tree.
 
-All four writers emit the document's `profile` from `X3DDocument::profileToken()` (`runtime/X3DDocument.hpp`): the authored spelling when a reader preserved one, else the canonical name for the resolved `Profile`. An unknown/misspelled `profile=` token therefore round-trips unchanged instead of being silently rewritten to `Interchange` (DIAG-PROFILE-COERCE); the reader still resolves it to `Interchange` for profile-fit.
+The three ordinary writers emit the document's `profile` from `X3DDocument::profileToken()` (`runtime/X3DDocument.hpp`): the authored spelling when a reader preserved one, else the canonical name for the resolved `Profile`. An unknown/misspelled `profile=` token therefore round-trips unchanged instead of being silently rewritten to `Interchange` (DIAG-PROFILE-COERCE); the reader still resolves it to `Interchange` for profile-fit.
+
+The two XML writers use `XmlGraphBuilder` for scene traversal, Inline and
+ProtoInstance redirection, DEF/USE, node and author fields, declarations, and IS
+attachment. `XmlGraphPolicy` selects the formatter used for both retained values
+and factory-default comparison, authored versus declaration child-field order,
+and insertion versus alphabetical attribute order. Each serialization owns its
+builder state and default cache. Document headers and renderers remain separate;
+canonical XML retains `profileName()` and the unmodified version token, while
+ordinary XML uses `profileToken()` and `headerVersion()`.
 
 ### Encoding-specific behaviors
 
@@ -119,7 +128,7 @@ All four writers emit the document's `profile` from `X3DDocument::profileToken()
 - Value fields become XML attributes; `SFNode`/`MFNode` fields become child elements under the child's `containerField` name.
 - Enum fields use the `FieldInfo::getEnumString` thunk.
 - A `Script` node's inline source is emitted as a `<![CDATA[...]]>` text body (SCR-SAI-DYN S1) rather than an attribute; author `<field>` declarations from the `DynamicFieldStore` are emitted as `<field>` child elements. A literal `]]>` in the source is split across consecutive CDATA sections (`xml::cdataEscape`; the reader concatenates them back — ENC-CDATA-SCRIPT).
-- ProtoBody re-emit uses a fresh `XmlWriter` instance (isolated DEF/USE bookkeeping); `IS` connections are threaded via `bodyIsc_` so `<IS><connect>` blocks appear at any nesting depth inside the body.
+- ProtoBody re-emit uses a fresh `XmlGraphBuilder` with the same policy and isolated DEF/USE bookkeeping; `IS` connections are threaded via `bodyIsc_` so `<IS><connect>` blocks appear at any nesting depth inside the body.
 - Un-expanded `ProtoInstance`s that were not resolved (no graph node) are re-emitted from `scene.protoInstances` so they survive a round-trip.
 
 **VrmlWriter:**
@@ -140,7 +149,7 @@ All four writers emit the document's `profile` from `X3DDocument::profileToken()
 - Script inline source is emitted as `"#sourceText": [...]` (one element per line); author fields as a `"field": [...]` array member.
 
 **CanonicalXmlWriter (X3DC14N):**
-- Fully separate class with no shared code paths with `XmlWriter`.
+- Shares semantic graph construction with `XmlWriter`; keeps a separate renderer and explicit canonical policies, as amended in [ADR-0008](../decisions/0008-canonicalize-source-provenance.md).
 - Attributes sorted alphabetically within each element; single-quote attribute delimiters.
 - Canonical escaping: `&amp;`, `&lt;`, `&gt;`, `&apos;` (not `&quot;` — single-quoted context).
 - Adds DOCTYPE line (`<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D <ver>//EN" ...>`) and `xmlns:xsd` / `xsd:noNamespaceSchemaLocation` on `<X3D>`.
@@ -151,7 +160,7 @@ All four writers emit the document's `profile` from `X3DDocument::profileToken()
 
 - **`runtime::X3DDocument` / `runtime::Scene`** — the root input type; writers read `rootNodes`, `protoDeclarations`, `externProtoDeclarations`, `protoInstances`, `expandedSources`, `expandedInlines`, `routes`, `imports`, `exports`, `head`.
 - **`X3DNode::fields()` → `FieldTable`** — the reflection table that drives field iteration; writers call `FieldInfo::get`, `FieldInfo::isNode()`, `FieldInfo::isEnum()`, `FieldInfo::getEnumString`, `FieldInfo::isReadable()`.
-- **`X3DNodeFactory::create(typeName)`** — instantiates a fresh default node for default-elision comparison; called once per type per writer instance and cached in `defaults_`.
+- **`X3DNodeFactory::create(typeName)`** — instantiates a fresh default node for default-elision comparison; cached in `defaults_`; for the XML writers, the cache belongs to the per-serialization graph builder.
 - **`runtime::effectiveFields(script, store)`** — used by `XmlWriter` and `CanonicalXmlWriter` to obtain the merged static + dynamic field list for `Script` nodes, so author `<field>` declarations are included in the emit (SCR-SAI-DYN S1).
 - **Scene/declaration author owner** — `VrmlWriter` and `JsonWriter` retrieve declarations from the current `Scene::authorFields` or `ProtoDeclaration::authorFields` store. All four body writers switch to the declaration owner. Bare-node XML writing accepts an optional explicit store; without one it emits generated fields and Script source only. See [ADR-0057](../decisions/0057-scene-owned-author-fields.md).
 - **`Script::getSourceCode()`** — queried by `XmlWriter`, `JsonWriter`, and `CanonicalXmlWriter` to retrieve the inline source body for re-emit. `VrmlWriter` does not call `getSourceCode()` directly; it emits the `sourceCode` field value via the generic reflection `formatValue` path.

@@ -2,7 +2,7 @@
 title: "ADR-0008: Canonicalize Source-Provenance Handling"
 summary: x3d canonicalize uses parseFile (which derives baseUrl from the input path) and does not propagate any provenance metadata into the canonical output — the output is a pure content-hash-stable form.
 tags: [adr, canonicalize, source-provenance, base-url]
-updated: 2026-06-20
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../subsystems/canonical-xml.md
@@ -55,6 +55,32 @@ Concretely:
 - Default-value omission behaviour — whether fields equal to their node default are omitted — matches `CanonicalXmlWriter`'s default-elision logic (same as `XmlWriter`), not necessarily X3DJSAIL's behaviour on a given field. Tier-3 byte-exact gaps from default-omission differences are tolerated; tier-2 (tolerant diff) handles them without requiring a matching policy.
 - The JDK 25 constraint on the oracle (`UnsupportedClassVersionError` on JDK 17) means golden-gen cannot run in a standard CI environment without a pinned JDK 25 install via `mise`. This is documented in the de-risk findings and in `gen_canon_goldens.sh`.
 
+## Amendment (2026-11-05)
+
+The XML writers share semantic graph construction in
+`runtime/codecs/XmlGraphBuilder.{hpp,cpp}`. This supersedes the original
+requirement for completely separate code paths: duplicated traversal had
+already required the same correctness fixes in both writers.
+
+`XmlGraphPolicy` explicitly selects value formatting, child-field order, and
+attribute ordering. Default elision compares the current and factory-default
+values through the selected formatter. Ordinary XML retains authored child-field
+order and attribute insertion order; canonical XML retains declaration order
+outside PROTO bodies and sorts attributes alphabetically before rendering.
+Both use authored statement order within PROTO bodies.
+
+The public writers and their renderers remain separate. They retain their own
+header, quoting, escaping, and numeric-format rules. Each serialization creates
+its own graph builder with local DEF/USE tracking and a factory-default cache;
+PROTO declarations create a fresh builder with the same policy for their local
+DEF scope. Inline and ProtoInstance redirection, node and author fields,
+declarations, and IS attachment have one implementation.
+
+The compatibility requirement is byte-identical ordinary and canonical output
+against the pre-merge CLI over every `.x3d` file in the curated corpus, alongside
+the codec tests and CLI regression gates. Source-provenance and base-URL
+handling remain as decided above.
+
 ## Related
 
 - [Architecture](../architecture.md)
@@ -62,7 +88,7 @@ Concretely:
 - [Canonical XML writer subsystem](../subsystems/canonical-xml.md)
 - Design spec: `docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md` — full de-risk findings, tiered-gate design, and X3DC14N observed form
 - `runtime/codecs/CanonicalXmlWriter.hpp` — the canonical serializer; `canonFmtFloat`, `canonFmtDouble`, `canonEscape`, `x3dDoctype`, `CanonicalXmlWriter::writeDocument`
-- `runtime/codecs/XmlWriter.hpp` — the default writer; shares no code paths with `CanonicalXmlWriter` (separation is the invariant)
+- `runtime/codecs/XmlWriter.hpp` — the default writer; shares graph construction with `CanonicalXmlWriter` under the amendment above
 - `tools/x3d_cli.cpp` (`cmdCanonicalize`) — CLI entry point; shows `parseFile` + `CanonicalXmlWriter` wiring
 - `tools/x3d-cli/canon_gate.cpp` — three-tier differential gate (idempotence + tolerant-diff + byte-exact)
 - `tools/x3d-cli/gate_baseurl_roundtrip_test.cpp` — regression for the base-URL asymmetry bug that established the `parseFile`/`parseDocument(base)` seam contract

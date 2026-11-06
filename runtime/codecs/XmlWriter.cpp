@@ -1,25 +1,19 @@
 #include "XmlWriter.hpp"
 
-#include "DynamicField.hpp"
 #include "FieldValueIO.hpp"
-#include "ProtoNameMaps.hpp"
 #include "VersionHeader.hpp"
-#include "X3DProtoFieldOrder.hpp"
 #include "X3DRuntime.hpp"
+#include "XmlGraphBuilder.hpp"
 #include "XmlLite.hpp"
-#include "parse/NodeBuilder.hpp"
-#include "x3d/nodes/Script.hpp"
-#include "x3d/nodes/X3DNodeFactory.hpp"
 
-#include <any>
 #include <sstream>
-#include <utility>
 
 namespace x3d::codec {
-using x3d::nodes::X3DNodeFactory;
 
 std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
-  seen_.clear();
+  XmlGraphBuilder graph({.formatValue = formatValue,
+                         .authoredChildOrder = true,
+                         .sortAttributes = false});
   auto root = std::make_unique<xml::Element>();
   root->name = "X3D";
   root->setAttr("profile", doc.profileToken());
@@ -56,478 +50,42 @@ std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 
   // <Scene>
   xml::Element *scene = root->addChild("Scene");
-  writeSceneInto(scene, doc.scene);
+  graph.writeSceneInto(scene, doc.scene);
 
   std::ostringstream os;
   os << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  graph.orderAttributes(*root);
   render(*root, os, 0);
   return os.str();
 }
 
 std::string XmlWriter::writeScene(const runtime::Scene &scene) {
-  seen_.clear();
+  XmlGraphBuilder graph({.formatValue = formatValue,
+                         .authoredChildOrder = true,
+                         .sortAttributes = false});
   auto el = std::make_unique<xml::Element>();
   el->name = "Scene";
-  writeSceneInto(el.get(), scene);
+  graph.writeSceneInto(el.get(), scene);
   std::ostringstream os;
+  graph.orderAttributes(*el);
   render(*el, os, 0);
   return os.str();
 }
 
-std::string XmlWriter::writeNode(const std::shared_ptr<X3DNode> &node,
-                                 const runtime::DynamicFieldStore *authorFields) {
-  authorFields_ = authorFields;
-  seen_.clear();
-  scene_ = nullptr; // no scene context: expandedSources lookup is disabled
-  auto el = writeNodeElement(node, "");
+std::string
+XmlWriter::writeNode(const std::shared_ptr<X3DNode> &node,
+                     const runtime::DynamicFieldStore *authorFields) {
+  XmlGraphBuilder graph({.formatValue = formatValue,
+                         .authoredChildOrder = true,
+                         .sortAttributes = false},
+                        authorFields);
+  auto el = graph.writeNodeElement(node, "");
   std::ostringstream os;
-  if (el)
+  if (el) {
+    graph.orderAttributes(*el);
     render(*el, os, 0);
+  }
   return os.str();
-}
-
-void XmlWriter::writeSceneInto(xml::Element *scene, const runtime::Scene &s) {
-  scene_ = &s;
-  authorFields_ = s.authorFields.get(); // enable <ProtoInstance> re-emit for expanded primaries below
-  // Emit declarations before nodes: X3D requires declarations before use.
-  for (const auto &e : s.externProtoDeclarations)
-    if (e)
-      scene->children.push_back(writeExternProtoDeclareElement(*e));
-  for (const auto &d : s.protoDeclarations)
-    if (d)
-      scene->children.push_back(writeProtoDeclareElement(*d));
-  for (const auto &n : s.rootNodes) {
-    auto child = writeNodeElement(n, "");
-    if (child)
-      scene->children.push_back(std::move(child));
-  }
-  // Emit programmatic root instances without an authored graph slot.
-  for (const auto &inst : s.protoInstances)
-    if (!inst.expanded && !inst.hasPlacementTemplate() && inst.parent.expired())
-      scene->children.push_back(writeProtoInstanceElement(inst, ""));
-  for (const auto &r : s.routes) {
-    xml::Element *e = scene->addChild("ROUTE");
-    e->setAttr("fromNode", r.fromNode);
-    e->setAttr("fromField", r.fromField);
-    e->setAttr("toNode", r.toNode);
-    e->setAttr("toField", r.toField);
-  }
-  for (const auto &imp : s.imports) {
-    xml::Element *e = scene->addChild("IMPORT");
-    e->setAttr("inlineDEF", imp.inlineDEF);
-    e->setAttr("importedDEF", imp.importedDEF);
-    if (!imp.as.empty())
-      e->setAttr("AS", imp.as);
-  }
-  for (const auto &exp : s.exports) {
-    xml::Element *e = scene->addChild("EXPORT");
-    e->setAttr("localDEF", exp.localDEF);
-    if (!exp.as.empty())
-      e->setAttr("AS", exp.as);
-  }
-}
-
-X3DNode *XmlWriter::defaultFor(const std::string &typeName) {
-  auto it = defaults_.find(typeName);
-  if (it != defaults_.end())
-    return it->second.get();
-  auto fresh = X3DNodeFactory::create(typeName);
-  X3DNode *raw = fresh.get();
-  defaults_[typeName] = std::move(fresh);
-  return raw;
-}
-
-std::unique_ptr<xml::Element>
-XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
-                            const std::string &containerOverride) {
-  if (!node)
-    return nullptr;
-
-  // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original <Inline url=.../> and do not descend into
-  // the Group's child content (which the reader will re-fetch on load).
-  if (scene_) {
-    auto il = scene_->expandedInlines.find(node.get());
-    if (il != scene_->expandedInlines.end())
-      return writeNodeElement(il->second, containerOverride);
-  }
-
-  // Re-emit a captured instance, retaining DEF/USE identity even after its
-  // template node has been materialized into a concrete primary.
-  const runtime::ProtoInstance *source = nullptr;
-  if (scene_) {
-    auto it = scene_->expandedSources.find(node.get());
-    if (it != scene_->expandedSources.end())
-      source = &it->second;
-  }
-  auto wrapper = std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(node);
-  const auto *placed = scene_ && !source && wrapper
-                           ? scene_->instanceAtPlacement(node.get()) : nullptr;
-  if (!source) source = placed;
-  if (!source && wrapper) source = &wrapper->instance;
-  if (source) {
-    const std::string def = placed ? placed->DEF : node->getDEF();
-    if (seen_.count(node.get())) {
-      auto el = std::make_unique<xml::Element>();
-      el->name = "ProtoInstance";
-      el->setAttr("USE", def);
-      if (!containerOverride.empty()) el->setAttr("containerField", containerOverride);
-      return el;
-    }
-    if (!def.empty()) seen_.insert(node.get());
-    auto inst = *source;
-    inst.DEF = def;
-    return writeProtoInstanceElement(inst, containerOverride);
-  }
-
-  const std::string typeName = node->nodeTypeName();
-  auto el = std::make_unique<xml::Element>();
-  el->name = typeName;
-
-  // DEF/USE handling by node identity.
-  const std::string def = node->getDEF();
-  if (seen_.count(node.get())) {
-    // Already written: emit a USE reference (no fields, no children).
-    el->setAttr("USE", def);
-    if (!containerOverride.empty())
-      el->setAttr("containerField", containerOverride);
-    return el;
-  }
-  if (!def.empty()) {
-    el->setAttr("DEF", def);
-    seen_.insert(node.get());
-  }
-
-  X3DNode *defaults = defaultFor(typeName);
-
-  // Emit value attributes; recurse node fields into children.
-  const FieldTable &table = node->fields();
-  for (const FieldInfo &f : table) {
-    if (!f.isReadable())
-      continue;
-    if (f.x3dName == "DEF" || f.x3dName == "USE")
-      continue; // handled above
-    if (f.x3dName == "IS")
-      continue; // prototype plumbing, not a serializable attribute
-    // a Script's sourceCode is re-emitted as a <![CDATA[]]>
-    // body (below), not as a flat attribute, so the inline source round-trips
-    // through the same channel the reader captures it from.
-    if (f.x3dName == "sourceCode" &&
-        dynamic_cast<const x3d::nodes::Script *>(node.get()))
-      continue;
-
-    if (f.isNode())
-      continue; // node-child fields emitted in authored order below
-
-    // Value (attribute) field.
-    std::string text;
-    std::string defText;
-    if (f.isEnum()) {
-      if (!f.getEnumString)
-        continue;
-      text = f.getEnumString(*node);
-      if (defaults && f.getEnumString)
-        defText = f.getEnumString(*defaults);
-    } else {
-      std::any v = f.get(*node);
-      text = formatValue(f.type, v);
-      if (defaults) {
-        // Find the matching field on the defaults instance (same name).
-        for (const FieldInfo &df : defaults->fields()) {
-          if (df.x3dName == f.x3dName && df.isReadable()) {
-            defText = formatValue(df.type, df.get(*defaults));
-            break;
-          }
-        }
-      }
-    }
-    // Omit fields equal to their default to keep output clean.
-    if (defaults && text == defText)
-      continue;
-    // An empty SF/MFString that is also the default-empty is already skipped;
-    // emit non-default empties (rare) too.
-    el->setAttr(f.x3dName, text);
-  }
-
-  // Node-child fields, in authored order (round-trip fidelity) so a node
-  // shared across fields keeps its authored DEF placement; declaration order
-  // when nothing was recorded for this node.
-  if (bodyOrder_) {
-    for (const auto &entry : runtime::orderedNodeStatements(*bodyOrder_, node)) {
-      switch (entry.kind) {
-      case runtime::ProtoBodyStatement::Kind::Node:
-        if (auto child = writeNodeElement(entry.node, entry.field))
-          el->children.push_back(std::move(child));
-        break;
-      case runtime::ProtoBodyStatement::Kind::Instance:
-        el->children.push_back(writeProtoInstanceElement(
-            bodyOrder_->nestedInstances[entry.instanceIndex], entry.field));
-        break;
-      case runtime::ProtoBodyStatement::Kind::Proto:
-        el->children.push_back(writeProtoDeclareElement(*entry.proto));
-        break;
-      case runtime::ProtoBodyStatement::Kind::ExternProto:
-        el->children.push_back(writeExternProtoDeclareElement(*entry.externProto));
-        break;
-      }
-    }
-  } else {
-    for (const FieldInfo *cf :
-         x3d::codec::build::orderedChildFields(*node, scene_))
-      writeNodeField(*el, node, *cf);
-  }
-
-  // Scene-level nested ProtoInstances: any un-expanded ProtoInstance whose
-  // parent is this node (scene.protoInstances, !expanded, parent==node) must
-  // be re-emitted as a child of this element in its parentField slot.
-  // These instances are not in the node graph (expansion failed) and not
-  // scene-root (parent is live), so without this injection they are lost.
-  // Scene-root instances (parent.expired()) are handled in writeSceneInto.
-  if (scene_) {
-    for (const auto &inst : scene_->protoInstances) {
-      if (inst.expanded || inst.hasPlacementTemplate())
-        continue;
-      auto p = inst.parent.lock();
-      if (!p || p.get() != node.get())
-        continue;
-      const std::string slot =
-          inst.parentField.empty() ? inst.containerField : inst.parentField;
-      el->children.push_back(writeProtoInstanceElement(inst, slot));
-    }
-  }
-
-  if (!containerOverride.empty()) {
-    // Stamp the parent's slot so the reader can route this child back to the
-    // correct field by matching containerField against the parent's node-field
-    // names — fully reflection-driven, no per-node default-container table.
-    el->setAttr("containerField", containerOverride);
-  }
-  // inside a ProtoBody re-emit, attach this node's <IS> block (if any)
-  // as its last child. Threading via bodyIsc_ through the recursion means a
-  // node nested arbitrarily deep in a body node gets its IS re-emitted, not
-  // just the top body node.
-  if (bodyIsc_)
-    attachIsBlocks(*el, node, *bodyIsc_);
-  // Author fields use declarations (ISO/IEC 19775-1, 29.4.1 and Clause 31).
-  writeAuthorFields(*el, *node);
-  return el;
-}
-
-void XmlWriter::writeAuthorFields(xml::Element &el,
-                                  const X3DNode &node) {
-  const std::size_t staticCount = node.fields().size();
-  FieldTable eff = authorFields_ ? runtime::effectiveFields(node, *authorFields_)
-                                 : node.fields();
-  for (std::size_t i = staticCount; i < eff.size(); ++i) {
-    const FieldInfo &f = eff[i];
-    xml::Element *fe = el.addChild("field");
-    fe->setAttr("name", f.x3dName);
-    fe->setAttr("type", fieldTypeName(f.type));
-    fe->setAttr("accessType", accessTypeName(f.access));
-    // Re-emit a value only for fields that hold a persistent default and can
-    // be read back (initializeOnly/inputOutput); input/outputOnly carry none.
-    if (f.isReadable() && (f.access == AccessType::InitializeOnly ||
-                           f.access == AccessType::InputOutput)) {
-      std::any v = f.get(node);
-      if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {
-        // Node-typed default: the node(s) as child elements (USE once seen).
-        MFNode nodes;
-        if (auto *n = std::any_cast<SFNode>(&v); n && *n) nodes.push_back(*n);
-        if (auto *m = std::any_cast<MFNode>(&v)) nodes = *m;
-        for (const auto &n : nodes)
-          if (n)
-            if (auto child = writeNodeElement(n, ""))
-              fe->children.push_back(std::move(child));
-      } else if (v.has_value()) {
-        fe->setAttr("value", formatValue(f.type, v));
-      }
-    }
-  }
-  const auto *script = dynamic_cast<const Script *>(&node);
-  if (!script)
-    return;
-  const std::string src = script->getSourceCode();
-  if (!src.empty())
-    el.text = src;
-}
-
-void XmlWriter::writeNodeField(xml::Element &parent,
-                               const std::shared_ptr<X3DNode> &owner,
-                               const FieldInfo &f) {
-  const std::string slot = f.containerField; // the parent field name
-  std::any v = f.get(*owner);
-  if (f.type == X3DFieldType::SFNode) {
-    auto child = std::any_cast<std::shared_ptr<X3DNode>>(v);
-    if (!child)
-      return;
-    auto el = writeNodeElement(child, slot);
-    if (el)
-      parent.children.push_back(std::move(el));
-  } else { // MFNode
-    auto vec = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(v);
-    for (const auto &child : vec) {
-      if (!child)
-        continue;
-      auto el = writeNodeElement(child, slot);
-      if (el)
-        parent.children.push_back(std::move(el));
-    }
-  }
-}
-
-std::unique_ptr<xml::Element>
-XmlWriter::writeProtoInstanceElement(const runtime::ProtoInstance &src,
-                                     const std::string &containerOverride) {
-  auto el = std::make_unique<xml::Element>();
-  el->name = "ProtoInstance";
-  el->setAttr("name", src.name);
-  if (!src.DEF.empty())
-    el->setAttr("DEF", src.DEF);
-  if (!containerOverride.empty())
-    el->setAttr("containerField", containerOverride);
-  else if (!src.containerField.empty() && src.containerField != "children")
-    el->setAttr("containerField", src.containerField);
-
-  for (const runtime::ProtoFieldValue &fv : src.fieldValues) {
-    xml::Element *fe = el->addChild("fieldValue");
-    fe->setAttr("name", fv.name);
-    if (!fv.nodeValue.empty()) {
-      for (const auto &child : fv.nodeValue) {
-        auto ce = writeNodeElement(child, "");
-        if (ce)
-          fe->children.push_back(std::move(ce));
-      }
-    } else if (fv.value.has_value()) {
-      if (const runtime::ProtoField *pf = src.interfaceField(fv.name))
-        fe->setAttr("value", formatValue(pf->type, fv.value));
-    }
-  }
-  if (!src.isConnections.empty()) {
-    xml::Element *is = el->addChild("IS");
-    for (const auto &c : src.isConnections) {
-      xml::Element *connect = is->addChild("connect");
-      connect->setAttr("nodeField", c.nodeField);
-      connect->setAttr("protoField", c.protoField);
-    }
-  }
-  return el;
-}
-
-std::unique_ptr<xml::Element>
-XmlWriter::writeProtoFieldElement(const runtime::ProtoField &f) {
-  auto fe = std::make_unique<xml::Element>();
-  fe->name = "field";
-  fe->setAttr("name", f.name);
-  fe->setAttr("type", fieldTypeName(f.type));
-  fe->setAttr("accessType", accessTypeName(f.access));
-  if (!f.appinfo.empty())
-    fe->setAttr("appinfo", f.appinfo);
-  if (!f.documentation.empty())
-    fe->setAttr("documentation", f.documentation);
-  if (!f.nodeDefault.empty()) {
-    for (const auto &n : f.nodeDefault) {
-      auto ce = writeNodeElement(n, "");
-      if (ce)
-        fe->children.push_back(std::move(ce));
-    }
-  } else if (f.value.has_value() && (f.access == AccessType::InitializeOnly ||
-                                     f.access == AccessType::InputOutput)) {
-    fe->setAttr("value", formatValue(f.type, f.value));
-  }
-  return fe;
-}
-
-std::unique_ptr<xml::Element>
-XmlWriter::writeProtoDeclareElement(const runtime::ProtoDeclaration &d) {
-  auto el = std::make_unique<xml::Element>();
-  el->name = "ProtoDeclare";
-  el->setAttr("name", d.name);
-  if (!d.appinfo.empty())
-    el->setAttr("appinfo", d.appinfo);
-  if (!d.documentation.empty())
-    el->setAttr("documentation", d.documentation);
-  auto iface = std::make_unique<xml::Element>();
-  iface->name = "ProtoInterface";
-  // Interface defaults and body nodes share the declaration's DEF scope.
-  XmlWriter bodyWriter;
-  bodyWriter.authorFields_ = d.authorFields.get();
-  bodyWriter.bodyIsc_ = &d.body.isConnections;
-  bodyWriter.bodyOrder_ = &d.body;
-  for (const auto &f : d.interface)
-    iface->children.push_back(bodyWriter.writeProtoFieldElement(f));
-  if (!iface->children.empty())
-    el->children.push_back(std::move(iface));
-
-  auto body = std::make_unique<xml::Element>();
-  body->name = "ProtoBody";
-  // Re-emit template nodes using the same local DEF scope as interface defaults.
-  // hand the body's IS list to the body writer so writeNodeElement
-  // attaches <IS> blocks at every depth during the recursive descent (the top
-  // body node and any node nested inside it). No separate top-level attach.
-  for (const auto &entry : d.body.orderedStatements()) {
-    switch (entry.kind) {
-    case runtime::ProtoBodyStatement::Kind::Node: {
-      auto ne = bodyWriter.writeNodeElement(entry.node, "");
-      if (!ne) break;
-      body->children.push_back(std::move(ne));
-      break;
-    }
-    case runtime::ProtoBodyStatement::Kind::Instance: {
-      auto ie = bodyWriter.writeProtoInstanceElement(
-          d.body.nestedInstances[entry.instanceIndex], std::string());
-      if (ie) body->children.push_back(std::move(ie));
-      break;
-    }
-    case runtime::ProtoBodyStatement::Kind::Proto:
-      if (entry.proto)
-        body->children.push_back(bodyWriter.writeProtoDeclareElement(*entry.proto));
-      break;
-    case runtime::ProtoBodyStatement::Kind::ExternProto:
-      if (entry.externProto)
-        body->children.push_back(bodyWriter.writeExternProtoDeclareElement(*entry.externProto));
-      break;
-    }
-  }
-  for (const auto &r : d.body.routes) {
-    xml::Element *re = body->addChild("ROUTE");
-    re->setAttr("fromNode", r.fromNode);
-    re->setAttr("fromField", r.fromField);
-    re->setAttr("toNode", r.toNode);
-    re->setAttr("toField", r.toField);
-  }
-  el->children.push_back(std::move(body));
-  return el;
-}
-
-std::unique_ptr<xml::Element> XmlWriter::writeExternProtoDeclareElement(
-    const runtime::ExternProtoDeclaration &d) {
-  auto el = std::make_unique<xml::Element>();
-  el->name = "ExternProtoDeclare";
-  el->setAttr("name", d.name);
-  if (!d.appinfo.empty())
-    el->setAttr("appinfo", d.appinfo);
-  if (!d.documentation.empty())
-    el->setAttr("documentation", d.documentation);
-  if (!d.url.empty())
-    el->setAttr("url", fmtMFString(d.url));
-  for (const auto &f : d.interface)
-    el->children.push_back(writeProtoFieldElement(f));
-  return el;
-}
-
-void XmlWriter::attachIsBlocks(xml::Element &nodeEl,
-                               const std::shared_ptr<X3DNode> &node,
-                               const std::vector<runtime::IsConnection> &isc) {
-  xml::Element *is = nullptr;
-  for (const auto &c : isc) {
-    if (c.node.get() != node.get())
-      continue;
-    if (!is)
-      is = nodeEl.addChild("IS");
-    xml::Element *conn = is->addChild("connect");
-    conn->setAttr("nodeField", c.nodeField);
-    conn->setAttr("protoField", c.protoField);
-  }
 }
 
 void XmlWriter::indent(std::ostringstream &os, int depth) {

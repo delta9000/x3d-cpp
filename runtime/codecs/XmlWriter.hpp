@@ -7,38 +7,22 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace x3d::nodes {
-class Script;
 class X3DNode;
 } // namespace x3d::nodes
 
 namespace x3d::runtime {
-struct ExternProtoDeclaration;
-struct IsConnection;
-struct ProtoDeclaration;
-struct ProtoBody;
-struct ProtoField;
-class ProtoInstance;
 class Scene;
 class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
-
-namespace x3d::core {
-struct FieldInfo;
-} // namespace x3d::core
 
 namespace x3d::xml {
 struct Element;
 } // namespace x3d::xml
 
 namespace x3d::codec {
-using namespace x3d::core;
-using x3d::nodes::Script;
 using x3d::nodes::X3DNode;
 
 class XmlWriter {
@@ -51,77 +35,11 @@ public:
 
   /// Serialize a single subtree. Pass its owner to include author fields;
   /// without an owner this is generated-fields-only (plus Script source).
-  std::string writeNode(const std::shared_ptr<X3DNode> &node,
-                        const runtime::DynamicFieldStore *authorFields = nullptr);
+  std::string
+  writeNode(const std::shared_ptr<X3DNode> &node,
+            const runtime::DynamicFieldStore *authorFields = nullptr);
 
 private:
-  // Identity set of nodes already written with a DEF (for USE on revisits).
-  std::unordered_set<const X3DNode *> seen_;
-  // Cache of fresh "default" instances per node type, for default elision.
-  std::unordered_map<std::string, std::shared_ptr<X3DNode>> defaults_;
-  // Scene being written, for expandedSources lookup at node-emit sites. Null
-  // when serializing a bare node (writeNode) — expansion round-trip is then
-  // off.
-  const runtime::Scene *scene_ = nullptr;
-  const runtime::DynamicFieldStore *authorFields_ = nullptr;
-  // Borrowed ProtoBody connections; null outside body serialization.
-  const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
-  const runtime::ProtoBody *bodyOrder_ = nullptr;
-
-  void writeSceneInto(xml::Element *scene, const runtime::Scene &s);
-
-  /// Return the fresh "all-defaults" instance for a node type (cached).
-  X3DNode *defaultFor(const std::string &typeName);
-
-  /// Build the XML element for one node, recursing into node fields.
-  /// `containerOverride` is the containerField the parent placed this child in;
-  /// if it differs from the node's default container, emit a containerField
-  /// attr.
-  std::unique_ptr<xml::Element>
-  writeNodeElement(const std::shared_ptr<X3DNode> &node,
-                   const std::string &containerOverride);
-
-  /// Emit author declarations and Script source (ISO/IEC 19775-1,
-  /// 29.4.1 and Clause 31). Readable initializeOnly/inputOutput fields carry
-  /// their scalar or structural node values from the author-field store.
-  void writeAuthorFields(xml::Element &el, const X3DNode &node);
-
-  /// Recurse an SFNode (single child) or MFNode (list) field into child els.
-  /// `f.containerField` is the parent's slot name for this child. We always
-  /// stamp the child with that slot as its containerField attribute so the
-  /// reader can place it back unambiguously by matching attribute -> field,
-  /// purely from reflection (no per-node default-container table needed).
-  void writeNodeField(xml::Element &parent,
-                      const std::shared_ptr<X3DNode> &owner,
-                      const FieldInfo &f);
-
-  /// Re-emit a captured <ProtoInstance> for an expanded primary node. Scalar
-  /// fieldValue overrides become `<fieldValue name=... value=.../>`;
-  /// node-valued overrides nest the child node(s). The scalar value's wire type
-  /// is taken from the (extern)declaration interface (a ProtoFieldValue carries
-  /// only a type-erased std::any); a value whose type is unknown is emitted
-  /// nameless of value rather than mis-formatted.
-  std::unique_ptr<xml::Element>
-  writeProtoInstanceElement(const runtime::ProtoInstance &src,
-                            const std::string &containerOverride);
-
-  /// Emit a <field name type accessType [value]> element; node-typed defaults
-  /// nest their default child node(s).
-  std::unique_ptr<xml::Element>
-  writeProtoFieldElement(const runtime::ProtoField &f);
-
-  std::unique_ptr<xml::Element>
-  writeProtoDeclareElement(const runtime::ProtoDeclaration &d);
-
-  std::unique_ptr<xml::Element>
-  writeExternProtoDeclareElement(const runtime::ExternProtoDeclaration &d);
-
-  /// Append <IS><connect nodeField protoField/></IS> for every IsConnection
-  /// whose body node matches `node` (by identity) onto its emitted element.
-  static void attachIsBlocks(xml::Element &nodeEl,
-                             const std::shared_ptr<X3DNode> &node,
-                             const std::vector<runtime::IsConnection> &isc);
-
   static void indent(std::ostringstream &os, int depth);
 
   void render(const xml::Element &el, std::ostringstream &os, int depth);
