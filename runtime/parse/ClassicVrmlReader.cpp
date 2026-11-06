@@ -455,7 +455,7 @@ void ClassicVrmlReader::parseNodeBody(
     // the S1 DynamicFieldStore as AuthorFieldDecls. On any other node the
     // model has no slot for them, so they are consumed/skipped as before.
     if (isAccessTypeWord(t.text) && !t.isString) {
-      consumeInterfaceDeclaration(tok, scene, nodeShared);
+      consumeInterfaceDeclaration(tok, scene, nodeShared, currentProtoBody);
       continue;
     }
 
@@ -867,24 +867,26 @@ void ClassicVrmlReader::parseProtoInstance(VrmlTokenizer &tok,
 }
 
 void ClassicVrmlReader::consumeInterfaceDeclaration(
-    VrmlTokenizer &tok, [[maybe_unused]] runtime::Scene &scene,
-    const std::shared_ptr<X3DNode> &nodeShared) {
+    VrmlTokenizer &tok, runtime::Scene &scene,
+    const std::shared_ptr<X3DNode> &nodeShared,
+    runtime::ProtoBody *currentProtoBody) {
   std::string accessTok = expectWord(tok, "interface accessType");
   AccessType access = accessTypeFromString(accessTok);
   std::string typeTok = expectWord(tok, "interface field type");
   X3DFieldType type = fieldTypeFromString(typeTok);
   std::string fieldName = expectWord(tok, "interface field name");
 
-  const bool captureAuthor = nodeShared->nodeTypeName() == "Script";
+  const auto nodeType = nodeShared->nodeTypeName();
+  const bool captureAuthor = nodeType == "Script" || nodeType == "ComposedShader" ||
+                            nodeType == "PackagedShader" || nodeType == "ShaderProgram";
 
-  // A Script/proto-body interface field may bind to a proto interface field
-  // with `IS protoField` in place of a literal default (e.g.
-  // `field SFTime duration IS duration`). Consume that mapping and stop — no
-  // default value follows. An IS-bound author field carries no own default,
-  // so it is still captured (its value flows through the proto interface).
+  // ISO/IEC 19776-2 A.3: an extensible field declaration can bind through IS
+  // in place of a literal default.
   if (tok.peek().isWord("IS")) {
     tok.next();
-    expectWord(tok, "IS proto-field name");
+    const auto protoField = expectWord(tok, "IS proto-field name");
+    if (currentProtoBody)
+      currentProtoBody->isConnections.push_back({nodeShared, fieldName, protoField});
     if (captureAuthor)
       captureAuthorField(scene, nodeShared, fieldName, type, access, std::any{});
     return;
@@ -895,9 +897,21 @@ void ClassicVrmlReader::consumeInterfaceDeclaration(
   std::any initialValue;
   if (!isEvent && hasDefaultValueAhead(tok)) {
     if (type == X3DFieldType::SFNode || type == X3DFieldType::MFNode) {
+      struct CaptureScope {
+        bool &flag;
+        bool previous;
+        explicit CaptureScope(bool &f) : flag(f), previous(f) { flag = true; }
+        ~CaptureScope() { flag = previous; }
+      } capture(capturingProtoFieldValue_);
       runtime::ProtoField sink;
       sink.type = type;
-      captureNodeDefault(tok, sink);
+      captureNodeDefault(tok, sink, &scene, currentProtoBody);
+      if (captureAuthor) {
+        if (type == X3DFieldType::MFNode)
+          initialValue = std::move(sink.nodeDefault);
+        else
+          initialValue = SFNode(sink.nodeDefault.empty() ? nullptr : sink.nodeDefault.front());
+      }
     } else if (type == X3DFieldType::SFEnum || type == X3DFieldType::MFEnum) {
       tok.next();
     } else {

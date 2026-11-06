@@ -241,20 +241,19 @@ private:
   // -------------------------------------------------------------------------
   // Inline interface declaration inside a node body (Script user fields, etc.):
   //   accessType FieldType fieldName [ IS protoField | defaultValue ]
-  // On a Script node (Task B) the declaration is captured into the S1
+  // On Script and programmable-shader nodes (ISO/IEC 19776-2 A.3), the
+  // declaration is captured into the
   // DynamicFieldStore as an AuthorFieldDecl so it becomes visible to the
   // runtime (ROUTE endpoint resolution, SAI get/set). The access keyword maps
   // per accessTypeFromString (field->initializeOnly, exposedField->inputOutput,
   // eventIn->inputOnly, eventOut->outputOnly); the boxed default seeds the
-  // value store (empty for input/outputOnly). On a non-Script node (e.g. a
-  // proto-body field that is not bound via IS) the model has no slot for it, so
-  // it is consumed (and any default value / IS mapping skipped) as before —
-  // matching the "carry structure, skip what the model can't hold" tolerance of
-  // the codecs.
+  // value store (empty for input/outputOnly). Declaration IS mappings are
+  // recorded on the enclosing ProtoBody (ISO/IEC 19776-2 A.3).
   // -------------------------------------------------------------------------
   void consumeInterfaceDeclaration(VrmlTokenizer &tok,
-                                   [[maybe_unused]] runtime::Scene &scene,
-                                   const std::shared_ptr<X3DNode> &nodeShared);
+                                   runtime::Scene &scene,
+                                   const std::shared_ptr<X3DNode> &nodeShared,
+                                   runtime::ProtoBody *currentProtoBody);
 
   // Register one author field declaration on `node` in the S1 store. Empty
   // initialValue for input/outputOnly (they carry no persistent value) is the

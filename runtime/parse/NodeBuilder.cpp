@@ -254,6 +254,8 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
       appendTok(tok.next());
       return out;
     }
+    if (type == X3DFieldType::MFImage)
+      return collectFieldValue(tok, X3DFieldType::SFImage);
     int n = mfElementComponents(type);
     for (int i = 0; i < n && !tok.atEnd() && !tok.peek().isPunct('}') &&
                     !tok.peek().isPunct(']');
@@ -274,9 +276,9 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
          ++i) {
       const std::string t = tok.next().text;
       if (i == 0)
-        w = std::strtol(t.c_str(), nullptr, 0);
+        w = std::any_cast<SFInt32>(parseValue(X3DFieldType::SFInt32, t));
       else if (i == 1)
-        h = std::strtol(t.c_str(), nullptr, 0);
+        h = std::any_cast<SFInt32>(parseValue(X3DFieldType::SFInt32, t));
       if (!out.empty())
         out += ' ';
       out += t;

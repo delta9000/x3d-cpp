@@ -30,7 +30,9 @@
 // success; nonzero on any failed assertion.
 
 #include "ClassicVrmlReader.hpp"
+#include "DynamicField.hpp"
 #include "JsonReader.hpp"
+#include "NodeBuilder.hpp"
 #include "Vrml97Reader.hpp"
 #include "X3DParse.hpp"
 #include "X3DRuntime.hpp"
@@ -40,6 +42,7 @@
 #include "x3d/nodes/ComposedShader.hpp"
 #include "x3d/nodes/Group.hpp"
 #include "x3d/nodes/Material.hpp"
+#include "x3d/nodes/PixelTexture.hpp"
 #include "x3d/nodes/Shape.hpp"
 #include "x3d/nodes/TextureProjectorParallel.hpp"
 #include "x3d/nodes/Transform.hpp"
@@ -907,4 +910,249 @@ TEST_CASE("reader_audit_test") {
   }
   std::cerr << "\n" << failures << " CHECK(S) FAILED\n";
   return;
+}
+
+TEST_CASE("JSON typed author and prototype field values are retained") {
+  const auto doc = JsonReader{}.readDocument(R"({"X3D":{"@version":"4.0","Scene":{"-children":[
+    {"ProtoDeclare":{"@name":"P","ProtoInterface":{"field":[
+      {"@name":"size","@type":"SFVec3f","@accessType":"initializeOnly","@value":[3,4,5]}
+    ]},"ProtoBody":{"-children":[{"Box":{"IS":{"connect":[{"@nodeField":"size","@protoField":"size"}]}}}]}}},
+    {"ProtoInstance":{"@name":"P","fieldValue":[{"@name":"size","@value":[6,7,8]}]}},
+    {"Script":{"@DEF":"S","field":[
+      {"@name":"enabled","@type":"SFBool","@accessType":"initializeOnly","@value":true},
+      {"@name":"gain","@type":"SFFloat","@accessType":"inputOutput","@value":2.5},
+      {"@name":"samples","@type":"MFInt32","@accessType":"initializeOnly","@value":[2,4,6]},
+      {"@name":"labels","@type":"MFString","@accessType":"initializeOnly","@value":["two words","quote\"slash\\"]},
+      {"@name":"legacy","@type":"SFVec3f","@accessType":"initializeOnly","@value":"9 8 7"}
+    ]}}
+  ]}}})");
+  REQUIRE(doc.scene.protoDeclarations.size() == 1);
+  const auto &value = doc.scene.protoDeclarations[0]->interface[0].value;
+  REQUIRE(std::any_cast<SFVec3f>(&value));
+  CHECK(std::any_cast<SFVec3f>(value) == SFVec3f{3, 4, 5});
+  REQUIRE(doc.scene.protoInstances.size() == 1);
+  const auto &overrideValue = doc.scene.protoInstances[0].fieldValues[0].value;
+  REQUIRE(std::any_cast<SFVec3f>(&overrideValue));
+  CHECK(std::any_cast<SFVec3f>(overrideValue) == SFVec3f{6, 7, 8});
+  auto script = doc.scene.resolve("S");
+  REQUIRE(script);
+  CHECK(std::any_cast<SFBool>(doc.scene.authorFields->getValue(*script, "enabled")));
+  CHECK(std::any_cast<SFFloat>(doc.scene.authorFields->getValue(*script, "gain")) == 2.5f);
+  CHECK(std::any_cast<MFInt32>(doc.scene.authorFields->getValue(*script, "samples")) == MFInt32{2, 4, 6});
+  CHECK(std::any_cast<MFString>(doc.scene.authorFields->getValue(*script, "labels")) == MFString{"two words", "quote\"slash\\"});
+  CHECK(std::any_cast<SFVec3f>(doc.scene.authorFields->getValue(*script, "legacy")) == SFVec3f{9, 8, 7});
+}
+
+TEST_CASE("JSON statement wrappers in children retain their execution scope") {
+  const auto doc = JsonReader{}.readDocument(R"({"X3D":{"@version":"4.0","Scene":{"-children":[
+    {"TimeSensor":{"@DEF":"Clock"}},
+    {"ScalarInterpolator":{"@DEF":"Interp"}},
+    {"Inline":{"@DEF":"I","@load":false}},
+    {"ROUTE":{"@fromNode":"Clock","@fromField":"fraction_changed","@toNode":"Interp","@toField":"set_fraction"}},
+    {"IMPORT":[{"@inlineDEF":"I","@importedDEF":"Remote","@AS":"Local"}]},
+    {"EXPORT":[{"@localDEF":"Interp","@AS":"Public"}]},
+    {"Group":{"-children":[
+      {"ROUTE":{"@fromNode":"Clock","@fromField":"fraction_changed","@toNode":"Interp","@toField":"set_fraction"}}
+    ]}},
+    {"ProtoDeclare":{"@name":"P","ProtoBody":{"-children":[
+      {"Group":{"-children":[
+        {"TimeSensor":{"@DEF":"BodyClock"}},
+        {"ScalarInterpolator":{"@DEF":"BodyInterp"}},
+        {"ROUTE":{"@fromNode":"BodyClock","@fromField":"fraction_changed","@toNode":"BodyInterp","@toField":"set_fraction"}}
+      ]}},
+      {"ROUTE":{"@fromNode":"BodyClock","@fromField":"fraction_changed","@toNode":"BodyInterp","@toField":"set_fraction"}}
+    ]}}}
+  ]}}})");
+  CHECK(doc.scene.rootNodes.size() == 4);
+  REQUIRE(doc.scene.routes.size() == 2);
+  CHECK(doc.scene.routes[0].fromNode == "Clock");
+  CHECK(doc.scene.routes[1].toNode == "Interp");
+  REQUIRE(doc.scene.imports.size() == 1);
+  CHECK(doc.scene.imports[0].inlineDEF == "I");
+  CHECK(doc.scene.imports[0].importedDEF == "Remote");
+  CHECK(doc.scene.imports[0].as == "Local");
+  REQUIRE(doc.scene.exports.size() == 1);
+  CHECK(doc.scene.exports[0].localDEF == "Interp");
+  CHECK(doc.scene.exports[0].as == "Public");
+  REQUIRE(doc.scene.protoDeclarations.size() == 1);
+  const auto &body = doc.scene.protoDeclarations[0]->body;
+  CHECK(body.nodes.size() == 1);
+  REQUIRE(body.routes.size() == 2);
+  CHECK(body.routes[0].fromNode == "BodyClock");
+  CHECK(body.routes[1].toNode == "BodyInterp");
+  CHECK(doc.readerWarnings.empty());
+}
+
+TEST_CASE("Classic Script declaration IS retains author field connections") {
+  const std::string text = R"(#X3D V4.0 utf8
+PROFILE Full
+PROTO P [ initializeOnly SFFloat initial 3 inputOutput SFFloat value 4
+          inputOnly SFFloat incoming outputOnly SFFloat outgoing ] {
+  Script { initializeOnly SFFloat a IS initial inputOutput SFFloat b IS value
+           inputOnly SFFloat c IS incoming outputOnly SFFloat d IS outgoing }
+}
+P {}
+)";
+  for (bool vrml97 : {false, true}) {
+    CAPTURE(vrml97);
+    auto doc = vrml97 ? Vrml97Reader{}.readDocument(text) : ClassicVrmlReader{}.readDocument(text);
+    REQUIRE(doc.scene.protoDeclarations.size() == 1);
+    const auto &decl = *doc.scene.protoDeclarations[0];
+    REQUIRE(decl.body.isConnections.size() == 4);
+    CHECK(decl.body.isConnections[0].nodeField == "a");
+    CHECK(decl.body.isConnections[0].protoField == "initial");
+    CHECK(decl.body.isConnections[1].nodeField == "b");
+    CHECK(decl.body.isConnections[1].protoField == "value");
+    CHECK(decl.body.isConnections[2].nodeField == "c");
+    CHECK(decl.body.isConnections[2].protoField == "incoming");
+    CHECK(decl.body.isConnections[3].nodeField == "d");
+    CHECK(decl.body.isConnections[3].protoField == "outgoing");
+    REQUIRE(decl.body.nodes.size() == 1);
+    CHECK(decl.authorFields->hasAuthorFields(*decl.body.nodes[0]));
+  }
+  auto expanded = codec::parseDocument(text, Encoding::ClassicVRML);
+  REQUIRE(expanded.scene.rootNodes.size() == 1);
+  auto script = expanded.scene.rootNodes[0];
+  CHECK(std::any_cast<SFFloat>(expanded.scene.authorFields->getValue(*script, "a")) == 3.f);
+  CHECK(std::any_cast<SFFloat>(expanded.scene.authorFields->getValue(*script, "b")) == 4.f);
+}
+
+TEST_CASE("Classic SFImage leading zero dimensions collect decimal pixel counts") {
+  for (bool vrml97 : {false, true}) {
+    CAPTURE(vrml97);
+    const std::string text = "#X3D V4.0 utf8\nPROFILE Full\nPixelTexture { image 01 08 1 1 2 3 4 5 6 7 0xFF repeatS FALSE }";
+    auto doc = vrml97 ? Vrml97Reader{}.readDocument(text) : ClassicVrmlReader{}.readDocument(text);
+    REQUIRE(doc.scene.rootNodes.size() == 1);
+    auto texture = as<PixelTexture>(doc.scene.rootNodes[0]);
+    REQUIRE(texture);
+    CHECK(texture->getImage().width == 1);
+    CHECK(texture->getImage().height == 8);
+    CHECK(texture->getImage().data == std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 255});
+    CHECK_FALSE(texture->getRepeatS());
+  }
+}
+
+TEST_CASE("Classic bare MFImage captures a complete single image") {
+  for (bool vrml97 : {false, true}) {
+    CAPTURE(vrml97);
+    const std::string text = R"(#X3D V4.0 utf8
+PROFILE Full
+Script { initializeOnly MFImage images 1 1 3 0xFF8040
+         initializeOnly MFImage emptyImage 0 0 0
+         initializeOnly SFFloat after 2 }
+)";
+    auto doc = vrml97 ? Vrml97Reader{}.readDocument(text) : ClassicVrmlReader{}.readDocument(text);
+    REQUIRE(doc.scene.rootNodes.size() == 1);
+    auto script = doc.scene.rootNodes[0];
+    const auto images = std::any_cast<MFImage>(doc.scene.authorFields->getValue(*script, "images"));
+    REQUIRE(images.size() == 1);
+    CHECK(images[0].width == 1);
+    CHECK(images[0].height == 1);
+    CHECK(images[0].numComponents == 3);
+    CHECK(images[0].data == std::vector<std::uint8_t>{255, 128, 64});
+    const auto empty = std::any_cast<MFImage>(doc.scene.authorFields->getValue(*script, "emptyImage"));
+    REQUIRE(empty.size() == 1);
+    CHECK(empty[0].data.empty());
+    CHECK(std::any_cast<SFFloat>(doc.scene.authorFields->getValue(*script, "after")) == 2.f);
+  }
+}
+
+TEST_CASE("Classic and JSON capture programmable shader author fields") {
+  for (const std::string type : {"ComposedShader", "PackagedShader", "ShaderProgram"}) {
+    CAPTURE(type);
+    const std::string classic = "#X3D V4.0 utf8\nPROFILE Full\nDEF S " + type + R"( {
+      inputOutput SFColor tint 1 0.5 0.25
+      inputOnly SFFloat incoming outputOnly SFFloat outgoing
+    })";
+    const std::string json = R"({"X3D":{"@version":"4.0","Scene":{"-children":[{")" + type + R"(":{
+      "@DEF":"S","field":[
+        {"@name":"tint","@type":"SFColor","@accessType":"inputOutput","@value":[1,0.5,0.25]},
+        {"@name":"incoming","@type":"SFFloat","@accessType":"inputOnly"},
+        {"@name":"outgoing","@type":"SFFloat","@accessType":"outputOnly"}
+      ]}}]}}})";
+    for (bool useJson : {false, true}) {
+      CAPTURE(useJson);
+      auto doc = useJson ? JsonReader{}.readDocument(json) : ClassicVrmlReader{}.readDocument(classic);
+      auto shader = doc.scene.resolve("S");
+      REQUIRE(shader);
+      CHECK(doc.scene.authorFields->hasAuthorFields(*shader));
+      if (!doc.scene.authorFields->hasAuthorFields(*shader))
+        continue;
+      const auto fields = runtime::effectiveFields(*shader, *doc.scene.authorFields);
+      const auto *tint = codec::build::findField(fields, "tint");
+      REQUIRE(tint);
+      CHECK(tint->type == X3DFieldType::SFColor);
+      CHECK(tint->access == AccessType::InputOutput);
+      CHECK(std::any_cast<SFColor>(tint->get(*shader)) == SFColor{1, 0.5f, 0.25f});
+      REQUIRE(codec::build::findField(fields, "incoming"));
+      CHECK(codec::build::findField(fields, "incoming")->access == AccessType::InputOnly);
+      REQUIRE(codec::build::findField(fields, "outgoing"));
+      CHECK(codec::build::findField(fields, "outgoing")->access == AccessType::OutputOnly);
+    }
+  }
+}
+
+TEST_CASE("Classic and JSON retain Script author node defaults and aliases") {
+  const std::string classic = R"(#X3D V4.0 utf8
+PROFILE Full
+PROTO Item [] { Group {} }
+DEF S Script {
+  initializeOnly SFNode target DEF Target Group {}
+  inputOutput MFNode items [ USE Target DEF Member Transform {} ]
+  initializeOnly SFNode none NULL
+  inputOutput MFNode empty []
+  initializeOnly SFNode prototype DEF DefaultInstance Item {}
+  inputOutput MFNode prototypes [ USE DefaultInstance Group { children [ Item {} ] } ]
+}
+)";
+  const std::string json = R"({"X3D":{"@version":"4.0","Scene":{"-children":[
+    {"ProtoDeclare":{"@name":"Item","ProtoBody":{"-children":[{"Group":{}}]}}},
+    {"Script":{
+    "@DEF":"S","field":[
+      {"@name":"target","@type":"SFNode","@accessType":"initializeOnly","-children":[{"Group":{"@DEF":"Target"}}]},
+      {"@name":"items","@type":"MFNode","@accessType":"inputOutput","-children":[{"Group":{"@USE":"Target"}},{"Transform":{"@DEF":"Member"}}]},
+      {"@name":"none","@type":"SFNode","@accessType":"initializeOnly","-children":[]},
+      {"@name":"empty","@type":"MFNode","@accessType":"inputOutput","-children":[]},
+      {"@name":"prototype","@type":"SFNode","@accessType":"initializeOnly","-children":[{"ProtoInstance":{"@name":"Item","@DEF":"DefaultInstance"}}]},
+      {"@name":"prototypes","@type":"MFNode","@accessType":"inputOutput","-children":[{"ProtoInstance":{"@USE":"DefaultInstance"}},{"Group":{"-children":[{"ProtoInstance":{"@name":"Item"}}]}}]}
+    ]}}]}}})";
+  for (int encoding : {0, 1, 2}) {
+    CAPTURE(encoding);
+    auto doc = encoding == 0 ? JsonReader{}.readDocument(json)
+        : encoding == 1 ? ClassicVrmlReader{}.readDocument(classic)
+                        : Vrml97Reader{}.readDocument(classic);
+    auto script = doc.scene.resolve("S");
+    REQUIRE(script);
+    const auto targetValue = doc.scene.authorFields->getValue(*script, "target");
+    const auto *targetPtr = std::any_cast<SFNode>(&targetValue);
+    CHECK(targetPtr);
+    if (!targetPtr)
+      continue;
+    const auto target = *targetPtr;
+    CHECK(target);
+    if (!target)
+      continue;
+    CHECK(target->nodeTypeName() == "Group");
+    CHECK(doc.scene.resolve("Target") == target);
+    const auto items = std::any_cast<MFNode>(doc.scene.authorFields->getValue(*script, "items"));
+    REQUIRE(items.size() == 2);
+    CHECK(items[0] == target);
+    CHECK(items[1]->nodeTypeName() == "Transform");
+    CHECK(doc.scene.resolve("Member") == items[1]);
+    CHECK_FALSE(std::any_cast<SFNode>(doc.scene.authorFields->getValue(*script, "none")));
+    CHECK(std::any_cast<MFNode>(doc.scene.authorFields->getValue(*script, "empty")).empty());
+    const auto prototype = std::any_cast<SFNode>(doc.scene.authorFields->getValue(*script, "prototype"));
+    REQUIRE(prototype);
+    CHECK(prototype->nodeTypeName() == "ProtoInstance");
+    CHECK(prototype == doc.scene.resolve("DefaultInstance"));
+    const auto prototypes = std::any_cast<MFNode>(doc.scene.authorFields->getValue(*script, "prototypes"));
+    REQUIRE(prototypes.size() == 2);
+    CHECK(prototypes[0] == prototype);
+    const auto group = as<Group>(prototypes[1]);
+    REQUIRE(group);
+    REQUIRE(group->getChildren().size() == 1);
+    CHECK(group->getChildren()[0]->nodeTypeName() == "ProtoInstance");
+    CHECK(doc.scene.protoInstances.empty());
+    CHECK(doc.scene.rootNodes.size() == 1);
+  }
 }

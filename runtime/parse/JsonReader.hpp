@@ -117,14 +117,13 @@ private:
   // it can and skips the rest, never throwing.
   // -------------------------------------------------------------------------
 
-  /// Returns true and captures if `wrapper` is a PROTO statement object
-  /// ({ "ProtoDeclare"|"ExternProtoDeclare"|"ProtoInstance": {...} }).
+  /// Capture statement wrappers in child arrays (ISO/IEC 19776-5 Annex A).
   /// `parent`/`slot` give a nested instance's placement; `body` (non-null
   /// inside a ProtoBody) routes a captured instance into that body's
   /// nestedInstances.
-  bool tryReadProtoStatement(const json::Value &wrapper, runtime::Scene &scene,
-                             const std::shared_ptr<X3DNode> &parent,
-                             const std::string &slot, runtime::ProtoBody *body);
+  bool tryReadStatement(const json::Value &wrapper, runtime::Scene &scene,
+                        const std::shared_ptr<X3DNode> &parent,
+                        const std::string &slot, runtime::ProtoBody *body);
 
   /// Read every "field" entry of `iface` into `out` (shared by ProtoDeclare
   /// and ExternProtoDeclare). `field` may be a single object or an array.
@@ -154,15 +153,16 @@ private:
   // -------------------------------------------------------------------------
   // Script author interface (SCR-SAI-DYN S1).
   // -------------------------------------------------------------------------
-  /// Capture a Script object's author <field> declarations + inline source.
-  /// `node` is the freshly-built Script (its identity keys the
-  /// DynamicFieldStore). Author decls live under the un-prefixed "field" member
+  /// Capture author field declarations and Script inline source
+  /// (ISO/IEC 19776-5 Annex A). The node's identity keys the
+  /// DynamicFieldStore. Author decls live under the un-prefixed "field" member
   /// (mirroring ProtoInterface's "field"); inline source under "#sourceText"
   /// (canonical X3D-JSON CDATA, an array of lines) or — failing that — an @url
   /// inline scheme. Lenient: a malformed entry is skipped, never thrown.
-  void captureScriptInterface(const json::Value &body,
-                              const std::shared_ptr<X3DNode> &node,
-                              runtime::Scene &scene);
+  void captureAuthorInterface(const json::Value &body,
+                               const std::shared_ptr<X3DNode> &node,
+                               runtime::Scene &scene,
+                               runtime::ProtoBody *currentProtoBody);
 
   /// Return the body of the first ecmascript:/javascript:/vrmlscript: entry in
   /// `url`, or empty if none is an inline script. Mirrors

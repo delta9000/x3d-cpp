@@ -2857,7 +2857,7 @@
   severity: minor
   status: open
   summary: Geometry and tessellation stages are not linked, cube and 3D textures do not reach sampler uniforms, and node-valued author fields are read only from XML.
-  note: "Geometry and tessellation stages are assembled into ShaderProgramDesc, but the GL PoC links only VERTEX+FRAGMENT and the CPU host interprets only the FRAGMENT stage (its rasterizer supplies the varyings). Texture fields are bound as sampler2D only: cube-map and 3D texture nodes reach ShaderFieldBinding::textures but neither host binds samplerCube or sampler3D. SFImage, MFImage and MFString fields have no GLSL form. Codecs: the JSON reader leaves SFNode/MFNode author-field defaults empty, the ClassicVRML reader captures author fields only on Script, and the XML writer re-emits author fields only for Script (ComposedShader/ShaderProgram fields are dropped on write). Acceptance: geometry/tessellation stages linked where the host supports them, samplerCube/sampler3D bindings, and node-valued author fields in every encoding."
+  note: "Geometry and tessellation stages are assembled into ShaderProgramDesc, but the GL PoC links only VERTEX+FRAGMENT and the CPU host interprets only the FRAGMENT stage (its rasterizer supplies the varyings). Texture fields are bound as sampler2D only: cube-map and 3D texture nodes reach ShaderFieldBinding::textures but neither host binds samplerCube or sampler3D. SFImage, MFImage and MFString fields have no GLSL form. Codecs: Classic and JSON readers capture programmable-shader declarations and node-valued author defaults; the XML writer re-emits author fields only for Script (ComposedShader/ShaderProgram fields are dropped on write). Acceptance: geometry/tessellation stages linked where the host supports them, samplerCube/sampler3D bindings, and node-valued author fields in every encoding."
 - id: REQ-CUBE
   nodes: [ComposedCubeMapTexture, ImageCubeMapTexture, GeneratedCubeMapTexture]
   component: CubeMapTexturing
@@ -3175,4 +3175,61 @@
   status: fixed
   summary: A RuntimeSession host could not receive Anchor activations whose url is not an in-scene viewpoint.
   note: "AnchorSystem already bound \"#Name\" viewpoints and called an optional handler for other urls, but attachInteractive created the system without exposing it. SessionOptions::anchorHandler (and an attachInteractive parameter) now install the handler, which receives the url and parameter lists. The headless runtime still loads nothing itself. Test: interactive_profile_test Anchor case."
+
+- id: JSON-TYPED-FIELD-VALUES
+  nodes: [Script, Box]
+  clause: "ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A"
+  severity: major
+  status: fixed
+  summary: JSON author fields, prototype defaults, and instance overrides retain native typed values.
+  note: "The reader uses the declared field type to decode numbers, booleans, and arrays, and accepts legacy wire strings emitted by the existing writer. Test: reader_audit_test.cpp, JSON typed author and prototype field values are retained."
+- id: JSON-STATEMENT-PLACEMENT
+  nodes: [Group, TimeSensor, ScalarInterpolator, Inline]
+  clause: "ISO/IEC 19776-5 Annex A"
+  severity: major
+  status: fixed
+  summary: JSON statement wrappers in child arrays retain ROUTE, IMPORT, and EXPORT records.
+  note: "ROUTE wrappers inside ProtoBody child arrays and nested body nodes belong to the enclosing prototype, while scene routes remain in the scene. Test: reader_audit_test.cpp, JSON statement wrappers in children retain their execution scope."
+- id: CLASSIC-SCRIPT-DECLARATION-IS
+  nodes: [Script]
+  clause: "ISO/IEC 19776-2 A.3"
+  severity: major
+  status: fixed
+  summary: Classic Script declaration IS syntax records author-field mappings on the enclosing prototype.
+  note: "All four access types retain their connections, and expanded persistent fields receive the prototype values. The VRML97 reader shares this path. Test: reader_audit_test.cpp, Classic Script declaration IS retains author field connections."
+- id: CLASSIC-SFIMAGE-LEADING-ZERO
+  nodes: [PixelTexture]
+  clause: "ISO/IEC 19776-2 5.7, A.4"
+  severity: major
+  status: fixed
+  summary: Classic image collection decodes dimensions with the shared SFInt32 parser so leading zeros remain decimal.
+  note: "Pixel words retain hexadecimal support, and the VRML97 reader shares the collector. Test: reader_audit_test.cpp, Classic SFImage leading zero dimensions collect decimal pixel counts."
+- id: CLASSIC-BARE-MFIMAGE
+  nodes: [Script]
+  clause: "ISO/IEC 19776-2 5.1.2, 5.7"
+  severity: major
+  status: fixed
+  summary: A bare single Classic MFImage value consumes the complete image header and pixel data.
+  note: "The collector reuses SFImage collection for a bare MFImage element, including an empty image; subsequent fields remain intact. Test: reader_audit_test.cpp, Classic bare MFImage captures a complete single image."
+- id: SHADER-AUTHOR-FIELD-CODECS-READ
+  nodes: [ComposedShader, PackagedShader, ShaderProgram]
+  clause: "ISO/IEC 19776-2 A.3; ISO/IEC 19776-5 Annex A"
+  severity: major
+  status: fixed
+  summary: Classic and JSON readers capture programmable-shader author field declarations and defaults.
+  note: "Reader-side closure of SHADER-AUTHOR-FIELD-CODECS; writer behavior is tracked separately. Test: reader_audit_test.cpp, Classic and JSON capture programmable shader author fields."
+- id: SCRIPT-NODE-DEFAULT-CODECS-READ
+  nodes: [Script]
+  clause: "ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A"
+  severity: major
+  status: fixed
+  summary: Classic and JSON readers retain author SFNode and MFNode defaults with DEF/USE identity.
+  note: "Node-valued defaults stay in the author-field value graph, including direct and contained ProtoInstance templates, null SFNode values, and empty MFNode lists. Reader-side closure of SCRIPT-NODE-DEFAULT-CODECS; writer behavior is tracked separately. Test: reader_audit_test.cpp, Classic and JSON retain Script author node defaults and aliases."
+- id: PROTO-BODY-IMPORT-MODEL
+  nodes: [Inline]
+  clause: "ISO/IEC 19775-1 9.2.5"
+  severity: minor
+  status: open
+  summary: Prototype-local IMPORT records are lost across all encodings because ProtoBody has no imports collection.
+  note: "Readers collect prototype-local imports in a temporary Scene, but the shared ProtoBody model cannot retain them. Extending that model and expansion is separate from capturing JSON statement wrappers."
 
