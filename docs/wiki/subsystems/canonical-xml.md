@@ -87,12 +87,12 @@ body nodes share a fresh declaration-local builder with the same policy.
 
 ### Seam points
 
-- **Runtime document model** — `writeDocument` takes `const runtime::X3DDocument &`. The document is produced by any of the parse readers (XML, VRML, JSON); the writer is agnostic to which reader was used.
-- **Reflection / `FieldTable`** — field enumeration, default comparison, and enum-string formatting are driven by the generated reflection `FieldTable` (same path as `XmlWriter`). The canonical writer calls `node->fields()`, `f.get()`, `f.getEnumString`, and `X3DNodeFactory::create` for default-value comparison; it does not contain any per-node code.
-- **`DynamicField` / `effectiveFields()`** — Script author fields (declared via `<field>` elements) are serialized through `runtime::effectiveFields(script, store)`, using the current Scene/declaration owner, the same explicit seam used by the event cascade and routes layer. Author fields beyond the static field count are emitted as child `<field>` elements with `accessType`/`name`/`type` and optional `value`.
-- **`ProtoInstance::expanded` flag** — un-expanded proto instances are round-tripped via `scene_->expandedSources` and `scene_->protoInstances`; expanded instances are written as their expanded node with a back-pointer to the proto instance element.
-- **Inline round-trip** — expanded `Inline` nodes are looked up in `scene_->expandedInlines` and serialized as their original Inline element, not the expanded subtree.
-- **Shared graph construction** — `XmlGraphBuilder` handles scene traversal,
+- Runtime document model — `writeDocument` takes `const runtime::X3DDocument &`. The document is produced by any of the parse readers (XML, VRML, JSON); the writer is agnostic to which reader was used.
+- Reflection / `FieldTable` — field enumeration, default comparison, and enum-string formatting are driven by the generated reflection `FieldTable` (same path as `XmlWriter`). The canonical writer calls `node->fields()`, `f.get()`, `f.getEnumString`, and `X3DNodeFactory::create` for default-value comparison; it does not contain any per-node code.
+- `DynamicField` / `effectiveFields()` — Script author fields (declared via `<field>` elements) are serialized through `runtime::effectiveFields(script, store)`, using the current Scene/declaration owner, the same explicit seam used by the event cascade and routes layer. Author fields beyond the static field count are emitted as child `<field>` elements with `accessType`/`name`/`type` and optional `value`.
+- `ProtoInstance::expanded` flag — un-expanded proto instances are round-tripped via `scene_->expandedSources` and `scene_->protoInstances`; expanded instances are written as their expanded node with a back-pointer to the proto instance element.
+- Inline round-trip — expanded `Inline` nodes are looked up in `scene_->expandedInlines` and serialized as their original Inline element, not the expanded subtree.
+- Shared graph construction — `XmlGraphBuilder` handles scene traversal,
   Inline/ProtoInstance redirection, DEF/USE, author fields, declarations, and IS
   attachment. Canonical XML selects `canonFormatValue` for both emission and
   factory-default comparison, declaration-order node fields outside PROTO bodies,
@@ -114,53 +114,8 @@ body nodes share a fresh declaration-local builder with the same policy.
 | `X3DRuntime.hpp` | `runtime::X3DDocument`, `runtime::Scene`, `runtime::ProtoInstance`, etc. |
 | `XmlLite.hpp` | `xml::Element` tree used internally for two-phase build-then-render |
 
-## How it is tested
-
-**Unit tests (fast, in-process):**
-
-`ctest --preset dev -R x3d_canonicalize_unit_test` runs 13 property checks implemented in `tools/x3d-cli/canonicalize_unit_test.cpp`:
-
-| Test | Property verified |
-|---|---|
-| T1 | XML prolog line is present |
-| T2 | DOCTYPE line is version-specific (3.2 and 4.0 checked) |
-| T3 | Attribute delimiters are single-quote; no double-quote on attrs |
-| T4 | Attributes are alphabetically sorted within each element |
-| T5 | Minimal float formatting: `0.8 0 0` not `0.800000 0.000000 0.000000` |
-| T6 | Integer-valued floats have no `.0` suffix: `size='3 4 5'` not `3.0 4.0 5.0` |
-| T7 | `xmlns:xsd` and `xsd:noNamespaceSchemaLocation` present on `<X3D>` |
-| T8 | DEF/USE identity preserved across round-trip |
-| T9 | Idempotence: `canonicalize(canonicalize(x)) == canonicalize(x)` |
-| T10 | 2-space indentation; no tab characters |
-| T11 | `XmlWriter` output byte-identical before and after `CanonicalXmlWriter` use (isolation proof) |
-| T12 | `<meta>` attrs in canonical order (`content` before `name`) |
-| T13 | Apostrophe in attribute value escapes to `&apos;` (single-quote context) |
-
-Attribute values additionally escape tab/newline/CR as `&#x9;`/`&#xA;`/`&#xD;` (ENC-C14N-ATTR) so
-canonical output is portable: a conformant reader would otherwise normalize the raw whitespace to a
-space, breaking byte-stable signing across parsers. CDATA bodies split a literal `]]>` across
-consecutive sections (`xml::cdataEscape`), same as `XmlWriter`. Regressions for both live in
-`codec_string_hardening_test`.
-
-**Canon gate (corpus-scale differential, external corpus required):**
-
-`tools/x3d-cli/canon_gate.cpp` implements a three-tier gate driven via `x3d canonicalize` subprocess calls over the XML-only subset of the conformance archive:
-
-- **Tier 1 — Idempotence** (hard gate, 100% required, Java-free): `c1 == c2` byte-for-byte over the full XML subset. Any failure exits 1. This is the CI-wired gate (`--gate` flag).
-- **Tier 2 — Tolerant diff vs X3DJSAIL goldens** (baseline-locked regression): structural and numeric agreement with X3DJSAIL canonical fixtures generated on demand by `mise run canon-golden-gen` into `tools/x3d-cli/goldens/canonical-goldens/` (not committed — needs a JDK and the corpus archive). Numbers compared within relative tolerance 1e-5; `containerField` and schema-location attrs stripped from both sides before comparison. PASS→FAIL is a regression.
-- **Tier 3 — Byte-exact vs X3DJSAIL** (informative stretch metric): fraction of corpus files where our output is byte-identical to the JSAIL reference. Not a gate.
-
-`x3d_canon_gate` is NOT registered as a ctest target (requires the external corpus). Run manually via `mise run canon-gate`. Baselines for both cli-gate and canon-gate are written by `mise run cli-gate-baseline`.
-
 ## Related
 
-In-wiki:
-
-- [Architecture](../architecture.md) — layered system overview; the codec writers sit in the codec layer above the runtime core
-- [Codec Writers](../subsystems/codecs-writers.md) — the sibling writers and the shared XML graph builder
-- [ADR-0008: Canonicalize Source-Provenance Handling](../decisions/0008-canonicalize-source-provenance.md) — the decision record for how `x3d canonicalize` handles source-file provenance and base-URL in the canonical output header
-
-Cited paths (out-of-wiki — not hyperlinked per CONVENTIONS):
-
-- `docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md` — the dated design spec that drove the X3DC14N rule set and the canon-gate tiers
-- `docs/conformance/findings.yaml` — conformance findings; canon-gate wired as a pre-merge gate per the ADR-0010 decision
+- [Architecture](../architecture.md)
+- [Codec Writers](../subsystems/codecs-writers.md)
+- [ADR-0008: Canonicalize Source-Provenance Handling](../decisions/0008-canonicalize-source-provenance.md)

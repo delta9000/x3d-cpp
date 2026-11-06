@@ -14,6 +14,8 @@ related:
 
 # ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0026 amendment
+
 ## Status
 
 Accepted (2026-06-24). Implemented on `feat/audio-seam-proof`: Backend A

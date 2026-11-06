@@ -11,6 +11,8 @@ related:
 
 # ADR-0008: Canonicalize Source-Provenance Handling
 
+Status: superseded by ADR-0008 amendment
+
 ## Status
 
 Accepted — 2026-06-20

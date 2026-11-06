@@ -11,6 +11,8 @@ related:
 
 # ADR-0010: Differential CLI Gate as Baseline Regression
 
+Status: superseded by ADR-0010 amendment
+
 ## Status
 
 Accepted — 2026-06-20

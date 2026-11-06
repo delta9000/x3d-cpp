@@ -10,10 +10,10 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
 
 - **LIFE-STRUCTURAL-DETACH** [major/FIXED] — §ISO/IEC 19775-1 §4.4.3, §10.2.1: Structural field writes detach unreachable systems before releasing nodes and attach newly reachable subtrees.
   - Shared nodes remain attached through their other parents. Cascade and direct writes retain replaced node values through lifecycle reconciliation, using the same subtree collector as Inline retirement. System detach waits for active cascade callbacks to return; retained nodes keep their author fields for reattachment. Tests: x3d_structural_lifetime and runtime_callback_retirement_test.cpp structural Script cases.
-- **TDN-1** [major/FIXED `e92042e`] — §8.2.4.4: pauseTime_changed emitted at the pause edge.
-- **TDN-2** [major/FIXED `e92042e`] — §8.2.4.4: resumeTime_changed emitted at the resume edge.
-- **TDN-3** [major/FIXED `c7d2c21`] — §8.2.4.3: loop=FALSE finishes the current cycle instead of deactivating next tick.
-- **TDN-4** [major/FIXED `c7d2c21`] — §8.2.4.3, 8.4.1: set_startTime ignored while active (activation snapshot).
+- **TDN-1** [major/FIXED] — §8.2.4.4: pauseTime_changed emitted at the pause edge.
+- **TDN-2** [major/FIXED] — §8.2.4.4: resumeTime_changed emitted at the resume edge.
+- **TDN-3** [major/FIXED] — §8.2.4.3: loop=FALSE finishes the current cycle instead of deactivating next tick.
+- **TDN-4** [major/FIXED] — §8.2.4.3, 8.4.1: set_startTime ignored while active (activation snapshot).
 - **READ-NUMERIC-LEXEMES** [major/FIXED] — §ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4: Numeric field readers accept leading plus signs and signed hexadecimal integers.
   - FieldValueIO accepts optional leading plus signs for floats, doubles, and integers, and 0x/0X integer prefixes with either sign. XML and Classic reader tests in codec_conformance_test.cpp cover scalar and vector fields, MFInt32, and signed integer boundaries. Malformed and out-of-range values retain the zero fallback. ISO/IEC 19776-5 5.8 specifies decimal JSON integers; JSON numeric tokenization is unchanged.
 - **AUD-TIME-1** [major/CLOSED] — §8.2.4.4: A late resume shifts the clock by resumeTime-pauseTime instead of the actual paused span, so fraction_changed jumps on resume.
@@ -26,12 +26,12 @@ _Generated. Levels 1 · 1 nodes · profiles: Interchange, Interactive, Immersive
   - ROUTE wrappers inside ProtoBody child arrays and nested body nodes belong to the enclosing prototype, while scene routes remain in the scene. Test: reader_audit_test.cpp, JSON statement wrappers in children retain their execution scope.
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
-- **TDN-6** [minor/FIXED `775c3ff`] — §8.2.4.4: Resume guard uses strict resumeTime > pauseTime.
-- **TDN-7** [minor/FIXED `3b842d0`] — §8.4.1: Final time emitted at the exact cycle boundary; no auto-restart after completion.
-- **TDN-8** [minor/FIXED `e92042e`] — §8.4.1, 8.2.4.4: fraction_changed continues from its paused value (paused-aware elapsed clock), not wall-clock now.
-  - Spec self-contradiction (Mantis 1106) - 8.4.1's wall-clock fraction formula vs 8.2.4.4 "continues from its value when paused". x3d-cpp already conforms - X3DTimeDependentSystem.hpp:226 sinceStart = now - timeBase, :321 timeBase += (resumeTime - pauseTime). Corollary of TDN-1/2/6. The unused legacy clock seed was removed; animation tests use TimeSensorSystem. Follow-up: add a fraction-continuity regression test. 4.1 - partial upstream (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.
+- **TDN-6** [minor/FIXED] — §8.2.4.4: Resume guard uses strict resumeTime > pauseTime.
+- **TDN-7** [minor/FIXED] — §8.4.1: Final time emitted at the exact cycle boundary; no auto-restart after completion.
+- **TDN-8** [minor/FIXED] — §8.4.1, 8.2.4.4: fraction_changed continues from its paused value (paused-aware elapsed clock), not wall-clock now.
+  - timesensor_test.cpp: Resume continues active-time fraction rather than advancing through paused wall time.
 - **TIME-ORIGIN-1** [minor/CLOSED] — §8.2.1: By design: the time origin is the consumer's choice (the `now` fed to tick()), not baked into the SDK. App-relative feeding yields Castle's timeOriginAtLoad behaviour; strict epoch feeding yields literal SFTime semantics.
-  - X3D SFTime is normatively seconds since the Unix epoch (8.2.1), so a strict reading makes startTime=0 mean 1970. The SDK never reads a wall clock; every time-dependent system reads only the `now` passed to X3DExecutionContext::tick(now), so the embedder picks the origin. Both bundled renderers feed app-relative time (OpenGL PoC: glfwGetTime(); cpuraster --animate: frame/fps), starting ~0 at load — so startTime=0 behaves as "at load", matching Castle Game Engine's NavigationInfo.timeOriginAtLoad extension by default (https://castle-engine.io/x3d_time_origin_considered_uncomfortable). A consumer needing literal spec semantics feeds epoch `now`. CONSEQUENCE / nuance: a file authoring an absolute startTime phases differently under app-relative vs epoch feeding (for startTime<=now loops this only shifts phase, not whether they animate). This is a deliberate contract, documented in docs/wiki/subsystems/system-time.md ("Time origin"). No code change — recorded so the matrix does not later flag it as an unhandled epoch gap.
+  - timesensor_test.cpp: The host supplies one consistent time origin and the runtime uses supplied times without epoch conversion.
 - **AUD-TIME-2** [minor/CLOSED] — §8.4.1: A stop detected after stopTime emits the final values evaluated at the tick instead of at stopTime.
   - A scheduled stop evaluates final outputs at stopTime; a set_stopTime received after its requested time still evaluates at the receiving tick. Regression: timesensor_stop_uses_stop_time_for_final_output.
 - **CONF-TDN1V** [low/CLOSED] — §8.2.4.4: pauseTime_changed/resumeTime_changed emit the field-echo value, not strict simulation-now.

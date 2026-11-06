@@ -1,59 +1,38 @@
-# Conformance View
+# Conformance reference
 
-The single zoom-out for X3D SDK conformance. **Start at [`INDEX.md`](INDEX.md).**
+[INDEX.md](INDEX.md) presents the generated component view.
+[findings.yaml](findings.yaml) owns behavioral judgments and their evidence.
+The view does not certify normative conformance: detected runtime wiring does
+not establish behavior required by ISO prose.
 
-For the published X3D 4.0 Full-profile requirements and the limits of the
-generated status labels, see the
-[requirements audit](../wiki/guides/x3d4-requirements-audit.md). The generated
-view does not certify normative conformance: a detected System and no recorded
-open finding leave behavioral conformance unverified.
+## Files
 
-## What's here
+Edit the registers; generated files are outputs of the view generator.
 
-| File | Role | Edit? |
-|------|------|-------|
-| [`INDEX.md`](INDEX.md) | the zoom-out: bug picture + component × dimension matrix | generated — don't edit |
-| [`components/`](components/) | per-component drill-down (node rows + findings) | generated — don't edit |
-| [`model.json`](model.json) | machine/agent/RAG-queryable merged model | generated — don't edit |
-| [`findings.yaml`](findings.yaml) | **behavioral judgments — the source of truth** | ✏️ **edit this** |
-| [`profiles.yaml`](profiles.yaml) | ISO profile → component-level reference table | ✏️ reviewed reference |
-| [`sai-services.yaml`](sai-services.yaml) | x3d-cpp's SAI service register (rows split out of `x3d-sai`, ADR-0047) | ✏️ **edit this** |
+| File | Role |
+|---|---|
+| [findings.yaml](findings.yaml) | Behavioral findings, status, clauses, and evidence |
+| [profiles.yaml](profiles.yaml) | Profile-to-component requirements |
+| [sai-services.yaml](sai-services.yaml) | Native SAI service coverage and test evidence |
+| [INDEX.md](INDEX.md) | Generated component overview |
+| [components/](components/) | Generated node and finding details |
+| [model.json](model.json) | Generated machine-readable view |
 
-The SAI service register is separate from `findings.yaml`: it records which ISO
-19775-2 services x3d-cpp implements and the CTest/doctest case proving each. Its
-own gate is `mise run sai-services` (`scripts/check_sai_services.py`), which
-validates the schema and that every cited test name exists in the C++ sources;
-`tests/test_sai_services.py` runs the same check under pytest.
+## Judgments and derived facts
 
-## The split: facts vs judgments
+`scripts/conformance_view.py` joins the registers with the generated bindings,
+interface registry, and runtime sources. System detection is heuristic.
+Existence, extraction, and behavior are separate dimensions. Closed findings
+record resolved gaps; they do not establish complete component conformance.
 
-- **Facts** (does a concrete node exist? extract? have a possible System target?
-  component/level/profile?) are **auto-derived** from the vendored UOM, generated
-  bindings, `X3DInterfaceRegistry`, and `runtime/` Systems. System detection is
-  heuristic; regenerating re-reads the code.
-- **Judgments** (does it *behave per ISO prose*? severity? status?) are human
-  knowledge and live in **`findings.yaml`** — the one file you edit.
+## Updating findings
 
-The view joins them for the UOM's 260 concrete nodes: a behavioral node reads
-`? unverified` when the wiring heuristic or findings cannot establish behavior;
-a detected System with an open finding reads `◑ partial`. An explicit open
-`behaves: inert` finding reads `✗ inert`. Closed findings do not prove wiring or
-conformance. Existence and extraction remain separate facts. A finding referencing
-a node/interface that doesn't exist is reported loudly (catches stale findings).
+Add or update a finding in `findings.yaml`. To close one, set `status: fixed`
+or `status: closed` and record its test evidence in `note`. A resolving `commit`
+is optional. Keep open acceptance conditions and deferral reasons intact.
 
-## Workflow
+Run `mise tasks` for register validation and regeneration tasks defined in
+[mise.toml](../../mise.toml). Do not edit generated outputs by hand.
 
-```sh
-# raise / update / close a behavioral gap → edit findings.yaml, then:
-mise run conformance        # regenerate model.json + INDEX.md + components/*.md
-mise run conformance-gate   # validate schema + fail on drift (also runs in CI)
-```
-
-To **close** a gap: set its `status: closed` (or `fixed`) and add the `commit:`.
-To **raise** one: append a finding (see the schema header in `findings.yaml`).
-
-## Scope
-
-`findings.yaml` owns *behavioral* conformance (the campaign). Broader engineering
-deferrals (build, codecs, extraction milestones) are GitHub issues; the campaign methodology
-lives in [`../superpowers/specs/2026-06-18-conformance-gap-register.md`](../superpowers/specs/2026-06-18-conformance-gap-register.md).
+The [requirements audit](../wiki/guides/x3d4-requirements-audit.md) explains
+profile requirements and the limits of the generated status labels.

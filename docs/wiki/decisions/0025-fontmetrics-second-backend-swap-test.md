@@ -13,6 +13,8 @@ related:
 
 # ADR-0025: Second FontMetrics Backend (FreeType) + Advance Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0025 amendment
+
 ## Status
 
 Accepted (2026-06-24). Implemented on `feat/fontmetrics-seam-proof`: Backend A

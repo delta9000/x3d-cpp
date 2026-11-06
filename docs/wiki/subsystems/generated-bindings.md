@@ -18,25 +18,25 @@ related:
 
 ## Purpose
 
-`generated_cpp_bindings/` is the committed C++ output of the generator pipeline. It provides a strongly-typed, spec-correct C++ class for every X3D-4.0 node, a full runtime reflection layer (type-erased `FieldInfo` tables with get/set thunks), a node factory, an interface registry, and the shared field-type and enumeration headers. Every other runtime subsystem — parse readers, codec writers, the event cascade, the extraction pipeline, and the SDK façade — depends on this layer as its only representation of X3D nodes. No hand-written node class exists outside this directory.
+`generated_cpp_bindings/` is the committed C++ output of the generator pipeline. It provides a typed C++ class for every X3D-4.0 node, a full runtime reflection layer (type-erased `FieldInfo` tables with get/set thunks), a node factory, an interface registry, and the shared field-type and enumeration headers. Every other runtime subsystem — parse readers, codec writers, the event cascade, the extraction pipeline, and the SDK façade — depends on this layer as its only representation of X3D nodes. Extension nodes are separate from the generated core.
 
-The bindings are **not built by hand and not re-generated at compile time.** They are generated once by the Python generator (`mise run gen`) and then committed to git. That commit is the golden artifact; the `mise run golden` gate detects any generator-or-template drift before it lands.
+The bindings are not built by hand and not re-generated at compile time. They are generated once by the Python generator (`mise run gen`) and then committed to git. That commit is the golden artifact; the `mise run golden` gate detects any generator-or-template drift before it lands.
 
 ## Namespaces and header layout (ADR-0039)
 
-The generated types live in **two namespaces**, mirrored by two header subdirectories under
+The generated types live in two namespaces, mirrored by two header subdirectories under
 `generated_cpp_bindings/`:
 
-- **`x3d::core`** → `generated_cpp_bindings/x3d/core/` — the value/reflection vocabulary
+- `x3d::core` → `generated_cpp_bindings/x3d/core/` — the value/reflection vocabulary
   (`X3Dtypes.hpp`, `X3Denums.hpp`, `X3DReflection.hpp`): `SF*/MF*` types, `FieldInfo`/
   `FieldTable`/`NodeVisitor`/`RangeDiagnostic`/`X3DFieldType`/`AccessType`, and the bounded enums.
-- **`x3d::nodes`** → `generated_cpp_bindings/x3d/nodes/` — the `X3DNode` base, every abstract
+- `x3d::nodes` → `generated_cpp_bindings/x3d/nodes/` — the `X3DNode` base, every abstract
   `X3D*Node`, all concrete node classes, the node factory, and the interface registry.
 
 Headers use `#pragma once` and include each other (and are included by consumers) with a uniform
 in-tree-and-installed spelling: `#include "x3d/core/X3Dtypes.hpp"`, `#include "x3d/nodes/Transform.hpp"`
 (the in-tree include base is `generated_cpp_bindings/`). The one cross-namespace seam is
-`x3d::core::SFNode = std::shared_ptr<x3d::nodes::X3DNode>`. Consumers qualify **asymmetrically**:
+`x3d::core::SFNode = std::shared_ptr<x3d::nodes::X3DNode>`. Consumers qualify asymmetrically:
 a `using namespace x3d::core;` for the small vocabulary set (scoped, never global), but explicit
 `x3d::nodes::Foo` (or a per-file `namespace xn = x3d::nodes;` alias in heavy dispatch files) for
 node types — no blanket `using namespace x3d::nodes`. `ctest x3d_namespace_taxonomy` pins this.
@@ -122,58 +122,39 @@ public:
 
 ### Two write paths — typed setters never seed the event cascade
 
-The generated typed setters are the **data layer**, not the behavior layer.
+The generated typed setters are the data layer, not the behavior layer.
 `transform->setTranslation(v)` just assigns the member: no change event, no cascade seed.
-The runtime only observes writes that go through the reflection path —
-`X3DExecutionContext::writeField(node, "translation", value)` (or the `set` thunk in
-`fields()`), which is what ROUTE fan-out needs to react to a change. Extraction reads
-current field values each tick, so a typed-setter write still *renders* correctly — but
-ROUTE-driven behavior downstream of that field silently does not fire. If behavior must
-react to a write, use `ctx.writeField(...)`; use the typed setters for authoring/building
-scenes before (or outside) runtime behavior. `x3d::sdk::RuntimeSession`'s CHANGELOG entry
-records the same class of trap for session wiring.
+Generated setters are appropriate for initial authoring. They do not notify
+the event cascade or dirty tracker. For live changes, use context input events
+or `writeField` and check its result. Raw setter writes can leave cached bounds
+and extracted data stale. See [execution context](execution-context.md).
 
 ### Seam points
 
-- **Reflection write path (lenient)** — codec readers and the event cascade write field values via the reflection `set` thunk, which routes through a generated `set<Name>Unchecked()` that skips the range check. The typed public `setX()` accessor still throws `std::out_of_range` for out-of-range values; the lenient path keeps authored out-of-range values and surfaces them later via `RangeDiagnostic` (see `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md`). This is the binding between the generated layer and every codec reader.
+- Reflection write path (lenient) — codec readers and the event cascade write field values via the reflection `set` thunk, which routes through a generated `set<Name>Unchecked()` that skips the range check. The typed public `setX()` accessor still throws `std::out_of_range` for out-of-range values; the lenient path keeps authored out-of-range values and surfaces them later via `RangeDiagnostic` (see `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md`). This is the binding between the generated layer and every codec reader.
 
-- **`NodeVisitor` double-dispatch** — writers (XML, JSON, VRML, canonical) call `node.accept(visitor)` to enter/leave each node and access its `fields()` without any per-node switch. Each concrete class's generated `.cpp` implements `accept`.
+- `NodeVisitor` provides generated enter/leave double dispatch through `accept()`. The built-in writers traverse field tables directly.
 
-- **`X3DNodeFactory` registry** — parse readers call `X3DNodeFactory::create(typeName)` (or the free function `createX3DNode`) to instantiate any X3D node by name without including its header. The factory definitions live in `X3DNodeFactory.cpp` compiled into the `x3d_cpp_nodes` static library.
+- `X3DNodeFactory` registry — parse readers call `X3DNodeFactory::create(typeName)` (or the free function `createX3DNode`) to instantiate any X3D node by name without including its header. The factory definitions live in `X3DNodeFactory.cpp` compiled into the `x3d_cpp_nodes` library.
 
-- **`X3DInterfaceRegistry`** — runtime subsystems that need to test node type membership without `dynamic_cast` (e.g. "is this node an `X3DGeometryNode`?") call `X3DInterfaceRegistry::nodeImplements(node, InterfaceId::X3DGeometryNode)`.
+- `X3DInterfaceRegistry` — runtime subsystems that need to test node type membership without `dynamic_cast` (e.g. "is this node an `X3DGeometryNode`?") call `X3DInterfaceRegistry::nodeImplements(node, InterfaceId::X3DGeometryNode)`.
 
-- **`effectiveFields()` (dynamic field extension)** — the `X3DScriptNode` subclass and the dynamic-field mechanism (`runtime/events/DynamicField.hpp`) extend the base `fields()` set at runtime for Script author-declared fields. The cascade, route resolution, and SAI layer call `effectiveFields()` rather than `fields()` to see both static and dynamic fields. This seam is in the runtime, not the generated bindings, but it depends on the generated `FieldInfo`/`FieldTable` types.
+- `effectiveFields()` (dynamic field extension) — the `X3DScriptNode` subclass and the dynamic-field mechanism (`runtime/events/DynamicField.hpp`) extend the base `fields()` set at runtime for Script author-declared fields. The cascade, route resolution, and SAI layer call `effectiveFields()` rather than `fields()` to see both static and dynamic fields. This seam is in the runtime, not the generated bindings, but it depends on the generated `FieldInfo`/`FieldTable` types.
 
 ### CMake targets
 
-The generated bindings are built as two complementary CMake targets (defined in `cmake/x3d/header-targets.cmake` and `cmake/x3d/libraries.cmake`):
+`x3d_cpp::headers` supplies generated declarations. `x3d_cpp::nodes` supplies
+compiled field tables and registries; the runtime libraries supply parser,
+writer, and execution definitions. `x3d_cpp::sdk` links the full runtime.
+Libraries are shared by default; `X3D_CPP_SHARED_NODES=OFF` makes the generated
+and runtime libraries static together. See `cmake/x3d/libraries.cmake`.
 
-- `x3d_cpp` (`x3d_cpp::x3d_cpp`) — INTERFACE library that adds `generated_cpp_bindings/` (and `runtime/`) to the include path. All generated `.hpp` files are included from this path by bare name.
-- `x3d_cpp_nodes` (`x3d_cpp::nodes`) — STATIC library compiled from all `generated_cpp_bindings/*.cpp`. Carries the out-of-line `fields()` FieldTable definitions, `accept()`, `validateRanges()`, and the `X3DNodeFactory`/`X3DInterfaceRegistry` registries. `x3d_cpp INTERFACE` transitively links `x3d_cpp_nodes`, so consumers that link `x3d_cpp::x3d_cpp` automatically get the compiled definitions.
+## Related
 
-This decl/def split (the C1 milestone, 2026-06-16) moved the heavy `std::function` thunk instantiation out of every consumer TU and into the library, reducing cold build time from ~1296s to ~76s (~17×) and per-compile peak RSS to ~0.86 GB. See `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md` and [ADR-0006: Compiled Static Lib](../decisions/0006-compiled-static-lib.md).
-
-## How it is tested
-
-**Golden gate** — `mise run golden` runs `scripts/check_golden.sh`, which regenerates the full binding tree into a temp directory via `uv run x3d-cpp-gen --out <tmpdir>` and diffs every `.hpp` and `.cpp` file-by-file against the committed `generated_cpp_bindings/`. Any generator or template drift fails CI. The Python test `tests/test_golden_tree.py` runs the same check under `mise run test` (passing `--no-test` so `test.cpp` is excluded). There is no sha256 step; the gate is a plain path-set and content diff.
-
-**Aggregate compile test** — `ctest` target `x3d_cpp_all_headers`: a CMake-generated TU that `#include`s every generated header plus the runtime umbrella (`X3DRuntime.hpp`), codecs (`X3DCodecs.hpp`), and event system headers, proving the entire set is mutually consistent in one translation unit.
-
-**Per-header isolation compile tests** — when `X3D_CPP_PER_HEADER_CHECKS=ON` (default ON; the `dev` preset disables it for fast local iteration), each generated `.hpp` gets its own `compile_<Name>` ctest that compiles it in isolation with `-fsyntax-only`. This pins any regression to a single file. The `dev` preset leaves only the aggregate TU and the ~104 behavior/integration tests in the default `ctest --preset dev` run.
-
-**Codec round-trip tests** — `ctest` targets including `x3d_codec_roundtrip`, `x3d_codec_roundtrip_audit`, `x3d_vrml_mf_bracket`, and the proto round-trip family exercise the generated `fields()` / `accept()` / `validateRanges()` paths indirectly through the full read→write round-trip.
-
-**Corpus smoke** — `x3d_corpus_smoke` (bounded at 250 files) and `mise run corpus` (full 17,000+ file sweep) parse real X3D scenes through the factory and codec chain, catching regressions the unit tests miss.
-
-## Related specs and ADRs
-
-- [ADR-0005: Golden Files in Git](../decisions/0005-golden-files-in-git.md) — why the generated source is committed and what the golden gate enforces.
-- [ADR-0006: Compiled Static Lib](../decisions/0006-compiled-static-lib.md) — the C1 decl/def split that moved reflection thunks into `x3d_cpp_nodes`.
-- [Generator Pipeline](../subsystems/generator.md) — the Python pipeline that produces this directory.
-- [Reflection](../subsystems/reflection.md) — the reflection emit layer and the `FieldInfo`/`FieldTable` design.
-- [Scene Graph](../subsystems/scene-graph.md) — the document model that holds and traverses generated node instances.
-- [Architecture](../architecture.md) — the full system map showing where the generated bindings sit in the stack.
-- [Gate System](../guides/gate-system.md) — the gate infrastructure (golden / conformance / CLI differential).
-- Spec: `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md` — C1 design doc.
-- Spec: `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md` — lenient read + `RangeDiagnostic` design.
+- [ADR-0005: Golden Files in Git](../decisions/0005-golden-files-in-git.md)
+- [ADR-0006: Compiled Static Lib](../decisions/0006-compiled-static-lib.md)
+- [Generator Pipeline](../subsystems/generator.md)
+- [Reflection](../subsystems/reflection.md)
+- [Scene Graph](../subsystems/scene-graph.md)
+- [Architecture](../architecture.md)
+- [Gate System](../guides/gate-system.md)

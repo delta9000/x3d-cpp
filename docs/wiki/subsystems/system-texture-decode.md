@@ -1,7 +1,7 @@
 ---
 title: Texture Decode Seam
-summary: The TextureResolver decode seam (bytes → RGBA8 pixels) proven generic by two independent backends — stb_image + wuffs — and a CI-gated byte-equal swap-test over lossless formats; with a std-only multi-format sniff-dispatch composer.
-tags: [subsystem, texture, decode, seam, stb-image, wuffs, swap-test, genericity, thesis]
+summary: TextureResolver pixels, optional stb and Wuffs decoders, DDS layers, and format routing.
+tags: [subsystem, texture, decode, seam, stb-image, wuffs]
 updated: 2026-10-02
 related:
   - ../architecture.md
@@ -12,130 +12,51 @@ related:
   - ../decisions/0023-assetresolver-second-backend-swap-test.md
 ---
 
-# Texture Decode Seam
+# Texture decoding
 
-## Purpose
+`runtime/extract/TextureResolver.hpp` defines `TextureResolver`, a host callback
+from URL to `TexturePixelResult`. The result is `Ready`, `Pending`, or `Failed`.
+Ready pixels are tightly packed straight-alpha RGBA8 with a bottom-left origin.
+The default null resolver always fails.
 
-The `TextureResolver` seam turns **image bytes into decoded RGBA8 pixels**. It is the second
-half of the texture pipeline and the structural twin of the [Asset Resolver / IO
-seam](system-asset-io.md): **AssetResolver fetches the bytes (`url → bytes`), TextureResolver
-decodes them (`bytes → RGBA8 pixels`)**. The SDK itself **never decodes an image** — the seam is
-a consumer-supplied callback, so the spec-correct runtime core carries no codec. The decoded
-surface is `TexturePixels{ width, height, rgba }`: RGBA8, tightly packed (stride = width·4),
-**bottom-left origin** (GL convention), with the `Ready` / `Pending` / `Failed` lifecycle shared
-with AssetResolver.
+Inline PixelTexture pixels are already decoded. URL-backed textures use the
+resolver supplied by the host. See [texture extraction](extract-textures.md).
 
-The seam type is a single value callback:
+## Implementations
 
-```cpp
-using TextureResolver =
-    std::function<TexturePixelResult(const std::string& url)>;
-```
+Enable the corresponding CMake option and link its library:
 
-`makeNullTextureResolver()` is the always-`Failed` stub (the PoC renders a white fallback).
-`PixelTexture` (inline `SFImage` data) is already decoded and never goes through this seam — only
-`TextureRef::Source::Url` does.
+| Option | Library | Factory header |
+|---|---|---|
+| `X3D_CPP_BUILD_STB` | `x3d_stb` | `runtime/io/stb/StbTextureResolver.hpp` |
+| `X3D_CPP_BUILD_WUFFS` | `x3d_wuffs` | `runtime/io/wuffs/WuffsTextureResolver.hpp` |
 
-!!! note "Seam proven generic — two independent decoders (stb_image + wuffs)"
-    The decode seam is **GREEN** ([ADR-0024](../decisions/0024-textureresolver-second-backend-swap-test.md)):
-    two fully independent decoders implement the *unchanged* `TextureResolver` interface, and a
-    CI-gated swap-test asserts they decode every lossless fixture to **byte-identical RGBA8**.
-    Because the interface carried two backends with **no signature change**, it was promoted
-    `[EXPERIMENTAL]` → `[STABLE]` in `include/x3d/sdk.hpp`. See the
-    [Seam-Status Matrix](../seam-status.md).
+The no-argument factories load local files. The stb overload taking an `AssetResolver` fetches bytes, propagates
+Pending/Failed, and decodes Ready bytes in memory. Decoder-library types remain private to the implementations.
 
-## Key files
+## DDS and cube-map images
 
-| File / directory | Role |
-|---|---|
-| `runtime/extract/TextureResolver.hpp` | The seam: `TextureResolver` callback type, `TexturePixels` / `TexturePixelResult` / `TextureResolveStatus`, `makeNullTextureResolver()`. std-only, leaf, decoder-free. |
-| `runtime/extract/MultiFormatTextureResolver.hpp` | std-only **composer**: `makeMultiFormatTextureResolver(map<ImageFormat, TextureResolver>)` + `sniffImageFormat()`. Routes by sniffed magic bytes before calling a decoder. Decoder-free. |
-| `runtime/io/stb/StbTextureResolver.{hpp,cpp}` | **Backend A** — stb_image. `makeStbTextureResolver()`. The `.cpp` is the one TU that `#include`s `stb_image.h` (PRIVATE). Built behind `X3D_CPP_BUILD_STB`. |
-| `runtime/io/wuffs/WuffsTextureResolver.{hpp,cpp}` | **Backend B** — wuffs. `makeWuffsTextureResolver()`. The `.cpp` is the one TU that defines `WUFFS_IMPLEMENTATION` and `#include`s the vendored amalgamation (PRIVATE). Built behind `X3D_CPP_BUILD_WUFFS`. |
-| `runtime/io/wuffs/vendor/wuffs-v0.3.c` | The vendored wuffs v0.3.4 single-file amalgamation (Apache-2.0; see `WUFFS_LICENSE.txt`). |
-| `runtime/io/dds/DdsDecode.hpp` | std-only, header-only DDS decoder both backends call on `DDS ` bytes ([ADR-0059](../decisions/0059-cube-map-images-through-texture-decode.md)): 2D textures and §34.4.3 cube maps (six layers in X3D face order), uncompressed masks and BC1-BC3. |
-| `runtime/io/tests/texture_decode_tests.cpp` | The grouped doctest binary `x3d_texture_tests`: per-backend cases, the byte-equal swap-test, Failed-parity, and the composer routing cases. Talks only through the seam factories — no decoder headers. |
-| `runtime/io/tests/fixtures/texture/` | Controlled 8-bit fixtures (PNG/BMP/GIF/TGA) + `generate_fixtures.py` + corrupt/garbage inputs. |
+Both implementations dispatch `DDS ` bytes to `runtime/io/dds/DdsDecode.hpp`.
+It supports first-level 2D images and complete six-face cube maps with
+uncompressed channel masks or BC1/BC2/BC3 compression. Cube layers use X3D order:
+front, back, left, right, top, bottom. Unsupported arrays, volumes, partial
+cubes, and truncated data fail.
 
-The CPU reference host uses the stb backend for PPM input as well as PNG,
-JPEG, and DDS. Its procedural generators and PPM writer remain local. The
-PPM round-trip regression checks the shared decoder's bottom-left orientation.
+## Format routing
 
-## The two backends
+`runtime/extract/MultiFormatTextureResolver.hpp` supplies
+`makeMultiFormatTextureResolver` and `sniffImageFormat()`. It chooses a registered
+decoder by magic bytes before invoking it. TGA uses a conservative header check.
+A selected decoder's `Failed` result remains a decode failure; it does not mean
+try every other decoder.
 
-Both backends read the file at `url` and decode **from memory** (identical IO path, so the
-swap-test isolates the *decoder* as the only variable), emit 4-channel straight-alpha RGBA8, and
-flip to bottom-left origin to honor the seam contract.
+## Decode comparison boundary
 
-- **Backend A — stb_image** (`x3d_stb` static lib, `X3D_CPP_BUILD_STB`, OFF default). The
-  hand-written C decoder already vendored for the PoC renderer. Bottom-left via
-  `stbi_set_flip_vertically_on_load_thread(1)`. `stb_image.h` is included **PRIVATE** in the single TU,
-  so consumers linking `x3d_stb` inherit no stb headers — the public `StbTextureResolver.hpp` is
-  decoder-free. **No core `#ifdef`.**
-- **Backend B — wuffs v0.3.4** (`x3d_wuffs` static lib, `X3D_CPP_BUILD_WUFFS`, OFF default). A
-  **memory-safe** decoder transpiled from a DSL — it shares **zero implementation** with stb, so a
-  byte-equal parity failure is a real correctness leak, not shared-bug masking. Uses the
-  `wuffs_aux::DecodeImage` C++ API with a `SelectPixfmt` override forcing `RGBA_NONPREMUL`; rows
-  are flipped to bottom-left after decode. `WUFFS_IMPLEMENTATION` and the amalgamation live in the
-  single TU only. **No core `#ifdef`.** wuffs additionally brings memory-safe decoding to the
-  untrusted bytes AssetResolver fetches.
+`runtime/io/tests/texture_decode_tests.cpp` compares stb and Wuffs results on
+controlled 8-bit PNG, BMP, GIF, and TGA fixtures without color-management chunks.
+These lossless fixtures require equal dimensions and RGBA bytes. JPEG is outside
+this exact-equality boundary. DDS exercises a shared decoder, so equality there
+is not independent implementation evidence.
 
-### DDS and cube-map images
-
-Both backends hand bytes that start with `DDS ` to `runtime/io/dds/DdsDecode.hpp` before their own decoder ([ADR-0059](../decisions/0059-cube-map-images-through-texture-decode.md)). It reads uncompressed 8/16/24/32-bit channel masks and BC1/BC2/BC3 (FourCC or DX10 header), first mip level only. A cube map comes back as `TexturePixels::layers = 6`, faces in X3D order front, back, left, right, top, bottom; DDS's left-handed +Z face is the X3D front. Volume textures, arrays and other formats fail. `texture_dds_cube_and_2d` in `x3d_texture_tests` checks face order, row orientation, BC1/BC3, a partial cube and truncation through each backend. DDS is outside the byte-equal swap matrix, since both backends run the same decoder.
-
-### Decoding fetched bytes
-
-`makeStbTextureResolver(AssetResolver fetch)` fetches with `AssetKind::Texture`, propagates Pending/Failed, and decodes Ready bytes in memory. PNG/JPEG selection follows image bytes, including extensionless URLs and misleading suffixes. The no-argument factory retains local-file loading. The CPU host composes this overload with file/HTTP/FTP routes; `interchange_test` verifies PNG alpha, JPEG decode, Pending, Failed and corrupt bytes.
-
-## The genericity proof — byte-equal decode swap-test
-
-`x3d_texture_tests` (`runtime/io/tests/texture_decode_tests.cpp`) decodes the **same** lossless
-fixtures through both backends and asserts **byte-equal `TexturePixels.rgba`** + equal
-`width`/`height`, plus equal `Failed` status on corrupt/missing input. The test TU talks **only
-through the seam factories** and includes no decoder header — the ABI-isolation discipline from
-the [AssetResolver seam](system-asset-io.md) (whose swap-test once segfaulted on AWS SDK
-header-vs-lib skew). Gated in the `cpp` CI job
-(`-DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_WUFFS=ON`, `ctest -R x3d_texture`) — no
-vcpkg, no docker, no FetchContent, so it runs sub-minute.
-
-### The exact-equality boundary
-
-Byte-equal RGBA holds only for **lossless** formats. The swap matrix is the lossless intersection
-of the two decoders' codec sets: with the vendored wuffs v0.3.4 that is **PNG, BMP, GIF, TGA**.
-
-- **PNM/PPM** is excluded — lossless, but wuffs v0.3.x ships no Netpbm decoder (it lands in v0.4);
-  a matrix entry needs *both* backends.
-- **JPEG** (and other lossy) byte-equality is impossible by construction (impl-defined IDCT /
-  chroma upsampling); a PSNR tolerance companion is a separate optional card.
-
-Fixtures are controlled 8-bit images with no `gAMA`/`iCCP` color-management chunks, so decode is
-deterministic across libraries.
-
-## Backends are an array — route by sniffed magic, never by `Failed`
-
-A real `TextureResolver` is an **array of per-format decoders behind one seam** (stb is broad;
-wuffs is memory-safe; a JPEG-heavy app might want libjpeg-turbo) — the decode analog of the fetch
-seam's `file`/`http`/`ftp` routes. `makeMultiFormatTextureResolver` (std-only, decoder-free)
-**sniffs the input's magic bytes and dispatches to the one registered decoder _before_ calling
-it**. Because dispatch picks the correct decoder up front, each decoder only ever sees input it
-owns, so `Failed` keeps meaning "real decode failure" — **no `Unsupported`/`NotHandled` status is
-needed and the frozen `Ready`/`Pending`/`Failed` seam type is unchanged**.
-
-- Fetch routes by URL **scheme** (a lexical prefix); decode routes by **sniffed magic bytes** (the
-  URL extension can lie).
-- PNG/JPEG/GIF/BMP/PNM have leading magic. **TGA has none** (its only signature is an 18-byte
-  *trailer*), so it is routed last by a conservative header plausibility check — the same
-  compromise stb and wuffs make internally.
-
-This mirrors the rule [ADR-0024 §7] adopts; AssetResolver's `makeSchemeRouter`
-(`runtime/extract/SchemeRouter.hpp`) applies the same treatment to the fetch seam.
-
-## Scope / what this seam does and doesn't unblock
-
-Unlike AssetResolver, the decode seam unblocks **no specific conformance findings** — its value is
-**thesis-completion** (the full fetch+decode texture path is now proven generic end-to-end) plus
-**memory-safe decode** of untrusted bytes. The PoC's `examples/poc_renderer/main.cpp` stb_image
-call is unchanged; this seam is the SDK-side, swap-tested decode path that a production embedder
-wires in. Out of scope: lossy/JPEG parity, 16-bit/HDR/color-managed decode, and replacing the
-vendored `tinfl.h` DEFLATE path with wuffs' zlib (a possible future dependency consolidation).
+The decision is recorded in
+[ADR-0024](../decisions/0024-textureresolver-second-backend-swap-test.md).

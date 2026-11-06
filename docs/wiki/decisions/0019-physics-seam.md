@@ -11,6 +11,8 @@ related:
 
 # ADR-0019: Physics via a Flag-Gated Engine Backend Behind a Core Seam
 
+Status: superseded by ADR-0019 amendment
+
 ## Status
 
 Accepted

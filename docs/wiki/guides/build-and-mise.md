@@ -1,443 +1,113 @@
 ---
 title: Build and mise tasks
-summary: The dev CMake preset, mise run build, the compile-job pool, ccache, and every mise task explained.
-tags: [guide, build, mise, cmake, ninja, ccache]
-updated: 2026-06-20
-related:
-  - gate-system.md
+summary: Build configuration, compiled libraries, and developer tooling.
+tags: [guide, build]
+updated: 2026-11-05
+related: []
 ---
 
 # Build and mise tasks
 
-This guide covers the day-to-day C++ build workflow: the `dev` preset, `mise run build`,
-the compile-job pool (and its OOM history), ccache, fast-linker auto-selection, and every
-`mise run` task you will encounter.
-
----
+Run `mise tasks` for the task catalog maintained in `mise.toml`.
+Use `mise run build` for local C++ iteration and `mise run build-ci` for the
+behavior and compile-contract suites. See [Gate system](gate-system.md) for
+verification boundaries.
 
 ## Prerequisites
 
-- `mise` installed — it manages `uv` (Python toolchain) and all task definitions
-- `cmake` 3.21+, `ninja`, `ccache` (optional but strongly recommended)
-- `mold` or `lld` optional — auto-detected at configure time for faster linking
+The C++ build needs CMake 3.21 or later, Ninja, and a C++20 compiler.
+`mise install` installs the tools pinned in `mise.toml`. Tasks use `uv run`
+for Python commands, so you don't need to activate a virtual environment.
 
-Run `mise install` once after checkout; it bootstraps `uv` per `mise.toml`'s `[tools]` section.
-All `mise run` tasks shell out to `uv run` where needed, so no manual `venv` activation is
-required.
+## Build presets
 
----
+`CMakePresets.json` defines separate build directories:
 
-## The `dev` preset
+| Preset | Directory | Configuration |
+|---|---|---|
+| `dev` | `build/` | Unoptimized; per-header isolation disabled |
+| `ci` | `build-ci/` | Warnings as errors; per-header isolation enabled by default |
+| `san` | `build-san/` | Debug; AddressSanitizer and UndefinedBehaviorSanitizer; behavior suite |
+| `fuzz` | `build-fuzz/` | Clang; libFuzzer, AddressSanitizer, and UndefinedBehaviorSanitizer |
 
-All C++ work uses the `dev` configure/build/test preset defined in `CMakePresets.json`:
+For a focused run after configuring and building:
 
-| Property | Value |
+```sh
+ctest --preset dev -R x3d_extract_tests --output-on-failure
+```
+
+CTest selects executable-level tests. To select a doctest case, run its grouped
+binary with `--test-case`. Case names are not separate CTest registrations.
+
+## Compiled libraries
+
+`cmake/x3d/libraries.cmake` defines the implementation layers:
+
+| Target | Contents |
 |---|---|
-| Generator | Ninja |
-| Build directory | `build/` (relative to source root) |
-| `CMAKE_EXPORT_COMPILE_COMMANDS` | `ON` (clangd, code-rag ingest) |
-| `X3D_CPP_PER_HEADER_CHECKS` | `OFF` (see below) |
-| Build type | None (unoptimized; the suite tests correctness + behavior, not performance) |
+| `x3d_cpp::nodes` | Generated node definitions and reflection |
+| `x3d_cpp::authoring_runtime` | Field formatting and codec writers |
+| `x3d_cpp::runtime` | Parsers and mesh construction, linked to the authoring layer |
+| `x3d_cpp::authoring` | Interface target for authoring consumers |
+| `x3d_cpp::sdk` | Interface target for the full SDK |
 
-The preset is intentionally unoptimized — asserts are not disabled, NDEBUG is not set, and
-the test suite does not depend on any optimization flag. That is correct for the project's
-correctness-first posture.
+The implementation libraries are shared by default. Configure with
+`-DX3D_CPP_SHARED_NODES=OFF` to build all three as static libraries.
+The runtime combines compiled sources and headers; it is not header-only.
+Optional backend libraries are configured in `cmake/x3d/backends.cmake` and
+`script-backend.cmake`. See the [seam matrix](../seam-status.md).
 
-## The `ci` preset (local mirror of the GitHub Actions gate)
+## Developer tooling
 
-`CMakePresets.json` defines a second preset, `ci`, that mirrors what the
-GitHub Actions workflow (`.github/workflows/ci.yml`) `cpp` job does —
-per-header isolation checks **ON** (the ~800 per-header ctests), no other overrides:
+`cmake/x3d/dev-tooling.cmake` enables ccache when found and prefers mold, then
+lld, when available. It applies this tooling by default only in a top-level
+build. An `add_subdirectory` consumer can opt in with
+`X3D_CPP_ENABLE_DEV_TOOLING`.
 
-| Property | Value |
-|---|---|
-| Generator | Ninja |
-| Build directory | `build-ci/` (separate from `build/` so the dev preset's warm cache stays warm) |
-| `X3D_CPP_PER_HEADER_CHECKS` | default = `ON` |
-| Build type | None |
+The Ninja compile pool defaults to the logical core count. Lower the cached
+limit on memory-constrained hosts:
 
-Use it before pushing to make sure the local pipeline matches the merge gate:
-
-```bash
-mise run build-ci        # configure + build + ctest with per-header checks ON
-# or
-cmake --preset ci && cmake --build --preset ci && ctest --preset ci -j "$(nproc)"
+```sh
+cmake --preset dev -DX3D_CPP_COMPILE_JOBS=3
+cmake --build --preset dev -j3
 ```
 
-`mise run ci` (the full local pipeline) depends on `build-ci` rather than `build`, so
-running `mise run ci` is the same gate as a PR push.
+Reset the cached limit with `cmake --preset dev -U X3D_CPP_COMPILE_JOBS`.
+Use separate build directories for different backend or instrumentation choices.
 
----
+## Header checks and warnings
 
-## `mise run build` — the standard local workflow
+`cmake/x3d/tests.cmake` builds one isolation translation unit per public header
+when `X3D_CPP_PER_HEADER_CHECKS` is enabled. These are compile contracts, not
+hundreds of individual CTest executions. The `build-ci` task builds
+`x3d_behavior_tests` and `x3d_compile_contracts` separately, then runs their
+corresponding CTest labels. `cmake/x3d/test-suites.cmake` owns these lists.
 
-```bash
-mise run build
+`cmake/x3d/compiler-flags.cmake` defines the warning and instrumentation flags.
+The `ci` preset enables `X3D_CPP_WERROR`; the `dev` preset leaves it disabled.
+
+<a id="sanitizer-and-fuzz-gates-bld-2"></a>
+## Sanitizer and fuzz gates
+
+Use `mise run build-san` for the instrumented behavior suite. The `san` preset
+uses Debug. `mise run build-fuzz` builds the parser harness; run it directly:
+
+```sh
+./build-fuzz/x3d_parse_fuzz -max_total_time=60
+./build-fuzz/x3d_parse_fuzz corpus/
 ```
 
-This single command runs three steps sequentially (from `mise.toml`):
+The compiled node and runtime libraries receive `fuzzer-no-link` coverage and
+ASan/UBSan instrumentation. The harness supplies the libFuzzer driver. Instrumenting
+only the harness would leave compiled parser code without coverage feedback.
+A bounded run is a smoke check, not exhaustive input coverage.
 
+## Optional dependency manifest
+
+`vcpkg.json` supplies the optional curl port. You can also use system libcurl.
+To configure through vcpkg:
+
+```sh
+cmake -S . -B build-curl -G Ninja -DX3D_CPP_BUILD_CURL=ON \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 ```
-cmake --preset dev
-cmake --build --preset dev
-ctest --preset dev -j "$(nproc)"
-```
-
-1. **Configure** — runs CMake with the `dev` preset (Ninja, `build/` dir, compile-commands on,
-   per-header checks off). Idempotent; re-runs only detect cache changes.
-2. **Build** — compiles everything the preset knows about. On a warm ccache this is seconds.
-3. **Test** — runs all ctests in parallel across all logical cores. With `X3D_CPP_PER_HEADER_CHECKS`
-   off, the dev preset runs the behavior/integration suite only (not the ~800 per-header
-   isolation tests).
-
-For the same gate the merge uses (per-header checks ON), use `mise run build-ci` or
-`mise run ci` instead.
-
----
-
-## Where the build is defined
-
-The top-level `CMakeLists.txt` only declares the project and version, then
-`include()`s the fragments under `cmake/x3d/` in a fixed order. `include()` (not
-`add_subdirectory`) means every fragment shares one scope and sees the repository
-root as `CMAKE_CURRENT_SOURCE_DIR`. Later fragments use options, targets and
-variables that earlier ones define, so keep the order.
-
-| Fragment | Holds |
-|---|---|
-| `dev-tooling.cmake` | ccache, fast linker, Ninja job pool (top-level builds only) |
-| `header-targets.cmake` | INTERFACE header layers (generated nodes, runtime) |
-| `compiler-flags.cmake` | warning policy, `X3D_CPP_WERROR`, sanitizer and fuzz switches |
-| `libraries.cmake` | compiled node + runtime libraries, authoring target, `x3d::sdk` façade |
-| `install.cmake` | install rules and the `find_package(x3d_cpp)` export |
-| `options.cmake` | top-level options: tests, per-header checks, examples, consumers, ext |
-| `backends.cmake` | flag-gated seam backends (physics, QuickJS, curl, stb, wuffs, fonts, movie) + swap-tests |
-| `script-backend.cmake` | the Duktape ScriptEngine backend (ON by default) |
-| `tests.cmake` | per-feature test executables and the header compile contracts |
-| `sdk-examples.cmake` | the `x3d::sdk` façade examples, run as ctests |
-| `cli.cmake` | the `x3d` CLI, the QuickJS swap-test, CLI differential / canonicalize gates |
-| `consumers.cmake` | out-of-SDK example consumers (PoC, CPU raster, SVG, asset import) |
-| `ext.cmake` | the opt-in `runtime/ext/` extensions and their tests |
-| `doctest-suites.cmake` | the grouped doctest binaries (`x3d_{codecs,parse,extract,events}_tests`, math/scene) |
-| `fuzz.cmake` | the libFuzzer `parseDocument` harness |
-| `test-suites.cmake` | behavior/compile-contract build inputs and CTest labels |
-
-A new test for an existing subsystem usually belongs in that subsystem's grouped
-doctest binary (`doctest-suites.cmake`) rather than a new executable.
-For a new behavior executable, add its target to `_x3d_behavior_targets` and its
-CTest name to `_x3d_behavior_tests` in `test-suites.cmake`. The behavior and
-sanitizer aggregates share the same target list.
-
-## The compile-job pool
-
-`cmake/x3d/dev-tooling.cmake` sets a Ninja job-pool named `x3d_compile` that caps concurrent
-**compile** jobs (links and light TUs are uncapped):
-
-```cmake
-cmake_host_system_information(RESULT _x3d_logical_cores QUERY NUMBER_OF_LOGICAL_CORES)
-set(X3D_CPP_COMPILE_JOBS "${_x3d_logical_cores}" CACHE STRING "Max concurrent compile jobs")
-if(CMAKE_GENERATOR MATCHES "Ninja")
-    set_property(GLOBAL PROPERTY JOB_POOLS x3d_compile=${X3D_CPP_COMPILE_JOBS})
-    set(CMAKE_JOB_POOL_COMPILE x3d_compile)
-endif()
-```
-
-**Default: all logical cores.** Post-C1 (the decl/def split — see below), each compile's
-peak RSS is ~0.86 GB. On the 16-core/60 GB development machine the full parallel load is
-roughly 4.9 GB of total compiler RSS — comfortable. You only need to lower the cap on a
-low-RAM host.
-
-**Historical note.** Before the C1 split (before commit `843a5bd`), the generated headers were
-pure header-only and each TU instantiated the reflection `std::function` thunks inline. That
-pushed per-compile peak RSS high enough to OOM-kill `cc1plus` above `-j4` on the same 60 GB
-box. The cap was therefore hard-coded at 4. After C1 moved the heavy thunk instantiation into
-the `x3d_cpp_nodes` static lib, the memory pressure dropped and the cap became the core count.
-
-**Override:**
-
-```bash
-cmake --preset dev -DX3D_CPP_COMPILE_JOBS=4   # throttle on a low-RAM host
-```
-
-The cache var is sticky — an existing `build/` keeps its cached value. Reset it explicitly:
-
-```bash
-cmake --preset dev -U X3D_CPP_COMPILE_JOBS
-```
-
-**Do not retry PCH.** Before C1, a shared PCH was measured at ~0% improvement (1296 s → 1260 s)
-because `clang -ftime-trace` showed ~70% of per-TU cost was template instantiation + codegen, not
-parsing. PCH avoids re-parsing, not instantiation. The correct fix was C1 (done; do not revisit).
-
----
-
-## ccache — warm vs. cold builds
-
-`cmake/x3d/dev-tooling.cmake` auto-detects and wires ccache:
-
-```cmake
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
-    set(CMAKE_C_COMPILER_LAUNCHER   "${CCACHE_PROGRAM}" CACHE STRING "ccache launcher")
-endif()
-```
-
-It is a no-op when ccache is absent (CI runners without it still build cleanly).
-
-**Cold vs. warm numbers (16-core, post-C1):**
-
-| Build state | Approximate time |
-|---|---|
-| Cold, no ccache (pre-C1 baseline) | ~1296 s |
-| Cold, no ccache (post-C1) | ~39 s |
-| Warm ccache (any edit to a non-widely-included header) | seconds |
-
-The C1 "decl/def split" is the most important build-time change in the project's history.
-It moved the heavy `fields()` reflection tables and per-field `std::function` get/set thunks
-out of every `<Node>.hpp` into separate `<Node>.cpp` files, compiled once into the CMake
-STATIC lib `x3d_cpp_nodes` (`cmake/x3d/libraries.cmake`). Consumers link against the lib rather
-than re-instantiating the thunks per TU. The design rationale and measurements live in
-`docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`.
-
----
-
-## Fast-linker auto-selection
-
-`cmake/x3d/dev-tooling.cmake` prefers `mold` then `lld` over the system linker:
-
-```cmake
-find_program(X3D_MOLD mold)
-find_program(X3D_LLD ld.lld)
-if(X3D_MOLD)
-    add_link_options("-fuse-ld=mold")
-elseif(X3D_LLD)
-    add_link_options("-fuse-ld=lld")
-endif()
-```
-
-With ~70 test executables plus the all-headers aggregate TU, link time is non-trivial on the
-default BFD/gold linker. `mold` in particular makes sequential links nearly instant. The
-fallback to the system default is graceful — the build never breaks on a fresh checkout.
-
----
-
-## Per-header isolation tests
-
-`cmake/x3d/options.cmake` declares the `X3D_CPP_PER_HEADER_CHECKS` option:
-
-```cmake
-option(X3D_CPP_PER_HEADER_CHECKS "Compile each header in isolation as a ctest" ON)
-```
-
-These are ~800 ctests (one per generated header) that pin a break to a specific file. They
-are the slow part of a cold ctest run. The `dev` preset overrides this to `OFF`
-(`CMakePresets.json`), so `mise run build` runs the behavior/integration suite only.
-
-**CI must enable them.** Any CI configuration that does not use the `dev` preset (or explicitly
-sets `-DX3D_CPP_PER_HEADER_CHECKS=ON`) retains full per-header break-pinning coverage.
-
-To run them locally:
-
-```bash
-cmake --preset dev -DX3D_CPP_PER_HEADER_CHECKS=ON
-cmake --build --preset dev
-ctest --preset dev -j "$(nproc)"
-```
-
----
-
-## All mise tasks
-
-### Core iteration tasks
-
-| Task | What it does |
-|---|---|
-| `mise run build` | Configure + build + ctest (behavior suite). The standard local workflow. Uses the `dev` preset (per-header checks OFF, fast). |
-| `mise run build-ci` | Build and run behavior and compile-contract suites with the `ci` preset (per-header isolation checks ON). GitHub also selects optional backend tests. |
-| `mise run gen` | Re-run the Python generator: `uv run x3d-cpp-gen --out generated_cpp_bindings`. Use this after changing a template or emitter. |
-| `mise run golden` | Golden-drift gate: regenerates to a temp dir and diffs `*.hpp`/`*.cpp` against the committed tree. Fails on any drift. |
-| `mise run test` | Run the Python suite (`CI=1 uv run pytest`), requiring the golden formatter pin. Depends on `sync`. |
-| `mise run sync` | `uv sync` — installs/refreshes the project env including the dev group. |
-
-### CI and gate tasks
-
-| Task | What it does |
-|---|---|
-| `mise run ci` | Local checks: `test` (including golden drift), `conformance-gate`, `doc-ctest-gate`, `build-ci`, `cli-gate-regression`, and `authoring-footprint`. Dependencies may run concurrently. |
-| `mise run ci-all` | Everything `ci` runs plus `build-san` (ASan/UBSan) and `validate-examples`. Run `docs-build` and optional backend checks separately. |
-| `mise run conformance` | Regenerate the conformance view (`docs/conformance/`) from `docs/conformance/findings.yaml` in place. |
-| `mise run conformance-gate` | Conformance gate: validate `findings.yaml` schema + check that the generated view matches the committed files. |
-| `mise run cli-gate-regression` | CLI regression gate: runs `x3d_cli_gate` + `x3d_canon_gate` in `--gate` mode. Builds only the CLI and the two gate executables. |
-| `mise run cli-gate` | Informative (non-failing) differential gate: produces `tools/x3d-cli/goldens/divergence-report.md`. |
-| `mise run canon-gate` | Informative tiered canonicalize gate (T1 idempotence + T2 tolerant-diff + T3 byte-exact rate). |
-| `mise run cli-gate-baseline` | Refresh the committed baseline TSVs after accepting new intentional divergences. |
-| `mise run build-san` | Sanitizer gate (BLD-2): build the behavior suite with ASan + UBSan (`san` preset) and run behavior-labeled CTests. Mirrors the GitHub Actions `cpp-san` job. Not part of `mise run ci` — run it explicitly, or via `ci-all`. |
-| `mise run build-fuzz` | Build the libFuzzer harness for `parseDocument` (`fuzz` preset, Clang-only). Run the binary directly to fuzz; the `cpp-fuzz` job runs a bounded smoke. |
-
-### Corpus tasks
-
-| Task | What it does |
-|---|---|
-| `mise run corpus-fetch` | Fetch the X3D test corpus the differential gates need — the curated subset (`tools/x3d-cli/goldens/subset.txt`) **plus its transitive `Inline`/`EXTERNPROTO` dependencies** — from `www.web3d.org` into `.x3d-corpus/` (gitignored). ~9 MB, seconds. The gate/corpus tasks default to this location. |
-| `mise run corpus [/path]` | Corpus smoke: recursively sweep a corpus dir (parse → extract → tick), print categorized stats. Builds `x3d_corpus_sweep` first. Sweeps *whatever is in the dir*: defaults to `$X3D_CORPUS_DIR`, else `.x3d-corpus/` (the ~300-file `corpus-fetch` subset — a smoke, not full coverage). Point it at a full archive checkout for exhaustive coverage. |
-
-### Documentation tasks
-
-| Task | What it does |
-|---|---|
-| `mise run docs` | Serve the wiki locally with live-reload at `http://127.0.0.1:8000`. |
-| `mise run docs-build` | Build the wiki with `--strict` (broken links, nav orphans fail the build). The docs gate. |
-
-### RAG / ingestion tasks
-
-| Task | What it does |
-|---|---|
-| `mise run code-rag <args>` | Semantic search over the C++ runtime. E.g. `mise run code-rag query "how are bounds computed"`. |
-| `mise run code-ingest` | (Re)build the `x3d-cpp-code` Qdrant collection from the runtime source. |
-
-### Fixture generation (one-time / after corpus expansion)
-
-| Task | What it does |
-|---|---|
-| `mise run cli-golden-gen` | Run X3DJSAIL `-validate` over the curated corpus subset to generate `tools/x3d-cli/goldens/`. Requires JDK + corpus. |
-| `mise run canon-golden-gen` | Generate X3DJSAIL `-canonical` reference fixtures for the tiered canon gate. Requires JDK 25 + corpus. |
-
-### PoC renderer (optional, off by default)
-
-| Task | What it does |
-|---|---|
-| `mise run poc` | Configure + build the out-of-SDK OpenGL PoC renderer into `build-poc/`. Separated from `build/` to avoid perturbing the dev preset's ccache/ctest. |
-
-The PoC renderer requires Wayland prereqs; see `examples/poc_renderer/README.md`. Run the binary
-manually (`./build-poc/examples/poc_renderer/x3d_poc_renderer`); it needs a display and is not
-a ctest.
-
----
-
-## Common gotchas
-
-**Stale compile-job cap.** If you override `X3D_CPP_COMPILE_JOBS` and then re-run
-`cmake --preset dev` without `-U X3D_CPP_COMPILE_JOBS`, the old cached value persists. Always
-reset explicitly when you want the default to re-apply.
-
-**`build/` cache after a preset change.** CMake cache vars are sticky. When switching
-between configurations (e.g. toggling `X3D_CPP_PER_HEADER_CHECKS`), prefer:
-
-```bash
-rm -rf build/ && cmake --preset dev [-Dvars...]
-```
-
-**Missing corpus.** `mise run cli-gate-regression` and `mise run corpus` default to
-`$X3D_CORPUS_DIR`. Pass an explicit path as the first
-argument when the corpus lives elsewhere:
-
-```bash
-mise run cli-gate-regression /path/to/archive
-mise run corpus /path/to/archive
-```
-
-The gate harnesses exit 1 immediately on a missing directory rather than reporting a false-green
-(zero checks = vacuous pass is explicitly rejected).
-
-**PoC and the dev build cache.** `mise run poc` builds into `build-poc/`, not `build/`. This
-is intentional: the PoC pulls in GLFW and glad, which would pollute the compile-command export
-and the ccache hit rate for the core build if they shared a directory.
-
----
-
-## See also
-
-- [Gate System](gate-system.md) — the four CI gates (golden / conformance / CLI regression / docs) in detail
-
----
-
-## Warning policy
-
-Project targets compile with `-Wall -Wextra` by default (added via
-`add_compile_options` in `cmake/x3d/compiler-flags.cmake` so every target we own picks it up
-transitively). Vendored TUs (Jolt, quickjs-ng, stb_image, wuffs, stb_truetype)
-suppress with their own `target_compile_options(... PRIVATE -w)` so they don't
-contaminate the project's signal.
-
-The `X3D_CPP_WERROR` option promotes warnings to errors. The `ci` preset
-flips it ON, the `dev` preset leaves it OFF (fast iteration). The GitHub Actions
-fast gate (`cpp` job + `cpp-matrix` job) pass `-DX3D_CPP_WERROR=ON` explicitly.
-A latent warning introduced in a PR fails the merge.
-
-```bash
-# Default (dev preset): warnings shown but don't fail.
-cmake --preset dev && cmake --build --preset dev
-
-# Merge gate (ci preset): warnings fail the build.
-mise run build-ci
-# or:
-cmake --preset ci && cmake --build --preset ci
-```
-
----
-
-## Sanitizer and fuzz gates (BLD-2)
-
-The green doctest run proves behavior but misses the memory/UB bug classes the
-parser-hardening work (SEC-1/2, MEM-1) is meant to foreclose: use-after-free,
-leaks, signed overflow, OOB reads. Two extra build modes — both **separate from
-`mise run ci`** (`build-san` is included in the `ci-all` aggregate) — close that
-gap. Each runs as its own GitHub Actions job: `cpp-san` on every PR that touches C++, `cpp-fuzz` after merge (every push to `main`, and manual dispatch).
-
-### `san` preset — ASan + UBSan
-
-`X3D_CPP_SAN=ON` adds `-fsanitize=address,undefined -fno-omit-frame-pointer
--fno-sanitize-recover=all` to **every** project target (`cmake/x3d/compiler-flags.cmake`), so the
-first sanitizer error aborts the run. `RelWithDebInfo` keeps line-accurate traces.
-WERROR is OFF here — the `ci` preset owns warning enforcement; this preset is
-purely for memory/UB.
-
-```bash
-mise run build-san        # cmake --preset san && build && ctest --preset san
-```
-
-The separate `build-san/` dir is intentional: its objects carry sanitizer flags
-and are **not** ccache-compatible with the `dev`/`ci` presets, so don't expect a
-shared warm cache.
-
-### `fuzz` preset — libFuzzer over `parseDocument`
-
-`X3D_CPP_FUZZ=ON` (Clang-only) builds `x3d_parse_fuzz`, a libFuzzer harness that
-drives `sdk::parseDocument` with mutated bytes across all four encodings
-(XML/JSON/VRML/sniff). The harness swallows the parser's soft-failure exceptions
-(the "never panic" contract) and asserts only that no input crashes, leaks, or
-trips UB — the ASan/UBSan signal handlers are what catch a regression.
-
-The instrumentation must be **compile-time**: `-fsanitize=fuzzer,address,undefined`
-on the harness target's compile options (not just link). `fuzzer` at compile time
-inserts the SanitizerCoverage edge feedback libFuzzer mutates against — without it
-the fuzzer runs blind and finds nothing — and the SDK is header-only, so
-instrumenting that one TU instruments the whole inlined parse path.
-
-```bash
-mise run build-fuzz                              # build the harness
-./build-fuzz/x3d_parse_fuzz -max_total_time=60   # bounded smoke (CI runs this)
-./build-fuzz/x3d_parse_fuzz corpus/              # explore from a seed corpus
-```
-
-A crash writes a `crash-<hash>` reproducer in the cwd and exits nonzero (failing
-the gate). The CI job runs a 60-second bounded smoke — regression coverage, not an
-exhaustive campaign.
-
----
-
-## vcpkg manifest (third-party backend deps)
-
-The optional libcurl backend can use the pinned `curl` port in `vcpkg.json`,
-or a system libcurl found by CMake. The unused AWS SDK and FreeType ports have
-been removed. No vcpkg installation is needed for the default build.
-
-To use the manifest locally:
-
-```bash
-cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_CURL=ON \
-    -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-```
-
-The toolchain reads the manifest and resolves curl against its pinned catalog.

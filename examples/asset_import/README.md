@@ -1,37 +1,18 @@
 # asset_import — external assets → X3D 4.0 converter
 
-`x3d_asset_import` is an out-of-SDK example that converts external 3D assets into
-conformant X3D 4.0, built on the slim `x3d_cpp::authoring` target (no parser /
-runtime / scripting / physics — see [ADR-0042](../../docs/wiki/decisions/0042-authoring-target.md)).
-It is also the reference consumer for the USD material port and the portable-GLSL
-material seam ([ADR-0043](../../docs/wiki/decisions/0043-usd-material-portable-glsl-seam.md)).
-
-Pipeline: **backend → `ImportScene` IR → texture plan → `emit()` → X3D document → writer**.
-The `ImportSource` seam keeps every third-party type behind a backend-agnostic POD IR
-([`import_source.hpp`](import_source.hpp)); the [subsystem page](../../docs/wiki/subsystems/asset-import.md)
-has the full data-flow and X3D mapping table.
+`x3d_asset_import` converts foreign assets into X3D 4.0 documents and writes
+texture assets alongside the output. The conversion model is described in the
+[subsystem reference](../../docs/wiki/subsystems/asset-import.md).
 
 ## Backends
 
-The backend is resolved by a priority `BackendRegistry` (highest-priority match
-for the input wins; `--backend <name>` forces one). More than one backend can
-claim a file type — glTF is claimed by both cgltf (default) and assimp (fallback):
-
-| Input | Backend | Priority | Build flag | Formats |
-|---|---|---|---|---|
-| `fixture:<name>` (e.g. `fixture:cube`) | `FixtureSource` | 100 | always on | synthetic scenes (dependency-free; CI + tests) |
-| `*.gltf` `*.glb` | `CgltfSource` (cgltf) | 100 | `-DX3D_CPP_BUILD_CGLTF=ON` (default) | glTF 2.0 — PBR, textures (external / GLB / data-URI), hierarchy, cameras, `KHR_lights_punctual` |
-| `*.usd` `*.usda` `*.usdc` `*.usdz` | `UsdSource` (tinyusdz) | 100 | `-DX3D_CPP_BUILD_USD=ON` | USD / USDZ, incl. composed references/payloads/subLayers and UsdPreviewSurface materials |
-| `*.obj` `*.fbx` `*.dae` … | `AssimpSource` | 50 | `-DX3D_CPP_BUILD_ASSIMP=ON` | 40+ formats via Assimp |
-| `*.gltf` `*.glb` (fallback) | `AssimpSource` | 10 | `-DX3D_CPP_BUILD_ASSIMP=ON` | glTF via Assimp (`--backend assimp` to force) |
-
-**cgltf** is a single MIT header (no heavy deps) and is **ON by default**, so glTF
-works out of the box. **assimp** and **USD** stay **OFF by default**; without them
-the default build ships the fixture + cgltf backends and stays lightweight.
+See [backend selection](../../docs/wiki/subsystems/asset-import.md#backend-selection)
+for available formats, priorities, and build options. `--backend <name>` forces
+an implementation.
 
 ## Build
 
-Fixture-only (what `mise run asset-import` does — configure + build + ctest):
+The default configuration includes fixture and cgltf backends:
 
 ```sh
 mise run asset-import
@@ -96,7 +77,7 @@ USD materials port through `UsdPreviewSurface` (the one shading model tinyusdz
 resolves; MaterialX / arbitrary graphs are flatten-or-skip). The X3D
 `PhysicalMaterial` node maps the glTF-metallic-roughness subset
 (baseColor / metallic / roughness / emissive / occlusion / normal + textures);
-it has **no** node for `ior` / `clearcoat` / specular-workflow / `opacityMode`.
+it has no node for `ior` / `clearcoat` / specular-workflow / `opacityMode`.
 
 `--emit-glsl` carries that extra fidelity: it writes a self-contained
 [`usd_preview_surface.frag`](../cpu_raster/shaders/usd_preview_surface.frag) per
@@ -108,7 +89,7 @@ See [ADR-0043](../../docs/wiki/decisions/0043-usd-material-portable-glsl-seam.md
 ## Showcase
 
 [`assets/showcase/`](assets/showcase/) converts one procedural torus knot authored in
-**OBJ**, **glTF**, and **USD** through the three backends, showing the format-agnostic
+OBJ, glTF, and USD through the three backends, showing the format-agnostic
 pipeline and the material-model mapping (OBJ → Phong `Material`; glTF & USD →
 `PhysicalMaterial`):
 
@@ -120,13 +101,15 @@ All showcase assets are authored in-repo (license-clean). See its
 ## Example models & licensing
 
 This repo is MIT, so keep every committed asset MIT-clean to redistribute:
-**CC0, or CC-BY with attribution.** Avoid NonCommercial, NoDerivatives, or otherwise
+CC0, or CC-BY with attribution. Avoid NonCommercial, NoDerivatives, or otherwise
 MIT-incompatible licenses. Third-party build/runtime dependencies are attributed in
 the root [`NOTICE`](../../NOTICE).
 
 - Committed textured-PBR demo: [`../cpu_raster/assets/models/lion_head/`](../cpu_raster/assets/models/lion_head/)
-  (**CC0**, with a regeneration recipe).
+  (CC0, with a regeneration recipe).
 - The [conversion showcase](assets/showcase/) meshes are generated in-repo, so they
   carry no external license.
 - To try USD/USDZ on a downloaded model, convert it from a local copy; only commit
   an asset once you've confirmed its license is CC0 or CC-BY.
+
+<a id="example-models--licensing"></a>

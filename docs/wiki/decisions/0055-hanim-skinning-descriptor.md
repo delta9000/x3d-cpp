@@ -12,6 +12,8 @@ related:
 
 # ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner
 
+Status: superseded by ADR-0055 amendment
+
 ## Status
 
 Accepted. Supersedes [ADR-0032](0032-hanimdisplacer-routable-coordpoint.md).

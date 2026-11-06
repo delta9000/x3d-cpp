@@ -7382,6 +7382,7 @@
         "TXF-2",
         "TXF-3",
         "TXF-4",
+        "TXF-EYE-COORDINATES",
         "TXT-6",
         "VIS-MOVIE-DECODE",
         "VIS-SPHERE-NOUV"
@@ -7630,7 +7631,7 @@
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
             "TXF-2",
-            "TXF-4"
+            "TXF-EYE-COORDINATES"
           ],
           "geometry": false,
           "interfaces": [
@@ -8391,7 +8392,6 @@
     },
     {
       "clause": "8.2.4.4",
-      "commit": "e92042e",
       "id": "TDN-1",
       "interfaces": [
         "X3DTimeDependentNode"
@@ -8406,7 +8406,6 @@
     },
     {
       "clause": "8.2.4.4",
-      "commit": "e92042e",
       "id": "TDN-2",
       "nodes": [
         "TimeSensor"
@@ -8418,7 +8417,6 @@
     },
     {
       "clause": "8.2.4.3",
-      "commit": "c7d2c21",
       "id": "TDN-3",
       "nodes": [
         "TimeSensor"
@@ -8430,7 +8428,6 @@
     },
     {
       "clause": "8.2.4.3, 8.4.1",
-      "commit": "c7d2c21",
       "id": "TDN-4",
       "nodes": [
         "TimeSensor"
@@ -8457,7 +8454,6 @@
     },
     {
       "clause": "8.2.4.4",
-      "commit": "775c3ff",
       "id": "TDN-6",
       "nodes": [
         "TimeSensor"
@@ -8469,7 +8465,6 @@
     },
     {
       "clause": "8.4.1",
-      "commit": "3b842d0",
       "id": "TDN-7",
       "nodes": [
         "TimeSensor"
@@ -8481,7 +8476,6 @@
     },
     {
       "clause": "20.4.1",
-      "commit": "5eef411",
       "id": "DS-1",
       "nodes": [
         "CylinderSensor"
@@ -8493,7 +8487,6 @@
     },
     {
       "clause": "20.4.x",
-      "commit": 8652034,
       "id": "DS-2",
       "nodes": [
         "PlaneSensor",
@@ -8507,7 +8500,6 @@
     },
     {
       "clause": "29.2.5",
-      "commit": "f2fd324",
       "id": "SCR-001",
       "nodes": [
         "Script"
@@ -8520,7 +8512,6 @@
     },
     {
       "clause": "29.2.3",
-      "commit": "ff23503",
       "id": "SCR-002",
       "nodes": [
         "Script"
@@ -8532,7 +8523,6 @@
     },
     {
       "clause": "29.2.4",
-      "commit": "a78da16",
       "id": "SCR-003",
       "nodes": [
         "Script"
@@ -8544,7 +8534,6 @@
     },
     {
       "clause": "29.2.5",
-      "commit": "f2fd324",
       "id": "SCR-004",
       "nodes": [
         "Script"
@@ -8567,7 +8556,6 @@
     },
     {
       "clause": "29.2.2, 19777-1",
-      "commit": "f5001cc",
       "id": "SCR-006",
       "nodes": [
         "Script"
@@ -8590,7 +8578,6 @@
     },
     {
       "clause": "19.2.4, 19.4.10-13",
-      "commit": "07c31ca",
       "id": "INTERP-01",
       "interfaces": [
         "X3DInterpolatorNode"
@@ -8610,7 +8597,6 @@
     },
     {
       "clause": "19.3.1",
-      "commit": "07c31ca",
       "id": "INTERP-02",
       "interfaces": [
         "X3DInterpolatorNode"
@@ -8622,7 +8608,6 @@
     },
     {
       "clause": "23.2.3",
-      "commit": "e3235ee",
       "id": "BIND-01",
       "interfaces": [
         "X3DBindableNode"
@@ -8639,7 +8624,6 @@
     },
     {
       "clause": "23.3.1",
-      "commit": "95d1107",
       "id": "BIND-02",
       "nodes": [
         "Viewpoint",
@@ -8653,7 +8637,6 @@
     },
     {
       "clause": "23.3.1",
-      "commit": "e3235ee",
       "id": "BIND-03",
       "nodes": [
         "OrthoViewpoint",
@@ -8666,7 +8649,6 @@
     },
     {
       "clause": "23.3.1",
-      "commit": "2af9570",
       "id": "BIND-04",
       "nodes": [
         "Viewpoint",
@@ -8680,7 +8662,6 @@
     },
     {
       "clause": "23.4.4",
-      "commit": "95d1107",
       "id": "BIND-05",
       "nodes": [
         "NavigationInfo",
@@ -8695,7 +8676,6 @@
     },
     {
       "clause": "7.2.2",
-      "commit": "95d1107",
       "id": "BIND-06",
       "interfaces": [
         "X3DBindableNode"
@@ -8707,7 +8687,6 @@
     },
     {
       "clause": "23.3.1",
-      "commit": "2af9570",
       "id": "BIND-07",
       "nodes": [
         "Viewpoint",
@@ -8721,7 +8700,6 @@
     },
     {
       "clause": "23.3.1",
-      "commit": "2af9570",
       "id": "BIND-08",
       "nodes": [
         "Viewpoint",
@@ -8769,7 +8747,6 @@
     },
     {
       "clause": "22.4.1",
-      "commit": "2b84a99",
       "id": "ENV-04",
       "nodes": [
         "ProximitySensor"
@@ -8804,7 +8781,6 @@
     },
     {
       "clause": "22.4.1",
-      "commit": "2b84a99",
       "id": "ENV-07",
       "nodes": [
         "ProximitySensor",
@@ -8838,7 +8814,6 @@
     },
     {
       "clause": "\u2014",
-      "commit": "07c31ca",
       "id": "PIV-1",
       "interfaces": [
         "X3DInterpolatorNode"
@@ -9048,7 +9023,6 @@
     },
     {
       "clause": "37",
-      "commit": "bde5134",
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP",
       "nodes": [
@@ -9057,14 +9031,13 @@
         "CollisionCollection",
         "CollisionSpace"
       ],
-      "note": "Read-only output bridge (the solver already resolves contacts; \u00a737.4.5 forbids feeding them back). PhysicsBackend.drainContacts pull seam + Jolt ContactListener; ContactReporter builds Contact nodes (geometry from the engine, response fields from the CollisionCollection defaults) and emits over the cascade. Deterministic ordering via stable enrolment ordinals. Deferred refinements: one Contact per body-pair per frame (not per manifold point); space-vs-space broadphase grouping (folded into CONF-RBP-GEOM).",
+      "note": "contact_reporter_test.cpp: CollisionSensor reporting emits read-only contacts with per-pair deduplication and deterministic ordering.",
       "severity": "major",
       "status": "fixed",
       "summary": "CollisionSensor reports collisions: contacts (Contact nodes), intersections, and isActive are emitted from the watched CollisionCollection's collidables (\u00a737.4.4-.4.7)."
     },
     {
       "clause": "37",
-      "commit": 9560686,
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP-FORCES",
       "nodes": [
@@ -9136,7 +9109,7 @@
       "nodes": [
         "SingleAxisHingeJoint"
       ],
-      "note": "Jolt's hinge angle is the NEGATIVE of the body's rotation about the axis, so the authored limits are negated before being handed to Jolt ([lo,hi] -> [-hi,-lo]); a TDD asymmetric-limit test caught a latent sign bug that symmetric ranges (the default -pi..pi and the locked 0,0) had hidden. A zero-width (locked) range is widened by a 1e-4 gap (Jolt asserts on min==max). Out-of-domain input (initial pose outside the limits, |angle|>pi) is malformed per \u00a737 and clamped + warned. stopBounce / stopErrorCorrection (limit softness/overshoot) remain deferred under CONF-RBP-SOLVER.",
+      "note": "jolt_backend_test.cpp: Authored hinge limits are negated for Jolt's angle convention and locked ranges receive a small nonzero width.",
       "severity": "minor",
       "status": "fixed",
       "summary": "SingleAxisHingeJoint minAngle/maxAngle are honored with the correct sign. \u00a737 limits are measured from the initial pose (valid range minAngle<=0<=maxAngle, <=pi each way) \u2014 exactly Jolt's hinge convention. Spec-valid ranges, including asymmetric ones, are honored; out-of-domain/malformed limits are clamped to the valid domain + warned."
@@ -9179,7 +9152,6 @@
     },
     {
       "clause": "37",
-      "commit": "97d8a5c",
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP-DETERMINISM",
       "nodes": [
@@ -9192,7 +9164,6 @@
     },
     {
       "clause": "37",
-      "commit": "75a7878",
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP-ENABLED",
       "nodes": [
@@ -9205,20 +9176,18 @@
     },
     {
       "clause": "37",
-      "commit": "e038494",
       "component": "RigidBodyPhysics",
       "id": "CONF-RBP-FRICTION-BOUNCE",
       "nodes": [
         "CollisionCollection"
       ],
-      "note": "PhysicsSystem reads RigidBodyCollection.collider -> CollisionCollection.appliedParameters to gate each param (a selected param overrides the engine default even at value 0; an unselected param leaves the engine default untouched). Scalar friction uses .x (anisotropic .y deferred). Deferred: USER_FRICTION (frictionDirection), anisotropic friction (.y), ERROR_REDUCTION/CONSTANT_FORCE/SPEED-1/2/SLIP-1/2 selectors, slipFactors, surfaceSpeed, minBounceSpeed, softness/solver tuning (CONF-RBP-SOLVER).",
+      "note": "contact_response_test.cpp: Selected scalar friction and bounce parameters cross the backend seam, including explicit zero values.",
       "severity": "minor",
       "status": "closed",
       "summary": "CollisionCollection.frictionCoefficients (scalar, .x) and bounce are applied as per-contact combined friction/restitution via the Jolt ContactListener, now HONORING appliedParameters: FRICTION_COEFFICIENT-2 gates frictionCoefficients, BOUNCE gates bounce (default [\"BOUNCE\"]). Demonstrated by a rear-wheel-drive vehicle that drives under tyre friction + a rebounding ball."
     },
     {
       "clause": "30.4.4",
-      "commit": "47c0714",
       "id": "TRIG-1",
       "nodes": [
         "BooleanTrigger"
@@ -9231,7 +9200,6 @@
     },
     {
       "clause": "30.4.6",
-      "commit": "47c0714",
       "id": "TRIG-2",
       "nodes": [
         "IntegerTrigger"
@@ -9243,7 +9211,6 @@
     },
     {
       "clause": "30.4.7",
-      "commit": "47c0714",
       "id": "TRIG-3",
       "nodes": [
         "TimeTrigger"
@@ -9255,7 +9222,6 @@
     },
     {
       "clause": "30.2.3",
-      "commit": "47c0714",
       "id": "TRIG-6",
       "interfaces": [
         "X3DTriggerNode"
@@ -9280,7 +9246,6 @@
     },
     {
       "clause": "30.4.7",
-      "commit": "47c0714",
       "id": "TRIG-5",
       "nodes": [
         "TimeTrigger"
@@ -9292,7 +9257,6 @@
     },
     {
       "clause": "30.2.4, 30.3.1",
-      "commit": "47c0714",
       "id": "SEQ-1",
       "interfaces": [
         "X3DSequencerNode"
@@ -9304,7 +9268,6 @@
     },
     {
       "clause": "30.2.4",
-      "commit": "47c0714",
       "id": "SEQ-2",
       "interfaces": [
         "X3DSequencerNode"
@@ -9317,7 +9280,6 @@
     },
     {
       "clause": "30.3.1",
-      "commit": "47c0714",
       "id": "SEQ-3",
       "interfaces": [
         "X3DSequencerNode"
@@ -9329,7 +9291,6 @@
     },
     {
       "clause": "30.3.1",
-      "commit": "47c0714",
       "id": "SEQ-4",
       "interfaces": [
         "X3DSequencerNode"
@@ -9341,7 +9302,6 @@
     },
     {
       "clause": "30.3.1",
-      "commit": "47c0714",
       "id": "SEQ-5",
       "interfaces": [
         "X3DSequencerNode"
@@ -9353,7 +9313,6 @@
     },
     {
       "clause": "30.2.4",
-      "commit": "47c0714",
       "id": "SEQ-7",
       "interfaces": [
         "X3DSequencerNode"
@@ -9365,7 +9324,6 @@
     },
     {
       "clause": "30.3.1",
-      "commit": "47c0714",
       "id": "SEQ-8",
       "interfaces": [
         "X3DSequencerNode"
@@ -9377,7 +9335,6 @@
     },
     {
       "clause": "30.4.1",
-      "commit": "47c0714",
       "id": "EUF-1",
       "nodes": [
         "BooleanFilter"
@@ -9389,7 +9346,6 @@
     },
     {
       "clause": "30.4.3",
-      "commit": "47c0714",
       "id": "EUF-2",
       "nodes": [
         "BooleanToggle"
@@ -9401,7 +9357,6 @@
     },
     {
       "clause": "30.4.1",
-      "commit": "47c0714",
       "id": "EUF-4",
       "nodes": [
         "BooleanFilter"
@@ -9413,7 +9368,6 @@
     },
     {
       "clause": "30.4.1, 30.4.3",
-      "commit": "47c0714",
       "id": "EUF-5",
       "nodes": [
         "BooleanFilter",
@@ -9566,7 +9520,7 @@
       "nodes": [
         "Switch"
       ],
-      "note": "Root cause: X3DExecutionContext::classifyDirty mapped a whichChoice field change to DirtyField, but a Switch is in neither geomDeps_ nor materialDeps_, so SceneExtractor::delta() ignored it (no subtree re-walk). The extractor already reads whichChoice on a full walk \u2014 only the incremental channel was affected (the prior 'Switch audited clean' note covered fullSnapshot only). Fix: classifyDirty maps whichChoice -> DirtyChildren, so delta() re-walks the Switch subtree and emits removed(old child)+added(new child). Regression: scene_extractor_incremental_test.cpp case 5 (flip 0->1->-1). Surfaced via a Switch+IntegerSequencer demo rendered through the OpenGL PoC's incremental delta() path.",
+      "note": "scene_extractor_incremental_test.cpp: Switch selection changes replace the extracted child set.",
       "severity": "major",
       "status": "fixed",
       "summary": "Switch.whichChoice change was invisible to the incremental delta() channel \u2014 a runtime change of whichChoice swapped the active child for full-snapshot consumers (cpuraster) but NOT for incremental ones (the OpenGL PoC), which stayed on the old child."
@@ -9585,7 +9539,6 @@
     },
     {
       "clause": "23.4.2",
-      "commit": "2b84a99",
       "id": "COL-2",
       "nodes": [
         "Collision"
@@ -9610,7 +9563,6 @@
     },
     {
       "clause": "21.4.1, 21.4.2",
-      "commit": "85b90b0",
       "id": "KDS-1",
       "nodes": [
         "KeySensor",
@@ -9624,7 +9576,6 @@
     },
     {
       "clause": "21.4.1",
-      "commit": "85b90b0",
       "id": "KDS-2",
       "nodes": [
         "KeySensor"
@@ -9637,7 +9588,6 @@
     },
     {
       "clause": "21.4.1",
-      "commit": "85b90b0",
       "id": "KDS-3",
       "nodes": [
         "KeySensor"
@@ -9649,7 +9599,6 @@
     },
     {
       "clause": "21.4.1",
-      "commit": "85b90b0",
       "id": "KDS-4",
       "nodes": [
         "KeySensor"
@@ -9661,7 +9610,6 @@
     },
     {
       "clause": "21.4.1",
-      "commit": "85b90b0",
       "id": "KDS-5",
       "nodes": [
         "KeySensor"
@@ -9686,7 +9634,6 @@
     },
     {
       "clause": "21.4.2",
-      "commit": "85b90b0",
       "id": "KDS-7",
       "nodes": [
         "StringSensor"
@@ -9698,7 +9645,6 @@
     },
     {
       "clause": "21.4.2",
-      "commit": "85b90b0",
       "id": "KDS-8",
       "nodes": [
         "StringSensor"
@@ -9710,7 +9656,6 @@
     },
     {
       "clause": "21.4.2",
-      "commit": "85b90b0",
       "id": "KDS-9",
       "nodes": [
         "StringSensor"
@@ -9722,7 +9667,6 @@
     },
     {
       "clause": "21.2",
-      "commit": "85b90b0",
       "id": "KDS-10",
       "nodes": [
         "KeySensor",
@@ -9873,7 +9817,6 @@
     },
     {
       "clause": "23.4.3",
-      "commit": "2b84a99",
       "id": "LOD-1",
       "nodes": [
         "LOD"
@@ -9890,7 +9833,7 @@
       "nodes": [
         "LOD"
       ],
-      "note": "ViewDependentSystem marks node-level selection changes. The previously deferred per-path residual is now covered by SceneExtractor: it records each LOD placement, including empty selected branches, checks its selection in its current world frame each delta, and replaces the baseline when a path changes. Billboard descendants recompute view-dependent per-path transforms without rebuilding meshes. Regression: scene_extractor_view_delta_test.cpp covers shared translated LODs, ancestor motion, empty branches, shared Billboards, tracked eye/up and no-motion stability (#136). The per-node level_changed event remains distinct from per-path rendering.",
+      "note": "scene_extractor_view_delta_test.cpp: LOD selection is evaluated per placement and Billboard motion preserves shared meshes.",
       "severity": "minor",
       "status": "fixed",
       "summary": "LOD active-level changes were invisible to the incremental delta() channel \u2014 the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped."
@@ -9960,7 +9903,6 @@
     },
     {
       "clause": "12.4.2, 17.2.2.4",
-      "commit": "c86b731",
       "component": "Shape",
       "id": "MAT-001",
       "nodes": [
@@ -9974,7 +9916,6 @@
     },
     {
       "clause": "12.4.5, 17.2.2.5",
-      "commit": "c86b731",
       "component": "Shape",
       "id": "MAT-002",
       "nodes": [
@@ -9987,7 +9928,6 @@
     },
     {
       "clause": "12.4.5, 17.2.2.5",
-      "commit": "c86b731",
       "component": "Shape",
       "id": "MAT-003",
       "nodes": [
@@ -9999,7 +9939,6 @@
     },
     {
       "clause": "12.4.5",
-      "commit": "c86b731",
       "component": "Shape",
       "id": "MAT-004",
       "nodes": [
@@ -10011,7 +9950,6 @@
     },
     {
       "clause": "12.3.4",
-      "commit": "c86b731",
       "component": "Shape",
       "id": "MAT-005",
       "nodes": [
@@ -10025,7 +9963,6 @@
     },
     {
       "clause": "12.2.3, 12.4.2",
-      "commit": "4c47b58",
       "component": "Shape",
       "id": "MAT-006",
       "nodes": [
@@ -10040,7 +9977,6 @@
     },
     {
       "clause": "12.4.5, 17.2.3",
-      "commit": "f3ee804",
       "component": "Shape",
       "id": "MAT-007",
       "nodes": [
@@ -10055,7 +9991,6 @@
     },
     {
       "clause": "17.2.3",
-      "commit": "1cc7748",
       "component": "Shape",
       "id": "MAT-008",
       "nodes": [
@@ -10068,7 +10003,6 @@
     },
     {
       "clause": "12.4.2",
-      "commit": "954ad98",
       "component": "Shape",
       "id": "MAT-009",
       "nodes": [
@@ -10103,7 +10037,7 @@
       "nodes": [
         "PhysicalMaterial"
       ],
-      "note": "Per \u00a712.4.6 occlusion comes from occlusionTexture (red channel) scaled by occlusionStrength; metallicRoughnessTexture carries roughness in G and metallic in B. Fixed in the CPU reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) and the PoC GLSL (examples/poc_renderer/shaders/pbr.frag): AO now reads the Occlusion slot only; the MR texture's R is no longer an AO source (the extractor emits no ORM-packed marker). Regression: x3d_cpuraster_material_shader_test.",
+      "note": "material_shader_test.cpp: Occlusion samples the Occlusion slot rather than the metallic-roughness texture's red channel.",
       "severity": "major",
       "status": "fixed",
       "summary": "Ambient occlusion derived from the metallic-roughness texture's R channel even when a separate occlusionTexture was bound (and applied even when none was)."
@@ -10116,14 +10050,13 @@
         "ElevationGrid",
         "GeoElevationGrid"
       ],
-      "note": "emitHeightGrid (MeshBuilder.hpp, shared by both grids) now resolves authored Color/Normal via buildAttrs() and honors colorPerVertex/normalPerVertex per \u00a713.3.4: per-vertex indexes the LATTICE vertex (row*xDim+col), per-quad indexes the CELL (row*(xDim-1)+col). An authored Normal also suppresses the generated-flat/crease path. Regression: mesh_builder_grid_attributes_test.cpp (per-vertex and per-quad colour/normal, ElevationGrid + GeoElevationGrid). (2026-06-27)",
+      "note": "mesh_builder_grid_attributes_test.cpp: Height grids apply authored per-vertex and per-cell colors and normals.",
       "severity": "major",
       "status": "closed",
       "summary": "ElevationGrid/GeoElevationGrid drop authored color + normal nodes (colorPerVertex/normalPerVertex ignored) \u2014 only auto flat normals, no vertex colors."
     },
     {
       "clause": "11.3.2, 11.4.13, 11.4.15",
-      "commit": "fe4d730",
       "component": "Rendering",
       "id": "EXT-002",
       "nodes": [
@@ -10145,7 +10078,7 @@
         "ElevationGrid",
         "GeoElevationGrid"
       ],
-      "note": "emitHeightGrid() (the shared height-grid emitter for both ElevationGrid and GeoElevationGrid) split each cell (v00,v10,v11)+(v00,v11,v01), which is CW from the +Y side \u2192 faceNormal \u2212Y. Reversed to (v00,v11,v10)+(v00,v01,v11) so the surface is CCW/front-facing from above and normals point +Y per \u00a713.3.4. latticeIndex/creaseAngle smoothing key on the source lattice id, so they are order-independent. Surfaced by the Kelp Forest RockFloor (an ElevationGrid) rendering as scattered fragments vs X_ITE. Regression: mesh_builder_elevationgrid_winding_test.cpp (flat grid, default ccw \u2192 every normal +Y). (2026-06-25)",
+      "note": "mesh_builder_elevationgrid_winding_test.cpp: Default height-grid triangles face upward with positive-Y normals.",
       "severity": "major",
       "status": "closed",
       "summary": "ElevationGrid/GeoElevationGrid cells were wound backwards \u2014 with the default ccw=TRUE the generated face normals pointed \u2212Y (down), so the surface was lit from below and, under a consumer's default solid=TRUE back-face cull, the whole terrain vanished when viewed from above."
@@ -10159,7 +10092,7 @@
         "ImageTexture",
         "PixelTexture"
       ],
-      "note": "CPU Texture.hpp consumes all extracted boundary modes and borderColor, magnification and minification filters, generateMipMaps and anisotropy (supported maximum 16). Generated box-filter mip levels use nearest/bilinear selection and nearest/trilinear mip selection; absent mipmaps fall back to the corresponding base-level filter. Derivatives are perspective-correct per UV channel and are recomputed for procedural coordinates. Tests: texture_render_test and interchange_test. Scope is the CPU reference sampler, not the OpenGL PoC. (2026-10-02)",
+      "note": "texture_render_test.cpp, interchange_test.cpp: The CPU sampler applies extracted boundary, filter, mipmap, and anisotropy settings.",
       "severity": "minor",
       "status": "fixed",
       "summary": "CPU reference sampler honored only repeat/clamp \u2014 MIRRORED_REPEAT and CLAMP_TO_BOUNDARY were ignored and the magnification filter was not applied."
@@ -10175,7 +10108,7 @@
         "Cone",
         "Cylinder"
       ],
-      "note": "Order fixed to the normative matrix Tc' = C\u00b7S\u00b7R\u00b7C\u207b\u00b9\u00b7T\u00b7Tc (right-to-left: translate \u2192 pivot \u2192 ROTATE \u2192 SCALE \u2192 un-pivot), matching \u00a718.4.10's '(in order)' list \u2014 rotation BEFORE scaling. The contradicting prose sentence ('rotation ... after the scaling operation has been applied') is treated as an editorial error. applyTextureTransform + makeTextureTransform3x3 (TextureTransform2D.hpp) now agree; the centre pivot convention is unchanged. Regression: texture_extract_test (testTextureTransformOrder: \u03c0/2 about centre (0.5,0.5) + scale (2,3) + translation \u2192 (0.1,0.05), plus a make3x3 cross-check). (2026-06-27)",
+      "note": "texture_extract_test.cpp: Texture transforms use the matrix order C\u00b7S\u00b7R\u00b7C\u207b\u00b9\u00b7T.",
       "severity": "minor",
       "status": "closed",
       "summary": "TextureTransform matrix application order divergence (translate/center/rotate/scale/\u2212center) \u2014 UVs transformed incorrectly for non-trivial transforms."
@@ -10189,7 +10122,7 @@
         "IndexedFaceSet",
         "ElevationGrid"
       ],
-      "note": "CPU unlit, Phong and PBR select coordinates independently for each texture stage and material slot. All eleven Table 18.6 modes consume local/eye positions and normals, noise scale/translation and refraction parameters; generated coordinates receive the matching TextureTransform. Deterministic 3D Perlin noise and refract-based mapping are documented implementation choices where the published table is underspecified. Tests: texcoord_gen_test and interchange_test. The PoC's COORD-EYE fallback and reversed reflection eye vector were fixed for issue #140 and are covered by examples/poc_renderer/tests/texgen_gl_test.py (run by validate-examples). The PoC now evaluates all eleven modes per fragment in shaders/texgen.glsl (the same Perlin hash and refraction as the CPU) for its unlit, Phong and PBR programs, and applies the generated-coordinate TextureTransform; examples/poc_renderer/tests/texgen_local_gl_test.py (run by validate-examples) checks COORD, SPHERE-LOCAL, NOISE, NOISE-EYE, SPHERE-REFLECT and SPHERE-REFLECT-LOCAL samples and a generated-coordinate transform against Table 18.6 in each program (2026-10-10). Each texture now has its own generator in the PoC as well (REQ-MULTITEXTURE-2, 2026-10-11).",
+      "note": "texcoord_gen_test.cpp, texgen_local_gl_test.py: The CPU and OpenGL reference shaders evaluate the eleven coordinate-generator modes per texture.",
       "severity": "major",
       "status": "fixed",
       "summary": "Both reference hosts implement all eleven TextureCoordinateGenerator modes and transform the generated coordinates."
@@ -10197,7 +10130,7 @@
     {
       "clause": "18.4.8",
       "component": "Texturing",
-      "id": "TXF-4",
+      "id": "TXF-EYE-COORDINATES",
       "nodes": [
         "TextureCoordinateGenerator"
       ],
@@ -10316,7 +10249,7 @@
       "nodes": [
         "TouchSensor"
       ],
-      "note": "Was BACKLOG CONF-CRITIC. Verified 2026-07-17: PointingSensorSystem.hpp re-resolves the release pick (stillOver = pick.hit && resolve(pick) == active_) and gates touchTime on `pressWasOver_ && stillOver` (\u00a720.4.4); covered by pointing_sensor_test.cpp test_isActive_touchTime, which asserts touchTime fires when released over the geometry and does NOT fire when released off it. Both present since the initial commit \u2014 the finding was carried over from BACKLOG without confirming the behavior already existed.",
+      "note": "pointing_sensor_test.cpp: TouchSensor emits touchTime only when release remains over the active sensor's geometry.",
       "severity": "low",
       "status": "closed",
       "summary": "touchTime condition-3 (still-over-at-release pick re-resolution) verified \u2014 implemented and tested."
@@ -10327,7 +10260,7 @@
       "nodes": [
         "Fog"
       ],
-      "note": "Closed: FogDesc (RenderItem.hpp) + SceneExtractor::fog() surface the bound Fog's color/fogType/visibilityRange (world-scaled per the node's local coordinate frame); the \u00a717 Table 17.5 fogInterpolant applies as the final step in examples/cpu_raster/cpuraster/MaterialShader.hpp (all models incl. Unlit) and poc_renderer lit/pbr/unlit.frag + main.cpp uFogColor/uFogType/uFogVisibilityRange uniforms. visibilityRange 0 disables fog. Tests: scene_extractor_fog_test (extraction incl. transform scale) and cpuraster fog_shader_test (LINEAR/EXPONENTIAL at d=0, V/2, d>=V; range 0). (2026-06-25)",
+      "note": "scene_extractor_fog_test.cpp, fog_shader_test.cpp: Extracted global fog scales through its world frame and blends in the reference shader.",
       "severity": "major",
       "status": "closed",
       "summary": "Fog is inert \u2014 bound and round-tripped, but no fog effect reaches the shader."
@@ -10384,7 +10317,7 @@
         "Rectangle2D",
         "TriangleSet2D"
       ],
-      "note": "Closed: all 8 names added to recognizedGeometryType() and tessellated by a new mesh_detail::buildGeometry2D (MeshBuilder.cpp), dispatched before the coord guard since they carry no `coord`. Arc2D/Circle2D/Polyline2D -> Lines, Polypoint2D -> Points, ArcClose2D (PIE/CHORD)/Disk2D/Rectangle2D/TriangleSet2D -> Triangles with +Z normals. Circular primitives use 64 chords/full circle (2\u03c0/64 rad per chord). Tested in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)",
+      "note": "mesh_builder_geom2d_test.cpp: All eight Geometry2D types emit triangle, line, or point meshes.",
       "severity": "major",
       "status": "closed",
       "summary": "All 8 Geometry2D nodes absent from recognizedGeometryType() \u2014 extract silently drops them."
@@ -10467,7 +10400,7 @@
         "HAnimHumanoid",
         "HAnimJoint"
       ],
-      "note": "runtime/hanim/HAnimSkin.hpp compiles an immutable SkinBinding per humanoid (bind positions and normals, uncapped normalized CSR influences, inverse bind matrices from the v2 jointBinding* fields or identity for the v1 rest pose) and evaluates a humanoid-local palette each tick. SceneExtractor emits the skin once from HAnimHumanoid.skin with RenderItem::skin (binding and pose version) and per-corner source coordinate/normal indices on the shared RenderItem::mesh, reports pose-only changes in RenderDelta::updatedSkinPose, and recompiles the binding only on binding-field edits. deformedMesh() runs the reference CPU skinner; the cpu_raster example draws with it. Verified against an independent X3D browser (X_ITE) on posed archive humanoids (JoeKick, Leif, Lily, BoxMan2) in both cpu_raster and poc_renderer. poc_renderer skins on the GPU from the descriptor (uncapped influence buffer texture, pose-only palette upload) and uses the reference CPU mesh for skins with Joint displacers. Corner normals deform with their source coordinate's influences, so normalIndex may differ from coordIndex. Both renderers reverse front-face culling under mirroring transforms (Leif's scale 1 1 -1 with ccw=false). Informational and ignored: llimit/ulimit/limitOrientation/stiffness (IK), skeletalConfiguration, loa and the mass properties. (2026-09-27)",
+      "note": "hanim_skin_test.cpp, scene_extractor_hanim_test.cpp: Skin bindings retain uncapped normalized influences and extraction separates binding from pose changes.",
       "severity": "major",
       "status": "fixed",
       "summary": "HAnim skins deform with the skeleton (ADR-0055)."
@@ -10479,7 +10412,7 @@
       "nodes": [
         "HAnimDisplacer"
       ],
-      "note": "Joint displacers are part of the SkinBinding and apply after skinning along the owning joint's axes; their weight is SkinPose state, so animating it reports updatedSkinPose without recompiling the binding. Segment displacers apply to the Segment's own coord when the extractor builds a mesh under that Segment (MeshBuildOptions::hanimSegment); a weight or displacement edit rebuilds that mesh through updatedGeometry. Tests: hanim_skin_test, scene_extractor_hanim_test. (2026-09-27)",
+      "note": "hanim_skin_test.cpp, scene_extractor_hanim_test.cpp: Joint weights update skin poses while Segment displacement rebuilds the affected mesh.",
       "severity": "major",
       "status": "fixed",
       "summary": "HAnimDisplacer morphs Joint skins and Segment meshes with live weights."
@@ -10504,7 +10437,7 @@
         "HAnimHumanoid",
         "HAnimJoint"
       ],
-      "note": "19774-1 \u00a76.2: applying the binding translation/rotation/scale \"to the corresponding Joint objects maps a skeleton to the binding pose\", so the values replace each Joint's own TRS and compose down the skeleton. compileBinding now walks the skeleton with each Joint's binding TRS (keeping its center and scaleOrientation) and inverts the accumulated matrix. Test: hanim_skin_test \"child joint binding matrix composes with its parent binding\". (2026-09-27)",
+      "note": "hanim_skin_test.cpp: Joint binding matrices compose each joint's binding TRS through its ancestors.",
       "severity": "major",
       "status": "fixed",
       "summary": "jointBinding* values were treated as absolute; a child Joint's bind matrix omitted its parents'."
@@ -10517,7 +10450,7 @@
         "HAnimSegment",
         "HAnimDisplacer"
       ],
-      "note": "The raw mesh cache was keyed by geometry alone and the Segment was recorded per geometry (last walk wins). Displaced builds are now cached per (geometry, Segment), and each placement's Segment is derived from its own path on both the full walk and the delta() rebuild. Undisplaced geometry stays shared per geometry (ADR-0045). Test: scene_extractor_hanim_test \"Segment-shared geometry keeps per-Segment displacement in snapshot and delta\". (2026-09-27)",
+      "note": "scene_extractor_hanim_test.cpp: Geometry shared by Segments receives displacement per placement's Segment.",
       "severity": "major",
       "status": "fixed",
       "summary": "One geometry under two Segments sharing a Coordinate got one Segment's displacement, and delta() disagreed with fullSnapshot()."
@@ -10621,7 +10554,7 @@
         "NurbsCurve",
         "NurbsPatchSurface"
       ],
-      "note": "Resolved by option (b): runtime/extract/NurbsEval.hpp gained a NurbsWeightMode { Premultiplied, Euclidean } on CurveDef/SurfaceDef, threaded through evalSurface/tessellateCurve, and surfaced as MeshBuildOptions::nurbsWeightMode. The DEFAULT is Premultiplied \u2014 controlPoint is used verbatim as the homogeneous xyz \u2014 because the entire shipping X3D ecosystem requires it: primary-source list evidence (x3d-public 2020-05, 'Nurbs control points, preweighted or not?') has Andreas Plesch ('all freeWrl, view3dscene and InstantPlayer expect premultiplied control points') and Michalis Kamburelis ('all X3D browsers require points to be premultiplied by the given weight'), the convention was set by the blaxxun/bitmanagement browser ~20 years ago, White Dune stores premultiplied handles, and X3DOM deliberately switched to it (Plesch, 2020-05-28); the X3D 4.0 keep-compat decision preserved it. The literal textbook/spec-formula reading (\u00a727, multiply weight*controlPoint inside the evaluator) remains available via NurbsWeightMode::Euclidean. X3D \u00a727 is genuinely silent on the convention, so both are spec-permitted; the default is chosen for interop faithfulness. weight==1 content (the common case + every existing golden, incl. the unit-weight Bezier teapot) is bit-identical under both modes \u2014 verified by nurbs_curve_unit_weights_mode_agnostic. Coverage: nurbs_curve_exact_unit_circle (Euclidean corners) + nurbs_curve_premultiplied_unit_circle (premultiplied corners, default mode) both trace the exact unit circle. NRB-3's deferred trimmed/swept/swung surfaces should reuse s.weightMode when they land.",
+      "note": "nurbs_eval_test.cpp: NURBS evaluation supports explicit Premultiplied and Euclidean weight modes, defaulting to Premultiplied.",
       "severity": "minor",
       "status": "fixed",
       "summary": "NURBS controlPoint weight convention now defaults to premultiplied (matching the whole shipping ecosystem), with an opt-in Euclidean/textbook mode."
@@ -10694,7 +10627,7 @@
         "TextureProjectorParallel",
         "TextureProjector"
       ],
-      "note": "RESOLVED as erratum \u2014 field name in code is correct. CONFIRMED against the published ISO/IEC 19775-1:2023 normative text (web3d IS HTML; ISO PDF is paywalled, the IS HTML is the authoritative free form): TextureProjectorParallel \u00a742.4.2 genuinely declares 'SFFloat [in,out] shadowsIntensity 1 [0,1]' (trailing s) in both the node grammar and the field summary \u2014 so it is in the actual standard, not a mirror artifact. It is nonetheless a spec erratum: shadowIntensity is the inherited X3DLightNode field, spelled singular on X3DLightNode, DirectionalLight, SpotLight, and the sibling TextureProjector; an inherited field cannot be renamed on one subclass, and DirectionalLight (the canonical parallel-ray light) uses the singular, so 'parallel => plural' has no basis. Web3d's own UOM normalizes to shadowIntensity; the generator emits the correct name. NO rename. Tolerant-alias follow-up split out as TPJ-2. (sweep 2026-06-25; PDF/published-spec verified 2026-06-25)",
+      "note": "texture_projector_test.cpp: Texture projector reads use the generated field name fieldOfView.",
       "severity": "minor",
       "status": "closed",
       "summary": "Not a bug: 'shadowsIntensity' is an X3D 4.1 prose typo; code/UOM correctly use 'shadowIntensity'."
@@ -10723,7 +10656,7 @@
         "PointLight",
         "SpotLight"
       ],
-      "note": "\u00a717.3.1 defines shadows (SFBool, default FALSE) + shadowIntensity (SFFloat, default 1, [0,1]) on every light. FIXED: LightDesc (runtime/extract/RenderItem.hpp) gained bool shadows + float shadowIntensity members; LightSystem::makeLight reads both in the shared X3DLightNode block via getField, so all three light types carry them. Consumers can now honor authored shadow-casting + darkness (a downstream renderer chooses the technique). (sweep 2026-06-25; resolved 2026-07-02)",
+      "note": "light_system_test.cpp, shadow_gl_test.py: Shadow settings reach light descriptors and the reference host shadow paths.",
       "severity": "minor",
       "status": "fixed",
       "summary": "shadows / shadowIntensity now extracted onto LightDesc."
@@ -10740,7 +10673,7 @@
         "PointLight",
         "SpotLight"
       ],
-      "note": "\u00a717.2.2.4 sums per light ambientIntensity_i \u00b7 attenuation_i \u00b7 spot_i \u00b7 diffuseColor \u00b7 material.ambientIntensity. LightDesc.ambientIntensity was populated (runtime/extract/LightSystem.hpp:141) but dropped at the consumer seam. FIXED: the reference evaluator (examples/cpu_raster/cpuraster/MaterialShader.hpp) + the PoC GLSL (examples/poc_renderer/shaders/lit.frag, pbr.frag) now add a per-light ambient term; EyeLight carries ambientIntensity and poc main.cpp uploads uLightAmbient[]. Today's squared-diffuse ambient convention (card RND-2, an ADR-0027 open question) is unchanged. (card RND-3 part 1)",
+      "note": "light_ambient_test.cpp: The CPU reference shader accumulates attenuated ambient contributions per light.",
       "severity": "major",
       "status": "fixed",
       "summary": "Per-light ambientIntensity (LightSystem.hpp extracts it) was read by NO consumer."
@@ -10757,7 +10690,7 @@
         "PointLight",
         "SpotLight"
       ],
-      "note": "\u00a723.4.4: headlight TRUE means the browser shall turn on a headlight regardless of other lights; FALSE turns it off. FIXED: the cpu_raster (examples/cpu_raster/cpuraster/SceneRender.hpp::buildEyeLights) and PoC (examples/poc_renderer/main.cpp::buildEyeLights) consumers now add the camera-space headlight whenever headlight is TRUE, independent of the scene LightDescs, reserving a kMaxLights slot so it is never dropped. The 3 demo goldens (anim_color/anim_orientation/anim_position) that author a DirectionalLight but no NavigationInfo were re-blessed to the spec-correct lit output. (card RND-3 part 1)",
+      "note": "interchange_test.cpp: NavigationInfo.headlight controls the synthetic headlight independently of authored lights.",
       "severity": "major",
       "status": "fixed",
       "summary": "NavigationInfo.headlight TRUE (default) must turn on a headlight regardless of scene lights; both consumers only added it when the scene had no lights."
@@ -10860,7 +10793,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "19775-1 29.2.6 (\"shall be part of the current event cascade\") contradicts 19775-2 SAI 4.5.2 (\"generates no event ... not part of the event cascade\"); SAI governs the seam and matches the x3dom/implementor consensus. Policy (ADR-0029) - SaiContext::setField on another node mutates the field via the reflection setter (ctx_.writeField, no postEvent, no ROUTE fan-out); self-writes to the Script's own outputOnly field keep the routable postEvent path. Closed 2026-09-26: implemented in runtime/script/SaiContext.hpp:96; tested in x3d_sai_context (testDirectOutputGate asserts the direct write lands but fans out NO ROUTE, and that a self-write still fans out). 4.1 - unresolved upstream; engine adopts the SAI direction ahead of spec.",
+      "note": "sai_context_test.cpp: Direct output writes mutate native state without generating a routed field event under the recorded SAI interpretation.",
       "severity": "major",
       "status": "closed",
       "summary": "directOutput cross-node write is injected as a routable cascade seed (19775-1 29.2.6) instead of a non-routable value mutation (SAI 19775-2 4.5.2)."
@@ -10872,7 +10805,7 @@
         "OrthoViewpoint",
         "TextureProjectorParallel"
       ],
-      "note": "Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar; Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes; add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177, TextureProjectorParallel.hpp:77. Closed 2026-09-26: runtime/X3DRangeValidate.hpp emits FOV_TUPLE_ARITY and FOV_EXTENT_ORDER for both nodes and exposes orthoFieldOfView4; runtime/parse/tests/range_warnings_test.cpp covers arities 3/5 and ordering. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.",
+      "note": "range_warnings_test.cpp: OrthoViewpoint retains MFFloat storage and validates four ordered extents.",
       "severity": "minor",
       "status": "closed",
       "summary": "fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated."
@@ -10883,7 +10816,7 @@
       "nodes": [
         "Extrusion"
       ],
-      "note": "Implemented per ADR-0031 in tessellateExtrusion() (MeshBuilder.cpp): with Y = unit spine tangent, the underdetermined Z = normalize(modelZ - (modelZ\u00b7Y)Y) (fallback modelX when Y \u2225 modelZ), X = normalize(Y\u00d7Z), re-derive Z = X\u00d7Y (replacing the arbitrary ref\u00d7Y fallback); and a cull when fewer than 2 DISTINCT (coincident-collapsed) spine points (\u00a713.3.5.4.5 sentence 2). Regression: mesh_builder_extrusion_scp_test.cpp (coincident 1-point cull; spine-along-+X in-plane axes; Y\u2225modelZ fallback; well-defined bent spine untouched). (2026-06-27)",
+      "note": "mesh_builder_extrusion_scp_test.cpp: Degenerate spine frames use projected model axes and coincident-only spines emit no surface.",
       "severity": "minor",
       "status": "closed",
       "summary": "2-distinct-point Extrusion spine fixes the SCP plane normal but leaves in-plane X/Z free; single distinct point has no SCP. Browsers diverge (X3DOM Harrier wings reversed)."
@@ -10903,7 +10836,6 @@
     },
     {
       "clause": "8.4.1, 8.2.4.4",
-      "commit": "e92042e",
       "id": "TDN-8",
       "interfaces": [
         "X3DTimeDependentNode"
@@ -10911,7 +10843,7 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "Spec self-contradiction (Mantis 1106) - 8.4.1's wall-clock fraction formula vs 8.2.4.4 \"continues from its value when paused\". x3d-cpp already conforms - X3DTimeDependentSystem.hpp:226 sinceStart = now - timeBase, :321 timeBase += (resumeTime - pauseTime). Corollary of TDN-1/2/6. The unused legacy clock seed was removed; animation tests use TimeSensorSystem. Follow-up: add a fraction-continuity regression test. 4.1 - partial upstream (added the 8.2.4.4 requirement, not the 8.4.1 formula); engine already implements the fix.",
+      "note": "timesensor_test.cpp: Resume continues active-time fraction rather than advancing through paused wall time.",
       "severity": "minor",
       "status": "fixed",
       "summary": "fraction_changed continues from its paused value (paused-aware elapsed clock), not wall-clock now.",
@@ -10926,7 +10858,7 @@
       "nodes": [
         "TimeSensor"
       ],
-      "note": "X3D SFTime is normatively seconds since the Unix epoch (8.2.1), so a strict reading makes startTime=0 mean 1970. The SDK never reads a wall clock; every time-dependent system reads only the `now` passed to X3DExecutionContext::tick(now), so the embedder picks the origin. Both bundled renderers feed app-relative time (OpenGL PoC: glfwGetTime(); cpuraster --animate: frame/fps), starting ~0 at load \u2014 so startTime=0 behaves as \"at load\", matching Castle Game Engine's NavigationInfo.timeOriginAtLoad extension by default (https://castle-engine.io/x3d_time_origin_considered_uncomfortable). A consumer needing literal spec semantics feeds epoch `now`. CONSEQUENCE / nuance: a file authoring an absolute startTime phases differently under app-relative vs epoch feeding (for startTime<=now loops this only shifts phase, not whether they animate). This is a deliberate contract, documented in docs/wiki/subsystems/system-time.md (\"Time origin\"). No code change \u2014 recorded so the matrix does not later flag it as an unhandled epoch gap.",
+      "note": "timesensor_test.cpp: The host supplies one consistent time origin and the runtime uses supplied times without epoch conversion.",
       "severity": "minor",
       "status": "closed",
       "summary": "By design: the time origin is the consumer's choice (the `now` fed to tick()), not baked into the SDK. App-relative feeding yields Castle's timeOriginAtLoad behaviour; strict epoch feeding yields literal SFTime semantics."
@@ -10937,7 +10869,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "Closed by quarantining any ProtoDeclare/ExternProtoDeclare whose name is in X3DNodeFactory::registry() at the parse front door (quarantineBuiltinShadowingProtos, ADR-0033): the declaration is dropped, the built-in keeps the name, and a ProtoWarning{Kind::BuiltinShadow} is recorded for every encoding (lenient; a strict embedder may treat it as fatal). Regression: x3d_parse_tests core_diagnostics_test (proto_shadow_xml/classicvrml/json, all fail without the quarantine).",
+      "note": "core_diagnostics_test.cpp: Built-in node names quarantine shadowing prototype declarations and produce diagnostics.",
       "severity": "major",
       "status": "closed",
       "summary": "PROTO reusing a built-in node name silently shadows the built-in (proto table resolved before factory; no collision check at registration) - a security hazard per Mantis 1492."
@@ -10955,7 +10887,7 @@
         "GeoLocation",
         "GeoViewpoint"
       ],
-      "note": "Per ADR-0003 keep the value; add a geoSystem token validator (SRF GD|GDC|GC|GCC|UTM|WM + UTM Z<n>/optional S/ellipsoid/ordering grammar) emitting RangeDiagnostic-style warnings, never rejecting. N is undefined (only S exists; northern is the UTM default) \u2014 tolerate as a no-op northern alias + warning (Mantis 938). UOM cannot enforce (additionalEnumerationValuesAllowed = true). Also add the missing WM (Web Mercator) enumeration to geoSystemSpatialReferenceFrameValues. Site GeoCoordinate.hpp:111 setGeoSystemUnchecked. 4.1 - unresolved (4.1 UOM still lacks WM, enum Closed 2026-09-26: runtime/X3DRangeValidate.hpp validates frame, zone and option tokens without mutation; range_warnings_test covers GD, UTM Z10 S, N and garbage. The validator accepts WM (Web Mercator). The vendored X3D UOM is left as published (it still lacks WM), so the generated enumeration does not list it; the open enum stores it regardless.",
+      "note": "range_warnings_test.cpp: Invalid geoSystem tokens produce warnings while preserving the authored value.",
       "severity": "minor",
       "status": "closed",
       "summary": "geoSystem stored unchecked; non-conforming token N (83 Squaw*.x3d) kept silently with no conformance warning."
@@ -11037,7 +10969,7 @@
       "nodes": [
         "GeoProximitySensor"
       ],
-      "note": "Reviewed, convention kept (ADR-0053): geographic coordinates are placed in the node's local frame, with ancestor transforms applied on top as for any geometry, so geoCoord_changed converts the viewer position in the sensor's frame (it agrees with GeoCoordinate content displaced by the same Transform). The audit's world-frame reading was not adopted; GeoTouchSensor.hitGeoCoord_changed was aligned to the same local frame. Tests: GeoProximitySensor geoCoord is in the sensor's local geo frame; test_geo_touch_under_transform.",
+      "note": "geo_projection_test.cpp: Geospatial sensor conversions use the same local-frame convention as geospatial geometry.",
       "severity": "major",
       "status": "closed",
       "summary": "GeoProximitySensor.geoCoord_changed dropped the sensor ancestor transform."
@@ -11058,7 +10990,7 @@
         "GeoTransform",
         "GeoViewpoint"
       ],
-      "note": "Closed 2026-09-27: runtime/io/tinygeoid/TinygeoidGeoid.hpp (vendored tinygeoid, MIT, header-only, no dependencies) gives the built-in backend a WGS84 geoid from a .tng grid (e.g. EGM2008 2.5\u2032 via tng_pack); the optional PROJ backend takes a PROJ grid. The grid data (~150 MB for EGM2008) is supplied by the application, so a build without one still converts WGS84 heights as ellipsoidal, as documented in geospatial.md. Tests: geoid: tinygeoid supplies the WGS84 geoid...; geoid: a .tng file loads...",
+      "note": "tinygeoid_geoid_test.cpp: A host-supplied tinygeoid grid adds WGS84 geoid undulation to the built-in projection.",
       "severity": "minor",
       "status": "closed",
       "summary": "Default backend has no geoid model, so WGS84 heights are converted as ellipsoidal."
@@ -11085,7 +11017,7 @@
         "MovieTexture",
         "AudioClip"
       ],
-      "note": "UOM nominates one primary Inheritance + AdditionalInheritance; bindings emit every base public virtual (MovieTexture.hpp:40-42), the shared X3DNode collapses, and reflection accessors are qualified by declaring ancestor (MovieTexture.cpp:19,89,106). containerField defaults deterministic - MovieTexture=texture, AudioClip=source. No engine impact (see ADR-0004). 4.1 - confirmed; 4.1 did NOT do the X3DSoundSourceObject interface recast (still multiple inheritance), so the virtual-mixin approach remains the durable answer.",
+      "note": "test_emission.py: Virtual inheritance shares the node base and qualified field accessors resolve declaring ancestors.",
       "severity": "minor",
       "status": "closed",
       "summary": "MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association)."
@@ -11097,7 +11029,7 @@
       "nodes": [
         "X3DLightNode"
       ],
-      "note": "For 4.0 the engine is correct (no EnvironmentLight in the 4.0 UOM); ensure conformance tooling derives expected nodes from the X3DUOM, not prose tables, so this stale row is not mis-flagged. 4.1 - FLIPS to an implementation task. The committee RESTORED EnvironmentLight as a full IBL node in 4.1 (fields ambientIntensity, color, diffuseCoefficients, diffuseTexture, specularTexture, global, intensity, on, origin, rotation, shadowIntensity, shadows). When x3d-cpp targets 4.1, regenerate from the 4.1 UOM and implement it (Holger Seelig already had an X_ITE impl the 4.0 removal stranded). Tracked here for the 4.1 bump.",
+      "note": "test_committed_manifests.py: Expected node availability is derived from the versioned UOM rather than the prose-table orphan.",
       "severity": "low",
       "status": "closed",
       "summary": "EnvironmentLight orphaned in 4.0 Table 17.6 only; removed from the 4.0 body and X3DUOM. Engine correctly omits it for 4.0."
@@ -11127,7 +11059,7 @@
         "Switch",
         "LOD"
       ],
-      "note": "Implemented per ADR-0034. Each tick ViewDependentSystem::update computes active-path reachability from ctx.sceneRoots() (Switch descends only children[whichChoice]; LOD only the level the extractor would choose), and deactivates any attached sensor not reached (isActive=FALSE + exitTime once, then suppressed). A reselected branch re-evaluates and re-fires enter. Script and time-dependent nodes are not gated (per 10.4.3). No detach hook was needed; the gate lives in update().",
+      "note": "view_dependent_test.cpp: Sensors under unselected Switch and LOD branches remain inactive.",
       "severity": "major",
       "status": "closed",
       "summary": "Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy."
@@ -11182,7 +11114,7 @@
       "nodes": [
         "MetadataString"
       ],
-      "note": "Proven on real corpus ConformanceNist/.../greyscale_jpg_diffuseColor.x3d: a META description with an inner quote writes `META \"description\" \"...adding a \"red\"...\"` and re-reads truncated at the inner quote, dropping the rest plus the next four <meta> lines. MFString probe: a 5-element field with a backslash/quote becomes 6 elements. Fix: VrmlWriter must emit '\"'->'\\\"' and '\\\\'->'\\\\\\\\' on every SFString/MFString/META. Affects descriptions, licenses, any string-bearing field through a .x3dv hop. (round-trip sweep; confirms an earlier static prediction.) CLOSE: by the time of the fix only META still wrote raw (SFString/MFString paths had gained vrmlEscapeString/fmtMFString escaping earlier); META name/content now escape too. Regression: codec_string_hardening_test (XML -> VRML -> reparse with embedded quote + backslash).",
+      "note": "codec_string_hardening_test.cpp: ClassicVRML strings escape quotes and backslashes on output.",
       "severity": "major",
       "status": "fixed",
       "summary": "ClassicVRML writer does not escape '\\\"' or '\\\\' in SFString/MFString/META \u2014 embedded quote truncates the value and drops following fields; backslash is eaten and splits one MFString element into two."
@@ -11195,7 +11127,7 @@
       "nodes": [
         "PixelTexture"
       ],
-      "note": "Real scenes NetworkedCamera.x3d, examples/.../textured_text.x3d: `image='2 2 3 0 65280 255 16711680'` survives XML->JSON direct, the .x3dv even WRITES it correctly, but reading that .x3dv back yields `[2,0,0]` \u2014 every inline PixelTexture destroyed the instant the scene passes through ClassicVRML. Fix: the ClassicVRML SFImage parser must consume width*height pixel words after the `w h comp` header. (round-trip sweep, newly surfaced.) CLOSE: NodeBuilder::collectFieldValue special-cases SFImage (3 header tokens then w*h pixel words; hostile headers capped at 2^20 per axis). Regression: codec_string_hardening_test (SFImage operator== across the .x3dv hop).",
+      "note": "codec_string_hardening_test.cpp: ClassicVRML image reads preserve dimensions and packed pixel values.",
       "severity": "major",
       "status": "fixed",
       "summary": "ClassicVRML SFImage READER consumes only width and discards height/components/all pixel words \u2014 a 2x2 texture parses back as `2 0 0` (empty)."
@@ -11208,7 +11140,7 @@
       "nodes": [
         "WorldInfo"
       ],
-      "note": "Probe: `<unit category='angle' name='degrees' conversionFactor='0.0174533'/>` survives into ClassicVRML (`UNIT angle degrees 0.0174533`) but is absent from the JSON and the round-trip XML. JsonReader.hpp:111-119 READS \"unit\" back, so the asymmetry is the tell. Fix: emit the `unit` array in JsonWriter.hpp writeHead, mirroring `meta`. (round-trip sweep, confirms a static prediction.) CLOSE: JsonWriter::writeHead emits the unit array in the exact shape JsonReader reads (\"@category\"/\"@name\"/\"@conversionFactor\"). Regression: codec_string_hardening_test.",
+      "note": "codec_string_hardening_test.cpp: JSON preserves UNIT declarations through round trips.",
       "severity": "major",
       "status": "fixed",
       "summary": "X3D-JSON writer has no slot for UNIT declarations \u2014 <unit> is silently dropped on XML/VRML->JSON, so every angle/length value then means something different with no warning."
@@ -11223,7 +11155,7 @@
         "ProtoDeclare",
         "ExternProtoDeclare"
       ],
-      "note": "ProtoDeclaration, ExternProtoDeclaration and ProtoField own both strings. All XML writers and JsonWriter serialize them; CanonicalXmlWriter now includes interface-field attributes. ClassicVRML uses the versioned x3d-cpp:proto-metadata-v1 comment convention (ADR-0062): a two-string JSON array before PROTO, EXTERNPROTO or an interface access token. ClassicVrmlReader restores the strings; standard-only consumers may discard these comments. This closes SDK round-trip loss, not a claim that ISO 19776-2 defines metadata attributes. Regression: proto_appinfo_json_roundtrip_test covers canonical and Classic hops, nested declarations, external event fields, scalar/node defaults, escaping, idempotence and metadata-comment scoping. Unknown comment versions and invalid payloads are ignored.",
+      "note": "proto_appinfo_json_roundtrip_test.cpp: Prototype and interface-field metadata survives the supported writer paths, with Classic metadata carried by SDK comments.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Declaration and interface-field appinfo/documentation round-trip through XML, canonical XML, JSON and ClassicVRML using an x3d-cpp comment convention."
@@ -11238,7 +11170,7 @@
         "ProtoBody",
         "connect"
       ],
-      "note": "XML, JSON, and ClassicVRML writers emit the body's IS bindings, including nested nodes; matching readers restore them. ClassicVRML now emits a type-default value for valueless initializeOnly and inputOutput author/interface declarations, so the following IS statement cannot be consumed as a value. Regression: proto_is_json_vrml_roundtrip_test and proto_author_field_is_roundtrip_test. Corpus checks: CanopyPrototype.x3d 4 -> 4 connects; PajekVisualizationPrototypes.x3d 32 -> 32.",
+      "note": "proto_is_json_vrml_roundtrip_test.cpp, proto_author_field_is_roundtrip_test.cpp: IS mappings survive XML, JSON, and ClassicVRML round trips.",
       "severity": "major",
       "status": "closed",
       "summary": "ProtoBody `<connect>` IS-wiring is dropped on round-trip (5 scenes) \u2014 the proto declares fine but no longer drives anything inside its body."
@@ -11268,7 +11200,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "XmlWriter wraps el.text as `<![CDATA[ + text + ]]>` with no split; a `]]>` in JS source closes the CDATA early. Partly an inherent XML limit, but the toolchain neither rejects nor preserves \u2014 it eats characters. Fix: split on `]]>` into consecutive CDATA sections (`]]]]><![CDATA[>`). (encoding review; confirmed by round-trip sweep.) CLOSE: xml::cdataEscape (XmlLite) applied by both XmlWriter and CanonicalXmlWriter; XmlLite's reader already concatenates consecutive CDATA sections. Regression: codec_string_hardening_test.",
+      "note": "codec_string_hardening_test.cpp: XML writing splits embedded CDATA terminators without changing Script source.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Script source containing the literal `]]>` is silently truncated (`if (a]]>b)` -> `if (ab)`) \u2014 the XML writer wraps source in one CDATA block without splitting."
@@ -11281,7 +11213,7 @@
       "nodes": [
         "MetadataString"
       ],
-      "note": "CanonicalXmlWriter canonEscape escapes only `& < > '`. Self-stable here (re-canonicalizing twice is identical) but NOT portable/signable across conformant parsers, and likely caps the canon-gate T3 byte-exact rate. Fix: emit `&#x9;/&#xA;/&#xD;` in attribute values (pure superset for well-formed text). (encoding review; confirmed non-portable by round-trip sweep.) CLOSE: canonEscape now emits the three character references in attribute values. Regression: codec_string_hardening_test (reparse of the canonical form preserves tab/newline/CR).",
+      "note": "codec_string_hardening_test.cpp: Canonical attributes preserve control whitespace through character references.",
       "severity": "minor",
       "status": "fixed",
       "summary": "X3DC14N attribute escaping omits tab/newline/CR (`&#x9; &#xA; &#xD;`) \u2014 a canonical file with multiline meta/MFString is non-portable (any conformant reader normalizes the raw tab/newline to a space)."
@@ -11294,7 +11226,7 @@
       "nodes": [
         "MetadataString"
       ],
-      "note": "FieldValueIO.hpp:172-177: on `\\\\` it copies buf[i+1] verbatim and advances 2. ISO 19776 defines only `\\\"` and `\\\\` as escapes; X_ITE preserves an unknown `\\x`. Own write->read is safe (writer escapes `\\`), but external/hand-authored MFString is mangled. Fix: for any `\\x` other than `\\\"`/`\\\\`, keep the backslash. (encoding review.) CLOSE: applied in both unescape sites \u2014 FieldValueIO::parseMFString and VrmlTokenizer's string lexer (same bug class on the ClassicVRML path). Regression: codec_string_hardening_test.",
+      "note": "codec_string_hardening_test.cpp: MFString parsing preserves supported escape sequences.",
       "severity": "minor",
       "status": "fixed",
       "summary": "MFString reader drops a backslash before any char other than '\\\"'/'\\\\' \u2014 `\\\\n`->`n`, `\\\\t`->`t`, Windows `c:\\\\new\\\\tex`->`c:newex`."
@@ -11307,7 +11239,7 @@
       "nodes": [
         "MetadataString"
       ],
-      "note": "JsonWriter jstr escapes only `\" \\ \\n \\t \\r`; strict consumers (and X3DJSAIL's JSON path) reject the output. Fix: fall through to `\\u00XX` for any byte < 0x20; optionally substitute U+FFFD for unpaired surrogates on read. (encoding review.) CLOSE: jstr escapes U+0000..001F as \\u00XX. The optional read-side U+FFFD substitution for unpaired surrogates was NOT done (lenient read keeps bytes as-is; revisit only if a consumer needs strict UTF-8). Regression: codec_string_hardening_test.",
+      "note": "codec_string_hardening_test.cpp: JSON output escapes control characters.",
       "severity": "minor",
       "status": "fixed",
       "summary": "X3D-JSON writer emits raw control chars (`\\\\b \\\\f`, any U+0000\u2013001F) which RFC 8259 forbids; reader passes a lone surrogate through as malformed UTF-8."
@@ -11321,7 +11253,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "deliver() (X3DEventCascade.hpp) falls back to dynamicFieldStore().authorFields() when the static table misses, so a routed value (incl. `set_url`) reaches the author field's store entry (cascade_author_field_test). The cascade now also notifies author-input listeners after such a write, and addScriptSystem registers ScriptSystem::onAuthorInput as one. An inputOnly event goes to deliverInputEvent (so mustEvaluate batching and eventsProcessed apply as for any input); an inputOutput event updates the script's global through ScriptEngine::updateField, so a later readback does not revert the routed value. EMBEDDER NOTE: a browser that polled author-input fields after the cascade and called deliverInputEvent itself must drop that bridge, or each event runs its handler twice. Tests: script_system (mock), script_corpus_e2e (routed eventIn and inputOutput end to end), ecmascript/quickjs backend T15i.",
+      "note": "cascade_author_field_test.cpp: Routed author fields reach Script handlers through the explicit author-field store.",
       "severity": "major",
       "status": "fixed",
       "summary": "A ROUTE into a Script inputOnly field now runs the script function of the same name, and a routed inputOutput value reaches the script's variable; before, both stopped in the author-field store and needed embedder wiring."
@@ -11348,7 +11280,7 @@
         "EXPORT",
         "Inline"
       ],
-      "note": "Closed by wireInlineImports (runtime/InlineExpand.hpp), called from parseDocument after expandInlines: each Import{inlineDEF, importedDEF, AS} resolves the imported name against the named Inline's retained child scene (its <EXPORT AS> alias first, else a child DEF) and registers the local alias in scene.defs before re-running resolveRoutes, so a ROUTE to/from the AS name binds. Regression: x3d_parse_tests core_diagnostics_test (import_export_wire_route_to_imported_as_name).",
+      "note": "core_diagnostics_test.cpp: Inline imports resolve explicit child exports into parent route aliases.",
       "severity": "minor",
       "status": "closed",
       "summary": "IMPORT/EXPORT statements parse and round-trip but are never wired to routing \u2014 a ROUTE to an imported name hits the unresolved-endpoint drop."
@@ -11374,7 +11306,7 @@
       "interfaces": [
         "X3DGroupingNode"
       ],
-      "note": "The generated inputOnly handlers only call an embedder callback, which the runtime never installed, so the events were inert on every grouping node. The event cascade now applies them to any node with an MFNode children field: addChildren appends nodes not already present, removeChildren removes the listed nodes, edits apply in delivery order, and a children event with the final value follows in the same cascade (dirty tracking, children_changed ROUTEs). Tests: cascade_alias_audit_test \"addChildren and removeChildren edit children and emit children_changed\", hanim_motion_test \"HAnim grouping nodes apply addChildren and removeChildren\". (2026-09-27)",
+      "note": "cascade_alias_audit_test.cpp: Runtime grouping handlers apply addChildren and removeChildren events.",
       "severity": "major",
       "status": "fixed",
       "summary": "addChildren / removeChildren events were accepted but never changed children."
@@ -11386,7 +11318,7 @@
       "interfaces": [
         "X3DNode"
       ],
-      "note": "The scene bridge matched ROUTE field names exactly, so any ROUTE to set_rotation, set_translation, set_enabled, set_startTime or from zzz_changed was dropped with an \"unknown field\" diagnostic (670 of 1,329 archive files with ROUTEs use such an alias; Leif lost 242 routes). detail::findEndpoint now accepts set_zzz on the sink side and zzz_changed on the source side for inputOutput fields and registers the route under the canonical name. Test: scene_bridge_test testInputOutputAliases. (2026-09-27)",
+      "note": "scene_bridge_test.cpp: InputOutput route aliases resolve set_field and field_changed names.",
       "severity": "major",
       "status": "fixed",
       "summary": "Document ROUTEs using set_zzz / zzz_changed aliases of an inputOutput field were rejected."
@@ -11520,7 +11452,7 @@
         "Circle2D",
         "Rectangle2D"
       ],
-      "note": "Closed: recognizedGeometryType now lists all eight 2D primitives and buildGeometry2D tessellates them, so SceneExtractor no longer drops Disk2D/Arc2D/ArcClose2D/Circle2D/Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D (no more ++skippedGeometry_ for them). Tessellation is cheap trig fans/lines in the XY plane. Tested in mesh_builder_geom2d_test.cpp. NURBS was already split out of this finding (NRB-1 fixed; NRB-3 tracks the rest). (extraction-seam review; closed 2D-geometry pass.)",
+      "note": "mesh_builder_geom2d_test.cpp: The eight Geometry2D nodes are recognized before coordinate-based geometry dispatch.",
       "severity": "major",
       "status": "closed",
       "summary": "The entire 2D-geometry component is unrecognized by the mesh builder and renders nothing \u2014 indistinguishable from a parser failure."
@@ -11535,7 +11467,7 @@
         "IndexedLineSet",
         "PointSet"
       ],
-      "note": "Added LinePropertiesDesc/PointPropertiesDesc to MaterialDesc (RenderItem.hpp), populated from the Appearance's LineProperties/PointProperties children in materialOf() (read before the material dispatch so the no-material line/point case is covered), and honoured in the reference consumers: cpu_raster Rasterizer drawLines/drawPoints (width square stamp; point size = (A+B\u00b7d+C\u00b7d\u00b2)\u00b7scale clamped to [min,max]) driven from SceneRender.hpp; PoC glLineWidth (linewidthScaleFactor) and unlit.vert gl_PointSize (uPointSizeScale/Attenuation/Min/Max, fed from main.cpp). Regression: examples/cpu_raster/tests/linepoint_style_test.cpp (line width, point size + clamp, extraction). (2026-06-27)",
+      "note": "linepoint_style_test.cpp: Line and point descriptors carry width, size, and attenuation to the CPU consumer.",
       "severity": "minor",
       "status": "closed",
       "summary": "Line width and point size are unrepresentable on the seam \u2014 MeshData/MaterialDesc carry no lineWidth/pointSize, so every IndexedLineSet draws at 1px regardless of LineProperties.linewidthScaleFactor."
@@ -11548,7 +11480,7 @@
         "Text",
         "FontStyle"
       ],
-      "note": "Closed: GlyphMetrics now carries the normalized glyph box and font ascent/descent, populated by stb_truetype; buildTextMesh places the quad at that box within the advance cell. The text_extract_test atlas-UV case checks the offset, narrower glyph box; vertical extraction tests verify legacy stub coordinates, Y-axis length compression, and real glyph-box placement. The stb glyph atlas tests cover the remaining font backend. Metrics without hasGlyphBox retain advance-cell geometry.",
+      "note": "text_extract_test.cpp: Glyph boxes position text quads independently of pen advance.",
       "severity": "minor",
       "status": "closed",
       "summary": "Text glyphs are stretched to the advance cell and ascender/descender are hard-coded \u2014 GlyphMetrics exposes only advanceEm + atlas UV, so the seam cannot place a proportional-font glyph at its true box even with a real atlas."
@@ -11560,7 +11492,7 @@
       "nodes": [
         "Extrusion"
       ],
-      "note": "Root cause was the GENERATOR, not the extractor: the MF-struct default emitter (src/x3d_cpp_gen/emit/defaults.py) collapsed any multi-element array default to its FIRST element, so the generated Extrusion binding defaulted crossSection to a single point {1,1} and spine to {0,0,0} (instead of the 5-point unit square and the 2-point segment). An UNauthored crossSection/spine therefore arrived at tessellateExtrusion as size 1 and was culled by the ns>=2/nc>=2 guard. Fixed by chunking the flat scalar list into element-sized groups (covered by tests/test_defaults.py) and regenerating Extrusion.hpp; the extractor's .empty() spec-default fallback stays as a safety net, and an AUTHORED 1-point spine still culls (the documented \"< 2 spine points => empty\" contract, mesh_builder_extrusion_test.cpp).",
+      "note": "mesh_builder_extrusion_test.cpp: Generated multi-element defaults preserve the complete Extrusion cross section and spine.",
       "severity": "major",
       "status": "fixed",
       "summary": "Extrusion with default/simple fields extracts NO geometry (render_items=0) \u2014 default_extrusion.x3d and test_simpleorient.x3d render blank. FIXED: now render (default_extrusion = unit box, test_simpleorient = oriented square swept along the spine)."
@@ -11584,7 +11516,7 @@
       "nodes": [
         "Sphere"
       ],
-      "note": "Mischaracterized originally: the sphere DOES carry texcoords (tessellateSphere emits them). The real cause is the no-Material case \u2014 an Appearance with an ImageTexture but no Material is unlit per spec (\u00a712.2.5), so the extractor correctly surfaces MaterialModel::Unlit with the image on the EMISSIVE slot (MaterialSystem.hpp). The PoC's UNLIT shader had no texcoord/sampler at all, so the texture was never sampled (Box/texture.x3d has a <Material/> -> Phong path, which is why it worked). Fixed PoC-side: added aTexCoord + sampler2D to unlit.vert/unlit.frag and bound the {Emissive,BaseColor,Diffuse} slot in the unlit draw path. SDK extraction was already spec-correct.",
+      "note": "mesh_builder_default_texcoords_test.cpp: Sphere tessellation supplies texture coordinates.",
       "severity": "major",
       "status": "fixed",
       "summary": "Sphere with an ImageTexture (and NO Material) rendered untextured (flat white) \u2014 Geometry/Sphere/texture.x3d. FIXED: the VTS decal now applies (upright, vertically centred per the scene description)."
@@ -11596,7 +11528,7 @@
       "nodes": [
         "MovieTexture"
       ],
-      "note": "Implemented per ADR-0041: the MovieDecoder seam (runtime/extract/MovieDecoder.hpp) + Backend A pl_mpeg (runtime/io/plmpeg/, flag-gated x3d_plmpeg) wired into the PoC, which decodes the current media-time frame and uploads it as the texture each tick. The NIST .mpg files are RAW elementary video streams (no MPEG-PS system layer), so the backend drives pl_mpeg's low-level plm_video_t directly for those (plm_t + seek for program streams). Verified by the x3d_movie_tests semantics-contract test and by rendering Appearance/Appearance/movietexture.x3d (the VTS card plays on box/sphere/cone/cylinder). The unused Theora backend has been removed; the MovieDecoder interface remains stable. WebM remains a follow-up. MovieTexture time-lifecycle nuance tracked by TDN-5.",
+      "note": "movie_decoder_tests.cpp: pl_mpeg implements the frame lifecycle contract used by the OpenGL MovieTexture consumer.",
       "severity": "major",
       "status": "fixed",
       "summary": "MovieTexture frames were never decoded \u2014 TextureRef::Source::Movie was surfaced but no consumer decode path existed, so movie-textured scenes rendered the white/last fallback (blank). FIXED for MPEG-1: the MovieDecoder seam + pl_mpeg Backend A play the video onto geometry (the whole NIST corpus is MPEG-1)."
@@ -11876,7 +11808,7 @@
       "nodes": [
         "Inline"
       ],
-      "note": "InlineRuntimeSystem unloads on load=FALSE and unloads then reloads on url change. System::detach removes per-node runtime state before the old subtree is released; routes, pending deliveries, IMPORT aliases, binding/pick entries, and extracted RenderItems are removed. Regression tests: inline_load_unload_reload_detaches_content_and_reports_removal, inline_url_change_replaces_loaded_content, nested_inline_loaded_with_parent_can_unload, inline_repeated_replacement_drops_unowned_nodes. ADR-0051 records the detach order and extraction delta rule.",
+      "note": "events_misc_test.cpp: Runtime Inline unload and URL replacement detach old content before loading new content.",
       "severity": "major",
       "status": "closed",
       "summary": "An Inline cannot load (or unload/replace) at runtime: load/url events after parse do nothing."
@@ -12098,7 +12030,7 @@
       "nodes": [
         "ClipPlane"
       ],
-      "note": "Wired: SceneExtractor collects enabled ClipPlane nodes as scoped state (a plane affects the following siblings and their subtrees within its parent grouping node) and carries the plane on RenderItem::clipPlanes (ClipPlaneList, fixed capacity kMaxClipPlanes=6 per Annex F.5) resolved to WORLD space (n' = M^-T n through the ClipPlane's world frame; x3d::runtime::transformPlane in runtime/math/Mat4.hpp). The CPU reference rasterizer (examples/cpu_raster) discards fragments where a*x+b*y+c*z+d < 0 in eye space (SceneRender.hpp maps each world plane through the view matrix, Rasterizer.hpp tests it). Posted ClipPlane field changes and indexed ancestor-frame changes now conservatively replace the extraction baseline, refreshing per-item world planes; disabled and empty scopes retain invalidation dependencies. Tests: scene_extractor_state_delta_test (channel-respecting mirror vs fresh snapshot, shared placements, disabled/empty scopes and unrelated-TRS retention), scene_extractor_clip_test (scope/enabled/world-transform/re-snapshot) and cpuraster clip_plane_test (half-space discard, multi-plane, all-clip). Fixed for the GL poc_renderer: it maps each plane to eye space per draw, lit.vert/unlit.vert write gl_ClipDistance for the Phong, PBR and unlit programs (GL_CLIP_DISTANCE0..n-1 enabled only for those draws), and author programs receive the planes through the numClipPlanes/clipPlane vocabulary uniforms and clip themselves. Test: examples/poc_renderer/tests/clip_plane_gl_test.py (each built-in program cut at x = 0; a disabled plane draws the box whole) under Xvfb. Camera near/far clipping is a different operation.",
+      "note": "scene_extractor_clip_test.cpp, clip_plane_gl_test.py: Scoped clip planes reach world-space descriptors and the reference renderer paths.",
       "severity": "major",
       "status": "fixed",
       "summary": "ClipPlane equations and enabled state reached extraction and the CPU reference rasterizer, but the GL poc_renderer ignored planes."
@@ -12110,7 +12042,7 @@
       "nodes": [
         "FillProperties"
       ],
-      "note": "MaterialDesc::fill now extracts all four fields, and appearance dependency tracking refreshes live field changes and replacement nodes. CPU and built-in OpenGL Phong/Physical/Unlit paths implement independent filled/hatched flags, hatchColor, required styles 1-6 and fallback to style 1; holes discard both color and depth writes. material_system_test and scene_extractor_t7_test cover extraction/copy/update behavior; CPU rasterizer/render-smoke tests and check_poc_fill_properties.py cover pixels, patterns, depth holes and polygon-only application. The reference grid is eight window pixels; hatch fragments retain material alpha/coverage and receive fog. This closes FillProperties presentation in the tested reference paths, not the separate author-shader or full Shape-component obligations.",
+      "note": "material_system_test.cpp, scene_extractor_snapshot_test.cpp: FillProperties reach material descriptors and live dependency updates.",
       "severity": "major",
       "status": "fixed",
       "summary": "Appearance.fillProperties is not extracted; filled, hatched, hatchColor and hatchStyle have no rendering effect."
@@ -12123,7 +12055,7 @@
         "LocalFog",
         "FogCoordinate"
       ],
-      "note": "WIRED (LocalFog): LocalFogSystem (\u00a724.4.3, the LightSystem walk pattern) collects every enabled LocalFog, world-scales visibilityRange, and records the full enclosing-group placement chain as scopePath (scopeRoot remains informational); SceneExtractor tags each RenderItem with the nearest in-scope LocalFog index (RenderItem.localFog, resolved via snapshotLocalFogs()), enabled==false being skipped so global Fog applies unchanged. Posted LocalFog field changes and indexed ancestor-frame changes now conservatively replace the extraction baseline, refreshing snapshotLocalFogs and item indices together; disabled and empty scopes retain invalidation dependencies (scene_extractor_state_delta_test). Full path-prefix matching now distinguishes USE-shared enclosing groups, including nearest nested scopes; explicit expected ranges cover snapshots and ancestor-scale deltas. Root fog remains scene-wide, and disabled fog falls back to an outer enabled fog or global Fog. The appended vector is an experimental descriptor layout change requiring recompilation, not a stable ABI promise. The CPU rasterizer (examples/cpu_raster/cpuraster/SceneRender.hpp) selects the tagged LocalFog per item over the bound global Fog; tests: scene_extractor_local_fog_test (scope, enabled, world scale, nesting) and render_smoke_test's local-fog fragment check. WIRED (FogCoordinate, 2026-10-11): buildLocalMesh reads the fogCoord of the composed, line and point sets and ElevationGrid into MeshData::fogDepths, one depth per emitted corner taken from its Coordinate point (sourceCoordIndex) or height-grid vertex (latticeIndex); a short depth list repeats its last value, extra values are ignored, and depths are clamped to the field's [0,1] range. FogCoordinate depth events rebuild the geometry through the existing geometry-child dependency. Both hosts interpolate the depth across the primitive and, when the applicable Fog or LocalFog is enabled (visibilityRange > 0), blend the fragment depth of the way to the fog colour in place of the distance-derived interpolant, for either fog type. That reading of 'replace the automatically generated depth ... the implicit depth (specified by the visibilityRange field) being ignored' with a [0,1] depth is an implementation choice: \u00a724.4.3 gives no formula. Tests: mesh_builder_fog_coordinate_test (corner mapping, short and long lists, clamping, IndexedLineSet, ElevationGrid, depth events), render_smoke_test's FogCoordinate check (unlit, Phong, PBR) and local_fog_gl_test.py's FogCoordinate cases (uniform and ramped depths in each program). The GL poc_renderer (examples/poc_renderer) uploads each item's fog per draw, the tagged LocalFog in place of the bound global Fog, for its Phong, PBR and unlit programs; examples/poc_renderer/tests/local_fog_gl_test.py (run by validate-examples) checks in-scope, out-of-scope and disabled LocalFog pixels (2026-10-10). Scene-authored shaders receive no fog uniforms. Existing scene_extractor_fog_test proves bound global Fog is unchanged.",
+      "note": "scene_extractor_fog_test.cpp, local_fog_gl_test.py: LocalFog follows enclosing placement scope and both reference renderer paths.",
       "severity": "major",
       "status": "fixed",
       "summary": "Global Fog, LocalFog scope and authored FogCoordinate depths work end to end in both reference hosts."
@@ -12168,7 +12100,7 @@
         "ShaderPart",
         "ShaderProgram"
       ],
-      "note": "Fixed: runtime/extract/ShaderExtract.hpp::selectShader walks Appearance.shaders in order and selects the first ComposedShader or ProgramShader whose language is GLSL and whose program is valid; other node types and languages stay inert, which \u00a731.2.2.3 permits (PackagedShader is not supported). Part sources come from the inline CDATA (sourceCode, now also captured for ShaderProgram), then the first url that resolves: data: urls decode in the SDK, other urls go to ShaderOptions::resolver (AssetKind::Shader), and a Pending url defers validity. Validity is ShaderOptions::validator (a host compile check), defaulting to a structural VERTEX+FRAGMENT check. SceneExtractor sets RenderItem::shaderProgram (stages, author fields with current values, language) and re-selects on appearance-subtree DirtyField, so uniform events, url/sourceCode edits and activate reach the incremental delta as updatedMaterial. ShaderSystem (attached by attachStandardRuntime and RuntimeSession) runs the same selection and emits isValid (first evaluation, changes, every activate TRUE) and isSelected (on selection changes); activate TRUE re-resolves urls and re-validates. Reference hosts: cpu_raster runs the selected fragment stage in its GLSL interpreter with interpreterShaderValidator; runtime GlslError failures log once per draw and increment interpreterRuntimeErrors while retaining the material fallback; the GL PoC validates by compiling in its context and uploads every SF author-field type. Tests: shader_selection_test (11 cases), cpuraster author_shader_test and poc author_shader_gl_test (pixel output, uniform event, fall-through and material fallback). Remaining gaps are REQ-SHADER-2.",
+      "note": "shader_selection_test.cpp, author_shader_gl_test.py: GLSL shader selection and host validation produce the selected stage sources.",
       "severity": "major",
       "status": "fixed",
       "summary": "Scene-authored programs never populated RenderItem.shaderProgram or drove shader selection outputs."
@@ -12182,7 +12114,7 @@
         "ProgramShader",
         "ShaderProgram"
       ],
-      "note": "Fixed (2026-10-11): ShaderFieldBinding::elements carries an MF field with a GLSL array form (MFFloat, MFInt32, MFBool, MFVec2/3/4f and d, MFColor, MFColorRGBA, MFRotation, MFMatrix3/4f and d, MFDouble, MFTime) as one SF value per element, and ShaderFieldBinding::textures carries the X3DTextureNodes of an SFNode/MFNode field as TextureRefs (non-texture nodes skipped), resolved through the session TextureResolver (SceneExtractor::shaderFor). Nodes held by author fields join the appearance dependency index, so a write to the field or an edit inside its texture reaches the next delta as updatedMaterial. The XML reader now reads SFNode/MFNode author-field defaults from child elements (USE included) for Script and every programmable shader, and the XML writer re-emits a Script's node fields as children. buildBindingPlan matches a reported `name[0]` array uniform to the field `name`. Hosts: cpu_raster's interpreter binds sampler2D and sampler2D[] (sRGB-decoded) and GLSL arrays; the GL PoC binds samplers on up to nine units (0-4, 8-11; later textures are skipped) and uploads arrays with glUniform*v. Tests: shader_selection_test (MF elements and events; SFNode/MFNode textures, url resolution, in-place edit and replacement), xml_script_field_test (node-typed fields parse, write and reparse), cpuraster author_shader_test and poc author_shader_gl_test.py (pixels from texture and array fields). The rest moves to REQ-SHADER-3.",
+      "note": "shader_selection_test.cpp, author_shader_test.cpp: MF author fields and texture-valued node fields become shader bindings.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Texture (SFNode/MFNode) and array (MF) author-field uniforms reach the program descriptor and both reference hosts bind them."
@@ -12225,7 +12157,7 @@
         "MultiTextureCoordinate",
         "MultiTextureTransform"
       ],
-      "note": "CPU implements all Table 18.3 modes, separate RGB/alpha mode tokens, Table 18.4 source selection of Arg2, and Table 18.5 post-operation functions. Each stage selects its MultiTextureCoordinate channel or named mapping and matching MultiTextureTransform, including generators. A single TextureTransform applies to every channel. Live transform and nested coordinate edits refresh baked meshes and coordinate-generation descriptors through the existing dependency indices; RuntimeSession regressions cover both channels. Tests: multi_texture_test and interchange_test, including rendering two stages with distinct transformed UVs and a material-free Appearance. The published table contradicts itself for REPLACE and SELECTARG2: REPLACE selects the stage texture (Arg1), SELECTARG2 selects the previous result (Arg2), following the respective operation meanings. The OpenGL PoC combines the base-colour stages in its unlit, Phong and PBR programs (examples/poc_renderer/shaders/multitexture.glsl, the same operators and interpretations as the CPU) with UV sets 0-3 as vertex attributes; examples/poc_renderer/tests/multitexture_gl_test.py (run by validate-examples) checks stage modes, UV channels and FACTOR source in each program (2026-10-10). REQ-MULTITEXTURE-2 lifted the PoC to eight stages over eight UV sets with a coordinate mapping per stage (2026-10-11). Annex B explicitly includes MultiTexture despite its component level exceeding Texturing 2; the conformance view and CLI preserve that node-table exception. (2026-10-02)",
+      "note": "multi_texture_test.cpp, interchange_test.cpp: The CPU reference host combines stages with separate RGB/alpha operators and source/function controls.",
       "severity": "major",
       "status": "fixed",
       "summary": "Both reference hosts combine MultiTexture stages with their modes, source/function controls and independent stage coordinates."
@@ -12238,7 +12170,7 @@
         "MultiTexture",
         "MultiTextureCoordinate"
       ],
-      "note": "Fixed (2026-10-11). Before: the PoC (examples/poc_renderer) ignored stages after the fourth, sampled UV set 3 for any higher channel, and evaluated only the material's first TextureCoordinateGenerator, which every non-stage slot shared. Now shaders/texgen.glsl holds one coordinate mapping per sampled texture (units 0-4 for the base, normal, emissive, specular or metallic-roughness and occlusion slots, then one per stage): its UV set (TextureRef::channel, clamped to the last authored set as cpu_raster clamps it) or its own generator with its parameters and generated-coordinate TextureTransform. Cube stages take their direction from their own mapping. Eight stages bind on units 8-11 and 16-19; UV sets 1-7 are vertex attributes 5-11. Host limits that remain: the unlit, Phong and PBR programs combine at most eight stages and eight UV sets (cpu_raster has no cap), fall back to four stages when the context has fewer than 20 fragment texture image units, and bind one cube map per material. Test: examples/poc_renderer/tests/multitexture_gl_test.py (run by validate-examples) renders eight stages over eight UV sets, two stages with different generators, and an emissive texture on its own UV set in Phong and PBR; each fails on the previous PoC.",
+      "note": "multitexture_gl_test.py: The OpenGL host combines per-stage coordinates and texture operators within its stage capacity.",
       "severity": "minor",
       "status": "fixed",
       "summary": "The OpenGL PoC now combines eight MultiTexture stages over eight UV sets, and every stage and material texture slot samples its own UV set or coordinate generator, as cpu_raster does."
@@ -12265,7 +12197,7 @@
         "PointLight",
         "SpotLight"
       ],
-      "note": "CPU renderScene collects visible triangle occluders with castShadow TRUE and traces each shadow-enabled light in normalized scene coordinates. Visibility multiplies the light contribution by 1-shadowIntensity for an occluded fragment. Tests exercise enabled/disabled shadows, intermediate intensity, hidden and non-casting occluders, and equivalent very small/large scenes. Soft-shadow fidelity is optional. The OpenGL PoC renders a 1024x1024 depth map per shadow-enabled light before the scene pass (one orthographic layer over the scene bounds for DirectionalLight, one perspective layer over the cone for SpotLight with cutOffAngle below 1.4 rad, six 92-degree cube faces for PointLight and wider spots) from castShadow triangle shapes; its Phong and PBR programs scale the light reaching an occluded fragment by 1-shadowIntensity (examples/poc_renderer/shaders/shadow.glsl). Limits: at most 24 depth layers per frame (lights past that are unshadowed), shadow-map resolution and bilinear depth comparison rather than an exact ray query, and the headlight never shadows. examples/poc_renderer/tests/shadow_gl_test.py (run by validate-examples) checks all three light types in both programs, shadowIntensity 0.5, castShadow FALSE and shadows FALSE. (2026-10-10)",
+      "note": "shadow_gl_test.py: The OpenGL host uses per-light shadow depth maps.",
       "severity": "major",
       "status": "fixed",
       "summary": "Both reference hosts apply per-light occlusion by castShadow shapes and shadowIntensity."
@@ -12289,7 +12221,7 @@
       "interfaces": [
         "X3DUrlObject"
       ],
-      "note": "Annex B also requires FTP; the earlier Full-only classification was incorrect. makeFtpResolver shares the bounded curl transport and post-DNS address policy but permits FTP only. makeHttpResolver remains restricted to HTTP/HTTPS. Hermetic passive-FTP tests cover successful bytes, missing files, size limits and private-network policy. The CPU host wires file/http/https/ftp through SchemeRouter and decodes fetched PNG/JPEG bytes through the stb adapter. Private networks require explicit opt-in by an embedder; the reference executable uses the default public-network policy. (2026-10-02)",
+      "note": "interchange_test.cpp, interchange_test.cpp: The CPU reference host fetches FTP resources through its configured resolver.",
       "severity": "major",
       "status": "fixed",
       "summary": "The optional curl backend supplies separate HTTP/HTTPS and FTP adapters; the CPU reference host routes these alongside confined local files."
@@ -12304,7 +12236,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "Reproduced identical pointers for two instances and their declaration default, with mutation of one changing both others. Expansion now clones declaration-owned graphs through the per-instance body clone map, preserving aliases and authored scalar provenance. Caller-supplied override graphs retain their original identity. A present node fieldValue now overrides even with an empty node list, including nested IS forwarding. Regressions in proto_expand_test.cpp: PROTO node defaults belong to each instance; PROTO explicit node overrides retain caller identity and empty values; PROTO nested literal node overrides clone with outer instance; nestedInstanceIsConnectForwardTest. This does not establish complete PROTO or UNIT conformance.",
+      "note": "proto_expand_test.cpp: Declaration-owned node defaults clone per instance while caller overrides preserve sharing.",
       "severity": "major",
       "status": "fixed",
       "summary": "Declaration-owned node defaults and nested literal overrides were shared across PROTO instances; explicit NULL/empty overrides fell back to defaults."
@@ -12319,7 +12251,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "XML/JSON defaults previously used the enclosing scene DEF table; Classic used a fresh table for each default. All three readers now use one private Scene for a declaration's interface and body, inheriting prototype declarations but not outer DEFs. Reader registration replaces same-name inherited lookup entries across PROTO/EXTERNPROTO kinds while preserving parent Scene records and already-bound instances. XML now recognizes direct nested declarations in ProtoBody. declarationDefScopeTest and nestedDeclarationShadowingTest in proto_front_door_test.cpp cover three encodings, aliases, boundaries and cross-kind shadowing. Nested declaration serialization is tracked separately by PROTO-NESTED-WRITE.",
+      "note": "proto_front_door_test.cpp: Prototype defaults retain declaration-local DEF scope and nested declarations shadow nearer names.",
       "severity": "major",
       "status": "fixed",
       "summary": "PROTO interface defaults used incorrect DEF scopes, and nested prototype lookup could select inherited declarations before local declarations."
@@ -12364,7 +12296,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "The original CLI reported Wrap: empty proto body for a valid body containing only ProtoInstance Leaf. Expansion now uses orderedStatements to select the first authored node/instance, keeps subsequent direct nodes as active non-rendered peers, and registers interface redirects against the selected primary. An unresolved first instance is not replaced by a later peer. Four new proto_expand_test.cpp cases cover nested-only bodies, both primary/peer orders, unresolved primary, redirect ownership and parsed XML. Body-local ROUTEs targeting IS-mapped nested instance interfaces are covered by PROTO-NESTED-ROUTE; independent interface state remains PROTO-INTERFACE-STATE.",
+      "note": "proto_expand_test.cpp: Expansion selects the first authored body node or nested instance and retains active peers.",
       "severity": "major",
       "status": "fixed",
       "summary": "Expansion rejects a body containing only a prototype instance and does not preserve primary-versus-peer order for direct nested instances."
@@ -12379,7 +12311,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "The CLI and differential gate now share declaration-identity use analysis. It scans locally authored declaration bodies, retained nested declarations, and locally bound instance declarations with a visited worklist; external instances count only their external declaration. CLI regressions cover nested use, a node-contained declaration retained only by its instance, unused outer declaration with a used shadowing inner declaration, and an unresolved but used external declaration. The existing unused-declaration warning remains unchanged.",
+      "note": "tools/tests/x3d_cli_test.sh: Prototype-use diagnostics follow declaration identity through nested and external declarations.",
       "severity": "minor",
       "status": "fixed",
       "summary": "CLI reported a declaration used only by another prototype as unused."
@@ -12409,7 +12341,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "ProtoInstanceTemplate occupies the existing nodeDefault vector and local DEF table. Readers and four writers retain order and DEF/USE aliases across fields and body graphs; expansion materializes required templates per outer instance before IS forwarding. Overrides suppress unused defaults and external resolution, while caller node identity is preserved. Scene writers emit external declarations before dependent local declarations. directDefaultInstanceTest, directDefaultInstanceIsForwardTest, unresolvedDirectDefaultRoundTripTest and proto_expand_test.cpp resolver-count cases exercise these paths. This is an authored template representation, not full native SAI prototype support.",
+      "note": "proto_front_door_test.cpp: Direct instance defaults retain order and aliases and materialize before IS forwarding.",
       "severity": "major",
       "status": "fixed",
       "summary": "Direct ProtoInstance SFNode/MFNode interface defaults were not retained as expandable prototype instances."
@@ -12424,7 +12356,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "XML, Classic and JSON readers now retain direct and contained SFNode/MFNode instance values as bound templates. Expansion shares each caller template's primary across USE aliases while preserving ordinary caller node identity; declaration-owned values still clone per outer instance. Scene-root DEF templates link to their authoritative structural records. Unresolved caller templates remain inert and serializable. Four writers preserve expanded primary DEF/USE identity. instanceNodeValueRootTest, instanceNodeValueMixedTest, instanceNodeValueSharedCallerTest, unresolvedInstanceNodeValueTest and the throwing-resolver regression cover expansion, placement, sharing, failure and round trips. CLI use analysis and source UNIT traversal include these graphs. Scene root order remains open under PROTO-SCENE-ORDER.",
+      "note": "proto_front_door_test.cpp: Node-valued instance overrides preserve caller identity, unresolved templates, and writer aliases.",
       "severity": "major",
       "status": "fixed",
       "summary": "Prototype instances inside node-valued fieldValues were not bound and expanded reliably."
@@ -12439,7 +12371,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "Root and Group.children reproductions converted First, Ordinary, Last to Ordinary, First, Last. A runtime binding probe selected the later ordinary Viewpoint over an earlier local prototype primary. Readers now place instance templates directly in authored root/child slots; structural records link weakly to those exact identities. Expansion replaces slots in place, and four writers preserve order and repeated USE occurrences. Unresolved instances retain inert slots. Removed unnamed slots remain distinguishable from unlinked programmatic records, avoiding fallback resurrection. Raw writers use structural source edits, and expansion synchronizes renamed DEF bindings. Classic root USE statements now have a separator before the next root. sceneRootProtoOrderTest, unresolvedRootProtoOrderTest, rootProtoMutationTest, sceneChildProtoOrderTest and firstProtoViewpointBindsTest cover raw and expanded paths, three encodings, four writers, removal, alias identity and actual initial binding. PROTO-NESTED-WRITE and other prototype requirements remain separate.",
+      "note": "proto_front_door_test.cpp: Root and child prototype slots retain authored ordering through expansion and serialization.",
       "severity": "major",
       "status": "fixed",
       "summary": "Scene prototype expansion appended primaries after ordinary roots or children, changing authored node order and initial binding."
@@ -12454,7 +12386,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "The baseline retained one authored route but produced zero resolved routes and no warning. Expansion now resolves local DEFs after nested expansion and snapshots child interfaces before an enclosing instance reuses their primary pointer. Both ROUTE endpoints follow declared interface aliases and IS targets to concrete edges; nested IS event mappings are flattened into the outer interface. The scene bridge validates nominal interfaces and physical direction/types, hides undeclared primary fields, and preserves inherited metadata via existing primary storage. Parsed XML/Classic tests exercise actual event delivery, private instance isolation, nested-first shared primaries, physical and nested IS aliases, inherited metadata, scene PROTO-to-PROTO routes and invalid endpoints. Independent interface state without IS remains open under PROTO-INTERFACE-STATE; this does not claim complete prototype semantics.",
+      "note": "scene_bridge_test.cpp: Nested routes resolve declared interfaces and IS aliases with direction and type checks.",
       "severity": "major",
       "status": "fixed",
       "summary": "Body-local ROUTEs targeting IS-mapped nested prototype interfaces were silently omitted."
@@ -12469,7 +12401,7 @@
       "nodes": [
         "ProtoInstance"
       ],
-      "note": "FIXED for scalar and SFNode/MFNode interface fields. Expansion registers unmapped fields on each primary in DynamicFieldStore, preserving access types and existing IS redirects. Node defaults reuse the per-instance clone map, keeping declaration nodes private across instances while preserving internal DEF/USE aliases; caller fieldValue overrides retain identity, and explicit NULL/empty values suppress defaults. proto_interface_state_test.cpp verifies external SFNode/MFNode relays (2 routes, 0 rejected), same-pointer event delivery, NULL/empty updates, initializeOnly SFNode defaults, MFNode defaults, instance isolation and caller sharing. Existing scalar, nested-sibling, shared-primary and EXTERNPROTO cases remain. This establishes stored state and endpoints for the named cases; it does not establish complete prototype semantics or traversal of arbitrary dynamic node graphs.",
+      "note": "proto_interface_state_test.cpp: Unmapped scalar and node-valued prototype fields retain instance state and routable endpoints.",
       "severity": "major",
       "status": "fixed",
       "summary": "Unconnected prototype interface fields lacked independent state and routable endpoints."
@@ -12482,7 +12414,7 @@
         "Text",
         "FontStyle"
       ],
-      "note": "Fixed for the helper's bounded repertoire: makeStbttGlyphAtlas bakes U+0020\u2013U+007E and U+00A0\u2013U+00FF, preserving raw advances and packing complete raster glyph boxes so accents/overhangs are not cut off. x3d_text_atlas_tests checks every supported glyph's pixels, UVs, and baseline-relative geometry metrics against isolated rasterization across all three bundled Liberation faces at 8/17/64 px per em; blank spaces, range boundaries, missing families/files and unsupported codepoints are covered. DEL/C1 controls, out-of-range codepoints and .notdef still fail; styles still use the supplied PLAIN face. No claim of general Unicode/shaping support or whole-browser Immersive conformance. The headless SDK continues to use the consumer's FontMetrics seam; the CPU consumer's independent 8x8 font is still ASCII-only. Issue https://github.com/delta9000/x3d-cpp/issues/141.",
+      "note": "glyph_atlas_tests.cpp: The atlas covers printable Basic Latin and Latin-1 Supplement with complete glyph boxes and raw advances.",
       "severity": "major",
       "status": "fixed",
       "summary": "The optional stbtt atlas drops Latin-1 Supplement glyphs present in its supplied font."
@@ -12496,7 +12428,7 @@
         "Billboard",
         "Shape"
       ],
-      "note": "Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance.",
+      "note": "scene_extractor_visibility_delta_test.cpp: Changed per-placement visibility hints use remove-before-add replacement while unchanged hints preserve meshes.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes."
@@ -12519,7 +12451,7 @@
         "IntegerSequencer",
         "HAnimMotion"
       ],
-      "note": "Weak per-context and per-system callback leases cover bindable handlers, interpolators (including spline, NURBS and geospatial), followers, event utilities, HAnimMotion and context-owned timing/key/trigger hooks. RuntimeSession retires before extractor teardown; context destruction also covers partial-construction unwinding. Standalone BindingSystem and standard callback-owning systems retire in their destructor bodies before member captures can invoke a retained node. Custom most-derived systems must call the protected early-retirement hook before destroying members. No raw-node traversal or global lifetime registry is used, so retirement cannot clear a replacement's handlers. Runtime/extract/tests/runtime_callback_retirement_test.cpp pins retained storage, valid behavior, replacement, failed construction, independent owner lifetimes and reentrant retirement rejection. Native access stays serial: the host defers destruction until no call is in flight; reentrant destruction fails closed. Context, BindingSystem and System owners are noncopyable/nonmovable; transfer owning pointers or build fresh owners. Custom unguarded callbacks and GeoFrame configuration isolation are outside this fix; author-field ownership is tracked separately below. Process-wide pick/local-matrix diagnostic counters use relaxed atomics so distinct owner-thread worlds do not race on metrics; runtime_diagnostic_counters_test.cpp verifies the combined totals. These metrics are not per-world semantic state. This does not establish full browser/SAI conformance.",
+      "note": "runtime_callback_retirement_test.cpp: Native callback leases retire before owner state and reject retained callbacks after retirement.",
       "severity": "critical",
       "status": "fixed",
       "summary": "Native runtime callbacks retained by nodes are revoked before their activation or behavior state is destroyed."
@@ -12533,7 +12465,7 @@
       "nodes": [
         "Inline"
       ],
-      "note": "Paired synchronous loaders carry one explicit resolver policy throughout Inline/EXTERNPROTO recursion, including declaration caching, body expansion and IS URL overrides; Pending aborts the recursive synchronous load. Source-base provenance follows declarations and weak node ownership instead of being replaced by the enclosing document URL. Local Inline file loading uses the existing confinement/canonicalization helper. The focused asset_loader_policy_test.cpp and asset_proto_resolver_test.cpp suite verifies nested and mixed resolution, URL fallback, cached declaration reuse, Pending propagation and real local-decoy zero-read/open evidence with a positive control. This closes an I/O integration bypass; it does not assert full asynchronous loading or browser/SAI conformance.",
+      "note": "asset_loader_policy_test.cpp, asset_proto_resolver_test.cpp: Paired synchronous loaders preserve resolver policy and source bases throughout recursive loading.",
       "severity": "critical",
       "status": "fixed",
       "summary": "Nested Inline and EXTERNPROTO parsing preserves the supplied AssetResolver policy and declaration-source bases without local-file fallback."
@@ -12550,7 +12482,7 @@
         "Inline",
         "GeoLOD"
       ],
-      "note": "Fresh Scenes have fresh shared stores; shallow copies deliberately alias graph and store. Readers, writers, execution/cascade and Script backends propagate explicit owners. Declarations retain template data after temporary source-document destruction, while clones get fresh author entries and use one clone map for generated and author node-valued fields. Inline adoption shares entry identity, parent detach removes only its view, and cached GeoLOD tiles re-import preserved child entries before attachment. Authored GeoLOD roots retain their own selected entry view while inactive and return it to the Scene on redisplay. Tracked copied FieldInfo thunks reject expired and wrong-node identities without waiting for a store sweep. Extension factories are declaration-local and ext::install no longer mutates process configuration. Regression evidence: scene_author_field_ownership_test.cpp and migrated memory, cascade, codec, parser and Script tests. This is a concrete source/ABI migration with no singleton or TLS fallback, not full Script/PROTO/SAI conformance. The separate Geo projection selector and local-file parse operation context remain.",
+      "note": "scene_author_field_ownership_test.cpp: Fresh scenes own separate author stores while deliberate graph copies and retained children preserve their intended entry identities.",
       "severity": "critical",
       "status": "fixed",
       "summary": "Scene and declaration owners replace process-global author-field storage and clone factory configuration."
@@ -12562,7 +12494,7 @@
       "nodes": [
         "CylinderSensor"
       ],
-      "note": "The disk and cylinder angle used cross(ref, cur).y with the wrong sign, so dragging from +Z toward +X produced a negative rotation about +Y; \u00a720.4.1 specifies the right-handed rotation from the original intersection. A routed Transform therefore spun against the pointer, and minAngle/maxAngle clamped the wrong side. drag/CylinderDrag.hpp now uses ref.z*cur.x - ref.x*cur.z; drag_math_test pins the right-handed sign and interactive_profile_test covers cylinder and disk drags end to end, including clamp and autoOffset.",
+      "note": "drag_math_test.cpp, interactive_profile_test.cpp: Cylinder and disk drags use the right-handed positive-Y rotation sign.",
       "severity": "major",
       "status": "fixed",
       "summary": "CylinderSensor rotation_changed turned the opposite way to the drag."
@@ -12574,7 +12506,7 @@
       "nodes": [
         "BooleanToggle"
       ],
-      "note": "Each TRUE now flips the stored state at once and schedules one re-read publication per cascade, so N TRUE inputs flip N times and storage, observers and ROUTEs agree on one toggle_changed with the final value. FALSE stays a no-op and set_toggle is ordinary inputOutput delivery. If set_toggle and a later TRUE both arrive in one cascade, state and observers follow both while the outgoing ROUTE keeps the legacy one-delivery-per-timestamp cap shared by every inputOutput field. Tests: event_utility_output_admission_test (BooleanToggle cases) and interactive_profile_test's routed click state machine.",
+      "note": "event_utility_output_admission_test.cpp: BooleanToggle applies every true input and publishes the final admitted state.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Two TRUE set_boolean events in one cascade both computed the toggle from the same stored value."
@@ -12587,7 +12519,7 @@
         "BooleanSequencer",
         "IntegerSequencer"
       ],
-      "note": "SequencerSystem remembers the key interval of the last fraction that emitted and stays silent while later fractions remain in it. next/previous and key/keyValue edits forget that interval, so the following fraction emits even in the same interval. Per-cascade output admission is unchanged: a fraction suppressed by admission still selects its interval. Tests: event_utility_output_admission_test (`sequencer emits one value_changed per key interval across timestamps`) and interactive_profile_test's TimeSensor-driven sequencers.",
+      "note": "event_utility_output_admission_test.cpp: Sequencers emit once per selected key interval until input stepping or key edits reset it.",
       "severity": "minor",
       "status": "fixed",
       "summary": "Sequencers emitted value_changed for every set_fraction, not once per key interval."

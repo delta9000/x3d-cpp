@@ -1,6 +1,6 @@
 ---
 title: Generator Pipeline
-summary: Reads the X3D Unified Object Model (UOM) XML and emits spec-correct C++ bindings via a parse → model → emit pipeline.
+summary: Reads the X3D Unified Object Model (UOM) XML and emits C++ bindings via a parse → model → emit pipeline.
 tags: [subsystem, generator, codegen, python]
 updated: 2026-06-20
 related:
@@ -16,7 +16,7 @@ related:
 
 The generator pipeline is the Python-side code-generation layer. It reads the X3D Unified Object Model (UOM) XML specification, builds an in-memory IR of every node and field, resolves the full inheritance graph, and writes a set of C++ source files that are committed as the golden binding tree. Every downstream runtime capability — reflection, the node factory, the interface registry, range constraints, bounded enumerations — is emitted here from data, not from hand-written code. Running the pipeline again from the same UOM XML must produce byte-identical output (enforced by the golden gate).
 
-The pipeline owns everything from the spec XML to the `.hpp`/`.cpp` files in `generated_cpp_bindings/`. The runtime (`runtime/`) consumes those files as a compiled static library but never imports from this layer.
+The pipeline owns everything from the spec XML to the `.hpp`/`.cpp` files in `generated_cpp_bindings/`. The runtime (`runtime/`) consumes those files as a compiled node library but never imports from this layer.
 
 ## Key files
 
@@ -54,7 +54,7 @@ graph: Dict[str, List[str]] = build_dependency_graph(nodes)
 # Parse bounded SimpleType enumerations
 enum_defs: Dict[str, EnumDef] = parse_enum_definitions(uom_file)
 
-# Emit per-node .hpp + .cpp (delegates to CppHeaderBackend)
+# Emit per-node.hpp +.cpp (delegates to CppHeaderBackend)
 generate_cpp_bindings(nodes, graph, output_dir,
                       clang_format="clang-format", enum_defs=enum_defs)
 
@@ -62,8 +62,8 @@ generate_cpp_bindings(nodes, graph, output_dir,
 write_types_header(output_dir)       # X3Dtypes.hpp
 write_enums_header(output_dir, enum_defs)  # X3Denums.hpp
 write_reflection_header(output_dir)  # X3DReflection.hpp
-write_node_factory(output_dir, nodes)          # X3DNodeFactory.hpp + .cpp
-write_interface_registry(output_dir, nodes, graph)  # X3DInterfaceRegistry.hpp + .cpp
+write_node_factory(output_dir, nodes)          # X3DNodeFactory.hpp +.cpp
+write_interface_registry(output_dir, nodes, graph)  # X3DInterfaceRegistry.hpp +.cpp
 
 # Emit a self-asserting smoke-test driver
 generate_test_file(nodes, output_dir, enum_defs=enum_defs)  # test.cpp
@@ -73,54 +73,26 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 ### Seam points
 
-- **UOM XML path** — callers supply the spec file; the packaged default is `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml`. A newer spec version is ingested without code changes: `SpecVersion.detect()` reads the `version` attribute from the XML root automatically.
+- UOM XML path — callers supply the spec file; the packaged default is `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml`. A newer spec version is ingested without code changes: `SpecVersion.detect()` reads the `version` attribute from the XML root automatically.
 
-- **Jinja2 templates** — `CppHeaderBackend` loads templates from `src/x3d_cpp_gen/templates/` (resolved via `TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"`). Test and CLI callers can override `templates_dir` to substitute custom templates.
+- Jinja2 templates — `CppHeaderBackend` loads templates from `src/x3d_cpp_gen/templates/` (resolved via `TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"`). Test and CLI callers can override `templates_dir` to substitute custom templates.
 
-- **clang-format** — `CppHeaderBackend._format()` runs `clang-format -i` in place after each file. Degrades gracefully: if the binary is absent the file is left unformatted (golden byte-equality requires clang-format). Callers pass `clang_format=""` to disable (e.g. in unit tests).
+- clang-format — `CppHeaderBackend._format()` runs `clang-format -i` in place after each file. Degrades gracefully: if the binary is absent the file is left unformatted (golden byte-equality requires clang-format). Callers pass `clang_format=""` to disable (e.g. in unit tests).
 
-- **Fixed namespace** — generated node classes use `x3d::nodes`; value and
+- Fixed namespace — generated node classes use `x3d::nodes`; value and
   reflection types use `x3d::core`. The Python API and CLI use the same layout.
 
-- **`FIELD_TYPE_MAPPING` / `XS_TYPES`** — the type allowlists in `generator.py` act as a seam: adding a new UOM field type requires an entry here (and in `model/types.py`) before the parser will accept it. Unknown types are logged and skipped rather than crashing.
+- `FIELD_TYPE_MAPPING` / `XS_TYPES` — the type allowlists in `generator.py` act as a seam: adding a new UOM field type requires an entry here (and in `model/types.py`) before the parser will accept it. Unknown types are logged and skipped rather than crashing.
 
-- **`get_own_fields(node)`** — the parser seam between the UOM's flattened field list (every inherited field present on each node) and the emitter's per-class output. Only own fields (those without `field/@inheritedFrom`) get members and accessors on the class; inherited ones are provided via C++ inheritance.
+- `get_own_fields(node)` — the parser seam between the UOM's flattened field list (every inherited field present on each node) and the emitter's per-class output. Only own fields (those without `field/@inheritedFrom`) get members and accessors on the class; inherited ones are provided via C++ inheritance.
 
-- **`build_descriptors`** — the IR boundary between parser dataclasses and the render layer. The Jinja template consumes `FieldDescriptor` objects only; it never branches on raw type strings.
+- `build_descriptors` — the IR boundary between parser dataclasses and the render layer. The Jinja template consumes `FieldDescriptor` objects only; it never branches on raw type strings.
 
-## How it is tested
-
-- `uv run pytest tests/test_parser.py` — unit tests for `parse_x3d_model`, `build_dependency_graph`, `get_own_fields`, `X3DNode`/`X3DField` dataclasses.
-
-- `uv run pytest tests/test_descriptors.py` — unit tests for `build_descriptor` / `build_descriptors`: type resolution, constraint rendering, enum-descriptor path.
-
-- `uv run pytest tests/test_defaults.py` — default-literal generation for every X3D type.
-
-- `uv run pytest tests/test_naming.py` — `pascal()` and `sanitize_field_name()` edge cases including C++ reserved keywords.
-
-- `uv run pytest tests/test_enums.py` — bounded SimpleType parsing: `parse_enum_defs`, member sanitization, de-collision.
-
-- `uv run pytest tests/test_emission.py` — end-to-end render tests against the packaged 4.0 spec. Asserts specific C++ text in emitted headers (e.g. `Appearance.hpp` carries `AlphaModeChoices getAlphaMode()` and not a bare `std::string` member).
-
-- `uv run pytest tests/test_golden_smoke.py` — byte-for-byte comparison of two representative headers (`Box.hpp`, `X3Dtypes.hpp`) against committed golden files. Skipped locally, and failed under CI, if the pinned clang-format is absent or the wrong version (`tests/conftest.py`).
-
-- `uv run pytest tests/test_golden_tree.py` — full-tree golden-drift test: runs the CLI into a temp dir and diffs every generated `*.hpp` and `*.cpp` against `generated_cpp_bindings/` (both directions: no missing, no extra, no drifted files). This is the primary regression gate for any pipeline change.
-
-- `uv run pytest tests/test_interface_registry.py` — `X3DInterfaceRegistry` generation: verifies interface sets are computed from the transitive closure of the inheritance graph.
-
-- `mise run golden` — shell-based drift gate (`scripts/check_golden.sh`);
-  equivalent to the golden-tree pytest but usable standalone. Both gates read
-  the exact formatter version from `[tools]` in `mise.toml`.
-
-- `mise run gen` — regenerates `generated_cpp_bindings/` from the packaged 4.0 UOM. Must be run (and output committed) whenever a template or emitter changes.
-
-## Related specs and ADRs
+## Related
 
 - [Architecture](../architecture.md)
 - [Templates](templates.md)
 - [Generated Bindings](generated-bindings.md)
 - [Reflection](reflection.md)
-- Spec (C1 decl/def split, static-lib motivation): `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`
-- ADR (golden files in git): [ADR-0005: Golden Files in Git](../decisions/0005-golden-files-in-git.md)
-- ADR (virtual mixins / additional inheritance): [ADR-0004: Virtual Mixins](../decisions/0004-virtual-mixins.md)
-- ADR (bounded enum `enum class` emission): see `src/x3d_cpp_gen/model/enums.py` and `src/x3d_cpp_gen/generator.py` (`gen_enums_header`)
+- [ADR-0005: Golden Files in Git](../decisions/0005-golden-files-in-git.md)
+- [ADR-0004: Virtual Mixins](../decisions/0004-virtual-mixins.md)

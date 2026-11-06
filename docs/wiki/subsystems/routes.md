@@ -15,11 +15,11 @@ related:
 
 The ROUTEs subsystem owns the data model and resolution pipeline for X3D event routes — the declarative wiring that connects one node's output field to another's input field. It covers three separable concerns that together bridge authored intent all the way to the live event graph:
 
-1. **Route data model** (`Route` struct): encoding-neutral record of a ROUTE statement, keyed by DEF name strings with optional resolved weak-pointer endpoints.
-2. **Field addressing** (`FieldAddress`): identity of a routable endpoint — a raw observer `(node*, field-name)` pair — used by the event cascade to fan out events without owning nodes.
-3. **Bridge and resolution** (`buildRoutes`): translates a parsed `Scene`'s DEF-name routes into typed, validated edges in an `EventGraph` held by an `X3DExecutionContext`. This step also handles PROTO-interface redirects, pre-resolved PROTO-body-internal routes, and pre-resolved Inline-internal routes.
+1. Route data model (`Route` struct): encoding-neutral record of a ROUTE statement, keyed by DEF name strings with optional resolved weak-pointer endpoints.
+2. Field addressing (`FieldAddress`): identity of a routable endpoint — a raw observer `(node*, field-name)` pair — used by the event cascade to fan out events without owning nodes.
+3. Bridge and resolution (`buildRoutes`): translates a parsed `Scene`'s DEF-name routes into typed, validated edges in an `EventGraph` held by an `X3DExecutionContext`. This step also handles PROTO-interface redirects, pre-resolved PROTO-body-internal routes, and pre-resolved Inline-internal routes.
 
-A critical feature of the bridge is that field lookup always consults the node's *effective* field table — the union of generated static fields and author-declared dynamic Script fields — so author `<field>` declarations on `Script` nodes are first-class ROUTE endpoints (S1). **Caveat:** this is the *resolution* path — a ROUTE *into* a Script eventIn/inputOutput is registered/validated but not yet dispatched at tick time (`SCRIPT-EVENTIN`, open); a Script's own `outputOnly`/`inputOutput` writes *do* drive the cascade.
+A critical feature of the bridge is that field lookup always consults the node's *effective* field table — the union of generated static fields and author-declared dynamic Script fields — so author `<field>` declarations on `Script` nodes are first-class ROUTE endpoints (S1). Caveat: this is the *resolution* path — a ROUTE *into* a Script eventIn/inputOutput is registered/validated but not yet dispatched at tick time (`SCRIPT-EVENTIN`, open); a Script's own `outputOnly`/`inputOutput` writes *do* drive the cascade.
 
 ## Key files
 
@@ -98,46 +98,36 @@ FieldTable effectiveFields(const X3DNode &node, const DynamicFieldStore &store);
 
 ### Seam points
 
-- **Codec readers → Scene::routes** — all four codec readers (XML, ClassicVRML, VRML97, JSON) parse `<ROUTE>` / `ROUTE` statements and push `Route` structs (DEF names only, no resolved pointers) into `Scene::routes`. Resolved pointers are populated later by `Scene::resolveRoutes()` inside `buildRoutes`.
+- Codec readers → Scene::routes — all four codec readers (XML, ClassicVRML, VRML97, JSON) parse `<ROUTE>` / `ROUTE` statements and push `Route` structs (DEF names only, no resolved pointers) into `Scene::routes`. Resolved pointers are populated later by `Scene::resolveRoutes()` inside `buildRoutes`.
 
-- **PROTO expander → Scene::resolvedProtoRoutes** — when `X3DProtoExpand` clones a PROTO body it resolves body-internal ROUTEs against cloned nodes. A route to a nested PROTO interface follows its `IS` targets; both endpoints may fan out. The resulting physical endpoints are stored in `Scene::resolvedProtoRoutes`. `buildRoutes` validates their effective fields, aliases, direction, and type before registration. Clone nodes stay outside `scene.defs`.
+- PROTO expander → Scene::resolvedProtoRoutes — when `X3DProtoExpand` clones a PROTO body it resolves body-internal ROUTEs against cloned nodes. A route to a nested PROTO interface follows its `IS` targets; both endpoints may fan out. The resulting physical endpoints are stored in `Scene::resolvedProtoRoutes`. `buildRoutes` validates their effective fields, aliases, direction, and type before registration. Clone nodes stay outside `scene.defs`.
 
-- **Inline expander → Scene::resolvedInlineRoutes** — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
+- Inline expander → Scene::resolvedInlineRoutes — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
 
-- **DynamicFieldStore → effectiveFields** — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
+- DynamicFieldStore → effectiveFields — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
 
-- **EventGraph → X3DEventCascade** — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
+- EventGraph → X3DEventCascade — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
 
-- **SaiContext → EventGraph (dynamic ROUTE operations)** — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` checks physical node fields, `set_`/`_changed` aliases, event direction, and matching types. It does not resolve nominal PROTO interfaces or their `IS` targets as the document-ROUTE bridge does. `X3DEventGraph::addRoute` itself stays unvalidated.
+- SaiContext → EventGraph (dynamic ROUTE operations) — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` checks physical node fields, `set_`/`_changed` aliases, event direction, and matching types. It does not resolve nominal PROTO interfaces or their `IS` targets as the document-ROUTE bridge does. `X3DEventGraph::addRoute` itself stays unvalidated.
 
 ### Validation rules enforced by buildRoutes
 
 `buildRoutes` applies four checks in order and returns diagnostics rather than throwing:
 
-1. **Unresolved endpoint** — `Route::from` or `Route::to` weak_ptr is expired (forward ref, IMPORT, unknown DEF): skipped silently; not counted as added or rejected.
-2. **Unknown field** — for an expanded PROTO, the declared interface is the public field table, even when its primary node has a field with the same name. An EXTERNPROTO instance uses its authored external interface. A recognized interface endpoint follows its `IS` targets; a route between two such endpoints uses every source/sink target pair. Other nodes use their effective field table. Every PROTO instance also exposes inherited `metadata` and its inputOutput aliases through the primary node's current metadata storage. An undeclared primary field is rejected.
-3. **Direction** — source must be `outputOnly` or `inputOutput`; sink must be `inputOnly` or `inputOutput`: else rejected.
-4. **Type** — `fromField.type` must equal `toField.type`; X3D performs no implicit field-type coercion across a ROUTE (ISO/IEC 19775-1 §4.4.8.2): else rejected.
+1. Unresolved endpoint — `Route::from` or `Route::to` weak_ptr is expired (forward ref, IMPORT, unknown DEF): skipped silently; not counted as added or rejected.
+2. Unknown field — for an expanded PROTO, the declared interface is the public field table, even when its primary node has a field with the same name. An EXTERNPROTO instance uses its authored external interface. A recognized interface endpoint follows its `IS` targets; a route between two such endpoints uses every source/sink target pair. Other nodes use their effective field table. Every PROTO instance also exposes inherited `metadata` and its inputOutput aliases through the primary node's current metadata storage. An undeclared primary field is rejected.
+3. Direction — source must be `outputOnly` or `inputOutput`; sink must be `inputOnly` or `inputOutput`: else rejected.
+4. Type — `fromField.type` must equal `toField.type`; X3D performs no implicit field-type coercion across a ROUTE (ISO/IEC 19775-1 §4.4.8.2): else rejected.
 
 The bridge checks declared PROTO interface direction and type, then checks each physical target pair through `effectiveFields()`. Pre-resolved PROTO-body and Inline routes receive the physical checks without another PROTO redirect lookup. `RouteError::scope` identifies `Scene`, `ProtoBody`, or `Inline`; `index` is relative to that route collection. Unconnected PROTO interface fields use their independent entries in the Scene author-field store; this does not imply a general native SAI prototype object model.
 
-## How it is tested
+## Related
 
-- `ctest --preset dev -R x3d_event_scene_bridge` — the primary bridge test: validates ROUTE resolution, field-direction enforcement, type-mismatch rejection, author-field ROUTE endpoints, and PROTO-interface redirect.
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_test`) — route propagation (fan-out), loop-breaking, inputOnly-sink semantics; exercises the full `EventGraph::sinks()` path.
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_conformance_test`) — conformance scenarios that run routes across real parsed scenes.
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_alias_audit_test`) — `set_xxx` / `xxx_changed` alias resolution via `resolveFieldAlias`.
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `cascade_dynamic_route_test`) — dynamic `addRoute`/`deleteRoute` operations through `SaiContext` (SAI §4.3.7 path).
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `dynamic_field_test`) — `DynamicFieldStore` unit tests: `addAuthorField`, `effectiveFields`, type-mismatch drop counter (AUD-MEM-1), `getValue`/`setValue` contract.
-- `ctest --preset dev -R x3d_inline_routes` — Inline-internal ROUTE pre-resolution and direct registration path.
+- [Architecture](../architecture.md)
+- [event cascade](../subsystems/event-cascade.md)
+- [ADR-0014: Dynamic Field Foundation](../decisions/0014-dynamic-field-foundation.md)
+- [Event Cascade subsystem](../subsystems/event-cascade.md)
 
-## Related specs and ADRs
-
-- [Architecture](../architecture.md) — where ROUTEs sit in the runtime: resolved by `buildFrom` into the execution context's event graph, then drained by the [event cascade](../subsystems/event-cascade.md) each tick.
-- [ADR-0014: Dynamic Field Foundation](../decisions/0014-dynamic-field-foundation.md) — the decision to keep author Script fields in a per-node side-table (`DynamicFieldStore`) rather than in the generated node; explains why `effectiveFields()` exists as a free function and why route resolution routes through it.
-- [Event Cascade subsystem](../subsystems/event-cascade.md) — consumes the populated `EventGraph` on each tick.
 - ISO/IEC 19775-1 §4.4.2.2 — inputOutput field aliases (`set_xxx`, `xxx_changed`) implemented by `resolveFieldAlias`.
 - ISO/IEC 19775-1 §4.3.7 — dynamic `addRoute`/`deleteRoute` via the Script/SAI interface.
 - ISO/IEC 19775-1 §4.4.8.2 — no implicit field-type coercion across a ROUTE (exact type-tag match enforced by `buildRoutes`).
-- Spec: `docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md` — the design for author-field ROUTE wiring (S1), including the process-global store rationale and `effectiveFields` seam.
-- Spec: `docs/superpowers/specs/2026-06-17-script-cdata-untabling-design.md` — the S1 file-authored Script un-tabling that made author-field ROUTEs exercise the live `DynamicFieldStore`.

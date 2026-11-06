@@ -12,6 +12,8 @@ related:
 
 # ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Behavioral Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0023 amendment
+
 ## Status
 
 Accepted (proposed 2026-06-23; becomes Implemented after the swap-test job turns green).

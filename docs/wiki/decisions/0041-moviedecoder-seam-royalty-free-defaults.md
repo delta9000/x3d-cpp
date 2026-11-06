@@ -14,6 +14,8 @@ related:
 
 # ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship, Encumbered Codecs Plug In
 
+Status: superseded by ADR-0041 amendment
+
 ## Status
 
 Accepted (2026-06-27). The seam is PROVEN GENERIC — two independent backends

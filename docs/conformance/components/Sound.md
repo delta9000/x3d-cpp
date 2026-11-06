@@ -57,7 +57,7 @@ _Generated. Levels 1,2 · 21 nodes · profiles: Immersive, Full._
 - **SND-7** [minor/CLOSED] — §16.4.3, 16.4.19: AudioDestination.gain applied; maxChannelCount remains read but unused (mono); StreamAudioDestination not built.
   - SoundSystem pushes AudioDestination.gain to the backend destination. sound_system_test verifies output scaling. maxChannelCount remains read but unused by mono render, and StreamAudioDestination remains unbuilt.
 - **MULTI-INHERIT** [minor/CLOSED] — §16.4.2, 18.4.2: MovieTexture declared under two abstract node types; engine handles it via ADR-0004 virtual mixins. AudioClip is the clean single-node pattern (named by association).
-  - UOM nominates one primary Inheritance + AdditionalInheritance; bindings emit every base public virtual (MovieTexture.hpp:40-42), the shared X3DNode collapses, and reflection accessors are qualified by declaring ancestor (MovieTexture.cpp:19,89,106). containerField defaults deterministic - MovieTexture=texture, AudioClip=source. No engine impact (see ADR-0004). 4.1 - confirmed; 4.1 did NOT do the X3DSoundSourceObject interface recast (still multiple inheritance), so the virtual-mixin approach remains the durable answer.
+  - test_emission.py: Virtual inheritance shares the node base and qualified field accessors resolve declaring ancestors.
 - **SND-GAIN-TYPE** [low/CLOSED] — §16.4.13: gain typed SFInt32 in ISO prose vs SFFloat in X3DUOM; engine correct-by-UOM.
   - Upstream prose erratum, not an engine gap. The X3DUOM inherits SFFloat from X3DSoundSourceNode; x3d-cpp is correct (ListenerPointSource.cpp:84-95). Add a regression assert gain.type == SFFloat to pin against codegen drift. 4.1 - confirmed; 4.1 UOM still SFFloat.
 

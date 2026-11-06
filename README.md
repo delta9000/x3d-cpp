@@ -1,487 +1,179 @@
 # x3d-cpp
 
-[![CI](https://github.com/delta9000/x3d-cpp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/delta9000/x3d-cpp/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+A C++20 headless X3D runtime SDK. Parse XML, ClassicVRML, VRML97, or JSON,
+advance scene behavior, and extract meshes, materials, lights, and cameras for
+an application renderer. The node bindings are generated from the X3D 4.0
+Unified Object Model. Behavioral conformance is tracked in the
+[findings register](docs/conformance/findings.yaml).
 
-A headless, renderer-agnostic **X3D domain-runtime SDK** in C++. Load an X3D
-scene (XML, ClassicVRML, VRML97, or JSON), run its event / behavior model
-tick-by-tick, and pull out renderer-ready geometry — meshes, materials, lights,
-camera, background — for *your* backend. **No GPU, no windowing, no rendering
-opinion**: the runtime stays spec-correct and backend-free, and you bring (or
-borrow) the renderer.
-
-**Versions:** parses X3D **3.0–4.1** documents; the generated node model targets
-X3D **4.0**, so the six 4.1-only node types are not yet available (see
-[Supported platforms & versions](#supported-platforms--versions)).
-
-The C++ node layer is **generated from the official X3D Unified Object Model
-(UOM)**: node and field declarations, types and defaults come from the UOM, and
-behavioral conformance is tested separately. Generation substantially reduces
-structural drift — it does not prove runtime semantics or eliminate UOM errata.
-
-The experimental portable SAI proposal lives independently in
-[x3d-sai](https://github.com/delta9000/x3d-sai). Neither project depends on the
-other. This SDK's `runtime/script/SaiContext.hpp` is its legacy Script-backend
-API, not an adapter to the proposal. An opt-in
-[combined consumer check](tests/cmake/sai_coexistence/README.md) verifies that
-the packages can coexist in source and relocated installed builds. The separate
-[optional native provider](adapters/sai_provider/README.md) implements the same
-portable service as SAI's reference backend. It owns native scene state through
-setup and live host-driven execution; handles do not change at activation.
-The [provider guide](docs/wiki/subsystems/sai-provider.md) explains ownership,
-package selection, the runnable host and the supported four-node subset.
-This remains an experimental source contract, not full SAI conformance or a
-stable binary ABI. Normal SDK builds do not acquire an SAI dependency.
+The [SDK reference](docs/sdk/) describes the public surface. Start with the
+[native host contract](docs/wiki/guides/native-host.md) when integrating a
+renderer or an application event loop.
 
 ## Gallery — real X3D, rendered headless
 
-Every image below is **real X3D**, parsed by the SDK and drawn by the
-[headless CPU rasterizer example](examples/cpu_raster/) — **no GPU, no display,
-no system dependencies** (image I/O is a vendored single-header stb, compiled
-in). It consumes the same renderer-agnostic extraction seam any GL/Vulkan/CAVE
-consumer would, which is the whole point: the runtime stays spec-correct and
-backend-free.
+The [CPU rasterizer example](examples/cpu_raster/) produces these images.
 
 | | |
 |---|---|
-| ![Textured PBR lion bust](docs/images/gallery/lion-head.png) | ![PhysicalMaterial spheres in a skybox](docs/images/gallery/skybox-pbr.png) |
-| A ~47k-triangle CC0 lion bust ([Poly Haven](https://polyhaven.com/a/lion_head)), textured PBR (base + ORM + normal map) under a three-point rig. | Glossy `PhysicalMaterial` spheres inside a `Background` panorama skybox. |
+| ![Textured lion bust](docs/images/gallery/lion-head.png) | ![PhysicalMaterial spheres in a skybox](docs/images/gallery/skybox-pbr.png) |
+| [CC0 lion model](https://polyhaven.com/a/lion_head) | PhysicalMaterial and Background |
 | ![Metallic-roughness grid](docs/images/gallery/pbr-grid.png) | ![RGB three-point lighting](docs/images/gallery/rgb-lighting.png) |
-| Metallic × roughness sweep — the analytic Cook-Torrance/GGX BRDF. | RGB three-point directional lighting accumulating on a sphere. |
-
-![Primitive texcoords](docs/images/gallery/primitives.png)
-
-The analytic primitives (`Box`, `Sphere`, `Cone`, `Cylinder`), each wearing a
-different `proc:` texture, so the per-primitive texture-coordinate generation
-reads off the surface — checker on the box faces, lat/long on the sphere, brick
-up the cone, rainbow bars around the cylinder.
-
-![Utah teapot — 32 NURBS patches](docs/images/gallery/teapot-nurbs.png)
-
-The **Utah teapot** (Martin Newell, 1975 — [public domain](http://www.holmes3d.net/graphics/teapot/)),
-its 32 bicubic Bézier patches expressed as order-4 `NurbsPatchSurface` nodes — a Bézier
-patch *is* a NURBS patch (clamped knots, unit weights). Tessellated with **analytic
-normals** (the cross product of the surface partial derivatives), so the ceramic shading
-runs smoothly across all 32 patch seams. Scene: `assets/gallery/hero_teapot_nurbs.x3d`.
-
-Reproduce them with `mise run cpuraster`, then render any scene under
-`examples/cpu_raster/assets/` (e.g. `… assets/models/lion_head/lion_head_lit.x3d -o lion.png`).
 
 ### Animated — interpolators over time
 
-Seamless loops the **headless** CPU rasterizer produced by stepping simulation
-time frame-by-frame (`--animate`) and muxing with ffmpeg — the same
-`TimeSensor → Interpolator → ROUTE` machinery a browser runs, with no GPU or
-display:
+The CPU example steps the scene clock with `--animate`; ffmpeg encodes the frames.
 
 ![Kelp Forest flythrough](docs/images/gallery/anim-kelp.gif)
 
-A guided-tour flythrough of a **real, 600+ item X3D world** — the NPS/MOVES
-*Kelp Forest Exhibit* (Inline composition, PROTO fish & kelp, `ElevationGrid`
-terrain, swimming/swaying/pumping animation) — rendered entirely headless.
-Exhibit © NPS MOVES Institute (free use with credit); fetched, not bundled.
-[Full-quality WebM](docs/videos/demos/kelp_flythrough.webm) ·
-[how it's built](examples/cpu_raster/assets/kelp_flythrough/). And the synthetic
-interpolator demos:
-
-| | |
-|---|---|
-| ![X3D logo bounce grazing the corner](docs/images/gallery/anim-dvd.gif) | ![uvgrid sphere orbiting a path](docs/images/gallery/anim-position.gif) |
-| The X3D "DVD logo": a `PositionInterpolator` with true edge reflections that grazes the corner without hitting it. | A textured sphere orbiting a closed path (`PositionInterpolator → Transform.translation`). |
-| ![sphere cycling hue](docs/images/gallery/anim-color.gif) | ![sphere spinning via SLERP](docs/images/gallery/anim-orientation.gif) |
-| A `ColorInterpolator` cycling a material through the HSV hue arc. | An `OrientationInterpolator` spinning a sphere via quaternion SLERP. |
-
-Full-quality WebM:
-[dvd](docs/videos/demos/dvd.webm) ·
-[position](docs/videos/demos/position.webm) ·
-[orientation](docs/videos/demos/orientation.webm) ·
-[color](docs/videos/demos/color.webm) — regenerate everything with `mise run demos`; see
-[`examples/cpu_raster/`](examples/cpu_raster/README.md#animation-demos).
+The [Kelp Forest example](examples/cpu_raster/assets/kelp_flythrough/) uses the
+NPS/MOVES exhibit, fetched separately with attribution. See the
+[animation demos](examples/cpu_raster/README.md#animation-demos) for reproduction.
 
 ## Supported platforms & versions
 
-What is actually verified, as opposed to what might work. At 0.1 the honest
-answer is **Linux is the gated tier; macOS (Apple Clang) and Windows (real MSVC)
-are now compile- and test-verified for a core slice in CI, with the full behavior
-suite compiling under both locally — but neither is yet a blocking merge gate**.
+The [CI workflow](.github/workflows/ci.yml) defines compiler and platform checks.
+The CMake package requires C++20 and CMake 3.21 or later.
 
-| Platform | Status |
-|---|---|
-| Linux x86-64, GCC 11+ | **Supported (gated)** — every push builds + tests here, also under ASan/UBSan |
-| Linux x86-64, Clang 14+ | **Supported** — via the CI compiler matrix (run manually before releases, not per-push) plus the post-merge Clang libFuzzer gate (every push to `main`) |
-| macOS arm64, Apple Clang | **Compile + test verified (non-blocking).** The `cross-platform-smoke` CI job builds + `ctest`s the LoadSensor + FileResolver suites on `macos-latest`; the whole `x3d_behavior_tests` aggregate compiles locally. `continue-on-error`, so informational, not a gate. |
-| Windows x64, MSVC | **Compile + test verified (non-blocking).** The same smoke job builds + `ctest`s those suites with **real MSVC** on `windows-latest`; the whole `x3d_behavior_tests` aggregate compiles + runs under real `cl.exe` locally via `mise run build-msvc-real` (msvc-wine) and the faster `mise run build-msvc` (clang-cl + xwin). `continue-on-error`. |
-
-The `cross-platform-smoke` job (macOS + Windows) runs on every push to `main`
-(and on manual dispatch), not per PR, and is non-blocking; the
-heavier compiler matrix still varies the **compiler on Linux**, not the OS.
-Promoting the smoke to a required gate over the full suite is the next step.
-Local MSVC / Apple-Clang pre-flight — the fast way to catch portability drift
-before pushing — is `mise run build-msvc` (clang-cl) and `mise run build-msvc-real`
-(authoritative real cl.exe); see `cmake/toolchains/`.
-
-**X3D versions.** Two axes, which are easy to conflate:
-
-| Axis | Coverage |
-|---|---|
-| Parser (what loads) | X3D **3.0–4.1**, in all four encodings. Sub-3.0 VRML97/ClassicVRML is floored to 3.0; there is no upper gate, so a 4.2 document parses too. |
-| Generated node model (what you get objects for) | X3D **4.0** — the UOM the bindings are generated from. |
-
-So a 4.1 document parses and runs; the **six** node types 4.1 adds over 4.0 are
-simply absent from the node layer: `EnvironmentLight`, `FontLibrary`,
-`HAnimPose`, `InlineGeometry`, `RenderedTexture`, `Tangent`. See
-[v1 capabilities](docs/sdk/v1-capabilities.md) for why (the generated tree is
-under a byte-identical golden invariant, so a hand-authored 4.1 binding would
-conflict with the gate) and [CONTRIBUTING](CONTRIBUTING.md) for the two-axis rule.
+Readers accept X3D 3.0–4.1 version declarations; the generated node model is 4.0.
+Loading a newer version declaration does not add its node types. See the
+[parse readers](docs/wiki/subsystems/parse-readers.md) for version handling.
 
 ## Build and install
 
-x3d-cpp is a normal CMake package. Nothing project-specific is needed to build,
-install, or consume it:
+Build from the checkout with CMake:
 
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DX3D_CPP_BUILD_TESTS=OFF
-cmake --build build
+cmake --build build --parallel 2
 cmake --install build --prefix "$PWD/install"
 ```
 
-Without `-DCMAKE_BUILD_TYPE=Release`, single-config generators build with no
-optimization and the install prefix roughly triples (measured 79 MB vs 27 MB).
-Use `RelWithDebInfo` if you want symbols.
+Use `RelWithDebInfo` instead of `Release` when you need debug information.
+The default package builds shared node and runtime libraries. Set
+`X3D_CPP_SHARED_NODES=OFF` for static libraries.
 
-Then consume it from a downstream project:
-
-```bash
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/install
-```
+Consume the installed package from a downstream CMake project:
 
 ```cmake
 find_package(x3d_cpp CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
 ```
 
-[`examples/embed_minimal/`](examples/embed_minimal/) is exactly this: a
-downstream-style project that does not depend on the source tree.
-`scripts/verify_install_embed.sh` builds it against a throwaway install prefix
-in CI (the ctest `x3d_install_embed_smoke`, run by every C++-touching PR and
-every push), so the sequence above is gate-enforced rather than aspirational.
+Configure that project with `-DCMAKE_PREFIX_PATH=/path/to/install`.
+The [minimal embedder](examples/embed_minimal/) is a runnable installed-package
+consumer.
 
-**Requires:** a C++20 compiler and CMake 3.21+. Contributors additionally use
-[mise](#dev-tasks-mise) as a task runner — see [Dev tasks](#dev-tasks-mise).
-
-**Network access:** the default build above (and the headless
-[`cpu_raster`](examples/cpu_raster/) example, whose image I/O is vendored stb)
-needs **no network** beyond the checkout — configure, build, and install are
-offline. Two things do download at **configure time**, both pinned and
-off-by-default: the OpenGL example (`examples/poc_renderer/`, `mise run poc`)
-FetchContent-pulls GLFW and Dear ImGui from GitHub, and the opt-in backends
-(`X3D_CPP_BUILD_PHYSICS` / `QUICKJS` / `MINIAUDIO` / `USD`) fetch their pinned
-third-party sources the same way.
+The default SDK build uses sources in the checkout. Optional backends and the
+OpenGL example can fetch dependencies during configuration; see
+[backend configuration](cmake/x3d/backends.cmake) and the
+[OpenGL build instructions](examples/poc_renderer/README.md#build).
 
 ## Quickstart — three ways in
 
 ### 1. The `x3d` CLI (no code)
 
-Build the CLI (`cmake --build build` → `build/x3d`, or `mise run build`), then
-drive scenes from the shell — convert between encodings, validate against the
-spec, headlessly simulate behavior, or export geometry:
+The top-level build produces `build/x3d`:
 
 ```bash
-x3d convert  scene.x3dv -o scene.x3d -f xml   # ClassicVRML → XML (or vrml|json)
-x3d validate scene.x3d  --json                # conformance + profile-fit diagnostics
-x3d sim      scene.x3d  --ticks 120           # run the event/behavior loop, trace field changes
-x3d extract  scene.x3d  -o scene.stl          # geometry → binary STL
-x3d canonicalize scene.x3d                     # X3D Canonical Form (X3DC14N)
+build/x3d convert scene.x3dv -o scene.x3d -f xml
+build/x3d validate scene.x3d --json
+build/x3d sim scene.x3d --ticks 120
+build/x3d extract scene.x3d -o scene.stl
+build/x3d canonicalize scene.x3d
 ```
+
+See the [CLI reference](docs/wiki/subsystems/cli-suite.md) for options and
+output contracts.
 
 ### 2. Embed the SDK (one header)
 
-For a host-owned Vulkan/direct-display loop, start with the
-[native host integration contract](docs/wiki/guides/native-host.md) and the
-renderer-free `examples/embed_minimal/native_host.cpp` executable.
-
-Link `x3d_cpp::sdk` and `#include "x3d/sdk.hpp"` — everything an embedder needs
-is in namespace `x3d::sdk`. Hello world: build a scene in C++ and write it to
-a file (a complete program — it compiles and runs as-is):
-
-```cpp
-#include "x3d/sdk.hpp"
-#include "x3d/nodes/Appearance.hpp"
-#include "x3d/nodes/Material.hpp"
-#include "x3d/nodes/Shape.hpp"
-#include "x3d/nodes/Sphere.hpp"
-
-#include <fstream>
-namespace sdk = x3d::sdk;
-
-int main() {
-  auto ball = std::make_shared<x3d::nodes::Shape>();
-  auto look = std::make_shared<x3d::nodes::Appearance>();
-  auto red  = std::make_shared<x3d::nodes::Material>();
-  red->setDiffuseColor({0.875f, 0.25f, 0.25f});
-  look->setMaterial(red);
-  ball->setAppearance(look);
-  ball->setGeometry(std::make_shared<x3d::nodes::Sphere>());
-
-  sdk::X3DDocument doc;            // authoring default: version 4.0, Interchange
-  doc.scene.rootNodes.push_back(ball);
-
-  std::ofstream("hello.x3d") << sdk::XmlWriter{}.writeDocument(doc);
-}
-```
-
-`hello.x3d` comes out as spec-conformant X3D (`x3d validate hello.x3d` → no
-diagnostics) and opens in any X3D browser:
-
-```xml
-<X3D profile="Interchange" version="4.0">
-  <Scene>
-    <Shape>
-      <Appearance containerField="appearance">
-        <Material diffuseColor="0.875 0.25 0.25" containerField="material"/>
-      </Appearance>
-      <Sphere containerField="geometry"/>
-    </Shape>
-  </Scene>
-</X3D>
-```
-
-The node classes are the generated UOM bindings — every node and field in the
-X3D 4.0 object model is available like this, typed setters range-check on
-write, and `JsonWriter` / `VrmlWriter` serialize the same document to the
-other encodings.
-
-**Then feed a renderer.** The other direction — and the reason the SDK exists —
-is consuming a scene as renderer-ready data. `RuntimeSession` is the
-recommended entry point: it owns the document, context, and extractor, and does
-the setup wiring you can silently forget (skip `attachStandardRuntime` on the
-manual path, for example, and ROUTEs resolve but nothing drives them — the
-scene renders one static frame forever). Parse once, upload the snapshot, then
-tick each frame and apply only what changed:
+Include `x3d/sdk.hpp` and link `x3d_cpp::sdk`. A `RuntimeSession` owns the
+document, execution context, and extractor:
 
 ```cpp
 #include "x3d/sdk.hpp"
 namespace sdk = x3d::sdk;
 
-auto session = sdk::RuntimeSession::create(sdk::parseFile("hello.x3d"));  // 4 encodings + gzip
-
-// Frame 0: everything, once.
-sdk::RenderDelta f0 = session->fullSnapshot();
-for (sdk::RenderItemId id : f0.added) {
-  const sdk::RenderItem &item = session->extractor().item(id);
-  const sdk::MeshData &mesh = *item.mesh;   // positions / normals / texcoords / indices
-  for (const auto &tex : item.material.textures) {
-    // tex.slot: BaseColor / Normal / MetallicRoughness / ...
-    // tex.url (resolve via your loader) or tex.inlinePixels (PixelTexture)
-  }
-  uploadMesh(mesh, item.worldTransform, item.material);  // your GPU upload
+auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3d"));
+auto initial = session->fullSnapshot();
+for (auto id : initial.added) {
+    const auto &item = session->extractor().item(id);
+    // Upload *item.mesh, item.worldTransform, and item.material to your renderer.
 }
 
-// Every frame after: only what changed.
-while (running()) {
-  session->tick(now());                     // seconds since start, monotonic
-  sdk::RenderDelta d = session->delta();
-  // d.added / d.removed        -> create / destroy GPU objects
-  // d.updatedTransform         -> re-upload the model matrix
-  // d.updatedGeometry          -> re-upload vertex data (morph/animation)
-  // d.updatedMaterial          -> update uniforms
-  // d.cameraChanged / d.lightsChanged / d.backgroundChanged
-}
+// In the application frame loop:
+session->tick(now); // monotonic seconds in the application's chosen time origin
+auto changes = session->delta();
+// Apply added/removed items and the advertised update channels.
 ```
 
-`MaterialDesc` tells you which of the three material models to shade
-(`Phong` / `Physical` / `Unlit`) with the corresponding parameters
-(metallic/roughness for PBR, diffuse/specular/shininess for Phong);
-`session->extractor()` also exposes the camera, world-resolved lights, and
-background.
+For complete programs, see [embed_minimal](examples/embed_minimal/).
+For authoring without simulation or extraction, use `x3d/authoring.hpp` and
+`x3d_cpp::authoring`.
 
-Both programs live in [`examples/embed_minimal/`](examples/embed_minimal/)
-(the hello world there uses the slimmer authoring-only header/target —
-`x3d/authoring.hpp` + `x3d_cpp::authoring` — same graph-building lines). CI
-builds them against a **real install prefix** and runs them **chained** —
-hello world writes `hello.x3d`, the consumer parses it back and must extract
-real mesh data — on every C++-touching PR (`scripts/verify_install_embed.sh`,
-the `x3d_install_embed_smoke` gate), so this section is gate-enforced rather
-than aspirational.
-
-This is a shorter path, not a walled garden: `session->context()` /
-`extractor()` / `scene()` hand back the underlying `X3DExecutionContext`,
-`SceneExtractor`, and scene, and the low-level surface stays public
-(`SessionOptions` names what `create` turns on).
-
-The simulation and extraction core performs no hidden resource, network, image,
-font, media or rendering I/O — those are embedder-supplied **seams**: *ports* in
-the ports-and-adapters sense, where the core owns the interface and you supply
-the backend (`AssetResolver`, `TextureResolver`, `FontMetrics`, `ScriptEngine`,
-…), each proven swappable by a second backend. `parseFile()` above is a
-synchronous local-file convenience API — the one deliberate exception. See
-[`docs/sdk/`](docs/sdk/).
-
-`examples/embed_minimal/` is also the downstream-style CMake reference — it
-does not depend on the source tree and uses only:
-
-```cmake
-find_package(x3d_cpp CONFIG REQUIRED)
-target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
-```
+Simulation and extraction use host-supplied resource callbacks. `parseFile`
+and the default Inline/EXTERNPROTO resolvers read local files; inject both
+parse resolvers when the host must control recursive loading. See
+[asset loading](docs/wiki/subsystems/parse-readers.md#recursive-asset-loader-policy).
 
 ### 3. Render it headless (the gallery above)
 
-The [`examples/cpu_raster/`](examples/cpu_raster/) reference consumer turns the
-extraction output into a PNG on the CPU — no GPU, no display — which is exactly
-how the gallery shots are made:
+Build the CPU example and render a scene:
 
 ```bash
-mise run cpuraster   # build + test the rasterizer (build-cpuraster/)
+mise run cpuraster
 build-cpuraster/examples/cpu_raster/x3d_cpu_raster scene.x3d -o scene.png
 ```
 
 ## Generating the C++ bindings
 
-The node layer is regenerated from the X3D UOM (build-time codegen, not needed
-to *use* the SDK):
+Bindings are committed; consumers do not need the generator. To regenerate:
 
 ```bash
-uv run x3d-cpp-gen --out ./generated_cpp_bindings
+uv run x3d-cpp-gen --out generated_cpp_bindings
 ```
 
-Runs from any working directory; the spec XML and Jinja templates ship with the
-package and are resolved relative to the install, not the CWD.
-
-### Options
-
-- `-s, --spec` — path to the X3D UOM XML (default: packaged 4.0 model)
-- `-o, --out` — output directory (default: `./generated_cpp_bindings`)
-- `--templates` — Jinja templates directory (default: packaged)
-- `--clang-format` — formatter executable (env `CLANG_FORMAT`; empty to disable)
-- `--compiler` — C++ compiler for the smoke test (env `CXX`; an empty value is
-  an error, not a skip — use `--no-test` to skip deliberately)
-- `--no-test` — skip generating/compiling the smoke test
-- `--allow-unsupported-fields` — don't fail when the UOM contains a field type
-  the generator doesn't support (default: fail closed)
-
-The generated smoke test (`generated_cpp_bindings/test.cpp`) is value-asserting:
-for every concrete node it default-constructs an instance and asserts each
-readable field with a spec default returns exactly that default (comparing the
-field getter against the node's static `getDefault<Name>()`), plus explicit
-literal pins for a few well-known nodes (e.g. `Box` size=={2,2,2}, solid==true).
-`uv run x3d-cpp-gen` compiles and runs it.
+See the [generator reference](docs/wiki/subsystems/generator.md) for its API
+and `uv run x3d-cpp-gen --help` for command options.
 
 ## Dev tasks (mise)
 
-The repo ships a `mise.toml` task runner:
-
-```bash
-mise run gen           # regenerate the committed C++ bindings into generated_cpp_bindings/
-mise run test          # pytest (unit suite + full-tree golden-drift test)
-mise run golden        # golden-drift gate (regenerate to a temp dir, diff every *.hpp/*.cpp)
-mise run build         # cmake configure + build + ctest
-mise run corpus-fetch  # fetch the X3D test corpus the differential gates need (see "Test corpus")
-mise run ci            # full local pipeline: test + golden + conformance-gate + build +
-                       #   cli-gate-regression (the last needs a corpus — run corpus-fetch first)
-```
-
-(`scripts/check_golden.sh` is the same golden gate, runnable directly.)
+Run `mise tasks` for the task catalog maintained in [mise.toml](mise.toml).
 
 ## Golden-file policy
 
-`generated_cpp_bindings/` is **golden**: every generated `*.hpp` and `*.cpp` is
-committed and treated as the source of truth for codegen output. The only
-generation artifacts that are NOT golden are `test.cpp` / `test_exec` (gitignored).
-
-Codegen changes are therefore **intentional and explicit**:
-
-1. Change a template (`src/x3d_cpp_gen/templates/`) or emitter.
-2. Regenerate: `uv run x3d-cpp-gen --out generated_cpp_bindings` (or `mise run gen`).
-3. Review and **commit** the new generated sources.
-
-The golden-drift gate (`scripts/check_golden.sh`, `tests/test_golden_tree.py`,
-and the `golden` CI job) regenerates into a temp dir and fails on ANY difference
-in the generated `*.hpp`/`*.cpp` tree, so uncommitted codegen drift can never
-land silently.
+Generated node headers and definitions are committed. After an emitter or
+template change, regenerate and review the generated diff. The golden check
+compares regeneration with the committed tree; see
+[ADR-0005](docs/wiki/decisions/0005-golden-files-in-git.md).
 
 ## CI
 
-`.github/workflows/ci.yml` runs the fast, hermetic gates on every pull request,
-in as few jobs as possible. The heavy 4-compiler baseline matrix stays manual
-(`workflow_dispatch`). Forgejo Actions reads the same file if the repo is
-mirrored there:
-
-- **checks** — `uv run pytest` (unit suite + full-tree golden drift, incl.
-  `check_golden.sh`), the conformance-view drift check and the strict wiki build.
-- **cpp** — one GCC build tree: the behavior suite + `ctest`, the per-header
-  compile contracts, and the hermetic texture-decode and script-engine
-  swap-tests. **cpp-san** runs the behavior suite under ASan + UBSan.
-- Swap-tests that need a third-party SDK (asset resolver, audio, font metrics)
-  run only when their code changes; the libFuzzer smoke and the macOS/Windows
-  smoke run after merge (push to `main`). The manual **cpp-matrix** job pins
-  the **baseline GCC 11 / Clang 14** and runs the current distro compilers.
+The [workflow](.github/workflows/ci.yml) defines the checks and their triggers.
 
 ## Configuration (optional external resources)
 
-The SDK and its generator build and test with **no external data** — the
-generated bindings and the X3D Unified Object Model are bundled, so **nothing
-here is required to build, test, or use the SDK** (`mise run test` / `golden` /
-`build` need none of it). A few *optional* developer tools and conformance gates
-plug in via environment variables. The RAG and JDK seams skip cleanly when
-unset; the **corpus differential gates** instead *fail-closed* when asked to run
-without a corpus (a gate with no inputs must never green) — fetch one in seconds
-with `mise run corpus-fetch` (see [Test corpus](#test-corpus)):
-
-| Variable | Used by | What plugs in |
-|----------|---------|---------------|
-| `X3D_CORPUS_DIR` | corpus sweep, CLI/canon gates (`mise run corpus` / `cli-gate` / `canon-gate`) | Root of a local [X3D example archive](https://www.web3d.org/x3d/content/examples/) checkout. Defaults to `.x3d-corpus/` populated by `mise run corpus-fetch` — see [Test corpus](#test-corpus). |
-| `X3D_SPEC_PROSE_DIR` | `scripts/spec_rag.py` | Directory of X3D normative-prose markdown (one `*.md` per section, mirrored from web3d.org). |
-| `X3D_EMBED_URL` | `scripts/spec_rag.py`, `scripts/code_rag.py` | OpenAI-compatible embeddings endpoint (`POST {"model","input"}` → `{"data":[{"embedding":[…]}]}`). Default `http://localhost:8080/v1/embeddings`. |
-| `X3D_QDRANT_URL` | the RAG scripts | Base URL of a [Qdrant](https://qdrant.tech/) vector store. Default `http://localhost:6333`. |
-| `X3D_JDK_BIN` / `JAVA_HOME` | `tools/x3d-cli/gen_canon_goldens.sh` | A JDK ≥ 25 (X3DJSAIL `-canonical` needs it). Auto-discovered via `JAVA_HOME` / `mise` / `PATH` if unset. |
+The [developer guides](docs/wiki/guides/gate-system.md) describe external inputs
+used by validation tools. Resource callbacks used by applications are described
+in the [subsystem references](docs/wiki/subsystems/sdk-facade.md).
 
 ## Test corpus
 
-The differential gates (`mise run cli-gate` / `canon-gate` / `cli-gate-regression`)
-and the full sweep (`mise run corpus`) validate the SDK against the **Web3D X3D
-Example Archive**. None of this is needed to build, test, or use the SDK — only
-to run those gates.
-
-Get it with one command:
+Fetch the corpus before running corpus regression checks:
 
 ```bash
-mise run corpus-fetch          # ~9 MB, a few seconds
-mise run cli-gate-regression   # now PASS (was fail-closed with no corpus)
+mise run corpus-fetch
+mise run cli-gate-regression
 ```
 
-`corpus-fetch` (`scripts/fetch_corpus.sh`) downloads exactly what the gates need
-— the committed curated subset (`tools/x3d-cli/goldens/subset.txt`) **plus its
-transitive `Inline`/`EXTERNPROTO` scene dependencies** — into the layout the
-gates expect:
-
-```
-.x3d-corpus/x3d-code/www.web3d.org/x3d/content/examples/...
-```
-
-It lands in `.x3d-corpus/` (gitignored) by default, which the gate tasks pick up
-automatically; set `X3D_CORPUS_DIR` to use a different location (e.g. a full
-archive checkout). Notes:
-
-- **Subset vs. dependencies.** `subset.txt` lists the files to *test*; validating
-  them needs the scenes they pull in via `Inline`/`EXTERNPROTO`, so the fetcher
-  resolves that closure. A bare subset would produce false "regressions".
-- **A few subset entries may be unavailable** upstream (pruned since the subset
-  was committed); the gates tolerate this and the fetcher reports which.
-- **Authoritative source.** Master is the Web3D `x3d` SourceForge **SVN** repo
-  (`svn.code.sf.net/p/x3d/code`); `corpus-fetch` pulls the same files over HTTP
-  from `www.web3d.org`. For a full, version-pinned archive, `svn checkout` that
-  repo into `$X3D_CORPUS_DIR/x3d-code/`.
-- **License.** The example scenes are open-source under the BSD-style *Web3D
-  Consortium Open-Source License for Models and Software* (each carries
-  `<meta name='license' content='../license.html'/>`). The fetcher downloads
-  from the source and never redistributes them, so they are not bundled here.
+`X3D_CORPUS_DIR` selects another corpus root. The fetcher defaults to
+`.x3d-corpus/`, including the selected scenes' Inline/EXTERNPROTO dependencies.
+See [scripts/fetch_corpus.sh](scripts/fetch_corpus.sh) for the source and layout.
 
 ## License
 
-[MIT](LICENSE) © 2026 Ben Sandbrook. Bundled and optional third-party
-components (including the Web3D Consortium X3D Unified Object Model, under a
-BSD-style license) are credited in [NOTICE](NOTICE).
+[MIT](LICENSE) © 2026 Ben Sandbrook. Third-party components and model sources
+are credited in [NOTICE](NOTICE).

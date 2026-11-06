@@ -1,5 +1,5 @@
 site_name: x3d-cpp Knowledge Wiki
-site_description: Canonical knowledge home for the x3d-cpp X3D domain runtime SDK.
+site_description: Architecture and reference for the x3d-cpp runtime SDK.
 site_author: Ben Sandbrook
 repo_url: https://github.com/delta9000/x3d-cpp
 docs_dir: docs/wiki
@@ -40,10 +40,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - Native Host Integration: guides/native-host.md
-  - Knowledge Map: knowledge-map.md
+  - Native host integration: guides/native-host.md
+  - Knowledge map: knowledge-map.md
   - Subsystem source map: coverage.md
-  - Seam-Status Matrix: seam-status.md
+  - Seam matrix: seam-status.md
   - Subsystems:
       - Generator & Bindings:
           - Generator Pipeline: subsystems/generator.md
@@ -162,13 +162,13 @@ nav:
       - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
       - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
   - Guides:
-      - Gate System: guides/gate-system.md
+      - Gate system: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
-      - RAGs (Spec Prose Search): guides/rags.md
-      - Conformance Campaign: guides/conformance-campaign.md
-      - X3D 4.0 Requirements Audit: guides/x3d4-requirements-audit.md
-      - Add a CLI Command: guides/add-a-cli-command.md
-      - Golden Regeneration: guides/golden-regeneration.md
+      - RAG tools: guides/rags.md
+      - Conformance audits: guides/conformance-campaign.md
+      - X3D 4.0 requirements audit: guides/x3d4-requirements-audit.md
+      - Add a CLI command: guides/add-a-cli-command.md
+      - Golden regeneration: guides/golden-regeneration.md
   - Conventions:
       - Overview: _conventions/CONVENTIONS.md
       - ADR Template: _conventions/adr-template.md

@@ -16,9 +16,9 @@ _Generated. Levels 1,2 · 8 nodes · profiles: Immersive, Full._
 ## Findings
 
 - **G2D-1** [major/CLOSED] — §14.3: All 8 Geometry2D nodes absent from recognizedGeometryType() — extract silently drops them.
-  - Closed: all 8 names added to recognizedGeometryType() and tessellated by a new mesh_detail::buildGeometry2D (MeshBuilder.cpp), dispatched before the coord guard since they carry no `coord`. Arc2D/Circle2D/Polyline2D -> Lines, Polypoint2D -> Points, ArcClose2D (PIE/CHORD)/Disk2D/Rectangle2D/TriangleSet2D -> Triangles with +Z normals. Circular primitives use 64 chords/full circle (2π/64 rad per chord). Tested in mesh_builder_geom2d_test.cpp. (sweep 2026-06-25, closed 2D-geometry pass)
+  - mesh_builder_geom2d_test.cpp: All eight Geometry2D types emit triangle, line, or point meshes.
 - **SEAM-2D-NURBS** [major/CLOSED] — §14 (Geometry2D): The entire 2D-geometry component is unrecognized by the mesh builder and renders nothing — indistinguishable from a parser failure.
-  - Closed: recognizedGeometryType now lists all eight 2D primitives and buildGeometry2D tessellates them, so SceneExtractor no longer drops Disk2D/Arc2D/ArcClose2D/Circle2D/Rectangle2D/Polyline2D/Polypoint2D/TriangleSet2D (no more ++skippedGeometry_ for them). Tessellation is cheap trig fans/lines in the XY plane. Tested in mesh_builder_geom2d_test.cpp. NURBS was already split out of this finding (NRB-1 fixed; NRB-3 tracks the rest). (extraction-seam review; closed 2D-geometry pass.)
+  - mesh_builder_geom2d_test.cpp: The eight Geometry2D nodes are recognized before coordinate-based geometry dispatch.
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **G2D-2** [minor/CLOSED] — §14.3: Geometry2D nodes absent from localGeometryBounds() — bboxes always empty.

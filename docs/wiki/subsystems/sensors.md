@@ -1,7 +1,7 @@
 ---
 title: Sensor Layer Overview
-summary: Cross-cutting view of the sensor layer — time, pointing, key, and visibility/transform sensor wiring via the active-node model.
-tags: [subsystem, sensors, active-node, cross-cutting]
+summary: Cross-cutting view of the sensor layer — time, pointing, key, and visibility/transform sensor wiring via the System registry.
+tags: [subsystem, sensors, cross-cutting]
 updated: 2026-06-22
 related:
   - ../architecture.md
@@ -28,10 +28,10 @@ Every sensor family is implemented as a `System` (see
 with an `X3DExecutionContext` via `ctx.addSystem(sys)`. Each System has two
 responsibilities:
 
-- **`attach(node, ctx)`** — enroll one node. Time-driven systems stash the
+- `attach(node, ctx)` — enroll one node. Time-driven systems stash the
   node pointer for per-tick iteration; event-driven systems wire an `inputOnly`
   handler here instead.
-- **`update(now, ctx)`** — run per-tick work (only time-driven systems do real
+- `update(now, ctx)` — run per-tick work (only time-driven systems do real
   work here; event-driven systems leave this as the default no-op).
 
 ## Key files
@@ -96,89 +96,49 @@ go through the cascade seam.
 
 ### Seam points
 
-- **`X3DExecutionContext::addSystem` / `tick`** — the sole entry point. The
+- `X3DExecutionContext::addSystem` / `tick` — the sole entry point. The
   context calls `sys->update(now, ctx)` for every registered System before each
   cascade drain. See [Execution Context](../subsystems/execution-context.md).
 
-- **`ctx.postEvent`** — all sensor output events flow here. The cascade
+- `ctx.postEvent` — all sensor output events flow here. The cascade
   delivers them to ROUTE sinks in the same tick.
   See [Event Cascade](../subsystems/event-cascade.md).
 
-- **`ctx.pointerState()`** — `PointingSensorSystem` reads `PointerState`
+- `ctx.pointerState()` — `PointingSensorSystem` reads `PointerState`
   (`revision`, `ray`, `buttonDown`, `present`) that the browser writes between
   ticks via `ctx.setPointer*`. The `revision` counter lets the system skip ticks
   where the pointer state has not changed (§20.4.4).
 
-- **`ctx.keyState().events`** — `KeyDeviceSensorSystem` drains the discrete
+- `ctx.keyState().events` — `KeyDeviceSensorSystem` drains the discrete
   `KeyEvent` queue (filled via `ctx.pushKeyCharacter`, `ctx.pushActionKey`, etc.)
   and calls `ctx.clearKeyEvents()` after processing. `NavigationSystem` reads the
   separate `held` set from the same `KeyState`; the two consumers do not conflict.
 
-- **`ctx.cameraWorldPosition()` / `ctx.viewMatrix()`** — `ViewDependentSystem`
+- `ctx.cameraWorldPosition()` / `ctx.viewMatrix()` — `ViewDependentSystem`
   reads the camera pose here; the browser sets this by binding a `Viewpoint` (or
   by direct `viewMatrix` injection for head-tracked CAVE setups).
 
-- **Active path matrices** — `ViewDependentSystem` accumulates each active
+- Active path matrices — `ViewDependentSystem` accumulates each active
   transform path to a ProximitySensor or VisibilitySensor. DEF/USE instances
   contribute separate boxes to the union, including ancestor scale.
 
-- **`ctx.pick(ray)` / `ctx.worldOf(node)`** — `PointingSensorSystem` uses
+- `ctx.pick(ray)` / `ctx.worldOf(node)` — `PointingSensorSystem` uses
   `pick()` to resolve the pointing ray against the scene's `PickSystem` and
   `worldOf(sensor)` to compute the sensor's coordinate frame for drag sensors
   and for `hitPoint`/`hitNormal` transformation.
 
-- **`X3DTimeDependentSystem` extension seam** — `emitCycleOutputs(node, frac,
+- `X3DTimeDependentSystem` extension seam — `emitCycleOutputs(node, frac,
   now, elapsed, ctx)` and `emitCycleTime(node, cycleStart, ctx)` are overridable
   virtual methods. `TimeSensorSystem` overrides them to emit its continuous
   outputs. Future time-dependent nodes (`AudioClip`, `MovieTexture`) will supply
   their own subclass without touching the clock state machine.
 
-- **`X3DSceneBridge.hpp` attach helpers** — `attachViewDependent`, `attachInterpolators`,
+- `X3DSceneBridge.hpp` attach helpers — `attachViewDependent`, `attachInterpolators`,
   `attachEventUtilities`, and `attachKeyDeviceSensors` walk the scene once via
   `detail::forEachNode` and offer every node to each System's `attach`. Browsers
   call these after `buildFrom(scene)` to fully wire a loaded scene.
 
-## How it is tested
-
-The sensor families each have a dedicated test binary:
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_test`) — `runtime/events/tests/timesensor_test.cpp`.
-  Full `TimeSensor`/`X3DTimeDependentNode` lifecycle: `enabled=false`, start gating,
-  single-shot completion, looping wrap + `cycleTime` pulses, `stopTime` early
-  deactivation, pause/resume (elapsed-time excludes the paused span), and the
-  `cycleInterval <= 0` guard.
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `timesensor_rtc_test`) — `runtime/events/tests/timesensor_rtc_test.cpp`.
-  Four spec-conformance regressions:
-  - **RTC-1**: `cycleInterval <= 0` with `loop=TRUE` must not crash (divide-by-zero guard).
-  - **RTC-2**: looping sensor emits `fraction_changed == 1.0` at each exact cycle boundary.
-  - **RTC-3**: `cycleTime` == `startTime + cycleIndex * cycleInterval` (NOT the tick's `now`).
-  - **RTC-4**: `set_enabled FALSE` while active emits the final outputs BEFORE `isActive=FALSE`.
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `pointing_sensor_test`) — `runtime/events/tests/pointing_sensor_test.cpp`.
-  `PointingSensorSystem` over `TouchSensor` + `PlaneSensor`: `isOver` enter/leave,
-  resolution to the lowest sensor on the path, nearest-geometry selection, hit-point/
-  hit-normal in the sensor frame under a translated/rotated transform, `hitTexCoord`
-  (barycentric + primitive), `isActive` + `touchTime` click semantics, grab exclusivity,
-  and `enabled=FALSE` gate.
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `key_device_sensor_test`) — `runtime/events/tests/key_device_sensor_test.cpp`.
-  `KeyDeviceSensorSystem` over `KeySensor` and `StringSensor`:
-  `keyPress`/`keyRelease` (UTF-8 char), `actionKeyPress`/`actionKeyRelease` (Table 21.2),
-  `shiftKey`/`controlKey`/`altKey`, `isActive` lifecycle (§21.4.1); `enteredText`
-  accumulator, `finalText`+reset, `deletionAllowed` (§21.4.2); enabled gate.
-
-- `ctest --preset dev -R x3d_geometry_scene` (doctest case: `view_dependent_test`) — `runtime/scene/tests/view_dependent_test.cpp`.
-  `ViewDependentSystem` covering: LOD level selection (`lodSelectLevel` step function,
-  child-count clamping, `level_changed` event emission), `ProximitySensor` enter/exit +
-  `position_changed`/`orientation_changed` change-gating (ENV-04), `VisibilitySensor`
-  forward-cone frustum test, `TransformSensor` targetObject-AABB-in-sensor-box
-  enter/exit + position/orientation change-gating (resolves the target's world
-  frame via the new `TransformSystem::worldTransformAny` so the target reachable
-  through both `targetObject` and a Transform ancestor picks the Transform path),
-  and the `enabled=FALSE` disable-deactivates edge (ENV-07).
-
-## Related specs and ADRs
+## Related
 
 - [Architecture](../architecture.md)
 - [Execution Context](../subsystems/execution-context.md)
@@ -187,6 +147,7 @@ The sensor families each have a dedicated test binary:
 - [Pointing-Device Sensor System](../subsystems/system-pointing.md)
 - [Key-Device Sensor System](../subsystems/system-keydevice.md)
 - [View-Dependent System](../subsystems/system-viewdependent.md)
+
 - ISO/IEC 19775-1 §8.2.4 — `X3DTimeDependentNode` clock semantics (activation/deactivation gating, `set_startTime` ignored while active, pause/resume).
 - ISO/IEC 19775-1 §8.4.1 — `TimeSensor` field semantics (`fraction_changed` boundary rule, `cycleTime` definition).
 - ISO/IEC 19775-1 §20.2.1–§20.4.4 — pointing-device sensor model: nearest-geometry resolution, grab exclusivity, `TouchSensor` outputs, drag-sensor `autoOffset`.
@@ -194,4 +155,3 @@ The sensor families each have a dedicated test binary:
 - ISO/IEC 19775-1 §22.4.1 — `ProximitySensor` inside-box test and `position_changed`/`orientation_changed` semantics.
 - ISO/IEC 19775-1 §22.4.2 — `TransformSensor` targetObject-AABB-in-sensor-box test (sensor-local box; position/orientation emitted relative to `center`).
 - ISO/IEC 19775-1 §22.4.3 — `VisibilitySensor` visibility test.
-- `docs/superpowers/BACKLOG.md` (deprecated, historical) — M2.5 (input seam + TouchSensor), M2D (drag sensors + KeyState), M2e (view-dependent sensors + LOD); all closed.

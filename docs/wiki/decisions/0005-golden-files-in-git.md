@@ -11,6 +11,8 @@ related:
 
 # ADR-0005: Golden Files Committed to Git
 
+Status: superseded by ADR-0005 amendment
+
 ## Status
 
 Accepted — 2026-06-02 (binding decision); gate tooling landed throughout M1–M3.

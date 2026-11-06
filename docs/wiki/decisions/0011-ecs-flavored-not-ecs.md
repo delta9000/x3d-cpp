@@ -9,6 +9,8 @@ related:
 
 # ADR-0011: ECS-Flavored Architecture, Not Full ECS
 
+Status: superseded by ADR-0011 amendment
+
 ## Status
 
 Accepted — 2026-06-03 (original decision); reaffirmed 2026-06-07 by the architecture deep-research validation.

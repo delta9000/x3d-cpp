@@ -1,6 +1,6 @@
 ---
 title: "Shaders (selection, program descriptors + binding plan)"
-summary: "§31 shaders end to end: selectShader() picks each Appearance's first valid GLSL ComposedShader/ProgramShader and SceneExtractor puts it on RenderItem::shaderProgram; ShaderSystem emits isSelected/isValid and handles activate; ShaderUniformVocabulary + buildBindingPlan() classify uniforms; cpu_raster and the GL PoC run the program."
+summary: "§31 shaders end to end: selectShader picks each Appearance's first valid GLSL ComposedShader/ProgramShader and SceneExtractor puts it on RenderItem::shaderProgram; ShaderSystem emits isSelected/isValid and handles activate; ShaderUniformVocabulary + buildBindingPlan classify uniforms; cpu_raster and the GL PoC run the program."
 tags: [subsystem, shaders, extract, composedshader, vocab, binding-plan]
 updated: 2026-10-10
 related:
@@ -20,8 +20,8 @@ Appearance's program, `SceneExtractor` puts it on `RenderItem::shaderProgram`,
 and `ShaderSystem` (`runtime/events/ShaderSystem.hpp`) reports the choice to
 the scene as `isSelected`/`isValid` events. A consumer binds the program and
 calls `buildBindingPlan()` to classify each uniform name into three buckets:
-**vocab match** (a known semantic from the vocabulary header), **author field**
-(a `<field>` declared on the shader), or **unrecognized** (a diagnostic with a
+vocab match (a known semantic from the vocabulary header), author field
+(a `<field>` declared on the shader), or unrecognized (a diagnostic with a
 nearest-vocab suggestion).
 
 ## Selection and sources (§31.2.2.3, §31.2.4)
@@ -39,7 +39,7 @@ nearest-vocab suggestion).
    other urls go to `ShaderOptions::resolver` with `AssetKind::Shader`, and a
    Pending result marks the candidate `pending`. `load` FALSE skips the urls;
 4. valid according to `ShaderOptions::validator` — the host's compile check.
-   The default, `structuralShaderValidation`, wants one VERTEX and one FRAGMENT
+   The default, `structuralShaderValidation()`, wants one VERTEX and one FRAGMENT
    part. The SDK cannot compile GLSL, so a host that can should supply its own.
 
 The result lists the candidates it evaluated (with each host error) and, when
@@ -47,7 +47,7 @@ one wins, the assembled `ShaderProgramDesc`. With no winner the item keeps the
 fixed-function material path.
 
 `ShaderOptions` lives on `MeshBuildOptions::shaders`. `RuntimeSession` hands the
-same options to `attachStandardRuntime`, so the extractor and `ShaderSystem`
+same options to `attachStandardRuntime()`, so the extractor and `ShaderSystem`
 agree on the selection.
 
 ## Events and updates (§31.3.2)
@@ -108,7 +108,7 @@ struct ShaderFieldBinding {
   std::string name;        // uniform name matching the <field> name attribute
   X3DFieldType type;       // the declared X3D field type
   X3DFieldValue value;     // typed value from the DynamicFieldStore (SF fields)
-  AccessType access;       // inputOutput / initializeOnly / ...
+  AccessType access;       // inputOutput / initializeOnly /...
   std::vector<X3DFieldValue> elements; // MF fields: one SF value per array element
   std::vector<TextureRef> textures;    // SFNode/MFNode fields: the texture nodes, resolved
 };
@@ -135,10 +135,10 @@ their X3DTextureNodes (other nodes are skipped), resolved through the session
 `TextureResolver` like material textures, for a `sampler2D` or `sampler2D[]`
 uniform. Nodes held by author fields are part of the appearance's dependency
 index, so a write to the field or an edit inside its texture refreshes the
-program on the next delta. `buildBindingPlan` matches an array uniform reported
+program on the next delta. `buildBindingPlan()` matches an array uniform reported
 as `name[0]` to the field `name`. Both reference hosts bind all of these
-(REQ-SHADER-2). Cube and 3D sampler uniforms, geometry/tessellation stages and
-node-valued fields outside XML are open (REQ-SHADER-3).
+. Cube and 3D sampler uniforms, geometry/tessellation stages and
+node-valued fields outside XML are open.
 
 ## ShaderUniformVocabulary
 
@@ -153,7 +153,7 @@ node-valued fields outside XML are open (REQ-SHADER-3).
 | Material (shared) | `emissiveColor`, `occlusionStrength`, `normalScale`, `transparency`, `alphaMode`, `alphaCutoff` |
 | Texture samplers | `baseColorTex`, `diffuseTex`, `normalTex`, `emissiveTex`, `occlusionTex`, `metallicRoughnessTex`, `shininessTex`, `ambientTex` |
 | Texture presence flags | `hasBaseColorTex`, `hasDiffuseTex`, `hasNormalTex`, … |
-| Environment / IBL slots | `envDiffuse`, `envSpecular`, `envSH`, `brdfLUT`, `envIntensity`, `envRotation` (**reserved in the vocabulary; EnvironmentLight / IBL is deferred — see below**) |
+| Environment / IBL slots | `envDiffuse`, `envSpecular`, `envSH`, `brdfLUT`, `envIntensity`, `envRotation` (reserved in the vocabulary; EnvironmentLight / IBL is deferred — see below) |
 | Fog | `fogColor`, `fogType`, `fogVisibilityRange` |
 | Clip planes | `numClipPlanes`, `clipPlane[]` (eye space; bound by the PoC for author programs, which clip themselves) |
 | Per-frame | `time`, `viewportSize`, `nearFar` |
@@ -171,9 +171,9 @@ ShaderBindingPlan buildBindingPlan(
 
 `declaredUniforms` is the list of `{name, location}` pairs from driver introspection (e.g. `glGetActiveUniform`).  For each uniform:
 
-1. **Vocab match** — name found in `kVocabulary[]`; `BindingEntry::source` = the `UniformSource` enum value; consumer uses this to locate the SDK-managed datum.
-2. **Author field** — name found in `program.fields` (the `ShaderFieldBinding` list from the `DynamicFieldStore`); `isAuthorField = true`; consumer reads the `X3DFieldValue` directly.
-3. **Unrecognized** — neither; `unrecognized = true`; `nearestVocabMatch` is computed via Levenshtein edit-distance (threshold: `len/3 + 1`, catches typos and camelCase drift); a diagnostic string is appended to `ShaderBindingPlan::diagnostics`.
+1. Vocab match — name found in `kVocabulary[]`; `BindingEntry::source` = the `UniformSource` enum value; consumer uses this to locate the SDK-managed datum.
+2. Author field — name found in `program.fields` (the `ShaderFieldBinding` list from the `DynamicFieldStore`); `isAuthorField = true`; consumer reads the `X3DFieldValue` directly.
+3. Unrecognized — neither; `unrecognized = true`; `nearestVocabMatch` is computed via Levenshtein edit-distance (threshold: `len/3 + 1`, catches typos and camelCase drift); a diagnostic string is appended to `ShaderBindingPlan::diagnostics`.
 
 The result `ShaderBindingPlan::entries` is a classified, ordered list parallel to `declaredUniforms`.
 
@@ -188,15 +188,15 @@ The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-progr
 | `model == Physical` | PBR | `lit.vert` / `pbr.frag` |
 | `model == Phong` | Phong | `lit.vert` / `lit.frag` |
 
-`pbr.frag` implements a metallic-roughness **analytic BRDF** (Cook-Torrance NDF + Schlick Fresnel + Smith geometry, sRGB output).  **IBL (image-based lighting) is not implemented** — `EnvironmentLight` is an X3D 4.1 node and the generated binding layer is locked to X3D 4.0; IBL is deferred (see deferred note below).
+`pbr.frag` implements a metallic-roughness analytic BRDF (Cook-Torrance NDF + Schlick Fresnel + Smith geometry, sRGB output).  IBL (image-based lighting) is not implemented — `EnvironmentLight` is an X3D 4.1 node and the generated binding layer is locked to X3D 4.0; IBL is deferred (see deferred note below).
 
 ## Lighting model (reference evaluator)
 
 The Phong/PBR programs (GLSL and their cpu_raster CPU ports, `cpuraster/MaterialShader.hpp`) are the ADR-0027 reference evaluator. Two §17/§23 facts are wired there:
 
-- **Colour space (ADR-0027).** PhysicalMaterial (`pbr.frag`) uses a linear workflow: colour textures are sRGB-decoded, factors are linear, output is sRGB-encoded. Material (`lit.frag`) and UnlitMaterial stay in display space: no decode, no encode (`uGammaOutput = 0`), so the same authored colour renders alike through Phong and Unlit, and X3D 3.x content keeps its look. The spec says nothing about colour space; this mirrors common X3D browser practice for PBR vs classic materials.
-- **Per-light `ambientIntensity` (§17.2.2.4).** Each light contributes `ambientIntensity_i · diffuseColor · material.ambientIntensity` (PhysicalMaterial has no ambientIntensity, so the ambient surface is `diffColor`), gated by attenuation/spot like the light's other terms. `LightDesc.ambientIntensity` (extracted by `runtime/extract/LightSystem.hpp`) surfaces as `EyeLight::ambientIntensity`; the PoC uploads it as `uLightAmbient[]` (vocab `lightAmbientIntensity[]`). This keeps today's squared-diffuse ambient convention (an ADR-0027 open question, card RND-2) unchanged.
-- **`NavigationInfo.headlight` (§23.4.4).** headlight TRUE (default) turns the camera-space headlight ON regardless of the scene's own lights; FALSE turns it OFF. Both consumers' `buildEyeLights()` add it whenever the flag is on (reserving a `kMaxLights` slot so it is never dropped), not only as a no-lights fallback. §23.4.4 pins the headlight exactly: intensity 1, color (1 1 1), `ambientIntensity` 0.0, direction (0 0 −1).
+- Colour space (ADR-0027). PhysicalMaterial (`pbr.frag`) uses a linear workflow: colour textures are sRGB-decoded, factors are linear, output is sRGB-encoded. Material (`lit.frag`) and UnlitMaterial stay in display space: no decode, no encode (`uGammaOutput = 0`), so the same authored colour renders alike through Phong and Unlit, and X3D 3.x content keeps its look. The spec says nothing about colour space; this mirrors common X3D browser practice for PBR vs classic materials.
+- Per-light `ambientIntensity` (§17.2.2.4). Each light contributes `ambientIntensity_i · diffuseColor · material.ambientIntensity` (PhysicalMaterial has no ambientIntensity, so the ambient surface is `diffColor`), gated by attenuation/spot like the light's other terms. `LightDesc.ambientIntensity` (extracted by `runtime/extract/LightSystem.hpp`) surfaces as `EyeLight::ambientIntensity`; the PoC uploads it as `uLightAmbient[]` (vocab `lightAmbientIntensity[]`). This keeps today's squared-diffuse ambient convention (an ADR-0027 open question, card RND-2) unchanged.
+- `NavigationInfo.headlight` (§23.4.4). headlight TRUE (default) turns the camera-space headlight ON regardless of the scene's own lights; FALSE turns it OFF. Both consumers' `buildEyeLights()` add it whenever the flag is on (reserving a `kMaxLights` slot so it is never dropped), not only as a no-lights fallback. §23.4.4 pins the headlight exactly: intensity 1, color (1 1 1), `ambientIntensity` 0.0, direction (0 0 −1).
 
 ## IBL / EnvironmentLight — DEFERRED
 
@@ -206,17 +206,17 @@ The vocabulary reserves `EnvDiffuse`, `EnvSpecular`, `EnvSH`, `BrdfLUT`, `EnvInt
 
 The shader seam is intentionally split into two concerns:
 
-- **Vocabulary header** (`ShaderUniformVocabulary.hpp`) — standalone, no `RenderItem.hpp` include; pure constexpr data; include cost is zero.
-- **Binding plan** (`ShaderBindingPlan.hpp`) — includes `RenderItem.hpp` for `ShaderProgramDesc`/`ShaderFieldBinding`; computes the plan at consumer introspection time, not per-frame.
+- Vocabulary header (`ShaderUniformVocabulary.hpp`) — standalone, no `RenderItem.hpp` include; pure constexpr data; include cost is zero.
+- Binding plan (`ShaderBindingPlan.hpp`) — includes `RenderItem.hpp` for `ShaderProgramDesc`/`ShaderFieldBinding`; computes the plan at consumer introspection time, not per-frame.
 
 This keeps the vocabulary includable in any header without dragging in the full extraction contract.
 
 ## Headless CPU GLSL emulation (out-of-SDK)
 
 `examples/cpu_raster/` is a dependency-free CPU rasterizer that consumes this seam
-headlessly (no GPU/GLFW). It carries **CPU ports** of `lit.frag`/`pbr.frag`/
+headlessly (no GPU/GLFW). It carries CPU ports of `lit.frag`/`pbr.frag`/
 `unlit.frag` (all three material models) written against a small `glsl::` value
-layer, **and** a GLSL-subset **interpreter** (`cpuraster/GlslInterpreter.hpp`)
+layer, and a GLSL-subset interpreter (`cpuraster/GlslInterpreter.hpp`)
 that *executes* the FRAGMENT stage of each item's `RenderItem::shaderProgram`
 with its author fields as uniforms (`cpuraster/AuthorShader.hpp`). Its
 `interpreterShaderValidator()` makes "the fragment stage compiles in the
@@ -235,16 +235,13 @@ Its `cpuraster/Texture.hpp` sampler consumes the §18.4.9 state surfaced on
 `TextureRef::extSampler` (see [Texture extraction](extract-textures.md)):
 REPEAT, CLAMP, CLAMP_TO_EDGE, CLAMP_TO_BOUNDARY and MIRRORED_REPEAT wrap modes,
 plus magnification/minification filters, generated box-filter mip levels and
-footprint sampling with anisotropy up to 16 (TXF-4). Each texture stage and material
+footprint sampling with anisotropy up to 16 . Each texture stage and material
 slot uses its own mapped/generated/transformed coordinates. The CPU also applies
 per-light triangle shadow queries and keeps direct intensity separate from ambient
 emission; the OpenGL PoC retains the remaining limitations recorded in the ledger.
 
-## Related specs and ADRs
+## Related
 
-- [ADR-0021: Material + Shader Design](../decisions/0021-material-shader-design.md) — discriminated union + vocab + introspection binding decisions.
-- [Materials subsystem](materials.md) — `MaterialDesc` discriminated union this seam sits alongside.
-- [Texture, Material, and Light Extraction](extract-textures.md) — the broader extraction pipeline.
-- Design spec: `docs/superpowers/specs/2026-06-21-material-shader-design.md`
-- Source files: `runtime/extract/ShaderExtract.hpp`, `runtime/extract/ShaderOptions.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/ShaderUniformVocabulary.hpp`, `runtime/extract/ShaderBindingPlan.hpp`, `runtime/extract/RenderItem.hpp`, `runtime/extract/X3DFieldValue.hpp`
-- PoC consumer: `examples/poc_renderer/main.cpp`, `examples/poc_renderer/shaders/pbr.frag`
+- [ADR-0021: Material + Shader Design](../decisions/0021-material-shader-design.md)
+- [Materials subsystem](materials.md)
+- [Texture, Material, and Light Extraction](extract-textures.md)

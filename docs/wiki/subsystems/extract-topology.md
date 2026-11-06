@@ -60,9 +60,9 @@ Both fields default to `Triangles`, so code written before B4 is unaffected.
 
 ### Seam points
 
-- **MeshBuilder → MeshData** — `buildLocalMesh()` in `runtime/extract/MeshBuilder.hpp` is the only producer for the AoS path. It sets `mesh.topology = Topology::Lines` in the `IndexedLineSet` and `LineSet` branches, and `mesh.topology = Topology::Points` in the `PointSet` branch. All other branches (T1/T2 composed sets, T4 analytic primitives, Text glyph quads) leave the default `Triangles`.
-- **Embedder resolver → PackedMesh** — an embedder supplying binary geometry via the `externalGeometryResolver` seam fills `PackedMesh::topology` directly. The SDK does not inspect it; the consumer reads it at draw time.
-- **Consumer renderer** — the renderer reads `MeshData::topology` (or `PackedMesh::topology`) and selects `GL_TRIANGLES`, `GL_LINES`, or `GL_POINTS`. The `RenderItem.hpp` header documents the exact shading-path selector the consumer must honor:
+- MeshBuilder → MeshData — `buildLocalMesh()` in `runtime/extract/MeshBuilder.hpp` is the only producer for the AoS path. It sets `mesh.topology = Topology::Lines` in the `IndexedLineSet` and `LineSet` branches, and `mesh.topology = Topology::Points` in the `PointSet` branch. All other branches (T1/T2 composed sets, T4 analytic primitives, Text glyph quads) leave the default `Triangles`.
+- Embedder resolver → PackedMesh — an embedder supplying binary geometry via the `externalGeometryResolver` seam fills `PackedMesh::topology` directly. The SDK does not inspect it; the consumer reads it at draw time.
+- Consumer renderer — the renderer reads `MeshData::topology` (or `PackedMesh::topology`) and selects `GL_TRIANGLES`, `GL_LINES`, or `GL_POINTS`. The `RenderItem.hpp` header documents the exact shading-path selector the consumer must honor:
   ```
   topology != Triangles  OR  !hasNormals  =>  bind the UNLIT program,
                                                skip the normal-matrix and
@@ -71,21 +71,6 @@ Both fields default to `Triangles`, so code written before B4 is unaffected.
   ```
   Additionally, the producer sets `solid = false` on every line and point mesh, so a consumer's existing cull-disable path (solid=false ⇒ no `GL_CULL_FACE`) covers line/point meshes without an extra branch; the topology check is the belt-and-braces guard.
 
-## How it is tested
+## Related
 
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_b4_test`) — B4 acceptance suite (`runtime/extract/tests/mesh_builder_topology_test.cpp`). Covers:
-  - Default topology is `Triangles`; a triangle mesh is byte-identical to pre-B4 output.
-  - `IndexedLineSet`: each -1-delimited `coordIndex` run becomes consecutive vertex pairs; `topology=Lines`, `hasNormals=false`, `solid=false`.
-  - `IndexedLineSet` honors per-vertex `Color` and `ColorRGBA` (alpha preserved).
-  - `LineSet`: `vertexCount` partitions the implicit coord run into polylines.
-  - `PointSet`: whole point array becomes a 0..N-1 `GL_POINTS` run; `topology=Points`; `Color` honored.
-  - Degenerate guards: 1-vertex polyline, out-of-range indices, and empty `PointSet` all yield empty meshes with no out-of-bounds read, and the geometry type remains recognized.
-
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `mesh_builder_tc1_test`) — texcoord path (`runtime/extract/tests/mesh_builder_default_texcoords_test.cpp`). Asserts that `IndexedLineSet` and `PointSet` carry `topology=Lines`/`topology=Points` and that no implicit UVs are generated for non-triangle primitives.
-
-- `ctest --preset dev -R x3d_extract_tests` (doctest case: `text_extract_test`) — Text extraction (`runtime/extract/tests/text_extract_test.cpp`). Asserts `topology == Topology::Triangles` on glyph-quad output, confirming the explicit assignment in `TextExtract.hpp` is in force.
-
-## Related specs and ADRs
-
-- Spec: `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md` — the M2.5 extraction design that defines the `MeshData` + `RenderItem` contract; B4 (line/point topology) is described in the MeshBuilder scope section.
-- See [Extract subsystem](../subsystems/extract.md) for the full extraction pipeline (`SceneExtractor` → `MeshBuilder` → `PackedMesh` / `MeshData` → `RenderItem`) that this enum is part of.
+- [Extract subsystem](../subsystems/extract.md)

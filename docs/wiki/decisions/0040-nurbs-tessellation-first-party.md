@@ -12,6 +12,8 @@ related:
 
 # ADR-0040: NURBS Curve + Patch Tessellation is First-Party, Not a Seam
 
+Status: superseded by ADR-0040 amendment
+
 ## Status
 
 Accepted — 2026-06-27

@@ -10,6 +10,8 @@ related:
 
 # ADR-0042: Slim Authoring Target & Ingestion Pipeline
 
+Status: superseded by ADR-0042 amendment
+
 ## Status
 
 Accepted

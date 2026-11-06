@@ -15,21 +15,16 @@ related:
 The EventUtility System implements the ISO/IEC 19775-1 §30 Event Utilities
 component — a cluster of seven node types that wire boolean/integer logic and
 stepwise sequencing directly via ROUTEs, without requiring an ECMAScript
-`Script`. Before this system was introduced, every one of these nodes was
-behaviorally inert: their `inputOnly` handlers were the empty default, so any
-ROUTE into them was silently dropped. The system was introduced as part of the
-conformance campaign wave-3 fix cycle (commit `47c0714`), closing 16 findings
-(TRIG-1/2/3/5/6, SEQ-1..5/7/8, EUF-1/2/4/5).
+`Script`.
 
 ## Purpose
 
-The subsystem gives behavioral life to seven X3D node types that the generated
-bindings define but whose handlers were never wired to a `System`:
+The subsystem attaches handlers to these generated node types:
 
 | Node | Spec clause | Behavior |
 |---|---|---|
 | `BooleanTrigger` | §30.4.4 | Any `set_triggerTime` → emits `triggerTrue=TRUE` |
-| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored. Writing `integerKey` (even to the same value) also emits `triggerValue` with that value (TRIG-4), via a field-write listener |
+| `IntegerTrigger` | §30.4.6 | `set_boolean=TRUE` → emits `triggerValue=integerKey`; FALSE ignored. Writing `integerKey` (even to the same value) also emits `triggerValue` with that value, via a field-write listener |
 | `TimeTrigger` | §30.4.7 | Any `set_boolean` (value irrelevant) → emits `triggerTime=now` |
 | `BooleanFilter` | §30.4.1 | Routes `inputTrue`/`inputFalse` by value; always emits `inputNegate` |
 | `BooleanToggle` | §30.4.3 | Each `set_boolean=TRUE` flips `toggle`; FALSE is a no-op; one `toggle_changed` per cascade carries the final state |
@@ -43,11 +38,11 @@ ROUTEs. BooleanToggle's `toggle` is inputOutput, so it has its own contract:
 each TRUE flips the stored state immediately (a second TRUE in the same cascade
 flips the first one's result), and one re-read seed per cascade publishes the
 state as it stands when drained. Storage, observers and ROUTEs therefore agree
-on one `toggle_changed` with the final value (IACC-2). An explicit `set_toggle`
+on one `toggle_changed` with the final value. An explicit `set_toggle`
 is ordinary inputOutput delivery; when it and a later TRUE land in one cascade,
 the outgoing ROUTE keeps the per-timestamp cap every inputOutput field has.
 
-Sequencers send one `value_changed` per key interval (§30.2.4, IACC-3). The
+Sequencers send one `value_changed` per key interval (§30.2.4,). The
 system remembers the interval of the last fraction that emitted; a later
 fraction in the same interval is silent. `next`/`previous` and edits to `key` or
 `keyValue` forget that interval, so the next fraction emits even if it lands in
@@ -59,22 +54,22 @@ notation: it is the largest index `i` such that `key[i] <= t`, boundary-clamped
 at both ends. On duplicate key values, the lowest index wins (SEQ-7: "first
 definition wins") — implemented by walking back while `key[i] == t && key[i-1]
 == key[i]`. The final-key clamp also walks back over equal final keys for fractions
-at or beyond that key (AUD-SEQ-1). This is NOT linear interpolation.
+at or beyond that key. Selection is stepwise.
 
 ## Key files
 
 | File / directory | Role |
 |---|---|
 | `runtime/events/EventUtilitySystem.hpp` | All seven System classes + `sequencerStepIndex`; the entire subsystem is header-only |
-| `runtime/events/X3DSceneBridge.hpp` | `attachEventUtilities(scene, ctx)` — production wiring; iterates every node in the scene, calls `attach` on each system, then registers all seven with `ctx.addSystem` |
-| `runtime/events/X3DSystem.hpp` | `System` base class (`attach` / `update`) that all seven classes extend |
+| `runtime/events/X3DSceneBridge.hpp` | `attachEventUtilities(scene, ctx)` — production wiring; iterates every node in the scene, calls `attach()` on each system, then registers all seven with `ctx.addSystem` |
+| `runtime/events/X3DSystem.hpp` | `System` base class (`attach()` / `update()`) that all seven classes extend |
 | `runtime/events/X3DExecutionContext.hpp` | `postOutputEvent` / `postEvent` + `addSystem` + `tick` — the cascade/context seams the systems call |
 | `generated_cpp_bindings/x3d/nodes/BooleanFilter.hpp` | `setOnSet_booleanHandler` / `emitInput*` accessors |
 | `generated_cpp_bindings/x3d/nodes/BooleanToggle.hpp` | `setOnSet_booleanHandler` / `getToggle` |
 | `generated_cpp_bindings/x3d/nodes/BooleanTrigger.hpp` | `setOnSet_triggerTimeHandler` / `emitTriggerTrue` |
 | `generated_cpp_bindings/x3d/nodes/IntegerTrigger.hpp` | `setOnSet_booleanHandler` / `getIntegerKey` / `emitTriggerValue` |
 | `generated_cpp_bindings/x3d/nodes/TimeTrigger.hpp` | `setOnSet_booleanHandler` / `emitTriggerTime` |
-| `generated_cpp_bindings/x3d/nodes/BooleanSequencer.hpp` | `setOnSet_fractionHandler` / `setOnNextHandler` / `setOnPreviousHandler` / `getKey` / `getKeyValue` |
+| `generated_cpp_bindings/x3d/nodes/BooleanSequencer.hpp` | `setOnSet_fractionHandler` / `setOnNextHandler` / `setOnPreviousHandler` / `getKey` / `getKeyValue()` |
 | `generated_cpp_bindings/x3d/nodes/IntegerSequencer.hpp` | Same handler pattern; `getKeyValue()` returns `MFInt32` |
 | `runtime/events/tests/event_utility_test.cpp` | Behavioral conformance tests |
 
@@ -90,14 +85,14 @@ namespace x3d::runtime {
 
 // Individual systems — attach + register manually if fine-grained control
 // is needed:
-class BooleanTriggerSystem  : public System { ... };
-class IntegerTriggerSystem  : public System { ... };
-class TimeTriggerSystem     : public System { ... };
-class BooleanFilterSystem   : public System { ... };
-class BooleanToggleSystem   : public System { ... };
+class BooleanTriggerSystem  : public System {... };
+class IntegerTriggerSystem  : public System {... };
+class TimeTriggerSystem     : public System {... };
+class BooleanFilterSystem   : public System {... };
+class BooleanToggleSystem   : public System {... };
 
 template <typename NodeT, typename ValueT>
-class SequencerSystem       : public System { ... };
+class SequencerSystem       : public System {... };
 
 // Step-index helper (exposed inline; also used by the sequencer systems):
 std::size_t sequencerStepIndex(const MFFloat &key, float t);
@@ -115,119 +110,46 @@ in the scene calling `sys->attach(n, ctx)` (each system guards with a
 
 ### Seam points
 
-- **`System::attach(node, ctx)`** — the only entry point each system needs;
-  wires the node's `inputOnly` handler closure. No `update` override is needed
+- `System::attach(node, ctx)` — the only entry point each system needs;
+  wires the node's `inputOnly` handler closure. No `update()` override is needed
   (all seven nodes are event-driven). The `System` base is in
   `runtime/events/X3DSystem.hpp`.
 
-- **`ctx.postOutputEvent(node, field, value)`** — outputOnly producers queue a
+- `ctx.postOutputEvent(node, field, value)` — outputOnly producers queue a
   candidate without pre-writing its backing field. The first admitted output per
   field in a logical cascade reaches storage, observers and ROUTEs. All incoming
   inputOnly occurrences still run their handlers. This is the existing native
   selection policy, not a uniquely prescribed ordering for simultaneous events.
   `postEvent` remains external ingress and BooleanToggle's inputOutput path.
 
-- **`ctx.now()`** — `TimeTriggerSystem` reads this to stamp `triggerTime`. The
+- `ctx.now()` — `TimeTriggerSystem` reads this to stamp `triggerTime`. The
   clock is advanced by `ctx.tick(now)` before systems run, so `now()` is the
   current-tick timestamp.
 
-- **`setOnSet_<field>Handler(fn)`** — the generated binding API that the systems
-  call in `attach`. Each `inputOnly` field on the generated node class has a
+- `setOnSet_<field>Handler(fn)` — the generated binding API that the systems
+  call in `attach()`. Each `inputOnly` field on the generated node class has a
   corresponding `setOnXxxHandler` registration method; the cascade delivers into
   the corresponding `onXxx` dispatch method, which calls the stored functor.
 
-- **`SequencerSystem::index_`** — a per-system `unordered_map<X3DNode*, size_t>`
+- `SequencerSystem::index_` — a per-system `unordered_map<X3DNode*, size_t>`
   that tracks the current keyValue index for each enrolled sequencer node across
   ticks, so `next`/`previous` step from the last fraction-set position rather
   than resetting to zero each time. Every valid input still updates this private
   index even when its candidate output is later suppressed by admission.
 
-- **`attachEventUtilities` (in `X3DSceneBridge.hpp`)** — the production caller.
+- `attachEventUtilities` (in `X3DSceneBridge.hpp`) — the production caller.
   Must be called after `ctx.buildSceneGraph(scene)` and `ctx.buildFrom(scene)`
   so route resolution and the scene node index are in place before attachment.
   The `x3d sim` command wires it through
   `x3d::sim::attachFullRuntime(scene, ctx)` (`tools/x3d-cli/sim_runtime.hpp`).
 
-## How it is tested
+## Conformance
 
-- **`ctest --preset dev -R x3d_events_tests`** (doctest case: `event_utility_test`) — the primary behavioral
-  conformance test (`runtime/events/tests/event_utility_test.cpp`). Covers all
-  seven node types and 16 conformance IDs:
-  - TRIG-1/2: `BooleanTrigger` emits `triggerTrue=TRUE`; `IntegerTrigger`
-    emits `triggerValue=integerKey` on TRUE and ignores FALSE.
-  - TRIG-3/5: `TimeTrigger` fires on both TRUE and FALSE values of `set_boolean`.
-  - EUF-1/4: `BooleanFilter` emits exactly one of `inputTrue`/`inputFalse` (by
-    value) plus always `inputNegate`; the mutually-exclusive selection logic is
-    confirmed.
-  - EUF-2: `BooleanToggle` flips on TRUE and no-ops on FALSE.
-  - SEQ-1..5/8: `IntegerSequencer` and `BooleanSequencer` stepwise selection
-    across boundary and mid-range fractions; `next`/`previous` step with
-    wrap-around.
-  - SEQ-7: duplicate key values → lowest index wins (confirmed with a
-    four-key fixture).
-  - AUD-SEQ-1: repeated final keys select their first value at and beyond the
-    final fraction.
-  - Production wiring (`attachEventUtilities`) is smoke-tested end-to-end
-    via a `BooleanToggle` and `IntegerSequencer` exercised through the cascade.
+See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) for conformance status.
 
-- **`ctest --preset dev -R x3d_events_tests`** (doctest suite: `event utility output admission`)
-  — `runtime/events/tests/event_utility_output_admission_test.cpp` also covers
-  IACC-2 (repeated TRUE flips in one cascade, FALSE no-ops, explicit
-  `set_toggle`, routed fan-in) and IACC-3 (one `value_changed` per key interval
-  across timestamps, re-emission after `next` and after a `keyValue` edit).
+## Related
 
-- **`ctest --preset dev -R x3d_extract_tests`** (doctest suite: `Interactive profile acceptance`)
-  — XML scenes through `RuntimeSession`: a TouchSensor → BooleanFilter →
-  BooleanToggle → IntegerTrigger → Switch click state machine with
-  BooleanTrigger/TimeTrigger, and TimeSensor-driven sequencers counted per
-  interval.
-
-- **Golden regression** — the wave-3 fix was verified byte-identical against the
-  committed golden files; ctest advanced to 129/129 at ship. The golden gate
-  continues to guard against inadvertent output changes.
-
-- **`x3d sim` behavioral correctness tests** (`tools/x3d-cli/goldens/`) —
-  `attachFullRuntime` wires `attachEventUtilities`, so the CLI sim golden traces
-  implicitly exercise the event-utility systems on real corpus fixtures.
-
-- `event_utility_output_admission_test.cpp` uses production registration and
-  real aliased ROUTE sinks for all six scoped types and eight output fields.
-  It covers equal/distinct input occurrences,
-  independent BooleanFilter branch/negation admission, nested drains and loops,
-  both IntegerTrigger producer paths, valid sequencer transitions despite
-  suppressed output, FALSE no-ops where required, wraparound and same-cascade
-  repair. TimeTrigger still fires for FALSE. Equal numeric host-time behavior is
-  labeled current logical-tick compatibility, not ISO timestamp conformance.
-
-## Open findings
-
-This outputOnly migration does not complete the component:
-
-- IntegerTrigger's key-write listener is implemented and participates in checked
-  `triggerValue` admission. Its `integerKey` inputOutput writes/notifications
-  retain their existing behavior; this slice does not generalize inputOutput
-  output-side admission or routed fan-in.
-- Each outer tick/process still opens a new logical timestamp, even for equal
-  numeric host times. See [Event Cascade](event-cascade.md) for this limitation.
-- Followers and stateful time producers require their own storage/state review,
-  especially sites that mutate output storage before queueing. They are not
-  safely migrated by a mechanical queue-call replacement.
-
-The older wave-3 finding labels below are historical audit records. This focused
-proof raises no portable SAI capability, complete component/profile claim or
-service-register status.
-
-## Related specs and ADRs
-
-- [Architecture](../architecture.md) — the overall runtime layer map in which
-  this subsystem sits (behavior/event systems tier).
-- [Event Cascade](event-cascade.md) — the `X3DEventCascade` that `postEvent`
-  and `tick` drive; the Event Utility handlers post into it.
-- [Routes](routes.md) — the ROUTE graph that the cascade fans events along
-  after an Event Utility node emits.
-- [Execution Context](execution-context.md) — `X3DExecutionContext`: owns the
-  cascade, the `addSystem` registry, `postEvent`, and the `now()` clock.
-- Spec: `docs/superpowers/specs/2026-06-18-conformance-audit-workflow-design.md`
-  — the audit workflow that produced the wave-3 findings (TRIG-*/SEQ-*/EUF-*).
-- Conformance findings source of truth: `docs/conformance/findings.yaml`
-  (historical wave-3 block, IDs TRIG-1..6, SEQ-1..8, EUF-1/2/4/5).
+- [Architecture](../architecture.md)
+- [Event Cascade](event-cascade.md)
+- [Routes](routes.md)
+- [Execution Context](execution-context.md)

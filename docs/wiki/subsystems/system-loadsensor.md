@@ -16,17 +16,13 @@ related:
 
 The LoadSensor System implements ISO/IEC 19775-1 §9.4.3 `LoadSensor` — the
 Networking node that generates events as its watched `children` (any
-`X3DUrlObject`) load or fail to load. Before this system, `LoadSensor` was a
-generated data holder with no behavior: nothing observed child load state and
-none of `isActive` / `isLoaded` / `loadTime` / `progress` / `timeOut` existed.
-`LoadSensorSystem` closes findings **NSN-1..7 and NSN-9** (six critical) and is
-the first SDK-side caller of the [AssetResolver seam](system-asset-io.md)
-(ADR-0023). Design rationale is in
+`X3DUrlObject`) load or fail to load. It polls the [AssetResolver](system-asset-io.md) and publishes load-state edges.
+Design rationale is in
 [ADR-0046](../decisions/0046-loadsensor-assetresolver-oracle.md).
 
 ## Purpose
 
-`LoadSensorSystem` is a **time-driven** `System`: it does its work in
+`LoadSensorSystem` is a time-driven `System`: it does its work in
 `update(now, ctx)`, called every tick. Per-sensor state lives in a map owned by
 the system — never on the node, which stays pure data. Each tick, per enabled
 sensor, it refreshes the watch set from `children`, polls each still-loading
@@ -41,13 +37,13 @@ event edges.
 | Progress change while active | `progress=newValue` |
 | Terminal success (all watched children Ready) | `isLoaded=TRUE`, `loadTime=now`, `progress=1`, `isActive=FALSE` |
 | Terminal failure (any child Failed, or timeout) | `isLoaded=FALSE`, `isActive=FALSE` |
-| First-evaluation all-Ready (NSN-9 / pre-seed) | `isLoaded=TRUE`, `loadTime=now`, `progress=1` — no isActive pulse |
+| First-evaluation all-Ready  | `isLoaded=TRUE`, `loadTime=now`, `progress=1` — no isActive pulse |
 | `enabled` → FALSE while active | `isActive=FALSE` only; state resets, re-enable starts fresh |
 
 `progress` is `readyCount / watchedCount` over unique watched children, emitted
 when it changes while active, and 1.0 is guaranteed in the success burst. A sensor
 with one pre-seeded and one loading child activates at `progress=0.5`. `loadTime`
-is **never** sent on failure.
+is never sent on failure.
 
 ### Per-child state machine
 
@@ -56,24 +52,24 @@ Each watched, non-pre-seeded child runs
 
 - `load=FALSE` holds the child in `NotStarted`; if nothing is loading, the sensor
   never activates. A runtime `FALSE→TRUE` flip starts that child loading.
-- `Loading` polls the `url` MFString candidates in order, **≤1 resolver call per
-  child per tick**; the first `Ready` wins, all-`Failed` is terminal `Failed`.
+- `Loading` polls the `url` MFString candidates in order, ≤1 resolver call per
+  child per tick; the first `Ready` wins, all-`Failed` is terminal `Failed`.
   Embedded schemes (`ecmascript:` / `javascript:` / `data:`) and an intra-scene
   `#Name` fragment resolving to a `Viewpoint` DEF short-circuit to `Ready` with no
   resolver call.
-- **`Ready` is memoized system-wide per URL** (ADR-0045 precedent); `Failed`
+- `Ready` is memoized system-wide per URL (ADR-0045 precedent); `Failed`
   advances the candidate index; `Pending` is re-polled next tick.
 
 ### Rulings (spec-silent edges)
 
-- **R3** — empty `url` + `load=TRUE` → vacuous `Ready`.
-- **R4** — an NSN-7 reset never emits `isLoaded=FALSE` by itself.
-- **R5** — duplicate `USE` children dedupe by pointer; `progress` denominator
+- R3 — empty `url` + `load=TRUE` → vacuous `Ready`.
+- R4 — an  reset never emits `isLoaded=FALSE` by itself.
+- R5 — duplicate `USE` children dedupe by pointer; `progress` denominator
   counts unique children.
-- **R6** — empty watch set → vacuous first-evaluation success burst.
-- **R7** — first-evaluation-all-Ready emits the NSN-9 burst with **no** `isActive`
+- R6 — empty watch set → vacuous first-evaluation success burst.
+- R7 — first-evaluation-all-Ready emits the  burst with no `isActive`
   pulse.
-- **R8 (NSN-12)** — an Inline counts as loaded only when it and every nested
+- R8 — an Inline counts as loaded only when it and every nested
   sub-Inline it asks to load (`load` TRUE) have loaded. Parse-time expansion
   replaces each loaded Inline with a Group, so an `Inline` node still inside an
   expanded child's content is a sub-Inline that failed: the child is `Failed`.
@@ -81,7 +77,7 @@ Each watched, non-pre-seeded child runs
 For an Anchor with a same-scene `#Viewpoint` URL, readiness waits until that
 Viewpoint is bound (§9.4.3). Anchor's `load` field has no effect (§9.4.1).
 
-### NSN-7 resets
+### Watch-set resets
 
 Watched-child changes are detected by poll-and-diff (the codebase idiom for
 `inputOutput` fields): a per-child `{url, load}` snapshot. A `url` change resets
@@ -96,7 +92,7 @@ monitor indefinitely.
 |---|---|
 | `runtime/events/LoadSensorSystem.hpp` | The System: per-sensor state, the per-tick algorithm, `ChildLoadPolicy` hook, `setSensorHook`/`setChildStateHook` test seams; header-only |
 | `runtime/extract/AssetResolver.hpp` | The `(url, kind) → AssetResult` seam LoadSensor resolves through (ADR-0023); `makeNullAssetResolver()` is the IO-free default stub (Failed) |
-| `runtime/io/file/FileResolver.hpp` | `makeFileResolver(baseDir)` — the SEC-3-confined local-file backend (Ready/Failed, never Pending); a **concrete backend**, kept out of the public SDK and injected by the app layer |
+| `runtime/io/file/FileResolver.hpp` | `makeFileResolver(baseDir)` — the SEC-3-confined local-file backend (Ready/Failed, never Pending); a concrete backend, kept out of the public SDK and injected by the app layer |
 | `runtime/events/X3DSceneBridge.hpp` | `attachLoadSensors(scene, ctx, resolver)` production wiring; `attachStandardRuntime` gains the defaulted trailing `assetResolver` param |
 | `runtime/extract/RuntimeSession.hpp` | `SessionOptions.assetResolver` pass-through to `attachStandardRuntime` |
 | `tools/x3d-cli/sim_runtime.hpp` | `attachFullRuntime` injects `io::file::makeFileResolver()` — the app-layer backend that gives `x3d sim` confined local-file load state out of the box |
@@ -135,65 +131,33 @@ attachLoadSensors(Scene&, X3DExecutionContext&,
 
 ### Seam points
 
-- **`extract::AssetResolver`** — the byte oracle (`(url, kind) → Ready/Pending/
+- `extract::AssetResolver` — the byte oracle (`(url, kind) → Ready/Pending/
   Failed`). Injected by the app/embedder; the default is the IO-free
   `makeNullAssetResolver()` stub (Failed), since the SDK ships no concrete backend.
   LoadSensor is its first SDK-side caller; `Pending` is honored so a future
   async/HTTP backend drops in unchanged.
-- **`setChildLoadPolicy`** — headed embedders override per-child watch/vacuous/kind
+- `setChildLoadPolicy` — headed embedders override per-child watch/vacuous/kind
   rulings; combined with a `Pending`-returning resolver, this expresses
-  spec-literal Anchor cases (b)/(c) (the default deviation is recorded as `NSN-11`).
-- **`ctx.postEvent(node, field, value)`** — how the system emits. Post the base
+  spec-literal Anchor cases (b)/(c) (see the findings register for the default deviation).
+- `ctx.postEvent(node, field, value)` — how the system emits. Post the base
   x3dName (`"isActive"`, `"isLoaded"`, `"loadTime"`, `"progress"`); the cascade
-  applies the node's emit-thunk during `tick`, so getters reflect the value and
+  applies the node's emit-thunk during `tick()`, so getters reflect the value and
   ROUTEs fan out in the same tick.
-- **`ctx.tickGeneration()`** — the per-tick idempotency gate. `tick()` re-invokes
+- `ctx.tickGeneration()` — the per-tick idempotency gate. `tick()` re-invokes
   `update` in a settle loop until the cascade quiesces; the system does its
   side-effecting work (resolver polls, state transitions, bursts) once per
   generation and short-circuits later invocations in the same tick.
-- **`Scene::expandedInlines`** — the parse-time pre-seed source (see
+- `Scene::expandedInlines` — the parse-time pre-seed source (see
   [Inline Expand](inline-expand.md)). A children entry that is a key here is
   watched as terminal-`Ready`.
 
-## How it is tested
+## Conformance
 
-- **`ctest --preset dev -R x3d_events_tests`** (`runtime/events/tests/loadsensor_test.cpp`)
-  — the primary behavioral suite: every emission-table row, the MFString
-  fallback, all-candidates-failed, `timeOut` expiry vs. `timeOut=0`, the NSN-7
-  url/load/membership resets with timeout restart, USE dedup (R5), the R3/R6
-  vacuous cases, the embedded-scheme and Anchor `#Name` short-circuits, the
-  `setChildLoadPolicy` hook, and a ROUTE `loadTime` end-to-end through
-  `attachStandardRuntime`.
-- **`ctest --preset dev -R x3d_fileresolver_test`** (`runtime/io/tests/file_resolver_test.cpp`)
-  — the confined local-file backend (app-injected): an existing confined file is `Ready`; missing,
-  escaping (`../`), absolute, and scheme-bearing paths are `Failed`; fragments are
-  stripped; never `Pending`.
-- **`ctest --preset dev -R x3d_extract_tests`** (`runtime/extract/tests/runtime_session_test.cpp`)
-  — pins `SessionOptions.assetResolver` threading through to the LoadSensorSystem.
+See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) for conformance status.
 
-## Open findings
+## Related
 
-- **NSN-10** — DIS PDU nodes (`EspduTransform`/`ReceiverPdu`/`SignalPdu`/
-  `TransmitterPdu`) remain inert, blocked on a DIS/networking transport seam
-  (post-v1). Unrelated to LoadSensor beyond sharing the `X3DNetworkSensorNode`
-  base.
-- Anchor activation (§9.4.1) is handled by `AnchorSystem` (see
-  [Pointing](system-pointing.md)): a "#Name" url binds that viewpoint, and any
-  other url goes to the embedder's `AnchorHandler`, which implements cases (b)
-  replacement-world and (c) separate-window (NSN-11). For LoadSensor-watched
-  Anchors, headed embedders still express readiness via `setChildLoadPolicy`.
-
-## Related specs and ADRs
-
-- [ADR-0046](../decisions/0046-loadsensor-assetresolver-oracle.md) — the binding
-  decisions: first SDK-side AssetResolver caller, resolver + pre-seed oracle,
-  Ready-only memo, tick-generation idempotency, rulings R3–R7, Anchor policy hook.
-- [Asset Resolver / IO Seam](system-asset-io.md) — the `AssetResolver` seam
-  (ADR-0023) LoadSensor resolves through.
-- [Inline Expand](inline-expand.md) — parse-time `Scene::expandedInlines`, the
-  pre-seed source.
-- [Execution Context](execution-context.md) — `postEvent` / `addSystem` / `tick`
-  / `tickGeneration` seams.
-- Design spec: `docs/superpowers/specs/2026-07-17-loadsensor-design.md`.
-- Conformance source of truth: `docs/conformance/findings.yaml` (NSN-1..7, NSN-9
-  closed; NSN-10, NSN-11 deferred).
+- [ADR-0046](../decisions/0046-loadsensor-assetresolver-oracle.md)
+- [Asset Resolver / IO Seam](system-asset-io.md)
+- [Inline Expand](inline-expand.md)
+- [Execution Context](execution-context.md)

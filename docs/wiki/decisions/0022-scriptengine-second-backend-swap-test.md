@@ -13,6 +13,8 @@ related:
 
 # ADR-0022: Second ScriptEngine Backend (QuickJS) + Behavioral Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0022 amendment
+
 ## Status
 
 Accepted — implemented across the `feat/scriptengine-quickjs` branch (units U1–U4, 2026-06-22..23).

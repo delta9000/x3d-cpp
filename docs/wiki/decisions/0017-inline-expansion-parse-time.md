@@ -11,6 +11,8 @@ related:
 
 # ADR-0017: OBJ/glTF Ingestion via Parse-Time Inline Expansion
 
+Status: superseded by ADR-0051
+
 ## Status
 
 Accepted — 2026-06-19 (Spec 1 shipped as branch `inline-expansion` merged to `modernize-x3d-spec` @ `883e4c7`; Spec 2 OBJ converter not yet started)
