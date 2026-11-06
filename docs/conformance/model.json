@@ -2222,6 +2222,7 @@
         "INTERP-02",
         "NATIVE-AUTHOR-FIELD-OWNERSHIP",
         "NAV-FLY-ROLL",
+        "NAV-SMALL-ROTATION",
         "PIV-1",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
@@ -2527,7 +2528,7 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; ISO/IEC 19775-1 \u00a723.2.3; 25.3.11; 25.2.3; 25.2.3, 25.2.4; 23.4.4, 25.3.11; 22.4.1, 25.3.8; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2549,6 +2550,7 @@
             "GEOSYSTEM",
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "NAV-FLY-ROLL",
+            "NAV-SMALL-ROTATION",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS"
@@ -4147,6 +4149,7 @@
         "LOD-DELTA-1",
         "NAV-FLY-ROLL",
         "NAV-LOOKAT-SCALE",
+        "NAV-SMALL-ROTATION",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
         "SENSOR-SWITCH"
@@ -4285,7 +4288,7 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; ISO/IEC 19775-1 \u00a723.2.3; 23.4.5, 42.4.2; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -4301,6 +4304,7 @@
             "FOV-TYPE",
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "NAV-FLY-ROLL",
+            "NAV-SMALL-ROTATION",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS"
@@ -4321,7 +4325,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; 4.4.2.2, 4.4.8.2; 9.4.3; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "23.2.3; 23.3.1; 23.4.4; 7.2.2; ISO/IEC 19775-1 \u00a723.2.3; 4.4.2.2, 4.4.8.2; 9.4.3; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -4340,6 +4344,7 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "NAV-FLY-ROLL",
             "NAV-LOOKAT-SCALE",
+            "NAV-SMALL-ROTATION",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "REQ-UNIT",
@@ -9917,6 +9922,17 @@
       "summary": "LOOKAT framing distance mixes a world-space radius with a local-frame eye placement, so a non-uniformly-scaled ancestor Transform mis-sizes the framed object."
     },
     {
+      "clause": "ISO/IEC 19775-1 \u00a723.2.3",
+      "id": "NAV-SMALL-ROTATION",
+      "interfaces": [
+        "X3DViewpointNode"
+      ],
+      "note": "rotationFromMatrix normalizes the Shepperd quaternion; mat4_test.cpp checks transformed basis vectors within 1e-6 for signed small-angle sweeps and ordinary rotations.",
+      "severity": "minor",
+      "status": "fixed",
+      "summary": "Matrix-to-rotation conversion lost small camera rotations through an unnormalized quaternion."
+    },
+    {
       "clause": "23.4.4",
       "id": "NAV-FLY-ROLL",
       "interfaces": [
@@ -13072,10 +13088,10 @@
     ]
   },
   "summary": {
-    "closed_count": 313,
+    "closed_count": 314,
     "component_count": 36,
     "deferred_count": 21,
-    "finding_count": 344,
+    "finding_count": 345,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

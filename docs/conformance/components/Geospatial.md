@@ -14,7 +14,7 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
 | GeoProximitySensor | 2 | ✓ | — | ? | CONF-GEO, ENV-02, ENV-03, GEO-AUDIT-3, GEO-AUDIT-5, GEO-AUDIT-6, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | GeoTouchSensor | 1 | ✓ | — | ? | GEO-AUDIT-3, GEO-GEOID-DEFAULT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TSN-1, TSN-2 | X3DChildNode, X3DPointingDeviceSensorNode, X3DSensorNode, X3DTouchSensorNode |
 | GeoTransform | 2 | ✓ | — | — | DELTA-GEOORIGIN, GEO-AUDIT-3, GEO-GEOID-DEFAULT, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| GeoViewpoint | 1 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEO-AUDIT-3, GEO-AUDIT-4, GEO-AUDIT-5, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| GeoViewpoint | 1 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, GEO-1, GEO-3, GEO-AUDIT-3, GEO-AUDIT-4, GEO-AUDIT-5, GEO-GEOID-DEFAULT, GEOSYSTEM, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, NAV-SMALL-ROTATION, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
 
 ## Findings
 
@@ -67,6 +67,8 @@ _Generated. Levels 1,2 · 11 nodes · profiles: Full._
   - Fixed: GeoPositionInterpolator interpolates authored coordinates in geoSystem before toWorld, while GeoProximitySensor uses the tangent frame and fromWorld. GeoTouchSensor is tracked by TSN-1/2.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
+- **NAV-SMALL-ROTATION** [minor/FIXED] — §ISO/IEC 19775-1 §23.2.3: Matrix-to-rotation conversion lost small camera rotations through an unnormalized quaternion.
+  - rotationFromMatrix normalizes the Shepperd quaternion; mat4_test.cpp checks transformed basis vectors within 1e-6 for signed small-angle sweeps and ordinary rotations.
 - **GEO-3** [minor/CLOSED] — §25.3.11: GeoViewpoint scales navigation avatarSize and visibilityLimit with elevation.
   - Closed: NavigationSystem multiplies the bound NavigationInfo avatarSize, and a finite visibilityLimit, by max(1, elevation / 10) while a GeoViewpoint is bound (ADR-0054); an unlimited limit (0) stays unlimited and the authored values are restored when another viewpoint binds. Tests: GeoViewpoint scales avatar and visibility with elevation; GeoViewpoint keeps an unlimited visibilityLimit unlimited.
 - **GEO-2** [minor/CLOSED] — §25.3.1: Geo double-precision geometry reads dropped silently (MFVec3d/SFDouble/MFDouble as float).
