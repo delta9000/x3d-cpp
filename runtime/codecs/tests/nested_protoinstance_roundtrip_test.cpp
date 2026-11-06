@@ -1,47 +1,14 @@
-// nested_protoinstance_roundtrip_test.cpp
-// Regression for a scene-level nested ProtoInstance round-trip hole:
-// a ProtoInstance that sits INSIDE a non-root node's field slot (e.g. a
-// Shape's "geometry" containerField) and is NOT expanded (e.g. its
-// EXTERNPROTO url did not resolve) was silently DROPPED by all three writers.
-//
-// The pre-fix behaviour: writeSceneInto (XML), writeDocument (VRML), and
-// writeSceneChildren (JSON) re-emit un-expanded ProtoInstances only when
-// parent.expired() (scene-root). Instances whose parent is a live node
-// (nested) are not in the node graph (expansion failed) so they are
-// invisible to the node-walk, and the parent node (Shape) round-trips with
-// an empty geometry slot.
-//
-// The fix: when each writer visits a node N (writeNodeElement /
-// writeNode), also emit any scene.protoInstances entry I where
-// !I.expanded && I.parent.lock() == N, placing it in I.parentField.
-//
-// Oracle: parse -> write -> re-parse; the round-tripped scene must still
-// carry exactly one ProtoInstance and that instance must sit inside the
-// Shape node (confirmed by looking for "Widget" in the serialised text AND
-// by the re-parsed scene having a protoInstance with a live parent).
+// Unresolved nested ProtoInstances retain their parent and field slot after round-trip.
+
 #include "x3d/sdk.hpp"
 #include "X3DProto.hpp" // x3d::runtime::ProtoInstance
 
 #include "doctest/doctest.h"
-#include <iostream>
 #include <string>
 
 namespace sdk = x3d::sdk;
 
-static int failures = 0;
-static void check(bool c, const std::string &msg) {
-  if (!c) {
-    std::cerr << "FAIL: " << msg << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << msg << "\n";
-  }
-}
-
-// Inline X3D: an ExternProtoDeclare for "Widget" with a nonexistent URL
-// (headless resolver will not find it → expansion fails → un-expanded),
-// and a Shape that carries a ProtoInstance as its geometry child.
-// Before the fix the Shape round-trips as <Shape/> with no geometry.
+// An unresolved EXTERNPROTO instance occupies a Shape geometry slot.
 static const char *kScene = R"X3D(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
   <ExternProtoDeclare name="Widget" url='"nonexistent.x3d#Widget"'>
@@ -76,13 +43,13 @@ TEST_CASE("nested_protoinstance_roundtrip_test") {
 
   // Sanity: original parse must see 1 unexpanded Widget nested in Shape.
   const auto *w0 = findWidget(orig);
-  check(w0 != nullptr, "original: Widget protoInstance present");
+  CHECK_MESSAGE((w0 != nullptr), "original: Widget protoInstance present");
   if (w0) {
-    check(!w0->expanded, "original: Widget not expanded (extern unresolved)");
-    check(hasLiveParent(*w0), "original: Widget has a live parent (nested in Shape)");
+    CHECK_MESSAGE((!w0->expanded), "original: Widget not expanded (extern unresolved)");
+    CHECK_MESSAGE((hasLiveParent(*w0)), "original: Widget has a live parent (nested in Shape)");
     const bool inGeoSlot = (w0->parentField == "geometry") ||
                            (w0->containerField == "geometry");
-    check(inGeoSlot, "original: Widget sits in geometry slot");
+    CHECK_MESSAGE((inGeoSlot), "original: Widget sits in geometry slot");
   }
 
   struct W {
@@ -100,25 +67,24 @@ TEST_CASE("nested_protoinstance_roundtrip_test") {
     std::string label = std::string(w.name) + ": ";
 
     // The serialised text must contain "Widget" (the instance was not lost).
-    check(w.text.find("Widget") != std::string::npos,
-          label + "serialised output mentions Widget");
+    CHECK_MESSAGE((w.text.find("Widget") != std::string::npos),
+          (label + "serialised output mentions Widget"));
 
     // Re-parse and verify the ProtoInstance survived.
     sdk::X3DDocument rt = sdk::parseDocument(w.text, w.enc);
     const auto *wi = findWidget(rt);
-    check(wi != nullptr,
-          label + "round-trip preserves Widget protoInstance");
+    CHECK_MESSAGE((wi != nullptr),
+          (label + "round-trip preserves Widget protoInstance"));
     if (wi) {
-      check(!wi->expanded,
-            label + "round-trip Widget still not expanded");
-      // The key assertion: the nested Widget must NOT have been demoted to a
+      CHECK_MESSAGE((!wi->expanded),
+            (label + "round-trip Widget still not expanded"));
+      // The key assertion: the nested Widget must not have been demoted to a
       // scene-root (parent.expired()) — it must still carry a live parent so
       // it round-trips as nested-in-Shape, not as a loose scene-root instance.
-      check(hasLiveParent(*wi),
-            label + "round-trip Widget retains live parent (nested in Shape, not promoted to root)");
+      CHECK_MESSAGE((hasLiveParent(*wi)),
+            (label + "round-trip Widget retains live parent (nested in Shape, not promoted to root)"));
     }
   }
 
-  CHECK(failures == 0);
   return;
 }

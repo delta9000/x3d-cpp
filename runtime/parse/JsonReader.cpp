@@ -18,7 +18,7 @@ runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   readerWarnings_.clear();
   auto root = json::parse(text);
   runtime::X3DDocument doc;
-  // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
+  // An unversioned document reads as 3.0. Set here, not
   // via the X3DDocument member default (that is the 4.0 authoring default).
   doc.version = "3.0";
   if (!root || !root->isObject())
@@ -223,10 +223,7 @@ JsonReader::readNode(const json::Value &wrapper, runtime::Scene &scene,
   if (!def.empty())
     build::defineDef(scene, def, node);
 
-  // PRF-1/PRF-2: inside a ProtoBody, record any "IS":{"connect":[...]} block
-  // carried by THIS node wrapper (at any depth) as an IsConnection bound to
-  // the just-built node — mirrors XmlReader threading collection through
-  // readNode so a deeply nested body node's IS re-binds correctly.
+  // Collect IS connections at every body depth, bound to this node.
   if (currentProtoBody)
     collectJsonIsConnections(wrapper, node, *currentProtoBody);
 
@@ -430,7 +427,7 @@ JsonReader::readJsonExternProtoDeclare(const json::Value &obj,
   decl->name = strMember(obj, "@name");
   decl->appinfo = strMember(obj, "@appinfo");
   decl->documentation = strMember(obj, "@documentation");
-  // @url may be a lone JSON string OR (as the JsonWriter emits it) a JSON
+  // @url may be a lone JSON string or (as the JsonWriter emits it) a JSON
   // array of strings. Mirror readRoutesInto's array/single leniency: collect
   // the elements verbatim into the url list. The XML path stores the same
   // list via parseMFString of the quoted MFString attribute.
@@ -464,9 +461,6 @@ void JsonReader::readJsonProtoBody(const json::Value &obj,
         continue;
       out.nodes.push_back(node);
       out.recordNode(node);
-      // IS collection for this body node (and any nested body node) is handled
-      // inside readNode now (threaded via currentProtoBody), so deep IS blocks
-      // are captured too — no separate top-level scan needed here.
     }
   }
   readRoutesInto(obj.member("ROUTE"), out.routes);

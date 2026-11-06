@@ -1,12 +1,6 @@
 #include "doctest/doctest.h"
-// hanim_container_order_test.cpp
-// Regression: a node instanced (DEF/USE) across two container fields of one
-// parent must keep its AUTHORED DEF placement on round-trip, not fall back to
-// static field-declaration order. HAnimHumanoid declares `joints` before
-// `skeleton`, so the old writer expanded the DEF in `joints` and left a bare
-// USE in `skeleton` (graph-equivalent, but an infidelity that also broke the
-// HAnim convention that `skeleton` holds the hierarchy). The reader now records
-// authored child-field order in the Scene and the round-trip writers replay it.
+// Shared nodes retain authored DEF placement across container fields.
+// HAnim skeleton holds the hierarchy; joints holds the USE reference.
 
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"

@@ -1,5 +1,5 @@
 // proto_appinfo_json_roundtrip_test.cpp
-// PRF-4: @appinfo / @documentation on ProtoDeclare and ExternProtoDeclare must
+// @appinfo / @documentation on ProtoDeclare and ExternProtoDeclare must
 // survive a JSON read -> write -> re-read cycle. The XmlReader/XmlWriter pair is
 // the ground truth (XmlReader populates decl->appinfo/documentation from the
 // attributes; XmlWriter re-emits them). Previously the JSON reader dropped both
@@ -62,10 +62,8 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
          "dimensions"));
   CHECK((docX.scene.protoDeclarations.front()->interface.front().documentation ==
          "size docs"));
-
-  // ---- JSON round-trip ----
   std::string js = codec::JsonWriter().writeDocument(doc0);
-  // The metadata members must be emitted for BOTH declaration kinds.
+  // The metadata members must be emitted for both declaration kinds.
   CHECK((js.find("\"@appinfo\": \"a reusable widget\"") != std::string::npos));
   CHECK((js.find("\"@documentation\": \"http://example.com/widget\"") !=
          std::string::npos));

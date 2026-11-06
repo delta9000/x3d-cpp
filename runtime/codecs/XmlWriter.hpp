@@ -1,24 +1,6 @@
-// XmlWriter.hpp
-// Node-agnostic X3D-XML serializer: turns an x3d::runtime::X3DDocument (or a
-// single node / Scene) into the X3D-XML encoding.
-//
-// Strategy (all driven by reflection, no per-node code):
-//   * A node element is named by node->nodeTypeName().
-//   * Each reflected value field (SF*/MF* that is not a node) becomes an XML
-//     attribute, formatted via FieldValueIO. Enum fields use the FieldInfo
-//     string thunk. DEF/USE are emitted from the node's DEF/USE fields.
-//   * Fields equal to their type's default are omitted (clean output). The
-//     default is discovered by formatting the same field on a fresh factory
-//     instance of the node's type.
-//   * SFNode/MFNode fields become child elements, placed under the child's
-//     containerField (the field's own name unless the child overrides it).
-//   * DEF/USE: the first time a shared node (by identity) is written it gets a
-//     DEF; subsequent writes emit a <Type USE='...'/> reference instead.
-//   * The document wraps <X3D><head>...</head><Scene>...</Scene></X3D>; ROUTEs
-//     and IMPORT/EXPORT are emitted as Scene children.
-//
-// Public declaration, namespace x3d::codec. The implementation is compiled in
-// x3d_cpp_authoring_runtime.
+// X3D-XML writer. Fields equal to factory defaults are omitted.
+// Shared node identities emit DEF on first use and USE on subsequent visits.
+
 #ifndef X3D_XML_WRITER_HPP
 #define X3D_XML_WRITER_HPP
 
@@ -59,7 +41,6 @@ using namespace x3d::core;
 using x3d::nodes::Script;
 using x3d::nodes::X3DNode;
 
-/// Serializes the runtime document model to X3D-XML.
 class XmlWriter {
 public:
   /// Serialize a full document to an X3D-XML string (with <?xml?> prolog).
@@ -83,9 +64,7 @@ private:
   // off.
   const runtime::Scene *scene_ = nullptr;
   const runtime::DynamicFieldStore *authorFields_ = nullptr;
-  // PRF-2: while re-emitting a ProtoBody, the body's IsConnection list so that
-  // writeNodeElement can attach an <IS> block to EVERY emitted body node at any
-  // depth (not just the top body node). Null outside ProtoBody re-emit.
+  // Borrowed ProtoBody connections; null outside body serialization.
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
   const runtime::ProtoBody *bodyOrder_ = nullptr;
 
@@ -147,8 +126,6 @@ private:
   /// (extern)declaration, for the field's wire type. Null if not found.
   static const runtime::ProtoField *
   interfaceField(const runtime::ProtoInstance &src, const std::string &name);
-
-  // ---- rendering ----
   static void indent(std::ostringstream &os, int depth);
 
   void render(const xml::Element &el, std::ostringstream &os, int depth);

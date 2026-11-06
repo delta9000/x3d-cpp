@@ -5,7 +5,7 @@
 //
 // Uses the parseDocument front door: it sniffs "#VRML V2.0" -> Encoding::VRML97
 // -> Vrml97Reader -> expandScene, identical to the json_proto_test pattern.
-// This is unambiguous AND exercises the full sniff+dispatch path.
+// This is unambiguous and exercises the full sniff+dispatch path.
 #include "X3DParse.hpp"
 #include "x3d/core/X3DReflection.hpp"
 

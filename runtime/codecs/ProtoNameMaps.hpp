@@ -3,7 +3,7 @@
 // source of truth for field-type names; fieldTypeFromName() inverts it.
 //
 // Reused by the writers (XmlWriter, JsonWriter, VrmlWriter, CanonicalXmlWriter)
-// and the readers (XML, ClassicVRML, JSON). Do NOT depend on any reader/writer.
+// and the readers (XML, ClassicVRML, JSON). Do not depend on any reader/writer.
 // Header-only, namespace x3d::codec.
 #ifndef X3D_PROTO_NAME_MAPS_HPP
 #define X3D_PROTO_NAME_MAPS_HPP
@@ -81,7 +81,6 @@ inline X3DFieldType fieldTypeFromName(std::string_view name) {
   return X3DFieldType::SFString;
 }
 
-/// Returns the X3D accessType string for an AccessType enumerator.
 inline const char *accessTypeName(AccessType a) {
   switch (a) {
   case AccessType::InitializeOnly: return "initializeOnly";

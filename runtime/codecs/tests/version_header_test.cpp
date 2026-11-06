@@ -1,6 +1,6 @@
 #include "doctest/doctest.h"
 // version_header_test.cpp
-// VP2-L1: the header version floor applies to ALL three primary writers, not
+// the header version floor applies to all three primary writers, not
 // just VrmlWriter. A hand-built X3DDocument may carry a sub-3.0 (or empty)
 // version; the XML and JSON writers must floor it to "3.0" exactly as VRML
 // does, so no writer can emit an invalid X3D header. A normal >=3.0 document

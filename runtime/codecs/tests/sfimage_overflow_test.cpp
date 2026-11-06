@@ -1,15 +1,5 @@
-// sfimage_overflow_test.cpp
-// Regression for SEC-2 (#12): a hostile SFImage/PixelTexture token with an
-// out-of-range numComponents.
-//
-// X3D §5.3.6 caps numComponents at [0,4]. The byte-unpacking loop in
-// parseImageFrom() drove an inner `packed >> (8*b)` with attacker-controlled
-// `b` AND pushed numComponents bytes per pixel, so a value like 2_000_000_000
-// both overflowed the signed shift count (UBSan: `1999999999 * 8`) and tried to
-// push multiple GB from a single one-pixel token.
-//
-// Post-fix: numComponents is clamped to the spec range [0,4] before the loop,
-// so the emitted byte count is bounded no matter what the token claims.
+// SFImage component counts are clamped to [0,4] before pixel unpacking (§5.3.6).
+
 #include "FieldValueIO.hpp"
 
 #include "doctest/doctest.h"
@@ -17,8 +7,7 @@
 using x3d::codec::parseImage;
 
 TEST_CASE("sfimage_clamps_out_of_range_numComponents") {
-  // 1x1 image claiming 5 components/pixel (spec max is 4). Pre-fix the loop
-  // emitted 5 bytes; post-fix it is clamped to <= 4.
+  // The §5.3.6 limit of four components bounds a one-pixel image to four bytes.
   auto img = parseImage("1 1 5 0xFFFFFFFFFF");
   CHECK(img.data.size() <= 4);
 }

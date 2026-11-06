@@ -80,9 +80,7 @@ void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
     first = false;
   }
   if (!head.units.empty()) {
-    // ENC-JSON-UNIT: mirror the meta array — JsonReader already reads this
-    // shape back ("@category"/"@name"/"@conversionFactor"); without it every
-    // UNIT declaration silently vanished on the JSON hop.
+    // Preserve unit declarations using the JSON head unit-array shape.
     if (!first)
       os << ",";
     os << "\n";
@@ -397,7 +395,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
     os << "}";
   }
 
-  // ProtoBody — use a FRESH writer so body DEF/USE is isolated.
+  // ProtoBody — use a fresh writer so body DEF/USE is isolated.
   os << ",\n";
   pad(os, depth + 1);
   os << "\"ProtoBody\": {\n";
@@ -405,10 +403,10 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   os << "\"-children\": [\n";
 
   bool firstBody = true;
-  // PRF-1: hand the body's IS list to the body writer so writeNode attaches an
+  // hand the body's IS list to the body writer so writeNode attaches an
   // "IS" member at every depth during the recursive descent.
-  // PRF-3: thread the nested-instance list so writeNode injects each Case-A
-  // instance INSIDE its parent body node's child slot (not as a sibling).
+  // thread the nested-instance list so writeNode injects each Case-A
+  // instance inside its parent body node's child slot (not as a sibling).
   for (const auto &entry : d.body.orderedStatements()) {
     if (!firstBody)
       os << ",\n";
@@ -515,7 +513,7 @@ void JsonWriter::writeJsonExternProtoDeclare(
 void JsonWriter::writeNode(std::ostringstream &os,
                            const std::shared_ptr<X3DNode> &node, int depth) {
   // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original Inline node and do NOT descend into the
+  // <Inline>, re-emit the original Inline node and do not descend into the
   // Group's child content (which the reader will re-fetch on load).
   if (scene_) {
     auto il = scene_->expandedInlines.find(node.get());
@@ -563,7 +561,7 @@ void JsonWriter::writeNode(std::ostringstream &os,
       members.push_back(std::string("\"@DEF\": ") + jstr(def));
       seen_.insert(node.get());
     }
-    // SCR-SAI-DYN (S1): a Script re-emits its inline source as "#sourceText"
+    // a Script re-emits its inline source as "#sourceText"
     // (handled below), so suppress the plain "@sourceCode" value member to
     // avoid double-encoding the same body.
     const bool isScript = node->nodeTypeName() == "Script";
@@ -660,13 +658,13 @@ void JsonWriter::writeNode(std::ostringstream &os,
       if (!sourceMember.empty())
         members.push_back(std::move(sourceMember));
     }
-    // PRF-1: re-emit IS connections bound to THIS node (at any depth) as an
+    // re-emit IS connections bound to this node (at any depth) as an
     // "IS":{"connect":[{"@nodeField","@protoField"}]} member, matching the
     // shape JsonReader::collectJsonIsConnections parses.
     std::string is = jsonIsBlock(node);
     if (!is.empty())
       members.push_back(std::move(is));
-    // PRF-3: inject Case-A nested ProtoInstances whose parent is THIS node,
+    // inject Case-A nested ProtoInstances whose parent is this node,
     // grouped by parentField, as "-<slot>": [ <instance> ] members — mirroring
     // XmlWriter pushing them onto the parent element's children so the reader
     // recovers parent == this node (not Case B). depth+1 keeps the instance
@@ -676,8 +674,8 @@ void JsonWriter::writeNode(std::ostringstream &os,
         members.push_back(std::move(m));
 
     // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
-    // scene.protoInstances whose parent is THIS node. These are NOT in the
-    // node graph (expansion failed) and NOT scene-root (parent is live), so
+    // scene.protoInstances whose parent is this node. These are not in the
+    // node graph (expansion failed) and not scene-root (parent is live), so
     // without this injection they are lost. Emit grouped by parentField slot
     // (mirroring jsonNestedFor) so the reader recovers parent == this node.
     if (scene_) {

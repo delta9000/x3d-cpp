@@ -100,11 +100,8 @@ TEST_CASE("range_warnings_test") {
       "</Shape></Scene></X3D>";
   CHECK((x3d::codec::parseDocument(ok).rangeWarnings.empty()));
 
-  // (e2) float32 boundary faithfulness: a value authored at EXACTLY the spec
-  //      maximum (beamWidth 1.570796, the UOM's truncation of pi/2) must NOT
-  //      warn. Regression: the generated comparison used a double literal, so
-  //      the parsed float widened to 1.57079601... > 1.570796 and an in-range
-  //      corpus file (ConformanceNist test_intensitysim) was flagged.
+  // beamWidth 1.570796 is the UOM's truncated pi/2 maximum. Widening that
+  // float32 value to double gives 1.57079601...; compare using float32 bounds.
   const std::string boundary =
       "<X3D profile='Immersive' version='4.0'><Scene>"
       "<SpotLight beamWidth='1.570796'/>"

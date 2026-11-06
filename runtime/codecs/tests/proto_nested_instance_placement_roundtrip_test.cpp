@@ -1,16 +1,5 @@
-// proto_nested_instance_placement_roundtrip_test.cpp
-// PRF-3: a Case-A nested ProtoInstance — one nested UNDER a parent body node
-// (not a direct ProtoBody child) — must be re-emitted by the JSON and
-// ClassicVRML writers INSIDE that parent body node's child slot, mirroring the
-// XmlWriter (which pushes the instance onto the parent element's children).
-//
-// Previously both writers APPENDED the Case-A instance as a sibling of the body
-// node (a direct ProtoBody child), so on re-read it lost its parent linkage and
-// degraded to Case B (parent == null). The XmlReader/XmlWriter pair is the
-// ground truth; this test asserts the JSON and VRML codecs match it.
-//
-// Oracle: read -> write(JSON|VRML) -> re-read; the nested instance must survive
-// with parent == the body node (the Group) and the same parentField slot.
+// Nested ProtoInstances stay in their parent body node's field slot after round-trip.
+
 #include "JsonWriter.hpp"
 #include "VrmlWriter.hpp"
 #include "X3DParse.hpp"
@@ -34,7 +23,7 @@ static std::string checkCaseA(const runtime::Scene &scene,
   CHECK((decl && "declaration must round-trip"));
   const auto &body = decl->body;
   // The body must still have exactly one top-level node (the Group); the nested
-  // instance must NOT have leaked into body.nodes nor become a Case-B child.
+  // instance must not have leaked into body.nodes nor become a Case-B child.
   CHECK((body.nodes.size() == 1 && "Group body node must survive"));
   const auto &group = body.nodes.front();
   CHECK((group && "body node non-null"));
@@ -53,7 +42,7 @@ static std::string checkCaseA(const runtime::Scene &scene,
 
 TEST_CASE("proto_nested_instance_placement_roundtrip_test") {
   // Ground-truth source: PROTO "Outer" whose body is a single Group, and a
-  // ProtoInstance of "Inner" nested UNDER that Group (containerField=children).
+  // ProtoInstance of "Inner" nested under that Group (containerField=children).
   // "Inner" is declared first so the instance resolves its declaration.
   const char *xml =
       "<X3D version='4.0'><Scene>"
@@ -77,15 +66,11 @@ TEST_CASE("proto_nested_instance_placement_roundtrip_test") {
   auto doc0 = codec::parseDocument(xml);
   // Sanity: the XML path itself produces Case A.
   CHECK((checkCaseA(doc0.scene, "Outer", "Inner") == "children"));
-
-  // ---- JSON round-trip ----
   {
     std::string js = codec::JsonWriter().writeDocument(doc0);
     auto docJ = codec::parseDocument(js, codec::Encoding::JSON);
     CHECK((checkCaseA(docJ.scene, "Outer", "Inner") == "children"));
   }
-
-  // ---- ClassicVRML round-trip ----
   {
     std::string vr = codec::VrmlWriter().writeDocument(doc0);
     auto docV = codec::parseDocument(vr, codec::Encoding::ClassicVRML);

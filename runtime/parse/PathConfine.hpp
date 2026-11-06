@@ -1,27 +1,8 @@
-// PathConfine.hpp
-// SEC-3 / SEC-4: confine a file-like Inline/EXTERNPROTO url to the directory
-// subtree of the file currently being parsed, and canonicalize it.
-//
-// The default local resolvers (localFileProtoResolver / localFileInlineResolver
-// in X3DParse.hpp) used to build a path with `baseUrl + "/" + url` and read it
-// verbatim — so an absolute url (`/etc/passwd`) or a traversal (`../../etc/
-// passwd`) escaped the scene directory and read arbitrary files (SEC-3). They
-// also keyed their cycle guard on that raw string, so two spellings of one file
-// (`./a.x3d` vs `a.x3d`) aliased past the guard (SEC-4).
-//
-// confineLocalIncludePath() fixes both at the source: it resolves `url` against
-// `baseDir`, rejects absolute urls and any result that escapes `confineRoot`,
-// and returns the canonical path otherwise. The canonical form de-aliases
-// spellings, so it is also a stable cycle-guard key.
-//
-// The confinement root is configurable (ADR-0038): the default parse path roots
-// it at the top-level file's own directory (a tight, secure default — `../`
-// cross-directory refs are blocked), while a tool/embedder parsing a trusted
-// content tree passes a broader root so `../` refs that stay within the tree
-// resolve. Either way absolute urls and escapes above the root are rejected;
-// non-filesystem sources (network/VFS) are the resolver-seam's job.
-//
-// Header-only, namespace x3d::codec.
+// Canonicalize include paths before checking confinement and cycle identity.
+// Absolute URLs and paths outside the configured root are rejected. The default
+// root is the top-level file's directory; callers may select a wider trusted tree.
+// See docs/wiki/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
+
 #ifndef X3D_PATH_CONFINE_HPP
 #define X3D_PATH_CONFINE_HPP
 

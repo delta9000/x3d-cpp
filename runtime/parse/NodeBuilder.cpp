@@ -35,13 +35,13 @@ bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
   if (f->isEnum()) {
     if (!f->isWritable() || !f->setEnumString) return false;
     const std::string token = stripEnumQuotes(wire);
-    f->setEnumString(node, token); // AUD-D
+    f->setEnumString(node, token);
     // Generated enum setters silently reject unknown tokens. A read-back
     // checks that an equal-to-default authored token was actually accepted.
     return f->getEnumString && f->getEnumString(node) == token;
   }
   if (!f->isWritable())
-    return false; // outputOnly/inputOnly: skip (initializeOnly now writable)
+    return false; // Skip outputOnly/inputOnly; initializeOnly has a reflection setter.
   std::any v = parseValue(f->type, wire);
   if (!v.has_value()) return false;
   f->set(node, v);
@@ -220,14 +220,11 @@ std::string requote(const std::string &s) {
 }
 
 std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
-  // ----- SFString -----
   // parseValue(SFString) takes the raw (unquoted) string verbatim, so we hand
   // back the token's already-unescaped contents — no surrounding quotes. (Only
   // MFString needs per-element quotes preserved, handled below.)
   if (type == X3DFieldType::SFString)
     return tok.next().text;
-
-  // ----- MF (any) -----
   if (isMF(type)) {
     std::string out;
     bool stringMF = (type == X3DFieldType::MFString);
@@ -263,11 +260,7 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
       appendTok(tok.next());
     return out;
   }
-
-  // ----- SFImage -----
-  // Wire form: `width height numComponents` then width*height pixel words
-  // (ENC-VRML-SFIMAGE: a fixed component count of 1 consumed only `width`,
-  // destroying every inline PixelTexture on the ClassicVRML hop).
+  // SFImage has a width/height/component header followed by width*height pixel words.
   if (type == X3DFieldType::SFImage) {
     std::string out;
     long w = 0, h = 0;
@@ -297,8 +290,6 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
     }
     return out;
   }
-
-  // ----- SF scalar / struct -----
   std::string out;
   int n = sfComponentCount(type);
   for (int i = 0; i < n && !tok.atEnd() && !tok.peek().isPunct('}') &&

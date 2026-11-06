@@ -28,7 +28,6 @@ void writePrototypeMetadata(std::ostringstream &os, const std::string &appinfo,
      << ", " << json::quote(documentation) << "]\n";
 }
 
-
 std::string defaultVrmlValue(X3DFieldType type) {
   if (type == X3DFieldType::SFNode)
     return "NULL";
@@ -327,10 +326,10 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   os << "] {\n";
 
   // Body uses the interface's local scope; scene_=null prevents redirect.
-  // PRF-1: hand the body's IS list to the body writer so writeNode emits
+  // hand the body's IS list to the body writer so writeNode emits
   // `field IS protoField` lines inside the node braces at every depth.
-  // PRF-3: thread the nested-instance list so writeNode injects each Case-A
-  // instance INSIDE its parent body node's body (in its slot), not after it.
+  // thread the nested-instance list so writeNode injects each Case-A
+  // instance inside its parent body node's body (in its slot), not after it.
   for (const auto &entry : d.body.orderedStatements()) {
     switch (entry.kind) {
     case runtime::ProtoBodyStatement::Kind::Node: {
@@ -380,7 +379,7 @@ void VrmlWriter::writeVrmlExternProtoDeclare(
 void VrmlWriter::writeNode(std::ostringstream &os,
                            const std::shared_ptr<X3DNode> &node, int depth) {
   // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original Inline node and do NOT descend into the
+  // <Inline>, re-emit the original Inline node and do not descend into the
   // Group's child content (which the reader will re-fetch on load).
   if (scene_) {
     auto il = scene_->expandedInlines.find(node.get());
@@ -566,12 +565,12 @@ void VrmlWriter::writeNode(std::ostringstream &os,
       writeNodeField(os, node, *cf, depth + 1);
   }
 
-  // Task B: re-emit author (Script) field declarations captured by the reader
-  // into the S1 store as `accessType FieldType name [default]` interface lines
+  // re-emit author (Script) field declarations captured by the reader
+  // into the author-field store as `accessType FieldType name [default]` interface lines
   // inside the node body, so a re-parse recovers them (round-trip).
   writeAuthorFields(os, *node, depth + 1);
 
-  // PRF-1: re-emit IS connections bound to THIS node (at any depth) as
+  // re-emit IS connections bound to this node (at any depth) as
   // `nodeField IS protoField` lines inside the node body, matching what the
   // ClassicVrmlReader parses (`name IS protoField` in parseNodeBody).
   if (bodyIsc_) {
@@ -583,7 +582,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     }
   }
 
-  // PRF-3: inject Case-A nested ProtoInstances whose parent is THIS node,
+  // inject Case-A nested ProtoInstances whose parent is this node,
   // grouped by parentField, as `slot [ <instance> ... ]` blocks inside the
   // node body — mirroring XmlWriter pushing them onto the parent element's
   // children so the ClassicVrmlReader recovers parent == this node (the
@@ -591,8 +590,8 @@ void VrmlWriter::writeNode(std::ostringstream &os,
   if (!hasOrder) writeVrmlNestedFor(os, node, depth + 1);
 
   // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
-  // scene.protoInstances whose parent is THIS node. These are NOT in the node
-  // graph (expansion failed) and NOT scene-root (parent is live), so without
+  // scene.protoInstances whose parent is this node. These are not in the node
+  // graph (expansion failed) and not scene-root (parent is live), so without
   // this injection they are lost. Emit per-slot, respecting SFNode vs MFNode:
   // SFNode slots emit a bare `slot TypeName { ... }` (no brackets); MFNode
   // slots emit `slot [ TypeName { ... } ... ]` — the ClassicVrmlReader's

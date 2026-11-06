@@ -1,11 +1,5 @@
-// inflate_bomb_test.cpp
-// SEC-5 regression: inflateGzip must cap decompressed output so a gzip
-// "decompression bomb" — a tiny compressed stream that expands to gigabytes, or
-// a forged ISIZE footer — cannot drive unbounded heap growth into an OOM DoS.
-// The cap is `kMaxDecompressedBytes` (RecursionLimits.hpp), overridable per-call
-// via inflateGzip's `maxOut` parameter (mirrors MeshBuildOptions.maxWalkVisits).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Gzip output and attacker-controlled ISIZE reservations are bounded by
+// kMaxDecompressedBytes, overridable per call through maxOut.
 
 #include "Inflate.hpp"
 #include "RecursionLimits.hpp"
@@ -76,7 +70,7 @@ int main() {
   check(inflateGzip(gz) == payload,
         "stored-block gzip inflates to the original payload");
 
-  // SEC-5: output larger than the cap throws rather than growing unbounded.
+  // output larger than the cap throws rather than growing unbounded.
   check(throwsInflate(gz, 1024),
         "inflateGzip throws when the output would exceed maxOut");
 

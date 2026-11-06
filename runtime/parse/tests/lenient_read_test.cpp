@@ -11,7 +11,6 @@
 #include "x3d/nodes/Material.hpp"
 
 #include <any>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -19,16 +18,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 // The reflection set thunk (used by every reader) is non-validating: it keeps an
 // out-of-range value instead of throwing.
@@ -40,7 +29,7 @@ void test_reflection_set_is_lenient() {
       f = &fi;
     }
   }
-  check(f != nullptr && f->isWritable(), "diffuseColor field is writable");
+  CHECK_MESSAGE((f != nullptr && f->isWritable()), "diffuseColor field is writable");
 
   bool threw = false;
   try {
@@ -48,8 +37,8 @@ void test_reflection_set_is_lenient() {
   } catch (const std::out_of_range &) {
     threw = true;
   }
-  check(!threw, "reflection set thunk does NOT validate (lenient read)");
-  check(m->getDiffuseColor().r == 2.0f,
+  CHECK_MESSAGE((!threw), "reflection set thunk does NOT validate (lenient read)");
+  CHECK_MESSAGE((m->getDiffuseColor().r == 2.0f),
         "lenient reflection set keeps the out-of-range value");
 }
 
@@ -62,7 +51,7 @@ void test_typed_setter_still_strict() {
   } catch (const std::out_of_range &) {
     threw = true;
   }
-  check(threw, "typed setDiffuseColor still throws on out-of-range");
+  CHECK_MESSAGE((threw), "typed setDiffuseColor still throws on out-of-range");
 }
 
 // A whole document with an out-of-range field value parses (does not abort).
@@ -77,9 +66,9 @@ void test_document_with_out_of_range_loads() {
     (void)doc;
   } catch (const std::exception &e) {
     threw = true;
-    std::cerr << "  (parse threw: " << e.what() << ")\n";
+    INFO(e.what());
   }
-  check(!threw, "document with out-of-range value loads without aborting");
+  CHECK_MESSAGE((!threw), "document with out-of-range value loads without aborting");
 }
 
 } // namespace
@@ -89,7 +78,5 @@ TEST_CASE("lenient_read_test") {
   test_typed_setter_still_strict();
   test_document_with_out_of_range_loads();
 
-  CHECK(failures == 0);
-  std::cout << "all lenient-read tests passed\n";
   return;
 }

@@ -30,19 +30,16 @@ void applyPrototypeMetadata(const VrmlToken &token, Declaration &declaration) {
 }
 } // namespace
 
-
 Encoding ClassicVrmlReader::encoding() const { return Encoding::ClassicVRML; }
 
 runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   runtime::X3DDocument doc;
   readerWarnings_.clear();
-  // VP-2 §1 bare floor: readers own the 3.0 floor explicitly (the X3DDocument
+  // Readers own the 3.0 floor explicitly (the X3DDocument
   // member default is the 4.0 authoring default). The header parse below
   // overwrites this on every well-formed path; this covers malformed ones.
   doc.version = "3.0";
   std::string_view src(text);
-
-  // ----- Header line (`#X3D V<maj>.<min> <enc>` or `#VRML V2.0 utf8`). -----
   // VrmlTokenizer skips comment lines, including the header, so we read the
   // version off the raw first line here and let the tokenizer skip it.
   parseHeaderLine(src, doc);
@@ -52,11 +49,7 @@ runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   onHeaderLine(src, doc);
 
   VrmlTokenizer tok(src, /*firstLineIsHeader=*/true);
-
-  // ----- Header statements (PROFILE/COMPONENT/UNIT/META), any order. -----
   parseHeaderStatements(tok, doc);
-
-  // ----- Scene body. -----
   parseSceneBody(tok, doc.scene, /*inProto=*/false);
 
   doc.scene.resolveRoutes();
@@ -121,7 +114,7 @@ void ClassicVrmlReader::parseHeaderLine(std::string_view src,
   if (!cur.empty())
     parts.push_back(cur);
   // A `#VRML`/`#VRML97` payload is VRML97 — floor to the X3D 3.0 baseline
-  // (VP-2 §8). X3D has no V2.0/V1.0, so never let such a token reach a writer.
+  // (). X3D has no V2.0/V1.0, so never let such a token reach a writer.
   if (!parts.empty() && (parts[0] == "#VRML" || parts[0] == "#VRML97")) {
     doc.version = "3.0";
     return;
@@ -231,7 +224,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
                              const std::shared_ptr<X3DNode> &parentNode,
                              const std::string &parentField) {
   NestingGuard guard(depth_,
-                     "ClassicVRML"); // SEC-1: bound recursive node nesting.
+                     "ClassicVRML"); // bound recursive node nesting.
   std::string def;
   if (tok.peek().isWord("USE")) {
     tok.next();
@@ -246,7 +239,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   std::string rawTypeName = expectWord(tok, "node type name");
 
   // Proto-vs-node: a declared (or extern) proto instantiates a ProtoInstance,
-  // not a factory node. Check the proto table BEFORE the factory (under the
+  // not a factory node. Check the proto table before the factory (under the
   // raw name; proto names are user-defined and never go through the dialect).
   if (scene.findProto(rawTypeName) || findExternProto(scene, rawTypeName)) {
     // Retain the structural instance for expansion and round-tripping, and
@@ -290,15 +283,15 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   // factory lookup.
   std::string typeName = mapNodeName(rawTypeName);
 
-  // Stray prose recovery: a KNOWN type name immediately FOLLOWED BY ANOTHER
-  // WORD (never '{') is a word that merely happens to collide with a node type
+  // Stray prose recovery: a known type name immediately followed by another
+  // word (never '{') is a word that merely happens to collide with a node type
   // (e.g. leaked from a misused comment block such as
   // ` * ... creates a Box with ...` — `Box` is a real type, `with` follows).
   // A real node value is always `[DEF name] Type {`. Gate tightly:
   //   * `def.empty()` — a preceding DEF is an unambiguous authoring signal of
   //     a real node, so `DEF n Type` with a missing '{' still throws below;
-  //   * the next token is a bare Identifier word (prose continuation), NOT '{'
-  //     (a real body) and NOT structural punctuation `[`/`]`/`}` (which would
+  //   * the next token is a bare Identifier word (prose continuation), not '{'
+  //     (a real body) and not structural punctuation `[`/`]`/`}` (which would
   //     indicate a genuine — possibly binary/garbage — value/closer, left for
   //     the existing unknown-value / missing-'{' paths rather than diverted
   //     here). This keeps the genuine-node path and all currently-passing
@@ -315,7 +308,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   if (!node) {
     // Unknown node type (a forward/undeclared EXTERNPROTO name used as a
     // node, or a genuinely unknown type). If a `{` body follows, consume the
-    // balanced block and skip it. If NO `{` follows (e.g. an EXTERNPROTO
+    // balanced block and skip it. If no `{` follows (e.g. an EXTERNPROTO
     // whose declaration is mid-file, or a malformed body), warn and return
     // without consuming a block so the caller keeps going. If a value-shaped
     // token follows, skip the value instead.
@@ -336,7 +329,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
 
   if (!def.empty()) {
     node->setDEF(def);
-    // Register DEF BEFORE recursing the body so a nested USE resolves to it.
+    // Register DEF before recursing the body so a nested USE resolves to it.
     build::defineDef(scene, def, node);
   }
 
@@ -358,10 +351,8 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   } else {
     expectPunct(tok, '}', "node body close");
   }
-  // Task B: mirror a Script's inline `url ["ecmascript:..."]` body into its
-  // sourceCode slot so the runtime has a uniform source path (Phase-1-D
-  // prefers getSourceCode() over the url decode). Done through reflection so
-  // the reader stays node-agnostic.
+  // Preserve inline Script URL source in sourceCode for runtime execution.
+
   if (typeName == "Script")
     mirrorScriptSource(*node);
   return node;
@@ -421,7 +412,7 @@ void ClassicVrmlReader::parseNodeBody(
     // '}', already handled above) is never a valid node-body statement head,
     // so treat the node as closed and let the enclosing container consume the
     // closer (parseNode's lenient body-close, or the MFNode list's ']'). Leave
-    // the token UNCONSUMED so that resync.
+    // the token unconsumed so that resync.
     if (t.isPunct(']')) {
       warn("unexpected ']' inside " +
            (nodeType.empty() ? node.nodeTypeName() : nodeType) +
@@ -450,9 +441,9 @@ void ClassicVrmlReader::parseNodeBody(
 
     // Inline interface declaration (Script/ProtoBody fields):
     //   accessType FieldType fieldName [value]
-    // On a Script node these are AUTHOR field declarations that must become
+    // On a Script node these are author field declarations that must become
     // visible to the runtime (ROUTE wiring, SAI get/set): capture them into
-    // the S1 DynamicFieldStore as AuthorFieldDecls. On any other node the
+    // the DynamicFieldStore as AuthorFieldDecls. On any other node the
     // model has no slot for them, so they are consumed/skipped as before.
     if (isAccessTypeWord(t.text) && !t.isString) {
       consumeInterfaceDeclaration(tok, scene, nodeShared, currentProtoBody);
@@ -714,7 +705,7 @@ ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
   expectPunct(tok, '{', "PROTO body open");
   // Continue in the interface's DEF scope. Pass
   // `&decl->body` as the currentProtoBody so `field IS protoField` statements
-  // deep in the body record IsConnections directly on it (Task 8).
+  // deep in the body record IsConnections directly on it.
   parseSceneBody(tok, local, /*inProto=*/true, &decl->body);
   expectPunct(tok, '}', "PROTO body close");
   decl->body.nodes = std::move(local.rootNodes);

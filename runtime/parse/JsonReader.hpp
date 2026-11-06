@@ -1,47 +1,6 @@
-// JsonReader.hpp
-// Node-agnostic X3D-JSON parser: turns an X3D-JSON string into the runtime
-// document model (x3d::runtime::X3DDocument). It is the inverse of JsonWriter
-// and completes read/write symmetry for the .json encoding.
-//
-// It walks exactly the shape JsonWriter emits (Web3D X3D-JSON conventions):
-//
-//   { "X3D": { "@profile": "...", "@version": "...",
-//              "head": { "component": [ {"@name","@level"} ],
-//                        "meta":      [ {"@name","@content"} ],
-//                        "unit":      [
-//                        {"@category","@name","@conversionFactor"} ] },
-//              "Scene": { "-children": [ <node>, ... ] } } }
-//
-// where each node object is  { "TypeName": { <members> } }  and members are:
-//   * "@DEF" / "@USE"        — DEF/USE identity (USE shares the prior
-//   shared_ptr);
-//   * "@field": value        — a value field (scalar / array / string), mapped
-//                              back to the X3D wire string parseValue()
-//                              expects;
-//   * "-containerField": [..] — an SF/MFNode child slot holding child node
-//                              objects (the de-prefixed key is the
-//                              containerField).
-//   * "ROUTE": {...} or [..] — scene-scope event routes (under "Scene").
-//
-// Strategy (all driven by reflection + the node factory, no per-node code):
-//   * Instantiate a node by its single object key via X3DNodeFactory::create.
-//   * For each "@field" member, find the matching FieldInfo and set the value
-//     via build::applyField (enum -> setEnumString, else parseValue + set),
-//     after converting the JSON value to the encoding-independent wire string.
-//   * "-childField" members route into the parent's SF/MFNode field via
-//     build::attachChild using the de-prefixed key as the containerField slot.
-//
-// JSON value -> wire string conversion bypasses collectFieldValue (that is the
-// VRML-token path); here JSON already gives structured values, so numbers are
-// space-joined from their original lexemes, bools become true/false, SFString
-// is taken verbatim, and MFString elements are re-quoted so parseMFString sees
-// them.
-//
-// Mirrors XmlReader's tolerance: unknown node types / fields are skipped, never
-// throwing (malformed JSON itself does throw, via JsonLite).
-//
-// Public declaration, namespace x3d::codec. The implementation is compiled in
-// x3d_cpp_runtime.
+// X3D-JSON reader. Unknown node and field names are skipped; malformed JSON throws.
+// Numeric wire values preserve original JSON lexemes.
+
 #ifndef X3D_PARSE_JSON_READER_HPP
 #define X3D_PARSE_JSON_READER_HPP
 
@@ -59,7 +18,6 @@ struct Value;
 namespace x3d::codec {
 using namespace x3d::core;
 
-/// Parses X3D-JSON into the runtime document model. The inverse of JsonWriter.
 class JsonReader : public X3DReader {
 public:
   Encoding encoding() const override;
@@ -73,15 +31,7 @@ private:
   // call, moved into X3DDocument.readerWarnings on return.
   std::vector<runtime::ReaderWarning> readerWarnings_;
   bool capturingProtoFieldValue_ = false;
-
-  // -------------------------------------------------------------------------
-  // Head.
-  // -------------------------------------------------------------------------
   void readHead(const json::Value &head, runtime::Head &out);
-
-  // -------------------------------------------------------------------------
-  // Scene.
-  // -------------------------------------------------------------------------
   void readScene(const json::Value &scene, runtime::Scene &out);
 
   /// Fill a Route vector from a "ROUTE" member (single object or array).
@@ -93,10 +43,7 @@ private:
   void readImports(const json::Value *v, runtime::Scene &out);
 
   void readExports(const json::Value *v, runtime::Scene &out);
-
-  // -------------------------------------------------------------------------
   // Node.
-  // -------------------------------------------------------------------------
   /// Build a node (and subtree) from a `{ "TypeName": { ... } }` wrapper
   /// object. `currentProtoBody` is non-null when reading inside a ProtoBody,
   /// and is threaded through to intercept nested PROTO statements.
@@ -110,12 +57,9 @@ private:
                       const json::Value &val, runtime::Scene &scene,
                       const std::shared_ptr<X3DNode> &parentNode,
                       runtime::ProtoBody *currentProtoBody);
-
-  // -------------------------------------------------------------------------
   // PROTO capture (parity with XmlReader).
-  // All capture is LENIENT — a malformed or partial PROTO element captures what
+  // All capture is lenient — a malformed or partial PROTO element captures what
   // it can and skips the rest, never throwing.
-  // -------------------------------------------------------------------------
 
   /// Capture statement wrappers in child arrays (ISO/IEC 19776-5 Annex A).
   /// `parent`/`slot` give a nested instance's placement; `body` (non-null
@@ -149,10 +93,7 @@ private:
   void collectJsonIsConnections(const json::Value &wrapper,
                                 const std::shared_ptr<X3DNode> &node,
                                 runtime::ProtoBody &out);
-
-  // -------------------------------------------------------------------------
-  // Script author interface (SCR-SAI-DYN S1).
-  // -------------------------------------------------------------------------
+  // Script author interface .
   /// Capture author field declarations and Script inline source
   /// (ISO/IEC 19776-5 Annex A). The node's identity keys the
   /// DynamicFieldStore. Author decls live under the un-prefixed "field" member
@@ -183,10 +124,7 @@ private:
 
   /// Map an X3D accessType string to AccessType (X3D and VRML spellings).
   static AccessType mapProtoAccessType(const std::string &w);
-
-  // -------------------------------------------------------------------------
   // Field value application.
-  // -------------------------------------------------------------------------
   /// Apply one "@field" member: find the FieldInfo, convert the JSON value to
   /// the X3D wire string, and set it via build::applyField. Unknown fields are
   /// skipped. DEF (a normal SFString field on every node) flows through here.
@@ -204,10 +142,7 @@ private:
 
   /// Re-quote a string for parseMFString, escaping embedded quote/backslash.
   static std::string requoteString(const std::string &s);
-
-  // -------------------------------------------------------------------------
   // Small member accessors.
-  // -------------------------------------------------------------------------
   static std::string strMemberOr(const json::Value &obj, const std::string &key,
                                  const std::string &fallback);
 

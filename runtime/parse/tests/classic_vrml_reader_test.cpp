@@ -84,10 +84,7 @@ std::string readFile(const std::string &path) {
 template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
   return std::dynamic_pointer_cast<T>(n);
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 1: ship.x3dv — smallest sanity (header + Shape{ Box }).
-// ---------------------------------------------------------------------------
 void testShipFixture() {
   std::string text = readFile(g_dataDir + "/ship.x3dv");
   ClassicVrmlReader reader;
@@ -104,21 +101,15 @@ void testShipFixture() {
     auto box = as<Box>(shape->getGeometry());
     check(static_cast<bool>(box),
           "ship: Shape.geometry is a Box (SFNode child)");
-    // Box.size is an initializeOnly field. As of Task 2 of the modernization
-    // plan, initializeOnly fields have a setXUnchecked() data-layer write path
-    // and a reflection `set` thunk, so readers CAN and DO populate them.
-    // ship.x3dv sets "size 20 5 5" — assert the reader ingested that value.
+    // Readers populate initializeOnly fields through reflection setters.
     if (box)
       check(approx(box->getSize().x, 20.f),
             "ship: Box.size loaded from initializeOnly field (20 5 5)");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 2: HelloWorld.x3dv — the canonical happy path. Exercises
 // META lists (incl. escaped quotes), MFString, nested SFNode/MFNode children,
 // DEF/USE shared Material identity, and field values.
-// ---------------------------------------------------------------------------
 void testHelloWorldFixture() {
   std::string text = readFile(g_dataDir + "/HelloWorld.x3dv");
   ClassicVrmlReader reader;
@@ -154,7 +145,7 @@ void testHelloWorldFixture() {
   }
 
   // DEF/USE: MaterialOffWhite is DEF'd in the first Transform's Shape and USE'd
-  // in the second Transform's Shape. Both must be the SAME shared_ptr.
+  // in the second Transform's Shape. Both must be the same shared_ptr.
   auto matDef = doc.scene.resolve("MaterialOffWhite");
   check(static_cast<bool>(matDef), "hello: DEF MaterialOffWhite registered");
   if (auto mat = as<Material>(matDef)) {
@@ -196,12 +187,9 @@ void testHelloWorldFixture() {
           "hello: ImageTexture.url[0] == earth-topo.png");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 3: AddDynamicRoutes.x3dv — Script node carried as data with an
 // inline interface declaration (`inputOnly SFTime touchTime`) consumed, then a
 // real field (url). Exercises the access-type-led interface-decl path.
-// ---------------------------------------------------------------------------
 void testScriptFixture() {
   std::string text = readFile(g_dataDir + "/AddDynamicRoutes.x3dv");
   ClassicVrmlReader reader;
@@ -237,11 +225,8 @@ void testScriptFixture() {
   check(doc.scene.resolve("SC") != nullptr,
         "script: DEF SC resolvable in scene table");
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 4: animated_patch.x3dv — large MF arrays (multi-line, no
 // commas), DEF'd nodes, and two ROUTEs that resolve to DEF'd endpoints.
-// ---------------------------------------------------------------------------
 void testNurbsFixture() {
   std::string text = readFile(g_dataDir + "/animated_patch.x3dv");
   ClassicVrmlReader reader;
@@ -254,7 +239,7 @@ void testNurbsFixture() {
   check(static_cast<bool>(patch), "nurbs: DEF NurbsPatchSurface resolvable");
   if (patch) {
     // `weight` is an inputOutput MFDouble that spans multiple physical lines
-    // with NO commas (16 values). Asserting its size proves the multi-line MF
+    // with no commas (16 values). Asserting its size proves the multi-line MF
     // token re-join. (uKnot/uDimension/uOrder are initializeOnly => read-only
     // in this model; controlPoint is an SFNode in X3D4 but written as a raw
     // coordinate list in this X3D3.1 fixture, so it is tolerated/skipped.)
@@ -291,10 +276,7 @@ void testNurbsFixture() {
             "nurbs: ROUTE.from resolved to TimeSource node");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Hand-authored grammar snippets.
-// ---------------------------------------------------------------------------
 void testHeaderStatements() {
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
@@ -470,7 +452,7 @@ void testImportVariants() {
   }
 
   // 4. Malformed single-line IMPORT followed by a stray inline `{ }` body:
-  //    the parser must NOT throw; one structural import is recorded and the
+  //    the parser must not throw; one structural import is recorded and the
   //    document's following statement is still reached.
   {
     const std::string src = "#X3D V4.0 utf8\n"
@@ -573,11 +555,7 @@ void testProto() {
   }
 }
 
-// PROTO body `IS` mapping capture + ProtoInstance parent linkage (Task 8 of the
-// PROTO/EXTERNPROTO expansion plan). The PROTO body's `Box { size IS size }`
-// must append one IsConnection to the declaration's ProtoBody, bound to the Box
-// body node; and the nested `Param { ... }` instance must record its parent
-// (the Transform) and the containerField slot it filled (`children`).
+// Body IS connections retain their target node; nested instances retain parent slots.
 void protoIsCaptureTest() {
   const char *src =
       "#X3D V4.0 utf8\n"
@@ -627,7 +605,6 @@ void testFrontDoorSniff() {
     check(static_cast<bool>(as<Shape>(doc.scene.rootNodes[0])),
           "frontdoor: produced a Shape via the front door");
 
-  // makeReader(ClassicVRML) now returns a reader (no longer throws).
   auto reader = codec::makeReader(Encoding::ClassicVRML);
   check(reader && reader->encoding() == Encoding::ClassicVRML,
         "frontdoor: makeReader(ClassicVRML) yields a ClassicVrmlReader");
@@ -653,11 +630,9 @@ void testUnknownNodeSkipped() {
             "skip: Shape after the unknown node still has its Box geometry");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Recoverable malformation (parser-gap Fix 2): a node whose type name is a
 // declared PROTO/EXTERNPROTO or is otherwise unknown must parse its body
-// STRUCTURALLY (balanced braces, field assignments captured / skipped) and be
+// structurally (balanced braces, field assignments captured / skipped) and be
 // recorded — never errored. PROTO instances land in scene.protoInstances,
 // carried (not expanded). These snippets reproduce the shapes that the
 // X3D conformance corpus surfaced (NURBS .wrl / HAnim .x3dv files):
@@ -666,7 +641,6 @@ void testUnknownNodeSkipped() {
 //   * embedded ROUTE / EXTERNPROTO statements inside an MFNode list,
 //   * a node-valued proto-instance field whose declaration is unknown,
 //   * a raw `[ ... ]` value assigned to an SFNode-typed proto field.
-// ---------------------------------------------------------------------------
 void testRecoverableMalformation() {
   // (a) Empty MFNode list + a stray scalar list where nodes are expected: both
   // degrade to "no children", and the sibling Shape after them is still parsed.
@@ -695,7 +669,7 @@ void testRecoverableMalformation() {
           "recover: Shape after malformed lists still parsed");
   }
 
-  // (b) An unknown node type used WITHOUT a `{ }` body inside a Group's
+  // (b) An unknown node type used without a `{ }` body inside a Group's
   // children (an EXTERNPROTO-style name with no body): skipped, the Group still
   // parses, and a sibling node after the unknown one is still reached.
   {
@@ -703,7 +677,7 @@ void testRecoverableMalformation() {
                             "PROFILE Interchange\n"
                             "Group {\n"
                             "  children [\n"
-                            "    UndeclaredThing\n" // unknown node, NO body
+                            "    UndeclaredThing\n" // unknown node, no body
                             "    Shape { geometry Box { } }\n"
                             "  ]\n"
                             "}\n";
@@ -744,7 +718,7 @@ void testRecoverableMalformation() {
           "recover: EXTERNPROTO inside MFNode list declared");
   }
 
-  // (d) A proto instance whose node-valued field's declaration is UNKNOWN: the
+  // (d) A proto instance whose node-valued field's declaration is unknown: the
   // inline node body is captured as a structural node value (not mis-read as a
   // scalar token, not expanded). MyProto is declared with `field MFNode shape`,
   // and the instance assigns `shape DEF S Shape { }`.
@@ -818,11 +792,7 @@ void testRecoverableMalformation() {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// Lenient-recovery (parser-gap follow-up): four RECOVERABLE shapes the corpus
-// surfaced that previously THREW and aborted the whole document. Each must now
-// warn + resync and keep parsing:
+// Recoverable syntax errors warn, resynchronize, and keep parsing:
 //   (a) stray prose word colliding with a known type name, not followed by '{'
 //       (leaked from a misused `#/* ... */` comment block) -> ignored;
 //   (b) an implicit-containerField child node (a node type appearing where a
@@ -834,9 +804,8 @@ void testRecoverableMalformation() {
 //   (d) a child node missing its '}' inside an MFNode list, the array's ']'
 //       arriving at the node-body field position -> node closed, list ']'
 //       consumed, document continues.
-// ---------------------------------------------------------------------------
 void testStrayCloserAndImplicitChildRecovery() {
-  // (a) Stray prose: a real type name (`Box`) appears as a bare word NOT
+  // (a) Stray prose: a real type name (`Box`) appears as a bare word not
   // followed by '{' (the comment-leak shape from AddDynamicRoutes.x3dv). It is
   // ignored as a stray token; the following words drain word-by-word; the real
   // Shape after the prose still parses.
@@ -854,7 +823,7 @@ void testStrayCloserAndImplicitChildRecovery() {
           "recover(a): surviving root is the Shape");
   }
 
-  // (a') A DEF before a missing-'{' type still THROWS (DEF is an unambiguous
+  // (a') A DEF before a missing-'{' type still throws (DEF is an unambiguous
   // real-node signal — must not be masked).
   {
     const std::string src = "#X3D V4.0 utf8\n"

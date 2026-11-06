@@ -1,23 +1,6 @@
-// XmlReader.hpp
-// Node-agnostic X3D-XML parser: turns an X3D-XML string into the runtime
-// document model (x3d::runtime::X3DDocument).
-//
-// Strategy (all driven by reflection + the node factory, no per-node code):
-//   * Instantiate a node by element name via X3DNodeFactory::create().
-//   * For each XML attribute, look up the matching FieldInfo by name and set the
-//     value via its `set` thunk (enum fields via setEnumString, others via
-//     parseValue + set). DEF/USE/containerField are handled specially.
-//   * USE='name' resolves to the shared_ptr already registered under that DEF in
-//     the scene's symbol table (identity sharing), and the element's own fields
-//     are ignored (per X3D USE semantics).
-//   * Child elements are routed into the parent's SFNode/MFNode field whose
-//     containerField matches the child's containerField attribute (or, absent
-//     the attribute, the field whose name matches the child element — falling
-//     back to the parent's sole/first node field).
-//   * <ROUTE>, <IMPORT>, <EXPORT> under <Scene> populate the Scene lists;
-//     <head> children populate the document Head.
-//
-// Header-only, namespace x3d::codec.
+// X3D-XML reader. USE preserves identity and ignores other fields on the element.
+// Child placement follows containerField, then slot name, then the first node field.
+
 #ifndef X3D_XML_READER_HPP
 #define X3D_XML_READER_HPP
 
@@ -59,7 +42,7 @@ public:
     readerWarnings_.clear();
     auto root = xml::parse(xmlText);
     runtime::X3DDocument doc;
-    // VP-2 §1 bare floor: an unversioned document reads as 3.0. Set here, not
+    // An unversioned document reads as 3.0. Set here, not
     // via the X3DDocument member default (that is the 4.0 authoring default).
     doc.version = "3.0";
     if (!root)
@@ -189,7 +172,7 @@ private:
     auto node = X3DNodeFactory::create(el.name);
     if (!node) {
       // Unknown/misspelled node element: the lenient reader discards it. Keep
-      // the recovery visible (DIAG-UNKNOWN-NODE) rather than silently deleting
+      // the recovery visible  rather than silently deleting
       // authored content.
       readerWarnings_.push_back(
           {runtime::ReaderWarning::Kind::UnknownNode,
@@ -221,15 +204,15 @@ private:
     if (!def.empty())
       scene.define(def, node);
 
-    // PRF-2: inside a ProtoBody, record any <IS><connect/></IS> block carried by
-    // THIS node element (at any depth) as an IsConnection bound to the just-built
+    // inside a ProtoBody, record any <IS><connect/></IS> block carried by
+    // this node element (at any depth) as an IsConnection bound to the just-built
     // node. Threading collection through readNode (rather than only scanning the
     // top body node in readProtoBody) makes IS re-bind correctly for a node
     // nested arbitrarily deep inside a body node.
     if (currentProtoBody)
       collectIsConnections(el, node, *currentProtoBody);
 
-    // SCR-SAI-DYN (S1): a <Script> carries author <field> declarations and an
+    // a <Script> carries author <field> declarations and an
     // inline <![CDATA[...]]> source body. Author <field>s are not factory nodes,
     // so they bypass the node-child loop below; capture them into the per-node
     // DynamicFieldStore (so author-field ROUTEs and SAI get/set resolve via
@@ -239,7 +222,7 @@ private:
     if (auto *script = dynamic_cast<x3d::nodes::Script *>(node.get()))
       captureScriptAuthorFields(el, node, *script, scene, currentProtoBody);
 
-    // Phase-3 ComposedShader: an X3DProgrammableShaderObject (ComposedShader,
+    // ComposedShader: an X3DProgrammableShaderObject (ComposedShader,
     // ProgramShader, …) carries author <field> uniform declarations just like
     // Script — capture them into the DynamicFieldStore. Its GLSL lives in child
     // ShaderPart nodes, whose inline <![CDATA[...]]> body (collected into
@@ -329,10 +312,7 @@ private:
 
     return node;
   }
-
-  // -------------------------------------------------------------------------
-  // Script author-field capture (SCR-SAI-DYN S1).
-  // -------------------------------------------------------------------------
+  // Script author-field capture .
 
   /// Capture a <Script> element's author <field name accessType type value>
   /// children into the per-node DynamicFieldStore, and its <![CDATA[...]]> body
@@ -389,8 +369,8 @@ private:
                                  runtime::ProtoBody *currentProtoBody) {
     captureAuthorFieldDecls(el, node, scene, currentProtoBody);
 
-    // CDATA body -> sourceCode, stored VERBATIM. The XML writer emits
-    // sourceCode inside <![CDATA[...]]> with the surrounding indentation OUTSIDE
+    // CDATA body -> sourceCode, stored verbatim. The XML writer emits
+    // sourceCode inside <![CDATA[...]]> with the surrounding indentation outside
     // the brackets (XmlWriter::render), the JSON codec is a faithful
     // split/join, and the ClassicVRML decode keeps leading/trailing whitespace
     // (genuine author bytes). Trimming here made the XML reader the lone lossy,
@@ -411,14 +391,11 @@ private:
     std::size_t e = s.find_last_not_of(" \t\r\n");
     return s.substr(b, e - b + 1);
   }
-
-  // -------------------------------------------------------------------------
   // PROTO family capture (ProtoDeclare / ExternProtoDeclare / ProtoInstance).
   // These weave into the same node-reading recursion as ordinary elements:
   // body nodes and node-typed defaults/values go through readNode() so there
-  // is no parallel node parser. All capture is LENIENT — a malformed or partial
+  // is no parallel node parser. All capture is lenient — a malformed or partial
   // PROTO element captures what it can and skips the rest, never throwing.
-  // -------------------------------------------------------------------------
 
   /// <ProtoDeclare name>: interface (<ProtoInterface>) + body (<ProtoBody>).
   std::shared_ptr<runtime::ProtoDeclaration>
@@ -548,7 +525,7 @@ private:
       out.nodes.push_back(node);
       out.recordNode(node);
       // IS collection is handled inside readNode (threaded via currentProtoBody)
-      // so it applies at every depth, not just to this top body node. See PRF-2.
+      // so it applies at every depth, not just to this top body node.
     }
   }
 
@@ -711,7 +688,7 @@ private:
     if (f.isEnum()) {
       if (!f.isWritable() || !f.setEnumString) return false;
       const std::string token = stripEnumQuotes(val);
-      f.setEnumString(node, token); // AUD-D
+      f.setEnumString(node, token);
       return f.getEnumString && f.getEnumString(node) == token;
     }
     if (!f.isWritable())
@@ -740,7 +717,7 @@ private:
           break;
         }
       }
-      // Some authors put the field NAME in containerField even when it differs
+      // Some authors put the field name in containerField even when it differs
       // from the reflected containerField; fall back to a name match.
       if (!target) {
         for (const FieldInfo &f : table) {

@@ -1,18 +1,4 @@
-// X3DParse.hpp
-// Umbrella + front door for the unified X3D parsing layer.
-//
-// Pulls together the front-end interface (X3DReader), encoding sniffing
-// (Encoding), the shared node-agnostic build core (NodeBuilder) and lexer
-// (VrmlTokenizer), and the concrete readers. As later workstreams land
-// (ClassicVrmlReader, Vrml97Reader, JsonReader) their headers are added here
-// and wired into makeReader().
-//
-// For WS-A the only concrete reader is the XmlReaderAdapter, which wraps the
-// existing codecs/XmlReader. parseDocument()/parseFile() sniff and dispatch;
-// encodings whose reader has not landed yet throw a clear std::runtime_error.
-//
-// Public declarations, namespace x3d::codec. Front-door implementations are
-// compiled in x3d_cpp_runtime.
+// Encoding detection and dispatch for X3D documents and files.
 #ifndef X3D_PARSE_HPP
 #define X3D_PARSE_HPP
 
@@ -50,7 +36,7 @@ std::unique_ptr<X3DReader> makeReader(Encoding enc);
 runtime::X3DDocument parseFile(const std::string &path,
                                const std::string &confineRoot = "");
 namespace detail {
-/// Confinement root for the default local resolvers (ADR-0038, SEC-3). The
+/// Confinement root for the default local resolvers (ADR-0038). The
 /// outermost parseFile/parseDocument sets it (default: the top-level file's own
 /// directory; a trusted tool may widen it); nested re-parses driven by the
 /// resolvers inherit it, so `../` confinement is measured against one stable
@@ -114,11 +100,11 @@ localFileInlineResolver(const std::vector<std::string> &urls,
 /// be opened, the gzip stream is corrupt, or its encoding cannot be determined.
 ///
 /// `confineRoot` bounds where the default Inline/EXTERNPROTO resolvers may read
-/// (SEC-3, ADR-0038). Empty (the default) confines includes to this file's own
+/// (ADR-0038). Empty (the default) confines includes to this file's own
 /// directory — a tight, secure default that blocks `../` cross-directory reads.
-/// A tool parsing a TRUSTED content tree passes the tree root so that `../`
+/// A tool parsing a trusted content tree passes the tree root so that `../`
 /// references which stay within it resolve; absolute paths and escapes above
-/// the root are rejected either way. Only the OUTERMOST parseFile establishes
+/// the root are rejected either way. Only the outermost parseFile establishes
 /// the root; nested re-parses driven by the resolvers inherit it.
 runtime::X3DDocument parseFile(const std::string &path,
                                const std::string &confineRoot);

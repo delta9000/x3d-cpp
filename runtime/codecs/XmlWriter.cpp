@@ -144,7 +144,7 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     return nullptr;
 
   // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original <Inline url=.../> and do NOT descend into
+  // <Inline>, re-emit the original <Inline url=.../> and do not descend into
   // the Group's child content (which the reader will re-fetch on load).
   if (scene_) {
     auto il = scene_->expandedInlines.find(node.get());
@@ -209,7 +209,7 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
       continue; // handled above
     if (f.x3dName == "IS")
       continue; // prototype plumbing, not a serializable attribute
-    // SCR-SAI-DYN (S1): a Script's sourceCode is re-emitted as a <![CDATA[]]>
+    // a Script's sourceCode is re-emitted as a <![CDATA[]]>
     // body (below), not as a flat attribute, so the inline source round-trips
     // through the same channel the reader captures it from.
     if (f.x3dName == "sourceCode" &&
@@ -278,9 +278,9 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
   }
 
   // Scene-level nested ProtoInstances: any un-expanded ProtoInstance whose
-  // parent is THIS node (scene.protoInstances, !expanded, parent==node) must
+  // parent is this node (scene.protoInstances, !expanded, parent==node) must
   // be re-emitted as a child of this element in its parentField slot.
-  // These instances are NOT in the node graph (expansion failed) and NOT
+  // These instances are not in the node graph (expansion failed) and not
   // scene-root (parent is live), so without this injection they are lost.
   // Scene-root instances (parent.expired()) are handled in writeSceneInto.
   if (scene_) {
@@ -302,7 +302,7 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     // names — fully reflection-driven, no per-node default-container table.
     el->setAttr("containerField", containerOverride);
   }
-  // PRF-2: inside a ProtoBody re-emit, attach this node's <IS> block (if any)
+  // inside a ProtoBody re-emit, attach this node's <IS> block (if any)
   // as its last child. Threading via bodyIsc_ through the recursion means a
   // node nested arbitrarily deep in a body node gets its IS re-emitted, not
   // just the top body node.
@@ -461,7 +461,7 @@ XmlWriter::writeProtoDeclareElement(const runtime::ProtoDeclaration &d) {
   auto body = std::make_unique<xml::Element>();
   body->name = "ProtoBody";
   // Re-emit template nodes using the same local DEF scope as interface defaults.
-  // PRF-2: hand the body's IS list to the body writer so writeNodeElement
+  // hand the body's IS list to the body writer so writeNodeElement
   // attaches <IS> blocks at every depth during the recursive descent (the top
   // body node and any node nested inside it). No separate top-level attach.
   for (const auto &entry : d.body.orderedStatements()) {
@@ -569,7 +569,7 @@ void XmlWriter::render(const xml::Element &el, std::ostringstream &os,
   }
   // Character content (e.g. a Script's inline source) is emitted as a CDATA
   // section so special characters need no escaping and the reader recovers it
-  // verbatim from Element.text (SCR-SAI-DYN S1). Empty text is skipped above.
+  // verbatim from Element.text . Empty text is skipped above.
   if (!el.text.empty()) {
     indent(os, depth + 1);
     os << "<![CDATA[" << xml::cdataEscape(el.text) << "]]>\n";

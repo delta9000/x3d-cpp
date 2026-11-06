@@ -5,7 +5,7 @@
 // statement grammar layered above.
 //
 // Lexical rules:
-//   * Whitespace AND commas are delimiters (comma == whitespace in VRML).
+//   * Whitespace and commas are delimiters (comma == whitespace in VRML).
 //   * `#` starts a comment that runs to end-of-line. The very first line of a
 //     file is the encoding header (`#X3D ...` / `#VRML ...`); the caller peels
 //     that off before tokenizing the body, but a `firstLineIsHeader` flag is
@@ -73,7 +73,7 @@ public:
   /// The next token without consuming it.
   const VrmlToken &peek() const { return lookahead_; }
 
-  /// The token AFTER the next one, without consuming anything. Used for the
+  /// The token after the next one, without consuming anything. Used for the
   /// `Identifier '{'` two-token lookahead that distinguishes a node value
   /// (`Type {`) from a scalar where the grammar is otherwise ambiguous (e.g. an
   /// unknown proto-instance field). Returns the End token at stream end.
@@ -161,7 +161,7 @@ private:
         if (src_[pos_] == '\\' && pos_ + 1 < src_.size() &&
             (src_[pos_ + 1] == '"' || src_[pos_ + 1] == '\\')) {
           // ISO 19776-2 defines exactly two escapes: \" and \\. Any other \x
-          // keeps its backslash (ENC-MFSTRING-READ).
+          // keeps its backslash .
           str += src_[pos_ + 1];
           bump();
           bump();

@@ -1,18 +1,6 @@
 #include "doctest/doctest.h"
-// uom_type_pin_test.cpp
-// Codegen-drift pins for fields whose ISO 19775 prose disagrees with the
-// X3DUOM, where x3d-cpp is correct *because* it generates from the UOM. These
-// findings are only "resolved" so long as the generator keeps emitting the UOM
-// type; a binding regression would silently reintroduce the spec's bug. Each
-// pin fails the build (static_assert) or the test if that drift happens.
-//
-// SND-GAIN-TYPE (conformance finding; sound §16.4.13): ISO prose types
-// X3DSoundSourceNode/ListenerPointSource `gain` as SFInt32 (`gain 1`) — an
-// integer cannot express sub-unity gain. The X3DUOM inherits SFFloat from
-// X3DSoundSourceNode and every sibling gain in the component is SFFloat, so the
-// UOM (and this engine) are correct; the prose is an upstream erratum. Pin the
-// generated accessor to SFFloat so a codegen change reintroducing SFInt32 fails
-// to compile here.
+// Sound §16.4.13 prose lists integer gain; X3DUOM uses SFFloat.
+// Pin the generated type to retain fractional gain values.
 
 #include "x3d/nodes/ListenerPointSource.hpp"
 #include "x3d/core/X3Dtypes.hpp"
@@ -22,15 +10,8 @@
 
 using namespace x3d::core;
 
-// The generated bindings (ListenerPointSource, SFFloat) live in the global
-// namespace — only the hand-written runtime headers open `namespace x3d`, and
-// this pin deliberately includes only the generated node + types.
-
 namespace {
 
-// Compile-time: the generated `gain` accessor yields SFFloat (float), not an
-// integer. If the UOM/codegen ever drifts to the prose's SFInt32, this fails to
-// build — the strongest possible regression guard.
 static_assert(
     std::is_same_v<std::remove_cvref_t<decltype(
                        std::declval<const x3d::nodes::ListenerPointSource>().getGain())>,

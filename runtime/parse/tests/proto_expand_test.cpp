@@ -56,7 +56,7 @@ static void localValueForwardTest() {
 }
 
 // A mistyped override value (e.g. an EXTERN instance whose <fieldValue> the
-// reader could only type as the SFString fallback) must NOT throw out of
+// reader could only type as the SFString fallback) must not throw out of
 // expansion: the typed setter's bad_any_cast is caught and turned into an
 // InterfaceMismatch warning, and expansion still yields the primary node.
 static void mistypedValueLenientTest() {
@@ -290,9 +290,9 @@ static void expandSceneSpliceTest() {
   CHECK((scene.expandedSources.size() == 2));
 }
 
-// A ProtoInstance nested INSIDE a proto body (e.g. inside a Transform that is a
+// A ProtoInstance nested inside a proto body (e.g. inside a Transform that is a
 // body node) must be expanded once per outer instantiation and spliced into the
-// CLONE of its parent — not dropped, not attached to the template.
+// clone of its parent — not dropped, not attached to the template.
 static void nestedInBodyExpandTest() {
   // Inner proto "Leaf": body = [ Box ].
   auto leaf = std::make_shared<ProtoDeclaration>();
@@ -323,7 +323,7 @@ static void nestedInBodyExpandTest() {
   std::vector<ProtoWarning> warnings;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, warnings);
 
-  // primary is a CLONE of the Transform; its children must hold the expanded Box.
+  // primary is a clone of the Transform; its children must hold the expanded Box.
   CHECK((primary && primary->nodeTypeName() == "Transform"));
   auto kids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
       fieldByName(*primary, "children")->get(*primary));

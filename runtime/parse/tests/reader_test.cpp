@@ -1,18 +1,4 @@
-// reader_test.cpp
-// WS-A integration test for the unified parsing front-end:
-//   1. Encoding sniffing — extension and content classify the four encodings;
-//      content overrides a wrong extension; gzip magic is detected.
-//   2. VrmlTokenizer — punctuation, quoted-string unescape, comments,
-//      comma==whitespace, header-line skip.
-//   3. NodeBuilder::collectFieldValue — the SF/MF token-gathering that hands a
-//      wire string to FieldValueIO::parseValue, round-tripped through
-//      parseValue to prove the value semantics survive.
-//   4. XmlReaderAdapter — satisfies X3DReader and produces a document identical
-//      to the raw XmlReader (the adapter adds no behavior of its own).
-//   5. parseDocument — with no hint, sniffs XML content and produces a document
-//      equal to the explicitly-dispatched XmlReaderAdapter.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Encoding detection, tokenization, reflected value collection, and reader dispatch.
 
 #include "X3DParse.hpp"
 
@@ -56,9 +42,6 @@ void check(bool cond, const std::string &what) {
     std::cout << "ok: " << what << "\n";
   }
 }
-
-// --- A tiny known document, built programmatically (mirrors roundtrip_test).
-// --
 runtime::X3DDocument buildSampleDocument() {
   runtime::X3DDocument doc;
   doc.version = "4.0";
@@ -295,15 +278,12 @@ void testXmlAdapterAndFrontDoor() {
     }
   }
 
-  // The JSON reader has landed (WS-D): makeReader returns it, reporting JSON.
   {
     auto jsonReader = codec::makeReader(Encoding::JSON);
     check(jsonReader && jsonReader->encoding() == Encoding::JSON,
           "makeReader(JSON) returns a JSON reader (WS-D landed)");
   }
 
-  // The VRML97 reader has landed (WS-C): makeReader returns it, reporting
-  // VRML97.
   {
     auto vrmlReader = codec::makeReader(Encoding::VRML97);
     check(vrmlReader && vrmlReader->encoding() == Encoding::VRML97,
@@ -319,14 +299,9 @@ void testXmlAdapterAndFrontDoor() {
   }
   check(threw, "parseDocument throws on unrecognizable content");
 }
-
-// --- Lenient-read recovery fixes (BOM at the front door, nested same-quote
-//     attribute recovery, set-only MFNode field guard). Each is exercised with
-//     a hand-authored snippet (no external corpus file needed).
+// Lenient recovery for BOM, nested quotes, and write-only MFNode fields.
 void testLenientReadFixes() {
-  // Fix 1: a UTF-8-BOM-prefixed XML document parses (the front door strips the
-  // BOM before sniffing/dispatch; without the fix the byte-level XmlLite parser
-  // throws "expected root element" because the first byte is 0xEF, not '<').
+  // Strip the UTF-8 BOM before XML sniffing and parsing.
   {
     const std::string bom = "\xEF\xBB\xBF";
     const std::string xml =
@@ -353,10 +328,7 @@ void testLenientReadFixes() {
           "BOM: with/without BOM produce the same root count");
   }
 
-  // Fix 3: an attribute value carrying an inner same-kind quote recovers. Here
-  // a single-quoted meta content contains an apostrophe; the parser widens the
-  // value to the last apostrophe before the tag close instead of throwing on a
-  // bogus "missing =". (Warning is emitted to stderr; the document survives.)
+  // An inner same-kind quote extends the value to the last quote before tag close.
   {
     const std::string xml =
         "<X3D profile='Interchange'><head>"
@@ -391,12 +363,7 @@ void testLenientReadFixes() {
           "attr-recovery: well-formed value is unchanged (no false trigger)");
   }
 
-  // Fix 2: the set-only MFNode field guard. A <Contour2D> with NO containerField
-  // attribute under <NurbsTrimmedSurface> would route (by the no-slot fallback)
-  // to the InputOnly sink "addTrimmingContour" — an MFNode with a setter but no
-  // getter. Before the guard, attachChild called the empty get() thunk and
-  // crashed with std::bad_function_call. Now it must parse (warn + skip / route
-  // to a storage field) and yield a NurbsTrimmedSurface root.
+  // A child without containerField must not call an inputOnly sink's missing getter.
   {
     const std::string xml =
         "<X3D profile='Full'><Scene>"
@@ -428,13 +395,7 @@ std::string readBinaryFile(const std::string &path) {
   return ss.str();
 }
 
-// Fix 1 (parser-gap plan): gzip inflate before sniffing. Two committed gzip
-// fixtures (each a gzip of an uncompressed sibling already exercised by the
-// VRML97 / ClassicVRML reader tests) prove:
-//   1. inflateGzip() returns text whose first line is a #VRML / #X3D header.
-//   2. parseFile(".../x.gz") yields a document that round-trips to the same
-//      serialization as parseFile(".../x") on the uncompressed sibling — i.e.
-//      the gzip path is transparent to the rest of the front end.
+// Gzip input and its uncompressed sibling produce identical serialization.
 // dataDir points at runtime/parse/tests/data; "" disables the file-backed
 // checks (the in-memory inflateGzip check below still runs unconditionally).
 void testGzipInflate(const std::string &dataDir) {

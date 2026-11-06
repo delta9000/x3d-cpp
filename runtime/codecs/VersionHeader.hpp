@@ -1,12 +1,4 @@
-// VersionHeader.hpp
-// Shared codec helper: floor a document version token before it reaches an
-// emitted header.
-//
-// X3D has no version below 3.0 (VP-2 §8). Readers floor a legacy/sub-3.0 token
-// at read time, but an X3DDocument may also be built by hand with version "2.0"
-// (or empty). All three primary writers route doc.version through
-// headerVersion() so the emitted X3D-VRML / X3D-XML / X3D-JSON header is always
-// valid, regardless of how the document was constructed.
+// Floor emitted document versions at X3D 3.0, including hand-built documents.
 #ifndef X3D_CODECS_VERSION_HEADER_HPP
 #define X3D_CODECS_VERSION_HEADER_HPP
 
@@ -16,7 +8,7 @@
 namespace x3d::codec {
 
 /// X3D has no version below 3.0; floor a sub-3.0/legacy token to "3.0" so the
-/// emitted header is always valid (VP-2 §8). >= 3.0 (incl. future) passes
+/// emitted header is always valid. >= 3.0 (incl. future) passes
 /// through, and a token with no leading integer major floors to "3.0".
 inline std::string headerVersion(const std::string &v) {
   int major = 0;

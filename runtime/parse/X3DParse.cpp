@@ -247,7 +247,7 @@ parseDocument(const std::string &text, Encoding hint,
               const ProtoDeclarationResolver &resolver,
               const runtime::InlineResolver &inlineResolver,
               const std::string &confineRoot) {
-  // Establish the SEC-3 confinement root (ADR-0038) for the default resolvers
+  // Establish the  confinement root (ADR-0038) for the default resolvers
   // on the outermost entry; nested re-parses inherit it. When reached via
   // parseFile the root is already set (so this is a no-op); a direct
   // parseDocument call from a tool handling a trusted content tree passes the
@@ -295,9 +295,7 @@ parseDocument(const std::string &text, Encoding hint,
   // Mirrors the PROTO pass above; nested Inlines recurse via parseFile.
   runtime::expandInlines(doc.scene, inlineResolver, baseUrl,
                          doc.inlineWarnings);
-  // Wire IMPORT statements to their Inline's exported node (the child scene is
-  // now retained), then re-resolve routes so a ROUTE to/from an imported AS
-  // name binds instead of being dropped as an unknown DEF.
+  // Bind IMPORT names to retained Inline exports before resolving ROUTEs.
   runtime::wireInlineImports(doc.scene);
   doc.scene.resolveRoutes();
   return doc;
@@ -316,10 +314,8 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0 ||
         url.rfind("urn:", 0) == 0)
       continue; // embedder override territory; default resolver stays local
-    // SEC-3: confine the resolved path to the source file's directory subtree
-    // (reject absolute urls and `../` escapes) — the default local resolver
-    // never reads arbitrary files. SEC-4: the returned path is canonical, so it
-    // is a stable cycle-guard key that spelling variants cannot alias past.
+    // Reject absolute paths and root escapes; canonical paths give stable cycle keys.
+    // See docs/wiki/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
     auto confined =
         confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
     if (!confined)

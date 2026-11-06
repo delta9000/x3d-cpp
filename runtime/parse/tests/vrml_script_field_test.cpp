@@ -1,20 +1,4 @@
-// vrml_script_field_test.cpp
-// TASK B — ClassicVRML + VRML97 Script author-field + inline-source capture
-// (design §3.4, encoding=VRML). Proves that a `.x3dv` / `.wrl` Script body with
-// inline interface declarations
-//   field   <type> <name> [value]
-//   eventIn  <type> <name>
-//   eventOut <type> <name>
-// is captured into the S1 DynamicFieldStore (so the decls appear in
-// effectiveFields(scriptNode, store)) and that the inline `url ["ecmascript:..."]`
-// body is ALSO mirrored into Script.sourceCode for a uniform runtime path.
-// Round-trips through VrmlWriter: write -> reparse -> decls + source survive.
-//
-// Covered for BOTH readers: ClassicVrmlReader (the .x3dv identity dialect) and
-// Vrml97Reader (the .wrl dialect; eventIn/eventOut/field keywords are shared).
-//
-// Driven through the runtime model + the S1 effectiveFields() view; no per-node
-// codec code. Exit 0 on success, nonzero on any failed assertion.
+// ClassicVRML and VRML97 Script author fields and inline source survive round-trips.
 
 #include "ClassicVrmlReader.hpp"
 #include "DynamicField.hpp"

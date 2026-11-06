@@ -1,5 +1,5 @@
 // proto_roundtrip_test.cpp
-// Task 12: round-trip a <ProtoInstance>. parseDocument expands the instance to
+// round-trip a <ProtoInstance>. parseDocument expands the instance to
 // its primary node (a Box) and records the source instance in
 // scene.expandedSources; the XML writer must re-emit the original
 // <ProtoInstance ...> for that primary and suppress the expanded subtree,
@@ -20,8 +20,8 @@ TEST_CASE("proto_roundtrip_test") {
   auto doc = codec::parseDocument(xml); // expands to a Box root + expandedSources
   std::string out = codec::XmlWriter().writeDocument(doc);
 
-  // The declaration is re-emitted (body included) AND the instance is re-emitted;
-  // the EXPANSION's spliced Box is still suppressed via expandedSources.
+  // The declaration is re-emitted (body included) and the instance is re-emitted;
+  // the expansion's spliced Box is still suppressed via expandedSources.
   CHECK((out.find("<ProtoDeclare") != std::string::npos));
   CHECK((out.find("<ProtoBody") != std::string::npos));
   CHECK((out.find("<Box") != std::string::npos));     // the declaration body's Box
