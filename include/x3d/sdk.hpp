@@ -1,29 +1,8 @@
-// ─── include/x3d/sdk.hpp ─────────────────────────────────────────────────────
-// Umbrella façade for the x3d-cpp headless SDK (v1).
-//
-// Include this ONE header; link the CMake target x3d_cpp::sdk. The
-// curated entry points below are re-exported into namespace `x3d::sdk`.
-// Lower-level system wiring remains in `x3d::runtime`:
-//
-//   • Load     — parse any of the 4 encodings (+ gzip, PROTO, lenient read) into
-//                an X3DDocument with conformance/range diagnostics.
-//   • Runtime  — an X3DExecutionContext you tick once per frame; input setters,
-//                event injection, behavior/Script systems, a pull surface.
-//   • Extract  — a SceneExtractor that turns the live graph into renderer-ready
-//                RenderItems (meshes/materials/lights/camera/background) + deltas.
-//   • Seams    — embedder-supplied IO callbacks: AssetResolver, TextureResolver,
-//                FontMetrics, GeoProjection, ScriptEngine. A seam is a PORT (the
-//                ports-and-adapters / SPI sense): the core owns the interface,
-//                the embedder supplies the backend (adapter). The simulation and
-//                extraction core performs no hidden resource, network, image,
-//                font, media or rendering I/O — that stays in the embedder.
-//                parseFile() and parseDocument()'s default Inline/EXTERNPROTO
-//                resolvers can read local files. Inject both parse resolvers
-//                for a fully host-controlled resource boundary.
-//
-// Stability: symbols are marked [STABLE] (frozen pre-v2, breaking change = major)
-// or [EXPERIMENTAL] (shape may evolve; embedder wiring still maturing). See
-// docs/sdk/README.md for the capability matrix and the post-v1 exclusion list.
+// Include this header and link x3d_cpp::sdk for the headless SDK surface.
+// Simulation and extraction perform no resource I/O; embedders supply callbacks.
+// parseFile() and the default Inline/EXTERNPROTO resolvers can read local files.
+// Inject both parse resolvers for a fully host-controlled resource boundary.
+// See docs/wiki/seam-status.md for interface stability.
 //
 // Canonical usage:
 //   #include "x3d/sdk.hpp"
@@ -37,63 +16,60 @@
 //   sdk::RenderDelta f0 = ex.fullSnapshot();          // upload f0.added
 //   // each frame, with `now` = seconds since start (any monotonic clock):
 //   while (running) { ctx.tick(now); auto d = ex.delta(); /* apply d */ }
-// ─────────────────────────────────────────────────────────────────────────────
 #ifndef X3D_SDK_HPP
 #define X3D_SDK_HPP
 
 // Implementation headers (all reachable bare-name via the x3d_cpp include path).
-#include "X3DParse.hpp"            // x3d::codec   — parseFile/parseDocument/Encoding
-#include "X3DCodecs.hpp"           // x3d::codec   — XmlWriter/JsonWriter/VrmlWriter (serialize)
-#include "X3DRuntime.hpp"          // x3d::runtime — X3DDocument/Scene/Head/Route/Profile
-#include "X3DExecutionContext.hpp" // x3d::runtime — X3DExecutionContext
-#include "X3DSceneBridge.hpp"      // x3d::runtime — BridgeResult/RouteError
-#include "X3DSystem.hpp"           // x3d::runtime — System (abstract)
-#include "DirtyTracker.hpp"        // x3d::runtime — DirtyTracker
-#include "PickSystem.hpp"          // x3d::runtime — PickResult
-#include "Ray.hpp"                 // x3d::runtime — Ray
-#include "Mat4.hpp"                // x3d::runtime — Mat4
-#include "Aabb.hpp"                // x3d::runtime — Aabb
-#include "RuntimeSession.hpp"      // x3d::runtime — RuntimeSession/SessionOptions (the recommended entry point)
-#include "SceneExtractor.hpp"      // x3d::runtime::extract — SceneExtractor
-#include "RenderItem.hpp"          // x3d::runtime::extract — descriptor POD
-#include "MeshBuilder.hpp"         // x3d::runtime::extract — MeshBuildOptions/GeoProjection
-#include "AssetResolver.hpp"       // x3d::runtime::extract — AssetResolver seam   [STABLE] (proven generic: libcurl + S3; see ADR-0023)
-#include "TextureResolver.hpp"     // x3d::runtime::extract — TextureResolver seam [STABLE] (proven generic: stb_image + wuffs; see ADR-0024)
-#include "FontMetrics.hpp"         // x3d::runtime::extract — FontMetrics seam     [STABLE] (proven generic: stb_truetype + FreeType; see ADR-0025)
-#include "ScriptEngine.hpp"        // x3d::runtime — ScriptEngine (abstract)       [STABLE]
-#include "ScriptSystem.hpp"        // x3d::runtime — ScriptSystem                  [STABLE]
-#include "SaiContext.hpp"          // x3d::runtime — SaiContext                    [STABLE]
+#include "X3DParse.hpp"
+#include "X3DCodecs.hpp"
+#include "X3DRuntime.hpp"
+#include "X3DExecutionContext.hpp"
+#include "X3DSceneBridge.hpp"
+#include "X3DSystem.hpp"
+#include "DirtyTracker.hpp"
+#include "PickSystem.hpp"
+#include "Ray.hpp"
+#include "Mat4.hpp"
+#include "Aabb.hpp"
+#include "RuntimeSession.hpp"
+#include "SceneExtractor.hpp"
+#include "RenderItem.hpp"
+#include "MeshBuilder.hpp"
+#include "AssetResolver.hpp"
+#include "TextureResolver.hpp"
+#include "FontMetrics.hpp"
+#include "ScriptEngine.hpp"
+#include "ScriptSystem.hpp"
+#include "SaiContext.hpp"
 
-/// The curated v1 embedder surface. Everything here is supported; internals are
-/// intentionally NOT pulled in. Prefer writing `x3d::sdk::Foo`.
 namespace x3d::sdk {
 
-// ── Loading ──────────────────────────────────────────────────────────── [STABLE]
-using x3d::codec::parseFile;             ///< X3DDocument parseFile(const std::string& path)
-using x3d::codec::parseDocument;         ///< X3DDocument parseDocument(text, hint={}, base={}, resolver=...)
-using x3d::codec::Encoding;              ///< enum class { XML, ClassicVRML, VRML97, JSON, Unknown }
-using x3d::codec::localFileProtoResolver;///< default file-local EXTERNPROTO resolver (cycle-safe)
-using x3d::codec::ProtoDeclarationResolver; ///< the resolver callback type for parseDocument
+// Loading
+using x3d::codec::parseFile;
+using x3d::codec::parseDocument;
+using x3d::codec::Encoding;
+using x3d::codec::localFileProtoResolver; ///< default file-local EXTERNPROTO resolver (cycle-safe)
+using x3d::codec::ProtoDeclarationResolver;
 
-using x3d::runtime::X3DDocument;         ///< { version, profile, head, scene, rangeWarnings, protoWarnings }
-using x3d::runtime::Scene;               ///< { rootNodes, defs, routes, protoDeclarations, imports/exports, ... }
-using x3d::runtime::Profile;             ///< enum class { Core, Interchange, ..., Full }
-using x3d::runtime::Head;                ///< { components, units, meta }
-using x3d::runtime::Component;           ///< { name, level }
-using x3d::runtime::Unit;                ///< { category, name, conversionFactor }
-using x3d::runtime::Meta;                ///< { name, content }
-using x3d::runtime::Route;               ///< { fromNode, fromField, toNode, toField } (DEF-name strings)
-using x3d::nodes::X3DNode;               ///< generated node base (fields(), get/set, getDEF/setDEF) — x3d::nodes
-using x3d::core::RangeDiagnostic;        ///< one out-of-range value kept by the lenient read path — x3d::core
-using x3d::runtime::ProtoWarning;        ///< a PROTO/EXTERNPROTO expansion diagnostic
+using x3d::runtime::X3DDocument;
+using x3d::runtime::Scene;
+using x3d::runtime::Profile;
+using x3d::runtime::Head;
+using x3d::runtime::Component;
+using x3d::runtime::Unit;
+using x3d::runtime::Meta;
+using x3d::runtime::Route; ///< endpoints use DEF-name strings
+using x3d::nodes::X3DNode;
+using x3d::core::RangeDiagnostic; ///< out-of-range value retained by lenient reads
+using x3d::runtime::ProtoWarning;
 
 // Serialization — reflection-driven writers (writeDocument(doc) -> std::string).
-using x3d::codec::XmlWriter;             ///< X3D-XML serializer
-using x3d::codec::JsonWriter;            ///< X3D-JSON serializer
-using x3d::codec::VrmlWriter;            ///< ClassicVRML serializer
-using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) serializer
+using x3d::codec::XmlWriter;
+using x3d::codec::JsonWriter;
+using x3d::codec::VrmlWriter;
+using x3d::codec::CanonicalXmlWriter;
 
-// ── Execution context (runtime / tick) ───────────────────────────────── [STABLE]
+// Execution context (runtime / tick)
 // Construct one per loaded document, default-constructed. Setup order:
 //   ctx.buildSceneGraph(doc.scene);   // index transforms/bindings/pick tree
 //   ctx.buildFrom(doc.scene);         // resolve DEF-named ROUTEs + IS redirects
@@ -102,112 +78,96 @@ using x3d::codec::CanonicalXmlWriter;    ///< X3D Canonical Form (X3DC14N) seria
 // Then once per frame: set inputs, ctx.tick(now) [now = seconds since start],
 // read the pull surface.
 using x3d::runtime::X3DExecutionContext;
-using x3d::runtime::FieldWriteResult;    ///< enum class { Ok, NullNode, UnknownField, NotWritable, TypeMismatch } — ctx.writeField's [[nodiscard]] outcome
-using x3d::runtime::fieldWriteResultName; ///< fieldWriteResultName(FieldWriteResult) — human-readable form for diagnostics
-using x3d::runtime::BridgeResult;        ///< { routesAdded, rejected[] } returned by buildFrom
-using x3d::runtime::RouteError;          ///< { index, reason } a single rejected ROUTE
-using x3d::runtime::System;              ///< abstract behavior System: attach() + update()
-using x3d::runtime::DirtyTracker;        ///< per-tick change set (read via ctx.dirtyTracker())
-using x3d::runtime::PickResult;          ///< result of ctx.pick(ray)
-using x3d::runtime::Ray;                 ///< { origin, direction, pointAt(t) }
-using x3d::runtime::Mat4;                ///< column-major 4×4
-using x3d::runtime::Aabb;                ///< axis-aligned bounds
+using x3d::runtime::FieldWriteResult; ///< ctx.writeField's [[nodiscard]] outcome
+using x3d::runtime::fieldWriteResultName;
+using x3d::runtime::BridgeResult;
+using x3d::runtime::RouteError;
+using x3d::runtime::System;
+using x3d::runtime::DirtyTracker; ///< per-tick change set
+using x3d::runtime::PickResult;
+using x3d::runtime::Ray;
+using x3d::runtime::Mat4; ///< column-major 4×4
+using x3d::runtime::Aabb;
 
-// ── Session — the recommended entry point ────────────────────────────── [STABLE]
-// Owns document + context + extractor, does the wiring you can silently forget
-// (buildSceneGraph, buildFrom, attachStandardRuntime), and cannot outlive its own
-// scene. Everything below stays public — session->context()/extractor()/scene()
-// hand the pieces back — so this is a shorter path, not a walled garden.
+// Session — the recommended entry point
+// Owns the document, context and extractor, and wires the standard runtime.
+// The context and extractor cannot outlive the owned scene.
 //
 //   auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3dv"));
 //   sdk::RenderDelta f0 = session->fullSnapshot();     // upload f0.added
 //   while (running) { session->tick(now); auto d = session->delta(); }
-using x3d::runtime::RuntimeSession;      ///< create(doc, options) -> unique_ptr; tick()/fullSnapshot()/delta()
-using x3d::runtime::SessionOptions;      ///< { standardRuntime=true, interactive=false, meshOptions, textureResolver }
+using x3d::runtime::RuntimeSession;
+using x3d::runtime::SessionOptions;
 
-// ── Extraction / render feed ────────────────────────────────────── [EXPERIMENTAL]
+// Extraction / render feed
 // In-process descriptors, not a wire/ABI contract. See docs/wiki/guides/native-host.md.
-using x3d::runtime::extract::SceneExtractor; ///< fullSnapshot()/delta()/item()/camera()/lights()/...
-using x3d::runtime::extract::RenderItem;     ///< { path, worldTransform, geometry, material, mesh, lights, ... }
-using x3d::runtime::extract::RenderDelta;    ///< { added/removed/updatedTransform/Geometry/Material, *Changed }
-using x3d::runtime::extract::RenderItemId;   ///< std::uint32_t dense id
+using x3d::runtime::extract::SceneExtractor;
+using x3d::runtime::extract::RenderItem;
+using x3d::runtime::extract::RenderDelta;
+using x3d::runtime::extract::RenderItemId;
 using x3d::runtime::extract::kInvalidRenderItemId;
-using x3d::runtime::extract::PathKey;        ///< vector<const X3DNode*> root..leaf chain
+using x3d::runtime::extract::PathKey;
 using x3d::runtime::extract::PathKeyHash;
 using x3d::runtime::extract::PathKeyEqual;
-using x3d::runtime::extract::GeomId;         ///< { node*, contentVersion } in-process, baseline-scoped content key
+using x3d::runtime::extract::GeomId; ///< in-process, baseline-scoped content key
 using x3d::runtime::extract::GeomIdHash;
-using x3d::runtime::extract::MeshData;       ///< positions/indices/normals/texcoords/colors/topology/...
-using x3d::runtime::extract::Topology;       ///< enum class { Triangles, Lines, Points }
-using x3d::runtime::extract::MaterialDesc;   ///< model/baseColor/metallic/roughness/.../textures[] + toRGBA()
-using x3d::runtime::extract::MaterialModel;  ///< enum class { Phong, Physical, Unlit }
-using x3d::runtime::extract::AlphaMode;      ///< enum class { Opaque, Mask, Blend }
-using x3d::runtime::extract::LightDesc;      ///< Directional/Point/Spot light descriptor
-using x3d::runtime::extract::CameraDesc;     ///< { viewMatrix, fieldOfView, near/far, ortho... }
-using x3d::runtime::extract::BackgroundDesc; ///< { skyColor/skyAngle/groundColor/groundAngle }
-using x3d::runtime::extract::FogDesc;        ///< bound Fog { color, fogType, visibilityRange } (§24.4.2)
+using x3d::runtime::extract::MeshData;
+using x3d::runtime::extract::Topology;
+using x3d::runtime::extract::MaterialDesc;
+using x3d::runtime::extract::MaterialModel;
+using x3d::runtime::extract::AlphaMode;
+using x3d::runtime::extract::LightDesc;
+using x3d::runtime::extract::CameraDesc;
+using x3d::runtime::extract::BackgroundDesc;
+using x3d::runtime::extract::FogDesc; ///< bound Fog (§24.4.2)
 
-// ── Seams (embedder-supplied IO) ───────────────────────────────────── [PER-SEAM]
-// There is no blanket answer here: each seam carries its own marker below.
-// AssetResolver (ADR-0023), TextureResolver (ADR-0024) and FontMetrics (ADR-0025)
-// are [STABLE] — frozen pre-v2, each proven generic by a second independent backend
-// under a CI-gated swap-test. GeoProjection is the one [EXPERIMENTAL] seam: it has
-// no second backend yet, so its shape may still gain fields. (The Script/SAI seam
-// is [STABLE] too — it has its own section below.) The live per-seam tracker is
-// docs/wiki/seam-status.md.
+// Seams (embedder-supplied IO)
 
 // Tessellation density and font-metrics build knobs.
-using x3d::runtime::extract::MeshBuildOptions; ///< { sphereRings, sphereSegments, radialSlices, fontMetrics }
+using x3d::runtime::extract::MeshBuildOptions;
 
-// Asset resolution seam (B8). One type, two invocation contracts:
+// Asset resolution (ADR-0023):
 //   render-time may return Pending (retry next frame); parse-time (Inline/
 //   ExternProto) must return Ready/Failed synchronously.
-using x3d::runtime::extract::AssetResolver;  ///< function<AssetResult(url, AssetKind)>
-using x3d::runtime::extract::AssetResult;    ///< { status, bytes } + makeReady/makePending/makeFailed
-using x3d::runtime::extract::AssetStatus;    ///< enum class { Ready, Pending, Failed }
-using x3d::runtime::extract::AssetKind;      ///< enum class { Texture, Movie, Inline, ExternProto, ExternalGeometry }
+using x3d::runtime::extract::AssetResolver;
+using x3d::runtime::extract::AssetResult;
+using x3d::runtime::extract::AssetStatus;
+using x3d::runtime::extract::AssetKind;
 
-// Texture decode seam (T-TEX) — [STABLE] (proven generic: stb_image + wuffs,
-// byte-equal decode swap-test; ADR-0024). Embedder maps a url to decoded RGBA
-// pixels; the SDK threads the result onto TextureRef so a consumer binds without
-// re-resolving. makeMultiFormatTextureResolver composes per-format decoders.
-using x3d::runtime::extract::TextureResolver;      ///< function<TexturePixelResult(const std::string& url)>
-using x3d::runtime::extract::TexturePixelResult;   ///< { status, pixels }
-using x3d::runtime::extract::TexturePixels;        ///< { width, height, RGBA bytes }
-using x3d::runtime::extract::TextureResolveStatus; ///< enum class { Ready, Pending, Failed }
-using x3d::runtime::extract::TextureRef;           ///< per-channel texture descriptor (url/repeat/sampler/...)
-using x3d::runtime::extract::SamplerParams;        ///< descriptor-level sampler state
+// Embedder returns decoded RGBA pixels, retained on TextureRef (ADR-0024).
+using x3d::runtime::extract::TextureResolver;
+using x3d::runtime::extract::TexturePixelResult;
+using x3d::runtime::extract::TexturePixels;
+using x3d::runtime::extract::TextureResolveStatus;
+using x3d::runtime::extract::TextureRef;
+using x3d::runtime::extract::SamplerParams;
 
-// FontMetrics seam (T-TEXT) — [STABLE] (proven generic: stb_truetype + FreeType,
-// exact-equal advanceEm swap-test; see ADR-0025).
-// Embedder supplies per-codepoint advance + optional atlas UV / outline; the SDK
-// does all Text layout. Default = monospaced stub.
-using x3d::runtime::extract::FontMetrics;     ///< function<GlyphResult(const FontKey&)>
-using x3d::runtime::extract::FontKey;         ///< { family, style, codepoint, ... }
-using x3d::runtime::extract::GlyphMetrics;    ///< advance + atlas/outline data
-using x3d::runtime::extract::GlyphResult;     ///< { status, metrics }
-using x3d::runtime::extract::GlyphStatus;     ///< enum class { Ready, Pending, Failed }
-using x3d::runtime::extract::makeMonospaceStub; ///< default monospaced FontMetrics (advanceEm=0.6)
+// Embedder supplies glyph metrics; the SDK performs Text layout (ADR-0025).
+// The default is a monospaced stub.
+using x3d::runtime::extract::FontMetrics;
+using x3d::runtime::extract::FontKey;
+using x3d::runtime::extract::GlyphMetrics;
+using x3d::runtime::extract::GlyphResult;
+using x3d::runtime::extract::GlyphStatus;
+using x3d::runtime::extract::makeMonospaceStub; ///< default glyph advance is 0.6 em
 
 // Geospatial worlds retain a constructor-fixed projection through
 // SessionOptions::geoProjection or X3DExecutionContext(fields, projection).
 // Pure helpers require an explicit projection reference; use
 // runtime::geo::builtinProjection() for standalone built-in conversions
-// (ADR-0058). The GeoProjection virtual interface is unchanged.
+// (ADR-0058).
 
-// ── Script / SAI seam (T-SCRIPT) ────────────────────────────────────────────
-// ScriptEngine's abstract backend interface remains [STABLE]: Duktape and
-// QuickJS implement it without a signature change (ADR-0022). Concrete runtime
-// ownership and author-field APIs are [EXPERIMENTAL], not a frozen ABI.
+// Script / SAI
+// ScriptEngine backend contract: ADR-0022.
 // Bind a parsed scene with X3DExecutionContext(doc.scene.authorFields), or let
 // an untouched default context bind once at its first scene build. Register
 // author fields through that owner and use effectiveFields(node, store).
 // ScriptSystem/SaiContext use the bound context; no process-global store exists.
-// See ADR-0057 for cloning, serialization and source-compatibility migration.
-using x3d::runtime::ScriptEngine;             ///< abstract: load/initialize/shutdown/prepareEvents/invoke/...
-using x3d::runtime::ScriptSystem;             ///< System subclass; ctor(engine, browserName, version)
-using x3d::runtime::SaiContext;               ///< getField/setField/addRoute/deleteRoute/getName/getVersion
-using x3d::runtime::ScriptHandle;             ///< std::uint64_t; 0 == kInvalidScriptHandle
+// See ADR-0057 for author-field ownership.
+using x3d::runtime::ScriptEngine;
+using x3d::runtime::ScriptSystem;
+using x3d::runtime::SaiContext;
+using x3d::runtime::ScriptHandle; ///< 0 == kInvalidScriptHandle
 using x3d::runtime::kInvalidScriptHandle;
 
 } // namespace x3d::sdk

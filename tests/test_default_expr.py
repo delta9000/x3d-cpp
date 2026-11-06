@@ -83,7 +83,7 @@ def test_mfvec3f_single_element():
 
 
 def test_mfvec3f_multi_element():
-    # MULTI-element defaults must emit EVERY element, not just the first
+    # Multi-element defaults preserve every element
     # (Extrusion.spine = the 2-point segment [0 0 0, 0 1 0]).
     assert (expr("MFVec3f", "0 0 0 0 1 0")
             == "std::vector<SFVec3f>{SFVec3f{0, 0, 0}, SFVec3f{0, 1, 0}}")

@@ -9,8 +9,7 @@ def test_detect_version_from_xml():
     assert detect_document_version(DOC_40) == "4.0"
 
 def test_vc_equals_vd_same_validator_both_versions():
-    # THE MOAT DEMO IN MINIATURE: the identical validator code validates a 4.0 and
-    # a 4.1 doc, each against its OWN version's manifest (Vc := Vd), zero code change.
+    # Validate each document against the manifest for its declared version.
     for doc in (DOC_40, DOC_41):
         vd = detect_document_version(doc)
         m = load_manifest(vd)            # picks x3d-4.0.json or x3d-4.1.json by data

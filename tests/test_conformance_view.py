@@ -20,7 +20,7 @@ sys.modules["conformance_view"] = cv  # so @dataclass can resolve the module
 _spec.loader.exec_module(cv)
 
 
-# --- node header parsing ---------------------------------------------------
+# node header parsing
 def test_parse_node_header_concrete():
     text = """
     class Box : public virtual X3DGeometryNode {
@@ -42,7 +42,7 @@ def test_parse_node_header_abstract_has_no_component():
     assert n.abstract is True
 
 
-# --- registry table parsing ------------------------------------------------
+# registry table parsing
 REGISTRY = """
 const std::unordered_map<std::string, std::vector<InterfaceId>>& table() {
     static const std::unordered_map<std::string, std::vector<InterfaceId>> t = {
@@ -69,7 +69,7 @@ def test_behavioral_classification():
     assert cv.is_behavioral(table["Box"]) is False
 
 
-# --- System-wiring detection ----------------------------------------------
+# System-wiring detection
 def test_detect_system_targets_concrete_and_template():
     text = """
     void attach(X3DNode *node) {
@@ -102,7 +102,7 @@ def test_detect_system_targets_string_compare_in_system_file():
     assert "ProximitySensor" not in cv.detect_system_targets(text, is_system_file=False)
 
 
-# --- findings schema -------------------------------------------------------
+# findings schema
 def test_validate_finding_accepts_good():
     f = {
         "id": "INTERP-01",
@@ -137,7 +137,7 @@ def test_validate_finding_rejects_bad(mutate):
     assert cv.validate_finding(f) != []
 
 
-# --- findings loading robustness -------------------------------------------
+# findings loading robustness
 def test_load_findings_rejects_non_list(tmp_path):
     bad = tmp_path / "findings.yaml"
     bad.write_text("key: value\n")  # a mapping, not a list
@@ -151,7 +151,7 @@ def test_load_findings_empty_ok(tmp_path):
     assert cv.load_findings(empty) == []
 
 
-# --- behaves classification join ------------------------------------------
+# behaves classification join
 def test_classify_behaves_non_behavioral_is_na():
     assert cv.classify_behaves(behavioral=False, wired=False, findings=[]) == "n/a"
 
@@ -191,7 +191,7 @@ def test_unverified_has_question_mark_in_rendered_status():
     assert cv._behaves_rollup([{"behaves": "unverified"}]) == "1?"
 
 
-# --- profile membership ----------------------------------------------------
+# profile membership
 def test_node_profiles():
     profiles = {
         "Interchange": {"Geometry3D": 2, "Interpolation": 2},
@@ -205,7 +205,7 @@ def test_node_profiles():
     assert cv.node_profiles("Nurbs", 1, profiles) == []
 
 
-# --- referential integrity -------------------------------------------------
+# referential integrity
 def test_unresolved_findings_flagged():
     nodes = {"Box": cv.NodeFact("Box", "Geometry3D", 1, False)}
     findings = [
@@ -220,7 +220,7 @@ def test_unresolved_findings_flagged():
     assert "GOOD" not in ids
 
 
-# --- real-repo smoke -------------------------------------------------------
+# real-repo smoke
 def test_real_repo_generates_clean():
     model = cv.build_model(REPO)
     assert model["meta"]["node_count"] == 260
@@ -237,7 +237,6 @@ def test_real_repo_generates_clean():
         "stale findings reference unknown nodes/interfaces: "
         f"{[u['id'] for u in model['unresolved_findings']]}"
     )
-    # The interpolation cluster we just shipped should read as present + behaving.
     interp = next(c for c in model["components"] if c["name"] == "Interpolation")
     names = {n["name"] for n in interp["nodes"]}
     assert "SplinePositionInterpolator" in names

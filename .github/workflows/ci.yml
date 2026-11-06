@@ -1,48 +1,10 @@
-# CI for x3d-cpp — the merge gate.
-#
-# Cost/latency shape: as few VMs as possible per PR push, nothing exploratory
-# on PRs, and heavy backend builds only when their code changed.
-#
-# On every PR (and on pushes to main, which also keeps the caches warm):
-#   - `checks`: pytest (incl. the golden-tree drift check), the conformance-view
-#     drift check and the strict wiki build, in one job.
-#   - `cpp` (when C++ changed): one gcc build tree for the behavior suite, the
-#     per-header compile contracts, and the two hermetic swap-tests (texture
-#     decode: stb_image vs wuffs, both vendored; script engine: Duktape vs
-#     QuickJS). Byte-equal decode parity is the closest thing the SDK has to a
-#     render-correctness guarantee, so it runs every time.
-#   - `cpp-san` (when C++ changed): the behavior suite under ASan + UBSan.
-#   - `examples-gate` (when C++ changed): the example consumers.
-#   - The swap-tests that need a third-party SDK (assetresolver: curl + AWS SDK +
-#     a docker S3 fixture; audio: miniaudio; fontmetrics: FreeType) run ONLY
-#     when their backend, the seam interface, the build system, or a consuming
-#     subsystem changed — gated by the `changes` job's path classifier.
-#
-# Post-merge only (push to main, manual dispatch): the libFuzzer smoke and the
-# exploratory macOS/Windows smoke. Manual dispatch only: the 4-compiler matrix
-# (run it before a release or when touching the build).
-#
-# A `concurrency` group cancels superseded in-flight runs so rapid pushes to a
-# PR don't each pay full freight.
-#
-# NOTE: path-gated job names may be branch-protection "required" checks. A
-# path-skipped job reports the "skipped" conclusion, which GitHub treats as
-# passing — so PRs that don't touch a path-gated seam are not blocked on it.
-#
-# See docs/wiki/guides/gate-system.md (what each gate protects).
-#
-# Every job carries a timeout-minutes bound (a few times its cold-cache duration)
-# so a hung ctest, S3 fixture or vcpkg build fails fast instead of running to the
-# 6-hour default.
-#
-# Note: Forgejo Actions also reads .github/workflows, so mirroring picks up the
-# same pipeline (apt-based, no GitHub-only actions beyond checkout + setup-uv).
+# Path classification limits backend builds to relevant changes.
+# Path-skipped jobs may be required branch-protection checks: GitHub treats
+# their skipped conclusion as passing.
+# Gate purposes: docs/wiki/guides/gate-system.md.
 name: CI
 
 on:
-  # main is tested on every merge, so the badge reflects the repo's actual head
-  # and is worth trusting. This costs one extra run per merge -- the concurrency
-  # group below cancels superseded PR-branch runs, but it does not make this free.
   push:
     branches: [main]
   pull_request:
@@ -51,20 +13,13 @@ on:
 permissions:
   contents: read
 
-# Cancel superseded runs: a new push to the same PR cancels the in-flight run
-# instead of paying for both. Keyed on the workflow + ref (PR merge ref), so
-# distinct PRs never cancel each other.
+# Cancel superseded runs for the same workflow and ref.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Detect which seam subsystems a PR touches so the heavy backend swap-tests run
-  # ONLY when their backend, the seam interface, the build system, OR a
-  # consuming subsystem changed. Python/golden/conformance/wiki always run;
-  # C++ jobs use the classifier's `cpp` output. Plain git + Python 3 (no
-  # third-party action) keeps the Forgejo mirror compatible. On manual dispatch
-  # every class is requested.
+  # Manual dispatch requests every class; Python checks always run.
   changes:
     name: detect changed subsystems
     runs-on: ubuntu-latest
@@ -96,10 +51,6 @@ jobs:
           echo "changed vs $BASE ($base_sha):"; echo "$changed"
           printf '%s\n' "$changed" | python3 scripts/classify_ci_changes.py >> "$GITHUB_OUTPUT"
 
-  # Every hermetic Python-side gate in ONE job: pytest (which includes the
-  # golden-tree drift check and runs scripts/check_golden.sh), the
-  # conformance-view drift check, and the strict wiki build. These were four
-  # jobs of 10 s - 3 min each, each paying its own VM setup.
   checks:
     name: pytest + golden + conformance view + wiki build
     runs-on: ubuntu-latest
@@ -124,13 +75,6 @@ jobs:
       - name: Build wiki (strict)
         run: uv run --group docs mkdocs build --strict
 
-  # The single-compiler C++ gate, in ONE job and one build tree:
-  #   - the behavior suite and the per-header compile contracts (the same
-  #     sequence as `mise run build-ci`), each built as an explicit target;
-  #   - the two hermetic seam swap-tests that only need vendored or fetched
-  #     sources: TextureResolver (stb_image vs wuffs, both vendored) and the
-  #     ScriptEngine (Duktape vs QuickJS, quickjs-ng fetched).
-  # These were four jobs, each rebuilding the core libraries on its own VM.
   cpp:
     name: C++ build + ctest (gcc, PR gate)
     needs: changes
@@ -164,11 +108,7 @@ jobs:
       - name: Swap-tests (stb_image vs wuffs; Duktape vs QuickJS)
         run: ctest --preset ci --output-on-failure -R 'x3d_texture|x3d_quickjs(_backend|_swap)'
 
-  # Sanitizer gate (BLD-2). Builds the behavior suite in Debug with ASan + UBSan
-  # (-fno-sanitize-recover=all, so the first error aborts). Compile contracts,
-  # examples, fuzzers, and external-corpus gates do not execute useful sanitizer
-  # behavior and stay out of this graph. Mirrors `mise run build-san` exactly via
-  # the `san` preset; its separate build dir cannot share objects with `cpp`.
+  # The san preset instruments executed behavior tests in a separate build tree.
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)
     needs: changes
@@ -194,18 +134,10 @@ jobs:
       - name: Test (behavior suite under ASan + UBSan)
         run: ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 
-  # Fuzz gate (BLD-2). Builds the libFuzzer harness for sdk::parseDocument.
-  # Clang instruments the compiled node/runtime layers with fuzzer-no-link
-  # coverage + ASan/UBSan; the harness owns the libFuzzer driver.
-  # A crash, leak, or UB found in the time budget fails the job (libFuzzer exits
-  # nonzero). This is regression coverage, not an exhaustive campaign — the bound
-  # keeps its cost low while still re-exercising the parser against mutated input.
+  # Coverage-guided parser mutation; sanitizer failures and crashes fail the job.
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
     needs: changes
-    # Post-merge only (push to main, manual dispatch): a separate Clang build
-    # plus a 60 s fuzz run on every PR push bought little over running it once
-    # per merge.
     if: github.event_name != 'pull_request' && needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -229,13 +161,7 @@ jobs:
       - name: Fuzz (bounded 60s smoke)
         run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
 
-  # Genericity proof — the permanent gate for the AssetResolver/IO seam (ADR-0023).
-  # Builds the flag-gated libcurl HTTP + AWS S3 SDK backends and runs the
-  # dual-backend swap-test against a docker S3 fixture (adobe/s3mock): identical fixture
-  # bytes served through Backend A (libcurl HTTP) and Backend B (AWS S3 SDK)
-  # must yield byte-equal AssetResult.bytes. Off the fast `cpp` job (extra
-  # SDK install + docker service) but on every PR, so a future change that
-  # breaks parity fails the merge.
+  # Compare HTTP/S3 resolver results using a local fixture (ADR-0023).
   assetresolver-swap:
     name: AssetResolver seam swap-test
     needs: changes
@@ -244,14 +170,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      # S3-compatible fixture server for Backend B. This was `minio/minio:latest`
-      # until MinIO stopped publishing public images (the Docker Hub repo now
-      # 404s and the pull is denied), which broke this job on every branch.
-      # adobe/s3mock is maintained, credential-agnostic and serves path-style
-      # requests (S3Resolver sets useVirtualAddressing=false); the swap-test
-      # creates its own bucket. Pinned to an exact tag: `latest` is how the
-      # minio image disappeared out from under us. Started as a plain docker
-      # step (not `services:`) so we control startup and poll readiness here.
+      # Pinned S3 fixture supports path-style requests. Start explicitly so the
+      # readiness check can poll before tests create their bucket.
       - name: Start s3mock (S3 fixture backend for the swap-test)
         run: |
           docker run -d --name s3mock -p 9000:9090 adobe/s3mock:5.2.3
@@ -317,10 +237,6 @@ jobs:
             -DX3D_CPP_BUILD_CURL=ON -DX3D_CPP_BUILD_S3=ON \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=x64-linux
-      # Build only what the swap-test needs — not the whole project (~40
-      # unrelated test exes + examples). The `cpp` job already covers the full
-      # build/ctest; this gate exists to prove the seam, so building the rest
-      # here is wasted minutes.
       - name: Build (AssetResolver swap-test targets only)
         run: |
           cmake --build build --target \
@@ -336,9 +252,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure -R 'x3d_assetresolver(_backend|_swap)'
 
 
-  # Genericity proof — the permanent gate for the Audio seam (ADR-0026).
-  # Builds the flag-gated miniaudio backend and runs the dual-backend swap-test:
-  # headless render, no audio device required. No vcpkg or docker needed.
+  # Compare audio samples headlessly (ADR-0026).
   audio-swap:
     name: Audio seam swap-test
     needs: changes
@@ -357,8 +271,6 @@ jobs:
           restore-keys: ccache-audio-
       - name: Configure (miniaudio backend ON — fetched, headless)
         run: cmake -S . -B build -G Ninja -DX3D_CPP_BUILD_MINIAUDIO=ON
-      # Build only the audio swap-test binary — not the whole project. The `cpp`
-      # job covers the full build/ctest; this gate exists to prove the audio seam.
       - name: Build (Audio swap-test target only)
         run: cmake --build build --target x3d_sound_swaptest
       - name: Swap-test (BuiltinDsp vs miniaudio, headless — no audio device)
@@ -381,11 +293,7 @@ jobs:
       - name: Swap-test (built-in vs PROJ)
         run: ctest --test-dir build --output-on-failure -R x3d_proj_geo_swap -V
 
-  # FontMetrics seam (ADR-0025): two independent backends — stb_truetype
-  # (vendored single header) and FreeType (vcpkg) — must return BIT-IDENTICAL
-  # advanceEm for the same glyph, plus Failed-parity on absent codepoints. stb is
-  # vendored; FreeType comes from vcpkg with a binary cache so the cold build is
-  # paid once. On every PR, so a future change that breaks metric parity fails.
+  # Compare glyph metrics on the same font fixtures (ADR-0025).
   fontmetrics-swap:
     name: FontMetrics seam swap-test
     needs: changes
@@ -430,23 +338,13 @@ jobs:
             -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_FREETYPE=ON \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=x64-linux
-      # Build only the FontMetrics test binaries — the `cpp` job covers the full build.
       - name: Build (FontMetrics swap-test target only)
         run: cmake --build build --target x3d_text_tests x3d_text_atlas_tests
       - name: Swap-test (stb_truetype vs FreeType exact-equal advanceEm)
         run: ctest --test-dir build --output-on-failure -R x3d_text
 
-  # The out-of-SDK renderer CONSUMERS — examples/cpu_raster/ (headless CPU raster)
-  # and examples/poc_renderer/ (OpenGL) — are OFF by default and built only via
-  # `mise run cpuraster` / `mise run poc`, so the `cpp` gate never compiles them.
-  # An SDK-wide refactor (e.g. ADR-0039's x3d::core / x3d::nodes namespace move)
-  # silently rotted BOTH until someone ran an example by hand. This gate builds
-  # both, runs their --headless probes, and exercises the real GL pipeline
-  # headlessly under Xvfb + mesa software GL (llvmpipe) — the closest proof that
-  # the renderer-agnostic extraction seam still works for an external consumer.
-  # Runs on every C++ PR: the drift it catches comes from arbitrary public-API
-  # changes, not one path-gated seam. Mirrors `mise run validate-examples` (both
-  # call scripts/validate-examples.sh).
+  # Build the example consumers and exercise real GL under software rendering.
+  # See scripts/validate-examples.sh.
   examples-gate:
     name: Example consumers (cpu_raster + poc, headless GL)
     needs: changes
@@ -472,20 +370,10 @@ jobs:
       - name: Build both examples + headless probes + Xvfb GL smoke
         run: scripts/validate-examples.sh
 
-  # Cross-platform smoke (exploratory). The codebase is Linux-first (GCC/Clang);
-  # nothing else exercises Apple Clang (macOS/arm64) or MSVC (Windows). This
-  # builds + ctests a focused slice — the LoadSensor + FileResolver suites (and
-  # the runtime lib they pull) — on both, to surface portability drift. It is
-  # `continue-on-error` (never blocks a merge) and skips main-push to keep push
-  # CI fast; it runs on cpp-touching PRs and manual dispatch. Uses the `dev`
-  # preset (no -Werror). Local fast pre-flight: `mise run build-msvc` cross-builds
-  # the same MSVC target with clang-cl + xwin and runs it under wine.
+  # Exploratory macOS/MSVC smoke; failures do not block merges.
   cross-platform-smoke:
     name: Cross-platform smoke (${{ matrix.os }}, exploratory)
     needs: changes
-    # Exploratory (continue-on-error: it can never block a merge), so it runs
-    # post-merge (push to main, manual dispatch) instead of on every PR push --
-    # a macOS runner is the most expensive runner type there is.
     if: github.event_name != 'pull_request' && needs.changes.outputs.cpp == 'true'
     continue-on-error: true
     strategy:
@@ -550,8 +438,7 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-        # WERROR=ON across the matrix too — the goal is identical gate, all
-        # compilers should agree the codebase is warning-clean.
+        # Require warning-clean builds with every matrix compiler.
         run: cmake -S . -B build -G Ninja -DX3D_CPP_WERROR=ON
       - name: Build
         run: cmake --build build

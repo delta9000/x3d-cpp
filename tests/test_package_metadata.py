@@ -37,7 +37,7 @@ def test_pyproject_points_at_the_generator_readme():
 
 @pytest.mark.slow
 def test_sdist_and_wheel_carry_license_and_notice(tmp_path):
-    # uv is a standalone binary (installed via mise here), NOT an importable
+    # uv is a standalone binary (installed via mise here), not an importable
     # Python module -- `python -m uv` fails with "No module named uv". Invoke the
     # executable, and say so plainly if it is absent.
     uv = shutil.which("uv")

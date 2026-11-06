@@ -12,7 +12,7 @@ CLEAN_40 = """<X3D profile='Immersive' version='4.0'><Scene>
 BAD_NODE_40 = """<X3D profile='Immersive' version='4.0'><Scene>
   <Shape><NotARealNode/></Shape></Scene></X3D>"""
 
-# a real 3.0 erratum case: route into Viewpoint.orientation — clean ONLY because
+# a real 3.0 erratum case: route into Viewpoint.orientation — clean only because
 # the errata overlay corrects orientation to inputOutput
 ERRATA_30 = """<X3D version='3.0'><Scene>
   <OrientationInterpolator DEF='OI'/><Viewpoint DEF='V'/>
@@ -38,7 +38,7 @@ def test_per_version_scorecard_and_provenance(tmp_path):
     root = _corpus(tmp_path, {"clean.x3d": CLEAN_40, "bad.x3d": BAD_NODE_40})
     v40 = build_report(root)["perVersion"]["4.0"]
     assert v40["validated"] == 2 and v40["clean"] == 1
-    # provenance ties the scorecard to the exact UOM extraction (the moat anchor)
+    # provenance ties the scorecard to the exact UOM extraction
     assert v40["provenance"]["uomManifestHash"]
     assert v40["provenance"]["nodeCount"] > 0
 

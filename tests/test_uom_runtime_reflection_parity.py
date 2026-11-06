@@ -46,7 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 NODES_DIR = REPO_ROOT / "generated_cpp_bindings" / "x3d" / "nodes"
 
 # UOM accessType spelling -> the AccessType C++ enumerator in X3DReflection.hpp.
-# Deliberately NOT imported from emit.descriptors.FieldDescriptor.runtime_access,
+# Deliberately not imported from emit.descriptors.FieldDescriptor.runtime_access,
 # so this test doesn't share logic with the code path it is checking.
 _ACCESS_MAP = {
     "inputOutput": "InputOutput",
@@ -67,7 +67,7 @@ _FIELD_INFO_RE = re.compile(
 def uom_nodes():
     nodes, _skipped = parse_x3d_model(str(SPEC), FIELD_TYPE_MAPPING, XS_TYPES)
     assert nodes, "UOM parse produced no nodes"
-    # The generated bindings are built from the UOM PLUS the cited field-addition
+    # The generated bindings are built from the UOM plus the cited field-addition
     # errata (x3d-cpp-gen applies them after parsing), so that is the oracle here:
     # fields the standard defines but the vendored UOM omits (e.g. WaveShaper.curve).
     apply_field_additions_model("4.0", nodes)
@@ -135,7 +135,7 @@ def test_generated_field_table_matches_uom(node_name, uom_nodes, enum_defs):
     # 1. Coverage: every field this node declares itself (not inherited) must
     #    appear in the generated table. "Own" fields need no inheritance
     #    resolution to trust -- inheritedFrom is unset for them by definition
-    #    -- so this direction is a clean, unambiguous check.
+    # so this direction is a clean, unambiguous check.
     for f in get_own_fields(uom_node):
         assert f.x3d_name in generated_names, (
             f"{node_name}: UOM-declared own field '{f.x3d_name}' is missing "

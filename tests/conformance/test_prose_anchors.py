@@ -56,7 +56,7 @@ def test_parse_prose_headings_extracts_anchors(tmp_path):
     assert cone["title"] == "Cone"
     # emphasis (*...*) stripped from abstract-type titles
     assert cands["X3DGeometryNode"][0]["title"] == "X3DGeometryNode"
-    # markdown bold (**) wrapping the WHOLE "number title" must not defeat parsing
+    # markdown bold (**) wrapping the whole "number title" must not defeat parsing
     nurbs = cands["NurbsSet"][0]
     assert nurbs["section"] == "27.4.8"
     assert nurbs["title"] == "NurbsSet"
@@ -88,7 +88,7 @@ def test_build_anchor_map_classifies(tmp_path):
     # ambiguity resolved to the deeper section, others recorded
     assert art["anchors"]["Script"]["section"] == "29.4.1"
     assert art["anchors"]["Script"]["ambiguous"] == [{"file": "core.md", "section": "7.2.9"}]
-    # fuzzy (case-only) match is NOT a clean anchor
+    # fuzzy (case-only) match is not a clean anchor
     assert "fontstyle" not in art["anchors"]
     assert art["fuzzy"]["fontstyle"]["matchedAnchor"] == "FontStyle"
     assert art["unanchored"] == ["Tangent"]
@@ -115,8 +115,7 @@ def test_coverage_buckets_for_version(tmp_path):
 
 
 # Statements (prose lives in core/concepts, not node-reference sections) + 4.1-new
-# nodes absent from the 4.0 prose mirror. A node leaving/joining this set must be a
-# CONSCIOUS recommit — this gate fails otherwise.
+# nodes absent from the 4.0 prose mirror. Update EXPECTED_UNANCHORED when coverage changes.
 EXPECTED_UNANCHORED = {
     "EXPORT", "EnvironmentLight", "ExternProtoDeclare", "FontLibrary", "HAnimPose",
     "IMPORT", "IS", "InlineGeometry", "ProtoBody", "ProtoDeclare", "ProtoInstance",

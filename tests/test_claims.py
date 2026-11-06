@@ -1,15 +1,4 @@
-"""Public claims must survive contact with the code.
-
-Two claims were literally false:
-
-  "The SDK does no file IO"  -- the facade exports parseFile(), which opens an
-  ifstream (include/x3d/sdk.hpp -> runtime/parse/X3DParse.cpp). sdk.hpp asserted
-  it ~50 lines above the export.
-
-  "every node and field is spec-correct by construction" -- generation from the
-  UOM constrains declarations, types and defaults. It does not prove runtime
-  semantics or eliminate UOM errata.
-"""
+"""Check public documentation claims against exported APIs and runtime behavior."""
 
 from pathlib import Path
 
@@ -49,7 +38,7 @@ def test_no_spec_correct_by_construction_claim():
 
 
 def test_readme_does_not_call_ci_manual_only():
-    """ci.yml has a pull_request trigger; the README told readers to enable it."""
+    """Document the enabled pull_request trigger."""
     text = (REPO_ROOT / "README.md").read_text()
     assert "re-enable the `push:` / `pull_request:` triggers" not in text
     workflow = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
@@ -85,12 +74,7 @@ def test_wiki_does_not_deny_renderers_are_in_the_repo():
 
 
 def test_capability_matrix_mentions_the_moviedecoder_seam():
-    """The matrix undersold shipped work: it omitted the seam entirely.
-
-    Movie DECODE ships (two backends + x3d_movie_tests). Movie PLAYBACK is
-    correctly still deferred -- the SDK never invokes the callback. Both facts
-    belong in the matrix; previously neither did.
-    """
+    """The matrix describes decoder support and the playback limitation."""
     text = (REPO_ROOT / "docs/sdk/v1-capabilities.md").read_text()
     assert "MovieDecoder" in text, (
         "the MovieDecoder seam ships with two backends and a CI gate; the "

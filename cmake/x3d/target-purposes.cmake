@@ -1,14 +1,10 @@
 # cmake/x3d/target-purposes.cmake — target purpose inventory (primary purpose per repository-owned target).
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
 # Target purpose inventory. Primary purpose answers why each repository-owned
 # target exists; test-suite membership is a separate property added in the
 # aggregate-target phase. Optional names are kept in the inventory even when
 # their feature flag is off so enabling a backend cannot create an unclassified
 # target later.
-# ---------------------------------------------------------------------------
 function(_x3d_classify_present_targets purpose)
     foreach(_target IN LISTS ARGN)
         if(TARGET "${_target}")

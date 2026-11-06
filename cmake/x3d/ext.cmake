@@ -1,16 +1,7 @@
 # cmake/x3d/ext.cmake — the opt-in x3d::runtime::ext extensions (X3D_CPP_BUILD_EXT)
 # and their tests.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
-# Extension quarantine — x3d_cpp_ext (INTERFACE, header-only).
-# Lives in runtime/ext/; namespace x3d::runtime::ext.
-# One-way dep: ext→core (includes PackedMesh, Aabb, …). Core NEVER includes ext.
-# Default OFF — no TU in runtime/ext/ is ever compiled or linked in the
-# standard build path. Tests registered ONLY inside this block, so the default
-# ctest suite is unaffected. Build with: -DX3D_CPP_BUILD_EXT=ON
-# ---------------------------------------------------------------------------
+# Extension dependencies point toward core; core must not include ext.
 if(X3D_CPP_BUILD_EXT)
     add_library(x3d_cpp_ext INTERFACE)
     add_library(x3d_cpp::ext ALIAS x3d_cpp_ext)
@@ -62,7 +53,7 @@ if(X3D_CPP_BUILD_EXT)
         target_link_libraries(x3d_ext_external_geometry_roundtrip PRIVATE x3d_cpp::ext)
         add_test(NAME x3d_ext_external_geometry_roundtrip COMMAND x3d_ext_external_geometry_roundtrip)
 
-        # Round 2 — lazy ExternalGeometry materialization end-to-end proof.
+        # Lazy ExternalGeometry materialization.
         add_executable(x3d_ext_external_geometry_e2e
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_e2e_test.cpp")
         target_link_libraries(x3d_ext_external_geometry_e2e PRIVATE x3d_cpp::ext)

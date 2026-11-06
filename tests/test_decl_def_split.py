@@ -1,4 +1,4 @@
-"""Tests for the C1 declaration/definition split."""
+"""Tests for the declaration/definition split."""
 from x3d_cpp_gen.emit.factory import (
     gen_node_factory_header, gen_node_factory_source,
 )
@@ -16,7 +16,7 @@ def test_factory_header_has_no_node_includes():
     assert '#include "Box.hpp"' not in hdr
     assert "X3DNodeFactory" in hdr            # class still declared
     assert "create(" in hdr                   # entry point still declared
-    assert "{ return std::make_shared" not in hdr   # registry body NOT inline
+    assert "{ return std::make_shared" not in hdr   # registry body not inline
 
 
 def test_factory_source_declares_per_node_creators_and_defines_registry():
@@ -37,7 +37,7 @@ def test_node_header_declares_fields_without_inline_body(generated_tree):
     out = generated_tree
     box_h = (out / "x3d" / "nodes" / "Box.hpp").read_text()
     box_c = (out / "x3d" / "nodes" / "Box.cpp").read_text()
-    # Header DECLARES fields() but does NOT inline its FieldTable body.
+    # Header declares fields() but does not inline its FieldTable body.
     # (clang-format's default PointerAlignment: Right renders "FieldTable &".)
     assert "const FieldTable &fields() const override;" in box_h
     assert "static const FieldTable table" not in box_h

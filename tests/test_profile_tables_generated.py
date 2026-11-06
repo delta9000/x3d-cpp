@@ -3,7 +3,7 @@
 `x3d validate`'s profile tables (tools/x3d-cli/*.gen.inc) combine UOM node metadata
 with normative profile levels in docs/conformance/profiles.yaml. This test
 regenerates them to a temp dir and asserts the committed copies match, while pinning
-key profile facts that previously drifted from the published tables.
+key profile facts from the published tables.
 """
 
 import subprocess

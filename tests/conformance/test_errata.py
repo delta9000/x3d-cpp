@@ -64,7 +64,7 @@ def test_3_0_route_into_viewpoint_orientation_no_longer_flagged():
     assert "ROUTE_ACCESS_ILLEGAL" not in codes
 
 
-# -- field additions: fields the standard defines but the vendored UOM omits -----
+# field additions: fields the standard defines but the vendored UOM omits
 
 from x3d_cpp_gen.conformance.errata import (
     FIELD_ADDITIONS, additions_for, apply_field_additions_manifest,

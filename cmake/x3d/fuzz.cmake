@@ -1,15 +1,6 @@
 # cmake/x3d/fuzz.cmake — the libFuzzer parseDocument harness.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
-# BLD-2: libFuzzer harness for parseDocument (Clang-only). Builds only when
-# X3D_CPP_FUZZ=ON and the compiler is Clang (libFuzzer requires the
-# `-fsanitize=fuzzer` driver, which is GCC 14+ but most reliable on Clang).
-# The fuzz preset sets both; the `cpp-fuzz` CI job uses the same. The
-# harness itself catches all exceptions and just asserts the parser doesn't
-# crash — the ASan/UBSan signal handlers are what actually catch the bug.
-# ---------------------------------------------------------------------------
+# Parser exceptions are allowed; sanitizer failures and crashes fail the run.
 if(X3D_CPP_FUZZ)
     add_executable(x3d_parse_fuzz
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parse_fuzz.cpp")

@@ -1,12 +1,5 @@
 # cmake/x3d/cli.cmake — the x3d CLI binary, the QuickJS swap-test, and the CLI differential / canonicalize gates.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
-# x3d CLI — thin `x3d` binary over the x3d::sdk façade.
-# Subcommands: convert (Task A); validate slots in next (Task B).
-# Always built alongside the other tools/ binaries in the default preset.
-# ---------------------------------------------------------------------------
 add_executable(x3d_cli
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d_cli.cpp")
 set_target_properties(x3d_cli PROPERTIES OUTPUT_NAME "x3d")
@@ -70,16 +63,7 @@ if(X3D_CPP_BUILD_TESTS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures")
 endif()
 
-# ---------------------------------------------------------------------------
-# U3 ScriptEngine GENERICITY PROOF — the backend swap-test (x3d_quickjs_swap).
-# Drives the SAME authored Script fixtures through the full runtime under BOTH
-# the Duktape EcmaScriptBackend and the QuickJsBackend over an identical tick
-# schedule, and asserts an IDENTICAL observable trace (author-field values +
-# ROUTE-target values). Built ONLY when X3D_CPP_BUILD_QUICKJS=ON (when ON,
-# x3d_ecmascript_backend — the always-built Duktape backend — is also present,
-# so both engines link). Placed here, after both targets are defined, so the
-# single TU links both backends.
-# ---------------------------------------------------------------------------
+# Compare observable Script traces under the same tick schedule (ADR-0022).
 if(TARGET x3d_quickjs AND TARGET x3d_ecmascript_backend AND X3D_CPP_BUILD_TESTS)
     add_executable(x3d_quickjs_swap
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/quickjs_swap_test.cpp")
@@ -91,19 +75,8 @@ if(TARGET x3d_quickjs AND TARGET x3d_ecmascript_backend AND X3D_CPP_BUILD_TESTS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
 endif()
 
-# ---------------------------------------------------------------------------
-# x3d-cli differential gate:
-#   x3d_scene_equiv_test  — unit tests for sceneEquivalent() (built under
-#                           X3D_CPP_BUILD_TESTS, like the rest of the suite)
-#   x3d_cli_gate          — Java-free differential gate (validate-diff +
-#                           convert-roundtrip vs X3DJSAIL golden verdicts)
-#
-# Both targets include tools/x3d-cli/ so they can see scene_equiv.hpp and
-# cli_gate.cpp without polluting the SDK include path.
-# The self-contained tests remain in the default build. The external-corpus
-# gates exist as explicit targets, but are excluded from `all` and from CTest;
-# their mise tasks build them before use.
-# ---------------------------------------------------------------------------
+# External-corpus gates are excluded from ordinary CTest because the archive
+# and X3DJSAIL goldens are not bundled.
 if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_scene_equiv_test
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
@@ -112,7 +85,7 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_scene_equiv_test PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_scene_equiv_test COMMAND x3d_scene_equiv_test)
 
-    # Regression for the gate's Inline/EXTERNPROTO baseUrl asymmetry (BUG-1):
+    # Relative Inline/EXTERNPROTO resources must expand against the same baseUrl:
     # the reparse must use the same baseUrl as the source parse so relative
     # externals expand symmetrically. Self-contained (writes its own temp
     # fixtures), so it is a real ctest (unlike x3d_cli_gate which needs the
@@ -131,17 +104,7 @@ add_executable(x3d_cli_gate EXCLUDE_FROM_ALL
 target_include_directories(x3d_cli_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
 target_link_libraries(x3d_cli_gate PRIVATE x3d_cpp::sdk)
-# Note: x3d_cli_gate is NOT registered as a ctest — it requires an external
-# corpus and committed golden files. Run via: mise run cli-gate
 
-# ---------------------------------------------------------------------------
-# x3d canonicalize — X3DC14N canonical form gate:
-#   x3d_canonicalize_unit_test  — unit tests for CanonicalXmlWriter (ctest,
-#                                 built under X3D_CPP_BUILD_TESTS)
-#   x3d_canon_gate              — tiered differential gate vs X3DJSAIL golden
-#                                 fixtures; NOT a ctest (needs external corpus).
-#                                 Run via: mise run canon-gate
-# ---------------------------------------------------------------------------
 if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_canonicalize_unit_test
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/canonicalize_unit_test.cpp")
@@ -156,5 +119,3 @@ add_executable(x3d_canon_gate EXCLUDE_FROM_ALL
 target_include_directories(x3d_canon_gate PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
 target_link_libraries(x3d_canon_gate PRIVATE x3d_cpp::sdk)
-# Note: x3d_canon_gate is NOT registered as a ctest — requires external corpus.
-# Run via: mise run canon-gate

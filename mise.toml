@@ -1,27 +1,10 @@
-# Dev task runner for x3d-cpp.
-#
-#   mise run gen      regenerate the committed C++ bindings (headers + smoke test)
-#   mise run test     pytest (unit + full-tree golden drift)
-#   mise run golden   golden-drift gate (regenerate to a temp dir + diff)
-#   mise run build    cmake configure + build + ctest
-#   mise run ci       the whole pipeline locally (test, golden, conformance-gate,
-#                     build, cli-gate-regression — the last needs a test corpus)
-#   mise run corpus-fetch   fetch the X3D test corpus the differential gates need
-#
-# Tools are managed by uv; these tasks shell out to `uv run` so they work without
-# an activated venv.
+# Tasks use uv run and do not require an activated environment.
 
 [tools]
-# uv provides the Python toolchain / project env. Pinned: `latest` means a silent
-# uv upgrade can change resolution and break a previously-green checkout. CI pins
-# the SAME version via setup-uv's `version:` input -- setup-uv does NOT read this
-# file, so both sites must be updated together or they drift apart silently.
+# Keep the uv pin synchronized with setup-uv in CI.
 uv = "0.10.4"
-# The generated C++ tree is byte-exact golden, so its formatter is part of the
-# contract and is pinned exactly -- the full version, not just the major, since
-# the default style can shift in any release. scripts/check_golden.sh asserts the
-# running version matches; CI installs this same pin. Bumping it reformats
-# generated_cpp_bindings/ and needs a regenerate + commit in the same change.
+# Formatter output is part of the byte-exact generated tree. Update the full
+# version here and in CI together, and regenerate the bindings when it changes.
 clang-format = "22.1.8"
 
 [tasks.sync]
@@ -46,7 +29,7 @@ depends = ["sync"]
 run = "scripts/check_golden.sh"
 
 [tasks.build]
-description = "Configure, build, and ctest the C++ side (Ninja + ccache, parallel ctest) — dev preset (per-header checks OFF, fast)."
+description = "Configure, build, and test the C++ dev preset; skips per-header isolation."
 run = """
 cmake --preset dev
 cmake --build --preset dev
@@ -61,14 +44,9 @@ cmake --build --preset dev --target x3d_proj_geo_swap -j4
 ctest --preset dev -R x3d_proj_geo_swap -V
 """
 
-# Fast local pre-flight for the GitHub MSVC job: cross-compile the
-# x86_64-pc-windows-msvc target with clang-cl + xwin and run it under wine — no
-# Windows machine. clang-cl emulates MSVC but is not identical, so the GitHub
-# MSVC job stays the source of truth. One-time SDK setup (clang-cl + lld-link
-# from LLVM, plus xwin) is documented in cmake/toolchains/clang-cl-msvc.cmake;
-# the toolchain FATAL_ERRORs with instructions if ~/.xwin is missing.
+# Cross-toolchain setup: cmake/toolchains/clang-cl-msvc.cmake.
 [tasks.build-msvc]
-description = "Cross-build + wine-run the Windows/MSVC target (clang-cl + xwin, Release) for the LoadSensor + FileResolver suites. Needs clang-cl/lld-link + an xwin splat at ~/.xwin; see cmake/toolchains/clang-cl-msvc.cmake."
+description = "Cross-build and run LoadSensor and FileResolver with clang-cl, xwin, and Wine. See cmake/toolchains/clang-cl-msvc.cmake."
 run = """
 set -e
 cmake -S . -B build-msvc -G Ninja \
@@ -85,12 +63,9 @@ else
 fi
 """
 
-# AUTHORITATIVE local Windows check for precommit: real MSVC cl.exe under wine
-# (via msvc-wine). Slower than build-msvc (clang-cl), but catches the MSVC-only
-# #ifdef bugs clang-cl is blind to (e.g. the tinfl.h C1017). Needs wine + msvc-wine
-# installed at ~/my-msvc (or $MSVC_WINE_BIN); see cmake/toolchains/msvc-wine.cmake.
+# cl.exe exercises MSVC-only branches. Setup: cmake/toolchains/msvc-wine.cmake.
 [tasks.build-msvc-real]
-description = "Precommit Windows check: build + wine-run the LoadSensor + FileResolver suites with REAL MSVC cl.exe (msvc-wine). Authoritative but slower than build-msvc (clang-cl). Needs wine + ~/my-msvc; see cmake/toolchains/msvc-wine.cmake."
+description = "Build and run LoadSensor and FileResolver with cl.exe under Wine. See cmake/toolchains/msvc-wine.cmake."
 run = """
 set -e
 export WINEDEBUG=-all
@@ -121,27 +96,18 @@ cmake --build --preset ci --target x3d_compile_contracts
 ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
 """
 
-# build-san: ASan + UBSan build (the BLD-2 sanitizer gate). Mirrors the GitHub
-# Actions `cpp-san` job: Debug, per-header checks OFF, and only behavior targets
-# run against sanitized binaries so a memory or UB regression fails the gate.
-# Separate build dir (build-san/) — its objects are NOT ccache-compatible with
-# the dev/ci presets (different flags), so don't try to share.
+# Sanitizer objects use different flags and a separate build directory.
 [tasks.build-san]
-description = "Configure, build, and ctest the C++ side with ASan + UBSan (BLD-2 sanitizer gate; mirrors GitHub Actions `cpp-san`)."
+description = "Build and test the behavior suite with ASan and UBSan using the san preset."
 run = """
 cmake --preset san
 cmake --build --preset san --target x3d_sanitizer_tests
 ctest --preset san -L behavior --output-on-failure -j "$(nproc)"
 """
 
-# build-fuzz: build the libFuzzer harness for parseDocument (Clang-only; BLD-2).
-# Does NOT ctest — the fuzz binary has its own libFuzzer driver. Run it directly
-# to explore, e.g.:
-#   ./build-fuzz/x3d_parse_fuzz -max_total_time=60 corpus/
-# (`corpus/` is a directory of seed inputs; the GitHub Actions `cpp-fuzz` job
-# seeds it from the corpus-fetch subset.)
+# Run build-fuzz/x3d_parse_fuzz directly; its driver replaces CTest.
 [tasks.build-fuzz]
-description = "Configure + build the libFuzzer harness for parseDocument (Clang-only; BLD-2)."
+description = "Build the parseDocument libFuzzer harness with Clang."
 run = """
 cmake --preset fuzz
 cmake --build --preset fuzz --target x3d_parse_fuzz
@@ -149,7 +115,7 @@ cmake --build --preset fuzz --target x3d_parse_fuzz
 
 [tasks.poc]
 description = "Configure + build the out-of-SDK PoC OpenGL renderer (X3D_CPP_BUILD_POC=ON)."
-# Built into a SEPARATE build dir (build-poc/) so it never perturbs the dev
+# Built into a separate build dir (build-poc/) so it never perturbs the dev
 # preset's build/ cache that golden/ctest rely on. Wayland prereqs: see
 # examples/poc_renderer/README.md. Run the binary yourself (needs a display):
 #   ./build-poc/examples/poc_renderer/x3d_poc_renderer
@@ -159,11 +125,11 @@ cmake --build build-poc --target x3d_poc_renderer
 """
 
 [tasks.validate-examples]
-description = "Build + headless-validate BOTH out-of-SDK renderer consumers (cpu_raster + poc_renderer) that `mise run ci` never compiles — so SDK-wide refactors (e.g. ADR-0039 namespaces) can't silently rot them. Runs each --headless probe and the real OpenGL pipeline headlessly under Xvfb + mesa software GL. Needs: xvfb, mesa-dri, and GLFW's X11/Wayland build deps. Mirrors CI's examples-gate (both call scripts/validate-examples.sh)."
+description = "Build and test the CPU and OpenGL example consumers, including software GL under Xvfb. Requires Mesa, GLFW, and Xvfb."
 run = "scripts/validate-examples.sh"
 
 [tasks.cpuraster]
-description = "Configure + build + ctest the out-of-SDK headless CPU rasterizer (X3D_CPP_BUILD_CPURASTER=ON). No GPU/GLFW; runs headless. PNG/JPEG textures are decoded by explicitly opting into the SDK's stb decode-seam backend (X3D_CPP_BUILD_STB=ON) — the example consumes a first-party seam rather than vendoring its own decoder. Render a PPM yourself, e.g.:  ./build-cpuraster/examples/cpu_raster/x3d_cpu_raster -o out.ppm  (or --frag shaders/author_lambert.frag to run author GLSL via the interpreter)."
+description = "Build and test the headless CPU rasterizer with stb PNG/JPEG decoding. Run build-cpuraster/examples/cpu_raster/x3d_cpu_raster -o out.ppm."
 # Separate build dir (build-cpuraster/) so it never perturbs the dev preset's
 # build/ cache that golden/ctest rely on. X3D_CPP_BUILD_STB=ON wires the
 # TextureResolver decode seam (PNG/JPEG) that the example asks for.
@@ -174,7 +140,7 @@ ctest --test-dir build-cpuraster -R x3d_cpuraster --output-on-failure
 """
 
 [tasks.x3d2svg]
-description = "Configure + build + ctest the out-of-SDK headless SVG projector (X3D_CPP_BUILD_X3D2SVG=ON). The smallest reference consumer: no third-party deps, links only the public x3d_cpp::sdk façade. Render a scene yourself, e.g.:  ./build-x3d2svg/examples/x3d2svg/x3d_x3d2svg examples/x3d2svg/assets/smoke.x3d -o out.svg  (or --animate 24 --fps 24 for an animated SVG)."
+description = "Build and test the headless SVG example. Run build-x3d2svg/examples/x3d2svg/x3d_x3d2svg scene.x3d -o out.svg."
 # Separate build dir (build-x3d2svg/) so it never perturbs the dev preset's
 # build/ cache that golden/ctest rely on. No seam flags — the example needs
 # nothing but the SDK.
@@ -261,11 +227,11 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run the whole pipeline locally: tests, golden gate, conformance gate, coverage gate, C++ build/ctest (ci preset — per-header checks ON, mirrors GitHub Actions), cli differential regression gate."
+description = "Run Python tests, drift and coverage gates, C++ CI checks, and CLI differential regression gates."
 depends = ["test", "golden", "conformance-gate", "coverage-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
-description = "STRONGEST local pre-PR verification: everything `ci` runs PLUS the ASan/UBSan sanitizer build (build-san) and the example-renderer gates (validate-examples: cpu_raster + poc headless probes + the xvfb GL smoke). Mirrors the full set of blocking GitHub jobs; slower than `ci` — use before pushing risky C++ changes."
+description = "Run ci plus the sanitizer suite and CPU/OpenGL example gates."
 depends = ["ci", "build-san", "validate-examples"]
 
 [tasks.coverage-gate]
@@ -301,11 +267,11 @@ description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO de
 run = "scripts/fetch_corpus.sh"
 
 [tasks.conformance-nist-fetch]
-description = "Fetch the full Web3D X3D Conformance (NIST) example set (763 .x3d) into .x3d-corpus/x3d-code/ for the poc-renderer sweep. ~366MB download (.x3d alone is a few MB). Add --textures to also pull PNG/JPEG for the GL pass."
+description = "Fetch the Web3D conformance examples for the renderer sweep. Add --textures to fetch image assets."
 run = "scripts/fetch_conformance_nist.sh {{arg(name='args', default='', var=true)}}"
 
 [tasks.poc-conformance-sweep]
-description = "Sweep the Conformance (NIST) set through the OpenGL PoC renderer: a headless parse+extract probe per scene (add --gl for the real GL pipeline under xvfb+mesa), bucketed by section + failure signature. Diagnostic (always exits 0) — surfaces zero-render-item scenes and parser/extractor gaps. Run conformance-nist-fetch + `mise run poc` first. e.g. mise run poc-conformance-sweep -- --gl --section Geometry"
+description = "Probe Web3D conformance scenes with the OpenGL example; add --gl for software rendering. Diagnostic only; exits zero."
 run = """
 cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON >/dev/null
 cmake --build build-poc --target x3d_poc_renderer
@@ -313,7 +279,7 @@ python3 scripts/poc_conformance_sweep.py {{arg(name='args', default='', var=true
 """
 
 [tasks.corpus]
-description = "Corpus smoke: recursively sweep a corpus dir (parse->extract->tick) with categorized stats. Defaults to .x3d-corpus (the ~300-file subset from corpus-fetch); point X3D_CORPUS_DIR or pass an arg at a full archive checkout for exhaustive coverage: mise run corpus /path/to/archive"
+description = "Sweep a corpus directory through parse, extract, and tick. Defaults to .x3d-corpus; override with X3D_CORPUS_DIR or a path argument."
 run = """
 cmake --preset dev
 cmake --build --preset dev --target x3d_corpus_sweep

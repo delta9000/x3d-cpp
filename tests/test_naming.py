@@ -16,7 +16,7 @@ def test_naming_is_single_source_of_truth():
 
 
 def test_pascal_capitalizes_first_only():
-    # Must NOT lowercase the tail (camelCase-safe), unlike str.capitalize().
+    # Must not lowercase the tail (camelCase-safe), unlike str.capitalize().
     assert pascal("bboxCenter") == "BboxCenter"
 
 
@@ -80,9 +80,9 @@ def test_cpp_str_handles_comment_terminator():
     # Doxygen block early -- cpp_str itself only escapes string-literal
     # metacharacters, but this test documents the exact input that would
     # break an @details comment if a caller used raw interpolation instead
-    # of routing through cpp_str (or a comment-safe filter) -- see Step 5.
+    # of routing through cpp_str (or a comment-safe filter).
     from x3d_cpp_gen.emit.naming import cpp_str
     # cpp_str's job is string-literal safety, not comment safety -- "*/"
-    # inside a STRING LITERAL is completely inert, this assertion just pins
+    # inside a string literal is completely inert, this assertion just pins
     # that cpp_str does not mangle it.
     assert cpp_str("ends with */ here") == "ends with */ here"

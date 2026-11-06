@@ -4,11 +4,11 @@
 # broken EXPORT_NAME on any other installed target would not be caught -- the
 # in-tree ALIAS would still resolve while the installed name silently differed.
 #
-# The two groups below are NOT the same promise. PUBLIC names are documented
+# The two groups below are not the same promise. PUBLIC names are documented
 # entry points: renaming one is a breaking change. IMPLEMENTATION names exist so
 # the export set is closed over the dependency graph (a consumer linking
 # x3d_cpp::sdk needs them to resolve); they are asserted because their absence
-# breaks find_package(), NOT because they are promised as stable entry points.
+# breaks find_package(), not because they are promised as stable entry points.
 # Do not cite this file as evidence that the implementation names are API.
 cmake_minimum_required(VERSION 3.21)
 project(x3d_installed_targets_contract LANGUAGES CXX)

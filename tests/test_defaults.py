@@ -194,7 +194,7 @@ def test_every_matrix_shaped_special_struct_has_a_struct_arity_entry():
     from x3d_cpp_gen.emit.defaults import _STRUCT_ARITY
 
     covered_struct_names = {arity[0] for arity in _STRUCT_ARITY.values()}
-    # SFImage is intentionally NOT in _STRUCT_ARITY -- it has bespoke
+    # SFImage is intentionally not in _STRUCT_ARITY -- it has bespoke
     # default_expr_for handling (a std::vector<unsigned char> data member with
     # no meaningful literal default), so it's an expected, documented gap.
     expected_gap = {"SFImage"}

@@ -10,7 +10,7 @@ from pathlib import Path
 from tests.conftest import PINNED_CLANG_FORMAT, clang_format_version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-# The golden tree is BYTE-exact, so the contract is the FULL version, not the
+# The golden tree is BYTE-exact, so the contract is the full version, not the
 # major: clang-format's default style can shift in any release. Keep this in
 # sync with mise.toml [tools] and scripts/check_golden.sh.
 EXPECTED_VERSION = "22.1.8"
