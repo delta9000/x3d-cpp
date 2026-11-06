@@ -228,7 +228,7 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 
 [tasks.ci]
 description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, corpus regressions, and authoring symbols."
-depends = ["test", "conformance-gate", "doc-ctest-gate", "build-ci", "cli-gate-regression", "authoring-footprint"]
+depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
 description = "Run ci plus the sanitizer suite and CPU/OpenGL example gates."

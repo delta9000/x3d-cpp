@@ -135,7 +135,9 @@ xvfb-run -a env \
   python3 scripts/check_poc_fill_properties.py "$POC"
 
 echo "== registered PoC regressions (including software GL) =="
-ctest --test-dir build-poc -R '^x3d_poc_' --output-on-failure --no-tests=error
+# Serial: each GL test starts its own `xvfb-run -a`, and concurrent instances
+# race for the same display number.
+ctest --test-dir build-poc -R '^x3d_poc_' --output-on-failure --no-tests=error -j1
 
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
