@@ -3,11 +3,14 @@
 // suppressing the expansion's spliced primary — parity with XmlWriter.
 #include "X3DParse.hpp"
 #include "JsonWriter.hpp"
+#include "XmlWriter.hpp"
+#include "CanonicalXmlWriter.hpp"
 #include "VrmlWriter.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include "X3DRuntime.hpp"
 
 #include "doctest/doctest.h"
+#include <algorithm>
 #include <cstddef>
 #include <string>
 
@@ -108,4 +111,86 @@ TEST_CASE("proto_writer_parity_test") {
   jsonMixedFieldValueValidJsonTest();
 
   return;
+}
+
+
+TEST_CASE("nested instance IS survives every writer") {
+  auto before = codec::parseDocument(
+      "<X3D version='4.0'><Scene><ProtoDeclare name='Leaf'><ProtoInterface>"
+      "<field name='size' type='SFVec3f' accessType='initializeOnly' value='2 2 2'/>"
+      "</ProtoInterface><ProtoBody><Box><IS><connect nodeField='size' protoField='size'/>"
+      "</IS></Box></ProtoBody></ProtoDeclare><ProtoDeclare name='Outer'><ProtoInterface>"
+      "<field name='size' type='SFVec3f' accessType='initializeOnly' value='5 5 5'/>"
+      "</ProtoInterface><ProtoBody><ProtoInstance name='Leaf'><IS>"
+      "<connect nodeField='size' protoField='size'/></IS></ProtoInstance></ProtoBody>"
+      "</ProtoDeclare><ProtoInstance name='Outer'/></Scene></X3D>");
+  auto size = [](const runtime::X3DDocument &doc) {
+    auto root = doc.scene.rootNodes.at(0);
+    REQUIRE(root->nodeTypeName() == "Box");
+    const auto &fields = root->fields();
+    auto f = std::find_if(fields.begin(), fields.end(),
+        [](const auto &field) { return field.x3dName == "size"; });
+    REQUIRE(f != fields.end());
+    return std::any_cast<SFVec3f>(f->get(*root));
+  };
+  CHECK(size(before).x == 5.f);
+  const std::pair<std::string, codec::Encoding> outputs[] = {
+      {codec::XmlWriter().writeDocument(before), codec::Encoding::XML},
+      {codec::CanonicalXmlWriter().writeDocument(before), codec::Encoding::XML},
+      {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+      {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+  for (const auto &[output, encoding] : outputs) {
+    CAPTURE(output);
+    auto after = codec::parseDocument(output, encoding);
+    const auto &connections = after.scene.protoDeclarations.at(1)->body.nestedInstances.at(0).isConnections;
+    CHECK(connections.size() == 1);
+    if (!connections.empty()) {
+      CHECK(connections[0].nodeField == "size");
+      CHECK(connections[0].protoField == "size");
+    }
+    auto actual = size(after);
+    CHECK(actual.x == 5.f);
+    CHECK(actual.y == 5.f);
+    CHECK(actual.z == 5.f);
+  }
+}
+
+TEST_CASE("writers retain explicit empty prototype node overrides") {
+  std::string type, node, field, initial;
+  SUBCASE("SFNode NULL replaces a nonempty default") {
+    type = "SFNode"; node = "Shape"; field = "geometry"; initial = "<Box/>";
+  }
+  SUBCASE("MFNode empty list replaces nonempty defaults") {
+    type = "MFNode"; node = "Group"; field = "children";
+    initial = "<Group/><Shape/>";
+  }
+  auto before = codec::parseDocument(
+      "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoInterface>"
+      "<field name='slot' type='" + type + "' accessType='initializeOnly'>" + initial +
+      "</field></ProtoInterface><ProtoBody><" + node + "><IS><connect nodeField='" +
+      field + "' protoField='slot'/></IS></" + node + "></ProtoBody></ProtoDeclare>"
+      "<ProtoInstance name='P'><fieldValue name='slot'/></ProtoInstance></Scene></X3D>");
+  auto checkEmpty = [&](const runtime::X3DDocument &doc) {
+    const auto &values = doc.scene.protoInstances.at(0).fieldValues;
+    CHECK(values.size() == 1);
+    if (!values.empty()) {
+      CHECK(values[0].name == "slot");
+      CHECK(values[0].nodeValue.empty());
+    }
+    auto root = doc.scene.rootNodes.at(0);
+    for (const auto &f : root->fields()) {
+      if (f.x3dName != field) continue;
+      const auto value = f.get(*root);
+      if (type == "SFNode") CHECK_FALSE(std::any_cast<SFNode>(value));
+      else CHECK(std::any_cast<MFNode>(value).empty());
+    }
+  };
+  checkEmpty(before);
+  const std::pair<std::string, codec::Encoding> outputs[] = {
+      {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+      {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+  for (const auto &[output, encoding] : outputs) {
+    CAPTURE(output);
+    checkEmpty(codec::parseDocument(output, encoding));
+  }
 }

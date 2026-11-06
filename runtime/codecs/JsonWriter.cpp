@@ -109,8 +109,16 @@ void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
     for (std::size_t i = 0; i < head.meta.size(); ++i) {
       pad(os, depth + 1);
       os << "{ \"@name\": " << jstr(head.meta[i].name)
-         << ", \"@content\": " << jstr(head.meta[i].content) << " }"
-         << (i + 1 < head.meta.size() ? "," : "") << "\n";
+         << ", \"@content\": " << jstr(head.meta[i].content);
+      if (!head.meta[i].dir.empty())
+        os << ", \"@dir\": " << jstr(head.meta[i].dir);
+      if (!head.meta[i].lang.empty())
+        os << ", \"@lang\": " << jstr(head.meta[i].lang);
+      if (!head.meta[i].scheme.empty())
+        os << ", \"@scheme\": " << jstr(head.meta[i].scheme);
+      if (!head.meta[i].httpEquiv.empty())
+        os << ", \"@http-equiv\": " << jstr(head.meta[i].httpEquiv);
+      os << " }" << (i + 1 < head.meta.size() ? "," : "") << "\n";
     }
     pad(os, depth);
     os << "]";
@@ -272,6 +280,9 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
       } else {
         fvElements.push_back("{ \"@name\": " + jstr(fv.name) + " }");
       }
+    } else {
+      fvElements.push_back("{ \"@name\": " + jstr(fv.name) +
+                           ", \"-children\": [] }");
     }
   }
 
@@ -285,6 +296,18 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
     }
     fvArr += "]";
     members.push_back(std::move(fvArr));
+  }
+
+  if (!src.isConnections.empty()) {
+    std::string is = "\"IS\": { \"connect\": [";
+    for (std::size_t i = 0; i < src.isConnections.size(); ++i) {
+      const auto &c = src.isConnections[i];
+      if (i) is += ",";
+      is += " { \"@nodeField\": " + jstr(c.nodeField) +
+            ", \"@protoField\": " + jstr(c.protoField) + " }";
+    }
+    is += " ] }";
+    members.push_back(std::move(is));
   }
 
   for (std::size_t i = 0; i < members.size(); ++i) {
@@ -628,14 +651,11 @@ void JsonWriter::writeNode(std::ostringstream &os,
         if (!child.empty()) members.push_back(child);
       }
     }
-    // SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations (from
-    // the dynamic-field side-table) as a "field" array member, and its inline
-    // source as a "#sourceText" array member, so a JSON round-trip preserves
-    // both. Other nodes carry no author fields, so this is a no-op for them.
+    // Author fields use declarations (ISO/IEC 19775-1, 29.4.1 and Clause 31).
+    std::string fieldsMember = jsonAuthorFields(*node);
+    if (!fieldsMember.empty())
+      members.push_back(std::move(fieldsMember));
     if (isScript) {
-      std::string fieldsMember = jsonScriptFields(*node);
-      if (!fieldsMember.empty())
-        members.push_back(std::move(fieldsMember));
       std::string sourceMember = jsonScriptSource(*node);
       if (!sourceMember.empty())
         members.push_back(std::move(sourceMember));
@@ -825,7 +845,7 @@ std::string JsonWriter::jsonValue(const X3DNode &node, const FieldInfo &f) {
     // space-separated wire string, then re-emit as a JSON number array.
     std::string wire = formatValue(f.type, v);
     if (wire.empty())
-      return "";
+      return std::string(fieldTypeName(f.type)).starts_with("MF") ? "[]" : "";
     auto toks = tokenize(wire);
     std::string out = "[";
     for (std::size_t i = 0; i < toks.size(); ++i)
@@ -866,7 +886,7 @@ std::string JsonWriter::jsonNodeField(const std::shared_ptr<X3DNode> &node,
   return os.str();
 }
 
-std::string JsonWriter::jsonScriptFields(const X3DNode &node) {
+std::string JsonWriter::jsonAuthorFields(const X3DNode &node) {
   std::vector<FieldInfo> author =
       authorFields_ ? authorFields_->authorFields(node) : std::vector<FieldInfo>{};
   if (author.empty())
@@ -883,7 +903,22 @@ std::string JsonWriter::jsonScriptFields(const X3DNode &node) {
          f.access == AccessType::InputOutput) &&
         f.get) {
       std::any v = f.get(node);
-      if (v.has_value()) {
+      if (f.isNode()) {
+        MFNode nodes;
+        if (auto *n = std::any_cast<SFNode>(&v); n && *n) nodes.push_back(*n);
+        if (auto *m = std::any_cast<MFNode>(&v)) nodes = *m;
+        out += ", \"-children\": [";
+        bool first = true;
+        for (const auto &n : nodes) {
+          if (!n) continue;
+          if (!first) out += ",";
+          first = false;
+          std::ostringstream child;
+          writeNode(child, n, 0);
+          out += child.str();
+        }
+        out += "]";
+      } else if (v.has_value()) {
         std::string wire = formatValue(f.type, v);
         out += ", \"@value\": " + jstr(wire);
       }

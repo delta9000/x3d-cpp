@@ -97,6 +97,12 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
     os << "ROUTE " << r.fromNode << "." << r.fromField << " TO " << r.toNode
        << "." << r.toField << "\n";
   }
+  for (const auto &i : doc.scene.imports)
+    os << "IMPORT " << i.inlineDEF << "." << i.importedDEF << " AS "
+       << (i.as.empty() ? i.importedDEF : i.as) << "\n";
+  for (const auto &e : doc.scene.exports)
+    os << "EXPORT " << e.localDEF << " AS "
+       << (e.as.empty() ? e.localDEF : e.as) << "\n";
   return os.str();
 }
 
@@ -234,7 +240,16 @@ void VrmlWriter::writeVrmlProtoInstance(std::ostringstream &os,
         else
           os << fv.name << " " << vrmlBoolCase(pf->type, valStr) << "\n";
       }
+    } else if (const auto *pf = interfaceField(src, fv.name);
+               pf && (pf->type == X3DFieldType::SFNode ||
+                      pf->type == X3DFieldType::MFNode)) {
+      pad(os, depth + 1);
+      os << fv.name << (pf->type == X3DFieldType::SFNode ? " NULL\n" : " []\n");
     }
+  }
+  for (const auto &c : src.isConnections) {
+    pad(os, depth + 1);
+    os << c.nodeField << " IS " << c.protoField << "\n";
   }
   pad(os, depth);
   os << "}";
@@ -669,7 +684,26 @@ void VrmlWriter::writeAuthorFields(std::ostringstream &os, const X3DNode &node,
        << f.x3dName;
     const bool valued = f.access == AccessType::InitializeOnly ||
                         f.access == AccessType::InputOutput;
-    if (valued)
+    if (valued && f.isNode()) {
+      std::any value = f.get ? f.get(node) : std::any{};
+      if (f.type == X3DFieldType::SFNode) {
+        os << " ";
+        auto *child = std::any_cast<SFNode>(&value);
+        if (child && *child) writeNode(os, *child, depth);
+        else os << "NULL";
+      } else {
+        os << " [\n";
+        if (auto *children = std::any_cast<MFNode>(&value))
+          for (const auto &child : *children) {
+            if (!child) continue;
+            pad(os, depth + 1);
+            writeNode(os, child, depth + 1);
+            os << "\n";
+          }
+        pad(os, depth);
+        os << "]";
+      }
+    } else if (valued)
       writeInterfaceValue(os, f.type, f.get ? f.get(node) : std::any{});
     os << "\n";
   }

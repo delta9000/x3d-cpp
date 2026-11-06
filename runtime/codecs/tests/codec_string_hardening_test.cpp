@@ -25,15 +25,18 @@
 #include "ClassicVrmlReader.hpp"
 #include "DynamicField.hpp"
 #include "JsonReader.hpp"
+#include "JsonLite.hpp"
 #include "VrmlWriter.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
+#include "X3DParse.hpp"
 
 #include "x3d/nodes/PixelTexture.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/WorldInfo.hpp"
 
 #include <functional>
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -405,5 +408,196 @@ TEST_CASE("XML literal attribute whitespace normalizes but references survive") 
     REQUIRE(referenced);
     CHECK(literal->getTitle() == "  a b c d e  ");
     CHECK(referenced->getTitle() == "a\nb\tc\rd&#10;");
+  }
+}
+
+TEST_CASE("JSON retains an explicitly empty numeric MF field") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><NavigationInfo avatarSize=''/></Scene></X3D>");
+  auto a = before.scene.rootNodes.at(0);
+  REQUIRE(a->nodeTypeName() == "NavigationInfo");
+  const auto &field = *std::find_if(a->fields().begin(), a->fields().end(),
+      [](const auto &f) { return f.x3dName == "avatarSize"; });
+  CHECK(std::any_cast<core::MFFloat>(field.get(*a)).empty());
+  auto after = codec::JsonReader().readDocument(codec::JsonWriter().writeDocument(before));
+  auto b = after.scene.rootNodes.at(0);
+  CHECK(std::any_cast<core::MFFloat>(field.get(*b)).empty());
+}
+
+TEST_CASE("Classic writer retains IMPORT and EXPORT") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><Inline DEF='I' load='false'/><Group DEF='G'/>"
+      "<IMPORT inlineDEF='I' importedDEF='X' AS='Remote'/>"
+      "<IMPORT inlineDEF='I' importedDEF='Unaliased'/>"
+      "<EXPORT localDEF='G' AS='Public'/><EXPORT localDEF='G'/></Scene></X3D>");
+  REQUIRE(before.scene.imports.size() == 2);
+  REQUIRE(before.scene.exports.size() == 2);
+  auto after = codec::ClassicVrmlReader().readDocument(codec::VrmlWriter().writeDocument(before));
+  REQUIRE(after.scene.imports.size() == 2);
+  REQUIRE(after.scene.exports.size() == 2);
+  CHECK(after.scene.imports[0].inlineDEF == "I");
+  CHECK(after.scene.imports[0].importedDEF == "X");
+  CHECK(after.scene.imports[0].as == "Remote");
+  CHECK(after.scene.imports[1].importedDEF == "Unaliased");
+  CHECK(after.scene.imports[1].as == "Unaliased");
+  CHECK(after.scene.exports[0].localDEF == "G");
+  CHECK(after.scene.exports[0].as == "Public");
+  CHECK(after.scene.exports[1].localDEF == "G");
+  CHECK(after.scene.exports[1].as == "G");
+}
+
+TEST_CASE("JSON retains extended metadata attributes") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><head><meta name='description' content='salut' "
+      "dir='ltr' lang='fr' scheme='urn:test' http-equiv='Content-Language'/>"
+      "</head><Scene/></X3D>");
+  auto after = codec::JsonReader().readDocument(codec::JsonWriter().writeDocument(before));
+  REQUIRE(after.head.meta.size() == 1);
+  CHECK(after.head.meta[0].name == "description");
+  CHECK(after.head.meta[0].content == "salut");
+  CHECK(after.head.meta[0].dir == "ltr");
+  CHECK(after.head.meta[0].lang == "fr");
+  CHECK(after.head.meta[0].scheme == "urn:test");
+  CHECK(after.head.meta[0].httpEquiv == "Content-Language");
+}
+
+TEST_CASE("canonical output retains MFImage and every MFMatrix type") {
+  const std::pair<const char *, const char *> fields[] = {
+      {"MFImage", "1 1 3 16711680 1 1 4 4278255360"},
+      {"MFMatrix3f", "1.25 2 3 4 5 6 7 8 9 9 8 7 6 5 4 3 2 1.5"},
+      {"MFMatrix3d", "1.25 2 3 4 5 6 7 8 9 9 8 7 6 5 4 3 2 1.5"},
+      {"MFMatrix4f", "1.25 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"},
+      {"MFMatrix4d", "1.25 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"}};
+  std::string source = "<X3D version='4.0'><Scene><Script>";
+  for (const auto &[type, value] : fields)
+    source += "<field name='" + std::string(type) + "' type='" + type +
+        "' accessType='initializeOnly' value='" + value + "'/>";
+  source += "</Script></Scene></X3D>";
+  auto before = codec::XmlReader().readDocument(source);
+  const auto output = codec::CanonicalXmlWriter().writeDocument(before);
+  auto after = codec::XmlReader().readDocument(output);
+  auto a = findNode<Script>(before.scene);
+  auto b = findNode<Script>(after.scene);
+  REQUIRE(a);
+  REQUIRE(b);
+  for (const auto &f : before.scene.authorFields->authorFields(*a)) {
+    CAPTURE(f.x3dName);
+    auto expected = codec::formatValue(f.type, f.get(*a));
+    CHECK_FALSE(expected.empty());
+    auto actual = after.scene.authorFields->getValue(*b, f.x3dName);
+    REQUIRE(actual.has_value());
+    CHECK(codec::formatValue(f.type, actual) == expected);
+  }
+  CHECK(codec::CanonicalXmlWriter().writeDocument(after) == output);
+}
+
+
+TEST_CASE("Script node defaults survive canonical JSON and Classic writers") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><Script>"
+      "<field name='target' type='SFNode' accessType='initializeOnly'><Group/></field>"
+      "<field name='items' type='MFNode' accessType='inputOutput'><Shape><Box/></Shape></field>"
+      "</Script></Scene></X3D>");
+  const std::pair<std::string, codec::Encoding> outputs[] = {
+      {codec::CanonicalXmlWriter().writeDocument(before), codec::Encoding::XML},
+      {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+      {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+  for (const auto &[output, encoding] : outputs) {
+    CAPTURE(output);
+    if (encoding == codec::Encoding::JSON) {
+      auto dom = json::parse(output);
+      auto children = dom->member("X3D")->member("Scene")->member("-children");
+      REQUIRE(children->array.size() == 1);
+      auto fields = children->array[0]->member("Script")->member("field");
+      REQUIRE(fields);
+      REQUIRE(fields->array.size() == 2);
+      for (std::size_t i = 0; i < fields->array.size(); ++i) {
+        auto defaults = fields->array[i]->member("-children");
+        CHECK(defaults != nullptr);
+        if (!defaults) continue;
+        REQUIRE(defaults->array.size() == 1);
+        CHECK(defaults->array[0]->member(i == 0 ? "Group" : "Shape") != nullptr);
+      }
+    } else if (encoding == codec::Encoding::ClassicVRML) {
+      CHECK(output.find("SFNode target Group {") != std::string::npos);
+      CHECK(output.find("MFNode items [") != std::string::npos);
+      CHECK(output.find("Shape {") != std::string::npos);
+      CHECK(output.find("Box {") != std::string::npos);
+    }
+    try {
+      auto after = codec::parseDocument(output, encoding);
+      auto script = findNode<Script>(after.scene);
+      REQUIRE(script);
+      auto one = after.scene.authorFields->getValue(*script, "target");
+      auto many = after.scene.authorFields->getValue(*script, "items");
+      auto p = std::any_cast<core::SFNode>(&one);
+      auto v = std::any_cast<core::MFNode>(&many);
+      const bool hasTarget = p && *p && (*p)->nodeTypeName() == "Group";
+      const bool hasItems = v && v->size() == 1 && (*v)[0]->nodeTypeName() == "Shape";
+      if (encoding == codec::Encoding::XML) {
+        CHECK(hasTarget);
+        CHECK(hasItems);
+      } else {
+        CHECK(hasTarget);
+        CHECK(hasItems);
+      }
+    } catch (const std::exception &e) {
+      CAPTURE(e.what());
+      if (encoding == codec::Encoding::XML) CHECK(false);
+      else CHECK(false);
+    }
+  }
+}
+
+TEST_CASE("shader author interfaces survive every writer") {
+  for (const std::string type : {"ComposedShader", "PackagedShader", "ShaderProgram"}) {
+    auto before = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><" + type + " DEF='Shader' language='GLSL'>"
+        "<field name='tint' type='SFColor' accessType='inputOutput' value='1 0.25 0'/>"
+        "<field name='pulse' type='SFFloat' accessType='inputOnly'/>"
+        "</" + type + "></Scene></X3D>");
+    auto original = before.scene.resolve("Shader");
+    REQUIRE(original);
+    REQUIRE(before.scene.authorFields->authorFields(*original).size() == 2);
+    const std::pair<std::string, codec::Encoding> outputs[] = {
+        {codec::XmlWriter().writeDocument(before), codec::Encoding::XML},
+        {codec::CanonicalXmlWriter().writeDocument(before), codec::Encoding::XML},
+        {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+        {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+    for (const auto &[output, encoding] : outputs) {
+      CAPTURE(type);
+      CAPTURE(output);
+      if (encoding == codec::Encoding::JSON) {
+        auto dom = json::parse(output);
+        auto children = dom->member("X3D")->member("Scene")->member("-children");
+        REQUIRE(children->array.size() == 1);
+        auto fields = children->array[0]->member(type)->member("field");
+        CHECK(fields != nullptr);
+        if (fields) CHECK(fields->array.size() == 2);
+      } else if (encoding == codec::Encoding::ClassicVRML) {
+        CHECK(output.find("inputOutput SFColor tint 1 0.25 0") != std::string::npos);
+        CHECK(output.find("inputOnly SFFloat pulse") != std::string::npos);
+      }
+      auto after = codec::parseDocument(output, encoding);
+      auto shader = after.scene.resolve("Shader");
+      REQUIRE(shader);
+      const auto fields = after.scene.authorFields->authorFields(*shader);
+      if (encoding == codec::Encoding::XML) {
+        CHECK(fields.size() == 2);
+      } else {
+        CHECK(fields.size() == 2);
+      }
+      if (fields.size() == 2) {
+        CHECK(fields[0].x3dName == "tint");
+        CHECK(fields[0].type == core::X3DFieldType::SFColor);
+        CHECK(fields[0].access == core::AccessType::InputOutput);
+        auto value = std::any_cast<core::SFColor>(fields[0].get(*shader));
+        CHECK(value.r == 1.f);
+        CHECK(value.g == 0.25f);
+        CHECK(value.b == 0.f);
+        CHECK(fields[1].x3dName == "pulse");
+        CHECK(fields[1].access == core::AccessType::InputOnly);
+      }
+    }
   }
 }

@@ -139,7 +139,7 @@ private:
   writeNodeElement(const std::shared_ptr<X3DNode> &node,
                    const std::string &containerOverride);
 
-  void writeScriptAuthorFields(xml::Element &el, const Script &script);
+  void writeAuthorFields(xml::Element &el, const X3DNode &node);
 
   void writeNodeField(xml::Element &parent,
                       const std::shared_ptr<X3DNode> &owner,

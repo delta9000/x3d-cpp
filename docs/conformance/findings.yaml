@@ -3233,3 +3233,56 @@
   summary: Prototype-local IMPORT records are lost across all encodings because ProtoBody has no imports collection.
   note: "Readers collect prototype-local imports in a temporary Scene, but the shared ProtoBody model cannot retain them. Extending that model and expansion is separate from capturing JSON statement wrappers."
 
+
+- id: PROTO-INSTANCE-IS-WRITE
+  interfaces: [X3DNode]
+  clause: "ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8"
+  severity: major
+  status: fixed
+  summary: All four writers retain IS mappings on nested prototype instances.
+- id: SCRIPT-NODE-DEFAULT-CODECS
+  nodes: [Script]
+  clause: "ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3"
+  severity: major
+  status: fixed
+  summary: Canonical XML, JSON, and Classic writers emit structural Script node defaults.
+  note: "Writer half; JSON and Classic reader checks remain WARN pending the separate reader fixes."
+- id: SHADER-AUTHOR-FIELD-CODECS
+  nodes: [ComposedShader, PackagedShader, ShaderProgram]
+  clause: "ISO/IEC 19775-1, 31; ISO/IEC 19776-2, A.3"
+  severity: major
+  status: fixed
+  summary: XML, canonical XML, and JSON writers retain programmable shader author declarations.
+  note: "Writer half; Classic already emits declarations. JSON and Classic reader checks remain WARN pending the separate reader fixes."
+- id: CANONICAL-MISSING-MF-TYPES
+  nodes: [Script]
+  clause: "ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12"
+  severity: major
+  status: fixed
+  summary: Canonical XML retains MFImage and all four MFMatrix value types.
+- id: VRML-IMPORT-EXPORT-WRITE
+  nodes: [Inline]
+  clause: "ISO/IEC 19776-2, A.2"
+  severity: major
+  status: fixed
+  summary: Classic writer emits IMPORT and EXPORT statements with their effective aliases.
+- id: META-EXTENDED-ATTRIBUTES-WRITE
+  interfaces: [X3DNode]
+  component: Core
+  clause: "ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2"
+  severity: minor
+  status: fixed
+  summary: JSON writer retains dir, lang, scheme, and http-equiv metadata attributes.
+  note: "Classic META has only name/content strings under ISO/IEC 19776-2 A.2; extended attributes have no standard Classic representation."
+- id: PROTO-EMPTY-OVERRIDE-WRITE
+  interfaces: [X3DNode]
+  clause: "ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10"
+  severity: major
+  status: fixed
+  summary: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- id: JSON-EMPTY-NUMERIC-MF
+  nodes: [NavigationInfo]
+  clause: "ISO/IEC 19775-1, 5.1; ISO/IEC 19776-1, 5.1.2"
+  severity: major
+  status: fixed
+  summary: JSON writer retains empty numeric multi-fields that differ from their node defaults.

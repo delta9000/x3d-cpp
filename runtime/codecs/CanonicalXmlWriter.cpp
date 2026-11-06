@@ -265,17 +265,16 @@ CanonicalXmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
   if (bodyIsc_)
     attachIsBlocks(*el, node, *bodyIsc_);
 
-  if (const auto *script = dynamic_cast<const x3d::nodes::Script *>(node.get()))
-    writeScriptAuthorFields(*el, *script);
+  writeAuthorFields(*el, *node);
 
   return el;
 }
 
-void CanonicalXmlWriter::writeScriptAuthorFields(xml::Element &el,
-                                                 const Script &script) {
-  const std::size_t staticCount = script.fields().size();
-  FieldTable eff = authorFields_ ? runtime::effectiveFields(script, *authorFields_)
-                                 : script.fields();
+void CanonicalXmlWriter::writeAuthorFields(xml::Element &el,
+                                           const X3DNode &node) {
+  const std::size_t staticCount = node.fields().size();
+  FieldTable eff = authorFields_ ? runtime::effectiveFields(node, *authorFields_)
+                                 : node.fields();
   for (std::size_t i = staticCount; i < eff.size(); ++i) {
     const FieldInfo &f = eff[i];
     xml::Element *fe = el.addChild("field");
@@ -284,12 +283,23 @@ void CanonicalXmlWriter::writeScriptAuthorFields(xml::Element &el,
     fe->setAttr("type", fieldTypeName(f.type));
     if (f.isReadable() && (f.access == AccessType::InitializeOnly ||
                            f.access == AccessType::InputOutput)) {
-      std::any v = f.get(script);
-      if (v.has_value())
+      std::any v = f.get(node);
+      if (f.isNode()) {
+        MFNode nodes;
+        if (auto *n = std::any_cast<SFNode>(&v); n && *n) nodes.push_back(*n);
+        if (auto *m = std::any_cast<MFNode>(&v)) nodes = *m;
+        for (const auto &n : nodes)
+          if (n)
+            if (auto child = writeNodeElement(n, ""))
+              fe->children.push_back(std::move(child));
+      } else if (v.has_value())
         fe->setAttr("value", canonFormatValue(f.type, v));
     }
   }
-  const std::string src = script.getSourceCode();
+  const auto *script = dynamic_cast<const Script *>(&node);
+  if (!script)
+    return;
+  const std::string src = script->getSourceCode();
   if (!src.empty())
     el.text = src;
 }
@@ -342,6 +352,14 @@ std::unique_ptr<xml::Element> CanonicalXmlWriter::writeProtoInstanceElement(
     } else if (fv.value.has_value()) {
       if (const runtime::ProtoField *pf = interfaceField(src, fv.name))
         fe->setAttr("value", canonFormatValue(pf->type, fv.value));
+    }
+  }
+  if (!src.isConnections.empty()) {
+    xml::Element *is = el->addChild("IS");
+    for (const auto &c : src.isConnections) {
+      xml::Element *connect = is->addChild("connect");
+      connect->setAttr("nodeField", c.nodeField);
+      connect->setAttr("protoField", c.protoField);
     }
   }
   return el;
@@ -799,6 +817,12 @@ std::string canonFormatValue(X3DFieldType type, const std::any &v) {
     return fmtMatrixD<SFMatrix4d, 4>(std::any_cast<SFMatrix4d>(v));
   case X3DFieldType::SFImage:
     return fmtImage(std::any_cast<SFImage>(v));
+  case X3DFieldType::MFImage:
+  case X3DFieldType::MFMatrix3f:
+  case X3DFieldType::MFMatrix3d:
+  case X3DFieldType::MFMatrix4f:
+  case X3DFieldType::MFMatrix4d:
+    return formatValue(type, v);
   default:
     return "";
   }

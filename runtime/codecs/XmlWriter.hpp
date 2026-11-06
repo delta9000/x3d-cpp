@@ -102,13 +102,10 @@ private:
   writeNodeElement(const std::shared_ptr<X3DNode> &node,
                    const std::string &containerOverride);
 
-  /// Emit a Script's captured author fields as <field name accessType type
-  /// [value]/> children, and its inline source as the element's CDATA text. The
-  /// author FieldInfos come from the DynamicFieldStore (effectiveFields minus
-  /// the node's static table); each readable inputOutput/initializeOnly field
-  /// emits its current boxed value, mirroring writeProtoFieldElement. An empty
-  /// sourceCode leaves the element bodyless (a url-only Script is unchanged).
-  void writeScriptAuthorFields(xml::Element &el, const Script &script);
+  /// Emit author declarations and Script source (ISO/IEC 19775-1,
+  /// 29.4.1 and Clause 31). Readable initializeOnly/inputOutput fields carry
+  /// their scalar or structural node values from the author-field store.
+  void writeAuthorFields(xml::Element &el, const X3DNode &node);
 
   /// Recurse an SFNode (single child) or MFNode (list) field into child els.
   /// `f.containerField` is the parent's slot name for this child. We always

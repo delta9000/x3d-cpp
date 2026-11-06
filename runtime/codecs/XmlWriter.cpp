@@ -308,20 +308,16 @@ XmlWriter::writeNodeElement(const std::shared_ptr<X3DNode> &node,
   // just the top body node.
   if (bodyIsc_)
     attachIsBlocks(*el, node, *bodyIsc_);
-  // SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations (from the
-  // DynamicFieldStore) and its inline source body so a captured Script
-  // round-trips read -> write -> reparse. Done last so author <field>s follow
-  // any node children, matching the authoring convention.
-  if (const auto *script = dynamic_cast<const x3d::nodes::Script *>(node.get()))
-    writeScriptAuthorFields(*el, *script);
+  // Author fields use declarations (ISO/IEC 19775-1, 29.4.1 and Clause 31).
+  writeAuthorFields(*el, *node);
   return el;
 }
 
-void XmlWriter::writeScriptAuthorFields(xml::Element &el,
-                                        const Script &script) {
-  const std::size_t staticCount = script.fields().size();
-  FieldTable eff = authorFields_ ? runtime::effectiveFields(script, *authorFields_)
-                                 : script.fields();
+void XmlWriter::writeAuthorFields(xml::Element &el,
+                                  const X3DNode &node) {
+  const std::size_t staticCount = node.fields().size();
+  FieldTable eff = authorFields_ ? runtime::effectiveFields(node, *authorFields_)
+                                 : node.fields();
   for (std::size_t i = staticCount; i < eff.size(); ++i) {
     const FieldInfo &f = eff[i];
     xml::Element *fe = el.addChild("field");
@@ -332,7 +328,7 @@ void XmlWriter::writeScriptAuthorFields(xml::Element &el,
     // be read back (initializeOnly/inputOutput); input/outputOnly carry none.
     if (f.isReadable() && (f.access == AccessType::InitializeOnly ||
                            f.access == AccessType::InputOutput)) {
-      std::any v = f.get(script);
+      std::any v = f.get(node);
       if (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode) {
         // Node-typed default: the node(s) as child elements (USE once seen).
         MFNode nodes;
@@ -347,7 +343,10 @@ void XmlWriter::writeScriptAuthorFields(xml::Element &el,
       }
     }
   }
-  const std::string src = script.getSourceCode();
+  const auto *script = dynamic_cast<const Script *>(&node);
+  if (!script)
+    return;
+  const std::string src = script->getSourceCode();
   if (!src.empty())
     el.text = src;
 }
@@ -401,6 +400,14 @@ XmlWriter::writeProtoInstanceElement(const runtime::ProtoInstance &src,
     } else if (fv.value.has_value()) {
       if (const runtime::ProtoField *pf = interfaceField(src, fv.name))
         fe->setAttr("value", formatValue(pf->type, fv.value));
+    }
+  }
+  if (!src.isConnections.empty()) {
+    xml::Element *is = el->addChild("IS");
+    for (const auto &c : src.isConnections) {
+      xml::Element *connect = is->addChild("connect");
+      connect->setAttr("nodeField", c.nodeField);
+      connect->setAttr("protoField", c.protoField);
     }
   }
   return el;

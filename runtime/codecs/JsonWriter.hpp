@@ -145,7 +145,7 @@ private:
   std::string jsonValueOf(const X3DNode &node, const FieldInfo &f);
 
   /// Format a value field as a JSON value (scalar, string, or array). Returns
-  /// "" to omit (e.g. empty MF or unsupported type).
+  /// "" for an unsupported type; empty multi-fields produce [].
   std::string jsonValue(const X3DNode &node, const FieldInfo &f);
 
   /// Emit one node child field as a "-field": [ children ] member, or "" if the
@@ -153,12 +153,9 @@ private:
   std::string jsonNodeField(const std::shared_ptr<X3DNode> &node,
                             const FieldInfo &f, int depth);
 
-  /// SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations from the
-  /// dynamic-field side-table as a single-line "field": [ ... ] array member,
-  /// each element { "@name", "@type", "@accessType", "@value"? }. Returns "" if
-  /// the Script declared no author fields. The "@value" is emitted only for
-  /// fields that carry a persistent default (initializeOnly / inputOutput).
-  std::string jsonScriptFields(const X3DNode &node);
+  /// Emit author fields as declarations with scalar or structural defaults
+  /// (ISO/IEC 19775-1, 29.4.1 and Clause 31). Return "" when none are stored.
+  std::string jsonAuthorFields(const X3DNode &node);
 
   /// SCR-SAI-DYN (S1): re-emit a Script's inline source (Script.sourceCode) as
   /// the canonical X3D-JSON "#sourceText" array, one element per source line so
