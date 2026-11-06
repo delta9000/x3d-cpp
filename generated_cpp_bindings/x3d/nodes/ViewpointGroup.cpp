@@ -1,4 +1,3 @@
-// ViewpointGroup.cpp
 #include "x3d/nodes/ViewpointGroup.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// X3DShaderNode.cpp
 #include "x3d/nodes/X3DShaderNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// SegmentedVolumeData.cpp
 #include "x3d/nodes/SegmentedVolumeData.hpp"
 
 namespace x3d::nodes {

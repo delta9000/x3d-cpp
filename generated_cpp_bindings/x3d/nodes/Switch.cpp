@@ -1,4 +1,3 @@
-// Switch.cpp
 #include "x3d/nodes/Switch.hpp"
 
 namespace x3d::nodes {

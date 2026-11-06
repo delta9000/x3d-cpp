@@ -1,4 +1,3 @@
-// X3DMetadataObject.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -22,78 +21,47 @@ using namespace x3d::core;
  */
 class X3DMetadataObject {
 public:
-  /**
-   * @brief Default constructor for X3DMetadataObject
-   */
   X3DMetadataObject() = default;
 
-  /**
-   * @brief Virtual destructor for X3DMetadataObject
-   */
   virtual ~X3DMetadataObject() = default;
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Core"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of name. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFString& The current value of name.
    */
   const SFString &getName() const { return _name; }
 
   /**
-   * @brief Sets the value of name. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for name.
    */
   void setName(const SFString &value) { _name = value; }
 
   void setName(SFString &&value) { _name = std::move(value); }
 
   /**
-   * @brief Gets the value of reference. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFString& The current value of reference.
    */
   const SFString &getReference() const { return _reference; }
 
   /**
-   * @brief Sets the value of reference. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for reference.
    */
   void setReference(const SFString &value) { _reference = value; }
 
   void setReference(SFString &&value) { _reference = std::move(value); }
 
 private:
-  /**
-   * @brief Member variable for name.
-   */
-
   SFString _name{};
-
-  /**
-   * @brief Member variable for reference.
-   */
 
   SFString _reference{};
 };

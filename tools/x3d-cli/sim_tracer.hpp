@@ -1,29 +1,5 @@
-// tools/x3d-cli/sim_tracer.hpp
-// ─────────────────────────────────────────────────────────────────────────────
-// Field-change tracer for `x3d sim` (design Unit 3).
-//
-// TRACER MECHANISM — snapshot-diff (NOT a cascade observer).
-//   The X3DExecutionContext exposes exactly one per-field delivery observer slot
-//   (cascade_.setFieldObserver), and buildSceneGraph() already binds it to
-//   classifyDirty(), which feeds the DirtyTracker → transform/bounds propagation.
-//   Hooking it for tracing would either evict classifyDirty (breaking the
-//   dirty-driven world-transform/bounds update) or require chaining that is not
-//   exposed. So this tracer takes the design's documented FALLBACK: a robust
-//   snapshot-diff. Each tick it snapshots every readable, NON-node field value
-//   (via reflection fields()), diffs against the previous tick's snapshot, and
-//   emits the (node, field, newValue) deltas. Sensor/interpolator outputs
-//   (value_changed, fraction_changed, enterTime, isActive, …) are inputOutput or
-//   outputOnly fields whose stored value the cascade writes, so they surface
-//   naturally — no special-casing. This is clean (touches no core state) and
-//   deterministic (iteration order is fixed; see below).
-//
-// NODE NAMING — deterministic.
-//   • DEF-named nodes use their DEF name (from Scene::defs).
-//   • Un-DEF'd nodes get a synthesized stable id "<Type>#<index>", where <index>
-//     is the node's position in a FIXED document-order DFS over rootNodes (the
-//     same blind SFNode/MFNode descent the bridge uses), counting per-type. The
-//     walk is order-stable across runs, so ids are reproducible.
-// ─────────────────────────────────────────────────────────────────────────────
+// Snapshot readable non-node fields because dirty tracking owns the cascade observer slot.
+// DEF names identify named nodes; other IDs use type and document-order DFS index.
 #ifndef X3D_SIM_TRACER_HPP
 #define X3D_SIM_TRACER_HPP
 

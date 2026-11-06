@@ -1,4 +1,3 @@
-// DirectionalLight.cpp
 #include "x3d/nodes/DirectionalLight.hpp"
 
 namespace x3d::nodes {

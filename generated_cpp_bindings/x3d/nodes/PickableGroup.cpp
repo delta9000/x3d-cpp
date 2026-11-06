@@ -1,4 +1,3 @@
-// PickableGroup.cpp
 #include "x3d/nodes/PickableGroup.hpp"
 
 namespace x3d::nodes {

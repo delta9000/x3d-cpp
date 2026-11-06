@@ -1,4 +1,3 @@
-// Gain.cpp
 #include "x3d/nodes/Gain.hpp"
 
 namespace x3d::nodes {

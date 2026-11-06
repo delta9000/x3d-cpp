@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # tools/tests/corpus_tools_cli_test.sh
-# ─────────────────────────────────────────────────────────────────────────────
 # CLI regression test for corpus_sweep and corpus_audit.
 # Verifies: graceful handling of bad numeric args (no abort), empty dirs,
 # missing positional args, and usage-text completeness.
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SWEEP="$1"
@@ -33,7 +31,7 @@ run() {
     echo $?
 }
 
-# 1. Bad numeric args must trigger a clean usage exit (64), NOT abort (134).
+# 1. Bad numeric args must trigger a clean usage exit (64), not abort (134).
 check "sweep bad limit"           "$(run "$SWEEP" /tmp/nonexistent --limit abc)"           "64"
 check "sweep bad ratio"           "$(run "$SWEEP" /tmp/nonexistent --min-success-ratio abc)" "64"
 check "sweep bad list-errors"     "$(run "$SWEEP" /tmp/nonexistent --list-errors abc)"     "64"

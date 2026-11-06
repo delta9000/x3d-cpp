@@ -1,5 +1,4 @@
 // tools/x3d-cli/scene_equiv.hpp
-// ─────────────────────────────────────────────────────────────────────────────
 // sceneEquivalent — semantic equivalence check for two parsed X3D Scenes.
 //
 // Used by the Java-free convert-roundtrip gate: parse a file, convert to each
@@ -15,14 +14,13 @@
 //   4. ROUTE set: same set of (fromNode, fromField, toNode, toField) tuples
 //      (order-independent).
 //
-// What is NOT compared (by design):
+// What is not compared (by design):
 //   - Proto/ExternProto declarations (not load-bearing for render equivalence).
 //   - IMPORT/EXPORT statements (seam-side, not yet exercised by roundtrip).
 //   - Inline expansion metadata (writer re-emits the Inline stub correctly).
 //   - expandedSources / resolvedProtoRoutes (internal plumbing, not authored).
 //
 // Cycle safety: a visited-on-path set prevents infinite loops on USE graphs.
-// ─────────────────────────────────────────────────────────────────────────────
 #pragma once
 
 #include "x3d/sdk.hpp"
@@ -54,7 +52,7 @@ inline bool nearEq(double a, double b) {
     return diff / scale < kFloatTol;
 }
 
-// ── per-type value comparison ─────────────────────────────────────────────
+// per-type value comparison
 
 // Compare two std::any values of the same X3DFieldType.
 // Returns true if equivalent; appends a reason to `why` on mismatch.
@@ -385,7 +383,7 @@ bool anyEqual(X3DFieldType type, const std::any &a, const std::any &b,
 #undef CMP_SCALAR
 }
 
-// ── node pair comparison ───────────────────────────────────────────────────
+// node pair comparison
 
 // Forward declaration.
 bool nodesEqual(const X3DNode *a, const X3DNode *b,
@@ -525,7 +523,7 @@ bool nodesEqual(const X3DNode *a, const X3DNode *b,
 
 } // namespace detail
 
-// ── public API ────────────────────────────────────────────────────────────────
+// public API
 
 /**
  * @brief Compare two parsed X3D Scenes for semantic equivalence.

@@ -1,4 +1,3 @@
-// X3DBoundedObject.cpp
 #include "x3d/nodes/X3DBoundedObject.hpp"
 
 namespace x3d::nodes {

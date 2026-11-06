@@ -1,4 +1,3 @@
-// Anchor.cpp
 #include "x3d/nodes/Anchor.hpp"
 
 namespace x3d::nodes {

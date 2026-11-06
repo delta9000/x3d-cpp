@@ -1,4 +1,3 @@
-// NurbsTrimmedSurface.cpp
 #include "x3d/nodes/NurbsTrimmedSurface.hpp"
 
 namespace x3d::nodes {

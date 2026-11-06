@@ -1,4 +1,3 @@
-// IndexedTriangleFanSet.cpp
 #include "x3d/nodes/IndexedTriangleFanSet.hpp"
 
 namespace x3d::nodes {

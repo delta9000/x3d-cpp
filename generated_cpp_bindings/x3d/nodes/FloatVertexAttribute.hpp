@@ -1,4 +1,3 @@
-// FloatVertexAttribute.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,105 +26,62 @@ using namespace x3d::core;
  */
 class FloatVertexAttribute : public virtual X3DVertexAttributeNode {
 public:
-  /**
-   * @brief Default constructor for FloatVertexAttribute
-   */
   FloatVertexAttribute() = default;
 
-  /**
-   * @brief Destructor for FloatVertexAttribute
-   */
   ~FloatVertexAttribute() = default;
 
-  /**
-   * @brief Get the default value for numComponents
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultNumComponents() { return 4; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "attrib"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Shaders"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of numComponents. AccessType: initializeOnly
+   * SFInt32; access: initializeOnly. Borrows the stored value.
    * @details numComponents specifies how many consecutive floating-point values
    * should be grouped together per vertex.
-   * @return const SFInt32& The current value of numComponents.
    */
   const SFInt32 &getNumComponents() const { return _numComponents; }
   /**
-   * @brief Data-layer write of numComponents (reader/init ingest path).
-   * @details numComponents is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setNumComponents().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setNumComponentsUnchecked(const SFInt32 &value) {
     _numComponents = value;
   }
 
   /**
-   * @brief Gets the value of value. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details value specifies an arbitrary collection of floating-point values
    * that will be passed to the shader as per-vertex information.
-   * @return const MFFloat& The current value of value.
    */
   const MFFloat &getValue() const { return _value; }
 
   /**
-   * @brief Sets the value of value. AccessType: inputOutput
+   * Access: inputOutput.
    * @details value specifies an arbitrary collection of floating-point values
    * that will be passed to the shader as per-vertex information.
-   * @param value The new value for value.
    */
   void setValue(const MFFloat &value) { _value = value; }
 
   void setValue(MFFloat &&value) { _value = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "FloatVertexAttribute").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -141,15 +97,7 @@ protected:
                                        std::vector<RangeDiagnostic> &out);
 
 private:
-  /**
-   * @brief Member variable for numComponents.
-   */
-
   SFInt32 _numComponents{4};
-
-  /**
-   * @brief Member variable for value.
-   */
 
   MFFloat _value{};
 };

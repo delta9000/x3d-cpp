@@ -1,7 +1,7 @@
 """C++ header backend: renders the thin class template from FieldDescriptors.
 
 This is where the per-node rendering loop and clang-format invocation live. The
-template no longer makes any type decisions; it only walks precomputed
+template walks precomputed
 :class:`~x3d_cpp_gen.emit.descriptors.FieldDescriptor` objects.
 """
 
@@ -103,13 +103,13 @@ class CppHeaderBackend:
         os.makedirs(nodes_dir, exist_ok=True)
         emitted_files: List[str] = []
 
-        # Map each class to the set of field names it DECLARES itself (own
+        # Map each class to the set of field names it declares itself (own
         # fields). A node only emits accessors for its own fields; inherited
         # ones come via C++ inheritance. This lets a reflection thunk base-qualify
         # an inherited accessor by the exact class that defines it, which both
         # disambiguates diamonds and is robust to the UOM's inheritedFrom (whose
         # value does not always name the declaring class).
-        # Key on each field's WIRE name (x3d_name), matching the descriptor's
+        # Key on each field's wire name (x3d_name), matching the descriptor's
         # x3d_name used by the reflection table. A sanitized field (wire "class"
         # -> ident "class_") would otherwise fail to match and be mis-detected as
         # a phantom inherited field and dropped.
@@ -134,8 +134,8 @@ class CppHeaderBackend:
             dependencies = resolve_inheritance_chain(
                 node.name, dependency_graph, set())
 
-            # X3DNode is the single reflection root: it DECLARES the virtual
-            # reflection API. Anything transitively deriving from it OVERRIDES the
+            # X3DNode is the single reflection root: it declares the virtual
+            # reflection API. Anything transitively deriving from it overrides the
             # API. The rootless mixin object-types neither declare nor override —
             # they stay plain interfaces (emit_reflection=False) so a concrete
             # node mixing one in alongside X3DNode has exactly one declarer.

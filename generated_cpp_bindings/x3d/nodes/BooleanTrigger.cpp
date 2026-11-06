@@ -1,4 +1,3 @@
-// BooleanTrigger.cpp
 #include "x3d/nodes/BooleanTrigger.hpp"
 
 namespace x3d::nodes {

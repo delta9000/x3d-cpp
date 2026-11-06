@@ -1,4 +1,3 @@
-// X3DLayoutNode.cpp
 #include "x3d/nodes/X3DLayoutNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// StreamAudioSource.cpp
 #include "x3d/nodes/StreamAudioSource.hpp"
 
 namespace x3d::nodes {

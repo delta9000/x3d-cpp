@@ -1,4 +1,3 @@
-// ScalarInterpolator.cpp
 #include "x3d/nodes/ScalarInterpolator.hpp"
 
 namespace x3d::nodes {

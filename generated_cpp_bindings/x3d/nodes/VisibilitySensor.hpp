@@ -1,4 +1,3 @@
-// VisibilitySensor.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,145 +28,82 @@ using namespace x3d::core;
  */
 class VisibilitySensor : public virtual X3DEnvironmentalSensorNode {
 public:
-  /**
-   * @brief Default constructor for VisibilitySensor
-   */
   VisibilitySensor() = default;
 
-  /**
-   * @brief Destructor for VisibilitySensor
-   */
   ~VisibilitySensor() = default;
 
-  /**
-   * @brief Get the default value for center
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultCenter() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EnvironmentalSensor"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of center. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Translation offset from origin of local coordinate system.
-   * @return const SFVec3f& The current value of center.
    */
   const SFVec3f &getCenter() const { return _center; }
 
   /**
-   * @brief Sets the value of center. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Translation offset from origin of local coordinate system.
-   * @param value The new value for center.
    */
   void setCenter(const SFVec3f &value) { _center = value; }
 
   void setCenter(SFVec3f &&value) { _center = std::move(value); }
 
   /**
-   * @brief Gets the value of enterTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details Time event generated when user's camera enters visibility region
    * for sensor.
-   * @return const SFTime& The current value of enterTime.
    */
   const SFTime &getEnterTime() const { return _enterTime; }
 
   /**
-   * @brief Emit an output value on enterTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Time event generated when user's camera enters visibility region
-   * for sensor. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * for sensor.
    */
   void emitEnterTime(const SFTime &value) { _enterTime = value; }
 
   /**
-   * @brief Gets the value of exitTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details Time event generated when user's camera exits visibility region
    * for sensor.
-   * @return const SFTime& The current value of exitTime.
    */
   const SFTime &getExitTime() const { return _exitTime; }
 
   /**
-   * @brief Emit an output value on exitTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Time event generated when user's camera exits visibility region
-   * for sensor. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * for sensor.
    */
   void emitExitTime(const SFTime &value) { _exitTime = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "VisibilitySensor").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
-  /**
-   * @brief Member variable for center.
-   */
-
   SFVec3f _center{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for enterTime.
-   */
-
   SFTime _enterTime{};
-
-  /**
-   * @brief Member variable for exitTime.
-   */
 
   SFTime _exitTime{};
 };

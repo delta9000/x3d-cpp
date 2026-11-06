@@ -1,4 +1,3 @@
-// PositionChaser.cpp
 #include "x3d/nodes/PositionChaser.hpp"
 
 namespace x3d::nodes {

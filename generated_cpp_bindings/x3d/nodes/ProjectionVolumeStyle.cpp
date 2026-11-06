@@ -1,4 +1,3 @@
-// ProjectionVolumeStyle.cpp
 #include "x3d/nodes/ProjectionVolumeStyle.hpp"
 
 namespace x3d::nodes {

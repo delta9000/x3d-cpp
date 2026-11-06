@@ -1,4 +1,3 @@
-// CoordinateDamper.cpp
 #include "x3d/nodes/CoordinateDamper.hpp"
 
 namespace x3d::nodes {

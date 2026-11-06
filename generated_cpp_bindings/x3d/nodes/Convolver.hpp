@@ -1,4 +1,3 @@
-// Convolver.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -31,61 +30,33 @@ using namespace x3d::core;
  */
 class Convolver : public virtual X3DSoundProcessingNode {
 public:
-  /**
-   * @brief Default constructor for Convolver
-   */
   Convolver() = default;
 
-  /**
-   * @brief Destructor for Convolver
-   */
   ~Convolver() = default;
 
-  /**
-   * @brief Get the default value for normalize
-   * @return SFBool The default value
-   */
   static SFBool getDefaultNormalize() { return false; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesAudioGraph";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Sound"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of buffer. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details buffer is a memory-resident audio asset that can contain one or
    * more channels.
-   * @return const MFFloat& The current value of buffer.
    */
   const MFFloat &getBuffer() const { return _buffer; }
 
   /**
-   * @brief Sets the value of buffer. AccessType: inputOutput
+   * Access: inputOutput.
    * @details buffer is a memory-resident audio asset that can contain one or
    * more channels.
-   * @param value The new value for buffer.
    */
   void setBuffer(const MFFloat &value) {
 
@@ -102,30 +73,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of buffer (runtime/reader ingest path).
-   * @details Assigns without the range check setBuffer() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setBuffer() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setBuffer() for range validation.
    */
   void setBufferUnchecked(const MFFloat &value) { _buffer = value; }
 
   /**
-   * @brief Gets the value of children. AccessType: inputOutput
+   * MFNode; access: inputOutput. Borrows the stored value.
    * @details The children field specifies audio-graph sound sources providing
    * input signals for this node.
-   * @return const MFNode& The current value of children.
    */
   const MFNode &getChildren() const { return _children; }
 
   /**
-   * @brief Acceptable node types for the children field.
    * @details Permitted X3D node types: Analyser, AudioClip, AudioDestination,
    * BiquadFilter, BufferAudioSource, ChannelMerger, ChannelSelector,
    * ChannelSplitter, Convolver, Delay, DynamicsCompressor, Gain,
    * ListenerPointSource, MicrophoneSource, MovieTexture, OscillatorSource,
    * Sound, SpatialSound, StreamAudioDestination, StreamAudioSource, WaveShaper
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableChildrenNodeTypes() {
     static const std::vector<std::string> types = {"Analyser",
@@ -153,58 +118,42 @@ public:
   }
 
   /**
-   * @brief Sets the value of children. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The children field specifies audio-graph sound sources providing
    * input signals for this node.
-   * @param value The new value for children.
    */
   void setChildren(const MFNode &value) { _children = value; }
 
   void setChildren(MFNode &&value) { _children = std::move(value); }
 
   /**
-   * @brief Gets the value of normalize. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details normalize controls whether or not the impulse response from the
    * buffer is scaled by an equal-power normalization when the buffer field is
    * set.
-   * @return const SFBool& The current value of normalize.
    */
   const SFBool &getNormalize() const { return _normalize; }
 
   /**
-   * @brief Sets the value of normalize. AccessType: inputOutput
+   * Access: inputOutput.
    * @details normalize controls whether or not the impulse response from the
    * buffer is scaled by an equal-power normalization when the buffer field is
    * set.
-   * @param value The new value for normalize.
    */
   void setNormalize(const SFBool &value) { _normalize = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "Convolver").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -231,21 +180,9 @@ private:
     }
   }
 
-  /**
-   * @brief Member variable for buffer.
-   */
-
   MFFloat _buffer{};
 
-  /**
-   * @brief Member variable for children.
-   */
-
   MFNode _children{};
-
-  /**
-   * @brief Member variable for normalize.
-   */
 
   SFBool _normalize{false};
 };

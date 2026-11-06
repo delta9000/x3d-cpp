@@ -1,4 +1,3 @@
-// Collision.cpp
 #include "x3d/nodes/Collision.hpp"
 
 namespace x3d::nodes {

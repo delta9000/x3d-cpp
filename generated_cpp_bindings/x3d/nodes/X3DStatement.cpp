@@ -1,4 +1,3 @@
-// X3DStatement.cpp
 #include "x3d/nodes/X3DStatement.hpp"
 
 namespace x3d::nodes {

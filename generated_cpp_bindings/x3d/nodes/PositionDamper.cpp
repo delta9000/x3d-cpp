@@ -1,4 +1,3 @@
-// PositionDamper.cpp
 #include "x3d/nodes/PositionDamper.hpp"
 
 namespace x3d::nodes {

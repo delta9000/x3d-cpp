@@ -1,4 +1,3 @@
-// AcousticProperties.cpp
 #include "x3d/nodes/AcousticProperties.hpp"
 
 namespace x3d::nodes {

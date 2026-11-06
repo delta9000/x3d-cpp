@@ -1,4 +1,3 @@
-// MovieTexture.cpp
 #include "x3d/nodes/MovieTexture.hpp"
 
 namespace x3d::nodes {

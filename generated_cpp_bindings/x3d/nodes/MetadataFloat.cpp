@@ -1,4 +1,3 @@
-// MetadataFloat.cpp
 #include "x3d/nodes/MetadataFloat.hpp"
 
 namespace x3d::nodes {

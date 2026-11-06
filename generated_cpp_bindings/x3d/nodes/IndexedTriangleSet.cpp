@@ -1,4 +1,3 @@
-// IndexedTriangleSet.cpp
 #include "x3d/nodes/IndexedTriangleSet.hpp"
 
 namespace x3d::nodes {

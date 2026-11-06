@@ -1,4 +1,3 @@
-// DISEntityTypeMapping.cpp
 #include "x3d/nodes/DISEntityTypeMapping.hpp"
 
 namespace x3d::nodes {

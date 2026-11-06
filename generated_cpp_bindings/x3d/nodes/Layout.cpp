@@ -1,4 +1,3 @@
-// Layout.cpp
 #include "x3d/nodes/Layout.hpp"
 
 namespace x3d::nodes {

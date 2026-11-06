@@ -1,4 +1,3 @@
-// GeoTouchSensor.cpp
 #include "x3d/nodes/GeoTouchSensor.hpp"
 
 namespace x3d::nodes {

@@ -48,12 +48,7 @@ def pascal(s: str) -> str:
 def cpp_str(s: str) -> str:
     """Escape a Python string into the body of a C++ double-quoted literal.
 
-    Escapes backslash, double-quote, newline, tab, and carriage return -- the
-    union of what this generator's two previously-separate, inconsistent
-    escaping implementations covered (emit.defaults.cpp_string_literal used
-    to escape all five; generator._cpp_str used to escape only backslash and
-    quote). One shared implementation now backs every quoted interpolation
-    site, including Jinja templates via the registered ``cpp_str`` filter.
+    Escapes backslash, double-quote, newline, tab, and carriage return.
     """
     if s is None:
         return ""

@@ -1,4 +1,3 @@
-// DISEntityManager.cpp
 #include "x3d/nodes/DISEntityManager.hpp"
 
 namespace x3d::nodes {

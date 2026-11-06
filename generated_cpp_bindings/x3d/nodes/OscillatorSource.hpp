@@ -1,4 +1,3 @@
-// OscillatorSource.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -31,69 +30,37 @@ using namespace x3d::core;
  */
 class OscillatorSource : public virtual X3DSoundSourceNode {
 public:
-  /**
-   * @brief Default constructor for OscillatorSource
-   */
   OscillatorSource() = default;
 
-  /**
-   * @brief Destructor for OscillatorSource
-   */
   ~OscillatorSource() = default;
 
-  /**
-   * @brief Get the default value for detune
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultDetune() { return 0; }
 
-  /**
-   * @brief Get the default value for frequency
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultFrequency() { return 440; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesSoundSource";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Sound"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of detune. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details The detune ffield is an a-rate AudioParam representing detuning of
    * oscillation in cents (though the AudioParam returned is read-only, the
    * value it represents is not).
-   * @return const SFFloat& The current value of detune.
    */
   const SFFloat &getDetune() const { return _detune; }
 
   /**
-   * @brief Sets the value of detune. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The detune ffield is an a-rate AudioParam representing detuning of
    * oscillation in cents (though the AudioParam returned is read-only, the
    * value it represents is not).
-   * @param value The new value for detune.
    */
   void setDetune(const SFFloat &value) {
 
@@ -103,25 +70,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of detune (runtime/reader ingest path).
-   * @details Assigns without the range check setDetune() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setDetune() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setDetune() for range validation.
    */
   void setDetuneUnchecked(const SFFloat &value) { _detune = value; }
 
   /**
-   * @brief Gets the value of frequency. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details The frequency of oscillation in hertz.
-   * @return const SFFloat& The current value of frequency.
    */
   const SFFloat &getFrequency() const { return _frequency; }
 
   /**
-   * @brief Sets the value of frequency. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The frequency of oscillation in hertz.
-   * @param value The new value for frequency.
    */
   void setFrequency(const SFFloat &value) {
 
@@ -131,39 +93,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of frequency (runtime/reader ingest path).
-   * @details Assigns without the range check setFrequency() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setFrequency() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setFrequency() for range validation.
    */
   void setFrequencyUnchecked(const SFFloat &value) { _frequency = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "OscillatorSource").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -200,15 +146,7 @@ private:
       throw std::out_of_range("frequency below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for detune.
-   */
-
   SFFloat _detune{0};
-
-  /**
-   * @brief Member variable for frequency.
-   */
 
   SFFloat _frequency{440};
 };

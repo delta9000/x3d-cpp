@@ -1,4 +1,3 @@
-// BufferAudioSource.cpp
 #include "x3d/nodes/BufferAudioSource.hpp"
 
 namespace x3d::nodes {

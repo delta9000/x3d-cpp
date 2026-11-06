@@ -1,25 +1,4 @@
-"""Generation of the runtime reflection support header (``X3DReflection.hpp``).
-
-This header is hand-written-shaped but DATA-DRIVEN: the ``X3DFieldType`` runtime
-enum is emitted directly from :class:`~x3d_cpp_gen.model.types.X3DType` so the
-two never drift. It also declares the type-erased ``FieldInfo`` / ``FieldTable``
-records and the ``NodeVisitor`` interface that hand-written, node-agnostic codecs
-walk. None of this header branches per node; every node simply *populates* a
-``FieldTable`` (built in Python via the descriptors, rendered by the thin Jinja
-template) and overrides ``fields()`` / ``nodeTypeName()`` / ``accept()``.
-
-The reflection API a codec relies on:
-
-* ``X3DNode::nodeTypeName()`` -> the node's X3D type name (e.g. ``"Box"``).
-* ``X3DNode::fields()`` -> ``const FieldTable&`` covering OWN + INHERITED fields.
-* ``X3DNode::accept(NodeVisitor&)`` -> double-dispatch entry point.
-* ``FieldInfo::get(node)`` -> ``std::any`` holding the field's typed value.
-* ``FieldInfo::set(node, any)`` -> writes the typed value back (no-op if absent).
-* ``FieldInfo::view(node)`` -> zero-copy ``FieldView``: the address of the stored
-  member plus its ``std::type_info``, so a reader can borrow an MF vector or a
-  node reference without boxing or copying it.
-* ``X3DFieldType`` -> switch on this to know how to format/parse the ``std::any``.
-"""
+"""Emit reflection records and runtime field tags from X3DType."""
 
 from x3d_cpp_gen.model.types import X3DType, TypeRegistry
 

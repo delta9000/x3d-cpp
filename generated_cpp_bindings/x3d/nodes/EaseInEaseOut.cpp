@@ -1,4 +1,3 @@
-// EaseInEaseOut.cpp
 #include "x3d/nodes/EaseInEaseOut.hpp"
 
 namespace x3d::nodes {

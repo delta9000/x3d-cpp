@@ -33,11 +33,8 @@ def compile_and_run_test(test_file_path: str, output_dir: str,
                          compiler: str = "g++") -> bool:
     """Compile and run the generated smoke test. Fail closed.
 
-    Returns True ONLY when the test actually compiled and ran green. Every path
-    where verification did not happen returns False: reporting success when the
-    thing under test was never built is exactly the failure this function used
-    to have. The caller skips deliberately with --no-test; there is no
-    succeed-without-testing path in here.
+    Returns True only after successful compilation and execution.
+    Use --no-test to skip verification explicitly.
     """
     if not compiler:
         print("ERROR: no compiler configured, so the smoke test cannot run. "
@@ -45,11 +42,11 @@ def compile_and_run_test(test_file_path: str, output_dir: str,
         return False
 
     output_binary = os.path.join(output_dir, "test_exec")
-    # Node sources + the smoke-test main now live under x3d/nodes/; the include
+    # Node sources and the smoke-test main live under x3d/nodes/; the include
     # base stays output_dir so "x3d/core/..." and "x3d/nodes/..." resolve. Each
     # concrete node's vtable is emitted in the TU that defines its key function
     # (e.g. WorldInfo::nodeTypeName() in WorldInfo.cpp), so the smoke test must
-    # LINK every generated .cpp -- linking test.cpp alone leaves every vtable/VTT
+    # link every generated .cpp -- linking test.cpp alone leaves every vtable/VTT
     # undefined. test.cpp is itself in x3d/nodes/, so the glob already includes
     # it (don't list it twice or main is multiply defined).
     nodes_dir = os.path.join(output_dir, "x3d", "nodes")

@@ -1,4 +1,3 @@
-// PointSet.cpp
 #include "x3d/nodes/PointSet.hpp"
 
 namespace x3d::nodes {

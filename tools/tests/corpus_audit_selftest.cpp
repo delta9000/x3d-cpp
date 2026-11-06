@@ -1,19 +1,4 @@
-// tools/tests/corpus_audit_selftest.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// SELFTEST for the differential-audit engine (Phase 0, TDD).
-//
-// Two pillars of false-positive / true-positive control:
-//   (1) CLEAN: a known-good scene (Transform > Shape{Box, Material} + a DEF/USE
-//       share + a ROUTE) must yield ZERO findings — invariants hold and the
-//       semantic fingerprint round-trips identically across XML, JSON and
-//       ClassicVRML. This proves the audit does NOT flag the EXPECTED formatting
-//       / default-dropping / float-precision differences between encodings.
-//   (2) DETECTED: a deliberately corrupted fingerprint comparison and a
-//       deliberately unparseable text must each surface a finding. This proves
-//       the oracle actually fires when fidelity is lost.
-//
-// Exit 0 on success; nonzero on any failed assertion.
-// ─────────────────────────────────────────────────────────────────────────────
+// Check clean scene round trips and detection of corrupted fingerprints and XML.
 #include "corpus_audit.hpp"
 
 #include "x3d/nodes/Appearance.hpp"
@@ -96,7 +81,6 @@ sdk::X3DDocument buildGoodDoc() {
 } // namespace
 
 int main() {
-  // ── (1) CLEAN: zero findings across all three encodings ───────────────────
   {
     sdk::X3DDocument doc = buildGoodDoc();
     std::vector<audit::Finding> findings;
@@ -112,7 +96,6 @@ int main() {
     check(findings.empty(), "clean scene yields zero findings (all 3 encodings)");
   }
 
-  // ── fingerprint sanity: the good doc fingerprints non-trivially ───────────
   {
     sdk::X3DDocument doc = buildGoodDoc();
     audit::Fingerprint fp = audit::makeFingerprint(doc);
@@ -123,7 +106,6 @@ int main() {
     check(fp.nodeCount >= 5, "good doc reachable node count is plausible");
   }
 
-  // ── self-equality: a fingerprint always equals itself ─────────────────────
   {
     sdk::X3DDocument docA = buildGoodDoc();
     sdk::X3DDocument docB = buildGoodDoc();
@@ -132,7 +114,6 @@ int main() {
     check(a == b, "fingerprint is deterministic (equal across two builds)");
   }
 
-  // ── (2a) DETECTED: a corrupted fingerprint compares unequal ───────────────
   {
     sdk::X3DDocument doc = buildGoodDoc();
     audit::Fingerprint good = audit::makeFingerprint(doc);
@@ -153,7 +134,6 @@ int main() {
           "explainMismatch names the differing routeCount");
   }
 
-  // ── (2b) DETECTED: deliberately unparseable XML surfaces a reparse defect ──
   {
     std::vector<audit::Finding> findings;
     // Feed parseDocument garbage that LOOKS like XML so the XML hint is taken
@@ -167,14 +147,13 @@ int main() {
       threw = true;
     }
     check(threw, "broken XML body throws on reparse (oracle can observe it)");
-    // And the throw is NOT classified as an expected external-resolution throw.
+    // And the throw is not classified as an expected external-resolution throw.
     check(!audit::isExpectedExternalThrow("unexpected token at line 1"),
           "a non-external parse error is classified as a real defect");
     check(audit::isExpectedExternalThrow("could not resolve EXTERNPROTO url"),
           "an external-resolution throw is classified as expected");
   }
 
-  // ── signature stability: same defect class -> same signature ──────────────
   {
     audit::Finding a = audit::makeFinding("a/1.x3d", "roundtrip", "xml", "",
                                           "routeCount 3->2; ");

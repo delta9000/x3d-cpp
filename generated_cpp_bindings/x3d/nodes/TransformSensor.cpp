@@ -1,4 +1,3 @@
-// TransformSensor.cpp
 #include "x3d/nodes/TransformSensor.hpp"
 
 namespace x3d::nodes {

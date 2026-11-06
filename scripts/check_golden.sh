@@ -4,10 +4,10 @@
 # Regenerates the full generated C++ source tree into a throwaway temp directory
 # and diffs every generated source file (*.hpp and *.cpp) against the committed
 # generated_cpp_bindings/. Exits 0 when the trees are identical and non-zero
-# (with a readable report) on ANY drift.
+# (with a readable report) on any drift.
 #
 # Codegen changes are therefore opt-in: change a template/emitter, then run
-# `uv run x3d-cpp-gen --out generated_cpp_bindings` and COMMIT the new sources.
+# `uv run x3d-cpp-gen --out generated_cpp_bindings` and commit the new sources.
 # This script (and tests/test_golden_tree.py) fail until that is done.
 #
 # Runnable locally (`scripts/check_golden.sh`) and from CI. The smoke test.cpp
@@ -24,12 +24,12 @@ if [[ ! -d "${GOLDEN_DIR}" ]]; then
 fi
 
 # The golden tree is byte-exact, so the formatter is part of the contract and
-# the FULL version is what we pin: clang-format's default style can shift in any
+# the full version is what we pin: clang-format's default style can shift in any
 # release, not just a major. A mismatch would surface as "golden drift" that is
 # really a toolchain mismatch -- fail loudly with the real reason instead. Keep
 # this in sync with mise.toml [tools] and tests/test_formatter_pin.py.
 EXPECTED_CLANG_FORMAT_VERSION=22.1.8
-# Exported so the generator below formats with the SAME binary we just verified
+# Exported so the generator below formats with the same binary we just verified
 # (it reads CLANG_FORMAT from the environment); otherwise this check could pass
 # while generation silently used a different formatter off PATH.
 export CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
@@ -57,11 +57,10 @@ cleanup() { rm -rf "${TMP_DIR}"; }
 trap cleanup EXIT
 
 echo "Regenerating into ${TMP_DIR} ..."
-# --no-test: the smoke test is not golden and needs a compiler we may not want
-# in the drift gate. clang-format must match the one that produced the golden.
+# Skip the smoke test; clang-format must match the committed sources.
 ( cd "${REPO_ROOT}" && uv run x3d-cpp-gen --out "${TMP_DIR}" --no-test >/dev/null )
 
-# Compare the FULL generated source tree (*.hpp + *.cpp), in both directions
+# Compare the full generated source tree (*.hpp + *.cpp), in both directions
 # (catches added/removed files as well as content drift).
 DRIFT=0
 REPORT=""
@@ -83,7 +82,7 @@ while IFS= read -r -d '' g; do
   fi
 done < <(find "${GOLDEN_DIR}" \( -name '*.hpp' -o -name '*.cpp' \) ! -name 'test.cpp' -print0)
 
-# 2. Generated sources present in regen but NOT in golden (uncommitted output).
+# 2. Generated sources present in regen but not in golden (uncommitted output).
 while IFS= read -r -d '' r; do
   rel="${r#"${TMP_DIR}/"}"
   if [[ ! -f "${GOLDEN_DIR}/${rel}" ]]; then

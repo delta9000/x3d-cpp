@@ -1,4 +1,3 @@
-// X3DPickableObject.cpp
 #include "x3d/nodes/X3DPickableObject.hpp"
 
 namespace x3d::nodes {

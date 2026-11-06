@@ -1,4 +1,3 @@
-// NurbsTextureCoordinate.cpp
 #include "x3d/nodes/NurbsTextureCoordinate.hpp"
 
 namespace x3d::nodes {

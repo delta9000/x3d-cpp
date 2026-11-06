@@ -1,4 +1,3 @@
-// IndexedLineSet.cpp
 #include "x3d/nodes/IndexedLineSet.hpp"
 
 namespace x3d::nodes {

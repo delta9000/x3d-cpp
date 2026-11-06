@@ -1,4 +1,3 @@
-// MetadataDouble.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,92 +25,51 @@ using namespace x3d::core;
 class MetadataDouble : public virtual X3DNode,
                        public virtual X3DMetadataObject {
 public:
-  /**
-   * @brief Default constructor for MetadataDouble
-   */
   MetadataDouble() = default;
 
-  /**
-   * @brief Destructor for MetadataDouble
-   */
   ~MetadataDouble() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesMetadata";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "value"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Core"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of value. AccessType: inputOutput
+   * MFDouble; access: inputOutput. Borrows the stored value.
    * @details The value attribute is a strictly typed data array providing
    * relevant metadata information.
-   * @return const MFDouble& The current value of value.
    */
   const MFDouble &getValue() const { return _value; }
 
   /**
-   * @brief Sets the value of value. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The value attribute is a strictly typed data array providing
    * relevant metadata information.
-   * @param value The new value for value.
    */
   void setValue(const MFDouble &value) { _value = value; }
 
   void setValue(MFDouble &&value) { _value = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "MetadataDouble").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for value.
-   */
-
   MFDouble _value{};
 };
 

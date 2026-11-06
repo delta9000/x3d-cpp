@@ -1,4 +1,3 @@
-// Sound.cpp
 #include "x3d/nodes/Sound.hpp"
 
 namespace x3d::nodes {

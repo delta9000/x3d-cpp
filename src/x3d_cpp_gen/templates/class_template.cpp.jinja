@@ -1,4 +1,3 @@
-// {{ class_name }}.cpp
 #include "x3d/nodes/{{ class_name }}.hpp"
 
 {% if namespace %}
@@ -120,7 +119,7 @@ void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& out) const {
 {% endif %}
 
 {#- checkRanges* definitions: emitted for any node declaring constrained own
-    fields, INDEPENDENT of emit_reflection — mixin object-types (e.g.
+    fields, independent of emit_reflection — mixin object-types (e.g.
     X3DFogObject, X3DUrlObject) declare these statics in their header even
     though they do not participate in reflection, and derived nodes call them
     base-qualified from validateRanges(). -#}

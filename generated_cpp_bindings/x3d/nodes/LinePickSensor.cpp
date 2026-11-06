@@ -1,4 +1,3 @@
-// LinePickSensor.cpp
 #include "x3d/nodes/LinePickSensor.hpp"
 
 namespace x3d::nodes {

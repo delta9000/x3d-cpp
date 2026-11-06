@@ -1,4 +1,3 @@
-// ImageCubeMapTexture.cpp
 #include "x3d/nodes/ImageCubeMapTexture.hpp"
 
 namespace x3d::nodes {

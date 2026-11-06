@@ -1,4 +1,3 @@
-// ChannelSelector.cpp
 #include "x3d/nodes/ChannelSelector.hpp"
 
 namespace x3d::nodes {

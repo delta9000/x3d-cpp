@@ -78,7 +78,7 @@ def gen_interface_registry_header(nodes: Dict[str, X3DNode]) -> str:
 
 def gen_interface_registry_source(nodes: Dict[str, X3DNode],
                                   graph: Dict[str, List[str]]) -> str:
-    # Emit a row for EVERY node (concrete + abstract) so the query works on any
+    # Emit a row for every node (concrete + abstract) so the query works on any
     # type name. Sorted for deterministic golden output.
     names = sorted(nodes)
     lines: List[str] = []

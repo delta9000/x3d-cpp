@@ -1,4 +1,3 @@
-// VolumeData.cpp
 #include "x3d/nodes/VolumeData.hpp"
 
 namespace x3d::nodes {

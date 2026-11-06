@@ -1,4 +1,3 @@
-// PeriodicWave.cpp
 #include "x3d/nodes/PeriodicWave.hpp"
 
 namespace x3d::nodes {

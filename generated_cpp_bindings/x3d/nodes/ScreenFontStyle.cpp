@@ -1,4 +1,3 @@
-// ScreenFontStyle.cpp
 #include "x3d/nodes/ScreenFontStyle.hpp"
 
 namespace x3d::nodes {

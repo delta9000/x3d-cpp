@@ -1,4 +1,3 @@
-// X3DLayerNode.cpp
 #include "x3d/nodes/X3DLayerNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// ComposedCubeMapTexture.cpp
 #include "x3d/nodes/ComposedCubeMapTexture.hpp"
 
 namespace x3d::nodes {

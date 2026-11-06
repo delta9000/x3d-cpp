@@ -1,4 +1,3 @@
-// X3DChildNode.cpp
 #include "x3d/nodes/X3DChildNode.hpp"
 
 namespace x3d::nodes {

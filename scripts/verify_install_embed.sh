@@ -88,7 +88,6 @@ cmake --build "$product_build"
 (cd "$work_dir" && "$product_build/x3d_embed_minimal")
 "$product_build/x3d_embed_native_host"
 
-# ── Relocatability: the package must work from a MOVED copy of the prefix ─────
 # Static half: no absolute source- or build-tree path may be baked into any
 # installed CMake file (prefix-relative _IMPORT_PREFIX only). A hit here is a
 # relocatability bug even when the dynamic half below happens to pass.

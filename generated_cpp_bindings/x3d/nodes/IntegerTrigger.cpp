@@ -1,4 +1,3 @@
-// IntegerTrigger.cpp
 #include "x3d/nodes/IntegerTrigger.hpp"
 
 namespace x3d::nodes {

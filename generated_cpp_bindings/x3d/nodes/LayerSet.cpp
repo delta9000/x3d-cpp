@@ -1,4 +1,3 @@
-// LayerSet.cpp
 #include "x3d/nodes/LayerSet.hpp"
 
 namespace x3d::nodes {

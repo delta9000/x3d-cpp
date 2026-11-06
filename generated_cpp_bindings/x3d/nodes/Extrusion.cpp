@@ -1,4 +1,3 @@
-// Extrusion.cpp
 #include "x3d/nodes/Extrusion.hpp"
 
 namespace x3d::nodes {

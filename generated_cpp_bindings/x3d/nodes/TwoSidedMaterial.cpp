@@ -1,4 +1,3 @@
-// TwoSidedMaterial.cpp
 #include "x3d/nodes/TwoSidedMaterial.hpp"
 
 namespace x3d::nodes {

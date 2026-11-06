@@ -3,7 +3,7 @@ from dataclasses import dataclass, field as dataclass_field
 from typing import List, Optional, Dict
 
 # Naming canonicalization lives in emit.naming (single source of truth). These
-# re-exports preserve the historical `from x3d_cpp_gen.parser import ...` API.
+# re-exports preserve the `from x3d_cpp_gen.parser import ...` API.
 from x3d_cpp_gen.emit.naming import CPP_RESERVED_KEYWORDS, sanitize_field_name
 
 @dataclass

@@ -1,4 +1,3 @@
-// ClipPlane.cpp
 #include "x3d/nodes/ClipPlane.hpp"
 
 namespace x3d::nodes {

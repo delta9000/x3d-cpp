@@ -1,4 +1,3 @@
-// Layout.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,97 +26,50 @@ using namespace x3d::core;
  */
 class Layout : public virtual X3DLayoutNode {
 public:
-  /**
-   * @brief Default constructor for Layout
-   */
   Layout() = default;
 
-  /**
-   * @brief Destructor for Layout
-   */
   ~Layout() = default;
 
-  /**
-   * @brief Get the default value for align
-   * @return std::vector<LayoutAlignChoices> The default value
-   */
   static std::vector<LayoutAlignChoices> getDefaultAlign() {
     return std::vector<LayoutAlignChoices>{};
   }
 
-  /**
-   * @brief Get the default value for offset
-   * @return MFFloat The default value
-   */
   static MFFloat getDefaultOffset() { return std::vector<float>{0, 0}; }
 
-  /**
-   * @brief Get the default value for offsetUnits
-   * @return std::vector<LayoutUnitsChoices> The default value
-   */
   static std::vector<LayoutUnitsChoices> getDefaultOffsetUnits() {
     return std::vector<LayoutUnitsChoices>{};
   }
 
-  /**
-   * @brief Get the default value for scaleMode
-   * @return std::vector<LayoutScaleModeChoices> The default value
-   */
   static std::vector<LayoutScaleModeChoices> getDefaultScaleMode() {
     return std::vector<LayoutScaleModeChoices>{};
   }
 
-  /**
-   * @brief Get the default value for size
-   * @return MFFloat The default value
-   */
   static MFFloat getDefaultSize() { return std::vector<float>{1, 1}; }
 
-  /**
-   * @brief Get the default value for sizeUnits
-   * @return std::vector<LayoutUnitsChoices> The default value
-   */
   static std::vector<LayoutUnitsChoices> getDefaultSizeUnits() {
     return std::vector<LayoutUnitsChoices>{};
   }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "layout"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Layout"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of align. AccessType: inputOutput
+   * std::vector<LayoutAlignChoices>; access: inputOutput. Borrows the stored
+   * value.
    * @details The align field values align the sized rectangle to an edge or
    * center of the parent rectangle.
-   * @return const std::vector<LayoutAlignChoices>& The current value of align.
    */
   const std::vector<LayoutAlignChoices> &getAlign() const { return _align; }
 
   /**
-   * @brief Sets the value of align. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The align field values align the sized rectangle to an edge or
    * center of the parent rectangle.
-   * @param value The new value for align.
    */
   void setAlign(const std::vector<LayoutAlignChoices> &value) {
 
@@ -130,39 +82,35 @@ public:
   }
 
   /**
-   * @brief Gets the value of offset. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details The values of the offset field are used to translate the location
    * of this rectangle after the initial alignment.
-   * @return const MFFloat& The current value of offset.
    */
   const MFFloat &getOffset() const { return _offset; }
 
   /**
-   * @brief Sets the value of offset. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The values of the offset field are used to translate the location
    * of this rectangle after the initial alignment.
-   * @param value The new value for offset.
    */
   void setOffset(const MFFloat &value) { _offset = value; }
 
   void setOffset(MFFloat &&value) { _offset = std::move(value); }
 
   /**
-   * @brief Gets the value of offsetUnits. AccessType: inputOutput
+   * std::vector<LayoutUnitsChoices>; access: inputOutput. Borrows the stored
+   * value.
    * @details The offsetUnits field values are used to interprete the offset
    * values.
-   * @return const std::vector<LayoutUnitsChoices>& The current value of
-   * offsetUnits.
    */
   const std::vector<LayoutUnitsChoices> &getOffsetUnits() const {
     return _offsetUnits;
   }
 
   /**
-   * @brief Sets the value of offsetUnits. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The offsetUnits field values are used to interprete the offset
    * values.
-   * @param value The new value for offsetUnits.
    */
   void setOffsetUnits(const std::vector<LayoutUnitsChoices> &value) {
 
@@ -175,21 +123,19 @@ public:
   }
 
   /**
-   * @brief Gets the value of scaleMode. AccessType: inputOutput
+   * std::vector<LayoutScaleModeChoices>; access: inputOutput. Borrows the
+   * stored value.
    * @details The scaleMode field specifies how the scale of the parent is
    * modified.
-   * @return const std::vector<LayoutScaleModeChoices>& The current value of
-   * scaleMode.
    */
   const std::vector<LayoutScaleModeChoices> &getScaleMode() const {
     return _scaleMode;
   }
 
   /**
-   * @brief Sets the value of scaleMode. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The scaleMode field specifies how the scale of the parent is
    * modified.
-   * @param value The new value for scaleMode.
    */
   void setScaleMode(const std::vector<LayoutScaleModeChoices> &value) {
 
@@ -202,39 +148,35 @@ public:
   }
 
   /**
-   * @brief Gets the value of size. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details The two values in the size field define the width and height of
    * the layout rectangle.
-   * @return const MFFloat& The current value of size.
    */
   const MFFloat &getSize() const { return _size; }
 
   /**
-   * @brief Sets the value of size. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The two values in the size field define the width and height of
    * the layout rectangle.
-   * @param value The new value for size.
    */
   void setSize(const MFFloat &value) { _size = value; }
 
   void setSize(MFFloat &&value) { _size = std::move(value); }
 
   /**
-   * @brief Gets the value of sizeUnits. AccessType: inputOutput
+   * std::vector<LayoutUnitsChoices>; access: inputOutput. Borrows the stored
+   * value.
    * @details The sizeUnits field values are used to interprete the offset
    * values.
-   * @return const std::vector<LayoutUnitsChoices>& The current value of
-   * sizeUnits.
    */
   const std::vector<LayoutUnitsChoices> &getSizeUnits() const {
     return _sizeUnits;
   }
 
   /**
-   * @brief Sets the value of sizeUnits. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The sizeUnits field values are used to interprete the offset
    * values.
-   * @param value The new value for sizeUnits.
    */
   void setSizeUnits(const std::vector<LayoutUnitsChoices> &value) {
 
@@ -246,69 +188,32 @@ public:
     _sizeUnits = std::move(value);
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "Layout").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for align.
-   */
-
   std::vector<LayoutAlignChoices> _align{std::vector<LayoutAlignChoices>{}};
 
-  /**
-   * @brief Member variable for offset.
-   */
-
   MFFloat _offset{std::vector<float>{0, 0}};
-
-  /**
-   * @brief Member variable for offsetUnits.
-   */
 
   std::vector<LayoutUnitsChoices> _offsetUnits{
       std::vector<LayoutUnitsChoices>{}};
 
-  /**
-   * @brief Member variable for scaleMode.
-   */
-
   std::vector<LayoutScaleModeChoices> _scaleMode{
       std::vector<LayoutScaleModeChoices>{}};
 
-  /**
-   * @brief Member variable for size.
-   */
-
   MFFloat _size{std::vector<float>{1, 1}};
-
-  /**
-   * @brief Member variable for sizeUnits.
-   */
 
   std::vector<LayoutUnitsChoices> _sizeUnits{std::vector<LayoutUnitsChoices>{}};
 };

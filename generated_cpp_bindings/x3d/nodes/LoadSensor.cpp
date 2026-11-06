@@ -1,4 +1,3 @@
-// LoadSensor.cpp
 #include "x3d/nodes/LoadSensor.hpp"
 
 namespace x3d::nodes {

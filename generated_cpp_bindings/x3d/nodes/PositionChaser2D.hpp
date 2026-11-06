@@ -1,4 +1,3 @@
-// PositionChaser2D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,90 +28,51 @@ using namespace x3d::core;
  */
 class PositionChaser2D : public virtual X3DChaserNode {
 public:
-  /**
-   * @brief Default constructor for PositionChaser2D
-   */
   PositionChaser2D() = default;
 
-  /**
-   * @brief Destructor for PositionChaser2D
-   */
   ~PositionChaser2D() = default;
 
-  /**
-   * @brief Get the default value for initialDestination
-   * @return SFVec2f The default value
-   */
   static SFVec2f getDefaultInitialDestination() { return SFVec2f{0, 0}; }
 
-  /**
-   * @brief Get the default value for initialValue
-   * @return SFVec2f The default value
-   */
   static SFVec2f getDefaultInitialValue() { return SFVec2f{0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Followers"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of initialDestination. AccessType: initializeOnly
+   * SFVec2f; access: initializeOnly. Borrows the stored value.
    * @details Initial destination value for this node.
-   * @return const SFVec2f& The current value of initialDestination.
    */
   const SFVec2f &getInitialDestination() const { return _initialDestination; }
   /**
-   * @brief Data-layer write of initialDestination (reader/init ingest path).
-   * @details initialDestination is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public
-   * setInitialDestination().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setInitialDestinationUnchecked(const SFVec2f &value) {
     _initialDestination = value;
   }
 
   /**
-   * @brief Gets the value of initialValue. AccessType: initializeOnly
+   * SFVec2f; access: initializeOnly. Borrows the stored value.
    * @details Initial starting value for this node.
-   * @return const SFVec2f& The current value of initialValue.
    */
   const SFVec2f &getInitialValue() const { return _initialValue; }
   /**
-   * @brief Data-layer write of initialValue (reader/init ingest path).
-   * @details initialValue is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setInitialValue().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setInitialValueUnchecked(const SFVec2f &value) { _initialValue = value; }
 
   /**
-   * @brief Event handler invoked when an event is received on set_destination.
-   * AccessType: inputOnly
+   * SFVec2f; access: inputOnly.
    * @details set_destination resets destination value of this node.
    *          Dispatches to the handler registered via
-   * setOnSet_destinationHandler(); a no-op if none is set. The event cascade
-   * reaches this through the node's reflected field table, so routing is
-   * node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_destinationHandler(); a no-op if none is set.
    */
   void onSet_destination(const SFVec2f &value) {
     if (_onSet_destinationHandler)
@@ -120,10 +80,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_destination.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void
   setOnSet_destinationHandler(std::function<void(const SFVec2f &)> handler) {
@@ -131,13 +88,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on set_value.
-   * AccessType: inputOnly
+   * SFVec2f; access: inputOnly.
    * @details set_value resets current value of this node.
    *          Dispatches to the handler registered via setOnSet_valueHandler();
-   *          a no-op if none is set. The event cascade reaches this through the
-   *          node's reflected field table, so routing is node-agnostic.
-   * @param value The value of the received event.
+   *          a no-op if none is set.
    */
   void onSet_value(const SFVec2f &value) {
     if (_onSet_valueHandler)
@@ -145,89 +99,56 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on set_value.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_valueHandler(std::function<void(const SFVec2f &)> handler) {
     _onSet_valueHandler = std::move(handler);
   }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * SFVec2f; access: outputOnly. Borrows the stored value.
    * @details Computed output value that approaches within tolerance of
    * destination value, as determined by elapsed time, order and tau.
-   * @return const SFVec2f& The current value of value_changed.
    */
   const SFVec2f &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Computed output value that approaches within tolerance of
-   * destination value, as determined by elapsed time, order and tau. outputOnly
-   * fields have no author-facing setter; a node's behavior or the runtime calls
-   * this to produce an output event. The event cascade reaches it through the
-   * reflected field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * destination value, as determined by elapsed time, order and tau.
    */
   void emitValue_changed(const SFVec2f &value) { _value_changed = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "PositionChaser2D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
-  /**
-   * @brief Member variable for initialDestination.
-   */
-
   SFVec2f _initialDestination{SFVec2f{0, 0}};
-
-  /**
-   * @brief Member variable for initialValue.
-   */
 
   SFVec2f _initialValue{SFVec2f{0, 0}};
 
   /**
-   * @brief Registered event handler for set_destination (inputOnly); empty
-   * until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFVec2f &)> _onSet_destinationHandler{};
 
   /**
-   * @brief Registered event handler for set_value (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFVec2f &)> _onSet_valueHandler{};
-
-  /**
-   * @brief Member variable for value_changed.
-   */
 
   SFVec2f _value_changed{};
 };

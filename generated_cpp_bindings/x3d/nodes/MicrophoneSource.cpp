@@ -1,4 +1,3 @@
-// MicrophoneSource.cpp
 #include "x3d/nodes/MicrophoneSource.hpp"
 
 namespace x3d::nodes {

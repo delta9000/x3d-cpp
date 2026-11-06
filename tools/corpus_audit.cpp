@@ -1,34 +1,6 @@
-// tools/corpus_audit.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// DIFFERENTIAL AUDIT (Phase 0) — drive the ORACLE-FREE conformance audit over a
-// whole directory tree of real X3D scenes and emit a machine-clusterable JSONL
-// of failures. Built as the single binary `x3d_corpus_audit`.
-//
-// Per file that PARSES OK (parse-rejects are skipped — not this audit's concern):
-//   A. INVARIANTS — bounds/transform finiteness, static-scene tick determinism,
-//      re-extract stability.
-//   B. ROUND-TRIP FIDELITY — write to {XML,JSON,ClassicVRML}, reparse, and
-//      compare a SEMANTIC order-independent fingerprint with the original.
-//
-// All check logic lives in the shared header tools/corpus_audit.hpp (also driven
-// by the x3d_corpus_audit_selftest unit test). This file owns ONLY: directory
-// walking, flag parsing, JSONL writing, and the aggregate summary.
-//
-// Usage:
-//   corpus_audit <dir> [--roundtrip-limit N] [--invariants-only] [--out PATH]
-//                      [--limit N] [--quiet]
-//
-//   <dir>                 root of the scene tree to audit (recursive).
-//   --roundtrip-limit N   run round-trip family B on only the first N parsed
-//                         files (invariants still run on ALL). -1 = all.
-//   --invariants-only     skip round-trip family B entirely.
-//   --out PATH            JSONL findings output (default /tmp/corpus_audit_findings.jsonl).
-//   --limit N             process only the first N scene files (deterministic).
-//   --quiet               suppress per-file lines; print only the summary.
-//
-// Exit: 0 = swept (findings are DATA, not a build failure — Phase 1 clusters
-//       them). 0 + "SKIPPED" if <dir> is absent (portable ctest). 64 = bad args.
-// ─────────────────────────────────────────────────────────────────────────────
+// Audit a scene directory and emit JSONL findings.
+// Findings are data: exit 0 after a sweep, 64 for invalid arguments.
+// A missing directory is skipped for portable ctest runs.
 #include "corpus_audit.hpp"
 
 #include <algorithm>
@@ -228,7 +200,7 @@ int main(int argc, char **argv) {
   dumpMap("by check", byCheck);
   dumpMap("by encoding", byEnc);
 
-  // Top signatures (the Phase 1 cluster heads) — cap the print.
+  // Top signatures — cap the print.
   if (!bySig.empty()) {
     std::vector<std::pair<std::string, long long>> v(bySig.begin(), bySig.end());
     std::sort(v.begin(), v.end(),

@@ -1,4 +1,3 @@
-// CoordinateChaser.cpp
 #include "x3d/nodes/CoordinateChaser.hpp"
 
 namespace x3d::nodes {

@@ -1,5 +1,4 @@
 // tools/x3d-cli/stl_write.hpp
-// ─────────────────────────────────────────────────────────────────────────────
 // Binary STL writer — the exact inverse of runtime/ext/codecs/StlReader.hpp.
 //
 // Format (all little-endian, per ISO STL binary spec):
@@ -18,17 +17,10 @@
 //   // normals:   flat array matching positions (one per vertex, same index);
 //   //            may be empty — geometric normals are computed automatically.
 //
-// Core placement (NOT behind X3D_CPP_BUILD_EXT):
-//   STL export is a consumer-side operation, not an X3D node/dialect extension.
-//   No dependency on runtime/ext/. Depends only on X3Dtypes (SFVec3f).
-//
-// StlReader compatibility: every byte written here is readable by
-//   parseStlBinary() in runtime/ext/codecs/StlReader.hpp (the self-oracle).
-// ─────────────────────────────────────────────────────────────────────────────
 #ifndef X3D_CLI_STL_WRITE_HPP
 #define X3D_CLI_STL_WRITE_HPP
 
-#include "x3d/sdk.hpp" // SFVec3f (via X3Dtypes)
+#include "x3d/sdk.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -41,7 +33,6 @@ namespace x3d::cli {
 
 using namespace x3d::core;  // SFVec3f
 
-// ---------------------------------------------------------------------------
 // writeStlBinary
 //
 // positions  — flat array of world-space SFVec3f; must have size() % 3 == 0.
@@ -51,7 +42,6 @@ using namespace x3d::core;  // SFVec3f
 //
 // Returns the raw binary STL bytes as a std::string (may contain null bytes).
 // Throws std::invalid_argument if positions.size() % 3 != 0.
-// ---------------------------------------------------------------------------
 inline std::string writeStlBinary(const std::vector<SFVec3f> &positions,
                                   const std::vector<SFVec3f> &normals = {}) {
     if (positions.size() % 3 != 0)
@@ -65,17 +55,14 @@ inline std::string writeStlBinary(const std::vector<SFVec3f> &positions,
     std::string buf(total, '\0');
     uint8_t *out = reinterpret_cast<uint8_t *>(buf.data());
 
-    // --- 80-byte header ---
     static const char kHeader[] = "X3D extract";
     std::memcpy(out, kHeader, sizeof(kHeader) - 1); // no null terminator needed
     // Rest of header is already zero-filled.
 
-    // --- uint32_t triangle count at offset 80 ---
     std::memcpy(out + 80, &N, 4);
 
     const bool hasNormals = (normals.size() >= positions.size());
 
-    // --- facet records starting at offset 84 ---
     uint8_t *rec = out + 84;
     for (uint32_t t = 0; t < N; ++t, rec += 50) {
         const SFVec3f &v0 = positions[t * 3 + 0];

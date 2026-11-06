@@ -1,4 +1,3 @@
-// SplinePositionInterpolator2D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,197 +27,120 @@ using namespace x3d::core;
  */
 class SplinePositionInterpolator2D : public virtual X3DInterpolatorNode {
 public:
-  /**
-   * @brief Default constructor for SplinePositionInterpolator2D
-   */
   SplinePositionInterpolator2D() = default;
 
-  /**
-   * @brief Destructor for SplinePositionInterpolator2D
-   */
   ~SplinePositionInterpolator2D() = default;
 
-  /**
-   * @brief Get the default value for closed
-   * @return SFBool The default value
-   */
   static SFBool getDefaultClosed() { return false; }
 
-  /**
-   * @brief Get the default value for normalizeVelocity
-   * @return SFBool The default value
-   */
   static SFBool getDefaultNormalizeVelocity() { return false; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Interpolation"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 4; }
 
   /**
-   * @brief Gets the value of closed. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Whether or not the curve is closed (i.
-   * @return const SFBool& The current value of closed.
    */
   const SFBool &getClosed() const { return _closed; }
 
   /**
-   * @brief Sets the value of closed. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Whether or not the curve is closed (i.
-   * @param value The new value for closed.
    */
   void setClosed(const SFBool &value) { _closed = value; }
 
   /**
-   * @brief Gets the value of keyValue. AccessType: inputOutput
+   * MFVec2f; access: inputOutput. Borrows the stored value.
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @return const MFVec2f& The current value of keyValue.
    */
   const MFVec2f &getKeyValue() const { return _keyValue; }
 
   /**
-   * @brief Sets the value of keyValue. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @param value The new value for keyValue.
    */
   void setKeyValue(const MFVec2f &value) { _keyValue = value; }
 
   void setKeyValue(MFVec2f &&value) { _keyValue = std::move(value); }
 
   /**
-   * @brief Gets the value of keyVelocity. AccessType: inputOutput
+   * MFVec2f; access: inputOutput. Borrows the stored value.
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @return const MFVec2f& The current value of keyVelocity.
    */
   const MFVec2f &getKeyVelocity() const { return _keyVelocity; }
 
   /**
-   * @brief Sets the value of keyVelocity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Output values for nonlinear interpolation, each corresponding to
    * an input-fraction value in the key array.
-   * @param value The new value for keyVelocity.
    */
   void setKeyVelocity(const MFVec2f &value) { _keyVelocity = value; }
 
   void setKeyVelocity(MFVec2f &&value) { _keyVelocity = std::move(value); }
 
   /**
-   * @brief Gets the value of normalizeVelocity. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details normalizeVelocity field specifies whether the velocity vectors are
    * normalized to produce smooth speed transitions, or transformed into
    * tangency vectors.
-   * @return const SFBool& The current value of normalizeVelocity.
    */
   const SFBool &getNormalizeVelocity() const { return _normalizeVelocity; }
 
   /**
-   * @brief Sets the value of normalizeVelocity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details normalizeVelocity field specifies whether the velocity vectors are
    * normalized to produce smooth speed transitions, or transformed into
    * tangency vectors.
-   * @param value The new value for normalizeVelocity.
    */
   void setNormalizeVelocity(const SFBool &value) { _normalizeVelocity = value; }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * SFVec2f; access: outputOnly. Borrows the stored value.
    * @details Nonlinearly interpolated output value computed by using current
    * time fraction along with corresponding key, keyValue and keyVelocity
    * values.
-   * @return const SFVec2f& The current value of value_changed.
    */
   const SFVec2f &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Nonlinearly interpolated output value computed by using current
    * time fraction along with corresponding key, keyValue and keyVelocity
-   * values. outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * values.
    */
   void emitValue_changed(const SFVec2f &value) { _value_changed = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g.
-   * "SplinePositionInterpolator2D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for closed.
-   */
-
   SFBool _closed{false};
-
-  /**
-   * @brief Member variable for keyValue.
-   */
 
   MFVec2f _keyValue{};
 
-  /**
-   * @brief Member variable for keyVelocity.
-   */
-
   MFVec2f _keyVelocity{};
 
-  /**
-   * @brief Member variable for normalizeVelocity.
-   */
-
   SFBool _normalizeVelocity{false};
-
-  /**
-   * @brief Member variable for value_changed.
-   */
 
   SFVec2f _value_changed{};
 };

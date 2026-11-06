@@ -1,5 +1,4 @@
-"""Bind each document to its own version's criteria: Vc := Vd. VP-0 handles the
-DECLARED version only (the inference ladder + VRML97 floor are VP-2)."""
+"""Resolve each document against its declared or inferred X3D version."""
 from __future__ import annotations
 
 import functools
@@ -20,9 +19,7 @@ def detect_document_version(xml: str) -> str | None:
     return root.get("version")
 
 
-# ---------------------------------------------------------------------------
-# VP-2 inference ladder
-# ---------------------------------------------------------------------------
+# Version inference ladder
 
 # Lowest X3D version defining each profile (profile-floor rung, §1 step 3).
 # Most corpus profiles are 3.0-era; newer profiles floor higher. Unknown → 3.0.
@@ -59,7 +56,7 @@ def _cited_version(root) -> str | None:
 
 
 def resolve_version(xml) -> VersionResolution:
-    """Bind a document to a validation version via the VP-2 ladder (§1):
+    """Bind a document to a validation version using the inference ladder:
     declared → schema/DTD citation → node-floor → profile-floor → bare 3.0."""
     # Imported here to avoid a module-load cycle (node_floor imports load_manifest).
     from x3d_cpp_gen.conformance.node_floor import (

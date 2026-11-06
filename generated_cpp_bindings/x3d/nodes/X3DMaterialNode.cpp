@@ -1,4 +1,3 @@
-// X3DMaterialNode.cpp
 #include "x3d/nodes/X3DMaterialNode.hpp"
 
 namespace x3d::nodes {

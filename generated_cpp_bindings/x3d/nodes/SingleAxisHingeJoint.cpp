@@ -1,4 +1,3 @@
-// SingleAxisHingeJoint.cpp
 #include "x3d/nodes/SingleAxisHingeJoint.hpp"
 
 namespace x3d::nodes {

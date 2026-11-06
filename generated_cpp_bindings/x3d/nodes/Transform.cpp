@@ -1,4 +1,3 @@
-// Transform.cpp
 #include "x3d/nodes/Transform.hpp"
 
 namespace x3d::nodes {

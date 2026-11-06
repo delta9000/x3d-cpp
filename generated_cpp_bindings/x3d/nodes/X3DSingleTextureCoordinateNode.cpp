@@ -1,4 +1,3 @@
-// X3DSingleTextureCoordinateNode.cpp
 #include "x3d/nodes/X3DSingleTextureCoordinateNode.hpp"
 
 namespace x3d::nodes {

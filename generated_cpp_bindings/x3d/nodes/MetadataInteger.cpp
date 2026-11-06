@@ -1,4 +1,3 @@
-// MetadataInteger.cpp
 #include "x3d/nodes/MetadataInteger.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// ScalarDamper.cpp
 #include "x3d/nodes/ScalarDamper.hpp"
 
 namespace x3d::nodes {

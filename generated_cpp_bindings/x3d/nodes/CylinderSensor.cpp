@@ -1,4 +1,3 @@
-// CylinderSensor.cpp
 #include "x3d/nodes/CylinderSensor.hpp"
 
 namespace x3d::nodes {

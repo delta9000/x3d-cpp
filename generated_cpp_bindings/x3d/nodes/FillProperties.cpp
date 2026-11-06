@@ -1,4 +1,3 @@
-// FillProperties.cpp
 #include "x3d/nodes/FillProperties.hpp"
 
 namespace x3d::nodes {

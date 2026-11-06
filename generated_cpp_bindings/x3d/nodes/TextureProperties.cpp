@@ -1,4 +1,3 @@
-// TextureProperties.cpp
 #include "x3d/nodes/TextureProperties.hpp"
 
 namespace x3d::nodes {

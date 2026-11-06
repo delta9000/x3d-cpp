@@ -1,4 +1,3 @@
-// OrientationDamper.cpp
 #include "x3d/nodes/OrientationDamper.hpp"
 
 namespace x3d::nodes {

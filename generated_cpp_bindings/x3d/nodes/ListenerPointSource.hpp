@@ -1,4 +1,3 @@
-// ListenerPointSource.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -32,103 +31,57 @@ using namespace x3d::core;
  */
 class ListenerPointSource : public virtual X3DSoundSourceNode {
 public:
-  /**
-   * @brief Default constructor for ListenerPointSource
-   */
   ListenerPointSource() = default;
 
-  /**
-   * @brief Destructor for ListenerPointSource
-   */
   ~ListenerPointSource() = default;
 
-  /**
-   * @brief Get the default value for dopplerEnabled
-   * @return SFBool The default value
-   */
   static SFBool getDefaultDopplerEnabled() { return false; }
 
-  /**
-   * @brief Get the default value for interauralDistance
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultInterauralDistance() { return 0; }
 
-  /**
-   * @brief Get the default value for orientation
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultOrientation() { return SFRotation{0, 0, 1, 0}; }
 
-  /**
-   * @brief Get the default value for position
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultPosition() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for trackCurrentView
-   * @return SFBool The default value
-   */
   static SFBool getDefaultTrackCurrentView() { return false; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesSoundSource";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Sound"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of dopplerEnabled. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details dopplerEnabled enables/disables whether real-time Doppler effects
    * (due to relation motion between sources and listeners) are computed by
    * browser between virtual sound sources and active listening locations, then
    * applied to received frequency at active listening locations.
-   * @return const SFBool& The current value of dopplerEnabled.
    */
   const SFBool &getDopplerEnabled() const { return _dopplerEnabled; }
 
   /**
-   * @brief Sets the value of dopplerEnabled. AccessType: inputOutput
+   * Access: inputOutput.
    * @details dopplerEnabled enables/disables whether real-time Doppler effects
    * (due to relation motion between sources and listeners) are computed by
    * browser between virtual sound sources and active listening locations, then
    * applied to received frequency at active listening locations.
-   * @param value The new value for dopplerEnabled.
    */
   void setDopplerEnabled(const SFBool &value) { _dopplerEnabled = value; }
 
   /**
-   * @brief Gets the value of interauralDistance. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details The interauralDistance field is.
-   * @return const SFFloat& The current value of interauralDistance.
    */
   const SFFloat &getInterauralDistance() const { return _interauralDistance; }
 
   /**
-   * @brief Sets the value of interauralDistance. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The interauralDistance field is.
-   * @param value The new value for interauralDistance.
    */
   void setInterauralDistance(const SFFloat &value) {
 
@@ -138,92 +91,69 @@ public:
   }
 
   /**
-   * @brief Non-validating write of interauralDistance (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setInterauralDistance() enforces,
-   * so a permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setInterauralDistance() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setInterauralDistance() for range validation.
    */
   void setInterauralDistanceUnchecked(const SFFloat &value) {
     _interauralDistance = value;
   }
 
   /**
-   * @brief Gets the value of orientation. AccessType: inputOutput
+   * SFRotation; access: inputOutput. Borrows the stored value.
    * @details Rotation (axis, angle in radians) of listening point direction
    * relative to default -Z axis direction in local coordinate system.
-   * @return const SFRotation& The current value of orientation.
    */
   const SFRotation &getOrientation() const { return _orientation; }
 
   /**
-   * @brief Sets the value of orientation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Rotation (axis, angle in radians) of listening point direction
    * relative to default -Z axis direction in local coordinate system.
-   * @param value The new value for orientation.
    */
   void setOrientation(const SFRotation &value) { _orientation = value; }
 
   void setOrientation(SFRotation &&value) { _orientation = std::move(value); }
 
   /**
-   * @brief Gets the value of position. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details position (x, y, z in meters) relative to local coordinate system.
-   * @return const SFVec3f& The current value of position.
    */
   const SFVec3f &getPosition() const { return _position; }
 
   /**
-   * @brief Sets the value of position. AccessType: inputOutput
+   * Access: inputOutput.
    * @details position (x, y, z in meters) relative to local coordinate system.
-   * @param value The new value for position.
    */
   void setPosition(const SFVec3f &value) { _position = value; }
 
   void setPosition(SFVec3f &&value) { _position = std::move(value); }
 
   /**
-   * @brief Gets the value of trackCurrentView. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details If trackCurrentView field is true then position and orientation
    * match avatar's (user's) current view.
-   * @return const SFBool& The current value of trackCurrentView.
    */
   const SFBool &getTrackCurrentView() const { return _trackCurrentView; }
 
   /**
-   * @brief Sets the value of trackCurrentView. AccessType: inputOutput
+   * Access: inputOutput.
    * @details If trackCurrentView field is true then position and orientation
    * match avatar's (user's) current view.
-   * @param value The new value for trackCurrentView.
    */
   void setTrackCurrentView(const SFBool &value) { _trackCurrentView = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "ListenerPointSource").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -245,33 +175,13 @@ private:
       throw std::out_of_range("interauralDistance below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for dopplerEnabled.
-   */
-
   SFBool _dopplerEnabled{false};
-
-  /**
-   * @brief Member variable for interauralDistance.
-   */
 
   SFFloat _interauralDistance{0};
 
-  /**
-   * @brief Member variable for orientation.
-   */
-
   SFRotation _orientation{SFRotation{0, 0, 1, 0}};
 
-  /**
-   * @brief Member variable for position.
-   */
-
   SFVec3f _position{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for trackCurrentView.
-   */
 
   SFBool _trackCurrentView{false};
 };

@@ -1,4 +1,3 @@
-// StaticGroup.cpp
 #include "x3d/nodes/StaticGroup.hpp"
 
 namespace x3d::nodes {

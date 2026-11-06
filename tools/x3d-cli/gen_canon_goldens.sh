@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # tools/x3d-cli/gen_canon_goldens.sh
-# ─────────────────────────────────────────────────────────────────────────────
 # Generate X3DJSAIL -canonical reference fixtures for the canonical tiered gate.
 #
 # For each .x3d file in tools/x3d-cli/goldens/subset.txt, runs X3DJSAIL
@@ -25,7 +24,6 @@
 # Jar provenance (official Web3D Consortium distribution; verified 2026-07-18):
 #   curl -fL -o tools/x3d-cli/.javacache/X3DJSAIL.jar \
 #     https://www.web3d.org/specifications/java/jars/X3DJSAIL.4.0.full.jar
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,7 +49,6 @@ GOLDENS_DIR="$REPO_ROOT/tools/x3d-cli/goldens"
 SUBSET_TXT="$GOLDENS_DIR/subset.txt"
 CANON_GOLDENS_DIR="$GOLDENS_DIR/canonical-goldens"
 
-# ── pre-flight ────────────────────────────────────────────────────────────────
 if [[ ! -f "$JAR" ]]; then
     echo "ERROR: X3DJSAIL.jar not found at $JAR" >&2
     exit 1
@@ -75,7 +72,6 @@ fi
 
 mkdir -p "$CANON_GOLDENS_DIR"
 
-# ── generate ─────────────────────────────────────────────────────────────────
 echo "=== Generating X3DJSAIL canonical fixtures ==="
 echo "  Subset: $SUBSET_TXT"
 echo "  Output: $CANON_GOLDENS_DIR"
@@ -142,7 +138,7 @@ echo "  No-DTD (skipped): $notdtd"
 echo "  Other failures:   $fail"
 echo "  Non-XML (skipped):$skip"
 echo ""
-# Deliberately NOT a commit instruction: the fixtures are gitignored LOCAL
+# Deliberately not a commit instruction: the fixtures are gitignored LOCAL
 # artifacts (Web3D-archive derivatives — per-file attribution + ~7.4MB; same
 # policy as the uncommitted corpus). canon_gate picks them up from this path
 # automatically; without them it runs tier-1-only and says so loudly (#105).

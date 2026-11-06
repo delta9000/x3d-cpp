@@ -1,4 +1,3 @@
-// BlendedVolumeStyle.cpp
 #include "x3d/nodes/BlendedVolumeStyle.hpp"
 
 namespace x3d::nodes {

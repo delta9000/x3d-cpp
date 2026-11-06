@@ -1,4 +1,3 @@
-// CoordinateDouble.cpp
 #include "x3d/nodes/CoordinateDouble.hpp"
 
 namespace x3d::nodes {

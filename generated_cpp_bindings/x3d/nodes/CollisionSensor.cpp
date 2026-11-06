@@ -1,4 +1,3 @@
-// CollisionSensor.cpp
 #include "x3d/nodes/CollisionSensor.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// X3DSoundChannelNode.cpp
 #include "x3d/nodes/X3DSoundChannelNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// ImageTexture.cpp
 #include "x3d/nodes/ImageTexture.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// CADPart.cpp
 #include "x3d/nodes/CADPart.hpp"
 
 namespace x3d::nodes {

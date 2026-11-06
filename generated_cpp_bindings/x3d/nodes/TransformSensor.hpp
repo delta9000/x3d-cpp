@@ -1,4 +1,3 @@
-// TransformSensor.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,160 +28,105 @@ using namespace x3d::core;
  */
 class TransformSensor : public virtual X3DEnvironmentalSensorNode {
 public:
-  /**
-   * @brief Default constructor for TransformSensor
-   */
   TransformSensor() = default;
 
-  /**
-   * @brief Destructor for TransformSensor
-   */
   ~TransformSensor() = default;
 
-  /**
-   * @brief Get the default value for center
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultCenter() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for targetObject
-   * @return SFNode The default value
-   */
   static SFNode getDefaultTargetObject() { return nullptr; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EnvironmentalSensor"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of center. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Translation offset from origin of local coordinate system.
-   * @return const SFVec3f& The current value of center.
    */
   const SFVec3f &getCenter() const { return _center; }
 
   /**
-   * @brief Sets the value of center. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Translation offset from origin of local coordinate system.
-   * @param value The new value for center.
    */
   void setCenter(const SFVec3f &value) { _center = value; }
 
   void setCenter(SFVec3f &&value) { _center = std::move(value); }
 
   /**
-   * @brief Gets the value of enterTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details Time event generated when targetObject enters the box region for
    * sensor.
-   * @return const SFTime& The current value of enterTime.
    */
   const SFTime &getEnterTime() const { return _enterTime; }
 
   /**
-   * @brief Emit an output value on enterTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Time event generated when targetObject enters the box region for
-   * sensor. outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * sensor.
    */
   void emitEnterTime(const SFTime &value) { _enterTime = value; }
 
   /**
-   * @brief Gets the value of exitTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details Time event generated when targetObject exits the box region for
    * sensor.
-   * @return const SFTime& The current value of exitTime.
    */
   const SFTime &getExitTime() const { return _exitTime; }
 
   /**
-   * @brief Emit an output value on exitTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Time event generated when targetObject exits the box region for
-   * sensor. outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * sensor.
    */
   void emitExitTime(const SFTime &value) { _exitTime = value; }
 
   /**
-   * @brief Gets the value of orientation_changed. AccessType: outputOnly
+   * SFRotation; access: outputOnly. Borrows the stored value.
    * @details Sends rotation event relative to center whenever the target object
    * is contained within the box region and results change.
-   * @return const SFRotation& The current value of orientation_changed.
    */
   const SFRotation &getOrientation_changed() const {
     return _orientation_changed;
   }
 
   /**
-   * @brief Emit an output value on orientation_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Sends rotation event relative to center whenever the target object
-   * is contained within the box region and results change. outputOnly fields
-   * have no author-facing setter; a node's behavior or the runtime calls this
-   * to produce an output event. The event cascade reaches it through the
-   * reflected field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * is contained within the box region and results change.
    */
   void emitOrientation_changed(const SFRotation &value) {
     _orientation_changed = value;
   }
 
   /**
-   * @brief Gets the value of position_changed. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details Sends translation event relative to center whenever the target
    * object is contained within the box region and results change.
-   * @return const SFVec3f& The current value of position_changed.
    */
   const SFVec3f &getPosition_changed() const { return _position_changed; }
 
   /**
-   * @brief Emit an output value on position_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Sends translation event relative to center whenever the target
-   * object is contained within the box region and results change. outputOnly
-   * fields have no author-facing setter; a node's behavior or the runtime calls
-   * this to produce an output event. The event cascade reaches it through the
-   * reflected field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * object is contained within the box region and results change.
    */
   void emitPosition_changed(const SFVec3f &value) { _position_changed = value; }
 
   /**
-   * @brief Gets the value of targetObject. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details targetObject is the movable geometry represented by any valid
    * X3DGroupingNode or X3DShapeNode which may enter or exit the box.
-   * @return const SFNode& The current value of targetObject.
    */
   const SFNode &getTargetObject() const { return _targetObject; }
 
   /**
-   * @brief Acceptable node types for the targetObject field.
    * @details Permitted X3D node types: X3DGroupingNode, X3DShapeNode
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableTargetObjectNodeTypes() {
     static const std::vector<std::string> types = {"X3DGroupingNode",
@@ -191,78 +135,40 @@ public:
   }
 
   /**
-   * @brief Sets the value of targetObject. AccessType: inputOutput
+   * Access: inputOutput.
    * @details targetObject is the movable geometry represented by any valid
    * X3DGroupingNode or X3DShapeNode which may enter or exit the box.
-   * @param value The new value for targetObject.
    */
   void setTargetObject(const SFNode &value) { _targetObject = value; }
 
   void setTargetObject(SFNode &&value) { _targetObject = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "TransformSensor").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
-  /**
-   * @brief Member variable for center.
-   */
-
   SFVec3f _center{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for enterTime.
-   */
 
   SFTime _enterTime{};
 
-  /**
-   * @brief Member variable for exitTime.
-   */
-
   SFTime _exitTime{};
-
-  /**
-   * @brief Member variable for orientation_changed.
-   */
 
   SFRotation _orientation_changed{};
 
-  /**
-   * @brief Member variable for position_changed.
-   */
-
   SFVec3f _position_changed{};
-
-  /**
-   * @brief Member variable for targetObject.
-   */
 
   SFNode _targetObject{nullptr};
 };

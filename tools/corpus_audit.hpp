@@ -1,31 +1,5 @@
-// tools/corpus_audit.hpp
-// ─────────────────────────────────────────────────────────────────────────────
-// DIFFERENTIAL AUDIT engine (Phase 0). Reusable, header-only core shared by the
-// `x3d_corpus_audit` CLI binary and the `x3d_corpus_audit_selftest` unit test.
-//
-// It produces an ORACLE-FREE conformance signal over real X3D scenes via two
-// families of check, run per file that PARSES OK:
-//
-//   A. INVARIANTS — bounds/transform finiteness, tick determinism on a static
-//      scene, and re-extract stability. These hold for ANY correct extraction
-//      regardless of the scene's authored intent (no golden needed).
-//
-//   B. ROUND-TRIP FIDELITY — the strong oracle-free signal. Extract a SEMANTIC,
-//      order-independent fingerprint F0 from the parsed doc; for each of the
-//      three writable encodings {XML, JSON, ClassicVRML}, serialize -> reparse
-//      -> re-extract F1, and compare F0 vs F1 with float epsilons. A semantic
-//      drift across a round-trip is a fidelity DEFECT. Formatting, default-
-//      dropping and float-precision differences are EXPECTED and never flagged
-//      (the fingerprint is semantic, NOT a byte diff).
-//
-// Output is a machine-clusterable list of Finding records (one per failure),
-// each carrying a stable `signature` dedup key so a downstream phase can
-// cluster identical defects. The engine itself does NO file IO beyond what the
-// SDK parse path performs; the CLI owns directory walking + JSONL writing.
-//
-// Everything goes through the x3d::sdk façade — the exact surface an embedder
-// uses — so a regression in the public API surfaces here too.
-// ─────────────────────────────────────────────────────────────────────────────
+// Audit scene invariants and semantic round-trip fidelity across writable encodings.
+// The CLI owns directory traversal and JSONL output.
 #ifndef X3D_TOOLS_CORPUS_AUDIT_HPP
 #define X3D_TOOLS_CORPUS_AUDIT_HPP
 
@@ -46,11 +20,9 @@ namespace sdk = x3d::sdk;
 using namespace x3d::core;    // SFVec3f, X3DFieldType, SFNode, ...
 using x3d::nodes::X3DNode;   // complete node base; shadows ::X3DNode fwd decl in ScriptEngine.hpp
 
-// ───────────────────────────────────────────────────────────────────────────
-// Finding — one audit failure. `signature` is a STABLE dedup key (check +
+// Finding — one audit failure. `signature` is a stable dedup key (check +
 // encoding + dominant nodeType + a normalized detail bucket) so a clustering
 // phase can group identical defects without re-deriving structure from `detail`.
-// ───────────────────────────────────────────────────────────────────────────
 struct Finding {
   std::string file;      // path relative to the swept root (or a synthetic id).
   std::string check;     // "bounds-finite" / "roundtrip" / "reparse-throw" / ...
@@ -60,8 +32,7 @@ struct Finding {
   std::string signature; // stable cluster key.
 };
 
-// ───────────────────────────────────────────────────────────────────────────
-// Semantic fingerprint. ORDER-INDEPENDENT and float-tolerant by construction:
+// Semantic fingerprint. ORDER-independent and float-tolerant by construction:
 //   * itemCount                       — number of emitted RenderItems.
 //   * items (a MULTISET, sorted)      — per-item canonical tuple string:
 //       topology | positions.size | indices.size |
@@ -74,9 +45,8 @@ struct Finding {
 //     render-item multiset alone could miss (e.g. an inert sensor subtree).
 //
 // Rounding (not exact compare) is the whole point: formatting + default-
-// dropping + float-precision drift across encodings is EXPECTED and must NOT be
+// dropping + float-precision drift across encodings is expected and must not be
 // flagged. Two fingerprints are equal iff every rounded quantity matches.
-// ───────────────────────────────────────────────────────────────────────────
 struct Fingerprint {
   std::size_t itemCount = 0;
   std::vector<std::string> items;   // sorted multiset of per-item canon tuples.
@@ -103,7 +73,7 @@ struct Fingerprint {
   }
 };
 
-// ── rounding helpers (epsilon == one bucket of the rounding grid) ────────────
+// rounding helpers (epsilon == one bucket of the rounding grid)
 inline double roundq(double v, double q) {
   if (!std::isfinite(v)) return v; // NaN/Inf compare structurally as-is.
   return std::round(v / q) * q;
@@ -116,7 +86,7 @@ inline std::string fmtq(double v, double q) {
   return os.str();
 }
 
-// ── finiteness predicates ────────────────────────────────────────────────────
+// finiteness predicates
 inline bool finite3(const SFVec3f &v) {
   return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
 }
@@ -136,14 +106,12 @@ inline float det3(const sdk::Mat4 &m) {
          a[8] * (a[1] * a[6] - a[5] * a[2]);
 }
 
-// ───────────────────────────────────────────────────────────────────────────
 // Structural model counts — walk the scene graph + scene tables ONCE.
 //   nodeCount : DISTINCT node instances reachable from root (shared nodes once).
 //   useCount  : reachable placements MINUS distinct nodes = shared re-references.
 //   defCount  : entries in the DEF symbol table.
 //   routeCount: scene ROUTEs.
 //   protoCount: PROTO + EXTERNPROTO declarations + recorded ProtoInstances.
-// ───────────────────────────────────────────────────────────────────────────
 struct StructCounts {
   long long nodes = 0, uses = 0;
 };
@@ -183,7 +151,6 @@ inline void fillStructCounts(const sdk::Scene &scene, Fingerprint &fp) {
                   static_cast<long long>(scene.protoInstances.size());
 }
 
-// ───────────────────────────────────────────────────────────────────────────
 // makeFingerprint — the entry point. Builds a context, snapshots once, and
 // derives the semantic fingerprint + structural counts. Self-contained so both
 // the invariant pass and the round-trip pass can reuse it.
@@ -191,7 +158,6 @@ inline void fillStructCounts(const sdk::Scene &scene, Fingerprint &fp) {
 // posEps / colEps / trEps are the rounding grids (== effective epsilons). They
 // are intentionally LOOSE relative to single-precision serialization round-trip
 // error so that legitimate precision drift never trips a false positive.
-// ───────────────────────────────────────────────────────────────────────────
 inline Fingerprint makeFingerprint(sdk::X3DDocument &doc,
                                    double posEps = 1e-3,
                                    double colEps = 1.0 / 256.0,
@@ -271,7 +237,7 @@ inline std::string explainMismatch(const Fingerprint &a, const Fingerprint &b) {
   return s;
 }
 
-// ── signature bucketing ──────────────────────────────────────────────────────
+// signature bucketing
 // A normalized detail bucket: collapse numbers to '#' so distinct magnitudes of
 // the same defect class share a signature. Keeps the cluster key stable while
 // the human `detail` stays specific.
@@ -318,8 +284,8 @@ inline Finding makeFinding(const std::string &file, const std::string &check,
   return f;
 }
 
-// ── time-driver detection (conservative tick-determinism guard) ──────────────
-// Returns true if the scene contains ANY node that could legitimately drive a
+// time-driver detection (conservative tick-determinism guard)
+// Returns true if the scene contains any node that could legitimately drive a
 // non-empty delta at t>0: a *Sensor, *Interpolator, Script, or TimeSensor.
 // Deliberately broad (presence, not enabled-state) to avoid false positives on
 // the tick-determinism invariant — we only flag spontaneous churn when we are
@@ -357,10 +323,8 @@ inline bool sceneHasTimeDriver(const sdk::Scene &scene) {
   return false;
 }
 
-// ───────────────────────────────────────────────────────────────────────────
 // auditInvariants — run check-family A on ONE parsed document. Appends Findings.
 // `file` is the label used in each Finding (relative path or synthetic id).
-// ───────────────────────────────────────────────────────────────────────────
 inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
                             std::vector<Finding> &out) {
   sdk::X3DExecutionContext ctx;
@@ -371,7 +335,7 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
   sdk::RenderDelta snap = ex.fullSnapshot();
   const std::size_t n0 = ex.itemCount();
 
-  // --- bounds finite (scene + per-item) -------------------------------------
+  // bounds finite (scene + per-item)
   const sdk::Aabb sb = ex.sceneWorldBounds();
   if (!finiteAabb(sb))
     out.push_back(makeFinding(file, "bounds-finite", "", "",
@@ -402,7 +366,7 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
                                                  : "",
                                 "RenderItem world bound non-finite"));
 
-    // --- transform finite + finite determinant ------------------------------
+    // transform finite + finite determinant
     if (!finiteMat(it.worldTransform))
       out.push_back(makeFinding(file, "transform-finite", "",
                                 it.geometry.node ? it.geometry.node->nodeTypeName()
@@ -415,10 +379,10 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
                                 "worldTransform determinant non-finite"));
   }
 
-  // --- tick determinism on a static scene -----------------------------------
+  // tick determinism on a static scene
   // fullSnapshot() seeded lastDeltaNow_ = ctx.now() (== 0). Advance the clock by
   // a small dt so delta()'s one-delta-per-tick contract is satisfied, then a
-  // static scene (no time-driver) MUST produce an empty item-level delta.
+  // static scene (no time-driver) must produce an empty item-level delta.
   ctx.tick(1.0 / 60.0);
   sdk::RenderDelta d = ex.delta();
   const bool itemDelta = !d.added.empty() || !d.removed.empty() ||
@@ -434,7 +398,7 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
     out.push_back(makeFinding(file, "tick-determinism", "", "", os.str()));
   }
 
-  // --- re-extract stability (item count stable across a 2nd full snapshot) ---
+  // re-extract stability (item count stable across a 2nd full snapshot)
   sdk::RenderDelta snap2 = ex.fullSnapshot();
   if (ex.itemCount() != n0) {
     std::ostringstream os;
@@ -445,14 +409,14 @@ inline void auditInvariants(sdk::X3DDocument &doc, const std::string &file,
   (void)snap2;
 }
 
-// ── round-trip encoding descriptor ───────────────────────────────────────────
+// round-trip encoding descriptor
 struct EncDef {
   const char *key;          // signature/JSONL encoding tag.
   sdk::Encoding hint;       // reparse hint.
 };
 
 // classifyThrow — bucket a reparse exception so a clustering phase can separate
-// EXPECTED unresolved-external throws (Inline / EXTERNPROTO url) from genuine
+// expected unresolved-external throws (Inline / EXTERNPROTO url) from genuine
 // "we emitted unparseable output" defects.
 inline bool isExpectedExternalThrow(const std::string &what) {
   auto has = [&](const char *s) { return what.find(s) != std::string::npos; };
@@ -461,14 +425,12 @@ inline bool isExpectedExternalThrow(const std::string &what) {
          has("URL") || has("cannot open") || has("not found") || has("http");
 }
 
-// ───────────────────────────────────────────────────────────────────────────
 // auditRoundTrip — run check-family B on ONE parsed document. For each of the
 // three writable encodings: write -> reparse -> re-fingerprint -> compare.
-//   * a reparse throw classified EXPECTED-external is recorded as informational
-//     "reparse-throw-external" (Phase 3 separates it); an UNEXPECTED throw is a
+//   * a reparse throw classified expected-external is recorded as informational
+//     "reparse-throw-external"; an unexpected throw is a
 //     real "reparse-throw" defect (we emitted unparseable output).
 //   * a semantic fingerprint mismatch is a "roundtrip" fidelity defect.
-// ───────────────────────────────────────────────────────────────────────────
 inline void auditRoundTrip(sdk::X3DDocument &doc, const std::string &file,
                            const Fingerprint &f0, std::vector<Finding> &out) {
   const EncDef encs[3] = {
@@ -520,7 +482,7 @@ inline void auditRoundTrip(sdk::X3DDocument &doc, const std::string &file,
   }
 }
 
-// ── per-file driver ──────────────────────────────────────────────────────────
+// per-file driver
 struct AuditOptions {
   bool invariantsOnly = false; // skip round-trip family B.
   bool doRoundTrip = true;     // gated by --roundtrip-limit at the call site.

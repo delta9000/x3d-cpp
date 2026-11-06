@@ -1,4 +1,3 @@
-// SignalPdu.cpp
 #include "x3d/nodes/SignalPdu.hpp"
 
 namespace x3d::nodes {

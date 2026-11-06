@@ -1,4 +1,3 @@
-// TimeTrigger.cpp
 #include "x3d/nodes/TimeTrigger.hpp"
 
 namespace x3d::nodes {

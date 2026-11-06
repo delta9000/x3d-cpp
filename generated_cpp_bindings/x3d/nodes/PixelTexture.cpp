@@ -1,4 +1,3 @@
-// PixelTexture.cpp
 #include "x3d/nodes/PixelTexture.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// AudioDestination.cpp
 #include "x3d/nodes/AudioDestination.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// ColorRGBA.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,53 +27,29 @@ using namespace x3d::core;
  */
 class ColorRGBA : public virtual X3DColorNode {
 public:
-  /**
-   * @brief Default constructor for ColorRGBA
-   */
   ColorRGBA() = default;
 
-  /**
-   * @brief Destructor for ColorRGBA
-   */
   ~ColorRGBA() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesColor";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "color"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Rendering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of color. AccessType: inputOutput
+   * MFColorRGBA; access: inputOutput. Borrows the stored value.
    * @details The color field defines an array of 4-tuple RGBA colors.
-   * @return const MFColorRGBA& The current value of color.
    */
   const MFColorRGBA &getColor() const { return _color; }
 
   /**
-   * @brief Sets the value of color. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The color field defines an array of 4-tuple RGBA colors.
-   * @param value The new value for color.
    */
   void setColor(const MFColorRGBA &value) {
 
@@ -91,39 +66,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of color (runtime/reader ingest path).
-   * @details Assigns without the range check setColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setColor() for range validation.
    */
   void setColorUnchecked(const MFColorRGBA &value) { _color = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "ColorRGBA").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -164,10 +123,6 @@ private:
         throw std::out_of_range("color.a above maximum of 1");
     }
   }
-
-  /**
-   * @brief Member variable for color.
-   */
 
   MFColorRGBA _color{};
 };

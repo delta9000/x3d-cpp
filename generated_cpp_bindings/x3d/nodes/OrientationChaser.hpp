@@ -1,4 +1,3 @@
-// OrientationChaser.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,96 +28,57 @@ using namespace x3d::core;
  */
 class OrientationChaser : public virtual X3DChaserNode {
 public:
-  /**
-   * @brief Default constructor for OrientationChaser
-   */
   OrientationChaser() = default;
 
-  /**
-   * @brief Destructor for OrientationChaser
-   */
   ~OrientationChaser() = default;
 
-  /**
-   * @brief Get the default value for initialDestination
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultInitialDestination() {
     return SFRotation{0, 1, 0, 0};
   }
 
-  /**
-   * @brief Get the default value for initialValue
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultInitialValue() { return SFRotation{0, 1, 0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Followers"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of initialDestination. AccessType: initializeOnly
+   * SFRotation; access: initializeOnly. Borrows the stored value.
    * @details Initial destination value for this node.
-   * @return const SFRotation& The current value of initialDestination.
    */
   const SFRotation &getInitialDestination() const {
     return _initialDestination;
   }
   /**
-   * @brief Data-layer write of initialDestination (reader/init ingest path).
-   * @details initialDestination is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public
-   * setInitialDestination().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setInitialDestinationUnchecked(const SFRotation &value) {
     _initialDestination = value;
   }
 
   /**
-   * @brief Gets the value of initialValue. AccessType: initializeOnly
+   * SFRotation; access: initializeOnly. Borrows the stored value.
    * @details Initial starting value for this node.
-   * @return const SFRotation& The current value of initialValue.
    */
   const SFRotation &getInitialValue() const { return _initialValue; }
   /**
-   * @brief Data-layer write of initialValue (reader/init ingest path).
-   * @details initialValue is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setInitialValue().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setInitialValueUnchecked(const SFRotation &value) {
     _initialValue = value;
   }
 
   /**
-   * @brief Event handler invoked when an event is received on set_destination.
-   * AccessType: inputOnly
+   * SFRotation; access: inputOnly.
    * @details set_destination resets destination value of this node.
    *          Dispatches to the handler registered via
-   * setOnSet_destinationHandler(); a no-op if none is set. The event cascade
-   * reaches this through the node's reflected field table, so routing is
-   * node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_destinationHandler(); a no-op if none is set.
    */
   void onSet_destination(const SFRotation &value) {
     if (_onSet_destinationHandler)
@@ -126,10 +86,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_destination.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void
   setOnSet_destinationHandler(std::function<void(const SFRotation &)> handler) {
@@ -137,13 +94,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on set_value.
-   * AccessType: inputOnly
+   * SFRotation; access: inputOnly.
    * @details set_value resets current value of this node.
    *          Dispatches to the handler registered via setOnSet_valueHandler();
-   *          a no-op if none is set. The event cascade reaches this through the
-   *          node's reflected field table, so routing is node-agnostic.
-   * @param value The value of the received event.
+   *          a no-op if none is set.
    */
   void onSet_value(const SFRotation &value) {
     if (_onSet_valueHandler)
@@ -151,89 +105,56 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on set_value.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_valueHandler(std::function<void(const SFRotation &)> handler) {
     _onSet_valueHandler = std::move(handler);
   }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * SFRotation; access: outputOnly. Borrows the stored value.
    * @details Computed output value that approaches within tolerance of
    * destination value, as determined by elapsed time, order and tau.
-   * @return const SFRotation& The current value of value_changed.
    */
   const SFRotation &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Computed output value that approaches within tolerance of
-   * destination value, as determined by elapsed time, order and tau. outputOnly
-   * fields have no author-facing setter; a node's behavior or the runtime calls
-   * this to produce an output event. The event cascade reaches it through the
-   * reflected field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * destination value, as determined by elapsed time, order and tau.
    */
   void emitValue_changed(const SFRotation &value) { _value_changed = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "OrientationChaser").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
-  /**
-   * @brief Member variable for initialDestination.
-   */
-
   SFRotation _initialDestination{SFRotation{0, 1, 0, 0}};
-
-  /**
-   * @brief Member variable for initialValue.
-   */
 
   SFRotation _initialValue{SFRotation{0, 1, 0, 0}};
 
   /**
-   * @brief Registered event handler for set_destination (inputOnly); empty
-   * until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFRotation &)> _onSet_destinationHandler{};
 
   /**
-   * @brief Registered event handler for set_value (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFRotation &)> _onSet_valueHandler{};
-
-  /**
-   * @brief Member variable for value_changed.
-   */
 
   SFRotation _value_changed{};
 };

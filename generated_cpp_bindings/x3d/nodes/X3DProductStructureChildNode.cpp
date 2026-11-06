@@ -1,4 +1,3 @@
-// X3DProductStructureChildNode.cpp
 #include "x3d/nodes/X3DProductStructureChildNode.hpp"
 
 namespace x3d::nodes {

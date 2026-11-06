@@ -1,4 +1,3 @@
-// SpatialSound.cpp
 #include "x3d/nodes/SpatialSound.hpp"
 
 namespace x3d::nodes {

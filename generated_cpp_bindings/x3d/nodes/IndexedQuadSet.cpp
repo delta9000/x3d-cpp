@@ -1,4 +1,3 @@
-// IndexedQuadSet.cpp
 #include "x3d/nodes/IndexedQuadSet.hpp"
 
 namespace x3d::nodes {

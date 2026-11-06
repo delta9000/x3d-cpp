@@ -1,4 +1,3 @@
-// X3DGroupingNode.cpp
 #include "x3d/nodes/X3DGroupingNode.hpp"
 
 namespace x3d::nodes {

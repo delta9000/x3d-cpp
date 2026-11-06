@@ -1,4 +1,3 @@
-// CADLayer.cpp
 #include "x3d/nodes/CADLayer.hpp"
 
 namespace x3d::nodes {

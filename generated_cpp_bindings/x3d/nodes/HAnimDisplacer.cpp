@@ -1,4 +1,3 @@
-// HAnimDisplacer.cpp
 #include "x3d/nodes/HAnimDisplacer.hpp"
 
 namespace x3d::nodes {

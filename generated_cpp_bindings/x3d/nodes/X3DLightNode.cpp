@@ -1,4 +1,3 @@
-// X3DLightNode.cpp
 #include "x3d/nodes/X3DLightNode.hpp"
 
 namespace x3d::nodes {

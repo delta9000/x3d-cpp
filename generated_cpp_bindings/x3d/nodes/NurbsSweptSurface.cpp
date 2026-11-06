@@ -1,4 +1,3 @@
-// NurbsSweptSurface.cpp
 #include "x3d/nodes/NurbsSweptSurface.hpp"
 
 namespace x3d::nodes {

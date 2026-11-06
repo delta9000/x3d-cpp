@@ -1,4 +1,3 @@
-// GeoTransform.cpp
 #include "x3d/nodes/GeoTransform.hpp"
 
 namespace x3d::nodes {

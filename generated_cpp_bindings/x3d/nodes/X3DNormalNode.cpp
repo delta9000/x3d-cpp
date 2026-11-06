@@ -1,4 +1,3 @@
-// X3DNormalNode.cpp
 #include "x3d/nodes/X3DNormalNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// GeoOrigin.cpp
 #include "x3d/nodes/GeoOrigin.hpp"
 
 namespace x3d::nodes {

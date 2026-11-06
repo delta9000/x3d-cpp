@@ -1,4 +1,3 @@
-// X3DKeyDeviceSensorNode.cpp
 #include "x3d/nodes/X3DKeyDeviceSensorNode.hpp"
 
 namespace x3d::nodes {

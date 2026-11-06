@@ -1,4 +1,3 @@
-// X3DDragSensorNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,113 +27,61 @@ using namespace x3d::core;
  */
 class X3DDragSensorNode : public virtual X3DPointingDeviceSensorNode {
 public:
-  /**
-   * @brief Default constructor for X3DDragSensorNode
-   */
   X3DDragSensorNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DDragSensorNode
-   */
   virtual ~X3DDragSensorNode() = default;
 
-  /**
-   * @brief Get the default value for autoOffset
-   * @return SFBool The default value
-   */
   static SFBool getDefaultAutoOffset() { return true; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "PointingDeviceSensor"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of autoOffset. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of autoOffset.
    */
   const SFBool &getAutoOffset() const { return _autoOffset; }
 
   /**
-   * @brief Sets the value of autoOffset. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for autoOffset.
    */
   void setAutoOffset(const SFBool &value) { _autoOffset = value; }
 
   /**
-   * @brief Gets the value of trackPoint_changed. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details
-   * @return const SFVec3f& The current value of trackPoint_changed.
    */
   const SFVec3f &getTrackPoint_changed() const { return _trackPoint_changed; }
 
   /**
-   * @brief Emit an output value on trackPoint_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitTrackPoint_changed(const SFVec3f &value) {
     _trackPoint_changed = value;
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DDragSensorNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for autoOffset.
-   */
-
   SFBool _autoOffset{true};
-
-  /**
-   * @brief Member variable for trackPoint_changed.
-   */
 
   SFVec3f _trackPoint_changed{};
 };

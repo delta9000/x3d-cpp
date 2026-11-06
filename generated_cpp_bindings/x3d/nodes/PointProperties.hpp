@@ -1,4 +1,3 @@
-// PointProperties.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,95 +24,53 @@ using namespace x3d::core;
  */
 class PointProperties : public virtual X3DAppearanceChildNode {
 public:
-  /**
-   * @brief Default constructor for PointProperties
-   */
   PointProperties() = default;
 
-  /**
-   * @brief Destructor for PointProperties
-   */
   ~PointProperties() = default;
 
-  /**
-   * @brief Get the default value for attenuation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultAttenuation() { return SFVec3f{1, 0, 0}; }
 
-  /**
-   * @brief Get the default value for pointSizeMaxValue
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultPointSizeMaxValue() { return 1; }
 
-  /**
-   * @brief Get the default value for pointSizeMinValue
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultPointSizeMinValue() { return 1; }
 
-  /**
-   * @brief Get the default value for pointSizeScaleFactor
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultPointSizeScaleFactor() { return 1; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "pointProperties"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Shape"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 5; }
 
   /**
-   * @brief Gets the value of attenuation. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details attenuation array values [a, b, c] are set to default values if
    * undefined.
-   * @return const SFVec3f& The current value of attenuation.
    */
   const SFVec3f &getAttenuation() const { return _attenuation; }
 
   /**
-   * @brief Sets the value of attenuation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details attenuation array values [a, b, c] are set to default values if
    * undefined.
-   * @param value The new value for attenuation.
    */
   void setAttenuation(const SFVec3f &value) { _attenuation = value; }
 
   void setAttenuation(SFVec3f &&value) { _attenuation = std::move(value); }
 
   /**
-   * @brief Gets the value of pointSizeMaxValue. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details pointSizeMaxValue is maximum allowed scaling factor on nominal
    * browser point scaling.
-   * @return const SFFloat& The current value of pointSizeMaxValue.
    */
   const SFFloat &getPointSizeMaxValue() const { return _pointSizeMaxValue; }
 
   /**
-   * @brief Sets the value of pointSizeMaxValue. AccessType: inputOutput
+   * Access: inputOutput.
    * @details pointSizeMaxValue is maximum allowed scaling factor on nominal
    * browser point scaling.
-   * @param value The new value for pointSizeMaxValue.
    */
   void setPointSizeMaxValue(const SFFloat &value) {
 
@@ -123,30 +80,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of pointSizeMaxValue (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setPointSizeMaxValue() enforces,
-   * so a permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setPointSizeMaxValue() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setPointSizeMaxValue() for range validation.
    */
   void setPointSizeMaxValueUnchecked(const SFFloat &value) {
     _pointSizeMaxValue = value;
   }
 
   /**
-   * @brief Gets the value of pointSizeMinValue. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details pointSizeMinValue is minimum allowed scaling factor on nominal
    * browser point scaling.
-   * @return const SFFloat& The current value of pointSizeMinValue.
    */
   const SFFloat &getPointSizeMinValue() const { return _pointSizeMinValue; }
 
   /**
-   * @brief Sets the value of pointSizeMinValue. AccessType: inputOutput
+   * Access: inputOutput.
    * @details pointSizeMinValue is minimum allowed scaling factor on nominal
    * browser point scaling.
-   * @param value The new value for pointSizeMinValue.
    */
   void setPointSizeMinValue(const SFFloat &value) {
 
@@ -156,34 +107,28 @@ public:
   }
 
   /**
-   * @brief Non-validating write of pointSizeMinValue (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setPointSizeMinValue() enforces,
-   * so a permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setPointSizeMinValue() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setPointSizeMinValue() for range validation.
    */
   void setPointSizeMinValueUnchecked(const SFFloat &value) {
     _pointSizeMinValue = value;
   }
 
   /**
-   * @brief Gets the value of pointSizeScaleFactor. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Nominal rendered point size is a browser-dependent minimum
    * renderable point size, which is then multiplied by an additional
    * pointSizeScaleFactor (which is greater than or equal to 1).
-   * @return const SFFloat& The current value of pointSizeScaleFactor.
    */
   const SFFloat &getPointSizeScaleFactor() const {
     return _pointSizeScaleFactor;
   }
 
   /**
-   * @brief Sets the value of pointSizeScaleFactor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Nominal rendered point size is a browser-dependent minimum
    * renderable point size, which is then multiplied by an additional
    * pointSizeScaleFactor (which is greater than or equal to 1).
-   * @param value The new value for pointSizeScaleFactor.
    */
   void setPointSizeScaleFactor(const SFFloat &value) {
 
@@ -193,42 +138,25 @@ public:
   }
 
   /**
-   * @brief Non-validating write of pointSizeScaleFactor (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setPointSizeScaleFactor()
-   * enforces, so a permissive reader keeps an out-of-range authored value
-   * rather than reject the whole document. setPointSizeScaleFactor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setPointSizeScaleFactor() for range validation.
    */
   void setPointSizeScaleFactorUnchecked(const SFFloat &value) {
     _pointSizeScaleFactor = value;
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "PointProperties").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -279,27 +207,11 @@ private:
       throw std::out_of_range("pointSizeScaleFactor below minimum of 1");
   }
 
-  /**
-   * @brief Member variable for attenuation.
-   */
-
   SFVec3f _attenuation{SFVec3f{1, 0, 0}};
-
-  /**
-   * @brief Member variable for pointSizeMaxValue.
-   */
 
   SFFloat _pointSizeMaxValue{1};
 
-  /**
-   * @brief Member variable for pointSizeMinValue.
-   */
-
   SFFloat _pointSizeMinValue{1};
-
-  /**
-   * @brief Member variable for pointSizeScaleFactor.
-   */
 
   SFFloat _pointSizeScaleFactor{1};
 };

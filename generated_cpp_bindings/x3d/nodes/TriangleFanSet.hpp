@@ -1,4 +1,3 @@
-// TriangleFanSet.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,51 +27,27 @@ using namespace x3d::core;
  */
 class TriangleFanSet : public virtual X3DComposedGeometryNode {
 public:
-  /**
-   * @brief Default constructor for TriangleFanSet
-   */
   TriangleFanSet() = default;
 
-  /**
-   * @brief Destructor for TriangleFanSet
-   */
   ~TriangleFanSet() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "geometry"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Rendering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of fanCount. AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details fanCount array provides number of vertices in each fan.
-   * @return const MFInt32& The current value of fanCount.
    */
   const MFInt32 &getFanCount() const { return _fanCount; }
 
   /**
-   * @brief Sets the value of fanCount. AccessType: inputOutput
+   * Access: inputOutput.
    * @details fanCount array provides number of vertices in each fan.
-   * @param value The new value for fanCount.
    */
   void setFanCount(const MFInt32 &value) {
 
@@ -89,39 +64,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of fanCount (runtime/reader ingest path).
-   * @details Assigns without the range check setFanCount() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setFanCount() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setFanCount() for range validation.
    */
   void setFanCountUnchecked(const MFInt32 &value) { _fanCount = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "TriangleFanSet").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -145,10 +104,6 @@ private:
         throw std::out_of_range("fanCount below minimum of 3");
     }
   }
-
-  /**
-   * @brief Member variable for fanCount.
-   */
 
   MFInt32 _fanCount{};
 };

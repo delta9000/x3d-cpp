@@ -1,4 +1,3 @@
-// IntegerSequencer.cpp
 #include "x3d/nodes/IntegerSequencer.hpp"
 
 namespace x3d::nodes {

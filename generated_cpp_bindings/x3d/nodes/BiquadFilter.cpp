@@ -1,4 +1,3 @@
-// BiquadFilter.cpp
 #include "x3d/nodes/BiquadFilter.hpp"
 
 namespace x3d::nodes {

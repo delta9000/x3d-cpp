@@ -1,4 +1,3 @@
-// PrimitivePickSensor.cpp
 #include "x3d/nodes/PrimitivePickSensor.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// X3DGeometricPropertyNode.cpp
 #include "x3d/nodes/X3DGeometricPropertyNode.hpp"
 
 namespace x3d::nodes {

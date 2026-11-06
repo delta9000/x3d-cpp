@@ -1,13 +1,4 @@
-// Auto-generated value-asserting smoke test for the X3D C++ bindings.
-//
-// For every concrete node this test:
-//   1. default-constructs an instance (instantiation smoke test), and
-//   2. asserts that each readable field carrying a spec default returns exactly
-//      that default, by comparing the field's getter against the node's static
-//      getDefault<Name>() (both have identical return type, so the comparison is
-//      always type-correct and stays in lock-step with the generated headers).
-// A handful of well-known nodes additionally get explicit literal pins
-// (e.g. Box: size=={2,2,2}, solid==true).
+// Compare readable spec defaults and selected explicit literal values.
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -34,10 +25,8 @@ using namespace x3d::core;
 static bool g_all_tests_passed = true;
 static long g_assertions_run = 0;
 
-// --- defaultsEqual: type-correct equality for default-value comparisons. ---
 // Generic fallback covers all scalar/string/vector/enum-class field types that
-// model operator==. The struct field types (which do not) get member-wise
-// overloads below.
+// model operator==. Struct defaults use member-wise overloads below.
 template <typename T>
 static bool defaultsEqual(const T& a, const T& b) {
   return a == b;
@@ -110,7 +99,6 @@ static bool defaultsEqual(const std::vector<T>& a, const std::vector<T>& b) {
   return true;
 }
 
-// --- Per-node default-value checks. ---
 {% for n in nodes_ctx %}
 static void test_{{ n.name }}() {
   std::cout << "\nTesting {{ n.name }}..." << std::endl;
@@ -129,7 +117,6 @@ static void test_{{ n.name }}() {
 }
 {% endfor %}
 
-// --- Well-known explicit literal pins. ---
 {% for wk in well_known %}
 static void test_pin_{{ loop.index }}() {
   x3d::nodes::{{ wk.node }} inst;

@@ -1,4 +1,3 @@
-// IntegerSequencer.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,114 +25,64 @@ using namespace x3d::core;
  */
 class IntegerSequencer : public virtual X3DSequencerNode {
 public:
-  /**
-   * @brief Default constructor for IntegerSequencer
-   */
   IntegerSequencer() = default;
 
-  /**
-   * @brief Destructor for IntegerSequencer
-   */
   ~IntegerSequencer() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EventUtilities"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of keyValue. AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details Output values for linear sequencing, each corresponding to an
    * input-fraction value in the key array.
-   * @return const MFInt32& The current value of keyValue.
    */
   const MFInt32 &getKeyValue() const { return _keyValue; }
 
   /**
-   * @brief Sets the value of keyValue. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Output values for linear sequencing, each corresponding to an
    * input-fraction value in the key array.
-   * @param value The new value for keyValue.
    */
   void setKeyValue(const MFInt32 &value) { _keyValue = value; }
 
   void setKeyValue(MFInt32 &&value) { _keyValue = std::move(value); }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * SFInt32; access: outputOnly. Borrows the stored value.
    * @details Single intermittent output value determined by current key time
    * and corresponding keyValue entry.
-   * @return const SFInt32& The current value of value_changed.
    */
   const SFInt32 &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Single intermittent output value determined by current key time
-   * and corresponding keyValue entry. outputOnly fields have no author-facing
-   * setter; a node's behavior or the runtime calls this to produce an output
-   * event. The event cascade reaches it through the reflected field table so
-   * producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * and corresponding keyValue entry.
    */
   void emitValue_changed(const SFInt32 &value) { _value_changed = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "IntegerSequencer").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for keyValue.
-   */
-
   MFInt32 _keyValue{};
-
-  /**
-   * @brief Member variable for value_changed.
-   */
 
   SFInt32 _value_changed{};
 };

@@ -1,4 +1,3 @@
-// PositionInterpolator.cpp
 #include "x3d/nodes/PositionInterpolator.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// BooleanSequencer.cpp
 #include "x3d/nodes/BooleanSequencer.hpp"
 
 namespace x3d::nodes {

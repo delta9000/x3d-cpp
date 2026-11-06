@@ -1,4 +1,3 @@
-// X3DAppearanceChildNode.cpp
 #include "x3d/nodes/X3DAppearanceChildNode.hpp"
 
 namespace x3d::nodes {

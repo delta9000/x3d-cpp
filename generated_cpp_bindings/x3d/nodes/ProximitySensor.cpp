@@ -1,4 +1,3 @@
-// ProximitySensor.cpp
 #include "x3d/nodes/ProximitySensor.hpp"
 
 namespace x3d::nodes {

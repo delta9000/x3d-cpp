@@ -1,4 +1,3 @@
-// Analyser.cpp
 #include "x3d/nodes/Analyser.hpp"
 
 namespace x3d::nodes {

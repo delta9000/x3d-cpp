@@ -1,4 +1,3 @@
-// GeoLocation.cpp
 #include "x3d/nodes/GeoLocation.hpp"
 
 namespace x3d::nodes {

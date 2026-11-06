@@ -1,4 +1,3 @@
-// ScalarChaser.cpp
 #include "x3d/nodes/ScalarChaser.hpp"
 
 namespace x3d::nodes {

@@ -1,5 +1,4 @@
 // tools/x3d-cli/extract_oracle_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // Self-oracle round-trip test for x3d extract.
 //
 // Gated on X3D_CPP_BUILD_EXT (needs StlReader.hpp from runtime/ext/codecs/).
@@ -19,7 +18,6 @@
 // Fixtures:
 //   - simple.x3d   (Box 2×2×2) → 12 triangles (2 per face × 6 faces = 12).
 //   - validate-clean.x3d (Box 1×1×1) → 12 triangles.
-// ─────────────────────────────────────────────────────────────────────────────
 #include "stl_write.hpp"   // x3d::cli::writeStlBinary
 #include "StlReader.hpp"   // x3d::runtime::ext::parseStlBinary
 
@@ -36,9 +34,7 @@ namespace sdk = x3d::sdk;
 using namespace x3d::runtime::ext;
 using namespace x3d::runtime::extract;
 
-// ---------------------------------------------------------------------------
 // compute_aabb — min/max over a flat position list (groups of 3 floats/vertex).
-// ---------------------------------------------------------------------------
 struct AABB3 {
     float minX, minY, minZ, maxX, maxY, maxZ;
 };
@@ -87,10 +83,8 @@ static bool near(float a, float b, float tol = 1e-3f) {
     return d <= tol;
 }
 
-// ---------------------------------------------------------------------------
 // run_oracle — extract scene, write STL, read back, compare.
 // Returns true if all assertions hold.
-// ---------------------------------------------------------------------------
 static bool run_oracle(const std::string &path, const std::string &label,
                        std::size_t expected_tris) {
     std::cout << "--- " << label << " ---\n";
@@ -210,11 +204,9 @@ static bool run_oracle(const std::string &path, const std::string &label,
     return true;
 }
 
-// ---------------------------------------------------------------------------
 // main — run oracle on each fixture.
 // The fixture paths are passed as argv[1], argv[2], ...
 // If no paths are given, exit 0 (portable: no fixtures = no failure).
-// ---------------------------------------------------------------------------
 int main(int argc, char **argv) {
     if (argc < 2) {
         std::cout << "extract_oracle_test: no fixture paths supplied; SKIP\n";

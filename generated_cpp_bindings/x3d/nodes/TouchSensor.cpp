@@ -1,4 +1,3 @@
-// TouchSensor.cpp
 #include "x3d/nodes/TouchSensor.hpp"
 
 namespace x3d::nodes {

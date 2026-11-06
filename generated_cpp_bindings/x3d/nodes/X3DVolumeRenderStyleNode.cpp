@@ -1,4 +1,3 @@
-// X3DVolumeRenderStyleNode.cpp
 #include "x3d/nodes/X3DVolumeRenderStyleNode.hpp"
 
 namespace x3d::nodes {

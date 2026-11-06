@@ -1,4 +1,3 @@
-// ListenerPointSource.cpp
 #include "x3d/nodes/ListenerPointSource.hpp"
 
 namespace x3d::nodes {

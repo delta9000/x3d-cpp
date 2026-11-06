@@ -1,4 +1,3 @@
-// WorldInfo.cpp
 #include "x3d/nodes/WorldInfo.hpp"
 
 namespace x3d::nodes {

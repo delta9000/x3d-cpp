@@ -1,4 +1,3 @@
-// X3DScriptNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,77 +25,36 @@ using namespace x3d::core;
  */
 class X3DScriptNode : public virtual X3DChildNode, public virtual X3DUrlObject {
 public:
-  /**
-   * @brief Default constructor for X3DScriptNode
-   */
   X3DScriptNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DScriptNode
-   */
   virtual ~X3DScriptNode() = default;
 
-  /**
-   * @brief Get the default value for autoRefresh
-   * @return SFTime The default value
-   */
   static SFTime getDefaultAutoRefresh() { return 0; }
 
-  /**
-   * @brief Get the default value for autoRefreshTimeLimit
-   * @return SFTime The default value
-   */
   static SFTime getDefaultAutoRefreshTimeLimit() { return 3600; }
 
-  /**
-   * @brief Get the default value for IS
-   * @return SFNode The default value
-   */
   static SFNode getDefaultIS() { return nullptr; }
 
-  /**
-   * @brief Get the default value for load
-   * @return SFBool The default value
-   */
   static SFBool getDefaultLoad() { return true; }
 
-  /**
-   * @brief Get the default value for metadata
-   * @return SFNode The default value
-   */
   static SFNode getDefaultMetadata() { return nullptr; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Scripting"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of autoRefresh. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFTime& The current value of autoRefresh.
    */
   const SFTime &getAutoRefresh() const { return _autoRefresh; }
 
   /**
-   * @brief Sets the value of autoRefresh. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for autoRefresh.
    */
   void setAutoRefresh(const SFTime &value) {
 
@@ -113,27 +71,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of autoRefresh (runtime/reader ingest path).
-   * @details Assigns without the range check setAutoRefresh() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAutoRefresh() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAutoRefresh() for range validation.
    */
   void setAutoRefreshUnchecked(const SFTime &value) { _autoRefresh = value; }
 
   /**
-   * @brief Gets the value of autoRefreshTimeLimit. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFTime& The current value of autoRefreshTimeLimit.
    */
   const SFTime &getAutoRefreshTimeLimit() const {
     return _autoRefreshTimeLimit;
   }
 
   /**
-   * @brief Sets the value of autoRefreshTimeLimit. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for autoRefreshTimeLimit.
    */
   void setAutoRefreshTimeLimit(const SFTime &value) {
 
@@ -150,44 +103,35 @@ public:
   }
 
   /**
-   * @brief Non-validating write of autoRefreshTimeLimit (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setAutoRefreshTimeLimit()
-   * enforces, so a permissive reader keeps an out-of-range authored value
-   * rather than reject the whole document. setAutoRefreshTimeLimit() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAutoRefreshTimeLimit() for range validation.
    */
   void setAutoRefreshTimeLimitUnchecked(const SFTime &value) {
     _autoRefreshTimeLimit = value;
   }
 
   /**
-   * @brief Gets the value of description. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFString& The current value of description.
    */
   const SFString &getDescription() const { return _description; }
 
   /**
-   * @brief Sets the value of description. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for description.
    */
   void setDescription(const SFString &value) { _description = value; }
 
   void setDescription(SFString &&value) { _description = std::move(value); }
 
   /**
-   * @brief Gets the value of IS. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFNode& The current value of IS.
    */
   const SFNode &getIS() const { return _IS; }
 
   /**
-   * @brief Acceptable node types for the IS field.
    * @details Permitted X3D node types: IS
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableISNodeTypes() {
     static const std::vector<std::string> types = {"IS"};
@@ -195,39 +139,33 @@ public:
   }
 
   /**
-   * @brief Sets the value of IS. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for IS.
    */
   void setIS(const SFNode &value) { _IS = value; }
 
   void setIS(SFNode &&value) { _IS = std::move(value); }
 
   /**
-   * @brief Gets the value of load. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of load.
    */
   const SFBool &getLoad() const { return _load; }
 
   /**
-   * @brief Sets the value of load. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for load.
    */
   void setLoad(const SFBool &value) { _load = value; }
 
   /**
-   * @brief Gets the value of metadata. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFNode& The current value of metadata.
    */
   const SFNode &getMetadata() const { return _metadata; }
 
   /**
-   * @brief Acceptable node types for the metadata field.
    * @details Permitted X3D node types: X3DMetadataObject
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableMetadataNodeTypes() {
     static const std::vector<std::string> types = {"X3DMetadataObject"};
@@ -235,55 +173,39 @@ public:
   }
 
   /**
-   * @brief Sets the value of metadata. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for metadata.
    */
   void setMetadata(const SFNode &value) { _metadata = value; }
 
   void setMetadata(SFNode &&value) { _metadata = std::move(value); }
 
   /**
-   * @brief Gets the value of url. AccessType: inputOutput
+   * MFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFString& The current value of url.
    */
   const MFString &getUrl() const { return _url; }
 
   /**
-   * @brief Sets the value of url. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for url.
    */
   void setUrl(const MFString &value) { _url = value; }
 
   void setUrl(MFString &&value) { _url = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DScriptNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -319,45 +241,17 @@ private:
       throw std::out_of_range("autoRefreshTimeLimit below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for autoRefresh.
-   */
-
   SFTime _autoRefresh{0};
-
-  /**
-   * @brief Member variable for autoRefreshTimeLimit.
-   */
 
   SFTime _autoRefreshTimeLimit{3600};
 
-  /**
-   * @brief Member variable for description.
-   */
-
   SFString _description{};
-
-  /**
-   * @brief Member variable for IS.
-   */
 
   SFNode _IS{nullptr};
 
-  /**
-   * @brief Member variable for load.
-   */
-
   SFBool _load{true};
 
-  /**
-   * @brief Member variable for metadata.
-   */
-
   SFNode _metadata{nullptr};
-
-  /**
-   * @brief Member variable for url.
-   */
 
   MFString _url{};
 };

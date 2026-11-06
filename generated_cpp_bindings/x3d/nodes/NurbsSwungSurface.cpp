@@ -1,4 +1,3 @@
-// NurbsSwungSurface.cpp
 #include "x3d/nodes/NurbsSwungSurface.hpp"
 
 namespace x3d::nodes {

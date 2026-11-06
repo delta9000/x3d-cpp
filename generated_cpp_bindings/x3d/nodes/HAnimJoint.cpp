@@ -1,4 +1,3 @@
-// HAnimJoint.cpp
 #include "x3d/nodes/HAnimJoint.hpp"
 
 namespace x3d::nodes {

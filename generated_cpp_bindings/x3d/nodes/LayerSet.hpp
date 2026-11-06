@@ -1,4 +1,3 @@
-// LayerSet.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -22,65 +21,33 @@ using namespace x3d::core;
  */
 class LayerSet : public virtual X3DNode {
 public:
-  /**
-   * @brief Default constructor for LayerSet
-   */
   LayerSet() = default;
 
-  /**
-   * @brief Destructor for LayerSet
-   */
   ~LayerSet() = default;
 
-  /**
-   * @brief Get the default value for activeLayer
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultActiveLayer() { return 0; }
 
-  /**
-   * @brief Get the default value for order
-   * @return MFInt32 The default value
-   */
   static MFInt32 getDefaultOrder() { return std::vector<int>{0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Layering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of activeLayer. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details activeLayer field specifies the layer in which navigation takes
    * place.
-   * @return const SFInt32& The current value of activeLayer.
    */
   const SFInt32 &getActiveLayer() const { return _activeLayer; }
 
   /**
-   * @brief Sets the value of activeLayer. AccessType: inputOutput
+   * Access: inputOutput.
    * @details activeLayer field specifies the layer in which navigation takes
    * place.
-   * @param value The new value for activeLayer.
    */
   void setActiveLayer(const SFInt32 &value) {
 
@@ -90,26 +57,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of activeLayer (runtime/reader ingest path).
-   * @details Assigns without the range check setActiveLayer() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setActiveLayer() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setActiveLayer() for range validation.
    */
   void setActiveLayerUnchecked(const SFInt32 &value) { _activeLayer = value; }
 
   /**
-   * @brief Gets the value of layers. AccessType: inputOutput
+   * MFNode; access: inputOutput. Borrows the stored value.
    * @details The layers list defines a list of Layer nodes that contain the
    * constituent parts of the scene.
-   * @return const MFNode& The current value of layers.
    */
   const MFNode &getLayers() const { return _layers; }
 
   /**
-   * @brief Acceptable node types for the layers field.
    * @details Permitted X3D node types: X3DLayerNode
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableLayersNodeTypes() {
     static const std::vector<std::string> types = {"X3DLayerNode"};
@@ -117,26 +78,23 @@ public:
   }
 
   /**
-   * @brief Sets the value of layers. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The layers list defines a list of Layer nodes that contain the
    * constituent parts of the scene.
-   * @param value The new value for layers.
    */
   void setLayers(const MFNode &value) { _layers = value; }
 
   void setLayers(MFNode &&value) { _layers = std::move(value); }
 
   /**
-   * @brief Gets the value of order. AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details The order list defines the order in which layers are rendered.
-   * @return const MFInt32& The current value of order.
    */
   const MFInt32 &getOrder() const { return _order; }
 
   /**
-   * @brief Sets the value of order. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The order list defines the order in which layers are rendered.
-   * @param value The new value for order.
    */
   void setOrder(const MFInt32 &value) {
 
@@ -153,39 +111,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of order (runtime/reader ingest path).
-   * @details Assigns without the range check setOrder() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setOrder() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setOrder() for range validation.
    */
   void setOrderUnchecked(const MFInt32 &value) { _order = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "LayerSet").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -225,21 +167,9 @@ private:
     }
   }
 
-  /**
-   * @brief Member variable for activeLayer.
-   */
-
   SFInt32 _activeLayer{0};
 
-  /**
-   * @brief Member variable for layers.
-   */
-
   MFNode _layers{};
-
-  /**
-   * @brief Member variable for order.
-   */
 
   MFInt32 _order{std::vector<int>{0}};
 };

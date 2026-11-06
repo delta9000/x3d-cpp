@@ -1,4 +1,3 @@
-// OrthoViewpoint.cpp
 #include "x3d/nodes/OrthoViewpoint.hpp"
 
 namespace x3d::nodes {

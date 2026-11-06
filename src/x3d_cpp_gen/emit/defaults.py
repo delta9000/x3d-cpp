@@ -304,8 +304,7 @@ def compute_default_expr(field) -> Optional[str]:
     if x3d_type is not None:
         return default_expr_for(x3d_type, field.default)
     # Field type was given as a raw C++ type string rather than an X3D name.
-    # The real generator never does this (fields store X3D type names), but a
-    # few historical call sites/tests pass cpp spellings; honour them here.
+    # Generator fields store X3D type names; other callers may pass C++ spellings.
     t = field.type
     d = field.default
     if t == "SFNode" or t.startswith("std::shared_ptr"):

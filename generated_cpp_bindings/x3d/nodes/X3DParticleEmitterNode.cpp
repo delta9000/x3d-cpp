@@ -1,4 +1,3 @@
-// X3DParticleEmitterNode.cpp
 #include "x3d/nodes/X3DParticleEmitterNode.hpp"
 
 namespace x3d::nodes {

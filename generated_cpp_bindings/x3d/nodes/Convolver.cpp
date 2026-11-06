@@ -1,4 +1,3 @@
-// Convolver.cpp
 #include "x3d/nodes/Convolver.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// ChannelSplitter.cpp
 #include "x3d/nodes/ChannelSplitter.hpp"
 
 namespace x3d::nodes {

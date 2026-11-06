@@ -1,4 +1,3 @@
-// TextureCoordinateGenerator.cpp
 #include "x3d/nodes/TextureCoordinateGenerator.hpp"
 
 namespace x3d::nodes {

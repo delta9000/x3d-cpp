@@ -1,4 +1,3 @@
-// LineProperties.cpp
 #include "x3d/nodes/LineProperties.hpp"
 
 namespace x3d::nodes {

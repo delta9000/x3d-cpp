@@ -1,4 +1,3 @@
-// ArcClose2D.cpp
 #include "x3d/nodes/ArcClose2D.hpp"
 
 namespace x3d::nodes {

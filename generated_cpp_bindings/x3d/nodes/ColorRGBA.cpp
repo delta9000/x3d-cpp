@@ -1,4 +1,3 @@
-// ColorRGBA.cpp
 #include "x3d/nodes/ColorRGBA.hpp"
 
 namespace x3d::nodes {

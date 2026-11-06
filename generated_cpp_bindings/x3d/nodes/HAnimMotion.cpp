@@ -1,4 +1,3 @@
-// HAnimMotion.cpp
 #include "x3d/nodes/HAnimMotion.hpp"
 
 namespace x3d::nodes {

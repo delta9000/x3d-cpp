@@ -56,7 +56,6 @@ echo "Corpus dir: ${CORPUS_DIR}"
 echo "Source:     ${LIVE}"
 echo
 
-# ── 1. The curated subset (paths are <prefix>-relative in subset.txt) ─────────
 echo "== Fetching curated subset (${SUBSET##*/}) =="
 mapfile -t want < <(sed "s#^${PREFIX}##" "${SUBSET}" | grep -vE '^\s*$')
 printf '%s\n' "${want[@]}" | xargs -P "${JOBS}" -I{} bash -c 'fetch_one "$@"' _ {} > /tmp/.x3d_corpus_fetch.$$ 2>&1
@@ -71,7 +70,6 @@ fi
 rm -f /tmp/.x3d_corpus_fetch.$$
 echo
 
-# ── 2. Transitive Inline / EXTERNPROTO scene-dependency closure ───────────────
 # subset.txt lists files to TEST; validating them needs the scenes they pull in
 # via Inline url / EXTERNPROTO url (the latter carry a "#ProtoName" fragment).
 echo "== Resolving Inline/EXTERNPROTO dependency closure =="

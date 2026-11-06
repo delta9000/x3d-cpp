@@ -1,21 +1,5 @@
-// tools/x3d-cli/sim_behavior_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// Behavioral self-oracle for `x3d sim` (design Unit testing §"Self-oracle").
-//
-// Proves the wired-full-runtime helper + tracer actually compute correctly —
-// not just that a trace is emitted, but that the runtime interpolates and the
-// view-dependent sensors fire on the viewer path:
-//
-//   1. TimeSensor(cycleInterval=1, loop) -> PositionInterpolator(key '0 1',
-//      keyValue '0 0 0  10 0 0') -> Transform.translation: assert translation.x
-//      ≈ 5 at t ≈ 0.5 (the interpolator genuinely lerping mid-cycle).
-//   2. ProximitySensor(box size 2) + a --move-style viewer sweep from x=-5 to
-//      x=+5 over 1s at 10fps: assert enterTime fires at the tick the viewer
-//      crosses x=-1 (t=0.4) and exitTime at x=+1 (t=0.7).
-//   3. Determinism: two full runs produce byte-identical traces.
-//
-// Pass the fixtures dir as argv[1] (the same dir the CLI test uses).
-// ─────────────────────────────────────────────────────────────────────────────
+// Check interpolated values, sensor crossings, and trace determinism.
+// Pass the fixtures directory as argv[1].
 #include "x3d/sdk.hpp"
 
 #include "sim_runtime.hpp"
@@ -41,7 +25,6 @@ void wire(x3d::sdk::X3DDocument &doc, x3d::runtime::X3DExecutionContext &ctx) {
   x3d::sim::attachFullRuntime(doc.scene, ctx);
 }
 
-// ── Test 1: interpolator value at t≈0.5 ──────────────────────────────────────
 void testInterpolatorMidCycle(const std::string &dir) {
   auto doc = x3d::sdk::parseFile(dir + "/sim-anim.x3d");
   x3d::runtime::X3DExecutionContext ctx;
@@ -64,7 +47,6 @@ void testInterpolatorMidCycle(const std::string &dir) {
   assert(std::fabs(tr.y) < 1e-4f && std::fabs(tr.z) < 1e-4f);
 }
 
-// ── Test 2: proximity enter/exit on the viewer path ──────────────────────────
 void testProximityCrossing(const std::string &dir) {
   auto doc = x3d::sdk::parseFile(dir + "/sim-proximity.x3d");
   x3d::runtime::X3DExecutionContext ctx;
@@ -86,7 +68,7 @@ void testProximityCrossing(const std::string &dir) {
   };
   applyMove(0.0);
   tracer.baseline();
-  // Use the same t-formula as cmdSim: k * (1.0/fps) — NOT k/fps — so this
+  // Use the same t-formula as cmdSim: k * (1.0/fps) — not k/fps — so this
   // test exercises the exact double values the CLI produces (they differ by 1
   // ULP for some k).
   const double dt_prox = 1.0 / fps;
@@ -108,7 +90,6 @@ void testProximityCrossing(const std::string &dir) {
   assert(exitTick == 7 && "ProximitySensor exitTime must fire at tick 7 (x=+1)");
 }
 
-// ── Test 3: determinism (two runs byte-identical) ────────────────────────────
 std::string runTrace(const std::string &path) {
   auto doc = x3d::sdk::parseFile(path);
   x3d::runtime::X3DExecutionContext ctx;

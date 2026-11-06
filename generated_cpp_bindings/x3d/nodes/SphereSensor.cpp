@@ -1,4 +1,3 @@
-// SphereSensor.cpp
 #include "x3d/nodes/SphereSensor.hpp"
 
 namespace x3d::nodes {

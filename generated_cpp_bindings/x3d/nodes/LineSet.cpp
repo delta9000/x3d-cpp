@@ -1,4 +1,3 @@
-// LineSet.cpp
 #include "x3d/nodes/LineSet.hpp"
 
 namespace x3d::nodes {

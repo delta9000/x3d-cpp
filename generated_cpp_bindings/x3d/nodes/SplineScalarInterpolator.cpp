@@ -1,4 +1,3 @@
-// SplineScalarInterpolator.cpp
 #include "x3d/nodes/SplineScalarInterpolator.hpp"
 
 namespace x3d::nodes {

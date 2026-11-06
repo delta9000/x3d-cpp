@@ -1,5 +1,5 @@
 """Run the L2 structural validator over a directory of .x3d files,
-binding each to its declared OR inferred version's manifest (VP-2 ladder; floor 3.0 always binds)."""
+binding each to its declared or inferred version's manifest (floor 3.0 always binds)."""
 from __future__ import annotations
 
 import sys

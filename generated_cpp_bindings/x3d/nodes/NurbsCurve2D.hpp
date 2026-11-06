@@ -1,4 +1,3 @@
-// NurbsCurve2D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,153 +24,96 @@ using namespace x3d::core;
  */
 class NurbsCurve2D : public virtual X3DNurbsControlCurveNode {
 public:
-  /**
-   * @brief Default constructor for NurbsCurve2D
-   */
   NurbsCurve2D() = default;
 
-  /**
-   * @brief Destructor for NurbsCurve2D
-   */
   ~NurbsCurve2D() = default;
 
-  /**
-   * @brief Get the default value for closed
-   * @return SFBool The default value
-   */
   static SFBool getDefaultClosed() { return false; }
 
-  /**
-   * @brief Get the default value for order
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultOrder() { return 3; }
 
-  /**
-   * @brief Get the default value for tessellation
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultTessellation() { return 0; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "NURBS"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of closed. AccessType: initializeOnly
+   * SFBool; access: initializeOnly. Borrows the stored value.
    * @details Whether or not the curve is closed (i.
-   * @return const SFBool& The current value of closed.
    */
   const SFBool &getClosed() const { return _closed; }
   /**
-   * @brief Data-layer write of closed (reader/init ingest path).
-   * @details closed is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setClosed().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setClosedUnchecked(const SFBool &value) { _closed = value; }
 
   /**
-   * @brief Gets the value of knot. AccessType: initializeOnly
+   * MFDouble; access: initializeOnly. Borrows the stored value.
    * @details knot vector, where size = number of control points + order of
    * curve.
-   * @return const MFDouble& The current value of knot.
    */
   const MFDouble &getKnot() const { return _knot; }
   /**
-   * @brief Data-layer write of knot (reader/init ingest path).
-   * @details knot is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setKnot().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setKnotUnchecked(const MFDouble &value) { _knot = value; }
 
   /**
-   * @brief Gets the value of order. AccessType: initializeOnly
+   * SFInt32; access: initializeOnly. Borrows the stored value.
    * @details define order of surface by polynomials of degree = order-1.
-   * @return const SFInt32& The current value of order.
    */
   const SFInt32 &getOrder() const { return _order; }
   /**
-   * @brief Data-layer write of order (reader/init ingest path).
-   * @details order is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setOrder().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setOrderUnchecked(const SFInt32 &value) { _order = value; }
 
   /**
-   * @brief Gets the value of tessellation. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details hint for surface tessellation.
-   * @return const SFInt32& The current value of tessellation.
    */
   const SFInt32 &getTessellation() const { return _tessellation; }
 
   /**
-   * @brief Sets the value of tessellation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details hint for surface tessellation.
-   * @param value The new value for tessellation.
    */
   void setTessellation(const SFInt32 &value) { _tessellation = value; }
 
   /**
-   * @brief Gets the value of weight. AccessType: inputOutput
+   * MFDouble; access: inputOutput. Borrows the stored value.
    * @details Vector assigning relative weight value to each control point.
-   * @return const MFDouble& The current value of weight.
    */
   const MFDouble &getWeight() const { return _weight; }
 
   /**
-   * @brief Sets the value of weight. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Vector assigning relative weight value to each control point.
-   * @param value The new value for weight.
    */
   void setWeight(const MFDouble &value) { _weight = value; }
 
   void setWeight(MFDouble &&value) { _weight = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "NurbsCurve2D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -187,33 +129,13 @@ protected:
                                std::vector<RangeDiagnostic> &out);
 
 private:
-  /**
-   * @brief Member variable for closed.
-   */
-
   SFBool _closed{false};
-
-  /**
-   * @brief Member variable for knot.
-   */
 
   MFDouble _knot{};
 
-  /**
-   * @brief Member variable for order.
-   */
-
   SFInt32 _order{3};
 
-  /**
-   * @brief Member variable for tessellation.
-   */
-
   SFInt32 _tessellation{0};
-
-  /**
-   * @brief Member variable for weight.
-   */
 
   MFDouble _weight{};
 };

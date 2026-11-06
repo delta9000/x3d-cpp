@@ -1,4 +1,3 @@
-// ColorInterpolator.cpp
 #include "x3d/nodes/ColorInterpolator.hpp"
 
 namespace x3d::nodes {

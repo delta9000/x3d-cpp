@@ -1,4 +1,3 @@
-// X3DNurbsSurfaceGeometryNode.cpp
 #include "x3d/nodes/X3DNurbsSurfaceGeometryNode.hpp"
 
 namespace x3d::nodes {

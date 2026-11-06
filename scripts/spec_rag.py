@@ -273,8 +273,7 @@ if __name__ == "__main__":
         print(__doc__); sys.exit(0)
     rest = sys.argv[2:]
     version = "4.1"
-    # NOTE: every flag (--version, --rag, -k) must be stripped from `rest` before any
-    # positional (rest[0]) is read, or a flag name would be captured as the positional.
+    # Strip flags before positional validation so their values are not commands.
     if "--version" in rest:
         i = rest.index("--version"); version = rest[i + 1]; del rest[i:i + 2]
     if cmd == "ingest":

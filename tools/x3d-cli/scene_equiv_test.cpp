@@ -1,15 +1,13 @@
 // tools/x3d-cli/scene_equiv_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // Unit tests for scene_equiv.hpp: sceneEquivalent().
 //
 // Tests:
 //   1. Empty scenes are equal.
 //   2. A round-tripped simple scene is equivalent (XML → XML).
-//   3. A mutated scene (changed field value) is NOT equivalent.
-//   4. A scene with an extra root node is NOT equivalent.
-//   5. A scene with an added ROUTE is NOT equivalent.
+//   3. A mutated scene (changed field value) is not equivalent.
+//   4. A scene with an extra root node is not equivalent.
+//   5. A scene with an added ROUTE is not equivalent.
 //   6. Equal scenes with ROUTEs are equivalent (order-insensitive).
-// ─────────────────────────────────────────────────────────────────────────────
 #include "scene_equiv.hpp"
 #include "x3d/sdk.hpp"
 #include "Encoding.hpp"
@@ -28,7 +26,6 @@ static void check(bool cond, const std::string &name) {
     std::cout << "ok:   " << name << "\n";
 }
 
-// ── Small inline X3D scene (Interchange profile, two shapes + a ROUTE) ───────
 static const char kScene1[] = R"(<?xml version="1.0" encoding="UTF-8"?>
 <X3D version="4.0" profile="Interchange" xmlns:xsd="http://www.w3.org/2001/XMLSchema-instance">
   <Scene>
@@ -135,7 +132,7 @@ int main() {
               "round-tripped ClassicVRML scene is equivalent");
     }
 
-    // 4. Mutated scene (diffuseColor changed) is NOT equivalent.
+    // 4. Mutated scene (diffuseColor changed) is not equivalent.
     {
         sdk::X3DDocument doc2 = sdk::parseDocument(kScene1Mutated, x3d::codec::Encoding::XML);
         std::string why;
@@ -144,7 +141,7 @@ int main() {
         check(!why.empty(), "mismatch has a reason");
     }
 
-    // 5. Extra root node is NOT equivalent.
+    // 5. Extra root node is not equivalent.
     {
         sdk::X3DDocument doc3 = sdk::parseDocument(kScene1ExtraNode, x3d::codec::Encoding::XML);
         std::string why;
@@ -152,7 +149,7 @@ int main() {
         check(!eq, "extra root node is not equivalent");
     }
 
-    // 6. Extra ROUTE is NOT equivalent.
+    // 6. Extra ROUTE is not equivalent.
     {
         sdk::X3DDocument doc4 = sdk::parseDocument(kScene1ExtraRoute, x3d::codec::Encoding::XML);
         std::string why;

@@ -1,4 +1,3 @@
-// ComposedVolumeStyle.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,52 +26,27 @@ using namespace x3d::core;
  */
 class ComposedVolumeStyle : public virtual X3DComposableVolumeRenderStyleNode {
 public:
-  /**
-   * @brief Default constructor for ComposedVolumeStyle
-   */
   ComposedVolumeStyle() = default;
 
-  /**
-   * @brief Destructor for ComposedVolumeStyle
-   */
   ~ComposedVolumeStyle() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "renderStyle"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "VolumeRendering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of renderStyle. AccessType: inputOutput
+   * MFNode; access: inputOutput. Borrows the stored value.
    * @details List of contributing rendering style nodes or node references that
    * can be applied to the object.
-   * @return const MFNode& The current value of renderStyle.
    */
   const MFNode &getRenderStyle() const { return _renderStyle; }
 
   /**
-   * @brief Acceptable node types for the renderStyle field.
    * @details Permitted X3D node types: X3DComposableVolumeRenderStyleNode
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableRenderStyleNodeTypes() {
     static const std::vector<std::string> types = {
@@ -81,47 +55,29 @@ public:
   }
 
   /**
-   * @brief Sets the value of renderStyle. AccessType: inputOutput
+   * Access: inputOutput.
    * @details List of contributing rendering style nodes or node references that
    * can be applied to the object.
-   * @param value The new value for renderStyle.
    */
   void setRenderStyle(const MFNode &value) { _renderStyle = value; }
 
   void setRenderStyle(MFNode &&value) { _renderStyle = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "ComposedVolumeStyle").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for renderStyle.
-   */
-
   MFNode _renderStyle{};
 };
 

@@ -1,4 +1,3 @@
-// ShadedVolumeStyle.cpp
 #include "x3d/nodes/ShadedVolumeStyle.hpp"
 
 namespace x3d::nodes {

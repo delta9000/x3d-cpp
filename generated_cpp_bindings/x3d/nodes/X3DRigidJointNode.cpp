@@ -1,4 +1,3 @@
-// X3DRigidJointNode.cpp
 #include "x3d/nodes/X3DRigidJointNode.hpp"
 
 namespace x3d::nodes {

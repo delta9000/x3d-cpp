@@ -1,4 +1,3 @@
-// BoundaryEnhancementVolumeStyle.cpp
 #include "x3d/nodes/BoundaryEnhancementVolumeStyle.hpp"
 
 namespace x3d::nodes {

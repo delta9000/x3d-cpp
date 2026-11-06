@@ -1,4 +1,3 @@
-// GeoViewpoint.cpp
 #include "x3d/nodes/GeoViewpoint.hpp"
 
 namespace x3d::nodes {

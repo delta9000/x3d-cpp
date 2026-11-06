@@ -1,4 +1,3 @@
-// HAnimSegment.cpp
 #include "x3d/nodes/HAnimSegment.hpp"
 
 namespace x3d::nodes {

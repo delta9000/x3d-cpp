@@ -1,4 +1,3 @@
-// OrientationChaser.cpp
 #include "x3d/nodes/OrientationChaser.hpp"
 
 namespace x3d::nodes {

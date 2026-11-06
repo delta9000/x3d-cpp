@@ -1,4 +1,3 @@
-// Delay.cpp
 #include "x3d/nodes/Delay.hpp"
 
 namespace x3d::nodes {

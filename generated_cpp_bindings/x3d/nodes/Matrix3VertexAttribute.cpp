@@ -1,4 +1,3 @@
-// Matrix3VertexAttribute.cpp
 #include "x3d/nodes/Matrix3VertexAttribute.hpp"
 
 namespace x3d::nodes {

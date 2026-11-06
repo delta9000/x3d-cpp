@@ -1,32 +1,6 @@
-// tools/corpus_sweep.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// CORPUS SMOKE — drive the FULL v1 pipeline over a whole directory tree of real
-// X3D scenes and report categorized stats. This is the "did we break breadth?"
-// gate that the 8-scene hand-smoke could not give.
-//
-// Per file:  parseFile -> buildSceneGraph + buildFrom -> SceneExtractor
-//            -> fullSnapshot() -> tick() -> delta()
-// using ONLY the x3d::sdk façade (the exact path a real embedder takes).
-//
-// Outcomes per file are bucketed: OK / parse-error / pipeline-error, split by
-// encoding (extension). Aggregates: total render items, files yielding 0 items,
-// skipped-geometry type histogram, range/proto warning totals, error samples.
-//
-// Usage:
-//   corpus_sweep <dir> [--limit N] [--min-success-ratio R] [--strict]
-//                      [--quiet] [--list-errors K]
-//
-//   --limit N             process only the first N files (sorted; deterministic)
-//   --min-success-ratio R fail (exit 2) if OK/total < R          (default 0.0)
-//   --strict              fail (exit 2) on ANY parse/pipeline error
-//   --quiet               suppress per-file lines; print only the summary
-//   --list-errors K       print up to K distinct error messages   (default 12)
-//
-// Exit: 0 = swept clean (and ratio/strict satisfied); 0 + "SKIPPED" if <dir>
-//       is absent (so a portable ctest passes on machines without the corpus);
-//       2 = ratio/strict violation; a hard crash kills the process (the smoke
-//       fails loudly, which is the point).
-// ─────────────────────────────────────────────────────────────────────────────
+// Sweep scene files through parse, scene construction, extraction, and ticking.
+// Report failures by encoding; --strict and --min-success-ratio control failure status.
+// A missing corpus directory is skipped for portable ctest runs.
 #include "x3d/sdk.hpp"
 
 #include <algorithm>

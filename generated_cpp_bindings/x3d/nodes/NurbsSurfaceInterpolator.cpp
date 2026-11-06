@@ -1,4 +1,3 @@
-// NurbsSurfaceInterpolator.cpp
 #include "x3d/nodes/NurbsSurfaceInterpolator.hpp"
 
 namespace x3d::nodes {

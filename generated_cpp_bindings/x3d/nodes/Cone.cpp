@@ -1,4 +1,3 @@
-// Cone.cpp
 #include "x3d/nodes/Cone.hpp"
 
 namespace x3d::nodes {

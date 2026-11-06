@@ -1,4 +1,3 @@
-// Text.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,70 +24,33 @@ using namespace x3d::core;
  */
 class Text : public virtual X3DGeometryNode {
 public:
-  /**
-   * @brief Default constructor for Text
-   */
   Text() = default;
 
-  /**
-   * @brief Destructor for Text
-   */
   ~Text() = default;
 
-  /**
-   * @brief Get the default value for fontStyle
-   * @return SFNode The default value
-   */
   static SFNode getDefaultFontStyle() { return nullptr; }
 
-  /**
-   * @brief Get the default value for maxExtent
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultMaxExtent() { return 0.0; }
 
-  /**
-   * @brief Get the default value for solid
-   * @return SFBool The default value
-   */
   static SFBool getDefaultSolid() { return false; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "geometry"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Text"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of fontStyle. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details The fontStyle field can contain a FontStyle or ScreenFontStyle
    * node defining size, family, and style for presented text.
-   * @return const SFNode& The current value of fontStyle.
    */
   const SFNode &getFontStyle() const { return _fontStyle; }
 
   /**
-   * @brief Acceptable node types for the fontStyle field.
    * @details Permitted X3D node types: X3DFontStyleNode
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableFontStyleNodeTypes() {
     static const std::vector<std::string> types = {"X3DFontStyleNode"};
@@ -96,28 +58,25 @@ public:
   }
 
   /**
-   * @brief Sets the value of fontStyle. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The fontStyle field can contain a FontStyle or ScreenFontStyle
    * node defining size, family, and style for presented text.
-   * @param value The new value for fontStyle.
    */
   void setFontStyle(const SFNode &value) { _fontStyle = value; }
 
   void setFontStyle(SFNode &&value) { _fontStyle = std::move(value); }
 
   /**
-   * @brief Gets the value of length. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details Array of length values for each text string in the local
    * coordinate system.
-   * @return const MFFloat& The current value of length.
    */
   const MFFloat &getLength() const { return _length; }
 
   /**
-   * @brief Sets the value of length. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Array of length values for each text string in the local
    * coordinate system.
-   * @param value The new value for length.
    */
   void setLength(const MFFloat &value) {
 
@@ -134,46 +93,36 @@ public:
   }
 
   /**
-   * @brief Non-validating write of length (runtime/reader ingest path).
-   * @details Assigns without the range check setLength() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setLength() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setLength() for range validation.
    */
   void setLengthUnchecked(const MFFloat &value) { _length = value; }
 
   /**
-   * @brief Gets the value of lineBounds. AccessType: outputOnly
+   * MFVec2f; access: outputOnly. Borrows the stored value.
    * @details Array of 2D bounding box values for each line of text in the local
    * coordinate system.
-   * @return const MFVec2f& The current value of lineBounds.
    */
   const MFVec2f &getLineBounds() const { return _lineBounds; }
 
   /**
-   * @brief Emit an output value on lineBounds. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Array of 2D bounding box values for each line of text in the local
-   * coordinate system. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * coordinate system.
    */
   void emitLineBounds(const MFVec2f &value) { _lineBounds = value; }
 
   /**
-   * @brief Gets the value of maxExtent. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Limits/compresses all text strings if max string length is longer
    * than maxExtent, as measured in local coordinate system.
-   * @return const SFFloat& The current value of maxExtent.
    */
   const SFFloat &getMaxExtent() const { return _maxExtent; }
 
   /**
-   * @brief Sets the value of maxExtent. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Limits/compresses all text strings if max string length is longer
    * than maxExtent, as measured in local coordinate system.
-   * @param value The new value for maxExtent.
    */
   void setMaxExtent(const SFFloat &value) {
 
@@ -183,108 +132,78 @@ public:
   }
 
   /**
-   * @brief Non-validating write of maxExtent (runtime/reader ingest path).
-   * @details Assigns without the range check setMaxExtent() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setMaxExtent() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setMaxExtent() for range validation.
    */
   void setMaxExtentUnchecked(const SFFloat &value) { _maxExtent = value; }
 
   /**
-   * @brief Gets the value of origin. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details origin of the text local coordinate system, in units of the
    * coordinate system in which the Text node is embedded.
-   * @return const SFVec3f& The current value of origin.
    */
   const SFVec3f &getOrigin() const { return _origin; }
 
   /**
-   * @brief Emit an output value on origin. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details origin of the text local coordinate system, in units of the
-   * coordinate system in which the Text node is embedded. outputOnly fields
-   * have no author-facing setter; a node's behavior or the runtime calls this
-   * to produce an output event. The event cascade reaches it through the
-   * reflected field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * coordinate system in which the Text node is embedded.
    */
   void emitOrigin(const SFVec3f &value) { _origin = value; }
 
   /**
-   * @brief Gets the value of solid. AccessType: initializeOnly
+   * SFBool; access: initializeOnly. Borrows the stored value.
    * @details Setting solid true means draw only one side of polygons (backface
    * culling on), setting solid false means draw both sides of polygons
    * (backface culling off).
-   * @return const SFBool& The current value of solid.
    */
   const SFBool &getSolid() const { return _solid; }
   /**
-   * @brief Data-layer write of solid (reader/init ingest path).
-   * @details solid is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setSolid().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setSolidUnchecked(const SFBool &value) { _solid = value; }
 
   /**
-   * @brief Gets the value of string. AccessType: inputOutput
+   * MFString; access: inputOutput. Borrows the stored value.
    * @details Single or multiple string values to present as Text.
-   * @return const MFString& The current value of string.
    */
   const MFString &getString() const { return _string; }
 
   /**
-   * @brief Sets the value of string. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Single or multiple string values to present as Text.
-   * @param value The new value for string.
    */
   void setString(const MFString &value) { _string = value; }
 
   void setString(MFString &&value) { _string = std::move(value); }
 
   /**
-   * @brief Gets the value of textBounds. AccessType: outputOnly
+   * SFVec2f; access: outputOnly. Borrows the stored value.
    * @details 2D bounding box value for all lines of text in the local
    * coordinate system.
-   * @return const SFVec2f& The current value of textBounds.
    */
   const SFVec2f &getTextBounds() const { return _textBounds; }
 
   /**
-   * @brief Emit an output value on textBounds. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details 2D bounding box value for all lines of text in the local
-   * coordinate system. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * coordinate system.
    */
   void emitTextBounds(const SFVec2f &value) { _textBounds = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "Text").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -324,51 +243,19 @@ private:
       throw std::out_of_range("maxExtent below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for fontStyle.
-   */
-
   SFNode _fontStyle{nullptr};
-
-  /**
-   * @brief Member variable for length.
-   */
 
   MFFloat _length{};
 
-  /**
-   * @brief Member variable for lineBounds.
-   */
-
   MFVec2f _lineBounds{};
-
-  /**
-   * @brief Member variable for maxExtent.
-   */
 
   SFFloat _maxExtent{0.0};
 
-  /**
-   * @brief Member variable for origin.
-   */
-
   SFVec3f _origin{};
-
-  /**
-   * @brief Member variable for solid.
-   */
 
   SFBool _solid{false};
 
-  /**
-   * @brief Member variable for string.
-   */
-
   MFString _string{};
-
-  /**
-   * @brief Member variable for textBounds.
-   */
 
   SFVec2f _textBounds{};
 };

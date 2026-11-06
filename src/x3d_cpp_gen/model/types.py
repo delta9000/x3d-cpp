@@ -23,7 +23,6 @@ class X3DType(Enum):
     appears in the UOM XML). ``xs:*`` members keep their XML spelling as value.
     """
 
-    # --- Single-value types ---
     SFBool = "SFBool"
     SFColor = "SFColor"
     SFColorRGBA = "SFColorRGBA"
@@ -45,7 +44,6 @@ class X3DType(Enum):
     SFVec3f = "SFVec3f"
     SFVec4d = "SFVec4d"
     SFVec4f = "SFVec4f"
-    # --- Multi-value types ---
     MFBool = "MFBool"
     MFColor = "MFColor"
     MFColorRGBA = "MFColorRGBA"
@@ -67,7 +65,6 @@ class X3DType(Enum):
     MFVec3f = "MFVec3f"
     MFVec4d = "MFVec4d"
     MFVec4f = "MFVec4f"
-    # --- XML-schema aliased types ---
     XS_NMTOKEN = "xs:NMTOKEN"
 
 
@@ -110,7 +107,7 @@ _FLOAT32_ELEMENT = {
     X3DType.SFMatrix4f, X3DType.MFMatrix4f,
 }
 
-# Scalar value-types whose copy setter does NOT also get a move overload (passing
+# Scalar value-types whose copy setter does not also get a move overload (passing
 # them by value/move is pointless; matches the original Jinja exclusion list).
 _NO_MOVE_OVERLOAD = {
     X3DType.SFBool,

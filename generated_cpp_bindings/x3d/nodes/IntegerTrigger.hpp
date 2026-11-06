@@ -1,4 +1,3 @@
-// IntegerTrigger.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,68 +26,37 @@ using namespace x3d::core;
  */
 class IntegerTrigger : public virtual X3DTriggerNode {
 public:
-  /**
-   * @brief Default constructor for IntegerTrigger
-   */
   IntegerTrigger() = default;
 
-  /**
-   * @brief Destructor for IntegerTrigger
-   */
   ~IntegerTrigger() = default;
 
-  /**
-   * @brief Get the default value for integerKey
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultIntegerKey() { return -1; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EventUtilities"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of integerKey. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details integerKey is value for output when triggered.
-   * @return const SFInt32& The current value of integerKey.
    */
   const SFInt32 &getIntegerKey() const { return _integerKey; }
 
   /**
-   * @brief Sets the value of integerKey. AccessType: inputOutput
+   * Access: inputOutput.
    * @details integerKey is value for output when triggered.
-   * @param value The new value for integerKey.
    */
   void setIntegerKey(const SFInt32 &value) { _integerKey = value; }
 
   /**
-   * @brief Event handler invoked when an event is received on set_boolean.
-   * AccessType: inputOnly
+   * SFBool; access: inputOnly.
    * @details If input event set_boolean is true, trigger output of integer
    * value. Dispatches to the handler registered via setOnSet_booleanHandler();
-   *          a no-op if none is set. The event cascade reaches this through the
-   *          node's reflected field table, so routing is node-agnostic.
-   * @param value The value of the received event.
+   *          a no-op if none is set.
    */
   void onSet_boolean(const SFBool &value) {
     if (_onSet_booleanHandler)
@@ -96,76 +64,47 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on set_boolean.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_booleanHandler(std::function<void(const SFBool &)> handler) {
     _onSet_booleanHandler = std::move(handler);
   }
 
   /**
-   * @brief Gets the value of triggerValue. AccessType: outputOnly
+   * SFInt32; access: outputOnly. Borrows the stored value.
    * @details triggerValue provides integer event output matching integerKey
    * when true set_boolean received.
-   * @return const SFInt32& The current value of triggerValue.
    */
   const SFInt32 &getTriggerValue() const { return _triggerValue; }
 
   /**
-   * @brief Emit an output value on triggerValue. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details triggerValue provides integer event output matching integerKey
-   * when true set_boolean received. outputOnly fields have no author-facing
-   * setter; a node's behavior or the runtime calls this to produce an output
-   * event. The event cascade reaches it through the reflected field table so
-   * producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * when true set_boolean received.
    */
   void emitTriggerValue(const SFInt32 &value) { _triggerValue = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "IntegerTrigger").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for integerKey.
-   */
-
   SFInt32 _integerKey{-1};
 
   /**
-   * @brief Registered event handler for set_boolean (inputOnly); empty until
-   * set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFBool &)> _onSet_booleanHandler{};
-
-  /**
-   * @brief Member variable for triggerValue.
-   */
 
   SFInt32 _triggerValue{};
 };

@@ -1,4 +1,3 @@
-// CollidableShape.cpp
 #include "x3d/nodes/CollidableShape.hpp"
 
 namespace x3d::nodes {

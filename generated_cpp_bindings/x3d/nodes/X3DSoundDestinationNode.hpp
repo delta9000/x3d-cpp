@@ -1,4 +1,3 @@
-// X3DSoundDestinationNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,90 +26,50 @@ using namespace x3d::core;
  */
 class X3DSoundDestinationNode : public virtual X3DSoundNode {
 public:
-  /**
-   * @brief Default constructor for X3DSoundDestinationNode
-   */
   X3DSoundDestinationNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DSoundDestinationNode
-   */
   virtual ~X3DSoundDestinationNode() = default;
 
-  /**
-   * @brief Get the default value for channelCountMode
-   * @return ChannelCountModeChoices The default value
-   */
   static ChannelCountModeChoices getDefaultChannelCountMode() {
     return ChannelCountModeChoices::MAX;
   }
 
-  /**
-   * @brief Get the default value for channelInterpretation
-   * @return ChannelInterpretationChoices The default value
-   */
   static ChannelInterpretationChoices getDefaultChannelInterpretation() {
     return ChannelInterpretationChoices::SPEAKERS;
   }
 
-  /**
-   * @brief Get the default value for gain
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultGain() { return 1; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Sound"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of channelCount. AccessType: outputOnly
+   * SFInt32; access: outputOnly. Borrows the stored value.
    * @details
-   * @return const SFInt32& The current value of channelCount.
    */
   const SFInt32 &getChannelCount() const { return _channelCount; }
 
   /**
-   * @brief Emit an output value on channelCount. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitChannelCount(const SFInt32 &value) { _channelCount = value; }
 
   /**
-   * @brief Gets the value of channelCountMode. AccessType: inputOutput
+   * ChannelCountModeChoices; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const ChannelCountModeChoices& The current value of
-   * channelCountMode.
    */
   const ChannelCountModeChoices &getChannelCountMode() const {
     return _channelCountMode;
   }
 
   /**
-   * @brief Sets the value of channelCountMode. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for channelCountMode.
    */
   void setChannelCountMode(const ChannelCountModeChoices &value) {
 
@@ -118,19 +77,17 @@ public:
   }
 
   /**
-   * @brief Gets the value of channelInterpretation. AccessType: inputOutput
+   * ChannelInterpretationChoices; access: inputOutput. Borrows the stored
+   * value.
    * @details
-   * @return const ChannelInterpretationChoices& The current value of
-   * channelInterpretation.
    */
   const ChannelInterpretationChoices &getChannelInterpretation() const {
     return _channelInterpretation;
   }
 
   /**
-   * @brief Sets the value of channelInterpretation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for channelInterpretation.
    */
   void setChannelInterpretation(const ChannelInterpretationChoices &value) {
 
@@ -138,115 +95,68 @@ public:
   }
 
   /**
-   * @brief Gets the value of gain. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of gain.
    */
   const SFFloat &getGain() const { return _gain; }
 
   /**
-   * @brief Sets the value of gain. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for gain.
    */
   void setGain(const SFFloat &value) { _gain = value; }
 
   /**
-   * @brief Gets the value of isActive. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of isActive.
    */
   const SFBool &getIsActive() const { return _isActive; }
 
   /**
-   * @brief Emit an output value on isActive. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitIsActive(const SFBool &value) { _isActive = value; }
 
   /**
-   * @brief Gets the value of mediaDeviceID. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFString& The current value of mediaDeviceID.
    */
   const SFString &getMediaDeviceID() const { return _mediaDeviceID; }
 
   /**
-   * @brief Sets the value of mediaDeviceID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for mediaDeviceID.
    */
   void setMediaDeviceID(const SFString &value) { _mediaDeviceID = value; }
 
   void setMediaDeviceID(SFString &&value) { _mediaDeviceID = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DSoundDestinationNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for channelCount.
-   */
-
   SFInt32 _channelCount{};
 
-  /**
-   * @brief Member variable for channelCountMode.
-   */
-
   ChannelCountModeChoices _channelCountMode{ChannelCountModeChoices::MAX};
-
-  /**
-   * @brief Member variable for channelInterpretation.
-   */
 
   ChannelInterpretationChoices _channelInterpretation{
       ChannelInterpretationChoices::SPEAKERS};
 
-  /**
-   * @brief Member variable for gain.
-   */
-
   SFFloat _gain{1};
 
-  /**
-   * @brief Member variable for isActive.
-   */
-
   SFBool _isActive{};
-
-  /**
-   * @brief Member variable for mediaDeviceID.
-   */
 
   SFString _mediaDeviceID{};
 };

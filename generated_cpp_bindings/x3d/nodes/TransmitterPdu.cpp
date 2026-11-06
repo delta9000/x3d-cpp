@@ -1,4 +1,3 @@
-// TransmitterPdu.cpp
 #include "x3d/nodes/TransmitterPdu.hpp"
 
 namespace x3d::nodes {

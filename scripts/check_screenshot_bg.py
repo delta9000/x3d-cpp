@@ -2,7 +2,7 @@
 """Background-dominance check for a P6 PPM screenshot.
 
 Reports the fraction of pixels within `--tol` (per 0-255 channel) of a reference
-background colour, and asserts it against `--min` / `--max`. Used by the RND-1
+background colour, and asserts it against `--min` / `--max`. Used by the
 GL alpha-cutout gate in scripts/validate-examples.sh: a MASK panel whose alpha is
 below the cutoff must be fully discarded (frame ~= 100% background), while the
 opaque control panel must render (background clearly below 100%). Robust to

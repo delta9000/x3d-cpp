@@ -1,4 +1,3 @@
-// CollidableOffset.cpp
 #include "x3d/nodes/CollidableOffset.hpp"
 
 namespace x3d::nodes {

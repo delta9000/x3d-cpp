@@ -1,4 +1,3 @@
-// FogCoordinate.cpp
 #include "x3d/nodes/FogCoordinate.hpp"
 
 namespace x3d::nodes {

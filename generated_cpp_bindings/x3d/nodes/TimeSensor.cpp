@@ -1,4 +1,3 @@
-// TimeSensor.cpp
 #include "x3d/nodes/TimeSensor.hpp"
 
 namespace x3d::nodes {

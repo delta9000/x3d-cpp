@@ -1,5 +1,4 @@
 // tools/x3d_cli.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // x3d — thin CLI over the x3d::sdk façade.
 //
 // Shape: x3d <subcommand> [args]
@@ -19,7 +18,6 @@
 //           (.wrl is not supported by VrmlWriter which emits ClassicVRML only;
 //            see limitation note in convert --help).
 //           Override with -f xml|vrml|json.
-// ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
 // Generated node headers needed for concrete-type validation checks.
@@ -27,7 +25,7 @@
 #include "x3d/nodes/IndexedFaceSet.hpp"
 #include "x3d/nodes/IndexedLineSet.hpp"
 
-// STL writer (binary-STL export; core, NOT ext-gated).
+// STL writer (binary-STL export; core, not ext-gated).
 #include "stl_write.hpp"
 
 // sim subcommand: full-runtime wiring helper + field-change tracer.
@@ -63,7 +61,7 @@ namespace sdk = x3d::sdk;
 
 using namespace x3d::core;
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// helpers
 
 namespace {
 
@@ -97,7 +95,7 @@ void surfaceWarnings(const sdk::X3DDocument &doc) {
         std::cerr << "warning: proto/inline: " << w.detail << "\n";
 }
 
-// ─── output format tag ───────────────────────────────────────────────────────
+// output format tag
 
 enum class OutFmt { XML, ClassicVRML, JSON, Unknown };
 
@@ -119,7 +117,7 @@ OutFmt fmtFromFlag(const std::string &f) {
     return OutFmt::Unknown;
 }
 
-// ─── subcommand registry ─────────────────────────────────────────────────────
+// subcommand registry
 
 // A subcommand: name + one-liner + a handler.
 // The handler receives the argv tail after the subcommand name.
@@ -130,7 +128,7 @@ struct SubCmd {
     std::function<int(const std::vector<std::string> &)> run;
 };
 
-// ─── convert ─────────────────────────────────────────────────────────────────
+// convert
 
 int cmdConvert(const std::vector<std::string> &args) {
     // x3d convert <in> [-o <out>] [-f xml|vrml|json]
@@ -271,11 +269,11 @@ int cmdConvert(const std::vector<std::string> &args) {
     return 0;
 }
 
-// ─── validate ────────────────────────────────────────────────────────────────
+// validate
 
 // Profile-fit machinery lives in x3d-cli/profile_fit.hpp (included above).
 
-// ─── JSON helpers ─────────────────────────────────────────────────────────────
+// JSON helpers
 
 namespace json_out {
 
@@ -332,13 +330,13 @@ std::string buildReport(const std::string &file, bool valid,
 
 } // namespace json_out
 
-// ─── conformance_checks ──────────────────────────────────────────────────────
+// conformance_checks
 // Targeted semantic conformance checks that mirror X3DJSAIL's -validate output.
 // Each check populates `diags` with one or more json_out::Diag entries.
 
 namespace conformance_checks {
 
-// ── Check 1: Duplicate <meta> statements ────────────────────────────────────
+// Check 1: Duplicate <meta> statements
 // X3DJSAIL: WARNING_MESSAGE: duplicate statement found: <meta name='X' content='Y'/>
 // A <head> must not contain two <meta> elements with the same (name, content)
 // pair — or more broadly the same name value.  We flag any pair with identical
@@ -358,7 +356,7 @@ void checkDuplicateMeta(const sdk::X3DDocument &doc,
     }
 }
 
-// ── Check 2: ProtoDeclare / ExternProtoDeclare with no ProtoInstance ─────────
+// Check 2: ProtoDeclare / ExternProtoDeclare with no ProtoInstance
 // X3DJSAIL: WARNING_PROTOINSTANCE_NOT_FOUND, ProtoDeclare/ExternProtoDeclare X
 // has no corresponding ProtoInstance attached to the scene graph.  Best practice:
 // every declared prototype should have at least one instantiation.
@@ -384,7 +382,7 @@ void checkUnusedProtoDeclare(const sdk::X3DDocument &doc,
     }
 }
 
-// ── Check 3: IndexedFaceSet / IndexedLineSet coord with empty coordIndex ─────
+// Check 3: IndexedFaceSet / IndexedLineSet coord with empty coordIndex
 // X3DJSAIL: InvalidFieldException: IndexedFaceSet/IndexedLineSet containing
 // Coordinate node with N values must also include coordIndex field.
 // When a coord Coordinate node is present with point data but coordIndex is
@@ -463,7 +461,7 @@ void checkIndexedGeometryCoordIndex(const sdk::X3DDocument &doc,
     }
 }
 
-// ── Run all conformance checks ───────────────────────────────────────────────
+// Run all conformance checks
 void runAll(const sdk::X3DDocument &doc, std::vector<json_out::Diag> &diags) {
     checkDuplicateMeta(doc, diags);
     checkUnusedProtoDeclare(doc, diags);
@@ -472,7 +470,7 @@ void runAll(const sdk::X3DDocument &doc, std::vector<json_out::Diag> &diags) {
 
 } // namespace conformance_checks
 
-// ─── cmdValidate ─────────────────────────────────────────────────────────────
+// cmdValidate
 
 int cmdValidate(const std::vector<std::string> &args) {
     // x3d validate <in> [--json]
@@ -535,7 +533,7 @@ int cmdValidate(const std::vector<std::string> &args) {
         return 1;
     }
 
-    // ── Parse ────────────────────────────────────────────────────────────────
+    // Parse
     sdk::X3DDocument doc;
     try {
         doc = sdk::parseFile(inPath);
@@ -544,7 +542,7 @@ int cmdValidate(const std::vector<std::string> &args) {
         return 2;
     }
 
-    // ── Collect diagnostics ───────────────────────────────────────────────────
+    // Collect diagnostics
     std::vector<json_out::Diag> diags;
 
     // 1. Range diagnostics.
@@ -575,7 +573,7 @@ int cmdValidate(const std::vector<std::string> &args) {
     // 4. Conformance checks (X3DJSAIL-equivalent semantic validation).
     conformance_checks::runAll(doc, diags);
 
-    // ── Profile-fit ───────────────────────────────────────────────────────────
+    // Profile-fit
     profile_fit::ComponentUsage usage = profile_fit::sceneComponentUsage(doc.scene);
     const profile_fit::ProfileDef *minProf =
         profile_fit::findMinimalProfile(usage, &doc.scene);
@@ -622,7 +620,7 @@ int cmdValidate(const std::vector<std::string> &args) {
     const bool valid = diags.empty();
     const int exitCode = valid ? 0 : 3;
 
-    // ── Output ────────────────────────────────────────────────────────────────
+    // Output
     if (jsonMode) {
         std::cout << json_out::buildReport(inPath, valid, profileFitName, diags);
     } else {
@@ -653,7 +651,7 @@ int cmdValidate(const std::vector<std::string> &args) {
     return exitCode;
 }
 
-// ─── cmdExtract ──────────────────────────────────────────────────────────────
+// cmdExtract
 
 int cmdExtract(const std::vector<std::string> &args) {
     // x3d extract <in> [-o out.stl]
@@ -815,7 +813,7 @@ int cmdExtract(const std::vector<std::string> &args) {
     return 0;
 }
 
-// ─── cmdCanonicalize ─────────────────────────────────────────────────────────
+// cmdCanonicalize
 
 int cmdCanonicalize(const std::vector<std::string> &args) {
     // x3d canonicalize <in> [-o out.x3d]
@@ -901,7 +899,7 @@ int cmdCanonicalize(const std::vector<std::string> &args) {
     return 0;
 }
 
-// ─── cmdSim ──────────────────────────────────────────────────────────────────
+// cmdSim
 
 namespace sim_cmd {
 
@@ -1080,7 +1078,7 @@ int cmdSim(const std::vector<std::string> &args) {
         }
     }
 
-    // ── Parse the scene ────────────────────────────────────────────────────────
+    // Parse the scene
     sdk::X3DDocument doc;
     try {
         doc = sdk::parseFile(inPath);
@@ -1090,7 +1088,7 @@ int cmdSim(const std::vector<std::string> &args) {
     }
     surfaceWarnings(doc);
 
-    // ── Wire the full behavior runtime ─────────────────────────────────────────
+    // Wire the full behavior runtime
     sdk::X3DExecutionContext ctx;
     x3d::sim::RuntimeWiring wiring;
     try {
@@ -1108,7 +1106,7 @@ int cmdSim(const std::vector<std::string> &args) {
         std::cerr << "note: enrolled " << wiring.scriptsEnrolled
                   << " Script node(s)\n";
 
-    // ── Build the tracer ───────────────────────────────────────────────────────
+    // Build the tracer
     // A failure in buildNodeIndex must yield exit 2 + clean stderr, not an
     // unhandled exception. Returned (not std::exit) so destructors run.
     std::optional<x3d::sim::FieldTracer> tracer;
@@ -1119,7 +1117,7 @@ int cmdSim(const std::vector<std::string> &args) {
         return 2;
     }
 
-    // ── Tick loop ──────────────────────────────────────────────────────────────
+    // Tick loop
     std::vector<x3d::sim::TickTrace> traces;
     traces.reserve(static_cast<size_t>(ticks) + 1);
     const double dt = 1.0 / fps;
@@ -1154,7 +1152,7 @@ int cmdSim(const std::vector<std::string> &args) {
         return 2;
     }
 
-    // ── Emit the trace ─────────────────────────────────────────────────────────
+    // Emit the trace
     if (jsonMode) {
         std::string s;
         s += "[\n";
@@ -1193,16 +1191,12 @@ int cmdSim(const std::vector<std::string> &args) {
     return 0;
 }
 
-// ─── top-level dispatch ───────────────────────────────────────────────────────
+// top-level dispatch
 
 static const SubCmd kCmds[] = {
-    // Task A: convert
     {"convert",     "Convert an X3D scene between encodings",       cmdConvert},
-    // Task B: validate
     {"validate",    "Validate an X3D scene and report diagnostics", cmdValidate},
-    // Task C: extract
     {"extract",     "Export X3D geometry to a binary STL file",     cmdExtract},
-    // Task D: canonicalize
     {"canonicalize","Emit the X3D Canonical Form (X3DC14N)",        cmdCanonicalize},
     // sim: headless behavior simulation / field-change trace
     {"sim",         "Headless behavior simulation + field-change trace", cmdSim},

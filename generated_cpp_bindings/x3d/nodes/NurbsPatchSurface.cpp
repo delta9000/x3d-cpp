@@ -1,4 +1,3 @@
-// NurbsPatchSurface.cpp
 #include "x3d/nodes/NurbsPatchSurface.hpp"
 
 namespace x3d::nodes {

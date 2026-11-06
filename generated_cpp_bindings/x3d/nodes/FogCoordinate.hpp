@@ -1,4 +1,3 @@
-// FogCoordinate.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,51 +24,27 @@ using namespace x3d::core;
  */
 class FogCoordinate : public virtual X3DGeometricPropertyNode {
 public:
-  /**
-   * @brief Default constructor for FogCoordinate
-   */
   FogCoordinate() = default;
 
-  /**
-   * @brief Destructor for FogCoordinate
-   */
   ~FogCoordinate() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "fogCoord"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EnvironmentalEffects"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 4; }
 
   /**
-   * @brief Gets the value of depth. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details depth contains a set of 3D coordinate (triplet) point values.
-   * @return const MFFloat& The current value of depth.
    */
   const MFFloat &getDepth() const { return _depth; }
 
   /**
-   * @brief Sets the value of depth. AccessType: inputOutput
+   * Access: inputOutput.
    * @details depth contains a set of 3D coordinate (triplet) point values.
-   * @param value The new value for depth.
    */
   void setDepth(const MFFloat &value) {
 
@@ -86,39 +61,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of depth (runtime/reader ingest path).
-   * @details Assigns without the range check setDepth() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setDepth() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setDepth() for range validation.
    */
   void setDepthUnchecked(const MFFloat &value) { _depth = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "FogCoordinate").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -144,10 +103,6 @@ private:
         throw std::out_of_range("depth above maximum of 1");
     }
   }
-
-  /**
-   * @brief Member variable for depth.
-   */
 
   MFFloat _depth{};
 };
