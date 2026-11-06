@@ -5,7 +5,6 @@
 // PositionInterpolator, whose value_changed ROUTEs to a Transform's translation.
 // This exercises every layer: clock -> active-node update -> outputOnly emit ->
 // cascade -> inputOnly handler -> outputOnly emit -> cascade -> inputOutput sink.
-//
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
@@ -17,7 +16,6 @@
 #include "x3d/nodes/TimeSensor.hpp"
 #include "x3d/nodes/Transform.hpp"
 
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -27,17 +25,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
@@ -74,15 +61,13 @@ void test_animation_chain() {
   interpSys.attach(interp.get(), ctx);
 
   ctx.tick(0.5);
-  check(veq(tr(target), 5, 0, 0), "tick(0.5) animates translation to (5,0,0)");
+  CHECK_MESSAGE((veq(tr(target), 5, 0, 0)), ("tick(0.5) animates translation to (5,0,0)"));
 
   ctx.tick(0.25);
-  check(veq(tr(target), 2.5f, 0, 0),
-        "tick(0.25) animates translation to (2.5,0,0)");
+  CHECK_MESSAGE((veq(tr(target), 2.5f, 0, 0)), ("tick(0.25) animates translation to (2.5,0,0)"));
 
   ctx.tick(1.0);
-  check(veq(tr(target), 10, 0, 0),
-        "tick(1.0) animates translation to (10,0,0) (clamped end)");
+  CHECK_MESSAGE((veq(tr(target), 10, 0, 0)), ("tick(1.0) animates translation to (10,0,0) (clamped end)"));
 }
 
 } // namespace
@@ -90,10 +75,5 @@ void test_animation_chain() {
 TEST_CASE("animation_test") {
   test_animation_chain();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all animation tests passed\n";
   return;
 }

@@ -123,7 +123,7 @@ TEST_CASE("LinePickSensor honors objectType filtering") {
   r.ctx.tick(1.0);
   CHECK(sensor->getIsActive() == false);
 
-  // 'GEOMETRY' matches the geometry-bearing target.
+  // '`GEOMETRY`' matches the geometry-bearing target.
   setF(sensor, "objectType", std::any(MFString{"GEOMETRY"}));
   r.ctx.tick(2.0);
   CHECK(sensor->getIsActive() == true);

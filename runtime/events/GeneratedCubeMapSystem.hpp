@@ -1,11 +1,9 @@
 // GeneratedCubeMapSystem.hpp — §34.4.2 GeneratedCubeMapTexture update modes.
-//
-// The consumer renders a generated cube map when its `update` is not NONE
-// (TextureRef::generatedCube). §34.4.2: NEXT_FRAME_ONLY renders the next frame
-// once, then `update` "is set to NONE at the start of the next frame". This
+// The consumer renders a generated cube map when its `update` is not `NONE`
+// (TextureRef::generatedCube). §34.4.2: `NEXT_FRAME_ONLY` renders the next frame
+// once, then `update` "is set to `NONE` at the start of the next frame". This
 // System performs that reset as an input event to the node, so the field
 // changes and update_changed reaches ROUTEs.
-//
 // "The next frame" is the frame the extractor emits after the tick in which
 // the value took effect. A write during tick N is drawn after tick N and reset
 // at the start of tick N + 1. A value present before the first tick (authored,
@@ -57,7 +55,7 @@ public:
 private:
   static constexpr std::uint64_t kUnarmed = ~std::uint64_t{0};
 
-  // Record the tick whose frame first shows NEXT_FRAME_ONLY.
+  // Record the tick whose frame first shows `NEXT_FRAME_ONLY`.
   void arm(x3d::nodes::GeneratedCubeMapTexture *cube, X3DExecutionContext &ctx) {
     using Update = x3d::core::GeneratedCubeMapTextureUpdateChoices;
     if (cube->getUpdate() != Update::NEXT_FRAME_ONLY) {

@@ -1,7 +1,7 @@
 #include "doctest/doctest.h"
 // interactive_wiring_test.cpp — headless interaction acceptance gate (no GL).
 // Proves attachInteractive wires both systems so that (a) a click fires a
-// TouchSensor through the cascade, (b) WASD drives FLY navigation, and (c) a
+// TouchSensor through the cascade, (b) WASD drives `FLY` navigation, and (c) a
 // grab suppresses nav drag (arbitration ordering: pointing before nav).
 #include "X3DSceneBridge.hpp"
 #include "X3DDocument.hpp"
@@ -14,7 +14,6 @@
 #include "Ray.hpp"
 #include <any>
 #include <cmath>
-#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -23,11 +22,6 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-static int failures = 0;
-static void check(bool c, const char *what) {
-  if (!c) { std::cerr << "FAIL: " << what << "\n"; ++failures; }
-  else    { std::cout << "ok: " << what << "\n"; }
-}
 static bool sameMatrix(const Mat4 &a, const Mat4 &b) {
   for (int i = 0; i < 16; ++i) if (std::fabs(a.m[i] - b.m[i]) > 1e-6f) return false;
   return true;
@@ -62,31 +56,31 @@ TEST_CASE("interactive_wiring_test") {
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(scene);
   auto nav = attachInteractive(scene, ctx);
-  check(nav != nullptr, "attachInteractive returns the NavigationSystem");
+  CHECK_MESSAGE((nav != nullptr), ("attachInteractive returns the NavigationSystem"));
 
   // (a) Click on the box fires the TouchSensor through the cascade.
   ctx.setPointerPresent(true);
   ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}}); // at the box
   ctx.setPointerButton(true);
   ctx.tick(1.0);                                // grab begins
-  check(sensor->getIsActive() == true, "(a) TouchSensor isActive on click");
+  CHECK_MESSAGE((sensor->getIsActive() == true), ("(a) TouchSensor isActive on click"));
   ctx.setPointerButton(false);
   ctx.tick(2.0);                                // release while over ⇒ touchTime
-  check(std::fabs(sensor->getTouchTime() - 2.0) < 1e-9, "(a) touchTime == release time");
+  CHECK_MESSAGE((std::fabs(sensor->getTouchTime() - 2.0) < 1e-9), ("(a) touchTime == release time"));
 
-  // (b) FLY + forward key moves the camera.
+  // (b) `FLY` + forward key moves the camera.
   nav->setForcedMode(NavigationSystem::Mode::Fly);
   ctx.setPointerPresent(false);
   ctx.tick(3.0);
   Mat4 beforeNav = ctx.viewMatrix();
   ctx.setKey(NavigationSystem::kKeyForward, true);
   ctx.tick(3.5);
-  check(!sameMatrix(beforeNav, ctx.viewMatrix()), "(b) WASD drives FLY navigation");
+  CHECK_MESSAGE((!sameMatrix(beforeNav, ctx.viewMatrix())), ("(b) WASD drives FLY navigation"));
 
-  // (c) Arbitration invariant: a drag that begins on the TouchSensor must NOT
+  // (c) Arbitration invariant: a drag that begins on the TouchSensor must not
   // rotate the camera — the sensor grab claims the pointer (sets
-  // pointerConsumedBySensor) and NavigationSystem honors it. NOTE: this does
-  // NOT discriminate addSystem order — tick() re-runs all systems until cascade
+  // pointerConsumedBySensor) and NavigationSystem honors it. this does
+  // not discriminate addSystem order — tick() re-runs all systems until cascade
   // quiescence and only resets the flag at tick start, so PointingSensorSystem's
   // claim in one iteration is visible to nav in a later one regardless of order
   // (verified by reversing the order: still suppressed). attachInteractive still
@@ -102,9 +96,7 @@ TEST_CASE("interactive_wiring_test") {
   ctx.tick(4.5);                                  // grab begins; drag origin set
   ctx.setPointer(Ray{{0.3f, 0, 10}, {0, 0, -1}}); // move while grabbed
   ctx.tick(5.0);
-  check(sameMatrix(beforeDrag, ctx.viewMatrix()),
-        "(c) drag on a sensor does not rotate the camera (grab consumes pointer)");
+  CHECK_MESSAGE((sameMatrix(beforeDrag, ctx.viewMatrix())), ("(c) drag on a sensor does not rotate the camera (grab consumes pointer)"));
 
-  CHECK(failures == 0);
   return;
 }

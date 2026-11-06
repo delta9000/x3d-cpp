@@ -1,12 +1,11 @@
 // X3DTimeDependentSystem.hpp
 // Reusable time-dependent lifecycle (x3d::nodes::X3DTimeDependentNode) as a System base.
 // Implements the X3D clock state machine shared by every time-dependent node
-// (TimeSensor here; AudioClip/MovieTexture/Sound layer on later): enabled
+// (TimeSensor, media and sound systems): enabled
 // gating, startTime/stopTime activation, loop + cycle accounting, and
 // pause/resume with elapsed-time freezing. Concrete systems (see
 // TimeSensorSystem) supply the per-tick fraction/cycle outputs; this base owns
 // the activation/pause/deactivation edges and the elapsed-time clock.
-//
 // State lives in the System keyed by node pointer — never on the node (the
 // node + reflection FieldTable stays the source of truth; outputs flow back
 // onto the node's outputOnly fields through the cascade). All writes go through
@@ -90,7 +89,7 @@ protected:
     // requires set_startTime events to be ignored.
     double activeStartTime = 0.0;
     // True once the node completed its run (single-shot end / loop-end). A
-    // completed node must NOT auto-restart until a NEW startTime is set
+    // completed node must not auto-restart until a new startTime is set
     // (§8.2.4.3); the activation gate skips while startTime == completedStartTime.
     bool completed = false;
     double completedStartTime = 0.0;
@@ -99,7 +98,7 @@ protected:
     long lastCycleAnnounced = -1;
   };
 
-  // --- timing reads (overridable for nodes that spell these differently) ---
+  // timing reads (overridable for nodes that spell these differently)
   virtual bool readEnabled(x3d::nodes::X3DTimeDependentNode *node) const {
     (void)node;
     return true; // base x3d::nodes::X3DTimeDependentNode has no `enabled`; default on.
@@ -127,11 +126,8 @@ protected:
 
   /**
    * @brief Derived hook: emit the node's continuous outputs for this tick.
-   * @param node    The time-dependent node.
    * @param frac    Cycle fraction in [0,1] (already loop-wrapped / clamped).
-   * @param now     Current clock time.
    * @param elapsed Active+unpaused seconds since activation.
-   * @param ctx     Execution context to post events into.
    * @details Called only while active and not paused. The base has already
    *          emitted isActive/cycleTime/elapsedTime edges; derived systems add
    *          fraction_changed/time (TimeSensor) etc. elapsedTime is emitted by
@@ -152,7 +148,7 @@ protected:
    * @param cycleStart The time at the beginning of the cycle just entered
    *                   (== startTime + cycleIndex*cycleInterval; == startTime at
    *                   activation). This is the value the spec requires for the
-   *                   cycleTime event — NOT the tick's current `now`.
+   *                   cycleTime event — not the tick's current `now`.
    * @details Called by the base each time a new cycle starts (including the
    *          very first, at activation). Default no-op; TimeSensor emits its
    *          cycleTime outputOnly here.
@@ -194,9 +190,7 @@ private:
     return true;
   }
 
-  /**
-   * @brief Run one tick of the lifecycle for a single node.
-   */
+
   void advance(x3d::nodes::X3DTimeDependentNode *node, State &st, double now,
                X3DExecutionContext &ctx) {
     const bool enabled = readEnabled(node);
@@ -208,7 +202,7 @@ private:
     // Raw cycle drives the non-looping completion threshold (cycle <= 0 must
     // deactivate after one tick: sinceStart >= cycle is immediately true).
     // gCycle is the divide-by-zero-guarded value used for ALL index / fraction
-    // / cycle-start division math (RTC-1).
+    // / cycle-start division math.
     const double cycle = effectiveCycle(node);
     const double gCycle = guardCycle(cycle);
     if (st.active && gCycle != st.cycleInterval) {
@@ -224,15 +218,15 @@ private:
       st.cycleInterval = gCycle;
     }
 
-    // --- deactivation: disabled, or a real stopTime has been reached ---
+    // deactivation: disabled, or a real stopTime has been reached
     if (st.active) {
       const bool stoppedByDisable = !enabled;
       const bool stoppedByStopTime = stopTime > startTime && stopTime <= now;
       // §8.2.4.3: a node "may be restarted while active by sending a
       // set_stopTime event equal to the current time … and a set_startTime
       // event", processed as set_stopTime then set_startTime. Restart in place:
-      // it stays active (no isActive FALSE/TRUE pair in one timestamp) and a new
-      // run begins at that instant (CONF-CRITIC-1). The pair usually arrives by
+      // it stays active (no isActive `FALSE`/`TRUE` pair in one timestamp) and a new
+      // run begins at that instant. The pair usually arrives by
       // ROUTE during a cascade, after this System ran, so it is recognised on
       // the next tick by stopTime == startTime rather than by == now.
       const double liveStart = readStartTime(node);
@@ -254,7 +248,7 @@ private:
         // Spec 8.4.1: a TimeSensor is guaranteed to generate final time and
         // fraction_changed events. On the disable/stop edge, evaluate and send
         // this tick's continuous outputs (time/fraction_changed/elapsedTime)
-        // BEFORE isActive=FALSE (RTC-4). Skip for paused (frozen) sensors.
+        // before isActive=`FALSE`. Skip for paused (frozen) sensors.
         if (!st.paused) {
           // §8.4.1: a scheduled stop is evaluated at stopTime; a past
           // set_stopTime received now is evaluated at the receiving tick.
@@ -273,9 +267,9 @@ private:
       }
     }
 
-    // --- activation edge ---
+    // activation edge
     if (!st.active) {
-      // A completed run does not auto-restart: only a NEW startTime re-arms it
+      // A completed run does not auto-restart: only a new startTime re-arms it
       // (§8.2.4.3). Without this a finished single-shot would re-activate (and
       // re-complete) every tick, churning spurious events and overwriting the
       // frozen final outputs.
@@ -290,18 +284,18 @@ private:
       }
     }
 
-    // --- pause / resume edges (only meaningful while active) ---
+    // pause / resume edges (only meaningful while active)
     handlePauseResume(node, st, now, ctx);
 
     if (st.paused) {
       return; // frozen: no continuous outputs while paused
     }
 
-    // --- non-looping completion: run to the END of the CURRENT cycle ---
-    // 8.2.4.3: an active node with loop FALSE becomes inactive at the end of the
-    // current cycle, NOT immediately. The current cycle is the one whose start
+    // non-looping completion: run to the end of the current cycle
+    // 8.2.4.3: an active node with loop `FALSE` becomes inactive at the end of the
+    // current cycle, not immediately. The current cycle is the one whose start
     // was last announced (st.lastCycleAnnounced): a fresh single-shot is cycle
-    // 0; a node that looped then had set_loop FALSE finishes whichever cycle it
+    // 0; a node that looped then had set_loop `FALSE` finishes whichever cycle it
     // is in. A degenerate cycleInterval <= 0 still completes after one tick.
     const double cycleSinceStart = now - st.cycleBase;
     if (!readLoop(node)) {
@@ -309,7 +303,7 @@ private:
           cycle > 0.0 ? (st.lastCycleAnnounced + 1) * gCycle : 0.0;
       if (cycleSinceStart >= endOfCurrentCycle) {
         // Emit the final fraction (1.0) + cycle-boundary elapsed, then
-        // deactivate. TDN-7: the final `time` carries the exact cycle boundary
+        // deactivate. the final `time` carries the exact cycle boundary
         // (cycleBase + endOfCurrentCycle), not the (possibly overshooting) tick
         // now. The re-activation guard (st.completed) keeps this final value
         // frozen on subsequent ticks.
@@ -324,16 +318,16 @@ private:
       }
     }
 
-    // --- cycle boundary detection (loop): announce each new cycle once ---
-    // Index via the guarded cycle (RTC-1: never divide by a raw cycle <= 0).
+    // cycle boundary detection (loop): announce each new cycle once
+    // Index via the guarded cycle (never divide by a raw cycle <= 0).
     const long cycleIndex = static_cast<long>(cycleSinceStart / gCycle);
     if (cycleIndex != st.lastCycleAnnounced) {
       st.lastCycleAnnounced = cycleIndex;
-      // cycleTime is the current cycle's start, not the tick's `now` (RTC-3).
+      // cycleTime is the current cycle's start, not the tick's `now`.
       emitCycleTime(node, st.cycleBase + cycleIndex * gCycle, ctx);
     }
 
-    // --- continuous outputs ---
+    // continuous outputs
     const double frac =
         fractionWithBoundary(cycleSinceStart, gCycle, startTime, now,
                              readLoop(node));
@@ -358,7 +352,7 @@ private:
     st.lastCycleAnnounced = 0;
     emit<SFBool>(ctx, node, "isActive", true);
     // The first cycle begins at startTime: announce it with the cycle-start
-    // time (== startTime), not the activation tick's `now` (RTC-3).
+    // time (== startTime), not the activation tick's `now`.
     emitCycleTime(node, startTime, ctx);
   }
 
@@ -392,13 +386,13 @@ private:
         emit<SFBool>(ctx, node, "isPaused", true);
         // §8.2.4.4: pauseTime_changed at the pause edge, "with the timestamp
         // indicating when pausing occurred" — the simulation time now, not the
-        // authored field value (CONF-TDN1V). Emitting the inputOutput on its
+        // authored field value. Emitting the inputOutput on its
         // canonical name fans out to its *_changed ROUTEs.
         emit<SFTime>(ctx, node, "pauseTime", static_cast<SFTime>(now));
       }
     } else {
       // Resume when resumeTime is in (pauseTime, now]. §8.2.4.4 requires
-      // resumeTime STRICTLY greater than pauseTime (symmetric with the strict
+      // resumeTime strictly greater than pauseTime (symmetric with the strict
       // pause guard above), so resumeTime == pauseTime must not resume.
       if (resumeTime <= now && resumeTime > pauseTime) {
         st.paused = false;
@@ -410,7 +404,7 @@ private:
         st.lastCycleTick += pausedSpan;
         emit<SFBool>(ctx, node, "isPaused", false);
         // §8.2.4.4: resumeTime_changed "reporting the simulation time when the
-        // node was resumed" (TDN-2, CONF-TDN1V) — now, as at the pause edge.
+        // node was resumed"  — now, as at the pause edge.
         emit<SFTime>(ctx, node, "resumeTime", static_cast<SFTime>(now));
       }
     }
@@ -443,7 +437,7 @@ private:
   // Spec 8.4.1 fraction_changed: f = fractionalPart((now-startTime)/cycle);
   //   if (f == 0.0 && now > startTime) fraction_changed = 1.0 else f.
   // `gCycle` must already be the divide-by-zero-guarded cycle. This applies the
-  // boundary rule on the looping continuous path too (RTC-2): a tick that lands
+  // boundary rule on the looping continuous path too: a tick that lands
   // exactly on a cycle boundary (sinceStart a positive multiple of the cycle)
   // emits 1.0 rather than the wrapped 0.0.
   static double fractionWithBoundary(double sinceStart, double gCycle,

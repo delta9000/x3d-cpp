@@ -1,10 +1,9 @@
 #include "doctest/doctest.h"
 // cascade_dynamic_route_test.cpp
-// Regression tests for RTC-7: mid-cascade ROUTE mutation must not crash (no
+// Regression tests for mid-cascade ROUTE mutation must not crash (no
 // iterator/reference invalidation), dynamically-added routes are honored on the
-// NEXT cascade, and EventGraph::removeRoute stops delivery (dynamic rerouting,
+// next cascade, and EventGraph::removeRoute stops delivery (dynamic rerouting,
 // X3D 19775-1 §4.3.7).
-//
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
@@ -13,7 +12,6 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,17 +23,6 @@ using namespace x3d::nodes;
 
 namespace {
 
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
@@ -43,7 +30,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 
 // A handler that fires mid-cascade adds a brand-new ROUTE to the very graph the
 // cascade is iterating. This must not invalidate any reference held across the
-// handler call (no crash/UB); the new edge is honored on the NEXT cascade.
+// handler call (no crash/UB); the new edge is honored on the next cascade.
 void test_mid_cascade_addroute_no_crash() {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
@@ -80,16 +67,16 @@ void test_mid_cascade_addroute_no_crash() {
   cascade.postEvent(a.get(), "translation", std::any(SFVec3f{1, 2, 3}));
   cascade.process(); // must not crash even though the graph was mutated mid-drain
 
-  check(veq(tr(b), 1, 2, 3), "mid-cascade mutation: b still got its value");
+  CHECK_MESSAGE((veq(tr(b), 1, 2, 3)), ("mid-cascade mutation: b still got its value"));
   // The new b->c route was added during the cascade; X3D delivers it on the
-  // NEXT cascade, not this one.
-  check(veq(tr(c), 0, 0, 0), "dynamically-added route NOT honored on current cascade");
+  // next cascade, not this one.
+  CHECK_MESSAGE((veq(tr(c), 0, 0, 0)), ("dynamically-added route NOT honored on current cascade"));
 
-  // NEXT cascade: the b->c edge is now live.
+  // next cascade: the b->c edge is now live.
   EventCascade next(graph);
   next.postEvent(b.get(), "translation", std::any(SFVec3f{4, 5, 6}));
   next.process();
-  check(veq(tr(c), 4, 5, 6), "dynamically-added route honored on next cascade");
+  CHECK_MESSAGE((veq(tr(c), 4, 5, 6)), ("dynamically-added route honored on next cascade"));
 }
 
 // removeRoute stops delivery along that edge.
@@ -99,16 +86,16 @@ void test_remove_route_stops_delivery() {
 
   EventGraph graph;
   graph.addRoute({a.get(), "translation"}, {b.get(), "translation"});
-  check(graph.routeCount() == 1, "route registered");
+  CHECK_MESSAGE((graph.routeCount() == 1), ("route registered"));
 
   graph.removeRoute({a.get(), "translation"}, {b.get(), "translation"});
-  check(graph.routeCount() == 0, "removeRoute removed the edge");
+  CHECK_MESSAGE((graph.routeCount() == 0), ("removeRoute removed the edge"));
 
   EventCascade cascade(graph);
   cascade.postEvent(a.get(), "translation", std::any(SFVec3f{9, 9, 9}));
   cascade.process();
-  check(veq(tr(a), 9, 9, 9), "source still set");
-  check(veq(tr(b), 0, 0, 0), "removed route delivers nothing to sink");
+  CHECK_MESSAGE((veq(tr(a), 9, 9, 9)), ("source still set"));
+  CHECK_MESSAGE((veq(tr(b), 0, 0, 0)), ("removed route delivers nothing to sink"));
 }
 
 } // namespace
@@ -117,10 +104,5 @@ TEST_CASE("cascade_dynamic_route_test") {
   test_mid_cascade_addroute_no_crash();
   test_remove_route_stops_delivery();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all dynamic-route tests passed\n";
   return;
 }

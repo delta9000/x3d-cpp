@@ -13,7 +13,7 @@ class X3DExecutionContext;
  *          X3DExecutionContext; each `tick(now)` calls `update`, in which the
  *          behavior reads its node and the current time and emits output events
  *          into the context (which then cascades them). Purely event-driven
- *          behaviors (interpolators, filters) do NOT implement this — they
+ *          behaviors (interpolators, filters) do not implement this — they
  *          register an inputOnly handler instead and react to incoming events.
  *
  *          This is the extension seam for the browser's active-node families;

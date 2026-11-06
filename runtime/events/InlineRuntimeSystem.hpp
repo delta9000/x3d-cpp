@@ -19,7 +19,7 @@
 
 namespace x3d::runtime {
 
-// §9.4.2: load=FALSE removes the content; a changed URL replaces it.
+// §9.4.2: load=`FALSE` removes the content; a changed URL replaces it.
 class InlineRuntimeSystem : public System {
 public:
   InlineRuntimeSystem(Scene &scene, InlineResolver resolver, std::string baseUrl)

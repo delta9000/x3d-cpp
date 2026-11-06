@@ -1,5 +1,5 @@
 // SplineInterpolatorSystem.hpp
-// Event-driven Systems for the non-linear interpolator family (INTERP-01):
+// Event-driven Systems for the non-linear interpolator family:
 //   - SplineInterpolatorSystem<NodeT, ValueT>: the §19.2.4 Hermite spline,
 //     shared by SplinePositionInterpolator (SFVec3f), SplinePositionInterpolator2D
 //     (SFVec2f), and SplineScalarInterpolator (float). Reads the node's closed /
@@ -7,7 +7,7 @@
 //   - SquadOrientationInterpolatorSystem: §19.4.13 Squad on rotations.
 //   - EaseInEaseOutSystem: §19.4.4 fraction modifier (emits modifiedFraction_changed).
 // Each wires the node's inputOnly handler in attach(), mirroring InterpolatorSystem.
-// Empty-key emits no event for the interpolator nodes (§19.3.1, INTERP-02).
+// Empty-key emits no event for the interpolator nodes (§19.3.1,).
 #ifndef X3D_RUNTIME_SPLINE_INTERPOLATOR_SYSTEM_HPP
 #define X3D_RUNTIME_SPLINE_INTERPOLATOR_SYSTEM_HPP
 
@@ -35,7 +35,7 @@ public:
     if (!interp->getKeyValue().empty())
       interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
-      if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
+      if (interp->getKey().empty()) return; // §19.3.1
       ctx.postOutputEvent(interp, "value_changed",
                     std::any(hermiteSpline<ValueT>(
                         interp->getKey(), interp->getKeyValue(),
@@ -59,7 +59,7 @@ public:
     if (!interp->getKeyValue().empty())
       interp->emitValue_changed(interp->getKeyValue().front());
     interp->setOnSet_fractionHandler(ctx.guardCallback(*this, [&ctx, interp](const SFFloat &fraction) {
-      if (interp->getKey().empty()) return; // §19.3.1 (INTERP-02)
+      if (interp->getKey().empty()) return; // §19.3.1
       ctx.postOutputEvent(
           interp, "value_changed",
           std::any(squadOrientation(interp->getKey(), interp->getKeyValue(),

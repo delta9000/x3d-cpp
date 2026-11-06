@@ -1,8 +1,7 @@
-// SphereDrag.hpp — PURE SphereSensor drag math (ISO/IEC 19775-1:2023 §20.4.3 +
+// SphereDrag.hpp — pure SphereSensor drag math (ISO/IEC 19775-1:2023 §20.4.3 +
 // drag-sensor common §20.2.2). No node/System coupling.
-//
-// Model (all math in the sensor-LOCAL frame; SphereSensor has NO axisRotation,
-// so the sensor frame IS the parent's local frame):
+// Model (all math in the sensor-local frame; SphereSensor has no axisRotation,
+// so the sensor frame is the parent's local frame):
 //   Activation (frozen): p0Local = inv(sensorFrame)*worldHit; r = |p0Local|;
 //                        p0_hat = p0Local / r.
 //   Per motion:
@@ -13,7 +12,7 @@
 //     R_rel = rotation taking p0_hat -> p_hat:
 //       axis = normalize(cross(p0_hat, p_hat)); angle = acos(clamp(dot,-1,1)).
 //       (anti)parallel: parallel -> identity; antiparallel -> (any perp, pi).
-//     rotation_changed = toAxisAngle( q_rel * q_offset )   (offset is the base).
+//     rotation_changed = toAxisAngle( q_rel * q_offset)   (offset is the base).
 #ifndef X3D_RUNTIME_DRAG_SPHERE_DRAG_HPP
 #define X3D_RUNTIME_DRAG_SPHERE_DRAG_HPP
 
@@ -56,10 +55,10 @@ inline Quat qmul(const Quat &a, const Quat &b) {
 } // namespace detail
 
 // sphereDrag — one pointer-motion evaluation.
-//   sensorFrame : M_sensor (world matrix of the sensor's parent group).
-//   p0Local     : activation hit in sensor-local coords (defines r and p0_hat).
-//   worldRay    : current bearing in WORLD space.
-//   offset      : SFRotation accumulator composed as the base (q_rel * q_offset).
+//   sensorFrame: M_sensor (world matrix of the sensor's parent group).
+//   p0Local: activation hit in sensor-local coords (defines r and p0_hat).
+//   worldRay: current bearing in world space.
+//   offset: SFRotation accumulator composed as the base (q_rel * q_offset).
 inline SphereDragResult sphereDrag(const Mat4 &sensorFrame,
                                    const SFVec3f &p0Local, const Ray &worldRay,
                                    const SFRotation &offset) {

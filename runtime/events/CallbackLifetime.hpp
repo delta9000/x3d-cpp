@@ -11,7 +11,7 @@ namespace x3d::runtime {
 
 /// Serial callback revocation. The owner never stores node pointers: escaped
 /// callbacks hold only a weak lease, so retirement does not visit dead nodes or
-/// clear a newer activation's handler. This is NOT a concurrency primitive.
+/// clear a newer activation's handler. This is not a concurrency primitive.
 class CallbackLifetime {
   struct State {
     bool live = true;

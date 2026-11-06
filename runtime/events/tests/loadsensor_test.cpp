@@ -232,7 +232,7 @@ TEST_CASE("LoadSensor: parse-time expanded Inline is pre-seeded Ready (NSN-9)") 
   CHECK(calls == 0);                 // pre-seed asked no resolver
 }
 
-// ── Task 5: watched-child change resets (NSN-7) ───────────────────────────
+// watched-child change resets
 
 TEST_CASE("LoadSensor: url change after success re-activates, no isLoaded=FALSE") {
   auto s = std::make_shared<ScriptState>();
@@ -247,8 +247,8 @@ TEST_CASE("LoadSensor: url change after success re-activates, no isLoaded=FALSE"
 
   rig.texNode->setUrl(MFString{"b.png"}); // author changes the url
   rig.ctx.tick(3.0);
-  CHECK(rig.ls->getIsActive());  // NSN-7 reset re-activates the sensor
-  CHECK(rig.ls->getIsLoaded());  // R4: no spurious isLoaded=FALSE on reset
+  CHECK(rig.ls->getIsActive());  // reset re-activates the sensor
+  CHECK(rig.ls->getIsLoaded());  // R4: no spurious isLoaded=`FALSE` on reset
 
   rig.ctx.tick(4.0);
   CHECK_FALSE(rig.ls->getIsActive());
@@ -333,7 +333,7 @@ TEST_CASE("LoadSensor: USE-duplicated child dedups the progress denominator (R5)
   CHECK(s->calls == 1); // deduped → a single resolver call
 }
 
-// ── Task 4: timeOut deadline + enabled lifecycle ──────────────────────────
+// timeOut deadline + enabled lifecycle
 
 TEST_CASE("LoadSensor: timeOut deadline fires terminal failure, no loadTime") {
   auto alwaysPending = [](const std::string &, AssetKind) { return pending(); };
@@ -416,7 +416,7 @@ TEST_CASE("LoadSensor: all candidates fail → isLoaded FALSE, not active") {
   CHECK(seen == ChildStatus::Failed);
 }
 
-// ── Task 6: edge rulings + policy hook + ROUTE end-to-end ──────────────────
+// edge rulings + policy hook + ROUTE end-to-end
 
 TEST_CASE("LoadSensor: R3 — empty url with load=TRUE is a vacuous success") {
   int calls = 0;

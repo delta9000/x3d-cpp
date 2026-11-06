@@ -1,6 +1,6 @@
-// HeadPose.hpp — CONF-VIEWNAV: the consumer→runtime head-tracking seam.
+// HeadPose.hpp — the consumer→runtime head-tracking seam.
 // A process-local viewer head pose in the bound viewpoint's local frame,
-// composed onto the effective view AFTER the navigation offset (CAVE: each wall
+// composed onto the effective view after the navigation offset (CAVE: each wall
 // process supplies its own head pose). Mirrors PointerState/KeyState: pure data
 // + a setter that bumps a revision. Identity until the consumer sets it.
 #ifndef X3D_RUNTIME_HEAD_POSE_HPP

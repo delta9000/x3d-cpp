@@ -157,7 +157,7 @@ void sequencerSteps(Value first, Value middle, Value last) {
   CHECK(inputs.count("next") == 4);
   CHECK(inputs.count("previous") == 2);
   output.expect({first, middle});
-  // Both TRUE arrivals advanced: the next step wraps index 2 to index 0.
+  // Both `TRUE` arrivals advanced: the next step wraps index 2 to index 0.
   ctx.postEvent(node.get(), "next", SFBool{true});
   ctx.tick(13);
   output.expect({first, middle, first});
@@ -523,7 +523,7 @@ TEST_CASE("BooleanToggle flips once per TRUE and publishes one toggle per cascad
   ctx.tick(10);
   toggle.expect({true});
 
-  // Two TRUE inputs in one cascade flip twice. Each flip reads the previous
+  // Two `TRUE` inputs in one cascade flip twice. Each flip reads the previous
   // flip's state; storage, observers and the ROUTE agree on the final value.
   ctx.postEvent(node.get(), "set_boolean", SFBool{true});
   ctx.postEvent(node.get(), "set_boolean", SFBool{true});
@@ -531,7 +531,7 @@ TEST_CASE("BooleanToggle flips once per TRUE and publishes one toggle per cascad
   CHECK(inputs.count("set_boolean") == 3);
   toggle.expect({true, true});
 
-  // Three TRUE inputs and interleaved FALSE no-ops: odd count flips once.
+  // Three `TRUE` inputs and interleaved `FALSE` no-ops: odd count flips once.
   ctx.postEvent(node.get(), "set_boolean", SFBool{true});
   ctx.postEvent(node.get(), "set_boolean", SFBool{false});
   ctx.postEvent(node.get(), "set_boolean", SFBool{true});
@@ -540,12 +540,12 @@ TEST_CASE("BooleanToggle flips once per TRUE and publishes one toggle per cascad
   CHECK(inputs.count("set_boolean") == 7);
   toggle.expect({true, true, false});
 
-  // FALSE alone produces nothing.
+  // `FALSE` alone produces nothing.
   ctx.postEvent(node.get(), "set_boolean", SFBool{false});
   ctx.tick(13);
   toggle.expect({true, true, false});
 
-  // An explicit set_toggle is ordinary inputOutput delivery, and a later TRUE
+  // An explicit set_toggle is ordinary inputOutput delivery, and a later `TRUE`
   // flips from the set value.
   ctx.postEvent(node.get(), "set_toggle", SFBool{true});
   ctx.tick(14);
@@ -554,7 +554,7 @@ TEST_CASE("BooleanToggle flips once per TRUE and publishes one toggle per cascad
   ctx.tick(15);
   toggle.expect({true, true, false, true, false});
 
-  // In one cascade, set_toggle and a later TRUE are two inputOutput deliveries.
+  // In one cascade, set_toggle and a later `TRUE` are two inputOutput deliveries.
   // State and observers follow both; the ROUTE keeps its legacy one-delivery
   // cap per timestamp, as for any inputOutput field written twice.
   ctx.postEvent(node.get(), "set_toggle", SFBool{true});

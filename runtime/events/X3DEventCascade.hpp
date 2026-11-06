@@ -31,7 +31,7 @@ using namespace x3d::core;
  *          uniquely required ISO ordering of simultaneous events.
  *
  *          postEvent remains a legacy direct-seed API: every seed delivers.
- *          Unmigrated Systems using it for output are NOT output-capped. Routed
+ *          Unmigrated Systems using it for output are not output-capped. Routed
  *          non-inputOnly destinations retain their legacy per-field cap. This
  *          is intentionally not a claim of complete event-model conformance.
  *
@@ -55,7 +55,7 @@ public:
         Delivery{FieldAddress{node, field}, std::move(value), Origin::Seed});
   }
 
-  /// Queue a generated outputOnly value WITHOUT first mutating node storage.
+  /// Queue a generated outputOnly value without first mutating node storage.
   /// Validates the writable endpoint now; admission happens when drained. Only
   /// the first admitted value in this timestamp reaches the setter, observer,
   /// or ROUTEs. No synchronous emission or acceptance is implied by queueing.
@@ -82,7 +82,7 @@ public:
    * @details A "timestamp" is one logical instant of event processing, which may
    *          span several `process()` calls (the §4.4.8.3 step-4 re-evaluation
    *          loop alternates System updates with cascade drains). The per-field
-   *          cap (RTC-5) and per-edge guard must persist across those drains, so
+   *          cap  and per-edge guard must persist across those drains, so
    *          they are reset here — once per timestamp — not inside `process()`.
    *          `process(freshTimestamp=true)` (the default) calls this for the
    *          common standalone one-shot drain.
@@ -134,7 +134,7 @@ public:
         if (!d.value.has_value()) continue;
       }
 
-      // Normalize field aliases before cap-check + delivery so that a SEED
+      // Normalize field aliases before cap-check + delivery so that a seed
       // posted as `set_translation` and a ROUTE to `translation` share the
       // same per-field entry. §4.4.2.2 alias resolution.
       FieldAddress norm{d.target.node,
@@ -144,7 +144,7 @@ public:
 
       const bool firstProduction = produced_.insert(norm).second;
 
-      // Admit the selected output BEFORE reflection mutates its backing field.
+      // Admit the selected output before reflection mutates its backing field.
       // A suppressed value must never leak into readback or observers. Keep
       // the legacy cap for routed value-bearing destinations, but an inputOnly
       // arrival is an occurrence, not production of an output field (§4.4.8.5).
@@ -154,12 +154,8 @@ public:
         continue;
       }
 
-      // Snapshot the sink list (copy) BEFORE delivering. Delivery can invoke a
-      // handler that mutates graph_ (e.g. ctx.addRoute/removeRoute, X3D
-      // §4.3.7); holding a reference into graph_ internals across that call
-      // would be iterator/reference-invalidation UB. Copying also gives the
-      // correct single-timestamp semantics: a route added mid-cascade is not
-      // delivered until the NEXT cascade.
+      // §4.3.7: snapshot sinks before callbacks can mutate the graph.
+      // Routes added during delivery take effect in the next cascade.
       const std::vector<FieldAddress> sinks = graph_.sinks(norm);
 
       deliver(norm, d.value);

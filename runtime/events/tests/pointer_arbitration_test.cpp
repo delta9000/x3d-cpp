@@ -11,7 +11,6 @@
 #include "x3d/nodes/TouchSensor.hpp"
 #include "Ray.hpp"
 #include <any>
-#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -19,12 +18,6 @@ using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static int failures = 0;
-static void check(bool c, const char *what) {
-  if (!c) { std::cerr << "FAIL: " << what << "\n"; ++failures; }
-  else    { std::cout << "ok: " << what << "\n"; }
-}
 
 static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
   for (auto &f : n->fields())
@@ -59,17 +52,17 @@ static void test_pointing_sets_flag() {
   ctx.setPointerPresent(true);
   ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}});
   ctx.tick(1.0);
-  check(ctx.pointerConsumedBySensor() == false, "over-but-no-grab => flag false");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == false), ("over-but-no-grab => flag false"));
 
   // Button down while over => grab => flag true.
   ctx.setPointerButton(true);
   ctx.tick(2.0);
-  check(ctx.pointerConsumedBySensor() == true, "active grab => flag true");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == true), ("active grab => flag true"));
 
   // Button up => grab released => flag false again.
   ctx.setPointerButton(false);
   ctx.tick(3.0);
-  check(ctx.pointerConsumedBySensor() == false, "grab released => flag false");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == false), ("grab released => flag false"));
 }
 
 // A System that sets the flag during update — proves a system can claim the
@@ -83,22 +76,21 @@ struct Claimer : System {
 
 TEST_CASE("pointer_arbitration_test") {
   X3DExecutionContext ctx;
-  check(ctx.pointerConsumedBySensor() == false, "default is false");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == false), ("default is false"));
 
   ctx.setPointerConsumedBySensor(true);
-  check(ctx.pointerConsumedBySensor() == true, "setter works");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == true), ("setter works"));
 
   // tick() must reset the flag at tick start; with no claiming system it ends false.
   ctx.tick(1.0);
-  check(ctx.pointerConsumedBySensor() == false, "tick() resets flag to false");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == false), ("tick() resets flag to false"));
 
   // A claiming system leaves it true at end of tick.
   ctx.addSystem(std::make_shared<Claimer>());
   ctx.tick(2.0);
-  check(ctx.pointerConsumedBySensor() == true, "claiming system sets flag during tick");
+  CHECK_MESSAGE((ctx.pointerConsumedBySensor() == true), ("claiming system sets flag during tick"));
 
   test_pointing_sets_flag();
 
-  CHECK(failures == 0);
   return;
 }

@@ -4,7 +4,6 @@
 // programmatically, wires ROUTEs, posts initial events, runs the cascade, and
 // asserts values propagate with X3D single-timestamp semantics (fan-out +
 // per-route loop-breaking).
-//
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
@@ -14,7 +13,6 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -24,17 +22,6 @@ using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
@@ -53,8 +40,8 @@ void test_single_route() {
   cascade.postEvent(a.get(), "translation", std::any(SFVec3f{1, 2, 3}));
   cascade.process();
 
-  check(veq(tr(a), 1, 2, 3), "source field set by postEvent");
-  check(veq(tr(b), 1, 2, 3), "single route propagated value to sink");
+  CHECK_MESSAGE((veq(tr(a), 1, 2, 3)), ("source field set by postEvent"));
+  CHECK_MESSAGE((veq(tr(b), 1, 2, 3)), ("single route propagated value to sink"));
 }
 
 // Fan-out: one source field routed to two sinks updates both.
@@ -71,8 +58,8 @@ void test_fanout() {
   cascade.postEvent(a.get(), "translation", std::any(SFVec3f{4, 5, 6}));
   cascade.process();
 
-  check(veq(tr(b), 4, 5, 6), "fan-out reached sink b");
-  check(veq(tr(c), 4, 5, 6), "fan-out reached sink c");
+  CHECK_MESSAGE((veq(tr(b), 4, 5, 6)), ("fan-out reached sink b"));
+  CHECK_MESSAGE((veq(tr(c), 4, 5, 6)), ("fan-out reached sink c"));
 }
 
 // A cyclic route graph (A->B->A) must terminate: each route fires at most once
@@ -89,8 +76,8 @@ void test_cycle_terminates() {
   cascade.postEvent(a.get(), "translation", std::any(SFVec3f{7, 8, 9}));
   cascade.process(); // must return (no infinite loop)
 
-  check(veq(tr(a), 7, 8, 9), "cycle: a holds value");
-  check(veq(tr(b), 7, 8, 9), "cycle: b received value once, then loop broke");
+  CHECK_MESSAGE((veq(tr(a), 7, 8, 9)), ("cycle: a holds value"));
+  CHECK_MESSAGE((veq(tr(b), 7, 8, 9)), ("cycle: b received value once, then loop broke"));
 }
 
 // An event delivered to an inputOnly field invokes its registered handler
@@ -110,8 +97,8 @@ void test_input_only_delivery() {
   cascade.postEvent(interp.get(), "set_fraction", std::any(SFFloat{0.5f}));
   cascade.process();
 
-  check(calls == 1, "inputOnly handler invoked exactly once");
-  check(received == 0.5f, "inputOnly handler received the delivered value");
+  CHECK_MESSAGE((calls == 1), ("inputOnly handler invoked exactly once"));
+  CHECK_MESSAGE((received == 0.5f), ("inputOnly handler received the delivered value"));
 }
 
 // An outputOnly field can be written (an emitted output event), which both
@@ -128,9 +115,8 @@ void test_output_only_source() {
   cascade.postEvent(interp.get(), "value_changed", std::any(SFVec3f{1, 0, 2}));
   cascade.process();
 
-  check(veq(interp->getValue_changed(), 1, 0, 2),
-        "outputOnly field updated by emitted event");
-  check(veq(tr(target), 1, 0, 2),
+  CHECK_MESSAGE((veq(interp->getValue_changed(), 1, 0, 2)), ("outputOnly field updated by emitted event"));
+  CHECK_MESSAGE((veq(tr(target), 1, 0, 2)),
         "outputOnly source cascaded to inputOutput sink");
 }
 
@@ -143,10 +129,5 @@ TEST_CASE("cascade_test") {
   test_input_only_delivery();
   test_output_only_source();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all cascade tests passed\n";
   return;
 }

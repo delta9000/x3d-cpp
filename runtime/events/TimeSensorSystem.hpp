@@ -5,7 +5,6 @@
 // and emits the TimeSensor-specific continuous outputs — fraction_changed,
 // time, and the cycleTime pulse — while the base owns isActive/isPaused and the
 // elapsed-time clock.
-//
 // This supersedes the minimal TimeSensorBehavior (which only mapped the clock
 // to fraction_changed over one cycle). A browser registers one TimeSensorSystem
 // and `attach`es every TimeSensor; each `tick(now)` advances them all and the
@@ -63,7 +62,7 @@ protected:
   void emitCycleTime(x3d::nodes::X3DTimeDependentNode *node, double cycleStart,
                      X3DExecutionContext &ctx) override {
     // Spec 8.4.1: cycleTime == time at the beginning of the current cycle
-    // (startTime + cycleIndex*cycleInterval), supplied by the base (RTC-3).
+    // (startTime + cycleIndex*cycleInterval), supplied by the base.
     emit<SFTime>(ctx, node, "cycleTime", static_cast<SFTime>(cycleStart));
   }
 

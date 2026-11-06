@@ -1,5 +1,4 @@
 // TextureProjectorSystem.hpp — §42.3.1 X3DTextureProjectorNode.aspectRatio.
-//
 // aspectRatio is an output: the width / height of the image the projector
 // projects. The runtime knows that ratio only for a PixelTexture (its image
 // field); a url texture is decoded by the consumer's TextureResolver, which

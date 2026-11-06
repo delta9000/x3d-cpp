@@ -3,7 +3,6 @@
 // nodes of one kind. Generalizes the per-node `ActiveNode` (see
 // X3DActiveNode.hpp) so a browser registers one System per behavior family
 // rather than one object per node.
-//
 // Two styles, both supported by the same base:
 //   - Time-driven systems (e.g. TimeSensor) do their work in `update(now,
 //   ctx)`,
@@ -11,7 +10,6 @@
 //   - Event-driven systems (the interpolator family) wire their inputOnly
 //     handler in `attach(node, ctx)` and leave `update` a no-op; they react to
 //     incoming events instead of the clock.
-//
 // A System owning its nodes contiguously is the seam for future data-oriented
 // batching (iterate the node array in update()) without touching the node
 // model.
@@ -45,7 +43,7 @@ public:
   virtual ~System() { retireCallbacksBeforeDestruction(); }
 
 protected:
-  /// A callback-owning most-derived destructor MUST call this before its
+  /// A callback-owning most-derived destructor must call this before its
   /// members start destruction. Base destruction alone is too late if member
   /// captures/destructors synchronously invoke a retained node handler.
   /// Standard callback-owning systems do so; custom subclasses must do likewise.

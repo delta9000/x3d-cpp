@@ -1,20 +1,18 @@
-// CylinderDrag.hpp — PURE CylinderSensor drag math (ISO/IEC 19775-1:2023
+// CylinderDrag.hpp — pure CylinderSensor drag math (ISO/IEC 19775-1:2023
 // §20.4.1 + drag-sensor common §20.2.2). No node/System coupling.
-//
-// Model (all math in the sensor-LOCAL frame; M_sensor = M_local * R(axisRotation),
+// Model (all math in the sensor-local frame; M_sensor = M_local * R(axisRotation),
 // built by the caller and passed as `sensorFrame`; p0Local already in that frame):
 //   Mode (frozen at activation):
 //     theta0 = acos(|dot(normalize(bearingDirLocal), +Y)|)   (acute, [0,pi/2])
-//     theta0 <  diskAngle -> DISK ; theta0 >= diskAngle -> CYLINDER.
+//     theta0 <  diskAngle -> DISK; theta0 >= diskAngle -> CYLINDER.
 //   DISK: virtual surface = plane y = p0Local.y; intersect ray; angle about +Y
 //     from ref=normalize(p0Local.xz) to cur=normalize(Q.xz).
 //   CYLINDER: radius r = sqrt(p0Local.x^2 + p0Local.z^2); intersect the infinite
 //     cylinder x^2+z^2=r^2; same XZ angle measure.
 //   raw = dAngle + offset; clamp: minAngle<=maxAngle -> clamp; else unclamped.
-//   rotation_changed = SFRotation((0,1,0), clamped); trackPoint = Q (UNCLAMPED).
-//
-// Caller passes the ACTIVATION bearing direction in sensor-local space
-// (`bearingDirLocal`) for the once-only mode decision, AND the current world
+//   rotation_changed = SFRotation((0,1,0), clamped); trackPoint = Q (unclamped).
+// Caller passes the activation bearing direction in sensor-local space
+// (`bearingDirLocal`) for the once-only mode decision, and the current world
 // `ray` for the per-motion intersection. The function transforms the world ray
 // into the local frame via `sensorFrame`.
 #ifndef X3D_RUNTIME_DRAG_CYLINDER_DRAG_HPP
@@ -55,13 +53,13 @@ inline CylinderMode cylinderModeFor(const SFVec3f &bearingDirLocal,
 }
 
 // cylinderDrag — one pointer-motion evaluation.
-//   sensorFrame     : M_sensor (M_local * R(axisRotation)).
-//   p0Local         : activation hit in sensor-local coords.
-//   bearingDirLocal : activation bearing direction (sensor-local) — mode decision.
-//   worldRay        : current bearing in WORLD space.
-//   diskAngle       : disk/cylinder threshold (rad).
-//   offset          : SFFloat angle accumulator (added to the relative angle).
-//   minAngle/maxAngle : clamp bounds (minAngle>maxAngle => unclamped).
+//   sensorFrame: M_sensor (M_local * R(axisRotation)).
+//   p0Local: activation hit in sensor-local coords.
+//   bearingDirLocal: activation bearing direction (sensor-local) — mode decision.
+//   worldRay: current bearing in world space.
+//   diskAngle: disk/cylinder threshold (rad).
+//   offset: SFFloat angle accumulator (added to the relative angle).
+//   minAngle/maxAngle: clamp bounds (minAngle>maxAngle => unclamped).
 inline CylinderDragResult
 cylinderDrag(const Mat4 &sensorFrame, const SFVec3f &p0Local,
              const SFVec3f &bearingDirLocal, const Ray &worldRay,
@@ -84,8 +82,8 @@ cylinderDrag(const Mat4 &sensorFrame, const SFVec3f &p0Local,
 
   if (out.mode == CylinderMode::Disk) {
     // §20.4.1: in disk mode the geometry is treated as an infinitely large disk
-    // lying in the Y=0 plane of the local sensor coordinate system — NOT a plane
-    // through the activation hit's Y. (DS-1)
+    // lying in the Y=0 plane of the local sensor coordinate system — not a plane
+    // through the activation hit's Y.
     if (std::fabs(D.y) > 1e-9f) {
       float t = (0.0f - O.y) / D.y;
       if (t >= 0.0f) {

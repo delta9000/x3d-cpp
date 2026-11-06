@@ -1,21 +1,6 @@
 #include "doctest/doctest.h"
-// interpolator_conformance_test.cpp
-// Behavioral-conformance tests for the interpolator cluster (campaign wave-2):
-//   - INTERP-02 (§19.3.1): an interpolator with an empty `key` field shall emit
-//     NO value_changed event; a later non-empty key re-enables emission.
-//   - INTERP-01 (§19.2.4 / §19.4.10-13): the Spline{Scalar,Position,Position2D}
-//     Hermite interpolators, the SquadOrientationInterpolator, and the
-//     EaseInEaseOut fraction modifier each have a System that emits on
-//     set_fraction (previously the no-op default fired and nothing was emitted).
-//   - PIV-1: attachInterpolators(scene, ctx) wires every interpolator in a scene
-//     with no manual per-node attach (the production caller registerInterpolator-
-//     Systems lacked).
-//
-// All expected values below are hand-computed from the normative §19.2.4 Hermite
-// basis (h00=2s^3-3s^2+1, h01=-2s^3+3s^2, h10=s^3-2s^2+s, h11=s^3-s^2) and the
-// §19.4.4 EaseInEaseOut algorithm.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Empty keys suppress events (§19.3.1); spline/orientation systems emit on inputs (§19.4.10-13).
+// Expected values use the normative §19.2.4 Hermite basis and §19.4.4 easing algorithm.
 
 #include "Interpolation.hpp"
 #include "InterpolatorSystem.hpp"
@@ -40,7 +25,6 @@
 
 #include <any>
 #include <cmath>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -51,15 +35,6 @@ using namespace x3d::runtime;
 
 namespace {
 
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 constexpr float kEps = 1e-4f;
 bool feq(float a, float b) { return std::fabs(a - b) <= kEps; }
 
@@ -68,7 +43,7 @@ void post(X3DExecutionContext &ctx, X3DNode *n, float fraction) {
   ctx.process();
 }
 
-// -- INTERP-02: empty key emits no event ------------------------------------
+// empty key emits no event
 void test_empty_key_no_event() {
   auto interp = std::make_shared<ScalarInterpolator>();
   interp->setKey(MFFloat{});                 // empty key
@@ -81,17 +56,15 @@ void test_empty_key_no_event() {
   interp->emitValue_changed(SFFloat{99.0f}); // sentinel after initial readback
 
   post(ctx, interp.get(), 0.5f);
-  check(feq(interp->getValue_changed(), 99.0f),
-        "INTERP-02 empty key: set_fraction emits no value_changed (sentinel kept)");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 99.0f)), ("INTERP-02 empty key: set_fraction emits no value_changed (sentinel kept)"));
 
   // A later non-empty key re-enables emission on the next set_fraction.
   interp->setKey(MFFloat{0.0f, 1.0f});
   post(ctx, interp.get(), 0.5f);
-  check(feq(interp->getValue_changed(), 1.5f),
-        "INTERP-02 non-empty key after empty: emission re-enabled (->1.5)");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 1.5f)), ("INTERP-02 non-empty key after empty: emission re-enabled (->1.5)"));
 }
 
-// -- INTERP-01: SplineScalarInterpolator (Hermite) --------------------------
+// SplineScalarInterpolator (Hermite)
 void test_spline_scalar() {
   // 2 keys, no keyVelocity, not closed -> endpoint tangents zero.
   // seg0 mid (s=0.5): v = h01*10 = 0.5*10 = 5.  s=0.25: h01(0.25)*10 = 1.5625.
@@ -104,14 +77,13 @@ void test_spline_scalar() {
   sys.attach(sp.get(), ctx);
 
   post(ctx, sp.get(), 0.0f);
-  check(feq(sp->getValue_changed(), 0.0f), "spline scalar f=0 -> v0=0");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 0.0f)), ("spline scalar f=0 -> v0=0"));
   post(ctx, sp.get(), 1.0f);
-  check(feq(sp->getValue_changed(), 10.0f), "spline scalar f=1 -> v1=10");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 10.0f)), ("spline scalar f=1 -> v1=10"));
   post(ctx, sp.get(), 0.25f);
-  check(feq(sp->getValue_changed(), 1.5625f),
-        "spline scalar f=0.25 -> 1.5625 (zero-tangent Hermite, != linear 2.5)");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 1.5625f)), ("spline scalar f=0.25 -> 1.5625 (zero-tangent Hermite, != linear 2.5)"));
   post(ctx, sp.get(), 0.5f);
-  check(feq(sp->getValue_changed(), 5.0f), "spline scalar f=0.5 -> 5.0");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 5.0f)), ("spline scalar f=0.5 -> 5.0"));
 
   // 3 keys [0,1,2] values [0,10,30], no velocity. Interior tangent T1=(30-0)/2=15.
   // seg0 mid: h01*10 + h11*15 = 5 + (-0.125)*15 = 3.125.
@@ -123,14 +95,14 @@ void test_spline_scalar() {
   X3DExecutionContext ctx3;
   sys3.attach(sp3.get(), ctx3);
   post(ctx3, sp3.get(), 0.5f);
-  check(feq(sp3->getValue_changed(), 3.125f), "spline scalar 3-key seg0 mid -> 3.125");
+  CHECK_MESSAGE((feq(sp3->getValue_changed(), 3.125f)), ("spline scalar 3-key seg0 mid -> 3.125"));
   post(ctx3, sp3.get(), 1.0f);
-  check(feq(sp3->getValue_changed(), 10.0f), "spline scalar 3-key f=1 (key1) -> 10");
+  CHECK_MESSAGE((feq(sp3->getValue_changed(), 10.0f)), ("spline scalar 3-key f=1 (key1) -> 10"));
   post(ctx3, sp3.get(), 1.5f);
-  check(feq(sp3->getValue_changed(), 21.875f), "spline scalar 3-key seg1 mid -> 21.875");
+  CHECK_MESSAGE((feq(sp3->getValue_changed(), 21.875f)), ("spline scalar 3-key seg1 mid -> 21.875"));
 }
 
-// -- INTERP-01: author keyVelocity (size==2 endpoint form) ------------------
+// author keyVelocity (size==2 endpoint form)
 void test_spline_scalar_velocity() {
   // keyVelocity size 2 -> first = vel of first key, second = vel of last key.
   // Endpoints specified -> T0_0 = 2, T1_1 = 3 (raw, no F scaling).
@@ -144,11 +116,10 @@ void test_spline_scalar_velocity() {
   SplineInterpolatorSystem<SplineScalarInterpolator, float> sys;
   sys.attach(sp.get(), ctx);
   post(ctx, sp.get(), 0.5f);
-  check(feq(sp->getValue_changed(), 4.875f),
-        "spline scalar keyVelocity[2,3] seg0 mid -> 4.875");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 4.875f)), ("spline scalar keyVelocity[2,3] seg0 mid -> 4.875"));
 }
 
-// -- INTERP-01: SplinePositionInterpolator (per-component Hermite) ----------
+// SplinePositionInterpolator (per-component Hermite)
 void test_spline_position() {
   // Each component interpolates independently with the same Hermite math as the
   // scalar 2-key zero-tangent case scaled by the component end value.
@@ -161,14 +132,13 @@ void test_spline_position() {
   sys.attach(sp.get(), ctx);
   post(ctx, sp.get(), 0.25f); // h01(0.25)=0.15625 -> (1.5625, 3.125, 6.25)
   SFVec3f v = sp->getValue_changed();
-  check(feq(v.x, 1.5625f) && feq(v.y, 3.125f) && feq(v.z, 6.25f),
-        "spline position f=0.25 -> (1.5625,3.125,6.25)");
+  CHECK_MESSAGE((feq(v.x, 1.5625f) && feq(v.y, 3.125f) && feq(v.z, 6.25f)), ("spline position f=0.25 -> (1.5625,3.125,6.25)"));
   post(ctx, sp.get(), 1.0f);
   v = sp->getValue_changed();
-  check(feq(v.x, 10) && feq(v.y, 20) && feq(v.z, 40), "spline position f=1 -> v1");
+  CHECK_MESSAGE((feq(v.x, 10) && feq(v.y, 20) && feq(v.z, 40)), ("spline position f=1 -> v1"));
 }
 
-// -- INTERP-01: empty-key guard applies to spline systems too ---------------
+// empty-key guard applies to spline systems too
 void test_spline_empty_key() {
   auto sp = std::make_shared<SplineScalarInterpolator>();
   sp->setKey(MFFloat{});
@@ -178,11 +148,10 @@ void test_spline_empty_key() {
   sys.attach(sp.get(), ctx);
   sp->emitValue_changed(SFFloat{77.0f});
   post(ctx, sp.get(), 0.5f);
-  check(feq(sp->getValue_changed(), 77.0f),
-        "spline empty key: no value_changed (sentinel kept)");
+  CHECK_MESSAGE((feq(sp->getValue_changed(), 77.0f)), ("spline empty key: no value_changed (sentinel kept)"));
 }
 
-// -- INTERP-01: SquadOrientationInterpolator --------------------------------
+// SquadOrientationInterpolator
 void test_squad() {
   // N=2 squad reduces to plain SLERP (a0=q0, a1=q1). Mid of 0->pi/2 about Z is
   // pi/4 about Z.
@@ -196,15 +165,14 @@ void test_squad() {
 
   post(ctx, sq.get(), 0.0f);
   SFRotation r = sq->getValue_changed();
-  check(feq(r.angle, 0.0f) || feq(std::fabs(r.z), 1.0f), "squad f=0 -> q0 (angle 0)");
+  CHECK_MESSAGE((feq(r.angle, 0.0f) || feq(std::fabs(r.z), 1.0f)), ("squad f=0 -> q0 (angle 0)"));
   post(ctx, sq.get(), 1.0f);
   r = sq->getValue_changed();
-  check(feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f), "squad f=1 -> pi/2 about Z");
+  CHECK_MESSAGE((feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f)), ("squad f=1 -> pi/2 about Z"));
   post(ctx, sq.get(), 0.5f);
   r = sq->getValue_changed();
   float eff = (r.z >= 0) ? r.angle : -r.angle;
-  check(feq(std::fabs(r.z), 1.0f) && (feq(eff, 0.7853982f) || feq(r.angle, 0.7853982f)),
-        "squad N=2 f=0.5 reduces to SLERP -> pi/4 about Z");
+  CHECK_MESSAGE((feq(std::fabs(r.z), 1.0f) && (feq(eff, 0.7853982f) || feq(r.angle, 0.7853982f))), ("squad N=2 f=0.5 reduces to SLERP -> pi/4 about Z"));
 
   // normalizeVelocity scales the quaternion-space tangent to total path length.
   auto norm = std::make_shared<SquadOrientationInterpolator>();
@@ -213,8 +181,7 @@ void test_squad() {
   norm->setNormalizeVelocity(true);
   SquadOrientationInterpolatorSystem ns; ns.attach(norm.get(), ctx);
   post(ctx, norm.get(), 0.5f);
-  check(!feq(norm->getValue_changed().angle, squadOrientation(norm->getKey(), norm->getKeyValue(), 0.5f).angle),
-        "Squad normalizeVelocity changes quaternion tangent scale");
+  CHECK_MESSAGE((!feq(norm->getValue_changed().angle, squadOrientation(norm->getKey(), norm->getKeyValue(), 0.5f).angle)), ("Squad normalizeVelocity changes quaternion tangent scale"));
 
   // N=3 sanity: 0 -> 90 -> 0 about Z. f=1 lands on the middle key exactly.
   auto sq3 = std::make_shared<SquadOrientationInterpolator>();
@@ -226,17 +193,17 @@ void test_squad() {
   sys3.attach(sq3.get(), ctx3);
   post(ctx3, sq3.get(), 1.0f);
   r = sq3->getValue_changed();
-  check(feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f), "squad N=3 f=1 -> key1 (pi/2 Z)");
+  CHECK_MESSAGE((feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f)), ("squad N=3 f=1 -> key1 (pi/2 Z)"));
   post(ctx3, sq3.get(), 0.5f);
   r = sq3->getValue_changed();
   float len = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z);
-  check(feq(std::fabs(r.z), 1.0f) || len < kEps, "squad N=3 f=0.5 axis about Z (finite unit)");
+  CHECK_MESSAGE((feq(std::fabs(r.z), 1.0f) || len < kEps), ("squad N=3 f=0.5 axis about Z (finite unit)"));
 }
 
-// -- INTERP-01: EaseInEaseOut (§19.4.4 algorithm) ---------------------------
+// EaseInEaseOut (§19.4.4 algorithm)
 void test_ease_in_ease_out() {
   // key=[0,1]; easeInEaseOut pairs are (easeIn, easeOut).
-  // seg0: e_out = easeInEaseOut[0].y = 0.4 ; e_in = easeInEaseOut[1].x = 0.3.
+  // seg0: e_out = easeInEaseOut[0].y = 0.4; e_in = easeInEaseOut[1].x = 0.3.
   // S=0.7; t = 1/(2-0.4-0.3) = 0.7692308.
   auto ee = std::make_shared<EaseInEaseOut>();
   ee->setKey(MFFloat{0.0f, 1.0f});
@@ -249,18 +216,15 @@ void test_ease_in_ease_out() {
   // u=0.2 < e_out: (t/e_out)*u^2 = 1.923077*0.04 = 0.0769231 (global == local here).
   ctx.postEvent(ee.get(), "set_fraction", std::any(SFFloat{0.2f}));
   ctx.process();
-  check(feq(ee->getModifiedFraction_changed(), 0.0769231f),
-        "ease u=0.2 (easeOut region) -> 0.0769231");
+  CHECK_MESSAGE((feq(ee->getModifiedFraction_changed(), 0.0769231f)), ("ease u=0.2 (easeOut region) -> 0.0769231"));
   // u=0.5 in [e_out, 1-e_in]: t*(2u - e_out) = 0.7692308*0.6 = 0.4615385.
   ctx.postEvent(ee.get(), "set_fraction", std::any(SFFloat{0.5f}));
   ctx.process();
-  check(feq(ee->getModifiedFraction_changed(), 0.4615385f),
-        "ease u=0.5 (constant-speed region) -> 0.4615385");
+  CHECK_MESSAGE((feq(ee->getModifiedFraction_changed(), 0.4615385f)), ("ease u=0.5 (constant-speed region) -> 0.4615385"));
   // u=0.8 > 1-e_in: 1 - (t*(1-u)^2)/e_in = 1 - 0.0307692/0.3 = 0.8974359.
   ctx.postEvent(ee.get(), "set_fraction", std::any(SFFloat{0.8f}));
   ctx.process();
-  check(feq(ee->getModifiedFraction_changed(), 0.8974359f),
-        "ease u=0.8 (easeIn region) -> 0.8974359");
+  CHECK_MESSAGE((feq(ee->getModifiedFraction_changed(), 0.8974359f)), ("ease u=0.8 (easeIn region) -> 0.8974359"));
 }
 
 void test_ease_in_ease_out_scaled() {
@@ -275,11 +239,10 @@ void test_ease_in_ease_out_scaled() {
   sys.attach(ee.get(), ctx);
   ctx.postEvent(ee.get(), "set_fraction", std::any(SFFloat{0.3f}));
   ctx.process();
-  check(feq(ee->getModifiedFraction_changed(), 0.1575f),
-        "ease S>1 scaled, u=0.3 -> 0.1575");
+  CHECK_MESSAGE((feq(ee->getModifiedFraction_changed(), 0.1575f)), ("ease S>1 scaled, u=0.3 -> 0.1575"));
 }
 
-// -- PIV-1: attachInterpolators production wiring ---------------------------
+// attachInterpolators production wiring
 void test_attach_interpolators_production() {
   // Build a scene with a core interpolator and a spline interpolator, wire only
   // through attachInterpolators (no manual per-node attach), and assert both emit.
@@ -308,12 +271,12 @@ void test_attach_interpolators_production() {
   float scaOut = 0.0f;
   for (auto &f : sca->fields())
     if (f.x3dName == "value_changed" && f.get) scaOut = std::any_cast<SFFloat>(f.get(*sca));
-  check(feq(scaOut, 25.0f), "PIV-1 attachInterpolators wires ScalarInterpolator (->25)");
+  CHECK_MESSAGE((feq(scaOut, 25.0f)), ("PIV-1 attachInterpolators wires ScalarInterpolator (->25)"));
 
   SFVec3f splOut{};
   for (auto &f : spl->fields())
     if (f.x3dName == "value_changed" && f.get) splOut = std::any_cast<SFVec3f>(f.get(*spl));
-  check(feq(splOut.x, 8.0f), "PIV-1 attachInterpolators wires SplinePositionInterpolator (->x=8)");
+  CHECK_MESSAGE((feq(splOut.x, 8.0f)), ("PIV-1 attachInterpolators wires SplinePositionInterpolator (->x=8)"));
 }
 
 void test_nurbs_interpolators() {
@@ -323,27 +286,27 @@ void test_nurbs_interpolators() {
   X3DExecutionContext ctx; NurbsPositionInterpolatorSystem ps; NurbsOrientationInterpolatorSystem os; ps.attach(pos.get(),ctx); os.attach(ori.get(),ctx);
   post(ctx,pos.get(),0.5f); post(ctx,ori.get(),0.5f);
   auto p=pos->getValue_changed(); auto r=ori->getValue_changed();
-  check(feq(p.x,0.7071068f)&&feq(p.y,0.7071068f),"NURBS rational quarter circle midpoint on unit circle");
-  check(feq(r.x,-0.7071f)&&feq(r.y,-0.7071f)&&feq(r.z,0)&&feq(r.angle,1.5708f),"NURBS tangent orientation follows quarter-circle tangent");
+  CHECK_MESSAGE((feq(p.x,0.7071068f)&&feq(p.y,0.7071068f)), ("NURBS rational quarter circle midpoint on unit circle"));
+  CHECK_MESSAGE((feq(r.x,-0.7071f)&&feq(r.y,-0.7071f)&&feq(r.z,0)&&feq(r.angle,1.5708f)), ("NURBS tangent orientation follows quarter-circle tangent"));
   { // The same quarter circle 2000 units out: the tangent must not dissolve into float noise.
     auto far=std::make_shared<Coordinate>(); far->setPoint({{3000,2000,0},{2000+0.7071068f*1000,2000+0.7071068f*1000,0},{2000,3000,0}});
     auto ofar=std::make_shared<NurbsOrientationInterpolator>(); ofar->setControlPoint(far); ofar->setOrder(3); ofar->setWeight({1.0,0.7071067811865476,1.0});
     X3DExecutionContext fc; NurbsOrientationInterpolatorSystem fs; fs.attach(ofar.get(),fc); post(fc,ofar.get(),0.5f);
     auto rf=ofar->getValue_changed();
-    check(std::fabs(rf.x+0.7071f)<1e-3f&&std::fabs(rf.y+0.7071f)<1e-3f&&std::fabs(rf.angle-1.5708f)<1e-3f,"NURBS tangent stays accurate at large coordinates");
+    CHECK_MESSAGE((std::fabs(rf.x+0.7071f)<1e-3f&&std::fabs(rf.y+0.7071f)<1e-3f&&std::fabs(rf.angle-1.5708f)<1e-3f), ("NURBS tangent stays accurate at large coordinates"));
   }
   auto line=std::make_shared<Coordinate>(); line->setPoint({{0,0,0},{2,4,6}});
   auto linear=std::make_shared<NurbsPositionInterpolator>(); linear->setControlPoint(line); linear->setOrder(2);
   X3DExecutionContext lc; ps.attach(linear.get(),lc); post(lc,linear.get(),0.25f);
-  check(feq(linear->getValue_changed().x,.5f)&&feq(linear->getValue_changed().y,1)&&feq(linear->getValue_changed().z,1.5f),"degree-1 NURBS position is linear");
+  CHECK_MESSAGE((feq(linear->getValue_changed().x,.5f)&&feq(linear->getValue_changed().y,1)&&feq(linear->getValue_changed().z,1.5f)), ("degree-1 NURBS position is linear"));
   auto patchcp=std::make_shared<Coordinate>(); patchcp->setPoint({{0,0,0},{1,0,0},{0,1,0},{1,1,0}});
   auto surface=std::make_shared<NurbsSurfaceInterpolator>(); surface->setControlPoint(patchcp); surface->setUDimensionUnchecked(2); surface->setVDimensionUnchecked(2); surface->setUOrderUnchecked(2); surface->setVOrderUnchecked(2);
   X3DExecutionContext sc; NurbsSurfaceInterpolatorSystem ss; ss.attach(surface.get(),sc); sc.postEvent(surface.get(),"set_fraction",std::any(SFVec2f{.25f,.75f})); sc.process();
   auto sp=surface->getPosition_changed(); auto sn=surface->getNormal_changed();
-  check(feq(sp.x,.25f)&&feq(sp.y,.75f)&&feq(sp.z,0)&&feq(sn.z,1),"bilinear NURBS surface point and normal");
+  CHECK_MESSAGE((feq(sp.x,.25f)&&feq(sp.y,.75f)&&feq(sp.z,0)&&feq(sn.z,1)), ("bilinear NURBS surface point and normal"));
   auto bad=std::make_shared<NurbsPositionInterpolator>(); bad->setControlPoint(std::make_shared<Coordinate>()); bad->setOrder(3); bad->emitValue_changed({9,9,9});
   X3DExecutionContext bc; ps.attach(bad.get(),bc); post(bc,bad.get(),.5f);
-  check(feq(bad->getValue_changed().x,9),"degenerate NURBS emits no NaN or value event");
+  CHECK_MESSAGE((feq(bad->getValue_changed().x,9)), ("degenerate NURBS emits no NaN or value event"));
 }
 
 } // namespace
@@ -360,14 +323,8 @@ TEST_CASE("interpolator_conformance_test") {
   test_attach_interpolators_production();
   test_nurbs_interpolators();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all interpolator-conformance tests passed\n";
   return;
 }
-
 
 TEST_CASE("interpolator_initial_value_readback") {
   ScalarInterpolator scalar;

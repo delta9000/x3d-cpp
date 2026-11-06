@@ -1,5 +1,4 @@
 // AnchorSystem.hpp — Anchor activation (ISO/IEC 19775-1 §9.4.1).
-//
 // An Anchor's children are pointer-sensitive: a click (button press and release
 // over the same Anchor's geometry) activates it. Its url is tried in order:
 //   * "#Name"  — bind the Viewpoint DEF'd Name in this scene (the in-scene case);
@@ -9,7 +8,7 @@
 //     so with no handler installed a non-fragment url does nothing.
 // A pointing-device sensor that grabbed the pointer this tick wins (§20.2.1);
 // while a press on an Anchor is held the Anchor owns the pointer, so navigation
-// does not also drag or LOOKAT on the same click.
+// does not also drag or `LOOKAT` on the same click.
 #ifndef X3D_RUNTIME_ANCHOR_SYSTEM_HPP
 #define X3D_RUNTIME_ANCHOR_SYSTEM_HPP
 

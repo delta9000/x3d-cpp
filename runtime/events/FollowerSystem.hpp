@@ -15,7 +15,7 @@ namespace x3d::runtime {
 /// Models a cascade of `order` first-order IIR lerp-filters each driven with
 /// α = exp(-dt/τ).  When order==0 or τ<=0 the output is a passthrough
 /// (immediate snap to destination, then isActive=false).  Convergence is
-/// tested BEFORE the update step (the end-of-transition snap fires before the
+/// tested before the update step (the end-of-transition snap fires before the
 /// next filter pass) using FollowerArith<ValueT>::dist against the per-filter
 /// tolerance.  set_value resets all filter states and stops the transition.
 template <typename NodeT, typename ValueT>
@@ -44,8 +44,8 @@ public:
     e->active = initiallyActive;
     Entry *ep = e.get();
     entries_.push_back(std::move(e));
-    // Emit isActive TRUE now if initial transition is pending (§39 requires
-    // isActive to go TRUE when a transition begins).
+    // Emit isActive `TRUE` now if initial transition is pending (§39 requires
+    // isActive to go `TRUE` when a transition begins).
     if (initiallyActive) {
       d->emitIsActive(SFBool{true});
       ctx.postEvent(d, "isActive", std::any(SFBool{true}));
@@ -125,7 +125,7 @@ public:
       for (int i = 1; i <= order; ++i)
         e->filters[i] = FollowerArith<ValueT>::reshapeLike(e->filters[i], e->destination);
 
-      // §39.3.2: test convergence BEFORE the update pass.
+      // §39.3.2: test convergence before the update pass.
       bool done = true;
       for (int i = 1; i <= order && done; ++i)
         if (FollowerArith<ValueT>::dist(e->filters[i], e->filters[i - 1]) > tol)
@@ -195,7 +195,7 @@ public:
     // re-bases from the current output rather than from initialValue.
     if (initiallyActive) e->started = true;
     Entry *ep = e.get();
-    entries_.push_back(std::move(e)); // push BEFORE handlers capture ep
+    entries_.push_back(std::move(e)); // push before handlers capture ep
 
     if (initiallyActive) {
       c->emitIsActive(SFBool{true});

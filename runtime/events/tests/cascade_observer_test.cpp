@@ -27,7 +27,7 @@ TEST_CASE("cascade_observer_test") {
   cascade.postEvent(a.get(), "fraction_changed", std::any(0.5f));
   cascade.process();
 
-  // Observer fired for the seeded delivery AND the routed sink delivery.
+  // Observer fired for the seeded delivery and the routed sink delivery.
   bool sawSource = false, sawSink = false;
   for (auto &p : seen) {
     if (p.first == a.get() && p.second == "fraction_changed") sawSource = true;

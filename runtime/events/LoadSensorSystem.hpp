@@ -4,12 +4,10 @@
 // resolving their load state through the injected extract::AssetResolver seam,
 // and emits isActive / isLoaded / loadTime / progress per the spec. Per-sensor
 // state lives here in a map, never on the node (the node model stays pure data).
-//
 // IO-free: the system is pure over the seam and ships no concrete backend. The
 // default resolver is the null stub (Failed); an app injects a real backend —
-// e.g. the CLI wires io::file::makeFileResolver (SEC-3-confined local files),
-// which stays out of the public SDK headers. Closes findings NSN-1..7, NSN-9.
-//
+// e.g. the CLI wires io::file::makeFileResolver (path-confined local files; ADR-0038),
+// which stays out of the public SDK headers.
 // Design: docs/superpowers/specs/2026-07-17-loadsensor-design.md.
 #ifndef X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 #define X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
@@ -37,9 +35,9 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 namespace detail_loadsensor {
-// NSN-12: an Inline counts as loaded only once it and every nested sub-Inline
+// an Inline counts as loaded only once it and every nested sub-Inline
 // it asks to load have loaded. Parse-time expansion replaces each loaded Inline
-// with a Group, so an Inline node still present (load TRUE) in an expanded
+// with a Group, so an Inline node still present (load `TRUE`) in an expanded
 // child's content is a sub-Inline that failed to load.
 inline bool hasUnloadedInline(const X3DNode &n, std::size_t depth = 0) {
   if (depth >= kMaxNestingDepth) return false;
@@ -131,14 +129,14 @@ private:
   struct ChildState {
     ChildStatus status = ChildStatus::NotStarted;
     std::size_t candidate = 0;       // next MFString index to try
-    MFString lastUrl;                // NSN-7 url snapshot
-    bool lastLoad = true;            // NSN-7 load snapshot
+    MFString lastUrl;
+    bool lastLoad = true;
     bool preseeded = false;          // parse-time expanded Inline (already Ready)
   };
   struct SensorState {
     std::unordered_map<X3DNode *, ChildState> children;
     bool active = false;
-    bool terminal = false;           // burst emitted; idle until an NSN-7 reset
+    bool terminal = false;           // burst emitted; idle until a watched-child reset
     bool everEvaluated = false;      // R7 first-evaluation
     bool enabled = true;
     double activatedAt = 0.0;
@@ -205,7 +203,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
     bool restartTimeout = false;
 
     // 2. Refresh the watch set from children (unique by pointer — R5 USE dedup),
-    //    seeding new entries and diffing url/load for NSN-7 resets.
+    //    seeding new entries and diffing url/load for watched-child resets.
     std::vector<X3DNode *> watched;
     std::unordered_set<X3DNode *> present;
     for (const auto &childAny : ls->getChildren()) {
@@ -235,7 +233,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       if (inserted) {
         cs.preseeded = pre;
         if (pre && detail_loadsensor::hasUnloadedInline(*c))
-          setChildStatus(cs, c, ls, ChildStatus::Failed); // NSN-12: nested failed
+          setChildStatus(cs, c, ls, ChildStatus::Failed); // nested failed
         else if (pre || plan.vacuousReady)
           setChildStatus(cs, c, ls, ChildStatus::Ready);
         if (!pre && uo) {
@@ -243,13 +241,13 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.lastLoad = anchor ? true : uo->getLoad();
         }
         // A newly watched child that still needs loading reopens a terminal
-        // sensor (membership growth is an NSN-7 reset) and restarts the window.
+        // sensor (membership growth is a watched-child reset) and restarts the window.
         if (cs.status != ChildStatus::Ready) {
           st.terminal = false;
           restartTimeout = true;
         }
       } else if (!pre && uo) {
-        // NSN-7 poll-and-diff on the inputOutput url/load fields.
+        // poll-and-diff on the inputOutput url/load fields.
         MFString curUrl = uo->getUrl();
         const bool curLoad = anchor ? true : uo->getLoad();
         if (curUrl != cs.lastUrl) {
@@ -278,7 +276,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         ++it;
     }
 
-    // 3. Terminal sensors idle until an NSN-7 reset above clears the flag.
+    // 3. Terminal sensors idle until a watched-child reset above clears the flag.
     if (st.terminal) {
       st.everEvaluated = true;
       continue;
@@ -294,7 +292,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       const bool anchor = c->nodeTypeName() == "Anchor";
       const bool load = uo && !anchor ? static_cast<bool>(uo->getLoad()) : true;
       if (!load) {
-        cs.status = ChildStatus::NotStarted; // load=FALSE holds the child idle
+        cs.status = ChildStatus::NotStarted; // load=`FALSE` holds the child idle
         continue;
       }
       MFString urls = uo ? uo->getUrl() : MFString{};
@@ -340,7 +338,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         setChildStatus(cs, c, ls, ChildStatus::Failed); // all candidates failed
     }
 
-    // 5. A child (re)entering Loading via NSN-7 restarts the timeout window.
+    // 5. A child (re)entering Loading restarts the timeout window.
     if (restartTimeout)
       st.activatedAt = now;
 
@@ -377,7 +375,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       st.lastProgress = 1.0f;
     };
     auto failureBurst = [&]() {
-      emit(ctx, ls, "isLoaded", SFBool{false}); // loadTime is NOT sent on failure
+      emit(ctx, ls, "isLoaded", SFBool{false}); // loadTime is not sent on failure
       if (st.active) {
         emit(ctx, ls, "isActive", SFBool{false});
         if (sensorHook_)
@@ -411,7 +409,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         st.lastProgress = progress;
       }
     }
-    // else: nothing loading, none failed, not all ready (e.g. load=FALSE
+    // else: nothing loading, none failed, not all ready (e.g. load=`FALSE`
     // children) — the sensor idles until a child begins loading.
 
     // 7. timeOut deadline: measured from activation, re-read live, 0 = forever.

@@ -1,20 +1,18 @@
-// PlaneDrag.hpp — PURE PlaneSensor drag math (ISO/IEC 19775-1:2023 §20.4.2 +
+// PlaneDrag.hpp — pure PlaneSensor drag math (ISO/IEC 19775-1:2023 §20.4.2 +
 // drag-sensor common §20.2.2). No node/System coupling: a single free function
 // over plain SF* values, unit-testable in isolation.
-//
-// Model (all math in the sensor-LOCAL frame):
+// Model (all math in the sensor-local frame):
 //   M_sensor = M_world_of_parent * R(axisRotation)   (built by the caller and
 //              passed in as `sensorFrame`; the activation hit `p0Local` is
 //              already in this local frame).
 //   Tracking plane: z = p0Local.z, parallel to the Z=0 plane of the sensor
 //   frame and coincident with the initial hit. Frozen at activation.
-//
 //   Per motion (world ray in `ray`):
 //     O_s = inv(M_sensor) * ray.origin
 //     D_s = inv(M_sensor).upper3x3 * ray.direction
 //     t   = (p0Local.z - O_s.z) / D_s.z   (|D_s.z|~0 -> hold last: caller's job;
 //           here we still compute, producing a far point — see note)
-//     Q_s = O_s + t * D_s                 (trackPoint_changed, UNCLAMPED)
+//     Q_s = O_s + t * D_s                 (trackPoint_changed, unclamped)
 //     raw = (Q_s.x - p0Local.x, Q_s.y - p0Local.y, 0)
 //     unclamped = raw + offset            (offset.z passes straight through)
 //     translation = (clampDim(unclamped.x, min.x, max.x),
@@ -46,11 +44,11 @@ inline float planeClampDim(float v, float mn, float mx) {
 }
 
 // planeDrag — one pointer-motion evaluation.
-//   sensorFrame : M_sensor (world matrix of parent * R(axisRotation)).
-//   p0Local     : activation hit in sensor-local coords (defines plane z).
-//   worldRay    : current bearing in WORLD space.
-//   offset      : SFVec3f accumulator (added; offset.z passes through).
-//   minPosition/maxPosition : per-component (X,Y) clamp bounds.
+//   sensorFrame: M_sensor (world matrix of parent * R(axisRotation)).
+//   p0Local: activation hit in sensor-local coords (defines plane z).
+//   worldRay: current bearing in world space.
+//   offset: SFVec3f accumulator (added; offset.z passes through).
+//   minPosition/maxPosition: per-component (X,Y) clamp bounds.
 inline PlaneDragResult planeDrag(const Mat4 &sensorFrame, const SFVec3f &p0Local,
                                  const Ray &worldRay, const SFVec3f &offset,
                                  const SFVec2f &minPosition,
