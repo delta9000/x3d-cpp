@@ -37,10 +37,10 @@ Pending/Failed, and decodes Ready bytes in memory. Decoder-library types remain 
 ## DDS and cube-map images
 
 Both implementations dispatch `DDS ` bytes to `runtime/io/dds/DdsDecode.hpp`.
-It supports first-level 2D images and complete six-face cube maps with
-uncompressed channel masks or BC1/BC2/BC3 compression. Cube layers use X3D order:
-front, back, left, right, top, bottom. Unsupported arrays, volumes, partial
-cubes, and truncated data fail.
+It supports first-level 2D images and six-face cube maps with uncompressed
+channel masks or BC1/BC2/BC3 compression. Cube layers use X3D order: front,
+back, left, right, top, bottom; a face absent from a partial cube decodes as
+opaque white. Unsupported arrays, volumes, and truncated data fail.
 
 ## Format routing
 

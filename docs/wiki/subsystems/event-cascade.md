@@ -155,6 +155,15 @@ class EventCascade {
   tick also preserve the enclosing cascade; an exception-safe depth guard allows
   only a subsequent outermost fresh call to start another cascade.
 
+## Limitations
+
+- Each standalone `process()` and each `tick(now)` opens a fresh logical
+  timestamp; repeated numeric `now` values are not reconciled into one ISO
+  timestamp, so outputs and ROUTEs can fire again at the same numeric time.
+- `X3DTimeDependentSystem::emit`, used by `TimeSensorSystem`, posts plain
+  events rather than `postOutputEvent`. Activation followed by completion in one
+  update may queue both `isActive=true` and `isActive=false`.
+
 ## Conformance
 
 See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) for conformance status.

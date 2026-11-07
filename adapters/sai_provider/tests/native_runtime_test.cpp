@@ -33,7 +33,7 @@ void eq(sai::vec3f actual, sai::vec3f expected, const char *why) {
 }
 class inspected_backend : public sai::native::backend {
 public:
-  std::size_t turns = 0;
+  std::size_t turns = 0, last_turn_writes = 0;
   bool throw_after_tick = false;
   bool throw_after_activation = false;
 
@@ -48,6 +48,7 @@ protected:
                          const std::vector<admitted_write> &writes) override {
     auto result = sai::native::backend::do_turn(scene, time, writes);
     ++turns;
+    last_turn_writes = writes.size();
     if (throw_after_tick)
       throw std::runtime_error("injected failure after native mutation");
     return result;
@@ -377,7 +378,7 @@ void ordered_inputs_bounded_outputs() {
   auto last = take(service.enqueue(client, {{f.fraction, .75f}}));
   take(service.end_update(client));
   take(service.pump(active, {7}));
-  require(native.turns == 1,
+  require(native.turns == 1 && native.last_turn_writes == 3,
           "grouped external inputOnly occurrences execute in one native turn");
   take(service.dispatch_notifications());
   require(outputs.size() == 1 && routed.size() == 1,
@@ -472,6 +473,7 @@ void unnamed_routes_and_weak_identity() {
 
 void shared_root_behavior_once() {
   auto owned = std::make_unique<inspected_backend>();
+  auto &native = *owned;
   h::service service(std::move(owned));
   auto f = make(service);
   take(service.append_root(f.context, f.interpolator));
@@ -486,7 +488,7 @@ void shared_root_behavior_once() {
   take(service.pump(active, {0}));
   take(service.dispatch_notifications());
   require(
-      outputs == 1,
+      outputs == 1 && native.last_turn_writes == 1,
       "shared/rooted node identity has one behavior attachment and one output");
   require(take(service.roots(f.context)).size() == 4,
           "activation does not fabricate or remove render roots");

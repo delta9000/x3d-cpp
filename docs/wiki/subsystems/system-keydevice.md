@@ -64,8 +64,8 @@ public:
   ctx.pushKeyCharacter(string c, bool down);  // KeySensor keyPress/keyRelease
   ctx.pushActionKey(int code, bool down);     // KeySensor actionKeyPress/actionKeyRelease (§21 Table 21.2)
   ctx.pushModifierKey(int which, bool down);  // KeySensor shiftKey/controlKey/altKey (1=shift, 2=control, 3=alt)
-  ctx.pushStringTerminator;                 // StringSensor finalText + isActive=FALSE + reset
-  ctx.pushStringDeletion;                   // StringSensor delete-preceding (Backspace)
+  ctx.pushStringTerminator();               // StringSensor finalText + isActive=FALSE + reset
+  ctx.pushStringDeletion();                 // StringSensor delete-preceding (Backspace)
   ```
 
 - `KeyState` struct — owned by `X3DExecutionContext`; two parallel structures within it serve two consumers:
