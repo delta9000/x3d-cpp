@@ -149,6 +149,10 @@ inline std::vector<SFVec2f> getControlCurvePoints(const std::shared_ptr<X3DNode>
 
 constexpr float kGeom2DPi = 3.14159265358979323846f;
 
+// §14.3.2/§14.3.3: the arc runs CCW from startAngle to endAngle; if endAngle
+// is less than startAngle it is increased by 2π. Returns the CCW sweep in
+// [0, 2π]; a sweep of 0 is a single point (degenerate). MeshBuilder uses the
+// same function, so a mesh and its bounds always cover the same arc.
 inline float geom2DArcSweep(float startAngle, float endAngle) {
   const float twoPi = 2.0f * kGeom2DPi;
   float sweep = endAngle - startAngle;

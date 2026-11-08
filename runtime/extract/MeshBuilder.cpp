@@ -1026,20 +1026,8 @@ int sweepChordCount(float sweep) {
   return std::max(1, n);
 }
 
-// §14.3.2/§14.3.3: the arc runs CCW from startAngle to endAngle; if endAngle
-// is less than startAngle it is increased by 2π. Returns the CCW sweep in
-// [0, 2π]; a sweep of 0 is a single point (degenerate).
-float arcSweep(float startAngle, float endAngle) {
-  float sweep = endAngle - startAngle;
-  if (sweep < 0.0f) {
-    sweep += kGeometry2DTwoPi;
-    while (sweep < 0.0f)
-      sweep += kGeometry2DTwoPi;
-  }
-  if (sweep > kGeometry2DTwoPi)
-    sweep = kGeometry2DTwoPi;
-  return sweep;
-}
+// The arc sweep is shared with the bounds pass so meshes and bounds agree.
+using geombounds::geom2DArcSweep;
 
 void push2DLineVertex(MeshData &m, float x, float y) {
   m.positions.push_back(SFVec3f{x, y, 0.0f});
@@ -1109,7 +1097,7 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
     const float r = getField<float>(geom, "radius", 1.0f);
     const float a0 = getField<float>(geom, "startAngle", 0.0f);
     const float a1 = getField<float>(geom, "endAngle", 1.570796f);
-    emitCircleArcLines(m, r, a0, arcSweep(a0, a1));
+    emitCircleArcLines(m, r, a0, geom2DArcSweep(a0, a1));
     return true;
   }
   if (t == "Circle2D") {
@@ -1211,7 +1199,7 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
     const float r = getField<float>(geom, "radius", 1.0f);
     const float a0 = getField<float>(geom, "startAngle", 0.0f);
     const float a1 = getField<float>(geom, "endAngle", 1.570796f);
-    const float sweep = arcSweep(a0, a1);
+    const float sweep = geom2DArcSweep(a0, a1);
     const int segs = sweepChordCount(sweep);
     if (!(r > 0.0f) || segs == 0)
       return true; // recognized, empty
