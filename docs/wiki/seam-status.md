@@ -21,7 +21,7 @@ cover their fixtures, not every X3D obligation. Conformance status belongs in
 | AudioBackend | Stable abstract backend contract | BuiltinDsp | `x3d_sound_system`, `x3d_sound_immersive` and focused DSP tests |
 | FontMetrics | Stable callback | Monospace stub; optional stb_truetype metrics and atlas | `x3d_text_tests`, `x3d_text_atlas_tests` |
 | TextureResolver | Stable callback | Optional stb_image and Wuffs | `x3d_texture_tests` |
-| GeoProjection | Frozen mathematical interface; context-owned | Built-in ellipsoid conversion; optional PROJ | `x3d_math_tests`, `x3d_proj_geo_swap` |
+| GeoProjection | Frozen mathematical interface; context-owned | Built-in ellipsoid conversion; optional PROJ | `x3d_geometry_scene` (`geo_projection_test.cpp`), `x3d_proj_geo_swap` |
 | MovieDecoder | Stable callback | Optional pl_mpeg MPEG-1 | `x3d_movie_tests` |
 | RenderDelta | Experimental in-process feed | CPU, OpenGL, SVG, and native-host examples | `x3d_native_host_contract` and example suites |
 | Portable SAI provider | Experimental source-level contract | Native provider; x3d-sai reference bindings | `sai_provider_reference`, `sai_provider_native_runtime`, `sai_provider_presentation`, `sai_provider_adopt_session` |

@@ -81,7 +81,7 @@ work moved rows out of `invalid-only-jsail`, not the headline percentage.
 | IFS coord without coordIndex | `ifs-coord-index` | `InvalidFieldException: IndexedFaceSet containing Coordinate node …` | `tools/x3d-cli/fixtures/validate-ifs-no-coordindex.x3d` |
 | ILS coord without coordIndex | `ils-coord-index` | `InvalidFieldException: IndexedLineSet containing Coordinate node …` | `tools/x3d-cli/fixtures/validate-ils-no-coordindex.x3d` |
 
-## Implemented Checks (in `cmdValidate` / `conformance_checks::runAll`)
+## Implemented Checks (in `cmdValidate` / `cli_detail::collectDiagnostics`, `validate.hpp`)
 
 ### Check 1: Duplicate `<meta>` statements (`dup-meta`)
 - **Trigger**: Two `<meta>` elements with identical `name` AND `content` in `<head>`.
