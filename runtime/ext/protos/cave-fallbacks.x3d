@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<X3D profile="Full" version="4.0">
+  <Scene>
+    <!-- Portable inactive sensors. No script, network access, or simulated input. -->
+    <ProtoDeclare name="TrackedDeviceSensor">
+      <ProtoInterface>
+        <field name="metadata" type="SFNode" accessType="inputOutput"/>
+        <field name="description" type="SFString" accessType="inputOutput" value=""/>
+        <field name="enabled" type="SFBool" accessType="inputOutput" value="true"/>
+        <field name="device" type="SFString" accessType="initializeOnly" value="HEAD"/>
+        <field name="isActive" type="SFBool" accessType="outputOnly"/>
+        <field name="position_changed" type="SFVec3f" accessType="outputOnly"/>
+        <field name="orientation_changed" type="SFRotation" accessType="outputOnly"/>
+        <field name="roomPosition_changed" type="SFVec3f" accessType="outputOnly"/>
+        <field name="roomOrientation_changed" type="SFRotation" accessType="outputOnly"/>
+        <field name="buttons_changed" type="MFBool" accessType="outputOnly"/>
+        <field name="joystick_changed" type="SFVec2f" accessType="outputOnly"/>
+      </ProtoInterface>
+      <ProtoBody>
+        <Group><IS><connect nodeField="metadata" protoField="metadata"/></IS></Group>
+      </ProtoBody>
+    </ProtoDeclare>
+    <ProtoDeclare name="RoomFrameSensor">
+      <ProtoInterface>
+        <field name="metadata" type="SFNode" accessType="inputOutput"/>
+        <field name="description" type="SFString" accessType="inputOutput" value=""/>
+        <field name="enabled" type="SFBool" accessType="inputOutput" value="true"/>
+        <field name="isActive" type="SFBool" accessType="outputOnly"/>
+        <field name="position_changed" type="SFVec3f" accessType="outputOnly"/>
+        <field name="orientation_changed" type="SFRotation" accessType="outputOnly"/>
+        <field name="scale_changed" type="SFVec3f" accessType="outputOnly"/>
+      </ProtoInterface>
+      <ProtoBody>
+        <Group><IS><connect nodeField="metadata" protoField="metadata"/></IS></Group>
+      </ProtoBody>
+    </ProtoDeclare>
+    <!-- Identity placement on hosts without a physical room frame. -->
+    <ProtoDeclare name="RoomGroup">
+      <ProtoInterface>
+        <field name="metadata" type="SFNode" accessType="inputOutput"/>
+        <field name="children" type="MFNode" accessType="inputOutput"/>
+        <field name="addChildren" type="MFNode" accessType="inputOnly"/>
+        <field name="removeChildren" type="MFNode" accessType="inputOnly"/>
+        <field name="visible" type="SFBool" accessType="inputOutput" value="true"/>
+        <field name="bboxDisplay" type="SFBool" accessType="inputOutput" value="false"/>
+        <field name="bboxCenter" type="SFVec3f" accessType="initializeOnly" value="0 0 0"/>
+        <field name="bboxSize" type="SFVec3f" accessType="initializeOnly" value="-1 -1 -1"/>
+      </ProtoInterface>
+      <ProtoBody>
+        <Transform>
+          <IS>
+            <connect nodeField="metadata" protoField="metadata"/>
+            <connect nodeField="children" protoField="children"/>
+            <connect nodeField="addChildren" protoField="addChildren"/>
+            <connect nodeField="removeChildren" protoField="removeChildren"/>
+            <connect nodeField="visible" protoField="visible"/>
+            <connect nodeField="bboxDisplay" protoField="bboxDisplay"/>
+            <connect nodeField="bboxCenter" protoField="bboxCenter"/>
+            <connect nodeField="bboxSize" protoField="bboxSize"/>
+          </IS>
+        </Transform>
+      </ProtoBody>
+    </ProtoDeclare>
+  </Scene>
+</X3D>

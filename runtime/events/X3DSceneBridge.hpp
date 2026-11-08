@@ -156,6 +156,7 @@ inline BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx) {
   ctx.bindSceneAuthorFields(scene);
   BridgeResult result;
   ctx.clearRoutes();
+  ctx.markSceneTopologyChanged(); // Includes replacement of private PROTO ROUTEs.
   scene.resolveRoutes();
   using Scope = RouteError::Scope;
   auto reject = [&](std::size_t index, Scope scope, std::string reason) {
@@ -385,8 +386,11 @@ inline void attachKeyDeviceSensors(Scene &scene, X3DExecutionContext &ctx) {
  */
 inline std::shared_ptr<LoadSensorSystem>
 attachLoadSensors(Scene &scene, X3DExecutionContext &ctx,
-                  extract::AssetResolver resolver = nullptr) {
-  auto sys = std::make_shared<LoadSensorSystem>(std::move(resolver));
+                  extract::AssetResolver resolver = nullptr,
+                  extract::AssetResolverWithBase resolverWithBase = {},
+                  std::string baseUrl = {}) {
+  auto sys = std::make_shared<LoadSensorSystem>(
+      std::move(resolver), std::move(resolverWithBase), std::move(baseUrl));
   sys->setScene(&scene);
   detail::forEachNode(scene, [&](X3DNode *n) { sys->attach(n, ctx); });
   ctx.addSystem(sys);
@@ -446,7 +450,8 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
                                   extract::AssetResolver assetResolver = nullptr,
                                   InlineResolver inlineResolver = {},
                                   std::string baseUrl = {},
-                                  extract::ShaderOptions shaderOptions = {}) {
+                                  extract::ShaderOptions shaderOptions = {},
+                                  extract::AssetResolverWithBase assetResolverWithBase = {}) {
   auto tss = std::make_shared<TimeSensorSystem>();        // §8 Time — the clock
   detail::forEachNode(scene, [&](X3DNode *n) { tss->attach(n, ctx); });
   ctx.addSystem(tss);
@@ -467,7 +472,8 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
   auto picks = std::make_shared<PickSensorSystem>(); // §38 pick sensors
   detail::forEachNode(scene, [&](X3DNode *n) { picks->attach(n, ctx); });
   ctx.addSystem(picks);
-  attachLoadSensors(scene, ctx, std::move(assetResolver)); // §9 LoadSensor
+  attachLoadSensors(scene, ctx, std::move(assetResolver),
+                    std::move(assetResolverWithBase), baseUrl); // §9 LoadSensor
   attachShaders(scene, ctx, std::move(shaderOptions)); // §31 isSelected/isValid
   attachGeneratedCubeMaps(scene, ctx); // §34.4.2 `NEXT_FRAME_ONLY` reset
   attachTextureProjectors(scene, ctx); // §42 aspectRatio
@@ -480,6 +486,17 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
     ctx.addSystem(inlines);
   }
   attachViewpointBind(ctx);           // §23.3.1 post-cascade viewpoint bind hook
+}
+
+/// Install pointing-device sensors without anchors or navigation. Call after
+/// buildSceneGraph(scene), before the first tick (and before navigation, if any).
+inline void attachPointingSensors(Scene &scene, X3DExecutionContext &ctx) {
+  auto pss = std::make_shared<PointingSensorSystem>();
+  // One-time inventory pass: lets the system skip the per-tick whole-scene pick
+  // when the scene holds no pointing-device sensors (the common static-exhibit
+  // case). Sensors still resolve live from the pick path; this only counts them.
+  detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
+  ctx.addSystem(pss);
 }
 
 /**
@@ -497,12 +514,7 @@ inline void attachStandardRuntime(Scene &scene, X3DExecutionContext &ctx,
 inline std::shared_ptr<NavigationSystem>
 attachInteractive(Scene &scene, X3DExecutionContext &ctx,
                   AnchorSystem::AnchorHandler anchorHandler = {}) {
-  auto pss = std::make_shared<PointingSensorSystem>();
-  // One-time inventory pass: lets the system skip the per-tick whole-scene pick
-  // when the scene holds no pointing-device sensors (the common static-exhibit
-  // case). Sensors still resolve live from the pick path; this only counts them.
-  detail::forEachNode(scene, [&](X3DNode *n) { pss->attach(n, ctx); });
-  ctx.addSystem(pss); // claims pointer first
+  attachPointingSensors(scene, ctx); // claims pointer first
   auto anchors = std::make_shared<AnchorSystem>(); // §9.4.1 Anchor activation
   anchors->setAnchorHandler(std::move(anchorHandler)); // non-"#Name" urls
   detail::forEachNode(scene, [&](X3DNode *n) { anchors->attach(n, ctx); });

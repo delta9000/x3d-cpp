@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -96,9 +97,12 @@ using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode *child, const Scene 
 
 class LoadSensorSystem : public System {
 public:
-  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr)
+  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr,
+                            extract::AssetResolverWithBase resolverWithBase = {},
+                            std::string baseUrl = {})
       : resolver_(resolver ? std::move(resolver)
-                           : extract::makeNullAssetResolver()) {}
+                           : extract::makeNullAssetResolver()),
+        resolverWithBase_(std::move(resolverWithBase)), baseUrl_(std::move(baseUrl)) {}
 
   void setScene(const Scene *s) { scene_ = s; }
   void setChildLoadPolicy(ChildLoadPolicy p) { policy_ = std::move(p); }
@@ -159,6 +163,8 @@ private:
   }
 
   extract::AssetResolver resolver_;
+  extract::AssetResolverWithBase resolverWithBase_;
+  std::string baseUrl_;
   const Scene *scene_ = nullptr;
   ChildLoadPolicy policy_;
   std::function<void(X3DNode *, bool, double)> sensorHook_;
@@ -205,10 +211,13 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
     //    seeding new entries and diffing url/load for watched-child resets.
     std::vector<X3DNode *> watched;
     std::unordered_set<X3DNode *> present;
+    // Owning handles for Scene::nodeBaseUrls lookups (keyed by ownership).
+    std::unordered_map<X3DNode *, std::shared_ptr<X3DNode>> owners;
     for (const auto &childAny : ls->getChildren()) {
       X3DNode *c = childAny.get();
       if (!c || present.count(c))
         continue;
+      if (resolverWithBase_ && scene_) owners.emplace(c, childAny);
 
       const bool pre = scene_ && scene_->expandedInlines.count(c) > 0;
       ChildLoadPlan plan;
@@ -301,6 +310,15 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       }
       cs.status = ChildStatus::Loading;
       const extract::AssetKind kind = detail_loadsensor::kindForNode(c);
+      std::string base = baseUrl_;
+      if (resolverWithBase_ && scene_) {
+        // O(log n) ownership lookup, not a scan of every recorded node.
+        auto owner = owners.find(c);
+        if (owner != owners.end()) {
+          auto origin = scene_->nodeBaseUrls.find(std::weak_ptr<X3DNode>(owner->second));
+          if (origin != scene_->nodeBaseUrls.end()) base = origin->second;
+        }
+      }
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
@@ -314,16 +332,20 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
             break;
           }
         }
-        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
+        const std::string key = resolverWithBase_
+            ? std::to_string(static_cast<int>(kind)) + ":" +
+                  std::to_string(base.size()) + ":" + base + u : u;
+        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(key)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }
         if (called)
           break; // ≤1 resolver call/tick: remaining candidates wait for next tick
-        const extract::AssetResult r = resolver_(u, kind);
+        const extract::AssetResult r = resolverWithBase_
+            ? resolverWithBase_(u, kind, base) : resolver_(u, kind);
         called = true;
         if (r.ready()) {
-          readyMemo_.insert(u);
+          readyMemo_.insert(key);
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }

@@ -44,7 +44,7 @@ public:
 
   /// Build the Transform hierarchy index + initial world transforms from a Scene.
   void buildIndex(const Scene &scene) {
-    parent_.clear(); children_.clear(); world_.clear(); walked_.clear();
+    parent_.clear(); children_.clear(); world_.clear(); local_.clear(); walked_.clear();
     nearestTransform_.clear(); directChildren_.clear(); refCount_.clear();
     roots_.clear(); lifetime_.clear();
     for (const auto &root : scene.rootNodes)
@@ -237,16 +237,17 @@ private:
   // on the first edge seen, and a children_ entry on every edge so a USE-shared
   // node under two parents is reachable via both (worldTransformUnder()).
   void registerEdge(const X3DNode *n, const X3DNode *parentTransform) {
+    local_[n] = localMatrix(n, geoProjection());
     auto pit = parent_.find(n);
     if (pit == parent_.end()) {
       parent_[n] = parentTransform;
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n, geoProjection());
+                  local_.at(n);
     } else if (pit->second == parentTransform) {
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n, geoProjection());
+                  local_.at(n);
     }
     if (parentTransform) {
       auto &kids = children_[parentTransform];
@@ -294,7 +295,11 @@ private:
     if (itLive == lifetime_.end()) return;
     auto live = itLive->second.lock();
     if (!live) return; // a dirty ancestor may precede the removing parent's diff
-    Mat4 w = parentWorld * localMatrix(n, geoProjection());
+    // DirtyField too: a non-TRS field can still feed the local matrix (a geo
+    // node's geoSystem) when the writer's classification did not say so.
+    if (dirty.flags(n) & (DirtyLocalTransform | DirtyField))
+      local_[n] = localMatrix(n, geoProjection());
+    Mat4 w = parentWorld * local_.at(n);
     if (parentOf(n) == parentNode) world_[n] = w; // canonical edge only
     dirty.markDirty(n, DirtyWorldTransform);
     auto it = children_.find(n);
@@ -352,7 +357,7 @@ private:
         eraseSubtree(k, serving);
       }
     }
-    parent_.erase(c); world_.erase(c); children_.erase(c); lifetime_.erase(c);
+    parent_.erase(c); world_.erase(c); local_.erase(c); children_.erase(c); lifetime_.erase(c);
     nearestTransform_.erase(c); walked_.erase(c); refCount_.erase(c);
   }
 
@@ -398,6 +403,7 @@ private:
   std::unordered_map<const X3DNode *, const X3DNode *> parent_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> children_;
   std::unordered_map<const X3DNode *, Mat4> world_;
+  std::unordered_map<const X3DNode *, Mat4> local_; // unchanged descendant TRS reuse
   std::unordered_set<const X3DNode *> walked_;   // subtrees already recursed (cycle/sharing guard)
   // For non-Transform nodes visited during walk: the nearest ancestor Transform
   // (NULL = no ancestor). Powers worldTransformAny() so non-Transform targets

@@ -30,6 +30,7 @@ struct X3DFieldValue {
   std::variant<std::monostate, float, int, bool, SFColor, SFColorRGBA,
                SFVec2f, SFVec3f, SFVec4f, SFMatrix3f, SFMatrix4f,
                SFString> value;
+  bool operator==(const X3DFieldValue &) const = default;
 };
 
 } // namespace x3d::runtime::extract

@@ -26,6 +26,15 @@ Proximity sensor orientation uses `rotationFromMatrix` to convert the viewer's
 forward/up basis in sensor coordinates. X- and Z-axis half-turns preserve that
 basis. A zero forward vector returns the identity orientation.
 
+The viewer pose comes from the bound Viewpoint, navigation, and relative head
+tracking, or from the host's persistent `setViewerWorldPose(cameraToWorld)`
+override. With no bound Viewpoint, head tracking composes at the world origin,
+so LOD, Billboards, and sensors follow a tracked viewer in scenes that author
+no Viewpoint; with identity tracking the viewer stays at the origin. All of
+these feed the same camera queries. Set the pose before ticking. See
+[ADR-0065](../decisions/0065-absolute-viewer-world-pose.md) and
+[ADR-0073](../decisions/0073-implicit-default-viewer.md).
+
 ## Key files
 
 | File / directory | Role |

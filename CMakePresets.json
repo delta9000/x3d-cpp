@@ -15,6 +15,17 @@
       }
     },
     {
+      "name": "ext",
+      "inherits": "dev",
+      "displayName": "Ext (dev + opt-in runtime/ext extensions)",
+      "description": "The dev preset with X3D_CPP_BUILD_EXT=ON and X3D_CPP_WERROR=ON in its own build dir, so the opt-in extension quarantine (STL/ExternalGeometry codecs, CAVE sensors) and its tests build without touching the default core build. `mise run build-ext` drives it; `mise run ci` and the GitHub `ext-gate` job run it.",
+      "binaryDir": "${sourceDir}/build-ext",
+      "cacheVariables": {
+        "X3D_CPP_BUILD_EXT": "ON",
+        "X3D_CPP_WERROR": "ON"
+      }
+    },
+    {
       "name": "ci",
       "displayName": "CI (behavior + compile-contract jobs)",
       "description": "Shared configuration for the GitHub Actions behavior and header-contract jobs: header isolation ON as one object target with one TU per public header, X3D_CPP_WERROR=ON (warnings become errors, the merge gate). Use `mise run build-ci` to drive both scoped aggregates locally before pushing.",
@@ -60,6 +71,10 @@
       "configurePreset": "dev"
     },
     {
+      "name": "ext",
+      "configurePreset": "ext"
+    },
+    {
       "name": "ci",
       "configurePreset": "ci"
     },
@@ -77,6 +92,13 @@
       "name": "dev",
       "configurePreset": "dev",
       "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "stopOnFailure": false }
+    },
+    {
+      "name": "ext",
+      "configurePreset": "ext",
+      "output": { "outputOnFailure": true },
+      "filter": { "include": { "name": "^x3d_(ext_|stl_write_test$|extract_oracle_test$)" } },
       "execution": { "noTestsAction": "error", "stopOnFailure": false }
     },
     {

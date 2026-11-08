@@ -26,10 +26,13 @@ what needs to be drawn, and how has that changed since last frame?" It produces
 flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc`,
 `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D
 nodes directly. The split between a full snapshot (frame 0 and scene-reload) and
-an incremental `delta()` keeps geometry and material refreshes proportional to
-the affected items. Active lights are collected separately on each tick.
-Structural/active-child and scoped-descriptor changes take one bounded full-scene
-replacement walk per affected tick; correctness comes before preserving the old subtree optimization.
+an incremental `delta()` keeps geometry, material, and TRS refreshes
+proportional to the affected items. Switch and LOD selection changes keep path
+IDs and mesh caches. Structural and scoped-descriptor changes take one bounded
+full-scene replacement walk per affected tick; correctness comes before
+preserving the old subtree optimization. In scenes with lights, each advancing
+`delta()` re-collects the light list that items index; `lightsChanged` is set
+only when the published list differs.
 
 ## Key files
 
@@ -77,7 +80,7 @@ FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-sc
 int           lf   = it.localFog; // §24.4.3: nearest in-scope LocalFog index, or -1.
 const std::vector<LocalFogDesc>& localFogs = ex.snapshotLocalFogs(); // resolve lf here.
 std::vector<LightDesc> lights = ex.lights(); // fresh collect; or:
-const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // current snapshot/delta light cache
+const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // refreshed by snapshots, selection walks, and advancing delta() in lit scenes
 
 // World-bounds (per-path-correct, not first-path-only).
 Aabb bounds = ex.sceneWorldBounds();
@@ -118,6 +121,22 @@ struct RenderDelta {
 };
 ```
 
+`lightsChanged` is false when the world-resolved `LightDesc` list is unchanged.
+`LightSystem::collect` records its own dependencies (`LightDependencies`): every
+node on a path to a light, including disabled lights, and to each Switch/LOD it
+selects through, plus the current choice of each LOD the geometry walk does not
+already track. These cover the graph the light walk reads, which includes
+subtrees the geometry walk skips (`visible=FALSE`, `Collision.proxy`, a GeoLOD
+`rootNode` beside loaded children), so a light change there notifies too.
+The `lightsChanged` comparison runs only when one of those dependencies is
+dirty or a selection changed, so unrelated animation leaves it false. Full
+snapshots initialize the consumer with `lightsChanged=true`; structural
+replacement deltas compare with the previous published list. Camera, background,
+and fog bits are set on every delta. `snapshotLights()` is refreshed by full
+snapshots, selection walks, and every advancing `delta()` in a scene that has
+lights (or when a light node changed), and live items are re-tagged against it.
+`snapshotLocalFogs()` refreshes on full snapshots and selection walks.
+
 ### Scalar material update cost
 
 A scalar appearance-subtree edit refreshes each affected placement once per tick,
@@ -149,9 +168,25 @@ not just distinct CPU pointers.
 ### View-dependent placements
 
 `delta()` checks recorded LOD selections in each placement's current world frame,
-including selections whose branch emits no mesh. A changed per-path selection
-uses the structural replacement contract below. The node-level `level_changed`
-event alone cannot represent all USE placements.
+including selections whose branch emits no mesh. Switch and LOD selection
+changes use a bounded active-scene walk retaining path IDs and immutable mesh
+caches. The add/remove lists contain the active-set difference; unaffected
+placements retain their IDs and mesh references. Dependencies are rebuilt for
+active paths, so nested selections and DEF/USE placements remain independent.
+Deselected geometry keeps its raw mesh cache as *dormant*, with its own source
+index: a `DirtyField` on the geometry or a direct source node evicts it and
+advances its content version, so later reactivation reads current fields. An
+unedited level comes back with the same `GeomId` and mesh reference, so a viewer
+sitting on an LOD range boundary does not rebuild or re-upload on each crossing.
+HAnimSegment-displaced variants are still evicted on deselection. Scoped
+light/fog index changes republish only records whose indices change; surviving
+external packed items receive geometry updates because the resolver is called
+again. The walk also re-derives every surviving record's material, textures,
+shader and skin binding: a record whose payload differs (for example, a texture
+that finished resolving) is listed in `updatedMaterial` (`updatedSkinPose` for
+the skin binding). See
+[ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
+The node-level `level_changed` event alone cannot represent all USE placements.
 
 Billboard descendants recompute their per-path transforms from the current
 tracked eye/up and authored ancestor transforms. A camera-only change emits
@@ -163,10 +198,12 @@ addition is published, including tracked motion while it was absent. Regression:
 
 ### Structural delta replacement contract
 
-Any `DirtyChildren` (including SFNode/MFNode writes, `visible` changes and
-Switch/LOD active-child changes and `LayerSet.order` edits), a scalar
-`HAnimHumanoid` configuration edit, or a scene topology revision replaces the
-extraction baseline once:
+Any `DirtyChildren` (SFNode/MFNode writes, `visible` changes, and
+`LayerSet.order` edits), a scalar `HAnimHumanoid` configuration edit, or a
+scene topology revision replaces the extraction baseline once. Switch/LOD
+selection uses `DirtyActiveChild` and the retained-path walk described under
+[View-dependent placements](#view-dependent-placements); structural edits in
+the same tick take precedence:
 `removed` contains every previously live ID and `added` contains the complete
 current snapshot. Apply removals before additions; dense IDs can occur in
 both. Release their live content-cache entries before accepting new records;

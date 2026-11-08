@@ -27,10 +27,14 @@
 
 #include <algorithm>
 #include <any>
+#include <array>
 #include <atomic>
+#include <chrono>
+#include <cmath>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -259,6 +263,8 @@ public:
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
   }
 
+  // Structural field writes advance this automatically. Call explicitly after
+  // direct root/PROTO-route edits that bypass writeField and cascade delivery.
   void markSceneTopologyChanged() { ++sceneTopologyRevision_; }
   std::uint64_t sceneTopologyRevision() const { return sceneTopologyRevision_; }
 
@@ -398,7 +404,28 @@ public:
    *          set of fields; repeated inputOnly occurrences still deliver. Legacy
    *          seed producers are not covered by the generated-output cap.
    */
-  void tick(double now) {
+  struct TickTimings {
+    double systemsAndCascadeMs = 0;
+    double postCascadeMs = 0;
+    double transformsMs = 0;
+    double boundsMs = 0;
+  };
+
+  void tick(double now) { tick(now, nullptr); }
+
+  using RetainedInput = EventCascade::RetainedInput;
+  /// Prevalidated retained candidates become visible together, before systems.
+  /// Queued input occurrences and ROUTEs share this tick's timestamp guards.
+  /// A failure can leave partial native effects; no rollback is promised.
+  void tick(double now, const std::vector<RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+
+  /// Optional phase timings for host profiling; no clock reads when null.
+  void tick(double now, TickTimings *timings) { tick(now, timings, {}); }
+
+  void tick(double now, TickTimings *timings,
+            const std::vector<RetainedInput> &ingress) {
     auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
@@ -416,10 +443,24 @@ public:
     // Increment after the re-entrancy guard so a nested no-op creates no advance.
     ++tickGeneration_;
 
+    using Clock = std::chrono::steady_clock;
+    auto phaseStart = timings ? Clock::now() : Clock::time_point{};
+    if (timings) *timings = {};
+    const auto finishPhase = [&](double TickTimings::*phase) {
+      if (!timings) return;
+      const auto end = Clock::now();
+      timings->*phase = std::chrono::duration<double, std::milli>(end - phaseStart).count();
+      phaseStart = end;
+    };
     now_ = now;
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
     cascade_.beginTimestamp();            // open the tick's single timestamp
+    if (!ingress.empty()) {
+      cascade_.stageRetained(ingress);
+      cascade_.process(/*freshTimestamp=*/false);
+      flushDetachedNodes();
+    }
     // §4.4.8.3 re-evaluate systems + drain until quiescence.
     std::size_t productions;
     do {
@@ -429,14 +470,18 @@ public:
       productions = cascade_.process(/*freshTimestamp=*/false);
       flushDetachedNodes();
     } while (productions != 0);
+    finishPhase(&TickTimings::systemsAndCascadeMs);
     // §29.2.4: Script eventsProcessed() runs after the batch drains. Each hook
     // may post + drain further events (it calls process() internally).
     for (const auto &hook : postCascade_) {
       hook(*this);
       flushDetachedNodes();
     }
+    finishPhase(&TickTimings::postCascadeMs);
     transforms_.propagate(dirty_);        // dirtied locals -> world transforms
+    finishPhase(&TickTimings::transformsMs);
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
+    finishPhase(&TickTimings::boundsMs);
   }
 
   /** @brief Drain pending events without advancing the clock.
@@ -461,14 +506,21 @@ public:
   std::uint64_t tickGeneration() const { return tickGeneration_; }
   /// True while tick() runs (systems, cascade drains, post-cascade hooks).
   bool ticking() const { return ticking_; }
+  /// No guarded native call is in flight, and callbacks have not retired.
+  /// This is an owner-thread lifecycle check, not a concurrency lock.
+  bool callbacksIdle() const {
+    return callbacks_.canRetire() && !callbacks_.retired();
+  }
 
   const EventGraph &graph() const { return graph_; }
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
   const DirtyTracker &dirtyTracker() const { return dirty_; }
-  /// Selection changes require a subtree re-walk even when no settable field changes.
+  /// View-dependent selection (an LOD level computed from the camera) is not a
+  /// settable field, so it bypasses classifyDirty; this marks the subtree for
+  /// the next delta() re-walk.
   void markActiveChildChanged(X3DNode *n) {
-    if (n) dirty_.markDirty(n, DirtyChildren | DirtyBounds);
+    if (n) dirty_.markDirty(n, DirtyActiveChild);
   }
   /// Pull surface: world transform of a Transform node (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
@@ -643,11 +695,24 @@ public:
     return pick_.castCollidable(worldRay, maxDist, groups);
   }
 
-  /// World->camera (view) matrix from the bound Viewpoint (identity if none).
-  // the effective view = worldOf · authoredPose · navOffset · headPose.
-  // Authored position/orientation stay pristine (§23.2.3); navigation accumulates
-  // the per-viewpoint offset and the consumer supplies the head pose.
+  /// World->camera (view) matrix. An absolute host pose takes precedence;
+  /// otherwise view = worldOf · authoredPose · navOffset · headPose. Authored
+  /// position/orientation stay pristine (§23.2.3). With no bound Viewpoint,
+  /// head tracking composes at the world origin.
   Mat4 viewMatrix() const {
+    if (viewerWorldPose_) return viewerWorldPose_->inverse();
+    X3DNode *vp = boundViewpoint();
+    const Mat4 base = vp ? boundViewpointWorldPose() * viewpointOffset(vp).local
+                        : Mat4::identity();
+    const Mat4 cam = base *
+                     (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
+    return cam.inverse();
+  }
+
+  /// Authored camera-to-world pose of the bound Viewpoint, or identity if none.
+  /// Includes its ancestor frame (first path) and GeoViewpoint tangent frame;
+  /// excludes navigation, head tracking, and the absolute host override.
+  Mat4 boundViewpointWorldPose() const {
     X3DNode *vp = boundViewpoint();
     if (!vp) return Mat4::identity();
     SFRotation ori = geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0});
@@ -661,10 +726,7 @@ public:
       pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
              Mat4::rotation(ori);
     }
-    Mat4 cam = pick_.worldOf(vp) * pose *
-               viewpointOffset(vp).local *
-               (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
-    return cam.inverse();
+    return pick_.worldOf(vp) * pose;
   }
 
   // Per-viewpoint user offset (process-local; §23.3.1 relative viewing transform).
@@ -675,7 +737,28 @@ public:
   }
   void setViewpointOffset(X3DNode *vp, const ViewpointOffset &off) { offsets_[vp] = off; }
 
-  // CAVE head-tracking seam (process-local; composed after the navigation offset).
+  /// Override the viewer with a rigid camera-to-world matrix in X3D world
+  /// coordinates (translation + rotation). Takes effect immediately, even
+  /// without a bound Viewpoint; persists across binds and setHeadPose calls
+  /// until explicitly cleared.
+  ///
+  /// Returns false, and keeps the previous pose, for a matrix that is not
+  /// finite, has a projective bottom row, or whose 3x3 part is not a proper
+  /// rotation within kViewerPoseTolerance (scale, shear or a reflection).
+  /// Accepted matrices are re-orthonormalized, so float drift accumulated by a
+  /// host's tracking or navigation never reaches the view as scale or shear.
+  static constexpr float kViewerPoseTolerance = 1e-3f;
+  bool setViewerWorldPose(const Mat4 &pose) {
+    auto rigid = rigidViewerPose(pose);
+    if (!rigid) return false;
+    viewerWorldPose_ = *rigid;
+    return true;
+  }
+  /// Resume the bound Viewpoint (or world origin) + stored head pose.
+  void clearViewerWorldPose() { viewerWorldPose_.reset(); }
+
+  // Relative head tracking, composed after navigation when no world override is set.
+  // Writes remain stored while overridden and take effect when it is cleared.
   void setHeadPose(const SFVec3f &pos, const SFRotation &ori) { head_.set(pos, ori); }
   const HeadPose &headPose() const { return head_; }
 
@@ -686,6 +769,60 @@ public:
   /// Viewer world-space up vector (+Y of the camera frame).
   SFVec3f cameraWorldUp() const {
     return viewMatrix().inverse().transformDirection(SFVec3f{0, 1, 0});
+  }
+
+  /// The rigid pose setViewerWorldPose would store for `pose`, or nullopt when
+  /// it rejects the matrix (see there).
+  static std::optional<Mat4> rigidViewerPose(const Mat4 &pose) {
+    for (float v : pose.m)
+      if (!std::isfinite(v)) return std::nullopt;
+    const float tol = kViewerPoseTolerance;
+    if (std::fabs(pose.m[3]) > tol || std::fabs(pose.m[7]) > tol ||
+        std::fabs(pose.m[11]) > tol || std::fabs(pose.m[15] - 1.0f) > tol)
+      return std::nullopt;
+    using V = std::array<double, 3>;
+    auto col = [&](int c) { return V{pose.m[c * 4], pose.m[c * 4 + 1], pose.m[c * 4 + 2]}; };
+    auto dot = [](const V &a, const V &b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+    const V x = col(0), y = col(1), z = col(2);
+    for (const V &c : {x, y, z})
+      if (std::fabs(dot(c, c) - 1.0) > 2.0 * tol) return std::nullopt;
+    if (std::fabs(dot(x, y)) > tol || std::fabs(dot(y, z)) > tol ||
+        std::fabs(dot(x, z)) > tol)
+      return std::nullopt;
+    const V cr{x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2],
+               x[0] * y[1] - x[1] * y[0]};
+    if (dot(cr, z) <= 0.0) return std::nullopt; // reflection
+    // Gram-Schmidt: keep x's direction, then y's plane; z completes the frame.
+    auto norm = [&](V v) {
+      const double l = std::sqrt(dot(v, v));
+      return V{v[0] / l, v[1] / l, v[2] / l};
+    };
+    const V nx = norm(x);
+    const double d = dot(nx, y);
+    const V ny = norm(V{y[0] - d * nx[0], y[1] - d * nx[1], y[2] - d * nx[2]});
+    const V nz{nx[1] * ny[2] - nx[2] * ny[1], nx[2] * ny[0] - nx[0] * ny[2],
+               nx[0] * ny[1] - nx[1] * ny[0]};
+    Mat4 out = pose;
+    for (int r = 0; r < 3; ++r) {
+      out.m[r] = static_cast<float>(nx[r]);
+      out.m[4 + r] = static_cast<float>(ny[r]);
+      out.m[8 + r] = static_cast<float>(nz[r]);
+    }
+    out.m[3] = out.m[7] = out.m[11] = 0.0f;
+    out.m[15] = 1.0f;
+    return out;
+  }
+
+  /// Keep host-owned nodes live while they are unreachable from the scene
+  /// roots: their fields, ROUTEs and attached systems keep working when a graph
+  /// edit detaches them. They are not render roots. The caller attaches its own
+  /// systems; this only records liveness.
+  void retainNodes(const std::vector<std::shared_ptr<X3DNode>> &nodes) {
+    for (const auto &node : nodes) {
+      if (!node) continue;
+      retainedNodes_.push_back(node);
+      collectSubtreeNodes(node.get(), sceneNodes_);
+    }
   }
 
 private:
@@ -703,12 +840,14 @@ private:
     sceneNodes_.clear();
     for (const auto &root : sceneRoots_)
       if (const auto node = root.lock()) collectSubtreeNodes(node.get(), sceneNodes_);
+    for (const auto &node : retainedNodes_) collectSubtreeNodes(node.get(), sceneNodes_);
   }
 
   void synchronizeSceneNodes() {
     std::unordered_set<const X3DNode *> reachable;
     for (const auto &root : sceneRoots_)
       if (const auto node = root.lock()) collectSubtreeNodes(node.get(), reachable);
+    for (const auto &node : retainedNodes_) collectSubtreeNodes(node.get(), reachable);
     std::unordered_set<const X3DNode *> removed;
     for (const auto *node : sceneNodes_)
       if (!reachable.count(node)) removed.insert(node);
@@ -768,12 +907,16 @@ private:
           (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode)) {
         flags |= DirtyChildren;
         nodeReferencesChanged = true;
+        markSceneTopologyChanged();
         break;
       }
-    // Selection changes require a subtree re-walk even when no node field changes.
-    if (a.field == "whichChoice") flags = DirtyChildren;
+    // Switch selection changes preserve node references and the transform
+    // index. A PROTO/Script field that happens to be named whichChoice is an
+    // ordinary field write and keeps DirtyField.
+    if (a.field == "whichChoice" && a.node->nodeTypeName() == "Switch")
+      flags = DirtyActiveChild;
     // visible changes active traversal even when the hidden branch emitted no
-    // RenderItems, so it must invalidate the extraction baseline like Switch.
+    // RenderItems, so it must invalidate the extraction baseline.
     if (a.field == "visible") flags |= DirtyChildren;
     // ISO/IEC 19775-1 §35.4.2: order selects the rendered Layer placements.
     if (a.field == "order" && a.node->nodeTypeName() == "LayerSet")
@@ -783,6 +926,9 @@ private:
         if (a.field == f) flags = DirtyLocalTransform;
     if (isTransformNode && (a.field == "geoCoords" || a.field == "geoCenter"))
       flags = DirtyLocalTransform; // §25.3.3 / §25.3.10 dynamic tangent anchors
+    // geoSystem selects the frame's spatial reference, so it changes the local
+    // matrix too; TransformSystem's cached local matrix refreshes only on this bit.
+    if (isTransformNode && a.field == "geoSystem") flags |= DirtyLocalTransform;
 
     static const char *kBounds[] = {"size", "radius", "height", "bottomRadius",
         "point", "coord", "controlPoint", "crossSection", "spine", "scale",
@@ -804,6 +950,7 @@ private:
   std::vector<std::shared_ptr<System>> systems_;
   std::vector<std::function<void()>> scriptShutdown_;
   std::vector<std::weak_ptr<X3DNode>> sceneRoots_;
+  std::vector<std::shared_ptr<X3DNode>> retainedNodes_;
   std::unordered_set<const X3DNode *> sceneNodes_;
   std::unordered_set<const X3DNode *> pendingDetach_;
   std::vector<std::any> retainedNodeValues_;
@@ -816,6 +963,7 @@ private:
   PickSystem pick_{geoProjection_};
   PointerState pointer_;
   KeyState keys_;
+  std::optional<Mat4> viewerWorldPose_; // host-owned absolute camera override
   HeadPose head_;                                          // head seam
   std::unordered_map<X3DNode *, ViewpointOffset> offsets_; // per-viewpoint user offset
   BindTransition lastVpTransition_ = BindTransition::None; //

@@ -30,6 +30,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_vrml97_reader
         x3d_json_reader
         x3d_sdk_facade
+        x3d_sdk_node_inspection
         x3d_authoring_link_contract
         x3d_native_host_contract
         x3d_sound_system
@@ -99,6 +100,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_vrml97_reader
         x3d_json_reader
         x3d_sdk_facade
+        x3d_sdk_node_inspection
         x3d_authoring_link_contract
         x3d_native_host_contract
         x3d_sound_system

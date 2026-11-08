@@ -96,6 +96,16 @@ cmake --build --preset ci --target x3d_compile_contracts
 ctest --preset ci -L compile-contract --output-on-failure -j "$(nproc)"
 """
 
+# The opt-in runtime/ext extensions build in their own build-ext/ tree so the
+# core build stays ext-free (see cmake/x3d/ext.cmake). Mirrors the GitHub `ext` job.
+[tasks.build-ext]
+description = "Configure, build, and ctest the opt-in runtime/ext extensions (STL, ExternalGeometry, CAVE) with the `ext` preset in build-ext/."
+run = """
+cmake --preset ext
+cmake --build --preset ext --target x3d_ext_tests
+ctest --preset ext -j "$(nproc)"
+"""
+
 # Sanitizer objects use different flags and a separate build directory.
 [tasks.build-san]
 description = "Build and test the behavior suite with ASan and UBSan using the san preset."
@@ -227,8 +237,8 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, corpus regressions, and authoring symbols."
-depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "cli-gate-regression", "authoring-footprint"]
+description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, the opt-in ext build, corpus regressions, and authoring symbols."
+depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "build-ext", "cli-gate-regression", "authoring-footprint"]
 
 [tasks.ci-all]
 description = "Run ci plus the sanitizer suite and CPU/OpenGL example gates."

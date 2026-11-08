@@ -45,6 +45,45 @@ both checkouts. It also demonstrates the optional native presentation feed.
 For backend-independent lifecycle rules, use the SAI
 [portable contract](https://github.com/delta9000/x3d-sai/blob/main/docs/portable-contract.md).
 
+## Adopt a host session
+
+`native::adopt_session(std::move(session), limits)` returns an owning `service`,
+`scene`, `active` activation, and checked `host` access to your existing session.
+The session must be exclusively owned, quiescent, and unticked; relinquish mutable
+node/store aliases. Construct the service on its eventual owner thread.
+
+Use ordinary named-node lookup, field read, enqueue, and pump on the loaded graph.
+`host.session(service)` borrows the same native session for host tracking inputs
+and extraction between pumps. The host owns the sole `fullSnapshot`/`delta`
+consumer; the provider performs neither extraction operation for adopted scenes.
+Don't retain native borrows across pumps or retirement, mutate fields, or tick
+outside the provider. Retire/close the service on its owner thread.
+
+Adopted scalar access extends beyond the creation whitelist. SFNode/MFNode reads
+preserve identity; node-valued writes remain refused. Nodes that native code
+adds after adoption get identities when a read or observation first reaches
+them, so native node writes do not fault a pump. Unobserved native writes are
+not read back. PROTO/Inline/IMPORT/Script interfaces remain opaque while native
+content continues to execute and render; `type_name` reports their real type or
+PROTO name. The adopted scene refuses portable META projection; other scenes in
+the same service keep `scene_metadata`. Each pump ticks through
+`RuntimeSession::tick`, so deferred Inline warnings reach
+`document().inlineWarnings`. Live ROUTE addition is available
+through the optional `live_routes` capability: enqueue a route with
+`service.enqueue_route(client, from, to)` and process its ordinary FIFO ticket.
+Its pump installs the route before evaluating that turn; update gates install
+all their routes before inputs. Native restrictions, including exact native
+kinds (SFEnum is not SFString) and node-valued destinations, are refused at
+`enqueue_route`. An exact duplicate route, whether installed or held in the same
+gate, is a successful no-op. Removal and PROTO interface redirection remain
+unsupported. See the
+[adoption contract](../../docs/wiki/subsystems/sai-provider.md#adopt-a-prepared-session)
+for the exact kind set and restrictions, and
+[ADR-0074](../../docs/wiki/decisions/0074-sai-adopt-session.md) for ownership and
+ingress decisions. `sai_provider_adopt_session` is registered in the source and
+relocated provider harness, including same-pump TimeSensor, live ROUTE,
+native node-write and Inline-diagnostic assertions.
+
 ## Bounded capabilities
 
 See the [provider contract](../../docs/wiki/subsystems/sai-provider.md) for the
@@ -84,7 +123,10 @@ native turn. The activation frame has no host time; later frames record the
 native tick and supplied time. A rejected submission that never enters the
 backend does not create a native frame.
 
-A frame owns its item vector, matrices and shared immutable mesh data. It
+A frame owns its item vector, matrices, extracted `MaterialDesc` values, and
+shared immutable mesh data. With no Appearance in the supported node slice,
+the material is the extractor's unlit-white fallback. You no longer need to
+invent a host material for these placements. The frame
 contains no native node pointers, storage IDs, scene/session storage or callback
 captures. Its opaque scene identity namespaces placement and mesh keys. Host
 code may retain and render an old frame after the service is destroyed; that
@@ -96,14 +138,31 @@ currently live immutable mesh ownership, so shared placements share a key;
 equivalent freshly rebuilt mesh content may receive another key. Neither key
 space is a portable node handle. Identity exhaustion fails explicitly.
 
-This is a latest-full-snapshot policy: the backend keeps one current frame and
+Use `changes_between(previous.get(), *current)` to compare two retained frames
+from the same scene. Pass `nullptr` for the first upload. The result contains
+`added`, `removed`, `updated_transform`, `updated_geometry`, and
+`updated_material` placement keys. Read added and updated values from
+`current.items`, and discard removed keys. Update buckets can overlap, but
+exclude added and removed placements. Ordering within a bucket is unspecified.
+The function rejects foreign scenes and decreasing native ticks; equal host
+times and skipped ticks are supported. It needs no live service.
+
+Transform changes compare exact matrix values; geometry changes compare mesh
+identity. Each item's opaque `material_revision` advances on extractor material
+invalidation or placement rebuild, so `updated_material` can conservatively
+request a refresh of an equal value. Revisions survive unchanged turns and
+cannot be compared across scene identities. This is a net frame comparison,
+not a log of intermediate edits. See
+[ADR-0066](../../docs/wiki/decisions/0066-sai-presentation-materials-and-deltas.md).
+
+This retains the latest-full-snapshot policy: the backend keeps one current frame and
 current identity maps, with no historical frame queue. Slow hosts deliberately
 skip intermediate presentation frames and replace their displayed scene from
 the next complete frame. Portable event/receipt queues retain their separate
 policies. Producer retention scales with the current scene; consumer-retained
 frames and backend scene storage are outside portable queue byte budgets.
 
-The feed exposes only geometry and world transforms for the four-node slice.
+The feed exposes geometry, materials, and world transforms for the four-node slice.
 Its configuration preflight conservatively limits every registered node path,
 including detached nodes, to the native nesting bound (currently 1,000 nodes).
 This prevents the extractor's silent depth truncation from becoming an alleged

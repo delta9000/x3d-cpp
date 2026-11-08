@@ -17,6 +17,9 @@ if(X3D_CPP_BUILD_EXAMPLES)
     # The binary takes a dir + flags; on-demand full sweep via `mise run corpus`.
     # The ctest runs a bounded, deterministic subset and skips (exit 0) if the
     # corpus dir is absent, so it stays portable.
+    add_executable(x3d_runtime_tick_profile
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/runtime_tick_profile.cpp")
+    target_link_libraries(x3d_runtime_tick_profile PRIVATE x3d_cpp::sdk)
     add_executable(x3d_corpus_sweep
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/corpus_sweep.cpp")
     target_link_libraries(x3d_corpus_sweep PRIVATE x3d_cpp::sdk)

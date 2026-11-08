@@ -4,9 +4,14 @@
 
 namespace x3d::runtime {
 class Scene;
+class RuntimeSession;
 }
 namespace x3d::sai::experimental::native {
-namespace detail { struct presentation_access; }
+namespace detail {
+struct presentation_access;
+struct adoption_access;
+struct host_state;
+} // namespace detail
 // One native storage backend for both setup authoring and host-driven runtime.
 // The final portable service owns this backend and all public handle authority.
 // No reference-kernel model or metadata is linked or mirrored here.
@@ -38,12 +43,16 @@ protected:
   result<std::vector<std::uint64_t>> do_roots(std::uint64_t) const override;
   result<std::uint64_t> do_named(std::uint64_t,
                                  std::string_view) const override;
+  result<std::vector<name_binding>> do_named_nodes(std::uint64_t) const override;
   result<std::string> do_type_name(const address &) const override;
   result<std::vector<provider::field_info>>
   do_fields(const address &) const override;
   result<backend_value> do_read(const address &) const override;
   result<void> do_author(const address &, const backend_value &) override;
   result<void> do_add_route(const address &, const address &) override;
+  backend_result do_add_live_route(const address &, const address &) override;
+  result<void> do_check_live_route(const address &,
+                                   const address &) const override;
   result<void>
   do_validate_configuration(std::uint64_t,
                             const std::vector<admitted_write> &) const override;
@@ -54,11 +63,35 @@ protected:
 
 private:
   friend struct detail::presentation_access;
+  friend struct detail::adoption_access;
   struct storage;
   std::unique_ptr<storage> state_;
 };
 std::unique_ptr<provider::backend> make_backend();
 result<std::unique_ptr<provider::service>>
     make_service(provider::resource_limits = {});
+// Borrow only on the service owner thread, between pumps. Do not retain the
+// pointer, tick, mutate fields, or consume extraction through another owner.
+// Native tracking inputs and extraction remain host responsibilities.
+class host_access {
+public:
+  result<x3d::runtime::RuntimeSession *>
+  session(const provider::service &) const;
+
+private:
+  std::weak_ptr<detail::host_state> state_;
+  friend struct detail::adoption_access;
+};
+struct adopted_scene {
+  std::unique_ptr<provider::service> service;
+  provider::scene scene;
+  provider::activation active;
+  host_access host;
+};
+// Transfer an exclusively owned, quiescent session that has never ticked.
+// Relinquish all mutable graph/store aliases. The host alone owns extraction.
+result<adopted_scene>
+    adopt_session(std::unique_ptr<x3d::runtime::RuntimeSession>,
+                  provider::resource_limits = {});
 } // namespace x3d::sai::experimental::native
 #endif

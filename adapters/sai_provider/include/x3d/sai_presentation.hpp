@@ -4,6 +4,8 @@
 #include "Mat4.hpp"
 #include "RenderItem.hpp"
 
+#include <map>
+
 namespace x3d::sai::experimental::native {
 namespace detail {
 struct presentation_state;
@@ -15,6 +17,10 @@ struct presentation_item {
   std::uint64_t placement_key = 0, mesh_key = 0;
   x3d::runtime::Mat4 world_transform;
   x3d::runtime::extract::MeshRef mesh;
+  x3d::runtime::extract::MaterialDesc material;
+  // Opaque invalidation revision, not a material content hash. A rebuild may
+  // advance it even when the extracted material has the same value.
+  std::uint64_t material_revision = 0;
 };
 struct presentation_frame {
   provider::scene source;
@@ -22,6 +28,21 @@ struct presentation_frame {
   std::optional<event_time> host_time;
   std::vector<presentation_item> items;
 };
+struct presentation_delta {
+  std::vector<std::uint64_t> added, removed;
+  std::vector<std::uint64_t> updated_transform, updated_geometry, updated_material;
+  // Complete current payloads, once per added/changed key. Owned copies retain
+  // immutable mesh references; removals have no payload. Existing buckets still
+  // describe which resources need uploading.
+  std::map<std::uint64_t, presentation_item> items;
+};
+// Compare provider-produced frames, including skipped ticks. Null previous
+// means initial upload (all current placements added). Keys in update buckets
+// refer to current.items; added/removed placements have no update entries.
+// Material invalidations are conservative; transform comparisons are exact.
+// Reject foreign scenes and decreasing native ticks. No live service required.
+result<presentation_delta> changes_between(const presentation_frame *previous,
+                                          const presentation_frame &current);
 class render_feed {
 public:
   render_feed() = default;

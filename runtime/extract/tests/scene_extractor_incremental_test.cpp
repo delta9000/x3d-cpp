@@ -248,7 +248,7 @@ TEST_CASE("scene_extractor_t8_test") {
   //        ignores for a grouping node (it is in neither geomDeps_ nor
   //        materialDeps_), so incremental consumers (the OpenGL PoC) never saw
   //        the active-child swap — only full-snapshot consumers (cpuraster) did.
-  //        classifyDirty maps whichChoice -> DirtyChildren -> replacement snapshot.
+  //        classifyDirty maps whichChoice -> DirtyActiveChild; IDs survive selection.
   {
     auto sw = createX3DNode("Switch");
     auto shape0 = makeTriShape();
@@ -291,6 +291,8 @@ TEST_CASE("scene_extractor_t8_test") {
   // 6) LOD level change (camera motion) yields added/removed via delta()
   // The rendered level is derived from camera motion rather than a settable
   // field. ViewDependentSystem marks its subtree dirty when that level changes.
+  // Animated-parent and multi-path USE cases are covered by the view/selection
+  // delta suites.
   {
     auto lod = createX3DNode("LOD");
     setF(lod, "range", std::any(std::vector<SFFloat>{5.0f})); // d<5->lvl0, >=5->lvl1

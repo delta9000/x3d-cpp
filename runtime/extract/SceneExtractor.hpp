@@ -37,6 +37,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -65,6 +66,7 @@ struct RenderItem {
   struct SkinDesc {
     std::shared_ptr<const hanim::SkinBinding> binding;
     std::uint64_t poseVersion = 0;
+    bool operator==(const SkinDesc &) const = default;
   };
   std::optional<SkinDesc> skin;
 
@@ -128,21 +130,29 @@ public:
   // so existing callers are source-compatible.
   SceneExtractor(const X3DExecutionContext &ctx, const Scene &scene,
                  MeshBuildOptions meshOptions = {},
-                 TextureResolver textureResolver = makeNullTextureResolver())
+                 TextureResolver textureResolver = makeNullTextureResolver(),
+                 TextureResolverWithBase textureResolverWithBase = {},
+                 std::string baseUrl = {})
       : ctx_(ctx), scene_(scene), meshOptions_(std::move(meshOptions)),
-        textureResolver_(std::move(textureResolver)) {}
+        textureResolver_(std::move(textureResolver)),
+        textureResolverWithBase_(std::move(textureResolverWithBase)),
+        baseUrl_(std::move(baseUrl)) {}
 
   // fullSnapshot — one full walk; (re)builds the PathIndex + per-item records +
   // the dependency indices + the entry-matrix cache and returns every item in
   // `added` (so frame 0 and frame N share one upload path).
-  RenderDelta fullSnapshot() {
+  RenderDelta fullSnapshot() { return snapshot(false); }
+
+private:
+  // Selection-only walks keep path identities and immutable mesh payloads.
+  RenderDelta snapshot(bool retainPaths) {
     syncSkinChanges();
     visibility_ = currentVisibilityInputs();
-    items_.clear();
-    index_.clear();
+    if (!retainPaths) { items_.clear(); index_.clear(); }
     transformDeps_.clear();
     billboardItems_.clear();
-    lodPlacements_.clear();
+    selectionPlacements_.clear();
+    lightDeps_.clear();
     geomDeps_.clear();
     skinPoseDeps_.clear();
     skinBindingDeps_.clear();
@@ -153,8 +163,7 @@ public:
     scopedStateDeps_.clear();
     viewScopedFrames_.clear();
     geomOwners_.clear();
-    geomVersions_.clear();
-    meshContentVersions_.clear();
+    if (!retainPaths) { geomVersions_.clear(); meshContentVersions_.clear(); }
     unplacedGeometry_.clear();
     unplacedPaths_.clear();
     entryMatrix_.clear();
@@ -162,10 +171,14 @@ public:
     // ADR-0045: a full walk is authoritative — it must re-read current field
     // state, so no mesh survives from a previous snapshot. Within this walk the
     // caches then collapse N placements onto one build/one allocation.
-    rawMeshCache_.clear();
-    segmentMeshCache_.clear();
-    bakedMeshCache_.clear();
-    textureMemo_.clear();
+    if (!retainPaths) {
+      rawMeshCache_.clear();
+      segmentMeshCache_.clear();
+      bakedMeshCache_.clear();
+      dormantGeometry_.clear();
+      dormantOwners_.clear();
+      textureMemo_.clear();
+    }
     pendingMaterials_.clear();
     pendingGeometry_.clear();
     shaderMemo_.clear();
@@ -179,7 +192,7 @@ public:
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
     lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                         ctx_.cameraWorldPosition());
+                         ctx_.cameraWorldPosition(), &lightDeps_);
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
@@ -207,6 +220,8 @@ public:
     }
     liveIds_.clear();
     liveIds_.insert(delta.added.begin(), delta.added.end());
+    dropCoveredLightSelections();
+    if (!retainPaths) publishedLights_ = lights_;
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
     delta.fogChanged = true;
@@ -217,6 +232,7 @@ public:
     return delta;
   }
 
+public:
   // delta — incremental change channel. Reads ctx.dirtyTracker() once for the
   // current tick and partitions the changed nodes into RenderDelta buckets,
   // Geometry/material/TRS-only ticks stay incremental unless a changed frame
@@ -238,6 +254,7 @@ public:
   //       the geometry leaf — so a parent scale does not pollute updatedGeometry).
   //   * DirtyField & n in materialDeps_  =>  re-read the MaterialDesc from the
   //       owning Shape's Appearance => updatedMaterial.
+  //   * Switch/LOD selection => active-path walk retaining IDs and mesh caches.
   //   * Shape/scoped-descriptor dependencies or any DirtyChildren => one full
   //       replacement snapshot (bounded scene walk),
   //       before reading stale paths. All old live ids removed, current ids added.
@@ -251,7 +268,7 @@ public:
     const std::uint64_t gen = ctx_.tickGeneration();
     if (gen == lastDeltaGen_) return {}; // no advance since the last delta().
 
-    // A node-reference/active-child change can invalidate stored paths and
+    // A node-reference change can invalidate stored paths and
     // reverse dependencies, including pointers to already-destroyed nodes.
     // Inspect flags without dereferencing those nodes, before any incremental
     // traversal. One authoritative rebuild handles all structural edits this
@@ -261,14 +278,15 @@ public:
       if (ctx_.dirtyTracker().flags(n) & DirtyChildren)
         return replacementSnapshot();
 
-    // LOD rendering is per placement; a node's level_changed announcement
+    // Selection is per placement; a node's level_changed announcement
     // cannot describe every USE path. Retain even empty selections and compare
     // their current per-path choice before consuming this tick's baseline.
+    bool selectionChanged = false;
     LocalXfCache localXf;
-    for (const auto &[path, previous] : lodPlacements_) {
+    for (const auto &[path, previous] : selectionPlacements_) {
       auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
                                      ctx_.cameraWorldPosition());
-      if (selected.get() != previous) return replacementSnapshot();
+      if (selected.get() != previous) selectionChanged = true;
     }
 
     // Clip planes below a Billboard also depend on the tracked eye/up, which
@@ -313,6 +331,21 @@ public:
     std::unordered_set<RenderItemId> transformSeen, materialSeen;
     // Shared across every reaccumulateWorld() in this delta() so a transform that
     // sits on the path of many dirty items is recomposed once, not once per item.
+
+    // A dormant (deselected, still cached) geometry whose source changed must
+    // not be reselected with its old bytes or GeomId.
+    if (!dormantGeometry_.empty())
+      for (const X3DNode *n : dirty.changedNodes()) {
+        if (!(dirty.flags(n) & DirtyField)) continue;
+        auto owners = dormantOwners_.find(n);
+        if (owners == dormantOwners_.end()) continue;
+        for (const X3DNode *geom : owners->second)
+          if (dormantGeometry_.erase(geom)) {
+            evictMeshCache(geom);
+            advanceGeometryVersion(geom);
+          }
+      }
+
     // A source (Coordinate/Normal/Color/...) may feed several geometry nodes,
     // and several sources of one geometry may change in the same tick. Resolve
     // the complete owner set first: each owner's cache is evicted exactly once.
@@ -389,6 +422,7 @@ public:
       if (std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end() ||
           std::find(delta.added.begin(), delta.added.end(), id) != delta.added.end())
         continue;
+      if (!liveIds_.count(id)) continue;
       auto &rec = items_[id];
       if (!rec.skin || !rec.skin->binding) continue;
       const X3DNode *humanoid = rec.skin->binding->humanoid;
@@ -399,13 +433,29 @@ public:
       }
     }
 
-    // camera/lights/background are recomputed full each tick by the consumer; the
-    // change bits are surfaced unconditionally for a caching consumer (the PoC
-    // recomputes them every frame regardless).
+    if (selectionChanged) refreshSelection(delta);
+
+    // Compare the complete rendered light state, including disabled-to-enabled
+    // transitions and world-space fields. Unrelated animation needs no light walk.
+    // Dependencies come from the light collection itself, so lights in subtrees
+    // the geometry walk skips (visible=FALSE, Collision.proxy, GeoLOD rootNode)
+    // and viewer-driven LOD choices there are covered too.
+    bool lightDirty = selectionChanged;
+    for (const X3DNode *n : dirty.changedNodes())
+      if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
+    for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
+      const auto &sel = lightDeps_.lodSelections[i];
+      lightDirty = traversedChild(*sel.path.back(), worldAlongPath(sel.path, localXf),
+                                  ctx_.cameraWorldPosition()).get() != sel.selected;
+    }
+    if (lightDirty) {
+      auto current = selectionChanged ? lights_ : collectTrackedLights();
+      delta.lightsChanged = publishedLights_ != current;
+      publishedLights_ = std::move(current);
+    }
     delta.cameraChanged = true;
     delta.backgroundChanged = true;
     delta.fogChanged = true;
-    delta.lightsChanged = true;
     for (RenderItemId id : delta.removed) liveIds_.erase(id);
     liveIds_.insert(delta.added.begin(), delta.added.end());
     bool refreshLights = !lights_.empty();
@@ -499,17 +549,20 @@ public:
   // lightsOf — indices into snapshotLights() (not lights()) for the lights
   // that illuminate this placement. Global lights appear for every item; scoped
   // (global=false) lights appear only when their scopeRoot is an ancestor-or-equal
-  // of the item's path. Returns a stable ref valid until the next snapshot or delta().
+  // of the item's path. Returns a stable ref until the next full snapshot or
+  // selection refresh.
   const std::vector<std::size_t> &lightsOf(RenderItemId id) const {
     return items_.at(id).lights;
   }
 
-  // ISO/IEC 19775-1 §17.3.1: snapshotLights and lightsOf describe the same
-  // active light set, refreshed by fullSnapshot() and each advancing delta().
+  // ISO/IEC 19775-1 §17.3.1: snapshotLights is the light list the lightsOf()
+  // indices reference. It is refreshed by fullSnapshot(), a selection refresh,
+  // and advancing delta() calls in scenes with lights; a selection refresh
+  // publishes index changes as remove-before-add records.
   const std::vector<LightDesc> &snapshotLights() const { return lights_; }
 
   // §24.4.3: the LocalFog list the RenderItem::localFog indices reference,
-  // captured once by the last fullSnapshot(). A consumer resolves an item's
+  // captured by the last fullSnapshot() or selection refresh. Resolve an item's
   // localFog index here; -1 means no LocalFog applies (global Fog governs).
   const std::vector<LocalFogDesc> &snapshotLocalFogs() const { return localFogs_; }
 
@@ -558,7 +611,7 @@ public:
         scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition());
     for (ProjectorDesc &p : out) {
       std::vector<TextureRef> refs{std::move(p.texture)};
-      resolveTextureRefs(refs, textureResolver_, &textureMemo_);
+      resolveTextures(refs);
       p.texture = std::move(refs.front());
       if (p.texture.resolvedPixels.ready()) {
         const TexturePixels &px = *p.texture.resolvedPixels.pixels;
@@ -587,6 +640,7 @@ public:
       const bool textured = b->nodeTypeName() == "TextureBackground";
       TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
       const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
+      const std::string backgroundBase = textured ? baseUrl_ : baseUrlOf(b);
       for (int i = 0; i < 6; ++i) {
         if (textured) {
           *faces[i] = matsys::refOf(geombounds::getNode(*b, (std::string(names[i]) + "Texture").c_str()),
@@ -595,6 +649,8 @@ public:
           faces[i]->source = TextureRef::Source::Url;
           faces[i]->url = geombounds::getField<MFString>(*b, (std::string(names[i]) + "Url").c_str(), {});
         }
+        setTextureBase(*faces[i]);
+        if (!textured) faces[i]->baseUrl = backgroundBase;
       }
     }
     bg.backgroundChanged = true;
@@ -651,12 +707,145 @@ public:
   bool budgetExceeded() const { return walkBudget_.tripped; }
 
 private:
-  // Structural correctness deliberately takes the bounded full-walk path. A
-  // partial subtree patch cannot repair stale pointer-keyed dependencies or all
-  // USE paths safely. Scalar geometry/material/TRS changes stay incremental.
+  void refreshSelection(RenderDelta &delta) {
+    // Keep the post-incremental records: concurrent scalar edits have already
+    // refreshed their payloads. Rebuild active dependencies, including empty
+    // selections, using the same scoped traversal as a full snapshot.
+    const auto oldLive = liveIds_;
+    struct ItemScopes {
+      int localFog;
+      std::vector<std::size_t> lights;
+      ClipPlaneList clipPlanes;
+      GeomId geometry;
+      // The walk re-emits every live record's appearance-derived payload. A
+      // texture can finish resolving, or a shader or skin binding be re-selected,
+      // without any dirty dependency; compare to publish those as updates.
+      MaterialDesc material;
+      std::optional<ShaderProgramDesc> shaderProgram;
+      std::optional<RenderItem::SkinDesc> skin;
+    };
+    std::unordered_map<RenderItemId, ItemScopes> before;
+    for (auto id : oldLive) {
+      auto &item = items_[id];
+      // Moved, not copied: a surviving record is overwritten by the walk below,
+      // and a record leaving the selection gets its payload moved back.
+      before.emplace(id, ItemScopes{item.localFog, item.lights, item.clipPlanes, item.geometry,
+                                    std::move(item.material), std::move(item.shaderProgram),
+                                    std::move(item.skin)});
+    }
+    auto walked = snapshot(true);
+    std::unordered_set<RenderItemId> next(walked.added.begin(), walked.added.end());
+    delta.added.clear(); delta.removed.clear();
+    for (RenderItemId id : oldLive)
+      if (!next.count(id)) {
+        delta.removed.push_back(id);
+        auto &old = before.at(id); auto &rec = items_[id];
+        rec.material = std::move(old.material);
+        rec.shaderProgram = std::move(old.shaderProgram);
+        rec.skin = std::move(old.skin);
+      }
+    auto publish = [](std::vector<RenderItemId> &ids, RenderItemId id) {
+      if (std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
+    };
+    for (RenderItemId id : next) {
+      if (!oldLive.count(id)) { delta.added.push_back(id); continue; }
+      const auto &old = before.at(id); const auto &now = items_[id];
+      if (!(old.material == now.material) || old.shaderProgram != now.shaderProgram)
+        publish(delta.updatedMaterial, id);
+      if (old.skin != now.skin) publish(delta.updatedSkinPose, id);
+      // These descriptors have no narrow update channel. Only records whose
+      // descriptors changed need remove-before-add publication.
+      bool stateChanged = old.localFog != now.localFog || old.lights != now.lights ||
+                          old.clipPlanes.size != now.clipPlanes.size;
+      for (std::size_t i = 0; !stateChanged && i < old.clipPlanes.size; ++i) {
+        const auto &a = old.clipPlanes.items[i]; const auto &b = now.clipPlanes.items[i];
+        stateChanged = a.node != b.node || a.planeWorld != b.planeWorld;
+      }
+      if (stateChanged) { delta.removed.push_back(id); delta.added.push_back(id); }
+      // External packed payloads are re-resolved by the walk, with no immutable
+      // mesh cache to prove content equality.
+      if (now.geometry_ext.is_packed() || old.geometry != now.geometry)
+        publish(delta.updatedGeometry, id);
+    }
+    // No cached payload may outlive its source dependencies. A field in an
+    // inactive level does not reach the active reverse index, so a deselected
+    // geometry's raw mesh stays cached only as DORMANT, with its own source
+    // index (dormantOwners_): a DirtyField on any source evicts it in delta()
+    // before it can be reselected. A viewer on an LOD range boundary then gets
+    // the same mesh and GeomId back on every crossing instead of a rebuild.
+    dormantGeometry_.clear();
+    dormantOwners_.clear();
+    std::unordered_set<const X3DNode *> inactive;
+    for (const auto &[geom, entry] : rawMeshCache_)
+      if (!geomOwners_.count(geom)) {
+        dormantGeometry_.insert(geom);
+        forEachGeometrySource(geom, PathKey{}, [&](const X3DNode *source) {
+          dormantOwners_[source].insert(geom);
+        });
+      }
+    // A geometry can remain active under one Segment while another variant
+    // loses its displacer dependencies. Evict the owner's variants together.
+    std::set<std::pair<const X3DNode *, const X3DNode *>> activeSegments;
+    for (auto id : next) {
+      const auto &item = items_[id];
+      if (const auto *segment = displacingSegment(item.geometry.node, item.path))
+        activeSegments.emplace(item.geometry.node, segment);
+    }
+    for (const auto &[geom, placements] : unplacedGeometry_)
+      for (const auto &placement : placements)
+        if (const auto *segment = displacingSegment(geom, placement.path))
+          activeSegments.emplace(geom, segment);
+    // Displaced (HAnimSegment) variants depend on path-scoped displacers that
+    // the dormant index does not cover: evict them, and their owner, as before.
+    for (const auto &[key, entry] : segmentMeshCache_)
+      if (!activeSegments.count(key)) inactive.insert(key.first);
+    for (const auto *geom : inactive) {
+      evictMeshCache(geom);
+      advanceGeometryVersion(geom);
+      dormantGeometry_.erase(geom);
+    }
+    for (auto *ids : {&delta.added, &delta.removed}) std::sort(ids->begin(), ids->end());
+  }
+
+  // The base URL recorded for `n` (Scene::nodeBaseUrls), else the configured
+  // base. nodeBaseUrls is keyed by ownership, so a raw pointer needs a scan;
+  // memoize the last answer until the scene topology changes (which is how
+  // nodes and their base entries come and go) so background() stays O(1).
+  const std::string &baseUrlOf(const X3DNode *n) const {
+    const auto revision = ctx_.sceneTopologyRevision();
+    if (baseLookup_.node != n || baseLookup_.revision != revision) {
+      baseLookup_ = {n, revision, baseUrl_};
+      for (const auto &[weak, base] : scene_.nodeBaseUrls)
+        if (weak.lock().get() == n) { baseLookup_.base = base; break; }
+    }
+    return baseLookup_.base;
+  }
+
+  // Re-collect the rendered light list and the dependencies that decide when
+  // to collect it again; snapshotLights() indices are left as they are.
+  std::vector<LightDesc> collectTrackedLights() {
+    LightSystem ls;
+    WalkBudget budget(kMaxGraphWalkVisits);
+    lightDeps_.clear();
+    auto out = ls.collect(scene_, ctx_.geoProjection(), budget,
+                          ctx_.cameraWorldPosition(), &lightDeps_);
+    dropCoveredLightSelections();
+    return out;
+  }
+
+  // An LOD the geometry walk also selects is compared by selectionPlacements_.
+  void dropCoveredLightSelections() {
+    auto &sels = lightDeps_.lodSelections;
+    sels.erase(std::remove_if(sels.begin(), sels.end(), [&](const auto &sel) {
+      return selectionPlacements_.count(sel.path) > 0;
+    }), sels.end());
+  }
+
   RenderDelta replacementSnapshot() {
     const auto oldIds = liveIds_;
+    const auto oldLights = publishedLights_;
     RenderDelta changed = fullSnapshot();
+    changed.lightsChanged = oldLights != publishedLights_;
     changed.removed.assign(oldIds.begin(), oldIds.end());
     std::sort(changed.removed.begin(), changed.removed.end());
     return changed;
@@ -980,7 +1169,7 @@ private:
     if (program)
       for (auto &f : program->fields)
         if (!f.textures.empty())
-          resolveTextureRefs(f.textures, textureResolver_, &textureMemo_);
+          resolveTextures(f.textures);
     return program;
   }
 
@@ -1025,7 +1214,7 @@ private:
                       appearance.get());
     // Shared appearances resolve once per URL; a changed URL is a cache miss.
     // Same-URL external edits do not dirty nodes. See ADR-0045.
-    resolveTextureRefs(rec.material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(rec.material.textures);
     rememberPendingMaterial(id);
   }
 
@@ -1156,7 +1345,7 @@ private:
     const std::string t = n->nodeTypeName();
     if (t == "Switch" || t == "LOD") {
       auto child = traversedChild(*n, here, ctx_.cameraWorldPosition());
-      if (t == "LOD") lodPlacements_[path] = child.get();
+      selectionPlacements_[path] = child.get();
       if (child) walk(child.get(), here, path, delta);
       path.pop_back();
       return;
@@ -1256,7 +1445,7 @@ private:
     enrichTextureRefs(material.textures, geom,
                       appearance.get());
     // Decode once per URL across shared placements; see ADR-0045.
-    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(material.textures);
 
     const bool beyond = isBeyondVisibilityLimit(worldM, visibility_);
 
@@ -1314,7 +1503,7 @@ private:
     enrichTextureRefs(material.textures, geom,
                       appearance.get());
     // Decode once per URL across shared placements; see ADR-0045.
-    resolveTextureRefs(material.textures, textureResolver_, &textureMemo_);
+    resolveTextures(material.textures);
 
     auto it = index_.find(path);
     RenderItemId id;
@@ -1439,7 +1628,6 @@ private:
 
   void rememberUnplacedGeometry(const X3DNode *geom, const PathKey &path) {
     registerGeometryOwners(geom, path);
-    if (index_.count(path)) return; // a dormant existing item already owns this path
     if (unplacedPaths_.insert(path).second)
       unplacedGeometry_[geom].push_back({path, activeClips_, activeSkinHumanoid_});
   }
@@ -1542,8 +1730,9 @@ private:
     MeshRef mesh = emptyMeshRef();
     bool recognized = false; // Cached alongside the mesh.
   };
-  // Ready-only texture resolves, keyed by URL. Pending/Failed are deliberately
-  // not memoized so a not-yet-decoded texture keeps retrying (see
+  // Ready-only texture resolves, keyed by URL (plus base for contextual
+  // callbacks). Pending/Failed are deliberately not memoized so a
+  // not-yet-decoded texture keeps retrying (see
   // resolveTextureRefs). Cleared by fullSnapshot() alongside the mesh caches.
   std::unordered_map<std::string, TexturePixelResult> textureMemo_;
   std::unordered_set<RenderItemId> pendingMaterials_;
@@ -1722,14 +1911,31 @@ private:
 
   // Embedder-supplied texture decode seam, set once at construction.
   // Default = makeNullTextureResolver() (always Failed => PoC white-fallback).
+  // Read provenance live: runtime Inline expansion can add entries after build.
+  void setTextureBase(TextureRef &ref) const {
+    const auto origin = scene_.nodeBaseUrls.find(ref.sourceNode);
+    ref.baseUrl = origin == scene_.nodeBaseUrls.end() ? baseUrl_ : origin->second;
+    for (auto &stage : ref.multiStages) setTextureBase(stage);
+    for (auto &face : ref.cubeFaces) setTextureBase(face);
+    for (auto &slice : ref.tex3dSlices) setTextureBase(slice);
+  }
+
+  void resolveTextures(std::vector<TextureRef> &refs) {
+    for (auto &ref : refs) setTextureBase(ref);
+    resolveTextureRefs(refs, textureResolver_, &textureMemo_, textureResolverWithBase_);
+  }
+
   TextureResolver textureResolver_;
+  TextureResolverWithBase textureResolverWithBase_;
+  std::string baseUrl_;
 
   std::vector<RenderItem> items_; // dense, indexed by RenderItemId.
   std::unordered_set<RenderItemId> liveIds_;
   std::unordered_map<PathKey, RenderItemId, PathKeyHash, PathKeyEqual> index_;
 
   // ISO/IEC 19775-1 §17.3.1: world-resolved active lights indexed by items.
-  // Refreshed by fullSnapshot() and advancing delta() calls.
+  // Populated before each snapshot or selection walk and refreshed by
+  // advancing delta() calls.
   std::vector<LightDesc> lights_;
   std::vector<LocalFogDesc> localFogs_;
 
@@ -1742,7 +1948,15 @@ private:
   // The three reverse indices + the interior-node entry-matrix cache ( inputs).
   DepMap transformDeps_;
   std::unordered_set<RenderItemId> billboardItems_;
-  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> lodPlacements_;
+  std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> selectionPlacements_;
+  LightDependencies lightDeps_;
+  struct BaseLookup {
+    const X3DNode *node = nullptr;
+    std::uint64_t revision = 0;
+    std::string base;
+  };
+  mutable BaseLookup baseLookup_;
+  std::vector<LightDesc> publishedLights_;
   DepMap geomDeps_;
   DepMap materialDeps_;
   struct ShaderMemo {
@@ -1770,6 +1984,11 @@ private:
   const X3DNode *activeSkinHumanoid_ = nullptr;
   // Content source -> all geometry owners (not a last-writer-wins owner).
   std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> geomOwners_;
+  // Deselected geometry whose raw mesh stays cached, and its source index
+  // (source -> dormant geometry). Rebuilt on each selection refresh; cleared
+  // by a full snapshot, which also clears the mesh caches.
+  std::unordered_set<const X3DNode *> dormantGeometry_;
+  std::unordered_map<const X3DNode *, std::unordered_set<const X3DNode *>> dormantOwners_;
   std::unordered_map<const X3DNode *, std::uint32_t> geomVersions_;
   std::unordered_map<const X3DNode *,
                      std::unordered_map<const MeshData *, std::uint32_t>> meshContentVersions_;

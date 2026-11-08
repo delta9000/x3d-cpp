@@ -18,6 +18,17 @@ related:
 `Ready`, `Pending`, or `Failed`. Its definition is in
 `runtime/extract/AssetResolver.hpp`. The host owns loading policy.
 
+`AssetResolverWithBase(url, kind, baseUrl)` is an optional contextual callback
+on `SessionOptions` (`assetResolverWithBase`), `attachLoadSensors`, and
+`LoadSensorSystem`. The URL stays as authored; `baseUrl` is the watched node's
+source base, or the configured base when the node has no recorded provenance.
+LoadSensor prefers this callback over the plain resolver, including for movie
+URLs it watches, and its Ready memo keys on base, URL, and asset kind. Hosts
+that fetch movie frames themselves can read `TextureRef::baseUrl`; the SDK has
+no movie fetch loop. The paired parse-time loaders keep passing
+source-relative resolved URLs to the plain callback. See
+[ADR-0063](../decisions/0063-resolver-base-urls.md).
+
 ## Invocation contracts
 
 Render-time callers can receive `Pending` and retry later. Synchronous

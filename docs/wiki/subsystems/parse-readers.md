@@ -15,6 +15,17 @@ related:
 
 # Parse Readers
 
+## Fetched-source diagnostics proposal
+
+The [fetched-document diagnostics proposal](../decisions/0072-fetched-document-diagnostics.md)
+preserves warnings from selected asset-loaded child documents as source-qualified
+`SourceWarning` details in the enclosing document's Inline/PROTO warning channel.
+Top-level reader and range diagnostics keep their existing structured channels.
+For an EXTERNPROTO only the selected declaration carries the fetched document's
+warnings, and expansion reports each one once per warning collection however
+many instances resolve it. The registered `inline_diagnostics_test.cpp` cases run
+in `x3d_extract_tests`.
+
 ## Purpose
 
 The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (` S1`). After the document is built it triggers PROTO/Inline expansion through injectable resolver seams. Unknown node types and unknown field names are skipped gracefully (lenient-read policy); only genuinely unrecoverable malformation throws.
@@ -169,7 +180,29 @@ Failed/unparseable candidates remain lenient and try the next URL. A Pending
 asset result aborts the entire active recursive asset load, including parent
 candidate lists; the parser records its ordinary unresolved Inline/EXTERNPROTO
 warning. Backend exceptions are treated as failed candidates. Cross-kind
-cycles share an explicit per-call active-URL stack; a new call starts clean.
+cycles share an explicit active-URL stack; independent top-level calls start
+clean. Asset-loaded Inline nodes retain a value-owned loader seeded with their
+source ancestry. Deferred `load=TRUE` events therefore reject self and mutual
+cycles across ticks, including lexical dot-segment aliases. Siblings and reloads
+remain independent. This retained policy takes precedence over a session's
+fallback Inline resolver for those nodes; choose the asset policy when loading
+the world. Custom resolvers and the local-file loader do not acquire source
+identity from this helper. See [ADR-0070](../decisions/0070-deferred-inline-loader-ancestry.md).
+
+The additive three-argument overload accepts a `ProtoResolverDecorator`:
+`assetResolversFrom(assets, hint, [](auto base) { return decorate(base); })`.
+It wraps the asset-backed PROTO resolver at every parse boundary and also wraps
+the returned top-level `.proto` callback. The decorator must delegate to its
+supplied callback to retain the loader's confinement, Pending propagation, and
+cycle checks. Its base callback borrows synchronous invocation state: don't
+retain it outside the invocation. The factory retains the decorator by value;
+its captures must outlive use of the loaded world.
+
+`x3d_ext_cave_recursive_resolver` exercises ext declarations in nested files.
+The `x3d_extract_tests` case
+`Session: deferred asset Inline cycles retain source ancestry` checks self and
+mutual cycles, lexical aliases, independent siblings, and reload after unload.
+Both additions await maintainer execution.
 
 The front door also captures source-directory provenance separately from
 serialized values. `ProtoDeclaration::sourceBaseUrl` and

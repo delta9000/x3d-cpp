@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace x3d::runtime {
 
@@ -58,9 +59,20 @@ struct SessionOptions {
   /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
 
-  /// Resolver and base URL used when an Inline receives load=TRUE after parse.
+  /// Enable deferred Inline loading and supply its fallback resolver. Nodes
+  /// fetched by the asset-loader factory retain their source policy/ancestry
+  /// and use that loader instead of this fallback when activated after parse.
   InlineResolver inlineResolver = {};
+  /// Fallback resolution directory for Inline, textures and watched assets.
   std::string baseUrl;
+
+  /// Optional contextual callbacks, preferred over their legacy counterparts.
+  /// URL stays authored; base is Scene::nodeBaseUrls, or baseUrl if absent.
+  extract::TextureResolverWithBase textureResolverWithBase;
+  extract::AssetResolverWithBase assetResolverWithBase; // LoadSensor byte path
+  /// Install pointing-device sensors without anchors or SDK navigation.
+  /// `interactive` already includes these sensors; setting both installs once.
+  bool pointingSensors = false;
 };
 
 class RuntimeSession {
@@ -85,7 +97,22 @@ public:
   RuntimeSession &operator=(RuntimeSession &&) = delete;
 
   /// Advance the behavior model to `now` (seconds, any monotonic clock).
-  void tick(double now) { ctx_.tick(now); }
+  /// Append deferred Inline diagnostics to document().inlineWarnings.
+  /// Hosts needing retained ingress or phase timings use the overloads below
+  /// rather than context().tick(), which does not drain those diagnostics.
+  void tick(double now) { tick(now, nullptr, {}); }
+  void tick(double now,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+  void tick(double now, X3DExecutionContext::TickTimings *timings,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress = {}) {
+    ctx_.tick(now, timings, ingress);
+    auto &pending = doc_.scene.pendingInlineWarnings;
+    doc_.inlineWarnings.insert(doc_.inlineWarnings.end(), pending.begin(),
+                               pending.end());
+    pending.clear();
+  }
 
   /// Every item, all in `added` — the frame-0 upload. Also re-baselines the
   /// incremental channel, so a later delta() diffs against this walk.
@@ -118,6 +145,16 @@ public:
   /// for setForcedMode etc. Null otherwise.
   const std::shared_ptr<NavigationSystem> &navigation() const { return nav_; }
 
+  /// Enabled pointing sensors tied at the lowest scope of a current pick from
+  /// this session's context. Empty on a miss or when no sensor applies. Uses the
+  /// same resolver as press activation, without changing pointer/hover/grab state.
+  /// This geometric query works even when sensor systems are not installed; it
+  /// does not predict an existing grab or reserve a later press. Nodes are
+  /// borrowed from the scene; discard picks/results before removing their nodes.
+  std::vector<X3DNode *> pointingSensors(const PickResult &pick) const {
+    return PointingSensorSystem::resolve(pick);
+  }
+
 private:
   RuntimeSession(X3DDocument doc, SessionOptions options)
       // Member order is the contract: doc_ first (ctx_ and extractor_ both refer
@@ -126,7 +163,8 @@ private:
       : doc_(std::move(doc)),
         ctx_(doc_.scene.authorFields, std::move(options.geoProjection)),
         extractor_(ctx_, doc_.scene, options.meshOptions,
-                   std::move(options.textureResolver)) {
+                   std::move(options.textureResolver),
+                   std::move(options.textureResolverWithBase), options.baseUrl) {
     ctx_.buildSceneGraph(doc_.scene);
     bridge_ = ctx_.buildFrom(doc_.scene);
     // Systems are attached after both builds and before any tick(), which is the
@@ -139,9 +177,12 @@ private:
                             std::move(options.baseUrl),
                             // The extractor's copy selects the bound program;
                             // this one drives the matching §31 events.
-                            options.meshOptions.shaders);
+                            options.meshOptions.shaders,
+                            std::move(options.assetResolverWithBase));
     if (options.interactive)
       nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
+    else if (options.pointingSensors)
+      attachPointingSensors(doc_.scene, ctx_);
   }
 
   X3DDocument doc_;

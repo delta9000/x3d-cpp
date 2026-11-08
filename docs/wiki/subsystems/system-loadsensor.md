@@ -20,6 +20,14 @@ Networking node that generates events as its watched `children` (any
 Design rationale is in
 [ADR-0046](../decisions/0046-loadsensor-assetresolver-oracle.md).
 
+The optional `AssetResolverWithBase(url, kind, baseUrl)` callback receives each
+watched child's source directory from `Scene::nodeBaseUrls` (an ownership lookup, not a scan), or the configured
+fallback when no entry exists. `SessionOptions::assetResolverWithBase` wires it
+through the standard runtime; it takes precedence over `assetResolver`. Ready
+memoization distinguishes base, URL, and kind so equal relative URLs in different
+Inline scenes cannot mark each other loaded. The legacy callback is unchanged.
+See [ADR-0063](../decisions/0063-resolver-base-urls.md).
+
 ## Purpose
 
 `LoadSensorSystem` is a time-driven `System`: it does its work in

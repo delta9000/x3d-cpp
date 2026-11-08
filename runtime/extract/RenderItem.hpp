@@ -188,6 +188,7 @@ struct SamplerParams {
   bool repeatT = true;
   bool generateMipmaps = true;
   float anisotropicDegree = 1.0f;
+  bool operator==(const SamplerParams &) const = default;
 };
 
 // §33 3D-texture descriptor. Carried by a TextureRef with
@@ -203,6 +204,7 @@ struct Texture3DDesc {
   uint32_t depth = 0;
   uint32_t numComponents = 0;
   std::vector<uint8_t> texels; // populated for Source::Tex3D inline (PixelTexture3D)
+  bool operator==(const Texture3DDesc &) const = default;
 };
 
 struct TextureRef {
@@ -260,7 +262,8 @@ struct TextureRef {
   bool repeatS = true;
   bool repeatT = true;
   SamplerParams sampler;
-  SFImage inlinePixels;    // PixelTexture content when source == Inline.
+  SFImage inlinePixels{};  // PixelTexture content when source == Inline (zeroed:
+                           // SFImage leaves width/height uninitialized).
   int channel = 0; // UV channel; initially the MultiTexture stage index.
   SFString multiMode = "MODULATE";
   SFString multiSource;
@@ -285,6 +288,7 @@ struct TextureRef {
     const X3DNode *node = nullptr;
     SFString update = "NONE";
     int size = 128;
+    bool operator==(const GeneratedCube &) const = default;
   } generatedCube;
 
   // §33 3D textures. repeatR is the third wrap axis (repeatS/T already
@@ -330,6 +334,17 @@ struct TextureRef {
   TexCoordGenDesc texCoordGen;
   TextureTransform2DParams
       generatedTransform; // applied by consumer after generation
+
+  // URL provenance. SceneExtractor fills baseUrl from the originating node,
+  // falling back to its configured base. Movie consumers use it too. Neither
+  // field changes the authored url list; sourceNode does not retain the scene.
+  std::weak_ptr<X3DNode> sourceNode;
+  std::string baseUrl;
+
+  // Every member, with sourceNode compared by ownership and resolvedPixels by
+  // status plus shared surface. Detects a record whose re-emitted descriptor
+  // differs from the published one.
+  bool operator==(const TextureRef &o) const;
 };
 
 // MaterialDesc — one tagged superset descriptor read reflection-generic by spec
@@ -363,22 +378,26 @@ struct PhongParams {
   float    ambientIntensity  = 0.2f;
   float    shininess         = 0.2f;
   float    occlusionStrength = 1.0f;
+  bool operator==(const PhongParams &) const = default;
 };
 struct PhysicalParams {
   SFColor  baseColor         {1.0f, 1.0f, 1.0f};
   float    metallic          = 1.0f;
   float    roughness         = 1.0f;
   float    occlusionStrength = 1.0f;
+  bool operator==(const PhysicalParams &) const = default;
 };
 
 struct MaterialExtensionField {
   std::string name;
   X3DFieldType type = X3DFieldType::SFString;
   X3DFieldValue value;
+  bool operator==(const MaterialExtensionField &) const = default;
 };
 struct MaterialExtensionDesc {
   std::string typeName;
   std::vector<MaterialExtensionField> fields;
+  bool operator==(const MaterialExtensionDesc &) const = default;
 };
 
 // §12.4.6 LineProperties / §12.4.8 PointProperties. These are
@@ -391,6 +410,7 @@ struct LinePropertiesDesc {
   bool applied = true;              // LineProperties.applied
   int linetype = 1;                 // LineProperties.linetype (unused: only solid)
   float linewidthScaleFactor = 0.0f; // LineProperties.linewidthScaleFactor (0 = default width)
+  bool operator==(const LinePropertiesDesc &) const = default;
 };
 
 struct PointPropertiesDesc {
@@ -398,6 +418,7 @@ struct PointPropertiesDesc {
   float pointSizeScaleFactor = 1.0f;
   float pointSizeMinValue = 1.0f;
   float pointSizeMaxValue = 1.0f;
+  bool operator==(const PointPropertiesDesc &) const = default;
 };
 
 struct FillPropertiesDesc {
@@ -405,6 +426,7 @@ struct FillPropertiesDesc {
   bool hatched = false; // No FillProperties node leaves the appearance unchanged.
   SFColor hatchColor{1.0f, 1.0f, 1.0f};
   int hatchStyle = 1;
+  bool operator==(const FillPropertiesDesc &) const = default;
 };
 
 struct MaterialDesc {
@@ -474,6 +496,8 @@ struct MaterialDesc {
 
   // Composes the per-model RGB surface with alpha = 1 - transparency.
   SFColorRGBA toRGBA() const;
+  // Descriptor equality over every member (backMaterial compared by value).
+  bool operator==(const MaterialDesc &o) const;
   // §11.2.2.5: fallback color for unlit line/point geometry without Color.
   SFColorRGBA unlitGeometryRGBA() const;
 };
@@ -496,6 +520,43 @@ inline SFColorRGBA MaterialDesc::unlitGeometryRGBA() const {
   return SFColorRGBA{emissive.r, emissive.g, emissive.b, a};
 }
 
+// A newly added TextureRef member must be added here too: this comparison is
+// what lets a selection refresh publish a changed record as updatedMaterial.
+inline bool TextureRef::operator==(const TextureRef &o) const {
+  const bool sameSource = !sourceNode.owner_before(o.sourceNode) &&
+                          !o.sourceNode.owner_before(sourceNode);
+  return sameSource && slot == o.slot && source == o.source && url == o.url &&
+         repeatS == o.repeatS && repeatT == o.repeatT && sampler == o.sampler &&
+         inlinePixels == o.inlinePixels && channel == o.channel &&
+         multiMode == o.multiMode && multiSource == o.multiSource &&
+         multiFunction == o.multiFunction && multiColor == o.multiColor &&
+         multiAlpha == o.multiAlpha && multiStages == o.multiStages &&
+         texCoordMapping == o.texCoordMapping && cubeFaces == o.cubeFaces &&
+         generatedCube == o.generatedCube && repeatR == o.repeatR &&
+         tex3d == o.tex3d && tex3dSlices == o.tex3dSlices &&
+         resolvedPixels.status == o.resolvedPixels.status &&
+         resolvedPixels.pixels == o.resolvedPixels.pixels &&
+         extSampler == o.extSampler && hasTexCoordGen == o.hasTexCoordGen &&
+         texCoordGen == o.texCoordGen && generatedTransform == o.generatedTransform &&
+         baseUrl == o.baseUrl;
+}
+
+// A newly added MaterialDesc member must be added here too (see TextureRef).
+inline bool MaterialDesc::operator==(const MaterialDesc &o) const {
+  const bool sameBack = backMaterial && o.backMaterial
+                            ? *backMaterial == *o.backMaterial
+                            : !backMaterial && !o.backMaterial;
+  return sameBack && model == o.model && emissive == o.emissive &&
+         normalScale == o.normalScale && transparency == o.transparency &&
+         alphaMode == o.alphaMode && alphaCutoff == o.alphaCutoff &&
+         doubleSided == o.doubleSided && phong == o.phong && physical == o.physical &&
+         textures == o.textures &&
+         backMaterialConstraintMet == o.backMaterialConstraintMet &&
+         extensions == o.extensions && line == o.line && point == o.point &&
+         fill == o.fill;
+}
+
+// ---------------------------------------------------------------------------
 // Shader descriptors — ComposedShader / ShaderProgram introspection surface.
 // ShaderProgramDesc is assembled from the Appearance's selected ComposedShader
 // or ProgramShader (ShaderExtract.hpp, §31.2.2.3); each stage carries its
@@ -508,6 +569,7 @@ struct ShaderStageDesc {
   Stage stage = Stage::Fragment;
   std::string source;
   std::string entryPoint = "main";
+  bool operator==(const ShaderStageDesc &) const = default;
 };
 
 struct ShaderFieldBinding {
@@ -525,6 +587,7 @@ struct ShaderFieldBinding {
   // a host to bind to a sampler uniform or sampler array. Non-texture nodes are
   // skipped.
   std::vector<TextureRef> textures;
+  bool operator==(const ShaderFieldBinding &) const = default;
 };
 
 struct ShaderProgramDesc {
@@ -535,6 +598,7 @@ struct ShaderProgramDesc {
   std::string lastError;
   std::vector<std::string> attributeBindings;
   std::string language; // the selected shader's language ("GLSL")
+  bool operator==(const ShaderProgramDesc &) const = default;
 };
 
 // LightDesc — a light resolved to world space at collection time (sidesteps the
@@ -567,6 +631,8 @@ struct LightDesc {
 
   bool global = false;                 // authored; carried not promoted.
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
+
+  bool operator==(const LightDesc &) const = default;
 };
 
 // ProjectorDesc — one active §42 texture projector (TextureProjector or
@@ -798,11 +864,16 @@ struct ClipPlaneList {
 // Structural/visibility and cached Shape/ClipPlane/LocalFog state changes remove
 // all previously live IDs and add the current snapshot. Indexed scoped ancestor
 // frame changes take the same conservative replacement path; unrelated TRS is
-// incremental. There is no implicit clip/shadow/local-fog-index update attached
-// to updatedTransform or updatedMaterial.
-// Apply removed before added; the same dense ID may occur in both. Drop stale
-// content-cache entries when their last live placement is removed (defer actual
-// GPU destruction according to host fences). A rebuild resets content versions.
+// incremental. Switch/LOD selection retains path IDs and mesh caches, publishing
+// membership changes, records whose scoped indices change (remove-before-add),
+// and surviving records whose material/texture/shader (updatedMaterial) or skin
+// binding (updatedSkinPose) changed. A deselected level's unedited mesh keeps
+// its GeomId when reselected. There is no implicit clip/shadow/local-fog-index
+// update attached to updatedTransform or updatedMaterial.
+// Apply removed before added; the same dense ID may occur in both. Content-cache
+// entries whose last live placement is removed may be dropped (defer actual GPU
+// destruction according to host fences) or kept for reselection under the same
+// GeomId. A rebuild resets content versions.
 struct RenderDelta {
   std::vector<RenderItemId> added;
   std::vector<RenderItemId> removed;
@@ -814,7 +885,7 @@ struct RenderDelta {
   bool cameraChanged = false;
   bool backgroundChanged = false;
   bool fogChanged = false;
-  bool lightsChanged = false;
+  bool lightsChanged = false; // actual rendered light-list change; snapshots initialize
 };
 
 } // namespace x3d::runtime::extract

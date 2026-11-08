@@ -87,7 +87,21 @@ following §18.4.10's application list; the contradicting prose sentence is
 treated as editorial. `makeTextureTransform3x3()` produces the equivalent 3×3
 matrix for shader upload.
 
-`resolveTextureRefs()` applies the MFString fallback order (first non-failed URL wins) and threads decoded pixels from the `TextureResolver` callback onto `TextureRef::resolvedPixels`. It recurses into `Source::Multi` stages. `Source::Inline` (PixelTexture) and `Source::Movie` refs are skipped.
+`resolveTextureRefs()` applies the MFString fallback order (first non-failed URL wins) and threads decoded pixels from the `TextureResolver` callback onto `TextureRef::resolvedPixels`. It recurses into `Source::Multi` stages and cube faces. `Source::Inline` (PixelTexture) and `Source::Movie` refs are skipped.
+
+`SceneExtractor` also accepts an optional `TextureResolverWithBase(url, baseUrl)`
+after the plain callback, followed by a fallback base string; `RuntimeSession`
+forwards `SessionOptions::textureResolverWithBase` and `baseUrl`. When set, the
+contextual callback takes precedence. Each ref keeps weak source-node identity
+and receives that node's `Scene::nodeBaseUrls` entry in `TextureRef::baseUrl`,
+or the fallback base when the node has none. This covers MultiTexture stages,
+cube faces, shader texture fields, and projectors. Movie and background refs
+also carry `baseUrl` for hosts that load them. Standalone callers pass the
+contextual callback as the fourth `resolveTextureRefs` argument and fill
+`TextureRef::baseUrl` themselves. The Ready memo keys on `(baseUrl, url)` for
+the contextual path and on the URL alone for the plain path. Authored URLs and
+fallback order are unchanged. See
+[ADR-0063](../decisions/0063-resolver-base-urls.md).
 
 `texCoordGenOf()` selects a `TextureCoordinateGenerator` from the requested geometry channel. `enrichTextureRefs()` resolves named `texCoordMapping` labels against `MultiTextureCoordinate` children and carries the generator and its matching transform on each `TextureRef`. Authored mesh UVs are transformed once during extraction; generated UVs receive `generatedTransform` after generation in the consumer. A single TextureTransform applies to all channels; named MultiTextureTransform mappings align with the corresponding coordinate mappings. Live transform and nested coordinate edits are registered in the geometry/material dependency indices: baked UVs and generated-coordinate descriptors update through RenderDelta. RuntimeSession regressions exercise both event paths.
 
@@ -130,7 +144,8 @@ using TextureResolver = std::function<TexturePixelResult(const std::string& url)
 TextureResolver makeNullTextureResolver(); // always returns makeFailed()
 ```
 
-RGBA8 pixels, bottom-left origin (GL convention). The SDK never calls this resolver; the consumer calls `resolveTextureRefs()` explicitly at render time.
+RGBA8 pixels, bottom-left origin (GL convention). `SceneExtractor` calls
+`resolveTextureRefs()` during extraction; standalone consumers can call it directly.
 
 `TextureRef::Source::Buffer` remains reserved for existing consumer switches.
 It has no payload fields or extraction path. All source enumerator values stay

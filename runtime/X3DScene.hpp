@@ -9,6 +9,7 @@
 #include "X3DRoute.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -70,6 +71,10 @@ public:
 
   // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
   std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;
+
+  // Fetched-source diagnostics waiting for the parent expansion/session to
+  // append them to X3DDocument::inlineWarnings. Drained after each session tick.
+  std::vector<InlineWarning> pendingInlineWarnings;
 
   // Inline expansion (Tier 1): synthetic Group (key) -> the original Inline node
   // it replaced. Writers consult this to re-emit <Inline url=.../> rather than
@@ -136,6 +141,13 @@ public:
   // PROTO clones and retained Inline scenes preserve their source directory.
   std::map<std::weak_ptr<X3DNode>, std::string,
            std::owner_less<std::weak_ptr<X3DNode>>> nodeBaseUrls;
+
+  // Asset-loaded Inline nodes retain a value-owned loader with their source
+  // ancestry. Deferred runtime loads therefore use the same policy/cycle guard.
+  std::map<std::weak_ptr<X3DNode>,
+           std::function<std::shared_ptr<Scene>(const std::vector<std::string> &,
+                                                const std::string &)>,
+           std::owner_less<std::weak_ptr<X3DNode>>> deferredInlineResolvers;
 
   // PROTO body clones retain the declaration's units. IS scalar targets carry
   // the supplied value's source units; dimensions belong to the concrete target.

@@ -78,7 +78,7 @@ struct ProtoRedirect {
 struct ProtoWarning {
   enum class Kind {
     UnresolvedExtern, MissingDeclaration, InterfaceMismatch,
-    RecursionLimit, UnknownField, BuiltinShadow
+    RecursionLimit, UnknownField, BuiltinShadow, SourceWarning
   };
   Kind kind;
   std::string instanceName;
@@ -87,7 +87,7 @@ struct ProtoWarning {
 
 /// Non-fatal Inline diagnostic, collected into X3DDocument.inlineWarnings.
 struct InlineWarning {
-  enum class Kind { UnresolvedUrl, LoadError };
+  enum class Kind { UnresolvedUrl, LoadError, Cycle, SourceWarning };
   Kind kind;
   std::string inlineDEF; // DEF of the Inline node, or "" if anonymous
   std::string detail;    // e.g. the url that failed to resolve
@@ -237,6 +237,8 @@ struct ProtoDeclaration {
   // Source directory for deferred body/default URL resolution. nullopt is a
   // programmatic declaration; an engaged empty base is an in-memory source.
   std::optional<std::string> sourceBaseUrl;
+  // Diagnostics of the fetched source document, hoisted on EXTERN expansion.
+  std::vector<ProtoWarning> sourceWarnings;
 };
 
 /**

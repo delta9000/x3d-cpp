@@ -107,7 +107,8 @@ public:
   std::vector<ProtoWarning> protoWarnings;
 
   // Inline expansion diagnostics (unresolved url, load error), populated by the
-  // X3DParse front door via expandInlines(). Sibling of protoWarnings.
+  // X3DParse front door via expandInlines(). RuntimeSession::tick appends runtime
+  // Inline failures and fetched-source warnings here too. Historical, not per tick.
   std::vector<InlineWarning> inlineWarnings;
 
   // Reader-recovery diagnostics (unknown node element discarded, profile token

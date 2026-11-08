@@ -32,6 +32,39 @@ recover initially hidden branches without depending on existing render items.
 Other Shape and scoped ClipPlane/LocalFog descriptor invalidation is handled by
 the extractor's [replacement contract](extract.md#scoped-render-state-replacement-contract).
 
+## Retained batch ingress
+
+The additive `tick(now, vector<RetainedInput>)` overload installs prevalidated
+inputOutput storage together after clearing the previous dirty set and opening
+the timestamp. It then announces the installed occurrences and drains queued
+inputs and ROUTEs before the first system evaluation. This lets a TimeSensor
+read a newly submitted cycle interval before emitting its first fraction.
+Ordinary `tick(now)` retains its existing systems-first ordering.
+
+Each retained entry contains a canonical `FieldAddress` and owning boxed value.
+This is an execution seam, not an admission validator: callers must preflight
+kind, range, access, context, and topology. Static inputOutput fields only are
+accepted; author-declared Script fields are outside this seam. Native input
+filters can suppress an entry. Installed entries are announced without invoking
+their setter twice; observers read the final retained storage. The cascade uses
+the same output/ROUTE guards throughout ingress and system evaluation, with no
+extra tick. Failures can leave partial native effects and require retirement or
+provider fault handling. `callbacksIdle()` reports whether guarded calls have
+returned and callbacks remain live; it provides no synchronization.
+
+The opt-in `sai_provider_adopt_session` test covers this ordering with the
+standard runtime (`same_pump_time_sensor_ingress`).
+
+## Host-retained nodes
+
+A graph edit that makes a subtree unreachable from the scene roots detaches
+its nodes: their pending deliveries and ROUTE edges are dropped and their
+systems detach. `retainNodes(nodes)` declares host-owned nodes as extra
+liveness roots, so they keep their fields, ROUTEs and attached systems while
+unreachable. They are not render roots. The native SAI provider retains every
+node it owns at activation, which keeps unnamed and detached provider nodes
+routable.
+
 ## Activation ownership and retirement
 
 A mutable native node graph belongs to one active execution context. The host
@@ -249,7 +282,11 @@ void pushStringDeletion();
 void clearKeyEvents();
 const KeyState &keyState() const;
 
-// CAVE head-tracking:
+// Absolute camera override (rigid camera-to-world; see ADR-0065):
+bool setViewerWorldPose(const Mat4 &cameraToWorld); // false: rejected, pose unchanged
+void clearViewerWorldPose();
+
+// Relative head tracking:
 void setHeadPose(const SFVec3f &pos, const SFRotation &ori);
 const HeadPose &headPose() const;
 
@@ -274,7 +311,8 @@ X3DNode *boundBackground() const;
 X3DNode *boundFog() const;
 X3DNode *boundBindable(const std::string &category) const;
 void removeBoundNode(X3DNode *node);
-Mat4 viewMatrix() const;                   // world-to-camera from bound Viewpoint
+Mat4 boundViewpointWorldPose() const;      // authored world pose; identity if none bound
+Mat4 viewMatrix() const;                   // effective world-to-camera; origin base if unbound
 SFVec3f cameraWorldPosition() const;
 SFVec3f cameraWorldUp() const;
 PickResult pick(const Ray &worldRay) const;  // index-backed (see below)
@@ -282,6 +320,15 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 ```
 
 `pick()` threads the live viewer pose and the context's `TransformSystem` into an index-backed `pickClosest`: the point index is rebuilt only when `transformRevision()` changes and its cached world AABBs refit only when the `BoundsSystem` revision changes, so a pick on an unchanged scene costs a broad phase over geometry-bearing placements instead of a whole-graph walk. Billboard placements are re-resolved per pick (view-dependent).
+
+### Unbound viewer
+
+Without a bound Viewpoint, `viewMatrix()` composes stored head tracking at the
+world origin. With identity tracking the view is identity, which is also the
+listener position used by sound and the eye used by GeoLOD.
+`setViewerWorldPose` overrides the whole effective camera. `boundViewpoint()`
+stays null and `boundViewpointWorldPose()` returns identity; no node is
+inserted. See [ADR-0073](../decisions/0073-implicit-default-viewer.md).
 
 ### Seam points
 
@@ -292,7 +339,8 @@ Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor nod
 - `addPostCascadeHook` — `ScriptSystem` installs `runEventsProcessed` here so `Script::eventsProcessed()` fires after the batch cascade drains (ISO 19775-1 §29.2.4). Hooks may post further events, which are drained before `tick()` returns.
 
 - `addChildren` / `removeChildren` — handled in the cascade (`EventCascade::editChildren`) for any node with an MFNode `children` field (§10.2.1): add appends nodes not already present, remove drops the listed ones, edits apply in delivery order, and a `children` event with the final value follows in the same cascade, so dirty tracking and `children_changed` ROUTEs see it.
-- `classifyDirty` (private) — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`) on the owning node. `writeField` mirrors this classification for direct System writes. `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write, or a `Switch.whichChoice` swap) is what drives `TransformSystem`'s structural re-walk each tick.
+- `classifyDirty` (private) — the cascade's field-delivery observer; maps any delivered `FieldAddress` to dirty flags (`DirtyField`, `DirtyLocalTransform`, `DirtyChildren`, `DirtyBounds`, `DirtyActiveChild`) on the owning node. `writeField` mirrors this classification for direct System writes. `DirtyChildren` (a `children`/`addChildren`/`removeChildren` write) is what drives `TransformSystem`'s structural re-walk each tick. `Switch.whichChoice` uses `DirtyActiveChild`, as does computed LOD selection through `markActiveChildChanged`, so the transform and bounds indexes stay in place; a field named `whichChoice` on any other node (a PROTO interface or Script field) stays `DirtyField`. A `geoSystem` write on GeoLocation/GeoTransform adds `DirtyLocalTransform`, since it changes the node's local frame.
+- `tick(now, TickTimings*)` — optional overload that fills per-phase milliseconds for systems/cascade, post-cascade hooks, transforms, and bounds. The one-argument `tick(now)` reads no clocks.
 
 - `X3DSceneBridge.hpp` free functions — `buildRoutes(Scene&, X3DExecutionContext&)` resolves DEF-named ROUTEs to `FieldAddress` endpoints and calls `ctx.addRoute` after field, direction, and type checks. For expanded PROTOs it consults the declared interface before the primary node's fields, follows `IS` targets on either endpoint, and retains inherited `metadata` through the primary's current storage. Pre-resolved PROTO-body and Inline-internal routes bypass DEF-name lookup but receive the same physical endpoint checks through `effectiveFields()`, without another PROTO redirect lookup. `BridgeResult` counts added edges; `RouteError::scope` identifies the Scene, PROTO-body, or Inline route collection for its relative `index`. Dangling Scene DEFs are skipped silently. The attach helpers walk rendered roots and non-rendered PROTO peers via `detail::forEachNode`. `InlineRuntimeSystem` enrolls a newly loaded subtree and installs its dynamic routes through a separate path; it also refreshes transform, bounds, and pick indices before extraction. Unconnected PROTO interface fields use Scene-owned entries; this does not establish a general native SAI prototype object model.
 
