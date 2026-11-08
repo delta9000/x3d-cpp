@@ -7,10 +7,11 @@ def render(renderer, scene, output):
         'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
         'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
         str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
+    ], timeout=120, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    # Some xvfb-run builds redirect the command's stderr to stdout, so read both.
     if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    return result.stderr
+        raise RuntimeError(result.stdout)
+    return result.stdout
 
 
 def pixels(path):
