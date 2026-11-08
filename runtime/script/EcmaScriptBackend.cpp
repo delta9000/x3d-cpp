@@ -6,6 +6,7 @@
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
 #include "x3d/core/X3Dtypes.hpp"     // SF*/MF* concrete C++ types
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdio>
@@ -388,9 +389,12 @@ SFImage toSFImage(duk_context *c, duk_idx_t idx) {
   SFImage img{0, 0, 0, {}};
   duk_idx_t a = duk_normalize_index(c, idx);
   if (!duk_is_object(c, a)) return img;
-  img.width = static_cast<int>(getNumberProp(c, a, "x"));
-  img.height = static_cast<int>(getNumberProp(c, a, "y"));
-  img.numComponents = static_cast<int>(getNumberProp(c, a, "comp"));
+  // Script values are untrusted: a negative, NaN or huge dimension would wrap
+  // the unsigned pixel count, and comp outside [0,4] would over-shift.
+  const auto dim = [](double v) { return v > 0 && v < 2147483647.0 ? static_cast<int>(v) : 0; };
+  img.width = dim(getNumberProp(c, a, "x"));
+  img.height = dim(getNumberProp(c, a, "y"));
+  img.numComponents = std::min(dim(getNumberProp(c, a, "comp")), 4);
   const int nc = img.numComponents;
   const std::size_t pixels = static_cast<std::size_t>(img.width) *
                              static_cast<std::size_t>(img.height);
@@ -1024,7 +1028,7 @@ namespace {
 std::string jsonOfTop(duk_context *ctx) {
   duk_dup(ctx, -1);                      // value to stringify
   if (duk_json_encode(ctx, -1) == nullptr) {
-    duk_pop_2(ctx);
+    duk_pop(ctx);                        // pop the failed copy; keep the value
     return {};
   }
   const char *s = duk_get_string(ctx, -1);

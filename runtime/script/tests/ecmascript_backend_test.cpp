@@ -39,6 +39,13 @@ int main() {
     duk_get_prop_index(c, -1, 1);
     check(duk_get_uint(c, -1) == 0x00FF00, "T12: SFImage.array[1] == packed green");
     duk_pop_2(c);
+    // A script-built SFImage with a negative dimension or an out-of-range
+    // comp decodes to an empty image instead of a wrapped size.
+    duk_eval_string(c, "({x:-1, y:1, comp:9, array:[1]})");
+    auto bad = std::any_cast<SFImage>(EcmaScriptBackend::toValue(c, -1, X3DFieldType::SFImage));
+    check(bad.width == 0 && bad.numComponents == 4 && bad.data.empty(),
+          "T12: SFImage with a negative width decodes empty");
+    duk_pop(c);
     duk_destroy_heap(c);
   }
 

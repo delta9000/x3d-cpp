@@ -16,6 +16,7 @@
 
 #include "quickjs.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -313,9 +314,12 @@ JSValue pushSFImage(JSContext *c, const SFImage &img) {
 SFImage toSFImage(JSContext *c, JSValueConst obj) {
   SFImage img{0, 0, 0, {}};
   if (!JS_IsObject(obj)) return img;
-  img.width = static_cast<int>(getNumberProp(c, obj, "x"));
-  img.height = static_cast<int>(getNumberProp(c, obj, "y"));
-  img.numComponents = static_cast<int>(getNumberProp(c, obj, "comp"));
+  // Script values are untrusted: a negative, NaN or huge dimension would wrap
+  // the unsigned pixel count, and comp outside [0,4] would over-shift.
+  const auto dim = [](double v) { return v > 0 && v < 2147483647.0 ? static_cast<int>(v) : 0; };
+  img.width = dim(getNumberProp(c, obj, "x"));
+  img.height = dim(getNumberProp(c, obj, "y"));
+  img.numComponents = std::min(dim(getNumberProp(c, obj, "comp")), 4);
   const int nc = img.numComponents;
   const std::size_t pixels = static_cast<std::size_t>(img.width) *
                              static_cast<std::size_t>(img.height);
