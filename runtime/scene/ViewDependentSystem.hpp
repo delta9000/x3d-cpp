@@ -15,6 +15,12 @@
 #include "RecursionLimits.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
+#include "x3d/nodes/GeoLOD.hpp"
+#include "x3d/nodes/GeoProximitySensor.hpp"
+#include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/ProximitySensor.hpp"
+#include "x3d/nodes/TransformSensor.hpp"
+#include "x3d/nodes/VisibilitySensor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -83,7 +89,7 @@ public:
     (void)now;
     const SFVec3f eye = ctx.cameraWorldPosition();
     for (auto &[node, last] : lodLevel_) {
-      if (node->nodeTypeName() == "GeoLOD") {
+      if (dynamic_cast<const x3d::nodes::GeoLOD *>(node) != nullptr) {
         // URL-backed GeoLODs are driven by InlineRuntimeSystem, which waits for
         // the requested tile set before changing the displayed level.
         if (!geombounds::getField<MFString>(*node, "rootUrl", {}).empty() ||
@@ -153,10 +159,10 @@ public:
         deactivateIfActive(node, active, now, ctx);
         continue;
       }
-      if (node->nodeTypeName() == "ProximitySensor" ||
-          node->nodeTypeName() == "GeoProximitySensor") updateProximity(node, active, now, ctx);
-      else if (node->nodeTypeName() == "VisibilitySensor") updateVisibility(node, active, now, ctx);
-      else if (node->nodeTypeName() == "TransformSensor") updateTransform(node, active, now, ctx);
+      if (dynamic_cast<const x3d::nodes::ProximitySensor *>(node) != nullptr ||
+          dynamic_cast<const x3d::nodes::GeoProximitySensor *>(node) != nullptr) updateProximity(node, active, now, ctx);
+      else if (dynamic_cast<const x3d::nodes::VisibilitySensor *>(node) != nullptr) updateVisibility(node, active, now, ctx);
+      else if (dynamic_cast<const x3d::nodes::TransformSensor *>(node) != nullptr) updateTransform(node, active, now, ctx);
     }
   }
 
@@ -385,7 +391,7 @@ private:
       return;
     }
     const SFVec3f eyeWorld = ctx.cameraWorldPosition();
-    const bool geographic = node->nodeTypeName() == "GeoProximitySensor";
+    const bool geographic = dynamic_cast<const x3d::nodes::GeoProximitySensor *>(node) != nullptr;
     Mat4 tangent = Mat4::identity();
     if (geographic) {
       // §25.3.8: the sensor box is tangent to the ellipsoid at geoCenter.
@@ -449,7 +455,7 @@ private:
       if (std::find(types.begin(), types.end(), "LOOKAT") != types.end()) {
         X3DNode *vp = ctx.boundViewpoint();
         SFVec3f cor{0, 0, 0};
-        if (vp && vp->nodeTypeName() == "GeoViewpoint")
+        if (vp && dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr)
           geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 0}), cor, ctx.geoProjection());
         else if (vp)
           cor = geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0});

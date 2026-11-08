@@ -26,6 +26,15 @@
 #include "ViewDependentSystem.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/GeoOrigin.hpp"
+#include "x3d/nodes/HAnimHumanoid.hpp"
+#include "x3d/nodes/HAnimJoint.hpp"
+#include "x3d/nodes/MultiTextureCoordinate.hpp"
+#include "x3d/nodes/NurbsCurve.hpp"
+#include "x3d/nodes/OrthoViewpoint.hpp"
+#include "x3d/nodes/Shape.hpp"
+#include "x3d/nodes/Text.hpp"
+#include "x3d/nodes/TextureBackground.hpp"
 #include "X3DScene.hpp"
 
 #include <algorithm>
@@ -303,7 +312,7 @@ public:
     for (const X3DNode *n : ctx_.dirtyTracker().changedNodes()) {
       const unsigned flags = ctx_.dirtyTracker().flags(n);
       if (((flags & DirtyField) && (itemStateDeps_.count(n) ||
-                                   n->nodeTypeName() == "HAnimHumanoid")) ||
+                                   dynamic_cast<const x3d::nodes::HAnimHumanoid *>(n) != nullptr)) ||
           ((flags & (DirtyField | DirtyLocalTransform | DirtyWorldTransform)) &&
            scopedStateDeps_.count(n)))
         return replacementSnapshot();
@@ -372,8 +381,8 @@ public:
 
       // transform: re-accumulate worldM along each dependent's PathKey
       if ((f & (DirtyLocalTransform | DirtyWorldTransform)) ||
-          ((f & DirtyField) && (n->nodeTypeName() == "Billboard" ||
-                                n->nodeTypeName() == "GeoOrigin"))) {
+          ((f & DirtyField) && (dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr ||
+                                dynamic_cast<const x3d::nodes::GeoOrigin *>(n) != nullptr))) {
         for (RenderItemId id : depsOf(transformDeps_, n)) {
           // Dedup the re-accumulation itself: propagate() flags every node in a
           // dirtied subtree, so the same item is reached via several dirty
@@ -573,7 +582,7 @@ public:
     CameraDesc cam;
     cam.viewMatrix = ctx_.viewMatrix();
     if (const X3DNode *vp = ctx_.boundViewpoint()) {
-      if (vp->nodeTypeName() == "OrthoViewpoint") {
+      if (dynamic_cast<const x3d::nodes::OrthoViewpoint *>(vp) != nullptr) {
         cam.ortho = true;
         // OrthoViewpoint.fieldOfView is an MFFloat {l,b,r,t}; surfaced verbatim
         // (projection-param shape differs; PoC-out-of-scope but contract-stable).
@@ -637,7 +646,7 @@ public:
           geombounds::getField<std::vector<float>>(*b, "groundAngle", {});
       bg.transparency = geombounds::getField<float>(*b, "transparency", 0.0f);
       // Panorama faces (§24.4.2 *Url lists, §24.4.5 *Texture nodes).
-      const bool textured = b->nodeTypeName() == "TextureBackground";
+      const bool textured = dynamic_cast<const x3d::nodes::TextureBackground *>(b) != nullptr;
       TextureRef *faces[] = {&bg.front, &bg.back, &bg.left, &bg.right, &bg.top, &bg.bottom};
       const char *names[] = {"front", "back", "left", "right", "top", "bottom"};
       const std::string backgroundBase = textured ? baseUrl_ : baseUrlOf(b);
@@ -878,7 +887,7 @@ private:
     auto visit = [&](auto &&self, const X3DNode *node) -> void {
       if (!node || !visited.insert(node).second) return;
       if (TransformSystem::isTransform(node)) add(skinPoseDeps_, node);
-      if (node->nodeTypeName() == "HAnimJoint") {
+      if (dynamic_cast<const x3d::nodes::HAnimJoint *>(node) != nullptr) {
         add(skinBindingDeps_, node);
         skinBindFrames_[node] = {
             geombounds::getField<SFVec3f>(*node, "center", {}),
@@ -887,7 +896,7 @@ private:
       forEachChildNode(*node, [&](const FieldInfo &field, const std::shared_ptr<X3DNode> &child) {
         // ISO/IEC 19775-1 §26.3.1: payload edits change the binding;
         // weight is evaluated as live pose state.
-        if (field.x3dName == "displacers" && node->nodeTypeName() == "HAnimJoint") {
+        if (field.x3dName == "displacers" && dynamic_cast<const x3d::nodes::HAnimJoint *>(node) != nullptr) {
           add(skinPoseDeps_, child.get());
           add(skinBindingDeps_, child.get());
           skinDisplacerInputs_[child.get()] = {
@@ -1003,12 +1012,12 @@ private:
     for (const X3DNode *node : ctx_.dirtyTracker().changedNodes()) {
       const auto flags = ctx_.dirtyTracker().flags(node);
       if ((flags & (DirtyLocalTransform | DirtyWorldTransform)) ||
-          ((flags & DirtyField) && node->nodeTypeName() == "GeoOrigin")) {
+          ((flags & DirtyField) && dynamic_cast<const x3d::nodes::GeoOrigin *>(node) != nullptr)) {
         const auto &ids = depsOf(transformDeps_, node);
         moved.insert(ids.begin(), ids.end());
       }
       billboardEdited = billboardEdited ||
-          ((flags & DirtyField) && node->nodeTypeName() == "Billboard");
+          ((flags & DirtyField) && dynamic_cast<const x3d::nodes::Billboard *>(node) != nullptr);
     }
     // Billboard edits can move child origins without ordinary TRS dirtiness.
     if (billboardEdited) moved.insert(billboardItems_.begin(), billboardItems_.end());
@@ -1041,7 +1050,7 @@ private:
     if (it != cache.end()) return it->second;
     LocalXf v;
     v.isXform = TransformSystem::isTransform(n);
-    v.isBillboard = n->nodeTypeName() == "Billboard";
+    v.isBillboard = dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr;
     v.billboardAxis = v.isBillboard
         ? geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0})
         : SFVec3f{0, 1, 0};
@@ -1233,7 +1242,7 @@ private:
     scopedStateDeps_.insert(n);
     bool viewDependent = false;
     for (const X3DNode *ancestor : path) {
-      const bool billboard = ancestor->nodeTypeName() == "Billboard";
+      const bool billboard = dynamic_cast<const x3d::nodes::Billboard *>(ancestor) != nullptr;
       if (TransformSystem::isTransform(ancestor) || billboard) {
         scopedStateDeps_.insert(ancestor);
         if (auto origin = geombounds::getNode(*ancestor, "geoOrigin"))
@@ -1274,7 +1283,7 @@ private:
       return;
     Mat4 here = TransformSystem::isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, ctx_.geoProjection()) : worldM;
-    if (n->nodeTypeName() == "Billboard") {
+    if (dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr) {
       const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
       here = worldM * billboardLocalMatrix(worldM, ctx_.cameraWorldPosition(),
                                            ctx_.cameraWorldUp(), axis);
@@ -1292,7 +1301,7 @@ private:
     // RenderItem emission is anchored strictly on hasField("geometry") at a Shape
     // — exactly PickSystem::pickNode, not on DFS leafness.
     const bool underShape = std::any_of(path.begin(), path.end() - 1,
-        [](const X3DNode *ancestor) { return ancestor->nodeTypeName() == "Shape"; });
+        [](const X3DNode *ancestor) { return dynamic_cast<const x3d::nodes::Shape *>(ancestor) != nullptr; });
     if (activeSkinHumanoid_ && !underShape && recognizedGeometryType(n->nodeTypeName())) {
       // X3D §26.3.2 also permits geometry nodes directly in Humanoid.skin.
       MeshRef mesh = cachedRawMesh(n, nullptr);
@@ -1597,12 +1606,12 @@ private:
                                 const std::shared_ptr<X3DNode> &c) {
       visit(c.get());
       if (auto origin = geombounds::getNode(*c, "geoOrigin")) visit(origin.get());
-      if (c->nodeTypeName() == "NurbsCurve")
+      if (dynamic_cast<const x3d::nodes::NurbsCurve *>(c.get()) != nullptr)
         if (auto coord = geombounds::getNode(*c, "controlPoint")) {
           visit(coord.get());
           if (auto origin = geombounds::getNode(*coord, "geoOrigin")) visit(origin.get());
         }
-      if (c->nodeTypeName() == "MultiTextureCoordinate")
+      if (dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(c.get()) != nullptr)
         forEachChildNode(*c, [&](const FieldInfo &field,
                                  const std::shared_ptr<X3DNode> &coordinate) {
           if (field.x3dName == "texCoord")
@@ -1638,7 +1647,7 @@ private:
     // transformDeps: every Transform ANCESTOR on this item's path. A change on any
     // of them re-accumulates this item's worldTransform.
     for (const X3DNode *anc : path) {
-      const bool billboard = anc->nodeTypeName() == "Billboard";
+      const bool billboard = dynamic_cast<const x3d::nodes::Billboard *>(anc) != nullptr;
       if (TransformSystem::isTransform(anc) || billboard) {
         appendDep(transformDeps_, anc, id);
         if (auto origin = geombounds::getNode(*anc, "geoOrigin"))
@@ -1791,7 +1800,7 @@ private:
       MeshBuildOptions options = meshOptions_;
       options.hanimSegment = owner;
       bool pending = false;
-      const bool text = geom->nodeTypeName() == "Text";
+      const bool text = dynamic_cast<const x3d::nodes::Text *>(geom) != nullptr;
       if (text)
         options.fontMetrics = [&](const FontKey &key) {
           auto glyph = meshOptions_.fontMetrics(key);

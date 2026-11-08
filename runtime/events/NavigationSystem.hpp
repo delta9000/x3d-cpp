@@ -36,6 +36,7 @@
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/NavigationInfo.hpp" // getType/getSpeed/getTransition*; emitTransitionComplete
+#include "x3d/nodes/GeoViewpoint.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -215,7 +216,7 @@ private:
   static Mat4 poseOf(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.position is SFVec3d; read leniently so a bound GeoViewpoint
     // isn't pinned to the origin .
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       Mat4 frame;
       if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame, projection))
         return frame * Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
@@ -231,7 +232,7 @@ private:
   }
   static SFVec3f cor(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.centerOfRotation is SFVec3d; read leniently.
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3f world;
       if (geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0,0,0}), world, projection))
         return world;
@@ -351,7 +352,7 @@ private:
 
     // Keys -> translate along view dir / strafe, scaled by speed*dt (§23.4.4).
     float speed = nav ? nav->getSpeed() : 1.0f;
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       // §25.3.11: refresh elevation-based velocity as the eye moves.
       SFVec3d authored;
       double lat, lon, elevation;
@@ -398,7 +399,7 @@ private:
         baseVisibility_ = nav->getVisibilityLimit();
       }
     }
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3d authored;
       double lat, lon, elevation;
       if (geo::fromWorld(*vp, ctx.cameraWorldPosition(), authored, ctx.geoProjection()) &&
@@ -595,7 +596,7 @@ private:
     SFRotation targetOri = lookRotation(dirLocal, upLocal);
 
     // Set the pivot for subsequent `EXAMINE` in the bound viewpoint's own frame.
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3d geoCenter;
       if (geo::fromWorld(*vp, centerLocal, geoCenter, ctx.geoProjection()))
         (void)ctx.writeField(vp, "centerOfRotation", std::any(geoCenter));

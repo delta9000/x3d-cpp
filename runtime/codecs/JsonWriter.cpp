@@ -546,7 +546,7 @@ void JsonWriter::writeNode(std::ostringstream &os,
     // a Script re-emits its inline source as "#sourceText"
     // (handled below), so suppress the plain "@sourceCode" value member to
     // avoid double-encoding the same body.
-    const bool isScript = node->nodeTypeName() == "Script";
+    const bool isScript = dynamic_cast<const x3d::nodes::Script *>(node.get()) != nullptr;
     // Value attributes (defaults elided against a fresh factory instance).
     X3DNode *defaults = defaultFor(node->nodeTypeName());
     for (const FieldInfo &f : node->fields()) {

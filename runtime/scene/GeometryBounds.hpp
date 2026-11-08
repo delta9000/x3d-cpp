@@ -9,6 +9,8 @@
 #include "FontMetrics.hpp"   // extract::FontMetrics seam
 #include "TextLayout.hpp"    // extract::computeTextLayout + textLayoutExtent
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/GeoCoordinate.hpp"
+#include "x3d/nodes/ScreenFontStyle.hpp"
 #include <algorithm>
 #include <any>
 #include <cassert>
@@ -82,7 +84,7 @@ inline std::vector<SFVec3f> getPointsLenient(const X3DNode &n, const char *name,
   std::vector<SFVec3d> d;
   if (readField(n, name, d) == FieldRead::Ok) {
     // §25.3.1: GeoCoordinate points use the node's own geographic frame.
-    if (n.nodeTypeName() == "GeoCoordinate")
+    if (dynamic_cast<const x3d::nodes::GeoCoordinate *>(&n) != nullptr)
       return geo::toWorld(n, d, nullptr, projection);
     std::vector<SFVec3f> out;
     out.reserve(d.size());
@@ -242,7 +244,7 @@ inline extract::FontStyleParams readFontStyleParams(const X3DNode &textNode,
   auto fsNode = getNode(textNode, "fontStyle");
   if (!fsNode) return fs;
 
-  fs.size = (fsNode->nodeTypeName() == "ScreenFontStyle")
+  fs.size = (dynamic_cast<const x3d::nodes::ScreenFontStyle *>(fsNode.get()) != nullptr)
                 ? getField<float>(*fsNode, "pointSize", 1.0f)
                 : getField<float>(*fsNode, "size", 1.0f);
   fs.spacing = getField<float>(*fsNode, "spacing", 1.0f);

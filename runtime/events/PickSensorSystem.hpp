@@ -26,6 +26,7 @@
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/LinePickSensor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -46,7 +47,7 @@ using namespace x3d::core;
 class PickSensorSystem : public System {
 public:
   void attach(X3DNode *node, X3DExecutionContext & /*ctx*/) override {
-    if (node && node->nodeTypeName() == "LinePickSensor" &&
+    if (node && dynamic_cast<const x3d::nodes::LinePickSensor *>(node) != nullptr &&
         std::find(sensors_.begin(), sensors_.end(), node) == sensors_.end())
       sensors_.push_back(node);
   }

@@ -16,6 +16,8 @@
 #include "RenderItem.hpp"  // extract::PathKey (root→hit node chain)
 #include "TransformSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/Billboard.hpp"
+#include "x3d/nodes/Layer.hpp"
 #include "X3DScene.hpp"
 
 #include <algorithm>
@@ -407,7 +409,7 @@ private:
     path.push_back(n);
     const Mat4 childM =
         TransformSystem::isTransform(n) ? worldM * TransformSystem::localMatrix(n, geoProjection()) : worldM;
-    const bool childBillboard = billboardSeen || n->nodeTypeName() == "Billboard";
+    const bool childBillboard = billboardSeen || dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr;
     if (geombounds::hasField(*n, "geometry")) {
       if (geombounds::getNode(*n, "geometry")) {
         Placement p;
@@ -441,7 +443,7 @@ private:
     for (std::size_t i = 0; i + 1 < path.size(); ++i) {
       const X3DNode *n = path[i];
       if (TransformSystem::isTransform(n)) m = m * TransformSystem::localMatrix(n, geoProjection());
-      if (n->nodeTypeName() == "Billboard") {
+      if (dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr) {
         const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
         m = m * billboardLocalMatrix(m, cameraPos, cameraUp, axis);
       }
@@ -494,7 +496,7 @@ private:
     // Layer.pickable is inputOutput: inspect the retained path on every pick so
     // toggling it takes effect without invalidating the geometry placement cache.
     for (const X3DNode *n : path)
-      if (n->nodeTypeName() == "Layer" &&
+      if (dynamic_cast<const x3d::nodes::Layer *>(n) != nullptr &&
           !geombounds::getField<bool>(*n, "pickable", true))
         return;
     if (!rayAabb(worldRay, worldAabb)) return;

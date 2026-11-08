@@ -4,6 +4,7 @@
 
 #include "X3DParse.hpp"
 #include "../extract/AssetResolver.hpp"
+#include "x3d/nodes/Inline.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -243,7 +244,7 @@ std::shared_ptr<Result> resolveDocument(Context &context,
           ? context.policy.inlineOverride
           : makeResolvers(context.policy, context.active).inlineScene;
       for (const auto &[node, base] : doc.scene.nodeBaseUrls)
-        if (auto owned = node.lock(); owned && owned->nodeTypeName() == "Inline")
+        if (auto owned = node.lock(); owned && dynamic_cast<const x3d::nodes::Inline *>(owned.get()) != nullptr)
           doc.scene.deferredInlineResolvers.try_emplace(node, deferred);
       if (auto selected = select(std::move(doc), fragment)) {
         if constexpr (std::is_same_v<Result, runtime::ProtoDeclaration>)

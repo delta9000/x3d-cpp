@@ -9,6 +9,9 @@
 #include "io/file/FileResolver.hpp"
 #include "ViewpointBindSystem.hpp"
 #include "X3DScene.hpp"
+#include "x3d/nodes/CollisionSensor.hpp"
+#include "x3d/nodes/RigidBodyCollection.hpp"
+#include "x3d/nodes/Script.hpp"
 
 #ifdef X3D_SIM_HAVE_SCRIPT
 #  include "EcmaScriptBackend.hpp"
@@ -43,8 +46,8 @@ inline void attachPhysics(x3d::runtime::Scene &scene,
   std::vector<X3DNode *> sensors;
   detail::forEachNode(scene, [&](X3DNode *n) {
     if (!n) return;
-    if (n->nodeTypeName() == "RigidBodyCollection") collections.push_back(n);
-    else if (n->nodeTypeName() == "CollisionSensor") sensors.push_back(n);
+    if (dynamic_cast<const x3d::nodes::RigidBodyCollection *>(n) != nullptr) collections.push_back(n);
+    else if (dynamic_cast<const x3d::nodes::CollisionSensor *>(n) != nullptr) sensors.push_back(n);
   });
   if (!collections.empty()) {
     auto backend = std::make_shared<JoltBackend>();
@@ -78,7 +81,7 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
     auto scriptSys = std::make_shared<ScriptSystem>(
         backend, "x3d-sim", "4.0", io::file::makeFileResolver());
     detail::forEachNode(scene, [&](X3DNode *n) {
-      if (n && n->nodeTypeName() == "Script") {
+      if (n && dynamic_cast<const x3d::nodes::Script *>(n) != nullptr) {
         scriptSys->attach(n, ctx);
         ++wiring.scriptsEnrolled;
       }

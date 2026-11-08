@@ -9,6 +9,8 @@
 #include "x3d/nodes/X3DGeometryNode.hpp"
 #include "x3d/nodes/X3DMetadataObject.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/nodes/Inline.hpp"
+#include "x3d/nodes/Script.hpp"
 #include <cmath>
 #include <map>
 #include <limits>
@@ -109,15 +111,15 @@ bool supported_field(const X3DNode &n, const x3d::core::FieldInfo &f) {
   using T = x3d::core::X3DFieldType;
   if (f.x3dName == "metadata")
     return true;
-  if (n.nodeTypeName() == "Transform")
+  if (dynamic_cast<const x3d::nodes::Transform *>(&n) != nullptr)
     return f.x3dName == "children" || f.type == T::SFBool ||
            f.type == T::SFVec3f || f.type == T::SFRotation;
-  if (n.nodeTypeName() == "PositionInterpolator")
+  if (dynamic_cast<const x3d::nodes::PositionInterpolator *>(&n) != nullptr)
     return f.type == T::SFFloat || f.type == T::MFFloat ||
            f.type == T::SFVec3f || f.type == T::MFVec3f;
-  if (n.nodeTypeName() == "Shape")
+  if (dynamic_cast<const x3d::nodes::Shape *>(&n) != nullptr)
     return f.x3dName == "geometry";
-  if (n.nodeTypeName() == "Box")
+  if (dynamic_cast<const x3d::nodes::Box *>(&n) != nullptr)
     return f.x3dName == "size" || f.x3dName == "solid";
   return false;
 }
@@ -149,10 +151,10 @@ bool accepts_node(const X3DNode &owner, std::string_view field,
   if (field == "metadata")
     return dynamic_cast<const x3d::nodes::X3DMetadataObject *>(child.get()) !=
            nullptr;
-  if (owner.nodeTypeName() == "Transform" && field == "children")
+  if (dynamic_cast<const x3d::nodes::Transform *>(&owner) != nullptr && field == "children")
     return dynamic_cast<const x3d::nodes::X3DChildNode *>(child.get()) !=
            nullptr;
-  if (owner.nodeTypeName() == "Shape" && field == "geometry")
+  if (dynamic_cast<const x3d::nodes::Shape *>(&owner) != nullptr && field == "geometry")
     return dynamic_cast<const x3d::nodes::X3DGeometryNode *>(child.get()) !=
            nullptr;
   return false;
@@ -375,10 +377,10 @@ struct backend::storage {
         opaque.emplace(node.get(),
                        opacity{proto_name(node.get()), "PROTO instance"});
       else if (scene().expandedInlines.contains(node.get()) ||
-               node->nodeTypeName() == "Inline")
+               dynamic_cast<const x3d::nodes::Inline *>(node.get()) != nullptr)
         opaque.emplace(node.get(),
                        opacity{node->nodeTypeName(), "Inline context"});
-      else if (node->nodeTypeName() == "Script")
+      else if (dynamic_cast<const x3d::nodes::Script *>(node.get()) != nullptr)
         opaque.emplace(node.get(),
                        opacity{node->nodeTypeName(), "Script fields"});
       if (opaque.contains(node.get()))

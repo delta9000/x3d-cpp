@@ -10,6 +10,7 @@
 #include "TextureTransform2D.hpp"
 #include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/MultiTextureCoordinate.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
@@ -184,7 +185,7 @@ textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom) {
       });
   if (!named)
     return params;
-  MFNode coordinates = tc->nodeTypeName() == "MultiTextureCoordinate"
+  MFNode coordinates = dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr
                            ? geombounds::getField<MFNode>(*tc, "texCoord", {})
                            : MFNode{tc};
   std::vector<TextureTransform2DParams> out(coordinates.size());
@@ -292,7 +293,7 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
   if (has) *has = false;
   if (!geom) return d;
   auto tc = geombounds::getNode(*geom, "texCoord");
-  if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+  if (tc && dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr) {
     const auto children = geombounds::getField<MFNode>(*tc, "texCoord", {});
     if (children.empty())
       return d;
@@ -384,7 +385,7 @@ inline void enrichTextureRefs(
   for (std::size_t i = 0; i < refs.size(); ++i) {
     if (geom && !refs[i].texCoordMapping.empty()) {
       auto tc = geombounds::getNode(*geom, "texCoord");
-      if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+      if (tc && dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr) {
         auto sets = geombounds::getField<MFNode>(*tc, "texCoord", {});
         refs[i].channel = 0;
         for (std::size_t j = 0; j < sets.size(); ++j)

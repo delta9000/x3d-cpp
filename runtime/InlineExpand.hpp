@@ -11,6 +11,7 @@
 #include "X3DProtoExpand.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/nodes/Inline.hpp"
 #include "x3d/core/X3DReflection.hpp"
 
 #include <any>
@@ -149,12 +150,12 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
         // No catch-all here: it would also swallow errors from the
         // recursive walk and silently drop the subtree (FieldRead.hpp).
         forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-          if (c->nodeTypeName() == "Inline") sites.push_back({n.get(), c});
+          if (dynamic_cast<const x3d::nodes::Inline *>(c.get()) != nullptr) sites.push_back({n.get(), c});
           else walk(c, depth + 1);
         });
       };
   for (auto &r : scene.rootNodes) {
-    if (r && r->nodeTypeName() == "Inline") rootInlines.push_back(r);
+    if (r && dynamic_cast<const x3d::nodes::Inline *>(r.get()) != nullptr) rootInlines.push_back(r);
     else walk(r, 0);
   }
 

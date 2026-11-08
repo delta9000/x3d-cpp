@@ -27,6 +27,7 @@
 #include "RenderItem.hpp"
 #include "TransformSystem.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/LocalFog.hpp"
 #include "X3DScene.hpp"
 
 #include <cmath>
@@ -112,7 +113,7 @@ private:
     const Mat4 here = frame
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
-    if (n->nodeTypeName() == "LocalFog") {
+    if (dynamic_cast<const x3d::nodes::LocalFog *>(n) != nullptr) {
       if (dependencies) {
         dependencies->insert(n);
         dependencies->insert(frames.begin(), frames.end());

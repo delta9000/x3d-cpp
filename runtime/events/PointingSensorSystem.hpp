@@ -250,8 +250,8 @@ private:
   // sensor type predicates
 
   static bool isTouchSensor(const X3DNode *n) {
-    return n && (n->nodeTypeName() == "TouchSensor" ||
-                 n->nodeTypeName() == "GeoTouchSensor");
+    return n && (dynamic_cast<const x3d::nodes::TouchSensor *>(n) != nullptr ||
+                 dynamic_cast<const x3d::nodes::GeoTouchSensor *>(n) != nullptr);
   }
   static bool isDragSensor(const X3DNode *n) {
     if (!n)
@@ -322,7 +322,7 @@ private:
     ctx.postEvent(ts, "hitNormal_changed", std::any(SFVec3f{localNormal}));
     ctx.postEvent(ts, "hitTexCoord_changed", std::any(SFVec2f{pick.texCoord}));
     // §25.3.9: the geo output is the picked world point in this sensor's geoSystem.
-    if (ts->nodeTypeName() == "GeoTouchSensor") {
+    if (dynamic_cast<const x3d::nodes::GeoTouchSensor *>(ts) != nullptr) {
       SFVec3d geoPoint;
       if (geo::fromWorld(*ts, localPoint, geoPoint, ctx.geoProjection()))  // sensor-local frame (ADR-0053)
         ctx.postEvent(ts, "hitGeoCoord_changed", std::any(geoPoint));

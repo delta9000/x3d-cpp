@@ -9,6 +9,7 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/X3DBackgroundNode.hpp"
+#include "x3d/nodes/TextureProjectorParallel.hpp"
 #include "GeoProjection.hpp"
 
 #include <any>
@@ -47,8 +48,8 @@ inline void validateSpecial(const x3d::nodes::X3DNode &node,
     if (!std::is_sorted(bg->getGroundAngle().begin(), bg->getGroundAngle().end()))
       add(node, "groundAngle", "BACKGROUND_ANGLE_ORDER", "angles must be non-decreasing", out);
   }
-  if (node.nodeTypeName() == "OrthoViewpoint" ||
-      node.nodeTypeName() == "TextureProjectorParallel") {
+  if (dynamic_cast<const x3d::nodes::OrthoViewpoint *>(&node) != nullptr ||
+      dynamic_cast<const x3d::nodes::TextureProjectorParallel *>(&node) != nullptr) {
     for (const core::FieldInfo &f : node.fields()) {
       if (f.x3dName != "fieldOfView") continue;
       auto v = f.get(node);

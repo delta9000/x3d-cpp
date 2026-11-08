@@ -5,6 +5,8 @@
 #include "NurbsEval.hpp"
 #include "TextExtract.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/ContourPolyline2D.hpp"
+#include "x3d/nodes/ElevationGrid.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -1242,7 +1244,7 @@ nurbs::Curve2DDef readControlCurve2D(const X3DNode &n) {
     c.cp.push_back(SFVec2f{(float)p.x, (float)p.y});
   c.w = geombounds::getField<std::vector<double>>(n, "weight", {});
   c.knot = geombounds::getField<std::vector<double>>(n, "knot", {});
-  c.order = (n.nodeTypeName() == "ContourPolyline2D")
+  c.order = (dynamic_cast<const x3d::nodes::ContourPolyline2D *>(&n) != nullptr)
                 ? 2
                 : geombounds::getField<SFInt32>(n, "order", 3);
   c.closed = geombounds::getField<SFBool>(n, "closed", false);
@@ -1339,7 +1341,7 @@ void applyFogCoordinate(const X3DNode &geom, MeshData &mesh) {
   if (!fog || fog->nodeTypeName() != "FogCoordinate")
     return;
   const auto depth = geombounds::getField<MFFloat>(*fog, "depth", {});
-  const auto &source = geom.nodeTypeName() == "ElevationGrid" ? mesh.latticeIndex
+  const auto &source = dynamic_cast<const x3d::nodes::ElevationGrid *>(&geom) != nullptr ? mesh.latticeIndex
                                                                : mesh.sourceCoordIndex;
   if (depth.empty() || mesh.positions.empty() || source.size() != mesh.positions.size())
     return;

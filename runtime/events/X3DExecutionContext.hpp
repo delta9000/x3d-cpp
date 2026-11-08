@@ -24,6 +24,9 @@
 #include "X3DEventGraph.hpp"
 #include "X3DFieldAddress.hpp"
 #include "X3DSystem.hpp"
+#include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/LayerSet.hpp"
+#include "x3d/nodes/Switch.hpp"
 
 #include <algorithm>
 #include <any>
@@ -717,7 +720,7 @@ public:
     if (!vp) return Mat4::identity();
     SFRotation ori = geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0});
     Mat4 pose;
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       // §25.3.11: position is geographic; orientation is relative to local east/up/south.
       if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose, geoProjection()))
         pose = Mat4::identity();
@@ -913,13 +916,13 @@ private:
     // Switch selection changes preserve node references and the transform
     // index. A PROTO/Script field that happens to be named whichChoice is an
     // ordinary field write and keeps DirtyField.
-    if (a.field == "whichChoice" && a.node->nodeTypeName() == "Switch")
+    if (a.field == "whichChoice" && dynamic_cast<const x3d::nodes::Switch *>(a.node) != nullptr)
       flags = DirtyActiveChild;
     // visible changes active traversal even when the hidden branch emitted no
     // RenderItems, so it must invalidate the extraction baseline.
     if (a.field == "visible") flags |= DirtyChildren;
     // ISO/IEC 19775-1 §35.4.2: order selects the rendered Layer placements.
-    if (a.field == "order" && a.node->nodeTypeName() == "LayerSet")
+    if (a.field == "order" && dynamic_cast<const x3d::nodes::LayerSet *>(a.node) != nullptr)
       flags |= DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)

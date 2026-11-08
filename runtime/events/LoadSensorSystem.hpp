@@ -21,6 +21,8 @@
 #include "x3d/nodes/LoadSensor.hpp"
 #include "x3d/nodes/X3DUrlObject.hpp"
 #include "x3d/nodes/X3DInterfaceRegistry.hpp"
+#include "x3d/nodes/Anchor.hpp"
+#include "x3d/nodes/Inline.hpp"
 
 #include <any>
 #include <cstddef>
@@ -45,7 +47,7 @@ inline bool hasUnloadedInline(const X3DNode &n, std::size_t depth = 0) {
   bool found = false;
   forEachChildNode(n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
     if (found) return;
-    if (c->nodeTypeName() == "Inline") {
+    if (dynamic_cast<const x3d::nodes::Inline *>(c.get()) != nullptr) {
       auto *uo = dynamic_cast<const x3d::nodes::X3DUrlObject *>(c.get());
       if (!uo || uo->getLoad()) found = true;
       return;
@@ -237,7 +239,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       auto [it, inserted] = st.children.try_emplace(c, ChildState{});
       ChildState &cs = it->second;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool anchor = dynamic_cast<const x3d::nodes::Anchor *>(c) != nullptr;
       if (inserted) {
         cs.preseeded = pre;
         if (pre && detail_loadsensor::hasUnloadedInline(*c))
@@ -297,7 +299,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.status == ChildStatus::Failed)
         continue;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool anchor = dynamic_cast<const x3d::nodes::Anchor *>(c) != nullptr;
       const bool load = uo && !anchor ? static_cast<bool>(uo->getLoad()) : true;
       if (!load) {
         cs.status = ChildStatus::NotStarted; // load=`FALSE` holds the child idle

@@ -3,6 +3,8 @@
 
 #include "GeometryBounds.hpp"
 #include "Mat4.hpp"
+#include "x3d/nodes/LOD.hpp"
+#include "x3d/nodes/Switch.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -29,9 +31,9 @@ inline std::shared_ptr<x3d::nodes::X3DNode> traversedChild(const x3d::nodes::X3D
       node, "children", {});
   if (kids.empty()) return {};
   int choice = -1;
-  if (node.nodeTypeName() == "Switch") {
+  if (dynamic_cast<const x3d::nodes::Switch *>(&node) != nullptr) {
     choice = geombounds::getField<int>(node, "whichChoice", -1);
-  } else if (node.nodeTypeName() == "LOD") {
+  } else if (dynamic_cast<const x3d::nodes::LOD *>(&node) != nullptr) {
     const auto center = geombounds::getField<x3d::core::SFVec3f>(node, "center", {0, 0, 0});
     const auto eye = world.inverse().transformPoint(eyeWorld);
     const float dx = eye.x - center.x, dy = eye.y - center.y, dz = eye.z - center.z;

@@ -9,6 +9,7 @@
 #include "TextureExtract.hpp"
 #include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/MultiTexture.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
@@ -152,7 +153,7 @@ inline bool appendSlot(const X3DNode &materialNode, const char *fieldName,
   auto node = geombounds::getNode(materialNode, fieldName);
   if (!node) return false;
   SFString mapping = mappingOf(materialNode, fieldName);
-  if (node->nodeTypeName() == "MultiTexture") {
+  if (dynamic_cast<const x3d::nodes::MultiTexture *>(node.get()) != nullptr) {
     // Keep the existing per-channel material shape while carrying §18.4.3 controls.
     TextureRef multi = refOf(node, slot);
     for (auto &r : multi.multiStages) {
