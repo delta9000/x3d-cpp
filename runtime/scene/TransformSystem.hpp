@@ -56,10 +56,16 @@ public:
     ++revision_;
   }
 
-  /// World matrix for a Transform node (identity if not indexed).
+  /// First-path world matrix. A Transform node gets its own; any other indexed
+  /// node inherits its nearest Transform ancestor's (a sensor, LOD or Shape
+  /// under a scaled Transform is scaled with it). Identity if not indexed.
   Mat4 worldTransform(const X3DNode *n) const {
     auto it = world_.find(n);
-    return it == world_.end() ? Mat4::identity() : it->second;
+    if (it != world_.end()) return it->second;
+    auto nt = nearestTransform_.find(n);
+    if (nt == nearestTransform_.end() || !nt->second) return Mat4::identity();
+    auto wt = world_.find(nt->second);
+    return wt == world_.end() ? Mat4::identity() : wt->second;
   }
 
   /// Unindexed nodes return identity; others inherit their nearest Transform ancestor.

@@ -56,7 +56,7 @@ public:
 class TransformSystem {
 public:
   void buildIndex(const Scene &scene);          // call once at scene load
-  Mat4 worldTransform(const X3DNode *n) const;  // Transform node only; identity if not indexed
+  Mat4 worldTransform(const X3DNode *n) const;  // first-path world; non-Transform nodes inherit the nearest Transform ancestor; identity if not indexed
   Mat4 worldTransformAny(const X3DNode *n) const; // any node: Transform = own world; non-Transform = nearest ancestor Transform's world (walked UP via the parent index, computed live each call so mid-tick `setF` on translation is reflected immediately — unlike the cached `worldTransform`, which only refreshes via `propagate()` at tick end)
   Mat4 worldTransformUnder(const X3DNode *parent, const X3DNode *n) const; // Transform n's world through one parent edge (live); a DEF/USE node under two parents has a distinct world per parent
   void propagate(DirtyTracker &dirty);           // per-tick incremental pass (local transforms + DirtyChildren re-index)

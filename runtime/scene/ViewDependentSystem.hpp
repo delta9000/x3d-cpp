@@ -546,8 +546,16 @@ private:
     const SFVec3f th{(tb.max.x - tb.min.x) * 0.5f,
                      (tb.max.y - tb.min.y) * 0.5f,
                      (tb.max.z - tb.min.z) * 0.5f};
-    const SFVec3f sc = sw.transformPoint(center);
-    const SFVec3f sh{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f};
+    // The sensor box is in the sensor's local frame; take its world AABB the
+    // same way as the target's, so a scaled or rotated parent moves its bounds.
+    Aabb sl;
+    sl.expand({center.x - size.x * 0.5f, center.y - size.y * 0.5f, center.z - size.z * 0.5f});
+    sl.expand({center.x + size.x * 0.5f, center.y + size.y * 0.5f, center.z + size.z * 0.5f});
+    const Aabb sb = sl.transformed(sw);
+    const SFVec3f sc{(sb.min.x + sb.max.x) * 0.5f, (sb.min.y + sb.max.y) * 0.5f,
+                     (sb.min.z + sb.max.z) * 0.5f};
+    const SFVec3f sh{(sb.max.x - sb.min.x) * 0.5f, (sb.max.y - sb.min.y) * 0.5f,
+                     (sb.max.z - sb.min.z) * 0.5f};
     // Overlap test (AABB-vs-AABB in world): active iff the target's box
     // intersects the sensor's box (§22.4.2 "enters ... a region in space").
     const bool inside =

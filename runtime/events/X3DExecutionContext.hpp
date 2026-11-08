@@ -525,7 +525,8 @@ public:
   void markActiveChildChanged(X3DNode *n) {
     if (n) dirty_.markDirty(n, DirtyActiveChild);
   }
-  /// Pull surface: world transform of a Transform node (identity if unknown).
+  /// Pull surface: first-path world transform of a node; a non-Transform node
+  /// inherits its nearest Transform ancestor (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
     return transforms_.worldTransform(n);
   }

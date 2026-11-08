@@ -468,6 +468,26 @@ static void testProductionWiring() {
   CHECK((lvl == 0)); // level_changed fired via the wired system
 }
 
+// An LOD measures viewer distance in its own frame, so a translated parent
+// Transform moves it: LOD at world x = 100, viewer at the origin, range 10
+// selects the far child.
+static void testLodUnderTranslatedTransform() {
+  auto lod = createX3DNode("LOD");
+  setF(lod, "range", std::any(std::vector<float>{10.0f}));
+  std::vector<std::shared_ptr<X3DNode>> kids{createX3DNode("Shape"), createX3DNode("Shape")};
+  for (auto &f : lod->fields()) if (f.x3dName == "children" && f.set) f.set(*lod, std::any(kids));
+  auto tf = createX3DNode("Transform");
+  setF(tf, "translation", std::any(SFVec3f{100, 0, 0}));
+  for (auto &f : tf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*tf, std::any(std::vector<std::shared_ptr<X3DNode>>{lod}));
+  auto vp = createX3DNode("Viewpoint"); setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
+  Scene scene; scene.addRootNode(vp); scene.addRootNode(tf);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  attachViewDependent(scene, ctx);
+  ctx.tick(0.0);
+  CHECK(getF<SFInt32>(lod, "level_changed", SFInt32{-99}) == 1);
+}
+
 // (§23.4.3): level_changed must report the index of the child actually
 // rendered. With 2 children but 3 range bins, a far viewer (raw level 2) clamps
 // to child index 1.
@@ -708,6 +728,36 @@ static SFRotation transformSensorRotation(SFVec3f scale, SFRotation rotation) {
   vds->attach(ts.get(), ctx); ctx.addSystem(vds);
   ctx.tick(0.0);
   return getF<SFRotation>(ts, "orientation_changed", SFRotation{});
+}
+
+// The sensor box is in the sensor's local frame (§22.4.2), so a scaled parent
+// scales it: size 2 under scale 2 covers world x in [-2, 2] and contains a
+// small target at x = 1.5.
+static void testTransformSensorBoxScalesWithParent() {
+  auto box = createX3DNode("Box");
+  setF(box, "size", std::any(SFVec3f{0.1f, 0.1f, 0.1f}));
+  auto target = createX3DNode("Shape");
+  setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
+  auto targetXf = createX3DNode("Transform");
+  setF(targetXf, "translation", std::any(SFVec3f{1.5f, 0, 0}));
+  for (auto &f : targetXf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*targetXf, std::any(std::vector<std::shared_ptr<X3DNode>>{target}));
+  auto ts = createX3DNode("TransformSensor");
+  setF(ts, "size", std::any(SFVec3f{2, 2, 2}));
+  setF(ts, "targetObject", std::any(std::static_pointer_cast<X3DNode>(target)));
+  auto sensorXf = createX3DNode("Transform");
+  setF(sensorXf, "scale", std::any(SFVec3f{2, 2, 2}));
+  for (auto &f : sensorXf->fields()) if (f.x3dName == "children" && f.set)
+    f.set(*sensorXf, std::any(std::vector<std::shared_ptr<X3DNode>>{ts}));
+  Scene scene; scene.addRootNode(createX3DNode("Viewpoint"));
+  scene.addRootNode(sensorXf); scene.addRootNode(targetXf);
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  auto vds = std::make_shared<ViewDependentSystem>();
+  vds->attach(ts.get(), ctx); ctx.addSystem(vds);
+  bool active = false;
+  vds->setSensorHook([&](X3DNode *n, bool a, double) { if (n == ts.get()) active = a; });
+  ctx.tick(1.0);
+  CHECK(active);
 }
 
 static void testTransformSensorScaleRotation() {
@@ -1176,6 +1226,8 @@ TEST_CASE("view_dependent_test") {
   testTransformSensorDisableFiresExit();
   testTransformSensorNullTarget();
   testTransformSensorScaleRotation();
+  testTransformSensorBoxScalesWithParent();
+  testLodUnderTranslatedTransform();
   testProximityCenterOfRotationChanged();
   testVisibilityFrustumPerAxis();
   testVisibilityWorldExtentScale();

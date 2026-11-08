@@ -299,7 +299,7 @@ Pull surfaces (read after tick):
 
 ```cpp
 const DirtyTracker &dirtyTracker() const;
-Mat4  worldTransform(const X3DNode *n) const;       // Transform node only (cached side-table)
+Mat4  worldTransform(const X3DNode *n) const;       // first-path world (cached); non-Transform nodes inherit their nearest Transform ancestor
 Mat4  worldTransformAny(const X3DNode *n) const;    // any node (Transform = own world; non-Transform = nearest ancestor Transform's world; computed live)
 Mat4  worldTransformUnder(const X3DNode *parent, const X3DNode *n) const; // Transform n through one parent edge; DEF/USE node => a world per parent
 std::uint64_t transformRevision() const;            // monotonic TransformSystem::revision() — bump per world/index change
