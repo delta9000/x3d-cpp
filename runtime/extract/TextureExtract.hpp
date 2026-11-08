@@ -221,7 +221,16 @@ inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
   d.width = static_cast<uint32_t>(w);
   d.height = static_cast<uint32_t>(h);
   d.depth = static_cast<uint32_t>(dep);
-  const std::size_t pixels = static_cast<std::size_t>(w * h * dep);
+  // Size from the tokens present, never from the header alone: w*h*dep can
+  // overflow and a four-token image can claim any size.
+  const std::size_t avail = image.size() - 4;
+  std::size_t pixels = 0;
+  if (w > 0 && h > 0 && dep > 0) {
+    const auto wh = static_cast<unsigned long long>(w) * static_cast<unsigned long long>(h);
+    pixels = (wh > avail || static_cast<unsigned long long>(dep) > avail / wh)
+                 ? avail
+                 : static_cast<std::size_t>(wh * static_cast<unsigned long long>(dep));
+  }
   d.texels.reserve(pixels * static_cast<std::size_t>(nc));
   std::size_t i = 4;
   for (std::size_t p = 0; p < pixels && i < image.size(); ++p) {

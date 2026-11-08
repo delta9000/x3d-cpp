@@ -461,6 +461,15 @@ static void test3DTextures() {
     CHECK((texs[0].tex3d.width == 0 && texs[0].tex3d.texels.empty()));
   }
 
+  // A header claiming 10^15 voxels with no voxel data allocates nothing: the
+  // decode is bounded by the tokens actually present, not the claimed size.
+  {
+    const auto d = pixelTexture3DDesc(std::vector<int>{1, 100000, 100000, 100000});
+    CHECK((d.width == 100000 && d.texels.empty()));
+    const auto e = pixelTexture3DDesc(std::vector<int>{1, 2147483647, 2147483647, 2147483647, 7});
+    CHECK((e.texels.size() == 1 && e.texels[0] == 7));
+  }
+
   // ComposedTexture3D: depth = number of 2D slice nodes; reuses the 2D path.
   {
     auto px = createX3DNode("PixelTexture");
