@@ -3100,3 +3100,21 @@
   status: fixed
   summary: XmlWriter writes tab, LF and CR in attribute values as character references so they survive attribute-value normalization on reparse.
   note: "The canonical writer already escaped them. Test: codec_string_hardening_test 'XmlWriter keeps tab, LF and CR in attribute values across reparse'."
+
+- id: NESTED-SENSOR-LOD-WORLD
+  nodes: [TransformSensor, LOD]
+  interfaces: [X3DEnvironmentalSensorNode, X3DGroupingNode]
+  clause: "ISO/IEC 19775-1 22.4.5, 23.4.3"
+  severity: major
+  status: fixed
+  summary: A TransformSensor or LOD under a Transform now uses that Transform's world matrix; before, the first-path world lookup returned identity for non-Transform nodes, so a nested sensor box and LOD distance ignored every ancestor transform, and the sensor box also ignored its own frame's scale.
+  note: "TransformSystem::worldTransform falls back to the nearest Transform ancestor. Tests: view_dependent_test testTransformSensorBoxScalesWithParent and testLodUnderTranslatedTransform."
+
+- id: PIXELTEXTURE3D-HEADER-ALLOC
+  nodes: [PixelTexture3D]
+  interfaces: [X3DTexture3DNode]
+  clause: "ISO/IEC 19775-1 33.4.3"
+  severity: major
+  status: fixed
+  summary: PixelTexture3D decoding sizes its buffer from the voxel tokens present instead of the header; a four-number image claiming 10^15 voxels threw std::bad_alloc.
+  note: "Test: texture_extract_test (header claiming 10^15 voxels with no data)."

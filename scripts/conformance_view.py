@@ -113,7 +113,7 @@ def is_behavioral(ifaces) -> bool:
 def detect_system_targets(text: str, is_system_file: bool = False) -> set[str]:
     """Node types wired by a System.
 
-    Always: concrete `dynamic_cast<Concrete *>` targets + `System<Concrete>`
+    Always: concrete `dynamic_cast<[const] Concrete *>` targets + `System<Concrete>`
     template instantiations. In *System files only*, also `== "NodeName"` string
     compares (e.g. ViewDependentSystem wires via nodeTypeName() equality) — scoped
     to System files so codec/reader string compares don't masquerade as wiring.
@@ -123,7 +123,7 @@ def detect_system_targets(text: str, is_system_file: bool = False) -> set[str]:
     # `using namespace` is in scope. Tolerate an optional namespace prefix and
     # capture the final identifier.
     targets: set[str] = set()
-    for m in re.finditer(r"dynamic_cast<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)\s*\*>", text):
+    for m in re.finditer(r"dynamic_cast<\s*(?:const\s+)?(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)\s*(?:const\s*)?\*>", text):
         targets.add(m.group(1))
     for m in re.finditer(r"[A-Za-z0-9_]*System<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)", text):
         targets.add(m.group(1))

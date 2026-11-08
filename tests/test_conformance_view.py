@@ -87,6 +87,11 @@ def test_detect_system_targets_concrete_and_template():
     assert "X3DNode" not in targets
 
 
+def test_detect_system_targets_const_cast():
+    text = "if (dynamic_cast<const x3d::nodes::LinePickSensor *>(node) != nullptr) {}"
+    assert "LinePickSensor" in cv.detect_system_targets(text)
+
+
 def test_detect_system_targets_string_compare_in_system_file():
     # ViewDependentSystem wires by nodeTypeName() string compare, not dynamic_cast.
     text = '''

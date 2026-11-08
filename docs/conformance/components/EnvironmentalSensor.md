@@ -5,7 +5,7 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | ProximitySensor | 1 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, AUD-ENV-4, AUD-ENV-5, ENV-03, ENV-04, ENV-06, ENV-07, ENV-08, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
-| TransformSensor | 3 | ✓ | — | ? | ENV-01, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
+| TransformSensor | 3 | ✓ | — | ? | ENV-01, META-EXTENDED-ATTRIBUTES-WRITE, NESTED-SENSOR-LOD-WORLD, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH, TRANSFORMSENSOR-SCALE | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 | VisibilitySensor | 2 | ✓ | — | ? | AUD-ENV-2, AUD-ENV-3, ENV-05, ENV-06, ENV-07, ENV-09, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DChildNode, X3DEnvironmentalSensorNode, X3DSensorNode |
 
 ## Findings
@@ -22,6 +22,8 @@ _Generated. Levels 1,2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - ProximitySensor and VisibilitySensor now evaluate the union of per-path boxes, limited to active paths by ADR-0034. Covered by proximity_sensor_uses_union_of_active_instances and visibility_sensor_uses_union_of_active_instances.
 - **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **NESTED-SENSOR-LOD-WORLD** [major/FIXED] — §ISO/IEC 19775-1 22.4.5, 23.4.3: A TransformSensor or LOD under a Transform now uses that Transform's world matrix; before, the first-path world lookup returned identity for non-Transform nodes, so a nested sensor box and LOD distance ignored every ancestor transform, and the sensor box also ignored its own frame's scale.
+  - TransformSystem::worldTransform falls back to the nearest Transform ancestor. Tests: view_dependent_test testTransformSensorBoxScalesWithParent and testLodUnderTranslatedTransform.
 - **ENV-03** [minor/CLOSED] — §22.4.1: centerOfRotation_changed never emitted.
   - ProximitySensor and GeoProximitySensor emit centerOfRotation_changed (bound Viewpoint's centerOfRotation in the sensor's frame) under LOOKAT, change-gated.
 - **ENV-04** [minor/CLOSED] — §22.4.1: position/orientation_changed fire every tick even when the viewer is still (no change-gate).

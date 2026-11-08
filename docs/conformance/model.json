@@ -909,6 +909,7 @@
         "ENV-07",
         "ENV-08",
         "ENV-09",
+        "NESTED-SENSOR-LOD-WORLD",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
         "SENSOR-SWITCH",
@@ -961,12 +962,13 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "22.4.2; 22.4, 22.4.3; 22.4.5; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "22.4.2; 22.4, 22.4.3; 22.4.5; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 22.4.5, 23.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "ENV-01",
             "META-EXTENDED-ATTRIBUTES-WRITE",
+            "NESTED-SENSOR-LOD-WORLD",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
@@ -4151,6 +4153,7 @@
         "NAV-FLY-ROLL",
         "NAV-LOOKAT-SCALE",
         "NAV-SMALL-ROTATION",
+        "NESTED-SENSOR-LOD-WORLD",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
         "SENSOR-SWITCH"
@@ -4225,7 +4228,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "23.4.3; 22.4, 22.4.3; 10.2.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "23.4.3; 22.4, 22.4.3; 10.2.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 22.4.5, 23.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -4233,6 +4236,7 @@
             "LOD-1",
             "LOD-DELTA-1",
             "META-EXTENDED-ATTRIBUTES-WRITE",
+            "NESTED-SENSOR-LOD-WORLD",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
@@ -7717,6 +7721,7 @@
     },
     {
       "findings": [
+        "PIXELTEXTURE3D-HEADER-ALLOC",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
         "T3D-1",
@@ -7788,11 +7793,12 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 33.4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
             "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PIXELTEXTURE3D-HEADER-ALLOC",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
@@ -12859,6 +12865,36 @@
       "severity": "minor",
       "status": "fixed",
       "summary": "XmlWriter writes tab, LF and CR in attribute values as character references so they survive attribute-value normalization on reparse."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 22.4.5, 23.4.3",
+      "id": "NESTED-SENSOR-LOD-WORLD",
+      "interfaces": [
+        "X3DEnvironmentalSensorNode",
+        "X3DGroupingNode"
+      ],
+      "nodes": [
+        "TransformSensor",
+        "LOD"
+      ],
+      "note": "TransformSystem::worldTransform falls back to the nearest Transform ancestor. Tests: view_dependent_test testTransformSensorBoxScalesWithParent and testLodUnderTranslatedTransform.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A TransformSensor or LOD under a Transform now uses that Transform's world matrix; before, the first-path world lookup returned identity for non-Transform nodes, so a nested sensor box and LOD distance ignored every ancestor transform, and the sensor box also ignored its own frame's scale."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 33.4.3",
+      "id": "PIXELTEXTURE3D-HEADER-ALLOC",
+      "interfaces": [
+        "X3DTexture3DNode"
+      ],
+      "nodes": [
+        "PixelTexture3D"
+      ],
+      "note": "Test: texture_extract_test (header claiming 10^15 voxels with no data).",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "PixelTexture3D decoding sizes its buffer from the voxel tokens present instead of the header; a four-number image claiming 10^15 voxels threw std::bad_alloc."
     }
   ],
   "meta": {
@@ -12941,6 +12977,7 @@
       "Fog",
       "Gain",
       "GeneratedCubeMapTexture",
+      "GeoCoordinate",
       "GeoLOD",
       "GeoLocation",
       "GeoPositionInterpolator",
@@ -12948,9 +12985,11 @@
       "GeoTouchSensor",
       "GeoTransform",
       "GeoViewpoint",
+      "HAnimDisplacer",
       "HAnimHumanoid",
       "HAnimJoint",
       "HAnimMotion",
+      "HAnimSegment",
       "HAnimSite",
       "IndexedFaceSet",
       "IndexedLineSet",
@@ -12971,6 +13010,7 @@
       "LoadSensor",
       "MovieTexture",
       "NavigationInfo",
+      "Normal",
       "NormalInterpolator",
       "NurbsCurve",
       "NurbsOrientationInterpolator",
@@ -12997,6 +13037,7 @@
       "ScalarChaser",
       "ScalarDamper",
       "ScalarInterpolator",
+      "ScreenFontStyle",
       "ScreenGroup",
       "Script",
       "ShaderPart",
@@ -13017,6 +13058,7 @@
       "TexCoordChaser2D",
       "TexCoordDamper2D",
       "TextureBackground",
+      "TextureProjectorParallel",
       "TimeSensor",
       "TimeTrigger",
       "TouchSensor",
@@ -13041,10 +13083,10 @@
     ]
   },
   "summary": {
-    "closed_count": 314,
+    "closed_count": 316,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 346,
+    "finding_count": 348,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
