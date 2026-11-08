@@ -80,7 +80,7 @@ inline double oscSample(Waveform w, double phase) {
     return 2.0 * (phase / kTwoPi) - 1.0;  // -1..+1 ramp
   case Waveform::Triangle: {
     double t = phase / kTwoPi;  // 0..1
-    return 4.0 * std::fabs(t - 0.5) - 1.0;  // /\ shape, -1..+1
+    return 4.0 * std::fabs(t - 0.5) - 1.0;  // \/ shape, -1..+1 (+1 at phase 0)
   }
   case Waveform::Custom:
     return 0.0;  // never routed here: the caller sums customSample() instead

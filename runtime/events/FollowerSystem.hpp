@@ -3,6 +3,7 @@
 #include "FollowerArith.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
+#include <algorithm>
 #include <any>
 #include <cmath>
 #include <memory>
@@ -37,7 +38,7 @@ public:
     if (!d) return;
     auto e = std::make_unique<Entry>();
     e->node = d;
-    int order = std::max(0, d->getOrder());
+    int order = std::clamp(d->getOrder(), 0, 5); // the field range is [0,5]
     e->filters.assign(order + 1, d->getInitialValue());
     e->destination = d->getInitialDestination();
     bool initiallyActive = FollowerArith<ValueT>::dist(d->getInitialValue(), d->getInitialDestination()) > 0.0f;
@@ -97,7 +98,7 @@ public:
       double dt = (e->lastTick < 0) ? now : (now - e->lastTick);
       e->lastTick = now;
       NodeT *d = e->node;
-      int order = std::max(0, d->getOrder());
+      int order = std::clamp(d->getOrder(), 0, 5); // the field range is [0,5]
       double tau = d->getTau();
       float tol = d->getTolerance();
       if (tol < 0) tol = 0.001f; // §39.3.2: tolerance<0 means use a default

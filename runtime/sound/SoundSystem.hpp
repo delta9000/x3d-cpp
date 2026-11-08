@@ -637,7 +637,7 @@ private:
       if (r.pending()) { pending = true; break; }
       if (!r.ready()) continue;
       DecodedAudio audio = decoder_(r.bytes);
-      if (!audio.ok || audio.samples.empty()) continue;
+      if (!audio.ok || audio.samples.empty() || audio.sampleRate <= 0.0f) continue;
       NodeParams bp;
       bp.samples = std::move(audio.samples);
       bp.sampleRate = audio.sampleRate;
