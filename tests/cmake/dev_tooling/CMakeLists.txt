@@ -1,33 +1,33 @@
 # Contract: adding x3d_cpp with add_subdirectory() must not mutate state that
-# reaches OUTSIDE its own subtree.
+# reaches outside its own subtree.
 #
-# Scoping facts this fixture is built on (MEASURED, not assumed -- an earlier
-# draft asserted the wrong thing and could never fail):
-#
-#   - add_compile_options()/add_link_options() apply to the current directory and
-#     BELOW. They never reach the parent, so asserting on the parent's directory
-#     COMPILE_OPTIONS would pass even with the bug present. NOT tested here.
-#   - set(... CACHE ...) writes the SHARED cache and DOES reach the parent.
-#   - set_property(GLOBAL ...) is global by definition.
-#
-# Those last two are what this fixture pins down.
+# Directory compile/link options do not reach a parent. Shared cache writes
+# and global properties do, so this fixture checks those two forms of state.
 cmake_minimum_required(VERSION 3.21)
 project(x3d_dev_tooling_fixture LANGUAGES CXX)
 
-# CONTROL. Created before the subproject, so the cache has not been written yet
-# and its CXX_COMPILER_LAUNCHER is baked empty. It must stay empty whether or not
-# the bug is present -- it exists to prove the fixture discriminates, not to
-# witness the mutation.
+# The host owns shared-library and generic backend cache choices.
+set(_host_options BUILD_SHARED_LIBS ENABLE_INSTALL GENERATE_DEBUG_SYMBOLS)
+foreach(_option IN LISTS _host_options)
+  set(${_option} ON CACHE BOOL "Host option")
+endforeach()
+
+# A target created before the subproject keeps an empty launcher.
 add_library(consumer_before STATIC consumer.cpp)
 
 # Consume x3d-cpp exactly as a downstream project would.
 add_subdirectory("${X3D_CPP_SOURCE_DIR}" x3d_cpp_sub EXCLUDE_FROM_ALL)
 
-# WITNESS. Created after the subproject, so this is the target that actually
-# inherits any cache-level launcher x3d_cpp wrote. This is the one that goes red.
+# A later parent target must not inherit a subproject launcher.
 add_library(consumer_after STATIC consumer.cpp)
 
 set(_failures "")
+foreach(_option IN LISTS _host_options)
+  get_property(_cached CACHE ${_option} PROPERTY VALUE)
+  if(NOT _cached OR NOT ${_option})
+    list(APPEND _failures "x3d_cpp overwrote the parent's ${_option}=ON")
+  endif()
+endforeach()
 
 # 1. The cached launcher. This is the confirmed cross-project mutation:
 #    set(CMAKE_CXX_COMPILER_LAUNCHER ... CACHE STRING) makes ccache the default
@@ -51,7 +51,7 @@ foreach(_t consumer_before consumer_after)
   endif()
 endforeach()
 
-# 3. The global Ninja job pool caps the CONSUMER's build parallelism too.
+# 3. The global Ninja job pool caps the consumer's build parallelism too.
 get_property(_pools GLOBAL PROPERTY JOB_POOLS)
 if(_pools MATCHES "x3d_compile")
   list(APPEND _failures

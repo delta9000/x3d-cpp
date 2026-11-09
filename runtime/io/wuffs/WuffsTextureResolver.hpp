@@ -1,12 +1,5 @@
-// runtime/io/wuffs/WuffsTextureResolver.hpp — Backend B (wuffs) for the
-// TextureResolver decode seam (T-TEX genericity proof, ADR-0024). Part of the
-// runtime/io/wuffs quarantine (x3d_wuffs target, default OFF). Core (x3d_cpp,
-// sdk.hpp) MUST NEVER include this file; it is decoder-free (no wuffs header),
-// so consumers linking x3d_wuffs do not inherit the wuffs amalgamation.
-//
-// wuffs decodes from a memory-safe, transpiled-from-DSL codec — an independent
-// implementation from stb_image's hand-written C, so a byte-equal parity
-// failure in the swap-test is a real correctness leak, not shared-bug masking.
+// Wuffs TextureResolver adapter. Decoder headers stay private.
+// See ADR-0024.
 #ifndef X3D_RUNTIME_IO_WUFFS_WUFFS_TEXTURE_RESOLVER_HPP
 #define X3D_RUNTIME_IO_WUFFS_WUFFS_TEXTURE_RESOLVER_HPP
 
@@ -18,7 +11,7 @@ namespace x3d::runtime::io::wuffs {
 ///
 /// The `url` is treated as a local filesystem path: the resolver reads the file
 /// and decodes it from memory to RGBA8 (4 channels, straight/non-premultiplied
-/// alpha), tightly packed, **bottom-left origin** (GL convention). wuffs decodes
+/// alpha), tightly packed, bottom-left origin (GL convention). wuffs decodes
 /// top-left, so the rows are flipped here to match the seam contract and the stb
 /// backend.
 ///

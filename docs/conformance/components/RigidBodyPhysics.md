@@ -4,20 +4,20 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
-| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| CollisionSensor | 1 | ✓ | — | ? | CONF-NAV-COLLISION, CONF-RBP, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
-| CollisionSpace | 1 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
-| Contact | 2 | ✓ | — | — | CONF-RBP, ROUTE-IO-ALIAS |  |
-| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DAMP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
-| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, ROUTE-IO-ALIAS | X3DRigidJointNode |
-| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| BallJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| CollidableOffset | 1 | ✓ | — | — | CONF-RBP-GEOM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollidableShape | 1 | ✓ | — | — | CONF-RBP-GEOM, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DNBodyCollidableNode |
+| CollisionCollection | 1 | ✓ | — | — | CONF-RBP, CONF-RBP-FRICTION-BOUNCE, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| CollisionSensor | 1 | ✓ | — | ? | CONF-NAV-COLLISION, CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DSensorNode |
+| CollisionSpace | 1 | ✓ | — | — | CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DNBodyCollisionSpaceNode |
+| Contact | 2 | ✓ | — | — | CONF-RBP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS |  |
+| DoubleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| MotorJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| RigidBody | 2 | ✓ | — | — | CONF-RBP-DAMP, CONF-RBP-ENABLED, CONF-RBP-FORCES, CONF-RBP-INERTIA, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| RigidBodyCollection | 2 | ✓ | — | — | CONF-RBP-CAP, CONF-RBP-DAMP, CONF-RBP-DETERMINISM, CONF-RBP-SOLVER, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| SingleAxisHingeJoint | 2 | ✓ | — | — | CONF-RBP-HINGE-LIMITS, CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| SliderJoint | 2 | ✓ | — | — | CONF-RBP-JOINT-OUT, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
+| UniversalJoint | 2 | ✓ | — | — | CONF-RBP-JOINTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DRigidJointNode |
 
 ## Findings
 
@@ -35,16 +35,18 @@ _Generated. Levels 1,2 · 14 nodes · profiles: Full._
   - Mapping rule: one RigidBodyCollection owns one Jolt PhysicsSystem, so the collection's world-wide sleep thresholds apply to the whole world, and its autoDisable gates it; the per-body toggle is RigidBody.autoDisable (Jolt has no per-body threshold setter). The §37 default autoDisable=FALSE therefore leaves every enrolled body permanently awake (Jolt mAllowSleeping=false AND per-body allow-sleeping=false) — the §37-correct reading of 'autoDisable toggles operation of disable*' (Jolt previously slept bodies with its own defaults). Default-numeric preservation: a zero disableTime/disableLinearSpeed leaves Jolt's own 0.5 s / 0.03 m/s untouched. The sleeping state is now observable to the runtime via PhysicsBackend::isBodyActive (exposed as PhysicsSystem::isBodyActive); NO new output events were added (the seam has no enabled/isEnabled output hook). autoDamp + linear/angularDampingFactor remain honored (force = -factor·velocity, §37.4.10).
 - **CONF-RBP-CAP** [low/DEFERRED] — §37: 1024 body/pair/contact cap per world (overflow now WARNS, no longer a silent drop — 97d8a5c); raising the value needs a larger temp allocator. A single collision substep per Update can still let fast bodies tunnel.
   - Co-size the TempAllocator with the cap to raise it; raise the collision substep count for high-velocity scenes.
-- **CONF-RBP** [major/FIXED `bde5134`] — §37: CollisionSensor reports collisions: contacts (Contact nodes), intersections, and isActive are emitted from the watched CollisionCollection's collidables (§37.4.4-.4.7).
-  - Read-only output bridge (the solver already resolves contacts; §37.4.5 forbids feeding them back). PhysicsBackend.drainContacts pull seam + Jolt ContactListener; ContactReporter builds Contact nodes (geometry from the engine, response fields from the CollisionCollection defaults) and emits over the cascade. Deterministic ordering via stable enrolment ordinals. Deferred refinements: one Contact per body-pair per frame (not per manifold point); space-vs-space broadphase grouping (folded into CONF-RBP-GEOM).
-- **CONF-RBP-FORCES** [major/FIXED `9560686`] — §37: RigidBody.forces/.torques are applied every frame (§37.4.10 continuous-force model) via the new seam method applyForce.
+- **CONF-RBP** [major/FIXED] — §37: CollisionSensor reports collisions: contacts (Contact nodes), intersections, and isActive are emitted from the watched CollisionCollection's collidables (§37.4.4-.4.7).
+  - contact_reporter_test.cpp: CollisionSensor reporting emits read-only contacts with per-pair deduplication and deterministic ordering.
+- **CONF-RBP-FORCES** [major/FIXED] — §37: RigidBody.forces/.torques are applied every frame (§37.4.10 continuous-force model) via the new seam method applyForce.
   - PhysicsSystem sums forces+torques and applies the resultant before each substep. TDD — zero-g body under 10 N reaches y=4.997 after 1 s (analytic 5).
-- **CONF-RBP-ENABLED** [major/FIXED `75a7878`] — §37: RigidBody.enabled was ignored — a body with enabled=FALSE was still simulated. Now excluded from the calculations per §37.
+- **CONF-RBP-ENABLED** [major/FIXED] — §37: RigidBody.enabled was ignored — a body with enabled=FALSE was still simulated. Now excluded from the calculations per §37.
   - Fixed under TDD in x3d_physics_system (disabled body not enrolled, does not fall).
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **CONF-RBP-HINGE-LIMITS** [minor/FIXED] — §37: SingleAxisHingeJoint minAngle/maxAngle are honored with the correct sign. §37 limits are measured from the initial pose (valid range minAngle<=0<=maxAngle, <=pi each way) — exactly Jolt's hinge convention. Spec-valid ranges, including asymmetric ones, are honored; out-of-domain/malformed limits are clamped to the valid domain + warned.
-  - Jolt's hinge angle is the NEGATIVE of the body's rotation about the axis, so the authored limits are negated before being handed to Jolt ([lo,hi] -> [-hi,-lo]); a TDD asymmetric-limit test caught a latent sign bug that symmetric ranges (the default -pi..pi and the locked 0,0) had hidden. A zero-width (locked) range is widened by a 1e-4 gap (Jolt asserts on min==max). Out-of-domain input (initial pose outside the limits, |angle|>pi) is malformed per §37 and clamped + warned. stopBounce / stopErrorCorrection (limit softness/overshoot) remain deferred under CONF-RBP-SOLVER.
-- **CONF-RBP-FRICTION-BOUNCE** [minor/CLOSED `e038494`] — §37: CollisionCollection.frictionCoefficients (scalar, .x) and bounce are applied as per-contact combined friction/restitution via the Jolt ContactListener, now HONORING appliedParameters: FRICTION_COEFFICIENT-2 gates frictionCoefficients, BOUNCE gates bounce (default ["BOUNCE"]). Demonstrated by a rear-wheel-drive vehicle that drives under tyre friction + a rebounding ball.
-  - PhysicsSystem reads RigidBodyCollection.collider -> CollisionCollection.appliedParameters to gate each param (a selected param overrides the engine default even at value 0; an unselected param leaves the engine default untouched). Scalar friction uses .x (anisotropic .y deferred). Deferred: USER_FRICTION (frictionDirection), anisotropic friction (.y), ERROR_REDUCTION/CONSTANT_FORCE/SPEED-1/2/SLIP-1/2 selectors, slipFactors, surfaceSpeed, minBounceSpeed, softness/solver tuning (CONF-RBP-SOLVER).
-- **CONF-RBP-DETERMINISM** [low/FIXED `97d8a5c`] — §37: Determinism is now host-INDEPENDENT — JoltBackend defaults to a single-threaded deterministic job system (identical results regardless of CPU core count).
+  - jolt_backend_test.cpp: Authored hinge limits are negated for Jolt's angle convention and locked ranges receive a small nonzero width.
+- **CONF-RBP-FRICTION-BOUNCE** [minor/CLOSED] — §37: CollisionCollection.frictionCoefficients (scalar, .x) and bounce are applied as per-contact combined friction/restitution via the Jolt ContactListener, now HONORING appliedParameters: FRICTION_COEFFICIENT-2 gates frictionCoefficients, BOUNCE gates bounce (default ["BOUNCE"]). Demonstrated by a rear-wheel-drive vehicle that drives under tyre friction + a rebounding ball.
+  - contact_response_test.cpp: Selected scalar friction and bounce parameters cross the backend seam, including explicit zero values.
+- **CONF-RBP-DETERMINISM** [low/FIXED] — §37: Determinism is now host-INDEPENDENT — JoltBackend defaults to a single-threaded deterministic job system (identical results regardless of CPU core count).
   - A JoltBackend(workerThreads>0) opts into a thread pool for large scenes (then deterministic only for a fixed count). Single-body sim golden unchanged.
 

@@ -55,7 +55,7 @@ int main() {
   FragmentInput f = frontFrag();
   auto lights = oneLight();
 
-  // ---- Phong: red diffuse -> red-dominant lit color ----
+  // Phong: red diffuse -> red-dominant lit color
   {
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Phong;
@@ -68,7 +68,7 @@ int main() {
     CHECK(o.w > 0.99f); // opaque.
   }
 
-  // ---- Physical: blue base, dielectric -> blue-dominant lit color ----
+  // Physical: blue base, dielectric -> blue-dominant lit color
   {
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Physical;
@@ -81,7 +81,7 @@ int main() {
     CHECK(o.z > 0.1f && o.z > o.x && o.z > o.y); // blue dominant.
   }
 
-  // ---- Unlit: emissive green, lighting-independent ----
+  // Unlit: emissive green, lighting-independent
   {
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Unlit;
@@ -92,7 +92,7 @@ int main() {
     CHECK(o.y > 0.9f && o.x < 0.1f && o.z < 0.1f); // pure green, unshaded.
   }
 
-  // ---- Per-vertex color override (Phong hasColors) ----
+  // Per-vertex color override (Phong hasColors)
   {
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Phong;
@@ -104,7 +104,7 @@ int main() {
     CHECK(o.x > o.y && o.x > o.z); // red wins despite black material.
   }
 
-  // ---- Mask discard: transparent base under MASK below cutoff -> discard ----
+  // Mask discard: transparent base under MASK below cutoff -> discard
   {
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Phong;
@@ -117,7 +117,7 @@ int main() {
     CHECK(!kept); // discarded.
   }
 
-  // ---- AO source: occlusionTexture only, never derived from the MR texture ----
+  // AO source: occlusionTexture only, never derived from the MR texture
   {
     // MR texture present with a BLACK R channel + a WHITE occlusion texture.
     // Old code read AO from tx.mr.x (=0) and ignored the bound occlusion slot;
@@ -135,7 +135,7 @@ int main() {
     CHECK(o.x > 0.1f); // ambient survives: AO came from occlusion (1), not MR (0).
   }
   {
-    // MR texture present (black R), NO occlusion bound: AO must be 1 (the MR
+    // MR texture present (black R), no occlusion bound: AO must be 1 (the MR
     // texture's R is not an occlusion source), not the MR R value.
     ex::MaterialDesc m;
     m.model = ex::MaterialModel::Physical;

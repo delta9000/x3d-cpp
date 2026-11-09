@@ -1,4 +1,3 @@
-// VolumeEmitter.cpp
 #include "x3d/nodes/VolumeEmitter.hpp"
 
 namespace x3d::nodes {

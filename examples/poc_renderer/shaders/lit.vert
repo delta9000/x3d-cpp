@@ -1,6 +1,6 @@
 #version 330 core
-// lit.vert — PoC M3 (T12) lit vertex shader. Positions + normals are in the
-// geometry's LOCAL frame; the model matrix is the per-PATH world transform from
+// lit.vert — Lit vertex shader. Positions + normals are in the
+// geometry's local frame; the model matrix is the per-path world transform from
 // the extractor (column-major Mat4 uploaded directly via m.m.data()). MVP order
 // is projection * view * model.
 //
@@ -13,7 +13,7 @@
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
 layout(location = 2) in vec4 aColor;
-layout(location = 3) in vec2 aTexCoord; // B8: X3D LOCAL (bottom-left = GL); no flip.
+layout(location = 3) in vec2 aTexCoord; // X3D bottom-left origin matches GL; no flip.
 // §18.4.3 MultiTexture: UV sets 1..7 (set 0 is aTexCoord); stages pick by channel.
 layout(location = 5) in vec2 aTexCoord1;
 layout(location = 6) in vec2 aTexCoord2;
@@ -59,7 +59,7 @@ vec3 skinNormal(vec3 bindNormal) {
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
-// REQ-CLIP (§11.4.1): the item's enabled ClipPlanes in EYE space. The host
+// (§11.4.1): the item's enabled ClipPlanes in eye space. The host
 // enables GL_CLIP_DISTANCE0..n-1; a point with a*x + b*y + c*z + d < 0 is cut.
 uniform int uNumClipPlanes;
 uniform vec4 uClipPlane[6];
@@ -69,18 +69,18 @@ uniform float uPointSizeScale;
 uniform vec3 uPointAttenuation;
 uniform float uPointSizeMin;
 uniform float uPointSizeMax;
-// TXF-2: §18.4.8 TextureCoordinateGenerator mode, TexCoordGenMode + 1 (0 = off,
+// §18.4.8 TextureCoordinateGenerator mode, TexCoordGenMode + 1 (0 = off,
 // use the authored aTexCoord). lit.frag/pbr.frag recompute every mode per
 // fragment (texgen.glsl); vTexCoord carries the per-vertex camera-space modes
 // (1 SPHERE, 2 CAMERASPACENORMAL, 3 CAMERASPACEPOSITION, 4 REFLECTIONVECTOR,
-// 7 COORD-EYE) for a fragment shader without texgen.glsl, and authored UVs
+// 7 COORD-eye) for a fragment shader without texgen.glsl, and authored UVs
 // otherwise.
 uniform int  uTexCoordGenMode;
 
 out vec3 vNormalEye;        // shading normal in eye space (not yet normalized).
 out vec3 vPosEye;           // vertex position in eye space (for Blinn-Phong view dir).
 out vec4 vColor;            // per-vertex Color (only consulted when uHasColors).
-out vec2 vTexCoord;         // B8: passed through un-flipped for the sampler.
+out vec2 vTexCoord;         // Passed through without flipping.
 out vec4 vUvPairs[4];       // §18.4.3 UV sets 0..7, two per vector (texgen.glsl).
 out float vFogDepth;
 out vec3 vPosLocal;         // §18.4.8 local-coordinate generator inputs.

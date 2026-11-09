@@ -11,6 +11,8 @@ related:
 
 # ADR-0014: Dynamic Field Foundation for Script Author Fields
 
+Status: superseded by ADR-0057
+
 ## Status
 
 The side-table design remains in use. Its process-global ownership decision is

@@ -1,9 +1,5 @@
-// Billboard.hpp — M2e: §23.4.1 Billboard view-facing rotation (pure math).
-// Standalone so the per-path walkers that need it (SceneExtractor, PickSystem)
-// can include it WITHOUT pulling in X3DExecutionContext. ViewDependentSystem.hpp
-// includes X3DExecutionContext.hpp, which (transitively, via PickSystem.hpp)
-// would form an include cycle if PickSystem reached billboardLocalMatrix through
-// ViewDependentSystem.hpp — so the math lives here, depending only on Mat4.hpp.
+// §23.4.1 Billboard view-facing rotation. Shared by picking and extraction;
+// keep independent of X3DExecutionContext to avoid an include cycle.
 #ifndef X3D_RUNTIME_BILLBOARD_HPP
 #define X3D_RUNTIME_BILLBOARD_HPP
 
@@ -24,7 +20,7 @@ inline SFVec3f norm(const SFVec3f &a) { float l = len(a); return l < 1e-9f ? SFV
 } // namespace viewdep
 
 // §23.4.1 Billboard. parentWorldM = the billboard's frame (world of its parent);
-// returns the billboard's LOCAL rotation matrix (applied as `worldM * R`).
+// returns the billboard's local rotation matrix (applied as `worldM * R`).
 inline Mat4 billboardLocalMatrix(const Mat4 &parentWorldM, const SFVec3f &cameraWorldPos,
                                  const SFVec3f &viewerUpWorld, const SFVec3f &axisOfRotation) {
   using namespace viewdep;

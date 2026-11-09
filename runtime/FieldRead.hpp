@@ -7,7 +7,7 @@
 // walk), so a boxing bug or an out-of-memory silently drops part of the scene.
 // These helpers use the pointer form instead and throw nothing of their own.
 //
-// A value that is PRESENT but boxed as a different type than its X3DFieldType
+// A value that is present but boxed as a different type than its X3DFieldType
 // promises is a boxing-invariant violation (a generator or reader bug, like
 // geombounds::FieldRead::TypeMismatch): it asserts in debug builds so tests fail
 // loud, and reads as absent in release so production degrades gracefully.

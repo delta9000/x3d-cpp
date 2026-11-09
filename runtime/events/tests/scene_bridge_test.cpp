@@ -1,25 +1,8 @@
-// scene_bridge_test.cpp
-// Tests for the Scene -> EventGraph bridge (runtime/events/X3DSceneBridge.hpp):
-//
-//   1. ROUTE validation: valid routes are added; unknown-field, wrong-direction,
-//      and type-mismatch routes are rejected with a diagnostic carrying the
-//      offending route index; an unresolved (dangling DEF) endpoint is skipped
-//      silently (neither added nor rejected).
-//   2. End-to-end load + tick: parse a .x3dv document that wires
-//      TimeSensor.fraction_changed -> PositionInterpolator.set_fraction ->
-//      Transform.translation, bridge its ROUTEs onto an execution context via
-//      X3DExecutionContext::buildFrom, attach the reference behaviors to the
-//      DEF-resolved nodes, tick the clock, and assert the Transform's
-//      translation animates along the interpolator's keyValue curve.
-//
-// The fixtures dir is passed as argv[1] (CMake sets it); fall back to a
-// repo-relative path so the test still runs from the source tree root.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Pass the fixture directory as argv[1], or run from the repository root.
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
-#include "TimeSensorBehavior.hpp"
+#include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
 
@@ -73,7 +56,7 @@ std::string readFile(const std::string &path) {
   return ss.str();
 }
 
-// --- (1) Validation -------------------------------------------------------
+// (1) Validation
 // Build a Scene programmatically with one valid route and one of each invalid
 // kind, plus a dangling-DEF route. Bridge it and assert the diagnostics.
 void test_route_validation() {
@@ -86,18 +69,18 @@ void test_route_validation() {
   scene.define("Path", interp);
   scene.define("Mover", mover);
 
-  // index 0: VALID  outputOnly SFVec3f -> inputOutput SFVec3f.
+  // index 0: valid  outputOnly SFVec3f -> inputOutput SFVec3f.
   scene.routes.emplace_back("Path", "value_changed", "Mover", "translation");
-  // index 1: UNKNOWN source field.
+  // index 1: unknown source field.
   scene.routes.emplace_back("Path", "no_such_field", "Mover", "translation");
-  // index 2: UNKNOWN sink field.
+  // index 2: unknown sink field.
   scene.routes.emplace_back("Clock", "fraction_changed", "Mover", "nope");
-  // index 3: WRONG DIRECTION (routing TO an outputOnly sink).
+  // index 3: WRONG direction (routing TO an outputOnly sink).
   scene.routes.emplace_back("Clock", "fraction_changed", "Path",
                             "value_changed");
-  // index 4: WRONG DIRECTION (routing FROM an inputOnly source).
+  // index 4: WRONG direction (routing FROM an inputOnly source).
   scene.routes.emplace_back("Path", "set_fraction", "Mover", "translation");
-  // index 5: TYPE MISMATCH (SFFloat fraction -> SFVec3f translation).
+  // index 5: type mismatch (SFFloat fraction -> SFVec3f translation).
   scene.routes.emplace_back("Clock", "fraction_changed", "Mover",
                             "translation");
   // index 6: DANGLING DEF (unknown source node) -> skipped silently.
@@ -152,7 +135,7 @@ void test_all_valid_ok() {
   check(r.ok(), "BridgeResult::ok() true when nothing rejected");
 }
 
-// --- (2) Load a document with ROUTEs and tick it --------------------------
+// (2) Load a document with ROUTEs and tick it
 void test_load_and_tick() {
   std::string text = readFile(g_dataDir + "/animated_transform.x3dv");
   check(!text.empty(), "fixture animated_transform.x3dv loaded");
@@ -169,7 +152,7 @@ void test_load_and_tick() {
   check(r.ok(), "no ROUTEs rejected from the loaded document");
 
   // Resolve the DEF'd nodes and attach the reference behaviors. The behaviors
-  // act on the SAME node pointers the bridge addressed (the Scene owns them).
+  // act on the same node pointers the bridge addressed (the Scene owns them).
   auto clock = std::dynamic_pointer_cast<TimeSensor>(scene.resolve("Clock"));
   auto path =
       std::dynamic_pointer_cast<PositionInterpolator>(scene.resolve("Path"));
@@ -179,13 +162,10 @@ void test_load_and_tick() {
     return;
   }
 
-  // cycleInterval 4.0, loop TRUE; key 0/0.5/1 -> value (0,0,0)/(10,0,0)/(0,0,0).
-  // The deprecation shim wraps an ActiveNode in a one-node System; new code
-  // should implement System directly. Tracked for migration.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(clock.get()));
-#pragma GCC diagnostic pop
+  // cycleInterval 4.0, loop `TRUE`; key 0/0.5/1 -> value (0,0,0)/(10,0,0)/(0,0,0).
+  auto timeSys = std::make_shared<TimeSensorSystem>();
+  timeSys->attach(clock.get(), ctx);
+  ctx.addSystem(timeSys);
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(path.get(), ctx);
@@ -202,13 +182,13 @@ void test_load_and_tick() {
   ctx.tick(2.0);
   check(veq(tr(mover), 10, 0, 0), "tick(2): translation animated to (10,0,0)");
 
-  // t=4 -> looped fraction 0 -> back to (0,0,0).
+  // t=4 -> cycle-boundary fraction 1 -> final keyValue (0,0,0).
   ctx.tick(4.0);
   check(veq(tr(mover), 0, 0, 0), "tick(4): loop wraps back to (0,0,0)");
 }
 
 // A ROUTE whose sink is an initializeOnly field must be rejected: the field is
-// now data-layer writable, but initializeOnly is not a routable event sink.
+// Data-layer writable initializeOnly fields are not routable event sinks.
 void testInitializeOnlyNotRoutableSink() {
   Scene scene;
   auto ts = createX3DNode("TimeSensor");
@@ -227,13 +207,13 @@ void testInitializeOnlyNotRoutableSink() {
 
 // Proto interface event redirect + pre-resolved body-route registration.
 // An expanded instance "A" of proto "Anim" exposes inputOnly 'fraction'
-// (IS body PositionInterpolator.set_fraction) and outputOnly 'out' (IS body
+// (is body PositionInterpolator.set_fraction) and outputOnly 'out' (is body
 // PositionInterpolator.value_changed). The interface names deliberately DIFFER
 // from the body field names so the redirect path is the only thing that can
 // satisfy the external routes — a primary-native field lookup would not find
 // 'fraction'/'out'. Asserts:
 //   - external routes naming the instance DEF + an interface field are
-//     redirected onto the cloned body endpoints (sink AND source side), not
+//     redirected onto the cloned body endpoints (sink and source side), not
 //     rejected as unknown fields;
 //   - a body-internal ROUTE is registered directly from resolvedProtoRoutes.
 void testProtoRouteRedirect() {

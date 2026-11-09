@@ -13,8 +13,8 @@
 #ifndef X3D_RUNTIME_EXTRACT_SHADER_BINDING_PLAN_HPP
 #define X3D_RUNTIME_EXTRACT_SHADER_BINDING_PLAN_HPP
 
-#include "RenderItem.hpp"                  // ShaderProgramDesc, ShaderFieldBinding
-#include "ShaderUniformVocabulary.hpp"     // vocab::kVocabulary, UniformSource
+#include "RenderItem.hpp"
+#include "ShaderUniformVocabulary.hpp"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -35,10 +35,8 @@ struct ShaderBindingPlan {
   std::vector<std::string> diagnostics;
 };
 
-// ---------------------------------------------------------------------------
 // Edit-distance helper — standard Levenshtein (O(m*n) table).
 // Used only for diagnostic suggestion; not on any hot path.
-// ---------------------------------------------------------------------------
 inline int editDistance(const std::string &a, const std::string &b) {
   std::vector<std::vector<int>> d(a.size() + 1, std::vector<int>(b.size() + 1));
   for (std::size_t i = 0; i <= a.size(); ++i) d[i][0] = static_cast<int>(i);
@@ -68,13 +66,11 @@ inline std::string nearestVocabSuggestion(const std::string &name) {
   return {};
 }
 
-// ---------------------------------------------------------------------------
 // buildBindingPlan — classify declared uniforms into vocab / author / unknown.
 //
 // declaredUniforms: pairs of {name, location} as reported by the driver
 //   (glGetActiveUniform / SPIR-V reflection).
 // program: the ShaderProgramDesc whose fields carry author <field> declarations.
-// ---------------------------------------------------------------------------
 inline ShaderBindingPlan buildBindingPlan(
     const std::vector<std::pair<std::string, int>> &declaredUniforms,
     const ShaderProgramDesc &program) {
@@ -84,8 +80,7 @@ inline ShaderBindingPlan buildBindingPlan(
     e.declaredName = name;
     e.location = loc;
 
-    // 1. Check vocabulary.
-    for (const auto &v : vocab::kVocabulary) {
+        for (const auto &v : vocab::kVocabulary) {
       if (name == v.name) {
         e.source = v.source;
         break;

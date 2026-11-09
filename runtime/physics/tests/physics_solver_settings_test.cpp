@@ -1,18 +1,5 @@
-// physics_solver_settings_test.cpp — ENGINE-AGNOSTIC unit test for the
-// PhysicsSystem -> PhysicsBackend solver-tuning seam (CONF-RBP-SOLVER).
-//
-// PhysicsSystem.hpp is core (header-only, Jolt-free), so this test needs no
-// physics engine: it drives attach() with a recording fake backend and asserts
-// exactly which §37 RigidBodyCollection solver fields cross the seam.
-//
-// Proves the seam contract:
-//   (a) at the §37 DEFAULTS every solver field stays at its sentinel — the
-//       backend's own solver settings are left untouched (spec-default behavior
-//       preserved: nothing is sent that would clobber an engine default);
-//   (b) an AUTHORED non-default value is carried verbatim across the seam;
-//   (c) constantForceMix / preferAccuracy (no honest engine mapping) are NOT
-//       carried at all (the seam struct has no field for them).
-
+// §37 solver fields retain backend defaults unless authored off their X3D defaults.
+// A recording backend checks which settings cross the PhysicsSystem boundary.
 #include "PhysicsSystem.hpp"
 
 #include "X3DExecutionContext.hpp"
@@ -99,7 +86,7 @@ static std::shared_ptr<RigidBodyCollection> makeCollection() {
 }
 
 int main() {
-  // (a) §37 DEFAULTS: every solver field is left at its sentinel.
+  // (a) §37 defaults: every solver field is left at its sentinel.
   {
     auto backend = std::make_shared<RecordingBackend>();
     PhysicsSystem physics(backend);
@@ -127,7 +114,7 @@ int main() {
     }
   }
 
-  // (b) AUTHORED non-default values cross the seam verbatim.
+  // (b) authored non-default values cross the seam verbatim.
   {
     auto backend = std::make_shared<RecordingBackend>();
     PhysicsSystem physics(backend);
@@ -137,7 +124,7 @@ int main() {
     collection->setErrorCorrection(0.5f);
     collection->setContactSurfaceThickness(0.03f);
     collection->setMaxCorrectionSpeed(5.0f);
-    // No honest engine mapping — must NOT change anything on the seam.
+    // No honest engine mapping — must not change anything on the seam.
     collection->setConstantForceMix(0.2f);
     collection->setPreferAccuracy(true);
     physics.attach(collection.get(), ctx);

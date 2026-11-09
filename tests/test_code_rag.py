@@ -59,7 +59,7 @@ def test_iter_symbols_methods_struct_and_free_function():
     assert "clampIndex" in by_name
     assert by_name["clampIndex"].kind == "function"
     assert by_name["clampIndex"].cls == ""
-    # BoundsSystem itself is NOT emitted as a struct symbol (it has method bodies).
+    # BoundsSystem itself is not emitted as a struct symbol (it has method bodies).
     assert "BoundsSystem" not in by_name
     # Full text span is captured.
     assert "do_work();" in by_name["BoundsSystem::buildBounds"].text
@@ -146,7 +146,7 @@ def test_point_id_deterministic_and_distinct():
     assert a != code_rag._point_id("Y.hpp", "A::b", 10, 0)    # file distinct
     assert isinstance(a, int) and a > 0
     # Overload-collision regression: same file+symbol+win but different start_line
-    # must produce different ids (the original bug was these collided).
+    # must produce different ids.
     b = code_rag._point_id("X.hpp", "A::b", 20, 0)
     assert a != b, "overloaded symbols at different start_line must have distinct ids"
 

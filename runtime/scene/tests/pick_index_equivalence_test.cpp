@@ -1,11 +1,5 @@
-// pick_index_equivalence_test.cpp
-// Characterization lock for the lazily-indexed PickSystem. Records pickClosest
-// results (hit node, point, normal, path) for the scene shapes the pick index must
-// reproduce EXACTLY: multi-mesh closest selection, DEF/USE per-path instancing,
-// an animated Transform changed between picks, and a Billboard (view-dependent).
-//
-// This is the "same answers as the reflective whole-graph walk" contract: the
-// index replaces the walk but must not change a single returned result.
+// Picking preserves closest-hit ordering and per-path placement for shared nodes,
+// animated transforms and view-dependent billboards.
 #include "PickSystem.hpp"
 #include "TransformSystem.hpp"
 #include "BoundsSystem.hpp"
@@ -88,8 +82,8 @@ TEST_CASE("pick_index_multi_mesh_closest") {
 }
 
 TEST_CASE("pick_index_def_use_per_path") {
-  // ONE Shape node placed under two Transforms (DEF/USE). Each placement keeps its
-  // own PathKey and world AABB; the pick must resolve the RIGHT path, not collapse
+  // One Shape node placed under two Transforms (DEF/USE). Each placement keeps its
+  // own PathKey and world AABB; the pick must resolve the right path, not collapse
   // the two instances to a single entry.
   auto root = createX3DNode("Group");
   auto box = createX3DNode("Box"); setF(box, "size", std::any(SFVec3f{2, 2, 2}));
@@ -144,7 +138,7 @@ TEST_CASE("pick_index_animated_transform") {
   auto moved = ps.pickClosest(Ray{{10, 0, 10}, {0, 0, -1}}, bs);
   CHECK((moved.hit && feq(moved.point.x, 10) && feq(moved.point.z, 1)));
   auto stale = ps.pickClosest(Ray{{5, 0, 10}, {0, 0, -1}}, bs);
-  CHECK_FALSE(stale.hit); // the shape is no longer at x=5
+  CHECK_FALSE(stale.hit); // the shape is at its updated position
 }
 
 TEST_CASE("pick_index_billboard_view_dependent") {
@@ -169,7 +163,7 @@ TEST_CASE("pick_index_billboard_view_dependent") {
   CHECK((hit.path[0] == bb.get() && hit.path[1] == shape.get()));
 
   // Same ray, viewer on +Z: the un-rotated box only spans x in [-0.5,0.5], so the
-  // billboard geometry is NOT cached across camera poses — the pick now misses.
+  // billboard geometry is not cached across camera poses — the pick misses.
   auto missSameRay = ps.pickClosest(Ray{{1.5f, 0, 10}, {0, 0, -1}}, bs, {0, 0, 10}, {0, 1, 0});
   CHECK_FALSE(missSameRay.hit);
 

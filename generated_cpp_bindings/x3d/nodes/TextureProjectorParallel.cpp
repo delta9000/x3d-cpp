@@ -1,4 +1,3 @@
-// TextureProjectorParallel.cpp
 #include "x3d/nodes/TextureProjectorParallel.hpp"
 
 namespace x3d::nodes {

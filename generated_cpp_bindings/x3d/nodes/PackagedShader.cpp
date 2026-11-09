@@ -1,4 +1,3 @@
-// PackagedShader.cpp
 #include "x3d/nodes/PackagedShader.hpp"
 
 namespace x3d::nodes {

@@ -6,7 +6,6 @@
 // and one off-key value and asserts the emitted value reaches the sink. A final
 // scene test drives several interpolators from one source fraction (fan-out) to
 // prove they coexist in a single cascade.
-//
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
@@ -27,7 +26,6 @@
 
 #include <any>
 #include <cmath>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -37,17 +35,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 constexpr float kEps = 1e-4f;
 bool feq(float a, float b) { return std::fabs(a - b) <= kEps; }
@@ -61,7 +48,7 @@ void post(X3DExecutionContext &ctx, X3DNode *interp, float fraction) {
   ctx.process();
 }
 
-// -- ScalarInterpolator -----------------------------------------------------
+// ScalarInterpolator
 void test_scalar() {
   auto interp = std::make_shared<ScalarInterpolator>();
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -74,17 +61,16 @@ void test_scalar() {
   // Read value_changed back off the node after the cascade settles.
 
   post(ctx, interp.get(), 0.0f);
-  check(feq(interp->getValue_changed(), 0.0f), "scalar f=0 -> 0");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 0.0f)), ("scalar f=0 -> 0"));
   post(ctx, interp.get(), 0.5f);
-  check(feq(interp->getValue_changed(), 5.0f), "scalar f=0.5 -> 5");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 5.0f)), ("scalar f=0.5 -> 5"));
   post(ctx, interp.get(), 1.0f);
-  check(feq(interp->getValue_changed(), 10.0f), "scalar f=1 -> 10");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 10.0f)), ("scalar f=1 -> 10"));
   post(ctx, interp.get(), 2.0f);
-  check(feq(interp->getValue_changed(), 10.0f),
-        "scalar f=2 (off-key) clamps to 10");
+  CHECK_MESSAGE((feq(interp->getValue_changed(), 10.0f)), ("scalar f=2 (off-key) clamps to 10"));
 }
 
-// -- PositionInterpolator ---------------------------------------------------
+// PositionInterpolator
 void test_position() {
   auto interp = std::make_shared<PositionInterpolator>();
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -97,12 +83,10 @@ void test_position() {
 
   post(ctx, interp.get(), 0.5f);
   SFVec3f v = interp->getValue_changed();
-  check(feq(v.x, 5) && feq(v.y, 10) && feq(v.z, 15),
-        "position f=0.5 -> (5,10,15)");
+  CHECK_MESSAGE((feq(v.x, 5) && feq(v.y, 10) && feq(v.z, 15)), ("position f=0.5 -> (5,10,15)"));
   post(ctx, interp.get(), -1.0f);
   v = interp->getValue_changed();
-  check(feq(v.x, 0) && feq(v.y, 0) && feq(v.z, 0),
-        "position f=-1 (off-key) clamps to front");
+  CHECK_MESSAGE((feq(v.x, 0) && feq(v.y, 0) && feq(v.z, 0)), ("position f=-1 (off-key) clamps to front"));
 }
 
 void test_geo_position() {
@@ -121,14 +105,13 @@ void test_geo_position() {
   const auto geoValue = interp->getGeovalue_changed();
   const auto world = interp->getValue_changed();
   SFVec3f expected;
-  check(geo::toWorld(*interp, SFVec3d{0, 0.001, 0}, expected, ctx.geoProjection()), "geo midpoint projects");
-  check(std::fabs(geoValue.x) < 1e-10 && std::fabs(geoValue.y - 0.001) < 1e-10,
-        "geo interpolator midpoint stays in geoSystem");
-  check(feq(world.x, expected.x) && feq(world.y, expected.y) && feq(world.z, expected.z),
+  CHECK_MESSAGE((geo::toWorld(*interp, SFVec3d{0, 0.001, 0}, expected, ctx.geoProjection())), ("geo midpoint projects"));
+  CHECK_MESSAGE((std::fabs(geoValue.x) < 1e-10 && std::fabs(geoValue.y - 0.001) < 1e-10), ("geo interpolator midpoint stays in geoSystem"));
+  CHECK_MESSAGE((feq(world.x, expected.x) && feq(world.y, expected.y) && feq(world.z, expected.z)),
         "geo interpolator world output projects midpoint");
 }
 
-// -- PositionInterpolator2D -------------------------------------------------
+// PositionInterpolator2D
 void test_position2d() {
   auto interp = std::make_shared<PositionInterpolator2D>();
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -141,13 +124,13 @@ void test_position2d() {
 
   post(ctx, interp.get(), 0.25f);
   SFVec2f v = interp->getValue_changed();
-  check(feq(v.x, 1) && feq(v.y, 2), "position2D f=0.25 -> (1,2)");
+  CHECK_MESSAGE((feq(v.x, 1) && feq(v.y, 2)), ("position2D f=0.25 -> (1,2)"));
   post(ctx, interp.get(), 1.0f);
   v = interp->getValue_changed();
-  check(feq(v.x, 4) && feq(v.y, 8), "position2D f=1 -> (4,8)");
+  CHECK_MESSAGE((feq(v.x, 4) && feq(v.y, 8)), ("position2D f=1 -> (4,8)"));
 }
 
-// -- ColorInterpolator (HSV) ------------------------------------------------
+// ColorInterpolator (HSV)
 void test_color() {
   auto interp = std::make_shared<ColorInterpolator>();
   // Red (hue 0) -> Green (hue 120). HSV midpoint is hue 60 = yellow (1,1,0).
@@ -161,17 +144,16 @@ void test_color() {
 
   post(ctx, interp.get(), 0.0f);
   SFColor c = interp->getValue_changed();
-  check(feq(c.r, 1) && feq(c.g, 0) && feq(c.b, 0), "color f=0 -> red");
+  CHECK_MESSAGE((feq(c.r, 1) && feq(c.g, 0) && feq(c.b, 0)), ("color f=0 -> red"));
   post(ctx, interp.get(), 0.5f);
   c = interp->getValue_changed();
-  check(feq(c.r, 1) && feq(c.g, 1) && feq(c.b, 0),
-        "color f=0.5 HSV midpoint red->green is yellow (1,1,0)");
+  CHECK_MESSAGE((feq(c.r, 1) && feq(c.g, 1) && feq(c.b, 0)), ("color f=0.5 HSV midpoint red->green is yellow (1,1,0)"));
   post(ctx, interp.get(), 1.0f);
   c = interp->getValue_changed();
-  check(feq(c.r, 0) && feq(c.g, 1) && feq(c.b, 0), "color f=1 -> green");
+  CHECK_MESSAGE((feq(c.r, 0) && feq(c.g, 1) && feq(c.b, 0)), ("color f=1 -> green"));
 }
 
-// -- OrientationInterpolator (SLERP) ----------------------------------------
+// OrientationInterpolator (SLERP)
 void test_orientation() {
   auto interp = std::make_shared<OrientationInterpolator>();
   // 0 rad -> pi/2 rad about +Z. Midpoint SLERP should be pi/4 about +Z.
@@ -186,18 +168,16 @@ void test_orientation() {
 
   post(ctx, interp.get(), 0.5f);
   SFRotation r = interp->getValue_changed();
-  check(feq(std::fabs(r.z), 1.0f), "orientation f=0.5 axis is +/-Z");
+  CHECK_MESSAGE((feq(std::fabs(r.z), 1.0f)), ("orientation f=0.5 axis is +/-Z"));
   // Angle should be ~pi/4 (0.7853982). Axis sign may flip; compare magnitudes.
   float effective = (r.z >= 0) ? r.angle : -r.angle;
-  check(feq(effective, 0.7853982f) || feq(r.angle, 0.7853982f),
-        "orientation f=0.5 SLERP angle ~ pi/4");
+  CHECK_MESSAGE((feq(effective, 0.7853982f) || feq(r.angle, 0.7853982f)), ("orientation f=0.5 SLERP angle ~ pi/4"));
   post(ctx, interp.get(), 1.0f);
   r = interp->getValue_changed();
-  check(feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f),
-        "orientation f=1 -> pi/2 about Z");
+  CHECK_MESSAGE((feq(r.angle, 1.5707963f) && feq(std::fabs(r.z), 1.0f)), ("orientation f=1 -> pi/2 about Z"));
 }
 
-// -- CoordinateInterpolator (per-point linear) ------------------------------
+// CoordinateInterpolator (per-point linear)
 void test_coordinate() {
   auto interp = std::make_shared<CoordinateInterpolator>();
   // 2 keys, 2 points each: row0=[(0,0,0),(1,1,1)] row1=[(10,0,0),(11,1,1)].
@@ -212,18 +192,16 @@ void test_coordinate() {
 
   post(ctx, interp.get(), 0.5f);
   MFVec3f v = interp->getValue_changed();
-  check(v.size() == 2, "coordinate emits 2 points");
-  check(feq(v[0].x, 5) && feq(v[0].y, 0) && feq(v[0].z, 0),
-        "coordinate point0 f=0.5 -> (5,0,0)");
-  check(feq(v[1].x, 6) && feq(v[1].y, 1) && feq(v[1].z, 1),
+  CHECK_MESSAGE((v.size() == 2), ("coordinate emits 2 points"));
+  CHECK_MESSAGE((feq(v[0].x, 5) && feq(v[0].y, 0) && feq(v[0].z, 0)), ("coordinate point0 f=0.5 -> (5,0,0)"));
+  CHECK_MESSAGE((feq(v[1].x, 6) && feq(v[1].y, 1) && feq(v[1].z, 1)),
         "coordinate point1 f=0.5 -> (6,1,1)");
   post(ctx, interp.get(), 1.0f);
   v = interp->getValue_changed();
-  check(v.size() == 2 && feq(v[0].x, 10) && feq(v[1].x, 11),
-        "coordinate f=1 -> row1");
+  CHECK_MESSAGE((v.size() == 2 && feq(v[0].x, 10) && feq(v[1].x, 11)), ("coordinate f=1 -> row1"));
 }
 
-// -- CoordinateInterpolator2D -----------------------------------------------
+// CoordinateInterpolator2D
 void test_coordinate2d() {
   auto interp = std::make_shared<CoordinateInterpolator2D>();
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -237,12 +215,12 @@ void test_coordinate2d() {
 
   post(ctx, interp.get(), 0.5f);
   MFVec2f v = interp->getValue_changed();
-  check(v.size() == 2, "coordinate2D emits 2 points");
-  check(feq(v[0].x, 2) && feq(v[0].y, 0), "coordinate2D point0 f=0.5 -> (2,0)");
-  check(feq(v[1].x, 4) && feq(v[1].y, 2), "coordinate2D point1 f=0.5 -> (4,2)");
+  CHECK_MESSAGE((v.size() == 2), ("coordinate2D emits 2 points"));
+  CHECK_MESSAGE((feq(v[0].x, 2) && feq(v[0].y, 0)), ("coordinate2D point0 f=0.5 -> (2,0)"));
+  CHECK_MESSAGE((feq(v[1].x, 4) && feq(v[1].y, 2)), ("coordinate2D point1 f=0.5 -> (4,2)"));
 }
 
-// -- NormalInterpolator (SLERP on sphere) -----------------------------------
+// NormalInterpolator (SLERP on sphere)
 void test_normal() {
   auto interp = std::make_shared<NormalInterpolator>();
   // 1 point: +X -> +Y. Midpoint SLERP is the unit bisector (~0.707,0.707,0).
@@ -256,17 +234,16 @@ void test_normal() {
 
   post(ctx, interp.get(), 0.5f);
   MFVec3f v = interp->getValue_changed();
-  check(v.size() == 1, "normal emits 1 point");
+  CHECK_MESSAGE((v.size() == 1), ("normal emits 1 point"));
   float len = std::sqrt(v[0].x * v[0].x + v[0].y * v[0].y + v[0].z * v[0].z);
-  check(feq(len, 1.0f), "normal f=0.5 stays unit length");
-  check(feq(v[0].x, 0.70710678f) && feq(v[0].y, 0.70710678f) && feq(v[0].z, 0),
-        "normal f=0.5 -> unit bisector (0.707,0.707,0)");
+  CHECK_MESSAGE((feq(len, 1.0f)), ("normal f=0.5 stays unit length"));
+  CHECK_MESSAGE((feq(v[0].x, 0.70710678f) && feq(v[0].y, 0.70710678f) && feq(v[0].z, 0)), ("normal f=0.5 -> unit bisector (0.707,0.707,0)"));
   post(ctx, interp.get(), 1.0f);
   v = interp->getValue_changed();
-  check(feq(v[0].x, 0) && feq(v[0].y, 1) && feq(v[0].z, 0), "normal f=1 -> +Y");
+  CHECK_MESSAGE((feq(v[0].x, 0) && feq(v[0].y, 1) && feq(v[0].z, 0)), ("normal f=1 -> +Y"));
 }
 
-// -- Multi-interpolator scene: one source fraction fans out -----------------
+// Multi-interpolator scene: one source fraction fans out
 // Proves several interpolator systems coexist in one context, each driven by
 // the same posted fraction through the cascade (here posted directly to each
 // set_fraction sink; in a real scene a TimeSensor would ROUTE to all of them).
@@ -301,12 +278,10 @@ void test_multi_interpolator_scene() {
   ctx.postEvent(col.get(), "set_fraction", std::any(SFFloat{f}));
   ctx.process();
 
-  check(feq(pos->getValue_changed().x, 2.0f),
-        "scene: position at f=0.25 -> x=2");
-  check(feq(sca->getValue_changed(), 25.0f), "scene: scalar at f=0.25 -> 25");
+  CHECK_MESSAGE((feq(pos->getValue_changed().x, 2.0f)), ("scene: position at f=0.25 -> x=2"));
+  CHECK_MESSAGE((feq(sca->getValue_changed(), 25.0f)), "scene: scalar at f=0.25 -> 25");
   SFColor c = col->getValue_changed();
-  check(feq(c.r, 1.0f) && c.g > 0.0f && feq(c.b, 0.0f),
-        "scene: color at f=0.25 stays on red->green HSV arc");
+  CHECK_MESSAGE((feq(c.r, 1.0f) && c.g > 0.0f && feq(c.b, 0.0f)), ("scene: color at f=0.25 stays on red->green HSV arc"));
 }
 
 } // namespace
@@ -323,10 +298,5 @@ TEST_CASE("interpolator_test") {
   test_normal();
   test_multi_interpolator_scene();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all interpolator tests passed\n";
   return;
 }

@@ -1,4 +1,3 @@
-// ComposedTexture3D.cpp
 #include "x3d/nodes/ComposedTexture3D.hpp"
 
 namespace x3d::nodes {

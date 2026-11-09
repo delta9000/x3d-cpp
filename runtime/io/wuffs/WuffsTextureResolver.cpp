@@ -1,15 +1,11 @@
-// runtime/io/wuffs/WuffsTextureResolver.cpp — the ONE translation unit where
-// the wuffs amalgamation is compiled (WUFFS_IMPLEMENTATION) and meets the
-// TextureResolver seam. The wuffs header is included PRIVATE (see CMake) and
-// WUFFS_IMPLEMENTATION is defined nowhere else, so the 1.8 MB codec body lives
-// in exactly one object file and never leaks to consumers. The factory returns
-// a plain std::function exchanging only std types.
+// Compile Wuffs in this translation unit; decoder headers stay private.
+// See ADR-0024.
 #include "WuffsTextureResolver.hpp"
+#include "../ReadFile.hpp"
 #include "DdsDecode.hpp"
 
 #include <algorithm>
 #include <cstdint>
-#include <fstream>
 #include <string>
 #include <vector>
 
@@ -22,23 +18,6 @@
 namespace x3d::runtime::io::wuffs {
 
 namespace {
-
-bool readFile(const std::string& path, std::vector<std::uint8_t>& out) {
-  std::ifstream f(path, std::ios::binary | std::ios::ate);
-  if (!f) {
-    return false;
-  }
-  const std::streamoff size = f.tellg();
-  if (size < 0) {
-    return false;
-  }
-  out.resize(static_cast<std::size_t>(size));
-  f.seekg(0);
-  if (size > 0 && !f.read(reinterpret_cast<char*>(out.data()), size)) {
-    return false;
-  }
-  return true;
-}
 
 // Force the destination pixel format to RGBA8 straight-alpha so the decoded
 // bytes match stb_image's stbi_load(..., 4) output channel-for-channel. The
@@ -60,7 +39,7 @@ x3d::runtime::extract::TextureResolver makeWuffsTextureResolver() {
 
   return [](const std::string& url) -> TexturePixelResult {
     std::vector<std::uint8_t> bytes;
-    if (!readFile(url, bytes) || bytes.empty()) {
+    if (!::x3d::runtime::io::detail::readFile(url, bytes) || bytes.empty()) {
       return TexturePixelResult::makeFailed();
     }
     // DDS: the same std-only decoder as the stb backend (wuffs has none).

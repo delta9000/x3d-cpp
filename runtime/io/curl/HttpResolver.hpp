@@ -1,7 +1,5 @@
-// runtime/io/curl/HttpResolver.hpp — Backend A (libcurl HTTP) for the
-// AssetResolver seam (Phase-1 genericity pilot). Part of the runtime/io/curl
-// quarantine (x3d_curl target, default OFF). Core (x3d_cpp, sdk.hpp) MUST
-// NEVER include this file.
+// libcurl AssetResolver adapter. Library headers stay private to the backend.
+// See ADR-0023.
 #ifndef X3D_RUNTIME_IO_CURL_HTTP_RESOLVER_HPP
 #define X3D_RUNTIME_IO_CURL_HTTP_RESOLVER_HPP
 
@@ -11,16 +9,16 @@
 
 namespace x3d::runtime::io::curl {
 
-/// Configuration for makeHttpResolver. The defaults are the **hardened** ones
-/// (SEC-6): private/loopback/link-local destinations are refused and a response
-/// body cannot exceed maxBytes. Pass an instance only to widen for local dev.
+/// Defaults reject private/loopback/link-local destinations and bound response
+/// bytes, redirects, and elapsed time. Override for trusted local services.
 struct HttpResolverOptions {
-  /// When false (default) the resolver refuses to connect to a **resolved**
+  /// When false (default) the resolver refuses to connect to a resolved
   /// loopback, link-local (169.254/16, fe80::/10), RFC1918, CGNAT (100.64/10),
-  /// unique-local (fc00::/7) or unspecified (0.0.0.0/::) address, and also
-  /// classifies IPv4 addresses embedded in IPv4-mapped (::ffff:a.b.c.d),
+  /// unique-local (fc00::/7), unspecified (0/8, ::), IPv4 multicast (224/4),
+  /// reserved/broadcast (240/4), protocol assignment (192.0.0/24), or
+  /// benchmarking (198.18/15) address. It also classifies IPv4 addresses embedded in IPv4-mapped (::ffff:a.b.c.d),
   /// IPv4-compatible (::a.b.c.d) and NAT64 (64:ff9b::/96) IPv6 forms. The check
-  /// runs on the resolved sockaddr (POST-DNS, per connection), so a hostname
+  /// runs on the resolved sockaddr (after DNS, per connection), so a hostname
   /// or redirect cannot smuggle a private address past it. Environment proxies
   /// (http_proxy/https_proxy/all_proxy) are disabled while this is false, so the
   /// check cannot be defeated by routing the request through a proxy that
@@ -40,13 +38,13 @@ struct HttpResolverOptions {
 ///
 /// Synchronous: blocks on curl_easy_perform until response headers + body
 /// arrive, then returns AssetResult::makeReady(bytes) on a 2xx, Failed
-/// otherwise. Pending is NOT supported (deferred-bytes is a follow-up).
+/// otherwise. Pending is not supported.
 ///
 /// Honors only http:// and https:// URL schemes (both for the request and for
 /// redirects); returns Failed for everything else (urn:, file:, missing
 /// scheme) — embedder override territory.
 ///
-/// SEC-6 hardening, on by default: protocol-restricted redirects, a redirect
+/// Enabled by default: protocol-restricted redirects, a redirect
 /// cap, a response-size cap, and a resolved-address guard that blocks
 /// private/loopback/link-local destinations. See HttpResolverOptions.
 ///

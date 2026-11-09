@@ -1,4 +1,3 @@
-// ParticleSystem.cpp
 #include "x3d/nodes/ParticleSystem.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// EspduTransform.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -34,403 +33,169 @@ using namespace x3d::core;
 class EspduTransform : public virtual X3DGroupingNode,
                        public virtual X3DNetworkSensorNode {
 public:
-  /**
-   * @brief Default constructor for EspduTransform
-   */
   EspduTransform() = default;
 
-  /**
-   * @brief Destructor for EspduTransform
-   */
   ~EspduTransform() = default;
 
-  /**
-   * @brief Get the default value for address
-   * @return SFString The default value
-   */
   static SFString getDefaultAddress() { return "localhost"; }
 
-  /**
-   * @brief Get the default value for applicationID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultApplicationID() { return 0; }
 
-  /**
-   * @brief Get the default value for articulationParameterCount
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultArticulationParameterCount() { return 0; }
 
-  /**
-   * @brief Get the default value for center
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultCenter() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for collisionType
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultCollisionType() { return 0; }
 
-  /**
-   * @brief Get the default value for deadReckoning
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultDeadReckoning() { return 0; }
 
-  /**
-   * @brief Get the default value for detonationLocation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultDetonationLocation() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for detonationRelativeLocation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultDetonationRelativeLocation() {
     return SFVec3f{0, 0, 0};
   }
 
-  /**
-   * @brief Get the default value for detonationResult
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultDetonationResult() { return 0; }
 
-  /**
-   * @brief Get the default value for enabled
-   * @return SFBool The default value
-   */
   static SFBool getDefaultEnabled() { return true; }
 
-  /**
-   * @brief Get the default value for entityCategory
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityCategory() { return 0; }
 
-  /**
-   * @brief Get the default value for entityCountry
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityCountry() { return 0; }
 
-  /**
-   * @brief Get the default value for entityDomain
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityDomain() { return 0; }
 
-  /**
-   * @brief Get the default value for entityExtra
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityExtra() { return 0; }
 
-  /**
-   * @brief Get the default value for entityID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityID() { return 0; }
 
-  /**
-   * @brief Get the default value for entityKind
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntityKind() { return 0; }
 
-  /**
-   * @brief Get the default value for entitySpecific
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntitySpecific() { return 0; }
 
-  /**
-   * @brief Get the default value for entitySubcategory
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEntitySubcategory() { return 0; }
 
-  /**
-   * @brief Get the default value for eventApplicationID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEventApplicationID() { return 0; }
 
-  /**
-   * @brief Get the default value for eventEntityID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEventEntityID() { return 0; }
 
-  /**
-   * @brief Get the default value for eventNumber
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEventNumber() { return 0; }
 
-  /**
-   * @brief Get the default value for eventSiteID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultEventSiteID() { return 0; }
 
-  /**
-   * @brief Get the default value for fired1
-   * @return SFBool The default value
-   */
   static SFBool getDefaultFired1() { return false; }
 
-  /**
-   * @brief Get the default value for fired2
-   * @return SFBool The default value
-   */
   static SFBool getDefaultFired2() { return false; }
 
-  /**
-   * @brief Get the default value for fireMissionIndex
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultFireMissionIndex() { return 0; }
 
-  /**
-   * @brief Get the default value for firingRange
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultFiringRange() { return 0; }
 
-  /**
-   * @brief Get the default value for firingRate
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultFiringRate() { return 0; }
 
-  /**
-   * @brief Get the default value for forceID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultForceID() { return 0; }
 
-  /**
-   * @brief Get the default value for fuse
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultFuse() { return 0; }
 
-  /**
-   * @brief Get the default value for geoCoords
-   * @return SFVec3d The default value
-   */
   static SFVec3d getDefaultGeoCoords() { return SFVec3d{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for geoSystem
-   * @return MFString The default value
-   */
   static MFString getDefaultGeoSystem() {
     return std::vector<std::string>{"GD", "WE"};
   }
 
-  /**
-   * @brief Get the default value for linearAcceleration
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultLinearAcceleration() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for linearVelocity
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultLinearVelocity() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for multicastRelayPort
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultMulticastRelayPort() { return 0; }
 
-  /**
-   * @brief Get the default value for munitionApplicationID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultMunitionApplicationID() { return 0; }
 
-  /**
-   * @brief Get the default value for munitionEndPoint
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultMunitionEndPoint() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for munitionEntityID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultMunitionEntityID() { return 0; }
 
-  /**
-   * @brief Get the default value for munitionQuantity
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultMunitionQuantity() { return 0; }
 
-  /**
-   * @brief Get the default value for munitionSiteID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultMunitionSiteID() { return 0; }
 
-  /**
-   * @brief Get the default value for munitionStartPoint
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultMunitionStartPoint() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for networkMode
-   * @return NetworkModeChoices The default value
-   */
   static NetworkModeChoices getDefaultNetworkMode() {
     return NetworkModeChoices::STANDALONE;
   }
 
-  /**
-   * @brief Get the default value for port
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultPort() { return 0; }
 
-  /**
-   * @brief Get the default value for readInterval
-   * @return SFTime The default value
-   */
   static SFTime getDefaultReadInterval() { return 0.1; }
 
-  /**
-   * @brief Get the default value for rotation
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultRotation() { return SFRotation{0, 0, 1, 0}; }
 
-  /**
-   * @brief Get the default value for rtpHeaderExpected
-   * @return SFBool The default value
-   */
   static SFBool getDefaultRtpHeaderExpected() { return false; }
 
-  /**
-   * @brief Get the default value for scale
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultScale() { return SFVec3f{1, 1, 1}; }
 
-  /**
-   * @brief Get the default value for scaleOrientation
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultScaleOrientation() {
     return SFRotation{0, 0, 1, 0};
   }
 
-  /**
-   * @brief Get the default value for siteID
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultSiteID() { return 0; }
 
-  /**
-   * @brief Get the default value for translation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultTranslation() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for warhead
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultWarhead() { return 0; }
 
-  /**
-   * @brief Get the default value for writeInterval
-   * @return SFTime The default value
-   */
   static SFTime getDefaultWriteInterval() { return 1.0; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "DIS"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of address. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Multicast network address, or else 'localhost'; Example: 224.
-   * @return const SFString& The current value of address.
    */
   const SFString &getAddress() const { return _address; }
 
   /**
-   * @brief Sets the value of address. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Multicast network address, or else 'localhost'; Example: 224.
-   * @param value The new value for address.
    */
   void setAddress(const SFString &value) { _address = value; }
 
   void setAddress(SFString &&value) { _address = std::move(value); }
 
   /**
-   * @brief Gets the value of applicationID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Simulation/exercise applicationID is unique for application at
    * that site.
-   * @return const SFInt32& The current value of applicationID.
    */
   const SFInt32 &getApplicationID() const { return _applicationID; }
 
   /**
-   * @brief Sets the value of applicationID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Simulation/exercise applicationID is unique for application at
    * that site.
-   * @param value The new value for applicationID.
    */
   void setApplicationID(const SFInt32 &value) { _applicationID = value; }
 
   /**
-   * @brief Gets the value of articulationParameterArray. AccessType:
-   * inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details Information required for representation of the entity's visual
    * appearance and position of its articulated parts.
-   * @return const MFFloat& The current value of articulationParameterArray.
    */
   const MFFloat &getArticulationParameterArray() const {
     return _articulationParameterArray;
   }
 
   /**
-   * @brief Sets the value of articulationParameterArray. AccessType:
-   * inputOutput
+   * Access: inputOutput.
    * @details Information required for representation of the entity's visual
    * appearance and position of its articulated parts.
-   * @param value The new value for articulationParameterArray.
    */
   void setArticulationParameterArray(const MFFloat &value) {
 
@@ -443,23 +208,18 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterChangeIndicatorArray.
-   * AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details Array of change counters, each incremented when an articulated
    * parameter is updated.
-   * @return const MFInt32& The current value of
-   * articulationParameterChangeIndicatorArray.
    */
   const MFInt32 &getArticulationParameterChangeIndicatorArray() const {
     return _articulationParameterChangeIndicatorArray;
   }
 
   /**
-   * @brief Sets the value of articulationParameterChangeIndicatorArray.
-   * AccessType: inputOutput
+   * Access: inputOutput.
    * @details Array of change counters, each incremented when an articulated
    * parameter is updated.
-   * @param value The new value for articulationParameterChangeIndicatorArray.
    */
   void setArticulationParameterChangeIndicatorArray(const MFInt32 &value) {
 
@@ -472,22 +232,18 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterCount. AccessType:
-   * inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Number of articulated parameters attached to this entity state
    * PDU.
-   * @return const SFInt32& The current value of articulationParameterCount.
    */
   const SFInt32 &getArticulationParameterCount() const {
     return _articulationParameterCount;
   }
 
   /**
-   * @brief Sets the value of articulationParameterCount. AccessType:
-   * inputOutput
+   * Access: inputOutput.
    * @details Number of articulated parameters attached to this entity state
    * PDU.
-   * @param value The new value for articulationParameterCount.
    */
   void setArticulationParameterCount(const SFInt32 &value) {
 
@@ -495,21 +251,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterDesignatorArray. AccessType:
-   * inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details Array of designators for each articulated parameter.
-   * @return const MFInt32& The current value of
-   * articulationParameterDesignatorArray.
    */
   const MFInt32 &getArticulationParameterDesignatorArray() const {
     return _articulationParameterDesignatorArray;
   }
 
   /**
-   * @brief Sets the value of articulationParameterDesignatorArray. AccessType:
-   * inputOutput
+   * Access: inputOutput.
    * @details Array of designators for each articulated parameter.
-   * @param value The new value for articulationParameterDesignatorArray.
    */
   void setArticulationParameterDesignatorArray(const MFInt32 &value) {
 
@@ -522,21 +273,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterIdPartAttachedToArray.
-   * AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details Array of ID parts that each articulated parameter is attached to.
-   * @return const MFInt32& The current value of
-   * articulationParameterIdPartAttachedToArray.
    */
   const MFInt32 &getArticulationParameterIdPartAttachedToArray() const {
     return _articulationParameterIdPartAttachedToArray;
   }
 
   /**
-   * @brief Sets the value of articulationParameterIdPartAttachedToArray.
-   * AccessType: inputOutput
+   * Access: inputOutput.
    * @details Array of ID parts that each articulated parameter is attached to.
-   * @param value The new value for articulationParameterIdPartAttachedToArray.
    */
   void setArticulationParameterIdPartAttachedToArray(const MFInt32 &value) {
 
@@ -549,20 +295,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterTypeArray. AccessType:
-   * inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details Array of type enumerations for each articulated parameter element.
-   * @return const MFInt32& The current value of articulationParameterTypeArray.
    */
   const MFInt32 &getArticulationParameterTypeArray() const {
     return _articulationParameterTypeArray;
   }
 
   /**
-   * @brief Sets the value of articulationParameterTypeArray. AccessType:
-   * inputOutput
+   * Access: inputOutput.
    * @details Array of type enumerations for each articulated parameter element.
-   * @param value The new value for articulationParameterTypeArray.
    */
   void setArticulationParameterTypeArray(const MFInt32 &value) {
 
@@ -575,317 +317,224 @@ public:
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue0_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue0_changed.
    */
   const SFFloat &getArticulationParameterValue0_changed() const {
     return _articulationParameterValue0_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue0_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue0_changed(const SFFloat &value) {
     _articulationParameterValue0_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue1_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue1_changed.
    */
   const SFFloat &getArticulationParameterValue1_changed() const {
     return _articulationParameterValue1_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue1_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue1_changed(const SFFloat &value) {
     _articulationParameterValue1_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue2_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue2_changed.
    */
   const SFFloat &getArticulationParameterValue2_changed() const {
     return _articulationParameterValue2_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue2_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue2_changed(const SFFloat &value) {
     _articulationParameterValue2_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue3_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue3_changed.
    */
   const SFFloat &getArticulationParameterValue3_changed() const {
     return _articulationParameterValue3_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue3_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue3_changed(const SFFloat &value) {
     _articulationParameterValue3_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue4_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue4_changed.
    */
   const SFFloat &getArticulationParameterValue4_changed() const {
     return _articulationParameterValue4_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue4_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue4_changed(const SFFloat &value) {
     _articulationParameterValue4_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue5_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue5_changed.
    */
   const SFFloat &getArticulationParameterValue5_changed() const {
     return _articulationParameterValue5_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue5_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue5_changed(const SFFloat &value) {
     _articulationParameterValue5_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue6_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue6_changed.
    */
   const SFFloat &getArticulationParameterValue6_changed() const {
     return _articulationParameterValue6_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue6_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue6_changed(const SFFloat &value) {
     _articulationParameterValue6_changed = value;
   }
 
   /**
-   * @brief Gets the value of articulationParameterValue7_changed. AccessType:
-   * outputOnly
+   * SFFloat; access: outputOnly. Borrows the stored value.
    * @details Get element of user-defined payload array.
-   * @return const SFFloat& The current value of
-   * articulationParameterValue7_changed.
    */
   const SFFloat &getArticulationParameterValue7_changed() const {
     return _articulationParameterValue7_changed;
   }
 
   /**
-   * @brief Emit an output value on articulationParameterValue7_changed.
-   * AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Get element of user-defined payload array.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitArticulationParameterValue7_changed(const SFFloat &value) {
     _articulationParameterValue7_changed = value;
   }
 
   /**
-   * @brief Gets the value of center. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Translation offset from origin of local coordinate system.
-   * @return const SFVec3f& The current value of center.
    */
   const SFVec3f &getCenter() const { return _center; }
 
   /**
-   * @brief Sets the value of center. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Translation offset from origin of local coordinate system.
-   * @param value The new value for center.
    */
   void setCenter(const SFVec3f &value) { _center = value; }
 
   void setCenter(SFVec3f &&value) { _center = std::move(value); }
 
   /**
-   * @brief Gets the value of collideTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details When were we collided with? Warning: it is an error to define this
    * transient outputOnly field in an X3D file, instead only use it a source for
    * ROUTE events.
-   * @return const SFTime& The current value of collideTime.
    */
   const SFTime &getCollideTime() const { return _collideTime; }
 
   /**
-   * @brief Emit an output value on collideTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details When were we collided with? Warning: it is an error to define this
    * transient outputOnly field in an X3D file, instead only use it a source for
-   * ROUTE events. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * ROUTE events.
    */
   void emitCollideTime(const SFTime &value) { _collideTime = value; }
 
   /**
-   * @brief Gets the value of collisionType. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumeration for type of collision: ELASTIC or INELASTIC.
-   * @return const SFInt32& The current value of collisionType.
    */
   const SFInt32 &getCollisionType() const { return _collisionType; }
 
   /**
-   * @brief Sets the value of collisionType. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumeration for type of collision: ELASTIC or INELASTIC.
-   * @param value The new value for collisionType.
    */
   void setCollisionType(const SFInt32 &value) { _collisionType = value; }
 
   /**
-   * @brief Gets the value of deadReckoning. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Dead reckoning algorithm being used to project
    * position/orientation with velocities/accelerations.
-   * @return const SFInt32& The current value of deadReckoning.
    */
   const SFInt32 &getDeadReckoning() const { return _deadReckoning; }
 
   /**
-   * @brief Sets the value of deadReckoning. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Dead reckoning algorithm being used to project
    * position/orientation with velocities/accelerations.
-   * @param value The new value for deadReckoning.
    */
   void setDeadReckoning(const SFInt32 &value) { _deadReckoning = value; }
 
   /**
-   * @brief Gets the value of description. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Author-provided prose that describes intended purpose of the node.
-   * @return const SFString& The current value of description.
    */
   const SFString &getDescription() const { return _description; }
 
   /**
-   * @brief Sets the value of description. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Author-provided prose that describes intended purpose of the node.
-   * @param value The new value for description.
    */
   void setDescription(const SFString &value) { _description = value; }
 
   void setDescription(SFString &&value) { _description = std::move(value); }
 
   /**
-   * @brief Gets the value of detonateTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details When were we detonated?.
-   * @return const SFTime& The current value of detonateTime.
    */
   const SFTime &getDetonateTime() const { return _detonateTime; }
 
   /**
-   * @brief Emit an output value on detonateTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details When were we detonated?.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitDetonateTime(const SFTime &value) { _detonateTime = value; }
 
   /**
-   * @brief Gets the value of detonationLocation. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details World coordinates for detonationLocation.
-   * @return const SFVec3f& The current value of detonationLocation.
    */
   const SFVec3f &getDetonationLocation() const { return _detonationLocation; }
 
   /**
-   * @brief Sets the value of detonationLocation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details World coordinates for detonationLocation.
-   * @param value The new value for detonationLocation.
    */
   void setDetonationLocation(const SFVec3f &value) {
 
@@ -898,20 +547,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of detonationRelativeLocation. AccessType:
-   * inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Relative coordinates for detonation location.
-   * @return const SFVec3f& The current value of detonationRelativeLocation.
    */
   const SFVec3f &getDetonationRelativeLocation() const {
     return _detonationRelativeLocation;
   }
 
   /**
-   * @brief Sets the value of detonationRelativeLocation. AccessType:
-   * inputOutput
+   * Access: inputOutput.
    * @details Relative coordinates for detonation location.
-   * @param value The new value for detonationRelativeLocation.
    */
   void setDetonationRelativeLocation(const SFVec3f &value) {
 
@@ -924,160 +569,140 @@ public:
   }
 
   /**
-   * @brief Gets the value of detonationResult. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumeration for type of detonation and result that
    * occurred.
-   * @return const SFInt32& The current value of detonationResult.
    */
   const SFInt32 &getDetonationResult() const { return _detonationResult; }
 
   /**
-   * @brief Sets the value of detonationResult. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumeration for type of detonation and result that
    * occurred.
-   * @param value The new value for detonationResult.
    */
   void setDetonationResult(const SFInt32 &value) { _detonationResult = value; }
 
   /**
-   * @brief Gets the value of enabled. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Enables/disables the sensor node.
-   * @return const SFBool& The current value of enabled.
    */
   const SFBool &getEnabled() const { return _enabled; }
 
   /**
-   * @brief Sets the value of enabled. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Enables/disables the sensor node.
-   * @param value The new value for enabled.
    */
   void setEnabled(const SFBool &value) { _enabled = value; }
 
   /**
-   * @brief Gets the value of entityCategory. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for main category that describes the
    * entity, semantics of each code varies according to domain.
-   * @return const SFInt32& The current value of entityCategory.
    */
   const SFInt32 &getEntityCategory() const { return _entityCategory; }
 
   /**
-   * @brief Sets the value of entityCategory. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for main category that describes the
    * entity, semantics of each code varies according to domain.
-   * @param value The new value for entityCategory.
    */
   void setEntityCategory(const SFInt32 &value) { _entityCategory = value; }
 
   /**
-   * @brief Gets the value of entityCountry. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for country to which the design of the
    * entity or its design specification is attributed.
-   * @return const SFInt32& The current value of entityCountry.
    */
   const SFInt32 &getEntityCountry() const { return _entityCountry; }
 
   /**
-   * @brief Sets the value of entityCountry. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for country to which the design of the
    * entity or its design specification is attributed.
-   * @param value The new value for entityCountry.
    */
   void setEntityCountry(const SFInt32 &value) { _entityCountry = value; }
 
   /**
-   * @brief Gets the value of entityDomain. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for domain in which the entity
    * operates: LAND, AIR, SURFACE, SUBSURFACE, SPACE or OTHER.
-   * @return const SFInt32& The current value of entityDomain.
    */
   const SFInt32 &getEntityDomain() const { return _entityDomain; }
 
   /**
-   * @brief Sets the value of entityDomain. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for domain in which the entity
    * operates: LAND, AIR, SURFACE, SUBSURFACE, SPACE or OTHER.
-   * @param value The new value for entityDomain.
    */
   void setEntityDomain(const SFInt32 &value) { _entityDomain = value; }
 
   /**
-   * @brief Gets the value of entityExtra. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Any extra information required to describe a particular entity.
-   * @return const SFInt32& The current value of entityExtra.
    */
   const SFInt32 &getEntityExtra() const { return _entityExtra; }
 
   /**
-   * @brief Sets the value of entityExtra. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Any extra information required to describe a particular entity.
-   * @param value The new value for entityExtra.
    */
   void setEntityExtra(const SFInt32 &value) { _entityExtra = value; }
 
   /**
-   * @brief Gets the value of entityID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Simulation/exercise entityID is a unique ID for a single entity
    * within that application.
-   * @return const SFInt32& The current value of entityID.
    */
   const SFInt32 &getEntityID() const { return _entityID; }
 
   /**
-   * @brief Sets the value of entityID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Simulation/exercise entityID is a unique ID for a single entity
    * within that application.
-   * @param value The new value for entityID.
    */
   void setEntityID(const SFInt32 &value) { _entityID = value; }
 
   /**
-   * @brief Gets the value of entityKind. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for whether entity is a PLATFORM,
    * MUNITION, LIFE_FORM, ENVIRONMENTAL, CULTURAL_FEATURE, SUPPLY, RADIO,
    * EXPENDABLE, SENSOR_EMITTER or OTHER.
-   * @return const SFInt32& The current value of entityKind.
    */
   const SFInt32 &getEntityKind() const { return _entityKind; }
 
   /**
-   * @brief Sets the value of entityKind. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for whether entity is a PLATFORM,
    * MUNITION, LIFE_FORM, ENVIRONMENTAL, CULTURAL_FEATURE, SUPPLY, RADIO,
    * EXPENDABLE, SENSOR_EMITTER or OTHER.
-   * @param value The new value for entityKind.
    */
   void setEntityKind(const SFInt32 &value) { _entityKind = value; }
 
   /**
-   * @brief Gets the value of entitySpecific. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Specific information about an entity based on the Subcategory
    * field.
-   * @return const SFInt32& The current value of entitySpecific.
    */
   const SFInt32 &getEntitySpecific() const { return _entitySpecific; }
 
   /**
-   * @brief Sets the value of entitySpecific. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Specific information about an entity based on the Subcategory
    * field.
-   * @param value The new value for entitySpecific.
    */
   void setEntitySpecific(const SFInt32 &value) { _entitySpecific = value; }
 
   /**
-   * @brief Gets the value of entitySubcategory. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for particular subcategory to which an
    * entity belongs based on the category field.
-   * @return const SFInt32& The current value of entitySubcategory.
    */
   const SFInt32 &getEntitySubcategory() const { return _entitySubcategory; }
 
   /**
-   * @brief Sets the value of entitySubcategory. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for particular subcategory to which an
    * entity belongs based on the category field.
-   * @param value The new value for entitySubcategory.
    */
   void setEntitySubcategory(const SFInt32 &value) {
 
@@ -1085,18 +710,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of eventApplicationID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Simulation/exercise eventApplicationID is unique for events
    * generated from application at that site.
-   * @return const SFInt32& The current value of eventApplicationID.
    */
   const SFInt32 &getEventApplicationID() const { return _eventApplicationID; }
 
   /**
-   * @brief Sets the value of eventApplicationID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Simulation/exercise eventApplicationID is unique for events
    * generated from application at that site.
-   * @param value The new value for eventApplicationID.
    */
   void setEventApplicationID(const SFInt32 &value) {
 
@@ -1104,361 +727,294 @@ public:
   }
 
   /**
-   * @brief Gets the value of eventEntityID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details For a given event, simulation/exercise entityID is a unique ID for
    * a single entity within that application.
-   * @return const SFInt32& The current value of eventEntityID.
    */
   const SFInt32 &getEventEntityID() const { return _eventEntityID; }
 
   /**
-   * @brief Sets the value of eventEntityID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details For a given event, simulation/exercise entityID is a unique ID for
    * a single entity within that application.
-   * @param value The new value for eventEntityID.
    */
   void setEventEntityID(const SFInt32 &value) { _eventEntityID = value; }
 
   /**
-   * @brief Gets the value of eventNumber. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Sequential number of each event issued by an application.
-   * @return const SFInt32& The current value of eventNumber.
    */
   const SFInt32 &getEventNumber() const { return _eventNumber; }
 
   /**
-   * @brief Sets the value of eventNumber. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Sequential number of each event issued by an application.
-   * @param value The new value for eventNumber.
    */
   void setEventNumber(const SFInt32 &value) { _eventNumber = value; }
 
   /**
-   * @brief Gets the value of eventSiteID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return const SFInt32& The current value of eventSiteID.
    */
   const SFInt32 &getEventSiteID() const { return _eventSiteID; }
 
   /**
-   * @brief Sets the value of eventSiteID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @param value The new value for eventSiteID.
    */
   void setEventSiteID(const SFInt32 &value) { _eventSiteID = value; }
 
   /**
-   * @brief Gets the value of fired1. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Has the primary weapon (Fire PDU) been fired?.
-   * @return const SFBool& The current value of fired1.
    */
   const SFBool &getFired1() const { return _fired1; }
 
   /**
-   * @brief Sets the value of fired1. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Has the primary weapon (Fire PDU) been fired?.
-   * @param value The new value for fired1.
    */
   void setFired1(const SFBool &value) { _fired1 = value; }
 
   /**
-   * @brief Gets the value of fired2. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Has the secondary weapon (Fire PDU) been fired?.
-   * @return const SFBool& The current value of fired2.
    */
   const SFBool &getFired2() const { return _fired2; }
 
   /**
-   * @brief Sets the value of fired2. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Has the secondary weapon (Fire PDU) been fired?.
-   * @param value The new value for fired2.
    */
   void setFired2(const SFBool &value) { _fired2 = value; }
 
   /**
-   * @brief Gets the value of firedTime. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details When did we shoot a weapon (Fire PDU)? Warning: it is an error to
    * define this transient outputOnly field in an X3D file, instead only use it
    * a source for ROUTE events.
-   * @return const SFTime& The current value of firedTime.
    */
   const SFTime &getFiredTime() const { return _firedTime; }
 
   /**
-   * @brief Emit an output value on firedTime. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details When did we shoot a weapon (Fire PDU)? Warning: it is an error to
    * define this transient outputOnly field in an X3D file, instead only use it
-   * a source for ROUTE events. outputOnly fields have no author-facing setter;
-   * a node's behavior or the runtime calls this to produce an output event. The
-   * event cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * a source for ROUTE events.
    */
   void emitFiredTime(const SFTime &value) { _firedTime = value; }
 
   /**
-   * @brief Gets the value of fireMissionIndex. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details .
-   * @return const SFInt32& The current value of fireMissionIndex.
    */
   const SFInt32 &getFireMissionIndex() const { return _fireMissionIndex; }
 
   /**
-   * @brief Sets the value of fireMissionIndex. AccessType: inputOutput
+   * Access: inputOutput.
    * @details .
-   * @param value The new value for fireMissionIndex.
    */
   void setFireMissionIndex(const SFInt32 &value) { _fireMissionIndex = value; }
 
   /**
-   * @brief Gets the value of firingRange. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Range (three dimension, straight-line distance) that the firing
    * entity's fire control system has assumed for computing the fire control
    * solution if a weapon and if the value is known.
-   * @return const SFFloat& The current value of firingRange.
    */
   const SFFloat &getFiringRange() const { return _firingRange; }
 
   /**
-   * @brief Sets the value of firingRange. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Range (three dimension, straight-line distance) that the firing
    * entity's fire control system has assumed for computing the fire control
    * solution if a weapon and if the value is known.
-   * @param value The new value for firingRange.
    */
   void setFiringRange(const SFFloat &value) { _firingRange = value; }
 
   /**
-   * @brief Gets the value of firingRate. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Rate at which munitions are fired.
-   * @return const SFInt32& The current value of firingRate.
    */
   const SFInt32 &getFiringRate() const { return _firingRate; }
 
   /**
-   * @brief Sets the value of firingRate. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Rate at which munitions are fired.
-   * @param value The new value for firingRate.
    */
   void setFiringRate(const SFInt32 &value) { _firingRate = value; }
 
   /**
-   * @brief Gets the value of forceID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details forceID determines the team membership of the issuing entity, and
    * whether FRIENDLY OPPOSING or NEUTRAL or OTHER.
-   * @return const SFInt32& The current value of forceID.
    */
   const SFInt32 &getForceID() const { return _forceID; }
 
   /**
-   * @brief Sets the value of forceID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details forceID determines the team membership of the issuing entity, and
    * whether FRIENDLY OPPOSING or NEUTRAL or OTHER.
-   * @param value The new value for forceID.
    */
   void setForceID(const SFInt32 &value) { _forceID = value; }
 
   /**
-   * @brief Gets the value of fuse. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for type of fuse on the munition.
-   * @return const SFInt32& The current value of fuse.
    */
   const SFInt32 &getFuse() const { return _fuse; }
 
   /**
-   * @brief Sets the value of fuse. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for type of fuse on the munition.
-   * @param value The new value for fuse.
    */
   void setFuse(const SFInt32 &value) { _fuse = value; }
 
   /**
-   * @brief Gets the value of geoCoords. AccessType: inputOutput
+   * SFVec3d; access: inputOutput. Borrows the stored value.
    * @details Geographic location (specified in current geoSystem coordinates)
    * for children geometry (specified in relative coordinate system, in meters).
-   * @return const SFVec3d& The current value of geoCoords.
    */
   const SFVec3d &getGeoCoords() const { return _geoCoords; }
 
   /**
-   * @brief Sets the value of geoCoords. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Geographic location (specified in current geoSystem coordinates)
    * for children geometry (specified in relative coordinate system, in meters).
-   * @param value The new value for geoCoords.
    */
   void setGeoCoords(const SFVec3d &value) { _geoCoords = value; }
 
   void setGeoCoords(SFVec3d &&value) { _geoCoords = std::move(value); }
 
   /**
-   * @brief Gets the value of geoSystem. AccessType: initializeOnly
+   * MFString; access: initializeOnly. Borrows the stored value.
    * @details Identifies spatial reference frame: Geodetic (GD), Geocentric
    * (GC), Universal Transverse Mercator (UTM).
-   * @return const MFString& The current value of geoSystem.
    */
   const MFString &getGeoSystem() const { return _geoSystem; }
   /**
-   * @brief Data-layer write of geoSystem (reader/init ingest path).
-   * @details geoSystem is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setGeoSystem().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setGeoSystemUnchecked(const MFString &value) { _geoSystem = value; }
 
   /**
-   * @brief Gets the value of isActive. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Have we received a network update recently? Warning: it is an
    * error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return const SFBool& The current value of isActive.
    */
   const SFBool &getIsActive() const { return _isActive; }
 
   /**
-   * @brief Emit an output value on isActive. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Have we received a network update recently? Warning: it is an
    * error to define this transient outputOnly field in an X3D file, instead
-   * only use it a source for ROUTE events. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * only use it a source for ROUTE events.
    */
   void emitIsActive(const SFBool &value) { _isActive = value; }
 
   /**
-   * @brief Gets the value of isCollided. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Has a matching CollisionPDU reported a collision? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return const SFBool& The current value of isCollided.
    */
   const SFBool &getIsCollided() const { return _isCollided; }
 
   /**
-   * @brief Emit an output value on isCollided. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Has a matching CollisionPDU reported a collision? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
-   * only use it a source for ROUTE events. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * only use it a source for ROUTE events.
    */
   void emitIsCollided(const SFBool &value) { _isCollided = value; }
 
   /**
-   * @brief Gets the value of isDetonated. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Has a matching DetonationPDU reported a detonation? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
    * only use it a source for ROUTE events.
-   * @return const SFBool& The current value of isDetonated.
    */
   const SFBool &getIsDetonated() const { return _isDetonated; }
 
   /**
-   * @brief Emit an output value on isDetonated. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Has a matching DetonationPDU reported a detonation? Warning: it is
    * an error to define this transient outputOnly field in an X3D file, instead
-   * only use it a source for ROUTE events. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * only use it a source for ROUTE events.
    */
   void emitIsDetonated(const SFBool &value) { _isDetonated = value; }
 
   /**
-   * @brief Gets the value of isNetworkReader. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Whether networkMode='remote' (listen to network as copy of remote
    * entity).
-   * @return const SFBool& The current value of isNetworkReader.
    */
   const SFBool &getIsNetworkReader() const { return _isNetworkReader; }
 
   /**
-   * @brief Emit an output value on isNetworkReader. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Whether networkMode='remote' (listen to network as copy of remote
-   * entity). outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * entity).
    */
   void emitIsNetworkReader(const SFBool &value) { _isNetworkReader = value; }
 
   /**
-   * @brief Gets the value of isNetworkWriter. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Whether networkMode='master' (output to network as master entity
    * at writeInterval).
-   * @return const SFBool& The current value of isNetworkWriter.
    */
   const SFBool &getIsNetworkWriter() const { return _isNetworkWriter; }
 
   /**
-   * @brief Emit an output value on isNetworkWriter. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Whether networkMode='master' (output to network as master entity
-   * at writeInterval). outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * at writeInterval).
    */
   void emitIsNetworkWriter(const SFBool &value) { _isNetworkWriter = value; }
 
   /**
-   * @brief Gets the value of isRtpHeaderHeard. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Whether incoming DIS packets have an RTP header prepended.
-   * @return const SFBool& The current value of isRtpHeaderHeard.
    */
   const SFBool &getIsRtpHeaderHeard() const { return _isRtpHeaderHeard; }
 
   /**
-   * @brief Emit an output value on isRtpHeaderHeard. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Whether incoming DIS packets have an RTP header prepended.
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitIsRtpHeaderHeard(const SFBool &value) { _isRtpHeaderHeard = value; }
 
   /**
-   * @brief Gets the value of isStandAlone. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details Whether networkMode='local' (ignore network but still respond to
    * local events).
-   * @return const SFBool& The current value of isStandAlone.
    */
   const SFBool &getIsStandAlone() const { return _isStandAlone; }
 
   /**
-   * @brief Emit an output value on isStandAlone. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Whether networkMode='local' (ignore network but still respond to
-   * local events). outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * local events).
    */
   void emitIsStandAlone(const SFBool &value) { _isStandAlone = value; }
 
   /**
-   * @brief Gets the value of linearAcceleration. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Acceleration of the entity relative to the rotating Earth in
    * either world or entity coordinates, depending on the dead reckoning
    * algorithm used.
-   * @return const SFVec3f& The current value of linearAcceleration.
    */
   const SFVec3f &getLinearAcceleration() const { return _linearAcceleration; }
 
   /**
-   * @brief Sets the value of linearAcceleration. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Acceleration of the entity relative to the rotating Earth in
    * either world or entity coordinates, depending on the dead reckoning
    * algorithm used.
-   * @param value The new value for linearAcceleration.
    */
   void setLinearAcceleration(const SFVec3f &value) {
 
@@ -1471,20 +1027,18 @@ public:
   }
 
   /**
-   * @brief Gets the value of linearVelocity. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Velocity of the entity relative to the rotating Earth in either
    * world or entity coordinates, depending on the dead reckoning algorithm
    * used.
-   * @return const SFVec3f& The current value of linearVelocity.
    */
   const SFVec3f &getLinearVelocity() const { return _linearVelocity; }
 
   /**
-   * @brief Sets the value of linearVelocity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Velocity of the entity relative to the rotating Earth in either
    * world or entity coordinates, depending on the dead reckoning algorithm
    * used.
-   * @param value The new value for linearVelocity.
    */
   void setLinearVelocity(const SFVec3f &value) { _linearVelocity = value; }
 
@@ -1494,32 +1048,28 @@ public:
   }
 
   /**
-   * @brief Gets the value of marking. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Maximum of 11 characters for simple entity label.
-   * @return const SFString& The current value of marking.
    */
   const SFString &getMarking() const { return _marking; }
 
   /**
-   * @brief Sets the value of marking. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Maximum of 11 characters for simple entity label.
-   * @param value The new value for marking.
    */
   void setMarking(const SFString &value) { _marking = value; }
 
   void setMarking(SFString &&value) { _marking = std::move(value); }
 
   /**
-   * @brief Gets the value of multicastRelayHost. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Fallback server address if multicast not available locally.
-   * @return const SFString& The current value of multicastRelayHost.
    */
   const SFString &getMulticastRelayHost() const { return _multicastRelayHost; }
 
   /**
-   * @brief Sets the value of multicastRelayHost. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Fallback server address if multicast not available locally.
-   * @param value The new value for multicastRelayHost.
    */
   void setMulticastRelayHost(const SFString &value) {
 
@@ -1532,16 +1082,14 @@ public:
   }
 
   /**
-   * @brief Gets the value of multicastRelayPort. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Fallback server port if multicast not available locally.
-   * @return const SFInt32& The current value of multicastRelayPort.
    */
   const SFInt32 &getMulticastRelayPort() const { return _multicastRelayPort; }
 
   /**
-   * @brief Sets the value of multicastRelayPort. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Fallback server port if multicast not available locally.
-   * @param value The new value for multicastRelayPort.
    */
   void setMulticastRelayPort(const SFInt32 &value) {
 
@@ -1549,18 +1097,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of munitionApplicationID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details munitionApplicationID, unique for application at that site.
-   * @return const SFInt32& The current value of munitionApplicationID.
    */
   const SFInt32 &getMunitionApplicationID() const {
     return _munitionApplicationID;
   }
 
   /**
-   * @brief Sets the value of munitionApplicationID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details munitionApplicationID, unique for application at that site.
-   * @param value The new value for munitionApplicationID.
    */
   void setMunitionApplicationID(const SFInt32 &value) {
 
@@ -1568,18 +1114,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of munitionEndPoint. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Final point of the munition path from firing weapon to detonation
    * or impact, in exercise coordinates.
-   * @return const SFVec3f& The current value of munitionEndPoint.
    */
   const SFVec3f &getMunitionEndPoint() const { return _munitionEndPoint; }
 
   /**
-   * @brief Sets the value of munitionEndPoint. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Final point of the munition path from firing weapon to detonation
    * or impact, in exercise coordinates.
-   * @param value The new value for munitionEndPoint.
    */
   void setMunitionEndPoint(const SFVec3f &value) { _munitionEndPoint = value; }
 
@@ -1589,62 +1133,54 @@ public:
   }
 
   /**
-   * @brief Gets the value of munitionEntityID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details munitionEntityID is unique ID for entity firing munition within
    * that application.
-   * @return const SFInt32& The current value of munitionEntityID.
    */
   const SFInt32 &getMunitionEntityID() const { return _munitionEntityID; }
 
   /**
-   * @brief Sets the value of munitionEntityID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details munitionEntityID is unique ID for entity firing munition within
    * that application.
-   * @param value The new value for munitionEntityID.
    */
   void setMunitionEntityID(const SFInt32 &value) { _munitionEntityID = value; }
 
   /**
-   * @brief Gets the value of munitionQuantity. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Quantity of munitions fired.
-   * @return const SFInt32& The current value of munitionQuantity.
    */
   const SFInt32 &getMunitionQuantity() const { return _munitionQuantity; }
 
   /**
-   * @brief Sets the value of munitionQuantity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Quantity of munitions fired.
-   * @param value The new value for munitionQuantity.
    */
   void setMunitionQuantity(const SFInt32 &value) { _munitionQuantity = value; }
 
   /**
-   * @brief Gets the value of munitionSiteID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Munition siteID of the participating LAN or organization.
-   * @return const SFInt32& The current value of munitionSiteID.
    */
   const SFInt32 &getMunitionSiteID() const { return _munitionSiteID; }
 
   /**
-   * @brief Sets the value of munitionSiteID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Munition siteID of the participating LAN or organization.
-   * @param value The new value for munitionSiteID.
    */
   void setMunitionSiteID(const SFInt32 &value) { _munitionSiteID = value; }
 
   /**
-   * @brief Gets the value of munitionStartPoint. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Initial point of the munition path from firing weapon to
    * detonation or impact, in exercise coordinates.
-   * @return const SFVec3f& The current value of munitionStartPoint.
    */
   const SFVec3f &getMunitionStartPoint() const { return _munitionStartPoint; }
 
   /**
-   * @brief Sets the value of munitionStartPoint. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Initial point of the munition path from firing weapon to
    * detonation or impact, in exercise coordinates.
-   * @param value The new value for munitionStartPoint.
    */
   void setMunitionStartPoint(const SFVec3f &value) {
 
@@ -1657,48 +1193,42 @@ public:
   }
 
   /**
-   * @brief Gets the value of networkMode. AccessType: inputOutput
+   * NetworkModeChoices; access: inputOutput. Borrows the stored value.
    * @details Whether this entity is ignoring the network, sending DIS packets
    * to the network, or receiving DIS packets from the network.
-   * @return const NetworkModeChoices& The current value of networkMode.
    */
   const NetworkModeChoices &getNetworkMode() const { return _networkMode; }
 
   /**
-   * @brief Sets the value of networkMode. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Whether this entity is ignoring the network, sending DIS packets
    * to the network, or receiving DIS packets from the network.
-   * @param value The new value for networkMode.
    */
   void setNetworkMode(const NetworkModeChoices &value) { _networkMode = value; }
 
   /**
-   * @brief Gets the value of port. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Network connection port number (EXAMPLE 3000) for sending or
    * receiving DIS messages.
-   * @return const SFInt32& The current value of port.
    */
   const SFInt32 &getPort() const { return _port; }
 
   /**
-   * @brief Sets the value of port. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Network connection port number (EXAMPLE 3000) for sending or
    * receiving DIS messages.
-   * @param value The new value for port.
    */
   void setPort(const SFInt32 &value) { _port = value; }
 
   /**
-   * @brief Gets the value of readInterval. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details Seconds between read updates, 0 means no reading.
-   * @return const SFTime& The current value of readInterval.
    */
   const SFTime &getReadInterval() const { return _readInterval; }
 
   /**
-   * @brief Sets the value of readInterval. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Seconds between read updates, 0 means no reading.
-   * @param value The new value for readInterval.
    */
   void setReadInterval(const SFTime &value) {
 
@@ -1715,77 +1245,66 @@ public:
   }
 
   /**
-   * @brief Non-validating write of readInterval (runtime/reader ingest path).
-   * @details Assigns without the range check setReadInterval() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setReadInterval() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setReadInterval() for range validation.
    */
   void setReadIntervalUnchecked(const SFTime &value) { _readInterval = value; }
 
   /**
-   * @brief Gets the value of rotation. AccessType: inputOutput
+   * SFRotation; access: inputOutput. Borrows the stored value.
    * @details Orientation of children relative to local coordinate system,
    * usually read from (or written to) remote, networked EspduTransform nodes.
-   * @return const SFRotation& The current value of rotation.
    */
   const SFRotation &getRotation() const { return _rotation; }
 
   /**
-   * @brief Sets the value of rotation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Orientation of children relative to local coordinate system,
    * usually read from (or written to) remote, networked EspduTransform nodes.
-   * @param value The new value for rotation.
    */
   void setRotation(const SFRotation &value) { _rotation = value; }
 
   void setRotation(SFRotation &&value) { _rotation = std::move(value); }
 
   /**
-   * @brief Gets the value of rtpHeaderExpected. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Whether RTP headers are prepended to DIS PDUs.
-   * @return const SFBool& The current value of rtpHeaderExpected.
    */
   const SFBool &getRtpHeaderExpected() const { return _rtpHeaderExpected; }
 
   /**
-   * @brief Sets the value of rtpHeaderExpected. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Whether RTP headers are prepended to DIS PDUs.
-   * @param value The new value for rtpHeaderExpected.
    */
   void setRtpHeaderExpected(const SFBool &value) { _rtpHeaderExpected = value; }
 
   /**
-   * @brief Gets the value of scale. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @return const SFVec3f& The current value of scale.
    */
   const SFVec3f &getScale() const { return _scale; }
 
   /**
-   * @brief Sets the value of scale. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Non-uniform x-y-z scale of child coordinate system, adjusted by
    * center and scaleOrientation.
-   * @param value The new value for scale.
    */
   void setScale(const SFVec3f &value) { _scale = value; }
 
   void setScale(SFVec3f &&value) { _scale = std::move(value); }
 
   /**
-   * @brief Gets the value of scaleOrientation. AccessType: inputOutput
+   * SFRotation; access: inputOutput. Borrows the stored value.
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @return const SFRotation& The current value of scaleOrientation.
    */
   const SFRotation &getScaleOrientation() const { return _scaleOrientation; }
 
   /**
-   * @brief Sets the value of scaleOrientation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Preliminary rotation of coordinate system before scaling (to allow
    * scaling around arbitrary orientations).
-   * @param value The new value for scaleOrientation.
    */
   void setScaleOrientation(const SFRotation &value) {
 
@@ -1798,14 +1317,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue0. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue0Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue0Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue0(const SFFloat &value) {
     if (_onSet_articulationParameterValue0Handler)
@@ -1813,10 +1328,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue0.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue0Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1824,14 +1336,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue1. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue1Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue1Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue1(const SFFloat &value) {
     if (_onSet_articulationParameterValue1Handler)
@@ -1839,10 +1347,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue1.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue1Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1850,14 +1355,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue2. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue2Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue2Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue2(const SFFloat &value) {
     if (_onSet_articulationParameterValue2Handler)
@@ -1865,10 +1366,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue2.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue2Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1876,14 +1374,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue3. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue3Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue3Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue3(const SFFloat &value) {
     if (_onSet_articulationParameterValue3Handler)
@@ -1891,10 +1385,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue3.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue3Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1902,14 +1393,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue4. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue4Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue4Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue4(const SFFloat &value) {
     if (_onSet_articulationParameterValue4Handler)
@@ -1917,10 +1404,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue4.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue4Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1928,14 +1412,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue5. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue5Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue5Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue5(const SFFloat &value) {
     if (_onSet_articulationParameterValue5Handler)
@@ -1943,10 +1423,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue5.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue5Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1954,14 +1431,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue6. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue6Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue6Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue6(const SFFloat &value) {
     if (_onSet_articulationParameterValue6Handler)
@@ -1969,10 +1442,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue6.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue6Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -1980,14 +1450,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * set_articulationParameterValue7. AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details Set element of user-defined payload array.
    *          Dispatches to the handler registered via
-   * setOnSet_articulationParameterValue7Handler(); a no-op if none is set. The
-   * event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_articulationParameterValue7Handler(); a no-op if none is set.
    */
   void onSet_articulationParameterValue7(const SFFloat &value) {
     if (_onSet_articulationParameterValue7Handler)
@@ -1995,10 +1461,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * set_articulationParameterValue7.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_articulationParameterValue7Handler(
       std::function<void(const SFFloat &)> handler) {
@@ -2006,83 +1469,70 @@ public:
   }
 
   /**
-   * @brief Gets the value of siteID. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @return const SFInt32& The current value of siteID.
    */
   const SFInt32 &getSiteID() const { return _siteID; }
 
   /**
-   * @brief Sets the value of siteID. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Simulation/exercise siteID of the participating LAN or
    * organization.
-   * @param value The new value for siteID.
    */
   void setSiteID(const SFInt32 &value) { _siteID = value; }
 
   /**
-   * @brief Gets the value of timestamp. AccessType: outputOnly
+   * SFTime; access: outputOnly. Borrows the stored value.
    * @details DIS timestamp received from latest PDU update, converted to X3D
    * SFTime units.
-   * @return const SFTime& The current value of timestamp.
    */
   const SFTime &getTimestamp() const { return _timestamp; }
 
   /**
-   * @brief Emit an output value on timestamp. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details DIS timestamp received from latest PDU update, converted to X3D
-   * SFTime units. outputOnly fields have no author-facing setter; a node's
-   * behavior or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * SFTime units.
    */
   void emitTimestamp(const SFTime &value) { _timestamp = value; }
 
   /**
-   * @brief Gets the value of translation. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Position of children relative to local coordinate system, usually
    * read from (or written to) remote, networked EspduTransform nodes.
-   * @return const SFVec3f& The current value of translation.
    */
   const SFVec3f &getTranslation() const { return _translation; }
 
   /**
-   * @brief Sets the value of translation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Position of children relative to local coordinate system, usually
    * read from (or written to) remote, networked EspduTransform nodes.
-   * @param value The new value for translation.
    */
   void setTranslation(const SFVec3f &value) { _translation = value; }
 
   void setTranslation(SFVec3f &&value) { _translation = std::move(value); }
 
   /**
-   * @brief Gets the value of warhead. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Integer enumerations value for type of warhead on the munition.
-   * @return const SFInt32& The current value of warhead.
    */
   const SFInt32 &getWarhead() const { return _warhead; }
 
   /**
-   * @brief Sets the value of warhead. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Integer enumerations value for type of warhead on the munition.
-   * @param value The new value for warhead.
    */
   void setWarhead(const SFInt32 &value) { _warhead = value; }
 
   /**
-   * @brief Gets the value of writeInterval. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details Seconds between write updates, 0 means no writing (sending).
-   * @return const SFTime& The current value of writeInterval.
    */
   const SFTime &getWriteInterval() const { return _writeInterval; }
 
   /**
-   * @brief Sets the value of writeInterval. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Seconds between write updates, 0 means no writing (sending).
-   * @param value The new value for writeInterval.
    */
   void setWriteInterval(const SFTime &value) {
 
@@ -2099,41 +1549,25 @@ public:
   }
 
   /**
-   * @brief Non-validating write of writeInterval (runtime/reader ingest path).
-   * @details Assigns without the range check setWriteInterval() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setWriteInterval() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setWriteInterval() for range validation.
    */
   void setWriteIntervalUnchecked(const SFTime &value) {
     _writeInterval = value;
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "EspduTransform").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -2170,527 +1604,207 @@ private:
       throw std::out_of_range("writeInterval below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for address.
-   */
-
   SFString _address{"localhost"};
-
-  /**
-   * @brief Member variable for applicationID.
-   */
 
   SFInt32 _applicationID{0};
 
-  /**
-   * @brief Member variable for articulationParameterArray.
-   */
-
   MFFloat _articulationParameterArray{};
-
-  /**
-   * @brief Member variable for articulationParameterChangeIndicatorArray.
-   */
 
   MFInt32 _articulationParameterChangeIndicatorArray{};
 
-  /**
-   * @brief Member variable for articulationParameterCount.
-   */
-
   SFInt32 _articulationParameterCount{0};
-
-  /**
-   * @brief Member variable for articulationParameterDesignatorArray.
-   */
 
   MFInt32 _articulationParameterDesignatorArray{};
 
-  /**
-   * @brief Member variable for articulationParameterIdPartAttachedToArray.
-   */
-
   MFInt32 _articulationParameterIdPartAttachedToArray{};
-
-  /**
-   * @brief Member variable for articulationParameterTypeArray.
-   */
 
   MFInt32 _articulationParameterTypeArray{};
 
-  /**
-   * @brief Member variable for articulationParameterValue0_changed.
-   */
-
   SFFloat _articulationParameterValue0_changed{};
-
-  /**
-   * @brief Member variable for articulationParameterValue1_changed.
-   */
 
   SFFloat _articulationParameterValue1_changed{};
 
-  /**
-   * @brief Member variable for articulationParameterValue2_changed.
-   */
-
   SFFloat _articulationParameterValue2_changed{};
-
-  /**
-   * @brief Member variable for articulationParameterValue3_changed.
-   */
 
   SFFloat _articulationParameterValue3_changed{};
 
-  /**
-   * @brief Member variable for articulationParameterValue4_changed.
-   */
-
   SFFloat _articulationParameterValue4_changed{};
-
-  /**
-   * @brief Member variable for articulationParameterValue5_changed.
-   */
 
   SFFloat _articulationParameterValue5_changed{};
 
-  /**
-   * @brief Member variable for articulationParameterValue6_changed.
-   */
-
   SFFloat _articulationParameterValue6_changed{};
-
-  /**
-   * @brief Member variable for articulationParameterValue7_changed.
-   */
 
   SFFloat _articulationParameterValue7_changed{};
 
-  /**
-   * @brief Member variable for center.
-   */
-
   SFVec3f _center{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for collideTime.
-   */
 
   SFTime _collideTime{};
 
-  /**
-   * @brief Member variable for collisionType.
-   */
-
   SFInt32 _collisionType{0};
-
-  /**
-   * @brief Member variable for deadReckoning.
-   */
 
   SFInt32 _deadReckoning{0};
 
-  /**
-   * @brief Member variable for description.
-   */
-
   SFString _description{};
-
-  /**
-   * @brief Member variable for detonateTime.
-   */
 
   SFTime _detonateTime{};
 
-  /**
-   * @brief Member variable for detonationLocation.
-   */
-
   SFVec3f _detonationLocation{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for detonationRelativeLocation.
-   */
 
   SFVec3f _detonationRelativeLocation{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for detonationResult.
-   */
-
   SFInt32 _detonationResult{0};
-
-  /**
-   * @brief Member variable for enabled.
-   */
 
   SFBool _enabled{true};
 
-  /**
-   * @brief Member variable for entityCategory.
-   */
-
   SFInt32 _entityCategory{0};
-
-  /**
-   * @brief Member variable for entityCountry.
-   */
 
   SFInt32 _entityCountry{0};
 
-  /**
-   * @brief Member variable for entityDomain.
-   */
-
   SFInt32 _entityDomain{0};
-
-  /**
-   * @brief Member variable for entityExtra.
-   */
 
   SFInt32 _entityExtra{0};
 
-  /**
-   * @brief Member variable for entityID.
-   */
-
   SFInt32 _entityID{0};
-
-  /**
-   * @brief Member variable for entityKind.
-   */
 
   SFInt32 _entityKind{0};
 
-  /**
-   * @brief Member variable for entitySpecific.
-   */
-
   SFInt32 _entitySpecific{0};
-
-  /**
-   * @brief Member variable for entitySubcategory.
-   */
 
   SFInt32 _entitySubcategory{0};
 
-  /**
-   * @brief Member variable for eventApplicationID.
-   */
-
   SFInt32 _eventApplicationID{0};
-
-  /**
-   * @brief Member variable for eventEntityID.
-   */
 
   SFInt32 _eventEntityID{0};
 
-  /**
-   * @brief Member variable for eventNumber.
-   */
-
   SFInt32 _eventNumber{0};
-
-  /**
-   * @brief Member variable for eventSiteID.
-   */
 
   SFInt32 _eventSiteID{0};
 
-  /**
-   * @brief Member variable for fired1.
-   */
-
   SFBool _fired1{false};
-
-  /**
-   * @brief Member variable for fired2.
-   */
 
   SFBool _fired2{false};
 
-  /**
-   * @brief Member variable for firedTime.
-   */
-
   SFTime _firedTime{};
-
-  /**
-   * @brief Member variable for fireMissionIndex.
-   */
 
   SFInt32 _fireMissionIndex{0};
 
-  /**
-   * @brief Member variable for firingRange.
-   */
-
   SFFloat _firingRange{0};
-
-  /**
-   * @brief Member variable for firingRate.
-   */
 
   SFInt32 _firingRate{0};
 
-  /**
-   * @brief Member variable for forceID.
-   */
-
   SFInt32 _forceID{0};
-
-  /**
-   * @brief Member variable for fuse.
-   */
 
   SFInt32 _fuse{0};
 
-  /**
-   * @brief Member variable for geoCoords.
-   */
-
   SFVec3d _geoCoords{SFVec3d{0, 0, 0}};
-
-  /**
-   * @brief Member variable for geoSystem.
-   */
 
   MFString _geoSystem{std::vector<std::string>{"GD", "WE"}};
 
-  /**
-   * @brief Member variable for isActive.
-   */
-
   SFBool _isActive{};
-
-  /**
-   * @brief Member variable for isCollided.
-   */
 
   SFBool _isCollided{};
 
-  /**
-   * @brief Member variable for isDetonated.
-   */
-
   SFBool _isDetonated{};
-
-  /**
-   * @brief Member variable for isNetworkReader.
-   */
 
   SFBool _isNetworkReader{};
 
-  /**
-   * @brief Member variable for isNetworkWriter.
-   */
-
   SFBool _isNetworkWriter{};
-
-  /**
-   * @brief Member variable for isRtpHeaderHeard.
-   */
 
   SFBool _isRtpHeaderHeard{};
 
-  /**
-   * @brief Member variable for isStandAlone.
-   */
-
   SFBool _isStandAlone{};
-
-  /**
-   * @brief Member variable for linearAcceleration.
-   */
 
   SFVec3f _linearAcceleration{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for linearVelocity.
-   */
-
   SFVec3f _linearVelocity{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for marking.
-   */
 
   SFString _marking{};
 
-  /**
-   * @brief Member variable for multicastRelayHost.
-   */
-
   SFString _multicastRelayHost{};
-
-  /**
-   * @brief Member variable for multicastRelayPort.
-   */
 
   SFInt32 _multicastRelayPort{0};
 
-  /**
-   * @brief Member variable for munitionApplicationID.
-   */
-
   SFInt32 _munitionApplicationID{0};
-
-  /**
-   * @brief Member variable for munitionEndPoint.
-   */
 
   SFVec3f _munitionEndPoint{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for munitionEntityID.
-   */
-
   SFInt32 _munitionEntityID{0};
-
-  /**
-   * @brief Member variable for munitionQuantity.
-   */
 
   SFInt32 _munitionQuantity{0};
 
-  /**
-   * @brief Member variable for munitionSiteID.
-   */
-
   SFInt32 _munitionSiteID{0};
-
-  /**
-   * @brief Member variable for munitionStartPoint.
-   */
 
   SFVec3f _munitionStartPoint{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for networkMode.
-   */
-
   NetworkModeChoices _networkMode{NetworkModeChoices::STANDALONE};
-
-  /**
-   * @brief Member variable for port.
-   */
 
   SFInt32 _port{0};
 
-  /**
-   * @brief Member variable for readInterval.
-   */
-
   SFTime _readInterval{0.1};
-
-  /**
-   * @brief Member variable for rotation.
-   */
 
   SFRotation _rotation{SFRotation{0, 0, 1, 0}};
 
-  /**
-   * @brief Member variable for rtpHeaderExpected.
-   */
-
   SFBool _rtpHeaderExpected{false};
 
-  /**
-   * @brief Member variable for scale.
-   */
-
   SFVec3f _scale{SFVec3f{1, 1, 1}};
-
-  /**
-   * @brief Member variable for scaleOrientation.
-   */
 
   SFRotation _scaleOrientation{SFRotation{0, 0, 1, 0}};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue0
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue0Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue1
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue1Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue2
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue2Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue3
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue3Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue4
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue4Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue5
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue5Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue6
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue6Handler{};
 
   /**
-   * @brief Registered event handler for set_articulationParameterValue7
-   * (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)>
       _onSet_articulationParameterValue7Handler{};
 
-  /**
-   * @brief Member variable for siteID.
-   */
-
   SFInt32 _siteID{0};
-
-  /**
-   * @brief Member variable for timestamp.
-   */
 
   SFTime _timestamp{};
 
-  /**
-   * @brief Member variable for translation.
-   */
-
   SFVec3f _translation{SFVec3f{0, 0, 0}};
 
-  /**
-   * @brief Member variable for warhead.
-   */
-
   SFInt32 _warhead{0};
-
-  /**
-   * @brief Member variable for writeInterval.
-   */
 
   SFTime _writeInterval{1.0};
 };

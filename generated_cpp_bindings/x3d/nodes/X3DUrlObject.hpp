@@ -1,4 +1,3 @@
-// X3DUrlObject.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -23,65 +22,32 @@ using namespace x3d::core;
  */
 class X3DUrlObject {
 public:
-  /**
-   * @brief Default constructor for X3DUrlObject
-   */
   X3DUrlObject() = default;
 
-  /**
-   * @brief Virtual destructor for X3DUrlObject
-   */
   virtual ~X3DUrlObject() = default;
 
-  /**
-   * @brief Get the default value for autoRefresh
-   * @return SFTime The default value
-   */
   static SFTime getDefaultAutoRefresh() { return 0; }
 
-  /**
-   * @brief Get the default value for autoRefreshTimeLimit
-   * @return SFTime The default value
-   */
   static SFTime getDefaultAutoRefreshTimeLimit() { return 3600; }
 
-  /**
-   * @brief Get the default value for load
-   * @return SFBool The default value
-   */
   static SFBool getDefaultLoad() { return true; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Networking"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of autoRefresh. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFTime& The current value of autoRefresh.
    */
   const SFTime &getAutoRefresh() const { return _autoRefresh; }
 
   /**
-   * @brief Sets the value of autoRefresh. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for autoRefresh.
    */
   void setAutoRefresh(const SFTime &value) {
 
@@ -98,27 +64,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of autoRefresh (runtime/reader ingest path).
-   * @details Assigns without the range check setAutoRefresh() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAutoRefresh() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAutoRefresh() for range validation.
    */
   void setAutoRefreshUnchecked(const SFTime &value) { _autoRefresh = value; }
 
   /**
-   * @brief Gets the value of autoRefreshTimeLimit. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFTime& The current value of autoRefreshTimeLimit.
    */
   const SFTime &getAutoRefreshTimeLimit() const {
     return _autoRefreshTimeLimit;
   }
 
   /**
-   * @brief Sets the value of autoRefreshTimeLimit. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for autoRefreshTimeLimit.
    */
   void setAutoRefreshTimeLimit(const SFTime &value) {
 
@@ -135,58 +96,48 @@ public:
   }
 
   /**
-   * @brief Non-validating write of autoRefreshTimeLimit (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setAutoRefreshTimeLimit()
-   * enforces, so a permissive reader keeps an out-of-range authored value
-   * rather than reject the whole document. setAutoRefreshTimeLimit() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAutoRefreshTimeLimit() for range validation.
    */
   void setAutoRefreshTimeLimitUnchecked(const SFTime &value) {
     _autoRefreshTimeLimit = value;
   }
 
   /**
-   * @brief Gets the value of description. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFString& The current value of description.
    */
   const SFString &getDescription() const { return _description; }
 
   /**
-   * @brief Sets the value of description. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for description.
    */
   void setDescription(const SFString &value) { _description = value; }
 
   void setDescription(SFString &&value) { _description = std::move(value); }
 
   /**
-   * @brief Gets the value of load. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of load.
    */
   const SFBool &getLoad() const { return _load; }
 
   /**
-   * @brief Sets the value of load. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for load.
    */
   void setLoad(const SFBool &value) { _load = value; }
 
   /**
-   * @brief Gets the value of url. AccessType: inputOutput
+   * MFString; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFString& The current value of url.
    */
   const MFString &getUrl() const { return _url; }
 
   /**
-   * @brief Sets the value of url. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for url.
    */
   void setUrl(const MFString &value) { _url = value; }
 
@@ -223,33 +174,13 @@ private:
       throw std::out_of_range("autoRefreshTimeLimit below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for autoRefresh.
-   */
-
   SFTime _autoRefresh{0};
-
-  /**
-   * @brief Member variable for autoRefreshTimeLimit.
-   */
 
   SFTime _autoRefreshTimeLimit{3600};
 
-  /**
-   * @brief Member variable for description.
-   */
-
   SFString _description{};
 
-  /**
-   * @brief Member variable for load.
-   */
-
   SFBool _load{true};
-
-  /**
-   * @brief Member variable for url.
-   */
 
   MFString _url{};
 };

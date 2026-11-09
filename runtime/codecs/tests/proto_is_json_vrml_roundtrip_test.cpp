@@ -1,14 +1,5 @@
-// proto_is_json_vrml_roundtrip_test.cpp
-// PRF-1: IS connections inside a <ProtoDeclare> body must be re-emitted by the
-// JSON and ClassicVRML writers (the XML writer already does this via
-// attachIsBlocks / bodyIsc_). A PROTO whose body node carries `field IS
-// protoField` previously lost the binding when written to JSON or VRML, because
-// neither writer emitted the IS block.
-//
-// The oracle is a full read -> write(JSON|VRML) -> re-read cycle: the
-// IsConnection must reappear bound to the body node's field (at both depth-1 and
-// depth-2, mirroring the XML PRF-2 behavior). The XmlReader/XmlWriter pair is the
-// ground truth; this test asserts the JSON and VRML codecs match it.
+// ProtoBody IS connections survive JSON and ClassicVRML serialization at every depth.
+
 #include "JsonWriter.hpp"
 #include "VrmlWriter.hpp"
 #include "X3DParse.hpp"
@@ -54,8 +45,6 @@ TEST_CASE("proto_is_json_vrml_roundtrip_test") {
   auto doc0 = codec::parseDocument(xml);
   CHECK((countIs(doc0.scene, "translation", "pos") == 1));
   CHECK((countIs(doc0.scene, "size", "boxSize") == 1));
-
-  // ---- JSON round-trip ----
   {
     std::string js = codec::JsonWriter().writeDocument(doc0);
     // The IS block must be emitted (matching the JsonReader's connect shape).
@@ -66,8 +55,6 @@ TEST_CASE("proto_is_json_vrml_roundtrip_test") {
     CHECK((countIs(docJ.scene, "translation", "pos") == 1));
     CHECK((countIs(docJ.scene, "size", "boxSize") == 1)); // deep IS survives JSON
   }
-
-  // ---- ClassicVRML round-trip ----
   {
     std::string vr = codec::VrmlWriter().writeDocument(doc0);
     // `field IS protoField` lines must be emitted inside the node bodies.

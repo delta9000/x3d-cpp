@@ -1,18 +1,5 @@
 #include "doctest/doctest.h"
-// proto_interface_state_test.cpp
-// PROTO-INTERFACE-STATE: a prototype interface field with no IS target must
-// still exist on the instance as a real field with its initial value and a
-// routable event endpoint (ISO/IEC 19775-1 §4.4.2.2; §4.4.4.2).
-//
-// Relay declares inputOutput SFVec3f value, a Group body and NO IS connection.
-// Value-forwarding/redirect capture never touches it, so before this change the
-// bridge rejected both external routes ("has no IS route target"). Expansion now
-// registers every unconnected scalar interface field as independent storage on
-// the primary (the dynamic-field store), and the bridge resolves such a field to
-// its own endpoint. A route IN sets the field; a route OUT relays it.
-//
-// Also asserts the fieldValue/interface default survives, and that an
-// IS-connected field is unchanged (the redirect path still wins).
+// Unconnected PROTO fields retain storage and routable endpoints (§4.4.2.2, §4.4.4.2).
 
 #include "DynamicField.hpp"
 #include "X3DExecutionContext.hpp"
@@ -24,7 +11,6 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <any>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -36,17 +22,7 @@ using namespace x3d::nodes;
 
 namespace {
 
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
-// Relay: inputOutput SFVec3f value (no IS) over a Group body. Source drives it;
+// Relay: inputOutput SFVec3f value (no is) over a Group body. Source drives it;
 // Dest receives the relayed value_changed.
 const char *kRelayXml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Relay'><ProtoInterface>
@@ -66,13 +42,13 @@ void test_unmapped_inputoutput_relays() {
   auto source = std::dynamic_pointer_cast<Transform>(scene.resolve("Source"));
   auto relay = scene.resolve("RelayNode");
   auto dest = std::dynamic_pointer_cast<Transform>(scene.resolve("Dest"));
-  check(source && relay && dest, "Relay scene expanded its three nodes");
+  CHECK_MESSAGE((source && relay && dest), ("Relay scene expanded its three nodes"));
   if (!(source && relay && dest)) return;
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   BridgeResult res = buildRoutes(scene, ctx);
-  check(res.rejected.empty(), "no route rejected (both interfaces resolve)");
-  check(res.routesAdded == 2, "two routes wired through the interface field");
+  CHECK_MESSAGE((res.rejected.empty()), ("no route rejected (both interfaces resolve)"));
+  CHECK_MESSAGE((res.routesAdded == 2), ("two routes wired through the interface field"));
 
   ctx.buildSceneGraph(scene);
   ctx.postEvent(source.get(), "translation", std::any(SFVec3f{1, 2, 3}));
@@ -81,26 +57,23 @@ void test_unmapped_inputoutput_relays() {
   auto stored = doc.scene.authorFields->getValue(*relay, "value");
   const SFVec3f v = stored.has_value() ? std::any_cast<SFVec3f>(stored)
                                        : SFVec3f{-1, -1, -1};
-  check(v.x == 1.f && v.y == 2.f && v.z == 3.f,
-        "route in set the unconnected interface field");
+  CHECK_MESSAGE((v.x == 1.f && v.y == 2.f && v.z == 3.f), ("route in set the unconnected interface field"));
   const SFVec3f out = dest->getTranslation();
-  check(out.x == 1.f && out.y == 2.f && out.z == 3.f,
-        "route out relayed the changed event to Dest");
+  CHECK_MESSAGE((out.x == 1.f && out.y == 2.f && out.z == 3.f), ("route out relayed the changed event to Dest"));
 }
 
 void test_unconnected_keeps_default() {
   auto doc = x3d::codec::parseDocument(kRelayXml, x3d::codec::Encoding::XML);
   Scene &scene = doc.scene;
   auto relay = scene.resolve("RelayNode");
-  check(relay != nullptr, "Relay primary expanded");
+  CHECK_MESSAGE((relay != nullptr), ("Relay primary expanded"));
   if (!relay) return;
 
   // A fieldValue override replaces the interface default.
   auto stored = doc.scene.authorFields->getValue(*relay, "value");
   const SFVec3f v = stored.has_value() ? std::any_cast<SFVec3f>(stored)
                                        : SFVec3f{-1, -1, -1};
-  check(v.x == 0.f && v.y == 0.f && v.z == 0.f,
-        "unconnected field keeps its interface default 0 0 0");
+  CHECK_MESSAGE((v.x == 0.f && v.y == 0.f && v.z == 0.f), ("unconnected field keeps its interface default 0 0 0"));
 
   // A matched fieldValue override is the field's initial value.
   const std::string xml = R"(<X3D version='4.0'><Scene>
@@ -111,16 +84,15 @@ void test_unconnected_keeps_default() {
 </Scene></X3D>)";
   auto doc2 = x3d::codec::parseDocument(xml, x3d::codec::Encoding::XML);
   auto r2 = doc2.scene.resolve("R");
-  check(r2 != nullptr, "override Relay primary expanded");
+  CHECK_MESSAGE((r2 != nullptr), ("override Relay primary expanded"));
   if (!r2) return;
   auto s2 = doc2.scene.authorFields->getValue(*r2, "value");
   const SFVec3f v2 = s2.has_value() ? std::any_cast<SFVec3f>(s2)
                                     : SFVec3f{-1, -1, -1};
-  check(v2.x == 4.f && v2.y == 5.f && v2.z == 6.f,
-        "fieldValue override seeds the unconnected field");
+  CHECK_MESSAGE((v2.x == 4.f && v2.y == 5.f && v2.z == 6.f), ("fieldValue override seeds the unconnected field"));
 }
 
-// An IS-connected field must still route through its body clone, not the new
+// An is-connected field must still route through its body clone, not the new
 // independent-storage fallback.
 const char *kMappedXml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Mapped'><ProtoInterface>
@@ -141,32 +113,27 @@ void test_is_connected_unchanged() {
   auto source = std::dynamic_pointer_cast<Transform>(scene.resolve("Source"));
   auto mapped = std::dynamic_pointer_cast<Transform>(scene.resolve("M"));
   auto dest = std::dynamic_pointer_cast<Transform>(scene.resolve("Dest"));
-  check(source && mapped && dest, "Mapped scene expanded");
+  CHECK_MESSAGE((source && mapped && dest), ("Mapped scene expanded"));
   if (!(source && mapped && dest)) return;
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   BridgeResult res = buildRoutes(scene, ctx);
-  check(res.rejected.empty(), "mapped: routes resolve through the IS redirect");
-  check(res.routesAdded == 2, "mapped: two routes wired");
+  CHECK_MESSAGE((res.rejected.empty()), ("mapped: routes resolve through the IS redirect"));
+  CHECK_MESSAGE((res.routesAdded == 2), ("mapped: two routes wired"));
 
   ctx.postEvent(source.get(), "translation", std::any(SFVec3f{7, 8, 9}));
   ctx.tick(0.0);
   const SFVec3f out = dest->getTranslation();
-  check(out.x == 7.f && out.y == 8.f && out.z == 9.f,
-        "IS-connected field still relays through its body clone");
-  // The IS-mapped field forwards onto the primary Transform.translation, not an
+  CHECK_MESSAGE((out.x == 7.f && out.y == 8.f && out.z == 9.f), ("IS-connected field still relays through its body clone"));
+  // The is-mapped field forwards onto the primary Transform.translation, not an
   // independent store entry.
   const SFVec3f body = mapped->getTranslation();
-  check(body.x == 7.f && body.y == 8.f && body.z == 9.f,
-        "IS-connected value lands on the body field");
+  CHECK_MESSAGE((body.x == 7.f && body.y == 8.f && body.z == 9.f), ("IS-connected value lands on the body field"));
 }
-
-// -------------------------------------------------------------------------
 // Risk: independent-storage registration must not overwrite or duplicate an
 // unrelated instance's entry. Two sibling nested instances of the same
 // prototype (distinct primaries), plus the enclosing Outer's own unconnected
 // field, must each keep independent storage; a second Outer must be isolated.
-// -------------------------------------------------------------------------
 const char *kNestedXml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -198,56 +165,48 @@ void test_nested_siblings_do_not_overwrite() {
   auto o2 = std::dynamic_pointer_cast<Group>(scene.resolve("O2"));
   auto driver = std::dynamic_pointer_cast<Transform>(scene.resolve("Driver"));
   auto external = std::dynamic_pointer_cast<Transform>(scene.resolve("External"));
-  check(o1 && o2 && driver && external, "nested: nodes expanded");
+  CHECK_MESSAGE((o1 && o2 && driver && external), ("nested: nodes expanded"));
   if (!(o1 && o2 && driver && external) || o1->getChildren().size() != 3 ||
       o2->getChildren().size() != 3) {
-    check(false, "nested: each Outer has three ordered children");
+    CHECK_MESSAGE((false), ("nested: each Outer has three ordered children"));
     return;
   }
   auto a1 = std::dynamic_pointer_cast<Group>(o1->getChildren()[0]);
   auto b1 = std::dynamic_pointer_cast<Group>(o1->getChildren()[2]);
   auto a2 = std::dynamic_pointer_cast<Group>(o2->getChildren()[0]);
   auto b2 = std::dynamic_pointer_cast<Group>(o2->getChildren()[2]);
-  check(a1 && b1 && a2 && b2 && a1 != b1 && a1 != a2 && a2 != b2,
-        "nested: four distinct Inner primaries");
+  CHECK_MESSAGE((a1 && b1 && a2 && b2 && a1 != b1 && a1 != a2 && a2 != b2), ("nested: four distinct Inner primaries"));
   if (!(a1 && b1 && a2 && b2)) return;
 
   // Every unconnected interface field exists on its own instance.
-  check(storedVec3(*a1, "shift", *doc.scene.authorFields).x == 0.f &&
-            storedVec3(*b1, "shift", *doc.scene.authorFields).x == 0.f,
-        "nested: sibling Inner primaries each own an independent 'shift'");
-  check(storedVec3(*a2, "shift", *doc.scene.authorFields).x == 0.f &&
-            storedVec3(*b2, "shift", *doc.scene.authorFields).x == 0.f,
+  CHECK_MESSAGE((storedVec3(*a1, "shift", *doc.scene.authorFields).x == 0.f &&
+            storedVec3(*b1, "shift", *doc.scene.authorFields).x == 0.f), ("nested: sibling Inner primaries each own an independent 'shift'"));
+  CHECK_MESSAGE((storedVec3(*a2, "shift", *doc.scene.authorFields).x == 0.f &&
+            storedVec3(*b2, "shift", *doc.scene.authorFields).x == 0.f),
         "nested: second Outer's Inner primaries own independent 'shift'");
-  check(storedVec3(*o1, "top", *doc.scene.authorFields).x == 0.f &&
-            storedVec3(*o2, "top", *doc.scene.authorFields).x == 0.f,
-        "nested: each Outer primary owns its own 'top' (no clobber)");
+  CHECK_MESSAGE((storedVec3(*o1, "top", *doc.scene.authorFields).x == 0.f &&
+            storedVec3(*o2, "top", *doc.scene.authorFields).x == 0.f), ("nested: each Outer primary owns its own 'top' (no clobber)"));
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   BridgeResult res = buildRoutes(scene, ctx);
-  check(res.rejected.empty(), "nested: all routes resolve");
+  CHECK_MESSAGE((res.rejected.empty()), ("nested: all routes resolve"));
   // buildRoutes counts the SCENE-level routes only (Driver->O1.top and
   // O1.top->External); the A->Ord->B routes inside each Outer body are not part
   // of this count. Observed on the host build; the behavior checks below carry
   // the real assertions.
-  check(res.routesAdded == 2, "nested: the two scene-level routes are added");
+  CHECK_MESSAGE((res.routesAdded == 2), ("nested: the two scene-level routes are added"));
 
   ctx.buildSceneGraph(scene);
   ctx.postEvent(driver.get(), "translation", std::any(SFVec3f{9, 0, 0}));
   ctx.tick(0.0);
-  check(storedVec3(*o1, "top", *doc.scene.authorFields).x == 9.f,
-        "nested: O1.top received the route");
-  check(storedVec3(*o2, "top", *doc.scene.authorFields).x == 0.f,
+  CHECK_MESSAGE((storedVec3(*o1, "top", *doc.scene.authorFields).x == 9.f), ("nested: O1.top received the route"));
+  CHECK_MESSAGE((storedVec3(*o2, "top", *doc.scene.authorFields).x == 0.f),
         "nested: O2.top untouched (isolated)");
-  check(external->getTranslation().x == 9.f,
-        "nested: O1.top_changed relayed the changed event out");
+  CHECK_MESSAGE((external->getTranslation().x == 9.f), ("nested: O1.top_changed relayed the changed event out"));
 }
-
-// -------------------------------------------------------------------------
-// Risk: an Outer whose primary IS a nested instance's primary (shared pointer)
-// must have BOTH interfaces' independent fields present on the single node —
+// Risk: an Outer whose primary is a nested instance's primary (shared pointer)
+// must have both interfaces' independent fields present on the single node —
 // the outer registration must not drop the inner's entry.
-// -------------------------------------------------------------------------
 const char *kSharedPrimaryXml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='inner' type='SFVec3f' accessType='inputOutput' value='1 1 1'/>
@@ -262,20 +221,16 @@ void test_shared_primary_keeps_both() {
   auto doc = x3d::codec::parseDocument(kSharedPrimaryXml,
                                        x3d::codec::Encoding::XML);
   auto primary = doc.scene.resolve("O");
-  check(primary != nullptr, "shared: Outer primary expanded");
+  CHECK_MESSAGE((primary != nullptr), ("shared: Outer primary expanded"));
   if (!primary) return;
-  check(storedVec3(*primary, "inner", *doc.scene.authorFields).x == 1.f &&
-            storedVec3(*primary, "inner", *doc.scene.authorFields).y == 1.f,
-        "shared: nested Inner's independent field survives on the shared node");
-  check(storedVec3(*primary, "outer", *doc.scene.authorFields).x == 2.f &&
-            storedVec3(*primary, "outer", *doc.scene.authorFields).y == 2.f,
+  CHECK_MESSAGE((storedVec3(*primary, "inner", *doc.scene.authorFields).x == 1.f &&
+            storedVec3(*primary, "inner", *doc.scene.authorFields).y == 1.f), ("shared: nested Inner's independent field survives on the shared node"));
+  CHECK_MESSAGE((storedVec3(*primary, "outer", *doc.scene.authorFields).x == 2.f &&
+            storedVec3(*primary, "outer", *doc.scene.authorFields).y == 2.f),
         "shared: Outer's own independent field present on the same node");
 }
-
-// -------------------------------------------------------------------------
 // EXTERNPROTO: an instance whose declaration comes from the resolver still
 // registers its unconnected interface fields and routes through them.
-// -------------------------------------------------------------------------
 void test_externproto_unconnected_field() {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "ExtRelay";
@@ -304,20 +259,18 @@ void test_externproto_unconnected_field() {
   auto source = std::dynamic_pointer_cast<Transform>(scene.resolve("Source"));
   auto e = scene.resolve("E");
   auto dest = std::dynamic_pointer_cast<Transform>(scene.resolve("Dest"));
-  check(source && e && dest, "extern: nodes expanded");
+  CHECK_MESSAGE((source && e && dest), ("extern: nodes expanded"));
   if (!(source && e && dest)) return;
-  check(storedVec3(*e, "value", *doc.scene.authorFields).x == 0.f,
-        "extern: unconnected interface field registered with its default");
+  CHECK_MESSAGE((storedVec3(*e, "value", *doc.scene.authorFields).x == 0.f), ("extern: unconnected interface field registered with its default"));
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   BridgeResult res = buildRoutes(scene, ctx);
-  check(res.rejected.empty(), "extern: routes resolve through the EXTERN interface");
-  check(res.routesAdded == 2, "extern: two routes wired");
+  CHECK_MESSAGE((res.rejected.empty()), ("extern: routes resolve through the EXTERN interface"));
+  CHECK_MESSAGE((res.routesAdded == 2), ("extern: two routes wired"));
   ctx.postEvent(source.get(), "translation", std::any(SFVec3f{3, 6, 9}));
   ctx.tick(0.0);
-  check(storedVec3(*e, "value", *doc.scene.authorFields).x == 3.f,
-        "extern: route in set the field");
-  check(dest->getTranslation().x == 3.f && dest->getTranslation().z == 9.f,
+  CHECK_MESSAGE((storedVec3(*e, "value", *doc.scene.authorFields).x == 3.f), ("extern: route in set the field"));
+  CHECK_MESSAGE((dest->getTranslation().x == 3.f && dest->getTranslation().z == 9.f),
         "extern: changed event relayed out");
 }
 
@@ -331,12 +284,6 @@ TEST_CASE("proto_interface_state_test") {
   test_shared_primary_keeps_both();
   test_externproto_unconnected_field();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false);
-    return;
-  }
-  std::cout << "all proto interface-state tests passed\n";
 }
 
 TEST_CASE("unconnected PROTO MFNode interface relays node identity and empty values") {

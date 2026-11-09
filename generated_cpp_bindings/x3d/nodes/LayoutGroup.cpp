@@ -1,4 +1,3 @@
-// LayoutGroup.cpp
 #include "x3d/nodes/LayoutGroup.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// HAnimSegment.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,97 +28,54 @@ using namespace x3d::core;
  */
 class HAnimSegment : public virtual X3DGroupingNode {
 public:
-  /**
-   * @brief Default constructor for HAnimSegment
-   */
   HAnimSegment() = default;
 
-  /**
-   * @brief Destructor for HAnimSegment
-   */
   ~HAnimSegment() = default;
 
-  /**
-   * @brief Get the default value for centerOfMass
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultCenterOfMass() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for coord
-   * @return SFNode The default value
-   */
   static SFNode getDefaultCoord() { return nullptr; }
 
-  /**
-   * @brief Get the default value for mass
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultMass() { return 0; }
 
-  /**
-   * @brief Get the default value for momentsOfInertia
-   * @return MFFloat The default value
-   */
   static MFFloat getDefaultMomentsOfInertia() {
     return std::vector<float>{0, 0, 0, 0, 0, 0, 0, 0, 0};
   }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesHAnimSegment";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "HAnim"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of centerOfMass. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Location within segment of center of mass.
-   * @return const SFVec3f& The current value of centerOfMass.
    */
   const SFVec3f &getCenterOfMass() const { return _centerOfMass; }
 
   /**
-   * @brief Sets the value of centerOfMass. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Location within segment of center of mass.
-   * @param value The new value for centerOfMass.
    */
   void setCenterOfMass(const SFVec3f &value) { _centerOfMass = value; }
 
   void setCenterOfMass(SFVec3f &&value) { _centerOfMass = std::move(value); }
 
   /**
-   * @brief Gets the value of coord. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details the coord field is used for HAnimSegment objects that have
    * deformable meshes and shall contain coordinates referenced from the
    * IndexedFaceSet for the paarent HAnimSegment object.
-   * @return const SFNode& The current value of coord.
    */
   const SFNode &getCoord() const { return _coord; }
 
   /**
-   * @brief Acceptable node types for the coord field.
    * @details Permitted X3D node types: Coordinate, CoordinateDouble
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableCoordNodeTypes() {
     static const std::vector<std::string> types = {"Coordinate",
@@ -128,46 +84,40 @@ public:
   }
 
   /**
-   * @brief Sets the value of coord. AccessType: inputOutput
+   * Access: inputOutput.
    * @details the coord field is used for HAnimSegment objects that have
    * deformable meshes and shall contain coordinates referenced from the
    * IndexedFaceSet for the paarent HAnimSegment object.
-   * @param value The new value for coord.
    */
   void setCoord(const SFNode &value) { _coord = value; }
 
   void setCoord(SFNode &&value) { _coord = std::move(value); }
 
   /**
-   * @brief Gets the value of description. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @return const SFString& The current value of description.
    */
   const SFString &getDescription() const { return _description; }
 
   /**
-   * @brief Sets the value of description. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Author-provided prose that describes intended purpose of this
    * node.
-   * @param value The new value for description.
    */
   void setDescription(const SFString &value) { _description = value; }
 
   void setDescription(SFString &&value) { _description = std::move(value); }
 
   /**
-   * @brief Gets the value of displacers. AccessType: inputOutput
+   * MFNode; access: inputOutput. Borrows the stored value.
    * @details the displacers field stores HAnimDisplacer objects for a
    * particular HAnimSegment object.
-   * @return const MFNode& The current value of displacers.
    */
   const MFNode &getDisplacers() const { return _displacers; }
 
   /**
-   * @brief Acceptable node types for the displacers field.
    * @details Permitted X3D node types: HAnimDisplacer
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableDisplacersNodeTypes() {
     static const std::vector<std::string> types = {"HAnimDisplacer"};
@@ -175,28 +125,25 @@ public:
   }
 
   /**
-   * @brief Sets the value of displacers. AccessType: inputOutput
+   * Access: inputOutput.
    * @details the displacers field stores HAnimDisplacer objects for a
    * particular HAnimSegment object.
-   * @param value The new value for displacers.
    */
   void setDisplacers(const MFNode &value) { _displacers = value; }
 
   void setDisplacers(MFNode &&value) { _displacers = std::move(value); }
 
   /**
-   * @brief Gets the value of mass. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Total mass of the segment, 0 if not available, defined in mass
    * base units (default is kilograms).
-   * @return const SFFloat& The current value of mass.
    */
   const SFFloat &getMass() const { return _mass; }
 
   /**
-   * @brief Sets the value of mass. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Total mass of the segment, 0 if not available, defined in mass
    * base units (default is kilograms).
-   * @param value The new value for mass.
    */
   void setMass(const SFFloat &value) {
 
@@ -206,25 +153,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of mass (runtime/reader ingest path).
-   * @details Assigns without the range check setMass() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setMass() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setMass() for range validation.
    */
   void setMassUnchecked(const SFFloat &value) { _mass = value; }
 
   /**
-   * @brief Gets the value of momentsOfInertia. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details 3x3 moments of inertia matrix.
-   * @return const MFFloat& The current value of momentsOfInertia.
    */
   const MFFloat &getMomentsOfInertia() const { return _momentsOfInertia; }
 
   /**
-   * @brief Sets the value of momentsOfInertia. AccessType: inputOutput
+   * Access: inputOutput.
    * @details 3x3 moments of inertia matrix.
-   * @param value The new value for momentsOfInertia.
    */
   void setMomentsOfInertia(const MFFloat &value) {
 
@@ -241,60 +183,41 @@ public:
   }
 
   /**
-   * @brief Non-validating write of momentsOfInertia (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setMomentsOfInertia() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setMomentsOfInertia() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setMomentsOfInertia() for range validation.
    */
   void setMomentsOfInertiaUnchecked(const MFFloat &value) {
     _momentsOfInertia = value;
   }
 
   /**
-   * @brief Gets the value of name. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Unique name attribute must be defined so that HAnimSegment node
    * can be identified at run time for animation purposes.
-   * @return const SFString& The current value of name.
    */
   const SFString &getName() const { return _name; }
 
   /**
-   * @brief Sets the value of name. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Unique name attribute must be defined so that HAnimSegment node
    * can be identified at run time for animation purposes.
-   * @param value The new value for name.
    */
   void setName(const SFString &value) { _name = value; }
 
   void setName(SFString &&value) { _name = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "HAnimSegment").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -333,45 +256,17 @@ private:
     }
   }
 
-  /**
-   * @brief Member variable for centerOfMass.
-   */
-
   SFVec3f _centerOfMass{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for coord.
-   */
 
   SFNode _coord{nullptr};
 
-  /**
-   * @brief Member variable for description.
-   */
-
   SFString _description{};
-
-  /**
-   * @brief Member variable for displacers.
-   */
 
   MFNode _displacers{};
 
-  /**
-   * @brief Member variable for mass.
-   */
-
   SFFloat _mass{0};
 
-  /**
-   * @brief Member variable for momentsOfInertia.
-   */
-
   MFFloat _momentsOfInertia{std::vector<float>{0, 0, 0, 0, 0, 0, 0, 0, 0}};
-
-  /**
-   * @brief Member variable for name.
-   */
 
   SFString _name{};
 };

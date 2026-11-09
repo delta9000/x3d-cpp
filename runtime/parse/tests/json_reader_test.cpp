@@ -134,11 +134,8 @@ void collect(const std::shared_ptr<X3DNode> &n,
     }
   }
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 1: HelloWorld.json — header metadata, MFString, nested
 // SF/MFNode children, DEF/USE shared Material identity.
-// ---------------------------------------------------------------------------
 void testHelloWorldFixture() {
   std::string text = readFile(g_dataDir + "/HelloWorld.json");
   JsonReader reader;
@@ -165,7 +162,7 @@ void testHelloWorldFixture() {
 
   check(doc.scene.rootNodes.size() == 3, "hello: three root nodes");
 
-  // DEF/USE: the DEF'd Material and the USE'd Material must be the SAME object.
+  // DEF/USE: the DEF'd Material and the USE'd Material must be the same object.
   std::vector<std::shared_ptr<Material>> mats;
   for (const auto &root : doc.scene.rootNodes)
     collect<Material>(root, mats);
@@ -197,11 +194,8 @@ void testHelloWorldFixture() {
       break;
     }
 }
-
-// ---------------------------------------------------------------------------
 // Corpus fixture 2: spinning_cube.json — DEF/USE, ROUTEs, enums/bools, MF
 // arrays (key/keyValue), TimeSensor + OrientationInterpolator animation wiring.
-// ---------------------------------------------------------------------------
 void testSpinningCubeFixture() {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
   JsonReader reader;
@@ -210,7 +204,6 @@ void testSpinningCubeFixture() {
   check(doc.version == "4.0", "cube: version 4.0");
   check(doc.scene.rootNodes.size() == 6, "cube: six root nodes");
 
-  // ROUTEs recovered (writer now emits them; reader reads them).
   check(doc.scene.routes.size() == 2, "cube: two ROUTEs recovered");
   if (doc.scene.routes.size() == 2) {
     const auto &r0 = doc.scene.routes[0];
@@ -259,11 +252,8 @@ void testSpinningCubeFixture() {
             "cube: keyValue[2].angle ~ 2pi (MFRotation element)");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Round-trip symmetry: JsonWriter(JsonReader(text)) == text, byte-for-byte,
 // for both fixtures. This is the load-bearing read/write symmetry assertion.
-// ---------------------------------------------------------------------------
 void testRoundTripByteStable(const std::string &name) {
   std::string text = readFile(g_dataDir + "/" + name);
   JsonReader reader;
@@ -273,10 +263,7 @@ void testRoundTripByteStable(const std::string &name) {
   check(again == text,
         "round-trip: JsonWriter(JsonReader(" + name + ")) is byte-stable");
 }
-
-// ---------------------------------------------------------------------------
 // Hand-authored snippets: isolate specific value shapes and scene members.
-// ---------------------------------------------------------------------------
 void testHandAuthoredSnippets() {
   // SFString vs MFString (with an embedded escaped quote), bool, MF numeric.
   {
@@ -361,11 +348,8 @@ void testHandAuthoredSnippets() {
           "snippet: scene EXPORT member recovered");
   }
 }
-
-// ---------------------------------------------------------------------------
 // Front-door dispatch: parseDocument with no hint must sniff JSON by content
 // and produce the same document the explicit JsonReader does.
-// ---------------------------------------------------------------------------
 void testFrontDoorDispatch() {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
   check(codec::sniffByContent(text) == Encoding::JSON,

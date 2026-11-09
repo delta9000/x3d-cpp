@@ -1,8 +1,8 @@
 // runtime/io/file/FileResolver.hpp
 // Local-file AssetResolver backend (Networking level 1: file: protocol).
-// Answers Ready when `url` resolves inside the SEC-3 confinement root
+// Answers Ready when `url` resolves inside the confinement root
 // (ADR-0038, x3d::codec::confineLocalIncludePath) and is readable; Failed
-// otherwise. Never Pending — v1 local I/O is synchronous.
+// otherwise. Never Pending: local I/O is synchronous.
 #ifndef X3D_RUNTIME_IO_FILE_FILE_RESOLVER_HPP
 #define X3D_RUNTIME_IO_FILE_FILE_RESOLVER_HPP
 

@@ -1,8 +1,8 @@
-// sound_dynamics_compressor_test.cpp — the §16.4.9 DynamicsCompressor (SND-5),
+// sound_dynamics_compressor_test.cpp — the §16.4.9 DynamicsCompressor ,
 // in two tiers following sound_system_test.cpp:
-//   (a) RECORDING tier: a §16 Oscillator -> DynamicsCompressor -> AudioDestination
+// (a) recording tier: a §16 Oscillator -> DynamicsCompressor -> AudioDestination
 //       scene -> SoundSystem.attach(RecordingBackend) -> assert the compressor
-//       subtree is BUILT (3 nodes, 2 child->parent connections), not skipped.
+//       subtree is built (3 nodes, 2 child->parent connections), not skipped.
 //   (b) DSP tier (BuiltinDspBackend, direct NodeParams graph — the waveform
 //       seam carries Square, which SoundSystem's §16 OscillatorSource mapping
 //       does not): a SQUARE wave has a constant |x| level, so the gain computer
@@ -102,7 +102,7 @@ static std::vector<float> renderDirect(float oscAmp, float threshold,
 }
 
 int main() {
-  // ── (a) RECORDING tier: the compressor and its subtree are built.
+  // (a) recording tier: the compressor and its subtree are built.
   {
     CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
     auto rec = std::make_shared<RecordingBackend>();
@@ -117,7 +117,7 @@ int main() {
                  rec->creates.size(), rec->connects.size());
   }
 
-  // ── (b) DSP: a below-threshold signal passes ~unchanged.
+  // (b) DSP: a below-threshold signal passes ~unchanged.
   {
     // A square of amplitude 0.1 sits at -20 dB, below the -12 dB threshold:
     // the gain computer stays at unity, so the RMS is untouched.
@@ -128,7 +128,7 @@ int main() {
     CHECK(std::fabs(r - 0.1) < 0.002, "below-threshold signal passes unchanged");
   }
 
-  // ── (b2) DSP: a steady above-threshold signal settles at the ratio law.
+  // (b2) DSP: a steady above-threshold signal settles at the ratio law.
   {
     // Constant |x| = 0.5 (-6.02 dB) against the -12 dB threshold: after the
     // attack settles, the applied gain is (1/12 - 1) * 5.98 dB = -5.48 dB
@@ -147,7 +147,7 @@ int main() {
           "settled level matches threshold + (level - threshold)/ratio");
   }
 
-  // ── (b3) DSP: enabled=false passes the input through unchanged.
+  // (b3) DSP: enabled=false passes the input through unchanged.
   {
     const std::vector<float> buf = renderDirect(0.5f, -12.0f, false);
     const double r = rms(buf);
@@ -155,7 +155,7 @@ int main() {
     CHECK(std::fabs(r - 0.5) < 0.005, "disabled compressor passes through");
   }
 
-  // ── (c) SoundSystem end-to-end: a sine through the full §16 path.
+  // (c) SoundSystem end-to-end: a sine through the full §16 path.
   {
     CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
     auto dsp = std::make_shared<BuiltinDspBackend>();

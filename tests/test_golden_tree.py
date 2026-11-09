@@ -3,35 +3,18 @@
 Regenerates the ENTIRE generated C++ source tree into a temp dir and asserts
 every generated source file (*.hpp and *.cpp) matches the committed
 generated_cpp_bindings/ byte-for-byte (in both directions: no missing, no extra,
-no drifted files). This is the pytest twin of scripts/check_golden.sh, so
-`uv run pytest` alone catches codegen drift.
+no drifted files). Both `uv run pytest` and scripts/check_golden.sh use this comparator.
 
 Codegen changes are intentional: change a template/emitter, regenerate with
 `uv run x3d-cpp-gen --out generated_cpp_bindings`, and commit the new sources.
 """
 
-import os
-import subprocess
-from importlib.resources import files
 from pathlib import Path
 
-import pytest
-
-SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 
-# Byte-for-byte equality only holds with the pinned formatter. Every test here
-# takes the pinned_clang_format fixture (conftest.py), which skips locally /
-# fails under CI without it, and hands its path to the generator and
-# check_golden.sh through CLANG_FORMAT.
-
-
-def _env_with(clang_format: str) -> dict:
-    return {**os.environ, "CLANG_FORMAT": clang_format}
-
-
-def test_golden_tree_matches(generated_tree, pinned_clang_format):
+def test_golden_tree_matches(pinned_clang_format, generated_tree):
     # generated_tree (conftest.py) used the pinned formatter, which the
     # pinned_clang_format fixture guarantees is available.
     assert GOLDEN_DIR.is_dir(), f"golden dir missing: {GOLDEN_DIR}"
@@ -62,18 +45,4 @@ def test_golden_tree_matches(generated_tree, pinned_clang_format):
     assert not drifted, (
         "regenerated sources differ from committed golden "
         f"(regenerate + commit): {drifted}"
-    )
-
-
-def test_check_golden_script_passes(pinned_clang_format):
-    """The shell drift gate exits 0 on a clean tree (covers the CI script too)."""
-    script = REPO_ROOT / "scripts" / "check_golden.sh"
-    assert script.exists(), f"missing {script}"
-    result = subprocess.run(
-        ["bash", str(script)], cwd=str(REPO_ROOT),
-        env=_env_with(pinned_clang_format), capture_output=True, text=True,
-    )
-    assert result.returncode == 0, (
-        f"check_golden.sh reported drift on a clean tree:\n"
-        f"{result.stdout}\n{result.stderr}"
     )

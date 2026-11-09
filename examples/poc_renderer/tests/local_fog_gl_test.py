@@ -1,4 +1,4 @@
-"""Headless GL regression for LocalFog in the OpenGL PoC (REQ-LOCALFOG, §24.4.3).
+"""Headless GL regression for LocalFog in the OpenGL PoC (§24.4.3).
 
 A LocalFog fogs only the geometry of its enclosing grouping node, in place of
 the bound global Fog. Two boxes stand side by side, both well past a short
@@ -13,7 +13,7 @@ each program, and depths 0 and 1 at its two sides fog the left edge less than
 the right.
 """
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -35,15 +35,8 @@ def render(tmp, name, material, local_enabled):
 </Group></Transform>
 <Transform translation="1.5 0 0">{box}</Transform>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(eye_x):
         scale = (height / 2) / ((DISTANCE - FRONT) * 0.41421356)
@@ -75,15 +68,8 @@ def render_depths(tmp, name, material, depths):
 <Coordinate point="-1 -1 0 1 -1 0 1 1 0 -1 1 0"/>{fog}
 </IndexedFaceSet></Shape>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(fraction):  # fraction of the window width, on the middle row.
         offset = ((height // 2) * width + round(width * fraction)) * 3

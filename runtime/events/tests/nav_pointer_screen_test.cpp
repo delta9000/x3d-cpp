@@ -1,8 +1,7 @@
 #include "doctest/doctest.h"
 // nav_pointer_screen_test.cpp — regression for the interactive mouse-nav blow-up.
-//
-// EXAMINE/FLY drag MUST be driven by the camera-INDEPENDENT normalized screen
-// pointer (ctx.setPointerScreen), NOT by the world-space ray origin. The world
+// `EXAMINE`/`FLY` drag must be driven by the camera-independent normalized screen
+// pointer (ctx.setPointerScreen), not by the world-space ray origin. The world
 // ray is recomputed from the camera each frame, so the same screen cursor maps
 // to a different world point whenever the camera rotates — deriving the drag
 // delta from it creates a runaway positive-feedback loop (a single click spins
@@ -82,7 +81,7 @@ TEST_CASE("examine drag follows the screen pointer and ignores world-ray motion"
   w->ctx.tick(0.0);
   const SFVec3f c0 = w->ctx.cameraWorldPosition();
 
-  // (a) A real screen-pointer drag MUST orbit — even though the world ray below
+  // (a) A real screen-pointer drag must orbit — even though the world ray below
   //     is held constant. Navigation follows the screen pointer.
   w->ctx.setPointerScreen(0.6f, 0.5f);
   w->ctx.setPointer(Ray{{0, 0, 10}, {0, 0, -1}}); // world ray UNCHANGED
@@ -90,9 +89,9 @@ TEST_CASE("examine drag follows the screen pointer and ignores world-ray motion"
   const SFVec3f c1 = w->ctx.cameraWorldPosition();
   CHECK(dist(c0, c1) > 1e-3f); // orbited from the screen drag alone
 
-  // (b) The screen pointer held STILL while the world ray jumps wildly (exactly
+  // (b) The screen pointer held still while the world ray jumps wildly (exactly
   //     what happens when the camera rotates and the consumer re-unprojects the
-  //     same cursor) MUST NOT orbit — this is the runaway-feedback regression.
+  //     same cursor) must not orbit — this is the runaway-feedback regression.
   w->ctx.setPointerScreen(0.6f, 0.5f);                  // unchanged
   w->ctx.setPointer(Ray{{0.37f, -0.21f, 10}, {0, 0, -1}}); // world-ray jump
   w->ctx.tick(0.032);

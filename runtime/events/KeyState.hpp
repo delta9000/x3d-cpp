@@ -2,9 +2,8 @@
 // Holds the current set of depressed key codes and a monotonic revision
 // counter that is bumped by every press/release so NavigationSystem can
 // cheaply detect "changed since last tick" without scanning the full set.
-//
 // Key codes are plain ints (consumer-defined; e.g. GLFW_KEY_* constants or
-// browser virtual-key values). Pure data + setters; no logic. (M2D PDS-4.)
+// browser virtual-key values). Pure data + setters; no logic.
 #ifndef X3D_RUNTIME_KEY_STATE_HPP
 #define X3D_RUNTIME_KEY_STATE_HPP
 
@@ -81,12 +80,8 @@ struct KeyState {
     }
     /// Drop consumed events (called once per tick by KeyDeviceSensorSystem).
     void clearEvents() { events.clear(); }
-
-    // ------------------------------------------------------------------
     // Setter — bumps revision on every call (unconditional, matches
     // PointerState::setRay / setButtonDown convention).
-    // ------------------------------------------------------------------
-
     /**
      * @brief Record a key press (down=true) or release (down=false).
      * @details Idempotent w.r.t. the held-set (pressing an already-held key

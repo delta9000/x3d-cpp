@@ -1,4 +1,3 @@
-// X3DInterpolatorNode.cpp
 #include "x3d/nodes/X3DInterpolatorNode.hpp"
 
 namespace x3d::nodes {

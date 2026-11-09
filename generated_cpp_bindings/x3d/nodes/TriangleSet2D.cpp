@@ -1,4 +1,3 @@
-// TriangleSet2D.cpp
 #include "x3d/nodes/TriangleSet2D.hpp"
 
 namespace x3d::nodes {

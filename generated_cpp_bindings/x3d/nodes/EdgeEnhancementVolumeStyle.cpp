@@ -1,4 +1,3 @@
-// EdgeEnhancementVolumeStyle.cpp
 #include "x3d/nodes/EdgeEnhancementVolumeStyle.hpp"
 
 namespace x3d::nodes {

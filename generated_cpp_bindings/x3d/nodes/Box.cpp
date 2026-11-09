@@ -1,4 +1,3 @@
-// Box.cpp
 #include "x3d/nodes/Box.hpp"
 
 namespace x3d::nodes {

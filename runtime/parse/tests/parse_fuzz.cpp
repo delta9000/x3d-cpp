@@ -1,19 +1,5 @@
-// parse_fuzz.cpp — libFuzzer harness for sdk::parseDocument.
-//
-// Drives the SDK's parsing front door with arbitrary bytes, exercising every
-// encoding branch (XML / JSON / VRML via sniffing, with explicit encoding hints)
-// on fuzz input. The harness does not assert on the output — only that the
-// parser does not crash, leak, or hit UB. ASan + UBSan (the project's `san`
-// build mode) catch the corresponding memory + UB regressions in CI.
-//
-// Build with:
-//   cmake --preset fuzz                      # Clang + libFuzzer + ASan
-//   cmake --build build-fuzz --target x3d_parse_fuzz
-//   ./build-fuzz/x3d_parse_fuzz corpus/      # explore, indefinitely
-//   # CI runs a short bounded run (--max_total_time=60) for regression coverage.
-//
-// Scope: parseDocument() only. The seam-level AssetResolver + inflate/decode
-// paths are exercised by separate harnesses behind their own fuzz targets.
+// Feed arbitrary bytes to encoding detection and each reader. Malformed-input
+// exceptions are expected; crashes and sanitizer reports are failures.
 
 #include <cstddef>
 #include <cstdint>

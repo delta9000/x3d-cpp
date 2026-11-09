@@ -1,6 +1,6 @@
 ---
 title: Pointing-Device Sensor System
-summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the M2.5 input seam.
+summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the pointer input seam.
 tags: [subsystem, pointing, touchsensor, drag, plane-sensor, sphere-sensor, cylinder-sensor, events]
 updated: 2026-09-26
 related:
@@ -20,9 +20,9 @@ This subsystem drives the four X3D pointing-device sensors — `TouchSensor`, `P
 
 It owns three concerns:
 
-1. **Pick resolution.** Each pointer update asks `PickSystem` for the closest hit on an active `Switch`/`LOD` path, then finds every enabled sensor tied at the lowest group on that path (§20.2.1, §20.2.3).
-2. **Grab lifecycle.** A button-down edge activates all tied lowest sensors, each with its own drag state; together they own pointer motion until button-up (§20.2.1). Other sensors receive no events during the grab.
-3. **Per-sensor behavior dispatch.** Within the grab the system dispatches to the appropriate pure drag-math function (`planeDrag`, `sphereDrag`, `cylinderDrag`) or emits `TouchSensor` hit outputs. On deactivation it applies `autoOffset` for drag sensors (§20.2.2).
+1. Pick resolution. Each pointer update asks `PickSystem` for the closest hit on an active `Switch`/`LOD` path, then finds every enabled sensor tied at the lowest group on that path (§20.2.1, §20.2.3).
+2. Grab lifecycle. A button-down edge activates all tied lowest sensors, each with its own drag state; together they own pointer motion until button-up (§20.2.1). Other sensors receive no events during the grab.
+3. Per-sensor behavior dispatch. Within the grab the system dispatches to the appropriate pure drag-math function (`planeDrag`, `sphereDrag`, `cylinderDrag`) or emits `TouchSensor` hit outputs. On deactivation it applies `autoOffset` for drag sensors (§20.2.2).
 
 The pure drag geometry lives in three header-only functions under `runtime/events/drag/`; `PointingSensorSystem` itself holds no per-motion geometry — only the cross-tick activation state and the dispatch.
 
@@ -31,7 +31,7 @@ The pure drag geometry lives in three header-only functions under `runtime/event
 | File / directory | Role |
 |---|---|
 | `runtime/events/PointingSensorSystem.hpp` | The stateful `System` subclass that runs each tick; owns grab bookkeeping and dispatch |
-| `runtime/events/PointerState.hpp` | Plain-data snapshot of the pointer for one frame (`Ray`, `buttonDown`, `present`, monotonic `revision`) |
+| `runtime/events/PointerState.hpp` | Plain-data snapshot of the pointer for one frame (`Ray`, `buttonDown`, `present`, monotonic `revision()`) |
 | `runtime/events/drag/PlaneDrag.hpp` | Pure PlaneSensor drag math: tracking-plane intersection + per-component clamp (§20.4.2) |
 | `runtime/events/drag/SphereDrag.hpp` | Pure SphereSensor drag math: virtual-sphere intersection + relative rotation composed with offset (§20.4.3) |
 | `runtime/events/drag/CylinderDrag.hpp` | Pure CylinderSensor drag math: disk/cylinder mode decision + Y-axis angle + clamp (§20.4.1) |
@@ -40,7 +40,7 @@ The pure drag geometry lives in three header-only functions under `runtime/event
 
 ## Interfaces and seams
 
-### Consumer input seam (M2.5)
+### Consumer input seam
 
 The embedder (renderer) drives pointer input between ticks via three methods on `X3DExecutionContext`:
 
@@ -58,12 +58,12 @@ The `Ray` carries a world-space origin and direction. The consumer is responsibl
 
 `PointerState` is a plain struct owned by `X3DExecutionContext`. `PointingSensorSystem` reads it via `ctx.pointerState()` each tick and skips processing when `ps.revision == lastRevision_`.
 
-> **No-sensor pick skip.** `ctx.pick(ps.ray)` is a whole-scene pick; a consumer
+> No-sensor pick skip. `ctx.pick(ps.ray)` is a whole-scene pick; a consumer
 > that re-feeds the pointer every frame (the OpenGL PoC does) would otherwise run it
 > on every tick. The pick is index-backed (see *Lazy pick index* below), so on an
 > unchanged scene it costs only the broad-phase over candidate leaves rather than a
 > full graph walk. `attachInteractive` takes a one-time inventory pass (`attach` over
-> every scene node) and, when it finds **zero** pointing-device sensors, the system
+> every scene node) and, when it finds zero pointing-device sensors, the system
 > skips the pick entirely — the pick could never resolve to a sensor. The skip is
 > conservative: if the inventory was never taken (a test that registers the system
 > directly via `addSystem`), the system picks exactly as before. Regression:
@@ -80,6 +80,45 @@ struct PointerState {
     void setPresent(bool);
 };
 ```
+
+### Host-owned navigation
+
+Set `SessionOptions::pointingSensors = true` to install pointing-device sensors
+without SDK navigation or Anchor activation. `interactive = true` keeps its
+existing meaning: sensors, anchors, and navigation in arbitration order. Setting
+both flags installs the sensors once. Low-level hosts can call
+`attachPointingSensors(scene, ctx)` after building the scene graph.
+
+Before claiming a trigger, use the same resolver that drives sensor activation:
+
+```cpp
+sdk::SessionOptions options;
+options.pointingSensors = true;
+auto session = sdk::RuntimeSession::create(std::move(document), options);
+auto hit = session->context().pick(worldRay);
+auto sensors = session->pointingSensors(hit);
+if (!sensors.empty()) {
+    // Claim the trigger, then feed the pointer ray and button through context().
+}
+```
+
+The query returns every enabled sensor tied at the deepest applicable group,
+including `GeoTouchSensor`, with duplicates removed in child traversal order.
+A miss or geometry with no applicable sensor returns an empty vector. The query
+reads current enablement and works even when neither input system is installed.
+It doesn't emit events, change pointer state, or acquire a grab. It describes a
+fresh press; an existing grab retains its own targets. Changes between query
+and tick can change activation. Anchors aren't pointing sensors.
+
+Use a current pick from this session. Picks and returned node pointers borrow
+scene storage; discard them before removing their nodes or destroying the
+session. Re-pick after scene changes that affect the hit or path. See
+[ADR-0064](../decisions/0064-pointing-without-navigation.md).
+
+The focused cases in `runtime/extract/tests/pointing_without_navigation_test.cpp`
+are registered in `x3d_extract_tests`. They cover installation, opt-in defaults,
+resolution, activation agreement, and absence of SDK navigation. They haven't
+been run for this proposal.
 
 ### PickSystem seam
 
@@ -101,16 +140,20 @@ The `path` field is the root-to-geometry `PathKey` that the resolution walk uses
 
 `ctx.worldOf(node)` (delegating to `PickSystem::worldOf`) retrieves the accumulated world matrix for any node; the system uses it to transform hit point and normal into the sensor's local frame for `hitPoint_changed` / `hitNormal_changed` emission.
 
+The private narrow phase returns an optional hit with distance, normal, and
+texture coordinates. A miss returns an empty optional. The AABB fallback reuses
+the geometry bound for both intersection and the proxy normal.
+
 ### Lazy pick index
 
-`pickClosest` no longer walks the whole scene graph per pick. `PickSystem` owns an index of geometry-bearing placements — **one per PATH**, so a DEF/USE node keeps a distinct entry and world AABB for each placement — and tests them with the same `rayAabb` broad phase and existing `narrowPhase`. The index is built lazily on the first pick and thereafter:
+`pickClosest` no longer walks the whole scene graph per pick. `PickSystem` owns an index of geometry-bearing placements — one per PATH, so a DEF/USE node keeps a distinct entry and world AABB for each placement — and tests them with the same `rayAabb` broad phase and existing `narrowPhase`. The index is built lazily on the first pick and thereafter:
 
-- **re-enumerated only when `TransformSystem::revision()` changes** (a structural re-index or a transform re-accumulation) or the caller passes a different `maxVisits` budget;
-- **refit only when `BoundsSystem::revision()` changes** (a geometry/bounds edit with no transform change);
-- **Billboard-affected placements are view-dependent** and therefore never cached: they live in a separate list whose world frame is re-resolved from the stored path on every pick, so a new camera pose produces a new result.
-- **Switch and LOD selection is live:** each retained path is checked against `whichChoice` and the LOD level selected from the camera in that LOD's local frame. Selection changes take effect without rebuilding the placement index (ADR-0034).
+- re-enumerated only when `TransformSystem::revision()` changes (a structural re-index or a transform re-accumulation) or the caller passes a different `maxVisits` budget;
+- refit only when `BoundsSystem::revision()` changes (a geometry/bounds edit with no transform change);
+- Billboard-affected placements are view-dependent and therefore never cached: they live in a separate list whose world frame is re-resolved from the stored path on every pick, so a new camera pose produces a new result.
+- Switch and LOD selection is live: each retained path is checked against `whichChoice` and the LOD level selected from the camera in that LOD's local frame. Selection changes take effect without rebuilding the placement index (ADR-0034).
 
-Passing the live `TransformSystem*` (as `X3DExecutionContext::pick` does) enables the cache; a call with `nullptr` rebuilds each time (the old walk's result, no cache), so the direct-call API stays correct with no lifetime coupling. The `WalkBudget`/`budgetExceeded` semantics and the `MEM-1` depth/cycle guards are preserved: the enumeration spends one visit per node and stops on the same doubling-DAG fan-out, returning the same partial best-so-far. Placement order follows the DFS order, so exact-distance ties break exactly as before.
+Passing the live `TransformSystem*` (as `X3DExecutionContext::pick` does) enables the cache; a call with `nullptr` rebuilds each time (the old walk's result, no cache), so the direct-call API stays correct with no lifetime coupling. The `WalkBudget`/`budgetExceeded` semantics and the depth/cycle guards are preserved: the enumeration spends one visit per node and stops on the same doubling-DAG fan-out, returning the same partial best-so-far. Placement order follows the DFS order, so exact-distance ties break exactly as before.
 
 ### System registration
 
@@ -152,9 +195,9 @@ All math runs in the sensor-local frame. The `sensorFrame` matrix is `worldOf(se
 
 Key implementation details:
 
-- **PlaneSensor**: tracking plane is `z = p0Local.z` in the sensor frame; delta relative to the activation hit is clamped per-component (`min > max` → unclamped; `min == max` → line sensor locked to that value). `translation_changed` and `trackPoint_changed` are expressed in the local sensor coordinate system that `axisRotation` creates (§20.4.2), so with a 90° `axisRotation` about Z a vertical drag reports translation along sensor X. That is our reading of the published text, which never names the output frame explicitly.
-- **SphereSensor**: virtual sphere of radius `|p0Local|`; relative rotation from `p0_hat` to `p_hat` composed as `q_rel * q_offset` (offset is the base, drag on top).
-- **CylinderSensor**: mode (disk vs cylinder) decided once at activation from the acute angle between the activation bearing direction and the sensor +Y axis versus `diskAngle`; disk mode uses the `y = 0` plane of the sensor frame (not the activation hit's Y — conformance finding DS-1); cylinder mode uses the infinite cylinder `x² + z² = r²`; the angle is the right-handed rotation about +Y from the activation point to the current one (a drag from +Z toward +X is positive, IACC-1); angle clamped between `minAngle` and `maxAngle` when `minAngle <= maxAngle`.
+- PlaneSensor: tracking plane is `z = p0Local.z` in the sensor frame; delta relative to the activation hit is clamped per-component (`min > max` → unclamped; `min == max` → line sensor locked to that value). `translation_changed` and `trackPoint_changed` are expressed in the local sensor coordinate system that `axisRotation` creates (§20.4.2), so with a 90° `axisRotation` about Z a vertical drag reports translation along sensor X. That is our reading of the published text, which never names the output frame explicitly.
+- SphereSensor: virtual sphere of radius `|p0Local|`; relative rotation from `p0_hat` to `p_hat` composed as `q_rel * q_offset` (offset is the base, drag on top).
+- CylinderSensor: mode (disk vs cylinder) decided once at activation from the acute angle between the activation bearing direction and the sensor +Y axis versus `diskAngle`; disk mode uses the `y = 0` plane of the sensor frame (not the activation hit's Y); cylinder mode uses the infinite cylinder `x² + z² = r²`; the angle is the right-handed rotation about +Y from the activation point to the current one (a drag from +Z toward +X is positive); angle clamped between `minAngle` and `maxAngle` when `minAngle <= maxAngle`.
 
 On a degenerate intersection (bearing parallel to plane, missed sphere/cylinder) each function returns a `valid=false` result holding the last valid value, so the system can emit a continuous output stream (spec-allowed behavior).
 
@@ -180,36 +223,14 @@ opens a window (cases b/c). A `RuntimeSession` host installs it through
 an optional argument. With no handler, a non-fragment url does nothing: the
 runtime is headless.
 
-## How it is tested
-
-- `ctest --preset dev -R x3d_extract_tests` (doctest suite: `Interactive profile acceptance`) — Annex C acceptance through `RuntimeSession`: XML scenes driven only by the pointer seam. Covers TouchSensor local hit point/normal/texture coordinate under a scaled Transform, touchTime only on release over the geometry, lowest/sibling/disabled sensor resolution, PlaneSensor clamp per axis, axisRotation and autoOffset, CylinderSensor cylinder and disk drags (right-handed sign, clamp, offset), SphereSensor rotation and offset, and Anchor `#Viewpoint` binding plus `SessionOptions::anchorHandler`.
-  Source: `runtime/extract/tests/interactive_profile_test.cpp`
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `events_misc_test`) — Anchor: a click on a `#Far` Anchor binds that viewpoint; a non-fragment url reaches the handler with url + parameter; releasing off the Anchor does not activate it.
-
-Two dedicated ctest targets cover this subsystem:
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `pointing_sensor_test`) — integration tests for the full `PointingSensorSystem` over in-code scene graphs. Covers: `isOver` enter/leave and no-event-when-revision-unchanged (§20.4.4); lowest-sensor-wins on nested groups (§20.2.1); nearest-geometry selection (§20.2.3); `hitPoint_changed` and `hitNormal_changed` in the sensor local frame under translated and rotated `Transform` ancestors; `hitTexCoord_changed` for both analytic primitives (Box §13.3.1) and barycentric-interpolated mesh geometry; `isActive` + `touchTime` click semantics (down-over → up-over fires; up-after-leave does not); grab exclusivity (second sensor receives nothing during an active grab); `enabled=FALSE` causes the disabled sensor to be skipped and the next outer enabled sensor to resolve; `PlaneSensor` drag dispatch + `autoOffset` accumulation; `PlaneSensor` offset accumulation + per-component min/max clamp including the line-sensor (min==max) case; `enabled=FALSE` mid-drag (DS-2 deactivation).
-  Source: `runtime/events/tests/pointing_sensor_test.cpp`
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `drag_math_test`) — unit tests for the three pure drag-math functions in isolation (no node, no context). Hand-computed expected geometry for: PlaneSensor unclamped translation, offset pass-through (including `offset.z`), both-axes clamp, line-sensor (Y locked), `axisRotation` reorientation; SphereSensor trackpoint on sphere surface, 90° rotation axis/angle, identity on no-motion, offset composition; CylinderSensor cylinder mode, disk mode (both with the right-handed sign), DS-1 disk-plane-at-Y=0 invariant, `theta0 == diskAngle` boundary (selects cylinder), min/max clamp, offset addition.
-  Source: `runtime/events/tests/drag_math_test.cpp`
-
-- `ctest --preset dev -R x3d_geometry_scene` (doctest cases: `pick_index_*`) — `runtime/scene/tests/pick_index_equivalence_test.cpp` locks the index's result equivalence to the old reflective walk (multi-mesh closest, DEF/USE per-path instancing, an animated Transform changed between picks, and a view-dependent Billboard), and `runtime/scene/tests/pick_index_perf_test.cpp` asserts the per-pick graph walk drops to zero on an unchanged scene (O(candidate leaves) instead of O(nodes)) and that a transform-revision bump forces a refit.
-  Sources: `runtime/scene/tests/pick_index_equivalence_test.cpp`, `runtime/scene/tests/pick_index_perf_test.cpp`
-
-No golden files are used for this subsystem; correctness is verified analytically against spec-derived expected values.
-
-## Related specs and ADRs
+## Related
 
 - [Architecture overview](../architecture.md)
 - [Sensors overview](../subsystems/sensors.md)
 - [Key-device sensor system](../subsystems/system-keydevice.md)
-- [Dirty-bounds-transform](../subsystems/dirty-bounds-transform.md) — `BoundsSystem` feeds the broad-phase AABB that `PickSystem` caches; its monotonic `revision()` is the pick index's refit key
-- [Execution context](../subsystems/execution-context.md) — owns `PointerState`; exposes `setPointer*`, `pick()`, `worldOf()`, and `postEvent()`
-- [Event cascade](../subsystems/event-cascade.md) — drains `postEvent` writes and fans out author ROUTEs each tick
-
-Spec grounding (ISO/IEC 19775-1:2023):
+- [Dirty-bounds-transform](../subsystems/dirty-bounds-transform.md)
+- [Execution context](../subsystems/execution-context.md)
+- [Event cascade](../subsystems/event-cascade.md)
 
 - §20.2.1 — sensor activation, grab exclusivity, lowest-sensor resolution
 - §20.2.2 — drag-sensor common protocol: tracking geometry, `autoOffset`, `trackPoint_changed`
@@ -219,7 +240,3 @@ Spec grounding (ISO/IEC 19775-1:2023):
 - §20.4.3 — SphereSensor: virtual sphere, rotation output, offset composition
 - §20.4.4 — TouchSensor: `isOver`, `isActive`, `touchTime`, hit outputs (point/normal/texCoord), no events on still pointer
 - §13 — texture-coordinate parameterization for analytic primitives (Sphere §13.3.7, Box §13.3.1, Cone §13.3.2, Cylinder §13.3.3)
-
-M2.5 input-seam design: `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md`
-
-M2D interaction-layer design (drag sensors + NavigationSystem): committed alongside `runtime/events/drag/` (see the deprecated, historical `docs/superpowers/BACKLOG.md` M2D-1 / M2D-3 entries).

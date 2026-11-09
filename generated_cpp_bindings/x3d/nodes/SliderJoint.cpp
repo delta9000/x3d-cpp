@@ -1,4 +1,3 @@
-// SliderJoint.cpp
 #include "x3d/nodes/SliderJoint.hpp"
 
 namespace x3d::nodes {

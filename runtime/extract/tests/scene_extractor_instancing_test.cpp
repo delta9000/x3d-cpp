@@ -1,9 +1,9 @@
-// scene_extractor_instancing_test.cpp — PERF-INSTANCING regression.
+// scene_extractor_instancing_test.cpp —  regression.
 //
 // RenderItem.hpp documents the instancing contract: "positions/normals are
-// LOCAL-frame — NEVER world-baked ... so one mesh is uploaded once and instanced
+// local-frame — never world-baked ... so one mesh is uploaded once and instanced
 // across placements." GeomId is the content-identity key that makes that true
-// for the CONSUMER (the PoC keys its GpuMesh cache on it).
+// for the consumer (the PoC keys its GpuMesh cache on it).
 //
 // The SDK side did not honour its own key. buildLocalMesh ran inside walk(), so
 // N USEs of one DEF'd geometry tessellated the same node N times and retained N
@@ -11,15 +11,14 @@
 // of one 19,602-triangle IndexedFaceSet cost 493 MiB of mesh bytes and ~1.08 s
 // of redundant tessellation, against ~2.5 MiB / ~5.6 ms of distinct content.
 //
-// These cases pin BOTH halves of the fix so it cannot regress:
+// These cases pin both halves of the fix so it cannot regress:
 //   * build-once — buildLocalMeshCallCount() is O(distinct geometry), not
 //     O(placements).
-//   * share-once — every placement of one GeomId hands the consumer the SAME
+//   * share-once — every placement of one GeomId hands the consumer the same
 //     MeshData allocation, so host RAM is O(distinct content).
 //
-// The negative control (distinct geometry nodes must NOT share) stops the cache
+// The negative control (distinct geometry nodes must not share) stops the cache
 // from being "fixed" into a global one-mesh-for-everything bug.
-
 #include "SceneExtractor.hpp"
 
 #include "MeshBuilder.hpp"
@@ -75,7 +74,7 @@ std::shared_ptr<X3DNode> makeQuadShape() {
   return shape;
 }
 
-// N Transforms, each USE-ing the SAME Shape node (the DEF/USE instancing shape).
+// N Transforms, each USE-ing the same Shape node (the DEF/USE instancing shape).
 Scene makeInstancedScene(const std::shared_ptr<X3DNode> &shape, int n) {
   Scene scene;
   for (int i = 0; i < n; ++i) {
@@ -103,7 +102,7 @@ TEST_CASE("instancing: N USEs of one DEF'd geometry tessellate ONCE") {
   const std::uint64_t built = buildLocalMeshCallCount() - before;
 
   REQUIRE(ex.itemCount() == static_cast<std::size_t>(kInstances));
-  // The whole point: one DISTINCT geometry node => exactly one tessellation,
+  // The whole point: one distinct geometry node => exactly one tessellation,
   // however many placements reference it.
   CHECK(built == 1);
 }
@@ -134,8 +133,8 @@ TEST_CASE("instancing: every placement shares ONE MeshData allocation") {
   CHECK(distinctGeomNodes.size() == 1);
   CHECK(distinctAllocations.size() == 1);
 
-  // Per-placement world transforms stay DISTINCT — sharing the mesh must not
-  // collapse the placements themselves (the M2C-1 first-path hazard).
+  // Per-placement world transforms stay distinct — sharing the mesh must not
+  // collapse the placements themselves (the first-path hazard).
   CHECK(ex.item(0).worldTransform.m[12] != ex.item(1).worldTransform.m[12]);
 }
 
@@ -167,7 +166,7 @@ TEST_CASE("instancing: DISTINCT geometry nodes do NOT share a mesh") {
 
 TEST_CASE("instancing: one texture URL decodes ONCE across N placements") {
   // Decoded RGBA is the biggest payload the feed carries. The resolver was
-  // invoked per PLACEMENT, so 200 USEs of one textured Shape meant 200 embedder
+  // invoked per placement, so 200 USEs of one textured Shape meant 200 embedder
   // decode calls and 200 retained surfaces of the same image.
   const int kInstances = 32;
   auto shape = makeQuadShape();
@@ -340,4 +339,54 @@ TEST_CASE("instancing: GeomId cache distinguishes baked variants and revised con
   CHECK(extractor.item(0).mesh->positions != retained->positions);
   upload(delta.updatedGeometry);
   CHECK(uploads.size() == 4); // old resources retained here to detect key reuse
+}
+
+TEST_CASE("delta oracle: pending texture completion reaches delta without a field edit") {
+  auto shape = makeQuadShape(), texture = createX3DNode("ImageTexture");
+  auto appearance = createX3DNode("Appearance");
+  setF(texture, "url", MFString{"slow.png"}); setF(appearance, "texture", texture);
+  SUBCASE("single texture") {}
+  SUBCASE("multi texture stage") {
+    auto multi = createX3DNode("MultiTexture");
+    setF(multi, "texture", MFNode{texture});
+    setF(appearance, "texture", multi);
+  }
+  SUBCASE("cube face") {
+    auto cube = createX3DNode("ComposedCubeMapTexture");
+    setF(cube, "frontTexture", texture);
+    setF(appearance, "texture", cube);
+  }
+  setF(shape, "appearance", appearance);
+  Scene scene = makeInstancedScene(shape, 1);
+  bool ready = false;
+  int calls = 0;
+  TextureResolver resolver = [&](const std::string &) {
+    ++calls;
+    if (!ready) return TexturePixelResult::makePending();
+    TexturePixels p; p.width = 1; p.height = 1; p.rgba.assign(4,255);
+    return TexturePixelResult::makeReady(std::move(p));
+  };
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene, MeshBuildOptions{}, resolver);
+  REQUIRE(ex.fullSnapshot().added.size() == 1);
+  auto pixels = [&](const SceneExtractor &source) -> const TexturePixelResult & {
+    const auto &ref = source.item(0).material.textures.at(0);
+    if (ref.source == TextureRef::Source::Multi) return ref.multiStages.at(0).resolvedPixels;
+    if (!ref.cubeFaces.empty()) return ref.cubeFaces.at(0).resolvedPixels;
+    return ref.resolvedPixels;
+  };
+  CHECK(pixels(ex).pending());
+  auto mirror = pixels(ex);
+  ready = true; ctx.tick(1); auto d = ex.delta();
+  CHECK(d.updatedMaterial == std::vector<RenderItemId>{0});
+  if (!d.updatedMaterial.empty()) mirror = pixels(ex);
+  CHECK(pixels(ex).ready());
+  CHECK(calls == 2);
+  ctx.tick(2);
+  CHECK(ex.delta().updatedMaterial.empty());
+  CHECK(calls == 2);
+  SceneExtractor oracle(ctx, scene, MeshBuildOptions{}, resolver);
+  REQUIRE(oracle.fullSnapshot().added.size() == 1);
+  CHECK(mirror.status == pixels(oracle).status);
+  CHECK(mirror.pixels->rgba == pixels(oracle).pixels->rgba);
 }

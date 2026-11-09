@@ -1,27 +1,16 @@
 #include "doctest/doctest.h"
-// standard_runtime_test.cpp — attachStandardRuntime lights up the behavior
-// runtime end-to-end: an authored TimeSensor → PositionInterpolator → Transform
-// chain must actually ANIMATE (the "static viewer" gap the reference consumer
-// hit). Parses a real scene, wires routes, attaches the standard runtime, ticks
-// across time, and asserts the Transform's translation moves.
+// An authored TimeSensor -> Interpolator -> Transform chain animates on tick.
 #include "X3DParse.hpp"
 #include "X3DSceneBridge.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/Transform.hpp"
 
 #include <cmath>
-#include <iostream>
 #include <memory>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static int failures = 0;
-static void check(bool c, const char *what) {
-  if (!c) { std::cerr << "FAIL: " << what << "\n"; ++failures; }
-  else    { std::cout << "ok: " << what << "\n"; }
-}
 
 TEST_CASE("standard_runtime_test") {
   // TimeSensor drives a PositionInterpolator that translates a Transform 0→10 in x.
@@ -39,7 +28,7 @@ TEST_CASE("standard_runtime_test") {
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(scene);
   BridgeResult bridge = ctx.buildFrom(scene);
-  check(bridge.ok(), "ROUTEs wired (TimeSensor→interp→Transform)");
+  CHECK_MESSAGE((bridge.ok()), ("ROUTEs wired (TimeSensor→interp→Transform)"));
 
   attachStandardRuntime(scene, ctx);
 
@@ -47,11 +36,11 @@ TEST_CASE("standard_runtime_test") {
   Transform *t = nullptr;
   for (auto &r : scene.rootNodes)
     if (auto *p = dynamic_cast<Transform *>(r.get())) t = p;
-  check(t != nullptr, "found the Transform node");
+  CHECK_MESSAGE((t != nullptr), ("found the Transform node"));
   if (!t) { CHECK(false); return; }
 
   const float x0 = t->getTranslation().x;
-  check(std::fabs(x0) < 1e-6f, "translation starts at 0");
+  CHECK_MESSAGE((std::fabs(x0) < 1e-6f), ("translation starts at 0"));
 
   // Tick across the cycle; TimeSensor.fraction_changed should drive the interp,
   // whose value_changed routes into the Transform's translation.
@@ -59,9 +48,7 @@ TEST_CASE("standard_runtime_test") {
   for (double now = 0.5; now <= 2.0; now += 0.5) ctx.tick(now);
 
   const float x2 = t->getTranslation().x;
-  check(x2 > 1.0f,
-        "standard runtime animates: TimeSensor→PositionInterpolator→Transform.translation");
+  CHECK_MESSAGE((x2 > 1.0f), ("standard runtime animates: TimeSensor→PositionInterpolator→Transform.translation"));
 
-  CHECK(failures == 0);
   return;
 }

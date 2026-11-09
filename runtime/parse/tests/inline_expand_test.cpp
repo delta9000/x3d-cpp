@@ -66,16 +66,14 @@ TEST_CASE("inline_expand_test") {
   CHECK((group && "Inline should be replaced by a synthetic Group"));
   // ...and the Group contains the child's Shape.
   CHECK((firstChildOfType(*group, "Shape") && "child geometry must hang under the Group"));
-  // (2) The Inline node is no longer a direct child of Root.
+  // (2) The expanded Group replaces the Inline node under Root.
   CHECK((!firstChildOfType(*root, "Inline") && "Inline node must be spliced out of the live slot"));
-  // (3) DEF isolation: child DEF "Geo" did NOT leak into the parent scope.
+  // (3) DEF isolation: child DEF "Geo" did not leak into the parent scope.
   CHECK((parent.resolve("Geo") == nullptr && "child DEF must not leak to parent"));
   // (4) The preserved Inline is recorded for writer round-trip.
   CHECK((parent.expandedInlines.count(group) == 1 && "group must map to preserved Inline"));
   CHECK((parent.expandedInlines[group]->nodeTypeName() == "Inline"));
   CHECK((warnings.empty()));
-
-  // ── parseDocument injection seam ──────────────────────────────────────────
   // Verify that the inlineResolver parameter threads through parseDocument
   // correctly: a custom resolver should be called and its returned Scene
   // spliced in, exactly as the lower-level expandInlines path above.
@@ -142,7 +140,7 @@ static std::shared_ptr<X3DNode> makeInline() {
 }
 
 TEST_CASE("inline_expand: the graph walk stops at kMaxNestingDepth") {
-  // MEM-1: the walk recurses on the native stack, so it shares the depth cap
+  // the walk recurses on the native stack, so it shares the depth cap
   // of the other graph walkers. An Inline within the cap expands; one nested
   // past it is left un-expanded rather than walked.
   Scene scene;

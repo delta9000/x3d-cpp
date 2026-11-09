@@ -1,4 +1,3 @@
-// NormalInterpolator.cpp
 #include "x3d/nodes/NormalInterpolator.hpp"
 
 namespace x3d::nodes {

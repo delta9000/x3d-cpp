@@ -1,6 +1,6 @@
 // runtime/parse/tests/proto_front_door_test.cpp
 //
-// Task 10: front-door PROTO expansion. Asserts that parseDocument/parseFile
+// front-door PROTO expansion. Asserts that parseDocument/parseFile
 // drive expandScene with the default local-file resolver, so:
 //   - a local PROTO instance expands end-to-end through the in-memory front door
 //   - an EXTERNPROTO instance resolves a sibling file relative to the parsed
@@ -1222,7 +1222,6 @@ static void unresolvedInstanceNodeValueTest() {
   parse(x3d::codec::CanonicalXmlWriter().writeDocument(original), x3d::codec::Encoding::XML);
   parse(x3d::codec::VrmlWriter().writeDocument(original), x3d::codec::Encoding::ClassicVRML);
   parse(x3d::codec::JsonWriter().writeDocument(original), x3d::codec::Encoding::JSON);
-
 
 }
 

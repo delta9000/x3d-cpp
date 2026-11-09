@@ -14,6 +14,8 @@ related:
 
 # ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship, Encumbered Codecs Plug In
 
+Status: superseded by ADR-0041 amendment
+
 ## Status
 
 Accepted (2026-06-27). The seam is PROVEN GENERIC — two independent backends
@@ -186,3 +188,10 @@ in one), so Backend A is the cheapest possible first proof.
 - [ADR-0025: FontMetrics Second Backend Swap-Test](0025-fontmetrics-second-backend-swap-test.md) — the consumer-rasterizes precedent and the bit-identical swap-test this ADR deliberately departs from.
 - [ADR-0026: AudioBackend Second Backend Swap-Test](0026-audiobackend-second-backend-swap-test.md) — where a MovieTexture's audio track routes.
 - [Seam-Status Matrix](../seam-status.md) — the live genericity tracker (MovieDecoder row: NOT-YET-PROVEN).
+
+## Amendment (2026-11-05)
+
+Removed the Theora decoder, libtheora/libogg dependency lookup, build option,
+and codec-specific contract cases because no consumer selected this backend.
+MovieDecoder, format routing, pl_mpeg, and the remaining lifecycle and
+composition tests remain.

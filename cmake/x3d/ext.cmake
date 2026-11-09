@@ -1,16 +1,9 @@
 # cmake/x3d/ext.cmake — the opt-in x3d::runtime::ext extensions (X3D_CPP_BUILD_EXT)
 # and their tests.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
-# Extension quarantine — x3d_cpp_ext (INTERFACE, header-only).
-# Lives in runtime/ext/; namespace x3d::runtime::ext.
-# One-way dep: ext→core (includes PackedMesh, Aabb, …). Core NEVER includes ext.
-# Default OFF — no TU in runtime/ext/ is ever compiled or linked in the
-# standard build path. Tests registered ONLY inside this block, so the default
-# ctest suite is unaffected. Build with: -DX3D_CPP_BUILD_EXT=ON
-# ---------------------------------------------------------------------------
+# Extension dependencies point toward core; core must not include ext. Default
+# OFF; tests register only inside this block. Build with -DX3D_CPP_BUILD_EXT=ON
+# or the `ext` preset (`mise run build-ext`, part of `mise run ci`).
 if(X3D_CPP_BUILD_EXT)
     add_library(x3d_cpp_ext INTERFACE)
     add_library(x3d_cpp::ext ALIAS x3d_cpp_ext)
@@ -18,6 +11,18 @@ if(X3D_CPP_BUILD_EXT)
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/codecs>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
+    set_target_properties(x3d_cpp_ext PROPERTIES EXPORT_NAME ext)
+    target_include_directories(x3d_cpp_ext INTERFACE
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/ext>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/ext/codecs>")
+    install(TARGETS x3d_cpp_ext EXPORT x3d_cppTargets)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/ext.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/x3d")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/ext"
+        FILES_MATCHING PATTERN "*.hpp" ${_x3d_install_excludes})
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos/cave-fallbacks.x3d"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/x3d_cpp/ext")
     target_compile_features(x3d_cpp_ext INTERFACE cxx_std_20)
     # Ext code may #include PackedMesh.hpp, Aabb.hpp, etc. from core.
     target_link_libraries(x3d_cpp_ext INTERFACE x3d_cpp::x3d_cpp)
@@ -62,10 +67,27 @@ if(X3D_CPP_BUILD_EXT)
         target_link_libraries(x3d_ext_external_geometry_roundtrip PRIVATE x3d_cpp::ext)
         add_test(NAME x3d_ext_external_geometry_roundtrip COMMAND x3d_ext_external_geometry_roundtrip)
 
-        # Round 2 — lazy ExternalGeometry materialization end-to-end proof.
+        # Lazy ExternalGeometry materialization.
         add_executable(x3d_ext_external_geometry_e2e
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_e2e_test.cpp")
         target_link_libraries(x3d_ext_external_geometry_e2e PRIVATE x3d_cpp::ext)
         add_test(NAME x3d_ext_external_geometry_e2e COMMAND x3d_ext_external_geometry_e2e)
+
+        add_executable(x3d_ext_cave_tests
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/cave_extensions_test.cpp")
+        target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext)
+        target_compile_definitions(x3d_ext_cave_tests PRIVATE
+            X3D_EXT_PROTO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos")
+        foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement placement_cache placement_idle placement_inline placement_geolod fallback recursive_resolver input_diagnostics
+                room_rotation_order room_drift placement_fields placement_inline_same_tick)
+            add_test(NAME x3d_ext_cave_${_case} COMMAND x3d_ext_cave_tests ${_case})
+        endforeach()
+
+        # One aggregate so `mise run build-ext` and the GitHub ext-gate job
+        # build exactly the executables registered above (ctest --preset ext).
+        add_custom_target(x3d_ext_tests DEPENDS
+            x3d_ext_stl_reader x3d_stl_write_test x3d_extract_oracle_test
+            x3d_ext_external_geometry_node x3d_ext_external_geometry_roundtrip
+            x3d_ext_external_geometry_e2e x3d_ext_cave_tests)
     endif()
 endif()

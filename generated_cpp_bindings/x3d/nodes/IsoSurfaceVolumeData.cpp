@@ -1,4 +1,3 @@
-// IsoSurfaceVolumeData.cpp
 #include "x3d/nodes/IsoSurfaceVolumeData.hpp"
 
 namespace x3d::nodes {

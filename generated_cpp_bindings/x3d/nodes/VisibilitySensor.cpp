@@ -1,4 +1,3 @@
-// VisibilitySensor.cpp
 #include "x3d/nodes/VisibilitySensor.hpp"
 
 namespace x3d::nodes {

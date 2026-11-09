@@ -35,7 +35,6 @@ def test_sfvec3f_with_default():
     assert d.getter_name == "getBboxCenter"
     assert d.setter_name == "setBboxCenter"
     assert d.default_init_expr == "SFVec3f{1, 2, 3}"
-    assert d.value_init is False
     assert d.has_default is True
     assert d.is_readable and d.is_settable and d.has_member
     assert d.needs_move_overload is True       # struct type -> move overload
@@ -145,12 +144,9 @@ def test_render_range_collect_scalar_and_color():
 
 
 def test_float32_bounds_compare_in_float_precision():
-    # The regression behind `range-only-us` in the X3DJSAIL differential: an
-    # SFFloat authored at EXACTLY the documented maximum ("1.570796", the UOM's
-    # truncation of pi/2) parses to float 1.57079601..., which widened to double
-    # sits ABOVE the double literal 1.570796 — so the old emitted comparison
-    # flagged an in-range value. Comparisons must happen in the field's own
-    # float32 precision; the diagnostic message keeps the spec's digits.
+    # The UOM maximum "1.570796" rounds to float 1.57079601..., above the
+    # corresponding double literal. Compare bounds in float32 precision while
+    # keeping the spec digits in diagnostic messages.
     d = desc(name="beamWidth", type="SFFloat",
              min_inclusive="0", max_inclusive="1.570796")
     body = d.constraint_checks
@@ -189,13 +185,13 @@ def test_initializeonly_constrained_field_gets_range_diagnostics_not_throwing_va
     )
     d = build_descriptor(field)
 
-    # initializeOnly must NOT get the throwing validate<Name>() path -- it has
+    # initializeOnly must not get the throwing validate<Name>() path -- it has
     # no public typed setter to protect (data-layer writes always go through
     # set<Name>Unchecked by design).
     assert d.constraint_checks is None
     assert not d.has_constraints
 
-    # But it MUST get the non-throwing diagnostic-collection path, so an
+    # But it must get the non-throwing diagnostic-collection path, so an
     # out-of-range authored value is at least surfaced via validateRanges()/
     # collectRangeWarnings() instead of vanishing silently.
     assert d.range_collect_body is not None

@@ -1,4 +1,3 @@
-// Sphere.cpp
 #include "x3d/nodes/Sphere.hpp"
 
 namespace x3d::nodes {

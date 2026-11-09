@@ -1,8 +1,7 @@
-// write_field_test.cpp — M2C-3: ctx.writeField(node, fieldName, value) must
+// write_field_test.cpp — ctx.writeField(node, fieldName, value) must
 // (a) update the field value and (b) mark dirty with the same flags that a
 // cascade-delivered event would produce, so a subsequent re-resolve sees the
 // new world transform.
-//
 // Realistic usage: a System calls writeField from inside update(), which runs
 // after dirty_.clear() and before cascade_.process() + transforms_.propagate()
 // inside the same tick().  The test wires a one-shot System to make that
@@ -66,7 +65,7 @@ struct WriteOnceSystem : System {
 };
 
 TEST_CASE("write_field_test") {
-  // ── test 1: writeField on a Transform's translation (from a System::update)
+  // test 1: writeField on a Transform's translation (from a System::update)
   //            marks DirtyLocalTransform + DirtyWorldTransform and updates the
   //            world transform — parity with the cascade path.
   {
@@ -101,7 +100,7 @@ TEST_CASE("write_field_test") {
     CHECK((ctx.dirtyTracker().changedNodes().empty()));
   }
 
-  // ── test 2: writeField on a non-transform field (Shape bboxSize) marks
+  // test 2: writeField on a non-transform field (Shape bboxSize) marks
   //            DirtyField | DirtyBounds (bboxSize is in classifyDirty's kBounds set).
   {
     auto shape = createX3DNode("Shape");
@@ -117,7 +116,7 @@ TEST_CASE("write_field_test") {
     CHECK((ctx.dirtyTracker().flags(shape.get()) & DirtyBounds)); // bboxSize is in kBounds
   }
 
-  // ── test 3: writeField on an unknown field is a no-op (no crash, no dirty).
+  // test 3: writeField on an unknown field is a no-op (no crash, no dirty).
   {
     auto sphere = createX3DNode("Sphere");
     Scene scene; scene.addRootNode(sphere);
@@ -131,7 +130,7 @@ TEST_CASE("write_field_test") {
     CHECK((ctx.dirtyTracker().flags(sphere.get()) == DirtyNone));
   }
 
-  // ── test 4: parity — writeField + tick produces identical dirty flags to
+  // test 4: parity — writeField + tick produces identical dirty flags to
   //            postEvent + tick for a Transform translation.
   {
     const SFVec3f val{5.0f, 0.0f, 0.0f};
@@ -160,15 +159,6 @@ TEST_CASE("write_field_test") {
 
   return;
 }
-
-// ---------------------------------------------------------------------------
-// writeField REPORTS every way a stringly-typed, std::any-valued write can be
-// wrong. It used to return void: a null node, a typo'd field name and an
-// outputOnly field were all the same silent nothing, so a caller's mistake was
-// indistinguishable from a runtime bug. A wrong-typed std::any was worse than
-// silent — it escaped as an uncaught std::bad_any_cast from inside the generated
-// setter thunk, crashing the caller from a write the SDK invited.
-// ---------------------------------------------------------------------------
 TEST_CASE("writeField: every failure mode has its own answer") {
   X3DExecutionContext ctx;
   auto T = createX3DNode("Transform");
@@ -193,9 +183,9 @@ TEST_CASE("writeField: every failure mode has its own answer") {
 
   SUBCASE("outputOnly fields ARE writable — the thunk routes to the emitter") {
     // Pins a fact that is easy to assume backwards (this test caught the author
-    // assuming it): `outputOnly` does NOT mean "no set thunk". The generator
+    // assuming it): `outputOnly` does not mean "no set thunk". The generator
     // gives every access type a set thunk; an outputOnly field's routes to the
-    // field's EMITTER. So writing TouchSensor.isActive succeeds and FIRES the
+    // field's emitter. So writing TouchSensor.isActive succeeds and fires the
     // event — it is not rejected as read-only. All 4914 generated FieldInfos
     // carry a set thunk, which is why FieldWriteResult::NotWritable is defensive
     // depth rather than a state any current node reaches.
@@ -204,21 +194,14 @@ TEST_CASE("writeField: every failure mode has its own answer") {
           FieldWriteResult::Ok);
   }
 
-  SUBCASE("a Script/PROTO author field is UnknownField, not a silent success") {
-    // Author-declared (dynamic) fields live in the DynamicFieldStore side-table
-    // and resolve via effectiveFields(); writeField consults only the static
-    // fields() table. Writing one therefore reports UnknownField rather than
-    // appearing to succeed. Documented narrowing, pinned so a change is a
-    // deliberate one — see FieldWriteResult::UnknownField.
+  SUBCASE("an undeclared Script field is UnknownField") {
     auto script = createX3DNode("Script");
     CHECK(ctx.writeField(script.get(), "myAuthorField", std::any(1.0f)) ==
           FieldWriteResult::UnknownField);
   }
 
   SUBCASE("TypeMismatch — contained, not thrown") {
-    // translation is an SFVec3f; hand it a float. Every generated setter does an
-    // unchecked any_cast<T>, so this used to propagate std::bad_any_cast out of
-    // writeField. It must come back as a value instead.
+    // Generated setters use unchecked any_cast<T>; writeField must contain its exception.
     CHECK_NOTHROW((void)ctx.writeField(T.get(), "translation", std::any(3.5f)));
     CHECK(ctx.writeField(T.get(), "translation", std::any(3.5f)) ==
           FieldWriteResult::TypeMismatch);

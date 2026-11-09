@@ -1,4 +1,4 @@
-// texture_projector_test.cpp — REQ-PROJECTION: §42 texture projectors lit by
+// texture_projector_test.cpp — §42 texture projectors lit by
 // the CPU reference host (ADR-0061).
 //
 // A white plane at z = 0 faces a camera on +Z with the headlight off and no
@@ -9,7 +9,6 @@
 //     TextureProjectorParallel (fieldOfView -1 -1 1 1), in Phong and PBR.
 //   * A scoped projector (global FALSE) in another group does not light it.
 //   * nearDistance beyond the plane leaves it dark.
-// Before this change projectors were ignored and the plane was black.
 #include "RuntimeSession.hpp"
 #include "X3DParse.hpp"
 #include "cpuraster/SceneRender.hpp"

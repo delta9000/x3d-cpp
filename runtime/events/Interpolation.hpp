@@ -1,8 +1,5 @@
 // Interpolation.hpp
-// Shared interpolation math for the interpolator-system family. Factored out of
-// the original PositionInterpolatorBehavior so every interpolator reuses one
-// key-span lookup and the color/orientation conversions live in one place.
-//
+// Shared key-span lookup and color/orientation math for interpolator systems.
 // Spec-correctness notes (X3D 19775-1 Interpolation component):
 //   - locateKeySpan: piecewise lookup over a monotonic key[], clamping at both
 //     ends. Each interpolator supplies only its per-component lerp.
@@ -81,7 +78,7 @@ inline KeySpan locateKeySpan(const MFFloat &key, float fraction) {
   return span;
 }
 
-// --- Scalar / vector lerps -------------------------------------------------
+// Scalar / vector lerps
 
 inline float lerpf(float a, float b, float t) { return a + (b - a) * t; }
 
@@ -93,7 +90,7 @@ inline SFVec3f lerpVec3(const SFVec3f &a, const SFVec3f &b, float t) {
   return SFVec3f{lerpf(a.x, b.x, t), lerpf(a.y, b.y, t), lerpf(a.z, b.z, t)};
 }
 
-// --- HSV color (Foley & van Dam, per flux anmhsvcolor.cpp) ----------------
+// HSV color (Foley & van Dam, per flux anmhsvcolor.cpp)
 
 struct Hsv {
   float h; // degrees, [0,360)
@@ -189,13 +186,19 @@ inline SFColor lerpColorHsv(const SFColor &a, const SFColor &b, float t) {
   return hsvToRgb(out);
 }
 
-// --- Quaternion SLERP for orientation/normal (per flux anmquaternion.cpp) --
+// Quaternion SLERP for orientation/normal (per flux anmquaternion.cpp)
 
 struct Quat {
   double x, y, z, w;
 };
 
-/** @brief Build a unit quaternion from an axis-angle SFRotation. */
+inline Quat quatMul(const Quat &a, const Quat &b) {
+  return Quat{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+              a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+              a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+              a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
+}
+
 inline Quat quatFromRotation(const SFRotation &r) {
   // Normalize the axis (degenerate axis -> identity-ish about +Y).
   double ax = r.x, ay = r.y, az = r.z;
@@ -213,7 +216,6 @@ inline Quat quatFromRotation(const SFRotation &r) {
   return Quat{ax * s, ay * s, az * s, std::cos(r.angle * 0.5)};
 }
 
-/** @brief Convert a unit quaternion back to an axis-angle SFRotation. */
 inline SFRotation rotationFromQuat(const Quat &q) {
   double vlen = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
   if (vlen < 1e-9) {

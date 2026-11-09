@@ -5,9 +5,6 @@
 // chosen fragments. All assertions are behavioural (luminance comparisons), so
 // the test is agnostic to the internal EyeLight representation.
 //
-// Regression target: PointLight/SpotLight were dropped by buildEyeLights and the
-// shader carried only a constant eye-space direction, so a single point light
-// with the headlight off rendered a flat, ungraded disc.
 #include "RenderItem.hpp"
 #include "cpuraster/MaterialShader.hpp"
 #include "cpuraster/SceneRender.hpp"
@@ -64,16 +61,16 @@ static ex::LightDesc pointLight(SFVec3f loc) {
 int main() {
   const rt::Mat4 view = rt::Mat4::identity(); // eye == world for the test.
 
-  // ---- A) A point light is not dropped (headlight off => one real light) ----
+  // A) A point light is not dropped (headlight off => one real light)
   {
     auto lights = render_detail::buildEyeLights({pointLight({0, 0, 0})}, view,
                                  /*headlightOn=*/false);
     CHECK(lights.size() == 1);
   }
 
-  // ---- B) Per-fragment gradient: facing the light is brighter than grazing.
+  // B) Per-fragment gradient: facing the light is brighter than grazing.
   // The flat-disc bug rendered these equal. Light at the camera origin; both
-  // fragments equidistant, differing only in normal orientation. ----
+  // fragments equidistant, differing only in normal orientation.
   {
     auto lights = render_detail::buildEyeLights({pointLight({0, 0, 0})}, view, false);
     float facing = litLuma(lights, frag({0, 0, -3}, {0, 0, 1}));  // N·L = 1
@@ -81,7 +78,7 @@ int main() {
     CHECK(facing > grazing + 0.1f);
   }
 
-  // ---- C) Distance attenuation: nearer is brighter (linear attenuation). ----
+  // C) Distance attenuation: nearer is brighter (linear attenuation).
   {
     ex::LightDesc L = pointLight({0, 0, 0});
     L.attenuation = {0, 1, 0}; // pure linear: factor ~ 1/d
@@ -91,7 +88,7 @@ int main() {
     CHECK(near > far + 0.05f);
   }
 
-  // ---- D) Radius cutoff: a fragment beyond `radius` gets no contribution. ----
+  // D) Radius cutoff: a fragment beyond `radius` gets no contribution.
   {
     ex::LightDesc small = pointLight({0, 0, 0});
     small.radius = 1.0f; // fragment at distance 5 is outside.
@@ -104,9 +101,9 @@ int main() {
     CHECK(outside < inside - 0.1f); // dark beyond radius
   }
 
-  // ---- E) Spot cone: on-axis is lit, well outside the cutOffAngle is dark.
+  // E) Spot cone: on-axis is lit, well outside the cutOffAngle is dark.
   // Both fragments' normals face the light, so only the cone explains the
-  // difference. ----
+  // difference.
   {
     ex::LightDesc s;
     s.type = ex::LightDesc::Type::Spot;
@@ -126,8 +123,8 @@ int main() {
     CHECK(offAxis < onAxis - 0.1f);
   }
 
-  // ---- F) Regression guard: directional lights still work through the same
-  // path (the refactor must not break the original case). ----
+  // F) Regression guard: directional lights still work through the same
+  // path (the refactor must not break the original case).
   {
     ex::LightDesc d;
     d.type = ex::LightDesc::Type::Directional;

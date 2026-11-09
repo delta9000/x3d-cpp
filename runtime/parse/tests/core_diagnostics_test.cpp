@@ -1,11 +1,6 @@
 #include "doctest/doctest.h"
-// core_diagnostics_test.cpp
-// Regression tests for the Core parsing/diagnostics findings:
-//   PROTO-SHADOW          — a PROTO naming a built-in is quarantined + diagnosed
-//   DIAG-UNKNOWN-NODE     — every reader surfaces a misspelled node element
-//   DIAG-PROFILE-COERCE   — an unknown profile token is diagnosed and preserved
-//   IMPORT-EXPORT-WIRE    — a ROUTE to an IMPORTed AS name reaches the Inline's
-//                           exported node (§9.2 cross-Inline escape hatch)
+// Core diagnostics and scene loading behavior.
+
 #include "X3DCodecs.hpp"
 #include "X3DParse.hpp"
 #include "X3DRuntime.hpp"
@@ -164,8 +159,6 @@ TEST_CASE("unit_header_validation_all_encodings") {
       "</head><Scene/></X3D>");
   CHECK(all.head.units.size() == 4);
 }
-
-// ── PROTO-SHADOW: a PROTO reusing a built-in name is rejected + diagnosed ────
 TEST_CASE("proto_shadow_xml") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
@@ -255,8 +248,6 @@ TEST_CASE("proto_shadow_no_false_positive") {
   CHECK_FALSE(hasBuiltinShadow(doc, "MyWidget"));
   CHECK(doc.scene.protoDeclarations.size() == 1);
 }
-
-// ── DIAG-UNKNOWN-NODE: each reader surfaces a misspelled node element ────────
 TEST_CASE("unknown_node_xml") {
   auto doc = codec::parseDocument(
       "<X3D version='4.0'><Scene><Shape><BogusNode/></Shape></Scene></X3D>");
@@ -285,7 +276,7 @@ TEST_CASE("unknown_node_clean_no_warning") {
 }
 
 // A ROUTE among a node's children is a scene (or PROTO body) statement, not an
-// unknown node: it is kept and not diagnosed (it used to be dropped silently).
+// unknown node: it is kept and not diagnosed.
 TEST_CASE("nested_route_xml_is_kept") {
   auto doc = codec::parseDocument(
       "<X3D version='4.0'><Scene><TimeSensor DEF='T'/><Transform>"
@@ -303,8 +294,6 @@ TEST_CASE("nested_route_xml_is_kept") {
   REQUIRE(doc.scene.protoDeclarations[0]->body.routes.size() == 1);
   CHECK(doc.scene.protoDeclarations[0]->body.routes[0].fromNode == "A");
 }
-
-// ── DIAG-PROFILE-COERCE: unknown token diagnosed + preserved on write ────────
 TEST_CASE("profile_coerce_diagnosed_and_preserved_xml") {
   auto doc = codec::parseDocument(
       "<X3D profile='Interchang' version='4.0'><Scene><Shape><Box/></Shape>"
@@ -343,8 +332,6 @@ TEST_CASE("profile_canonical_no_warning") {
   CHECK(doc.profileName() == "Immersive");
   CHECK(doc.profileToken() == "Immersive");
 }
-
-// ── IMPORT-EXPORT-WIRE: a ROUTE to an IMPORTed AS name reaches the Inline ────
 TEST_CASE("import_export_wire_route_to_imported_as_name") {
   const char *parent =
       "<X3D version='4.0'><Scene>"
@@ -376,7 +363,7 @@ TEST_CASE("import_export_wire_route_to_imported_as_name") {
   CHECK(aliasIt->second->nodeTypeName() == "Transform");
   CHECK(aliasIt->second->getDEF() == "Mover");
 
-  // The ROUTE now resolves both endpoints instead of dropping the imported one.
+  // The ROUTE resolves both endpoints through the imported name.
   bool wired = false;
   for (const auto &r : doc.scene.routes)
     if (r.toNode == "M") {

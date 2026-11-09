@@ -1,4 +1,3 @@
-// PixelTexture3D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,100 +28,55 @@ using namespace x3d::core;
  */
 class PixelTexture3D : public virtual X3DTexture3DNode {
 public:
-  /**
-   * @brief Default constructor for PixelTexture3D
-   */
   PixelTexture3D() = default;
 
-  /**
-   * @brief Destructor for PixelTexture3D
-   */
   ~PixelTexture3D() = default;
 
-  /**
-   * @brief Get the default value for image
-   * @return MFInt32 The default value
-   */
   static MFInt32 getDefaultImage() { return std::vector<int>{0, 0, 0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesX3DTexture3DNode";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "texture"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Texturing3D"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of image. AccessType: inputOutput
+   * MFInt32; access: inputOutput. Borrows the stored value.
    * @details image describes raw data for this 3D texture: number of components
    * to the image [0,4], width, height and depth of the texture, followed by
    * (width x height x depth) pixel values.
-   * @return const MFInt32& The current value of image.
    */
   const MFInt32 &getImage() const { return _image; }
 
   /**
-   * @brief Sets the value of image. AccessType: inputOutput
+   * Access: inputOutput.
    * @details image describes raw data for this 3D texture: number of components
    * to the image [0,4], width, height and depth of the texture, followed by
    * (width x height x depth) pixel values.
-   * @param value The new value for image.
    */
   void setImage(const MFInt32 &value) { _image = value; }
 
   void setImage(MFInt32 &&value) { _image = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "PixelTexture3D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for image.
-   */
-
   MFInt32 _image{std::vector<int>{0, 0, 0, 0}};
 };
 

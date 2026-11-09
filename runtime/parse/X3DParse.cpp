@@ -18,10 +18,27 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 namespace x3d::codec {
 
 namespace {
+
+// SEC-4 companion: RAII push/pop for the default resolvers' thread-local
+// active-file stack. A manual push_back/pop_back is balanced only on the happy
+// path and on std::exception-derived throws: anything else unwinding past the
+// pop_back leaves a stale entry, which silently refuses that path for the rest
+// of the thread's life. The destructor always runs.
+struct ActiveFileGuard {
+  std::vector<std::string> &files;
+  ActiveFileGuard(std::vector<std::string> &f, const std::string &path)
+      : files(f) {
+    files.push_back(path);
+  }
+  ~ActiveFileGuard() { files.pop_back(); }
+  ActiveFileGuard(const ActiveFileGuard &) = delete;
+  ActiveFileGuard &operator=(const ActiveFileGuard &) = delete;
+};
 
 // UNIT is a header declaration, so validate it once before any scene expansion.
 // In particular, a malformed factor must never reach a runtime as a scale.
@@ -216,14 +233,15 @@ void quarantineBuiltinShadowingProtos(runtime::X3DDocument &doc) {
   }
 }
 
-} // namespace
-
+// Strip only the UTF-8 BOM; UTF-16/32 require transcoding.
 void stripUtf8Bom(std::string &s) {
   if (s.size() >= 3 && static_cast<unsigned char>(s[0]) == 0xEF &&
       static_cast<unsigned char>(s[1]) == 0xBB &&
       static_cast<unsigned char>(s[2]) == 0xBF)
     s.erase(0, 3);
 }
+
+} // namespace
 
 std::unique_ptr<X3DReader> makeReader(Encoding enc) {
   switch (enc) {
@@ -247,7 +265,7 @@ parseDocument(const std::string &text, Encoding hint,
               const ProtoDeclarationResolver &resolver,
               const runtime::InlineResolver &inlineResolver,
               const std::string &confineRoot) {
-  // Establish the SEC-3 confinement root (ADR-0038) for the default resolvers
+  // Establish the  confinement root (ADR-0038) for the default resolvers
   // on the outermost entry; nested re-parses inherit it. When reached via
   // parseFile the root is already set (so this is a no-op); a direct
   // parseDocument call from a tool handling a trusted content tree passes the
@@ -295,9 +313,7 @@ parseDocument(const std::string &text, Encoding hint,
   // Mirrors the PROTO pass above; nested Inlines recurse via parseFile.
   runtime::expandInlines(doc.scene, inlineResolver, baseUrl,
                          doc.inlineWarnings);
-  // Wire IMPORT statements to their Inline's exported node (the child scene is
-  // now retained), then re-resolve routes so a ROUTE to/from an imported AS
-  // name binds instead of being dropped as an unknown DEF.
+  // Bind IMPORT names to retained Inline exports before resolving ROUTEs.
   runtime::wireInlineImports(doc.scene);
   doc.scene.resolveRoutes();
   return doc;
@@ -316,10 +332,8 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     if (url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0 ||
         url.rfind("urn:", 0) == 0)
       continue; // embedder override territory; default resolver stays local
-    // SEC-3: confine the resolved path to the source file's directory subtree
-    // (reject absolute urls and `../` escapes) — the default local resolver
-    // never reads arbitrary files. SEC-4: the returned path is canonical, so it
-    // is a stable cycle-guard key that spelling variants cannot alias past.
+    // Reject absolute paths and root escapes; canonical paths give stable cycle keys.
+    // See docs/wiki/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
     auto confined =
         confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
     if (!confined)
@@ -328,7 +342,7 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack
-    activeFiles.push_back(path);
+    ActiveFileGuard guard(activeFiles, path);
     std::shared_ptr<runtime::ProtoDeclaration> found;
     try {
       runtime::X3DDocument sub = parseFile(path);
@@ -339,7 +353,6 @@ localFileProtoResolver(const std::vector<std::string> &urls,
     } catch (const std::exception &) {
       // lenient: fall through to the next candidate url
     }
-    activeFiles.pop_back();
     if (found)
       return found;
   }
@@ -359,12 +372,13 @@ localFileInlineResolver(const std::vector<std::string> &urls,
       continue;
     auto confined =
         confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
-    if (!confined) continue;
+    if (!confined)
+      continue; // absolute / escaping / unresolvable -> skip this candidate
     const std::string path = std::move(*confined);
     if (std::find(activeFiles.begin(), activeFiles.end(), path) !=
         activeFiles.end())
       continue; // cycle: this file is already being resolved up the stack
-    activeFiles.push_back(path);
+    ActiveFileGuard guard(activeFiles, path);
     std::shared_ptr<runtime::Scene> result;
     try {
       runtime::X3DDocument sub =
@@ -373,7 +387,6 @@ localFileInlineResolver(const std::vector<std::string> &urls,
     } catch (const std::exception &) {
       // lenient: try the next candidate url
     }
-    activeFiles.pop_back();
     if (result)
       return result;
   }

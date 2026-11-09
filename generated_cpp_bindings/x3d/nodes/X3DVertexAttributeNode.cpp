@@ -1,4 +1,3 @@
-// X3DVertexAttributeNode.cpp
 #include "x3d/nodes/X3DVertexAttributeNode.hpp"
 
 namespace x3d::nodes {

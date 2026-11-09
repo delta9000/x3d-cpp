@@ -1,4 +1,3 @@
-// ChannelMerger.cpp
 #include "x3d/nodes/ChannelMerger.hpp"
 
 namespace x3d::nodes {

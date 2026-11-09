@@ -1,4 +1,3 @@
-// Arc2D.cpp
 #include "x3d/nodes/Arc2D.hpp"
 
 namespace x3d::nodes {

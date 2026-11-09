@@ -1,4 +1,3 @@
-// StringSensor.cpp
 #include "x3d/nodes/StringSensor.hpp"
 
 namespace x3d::nodes {

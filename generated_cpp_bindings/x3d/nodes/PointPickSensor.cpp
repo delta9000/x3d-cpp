@@ -1,4 +1,3 @@
-// PointPickSensor.cpp
 #include "x3d/nodes/PointPickSensor.hpp"
 
 namespace x3d::nodes {

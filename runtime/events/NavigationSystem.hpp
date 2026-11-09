@@ -1,40 +1,28 @@
-// NavigationSystem.hpp — the interactive navigation driver for the M2D
+// NavigationSystem.hpp — the interactive navigation driver for the
 // interaction layer. A System (update(now,ctx)) that reads the input seam
 // (PointerState drag deltas + KeyState) and the bound NavigationInfo, and
-// mutates the bound Viewpoint per the active navigation mode: EXAMINE / FLY /
-// WALK / LOOKAT / NONE (and ANY -> EXAMINE). FLY and WALK moves are collision-
+// mutates the bound Viewpoint per the active navigation mode: `EXAMINE` / `FLY` /
+// `WALK` / `LOOKAT` / `NONE` (and `ANY` -> `EXAMINE`). `FLY` and `WALK` moves are collision-
 // checked against the scene (§23.4.2 Collision: the avatar may not enter
-// geometry; enabled FALSE turns collision off for a subtree; a proxy stands in
+// geometry; enabled `FALSE` turns collision off for a subtree; a proxy stands in
 // for its group's children), with isActive/collideTime fired on the enclosing
-// Collision nodes. WALK adds gravity and terrain following at avatarSize[1]
-// above the ground, stepping onto obstacles up to avatarSize[2] high. EXAMINE
-// and LOOKAT transitions are not collision-checked.
-//
+// Collision nodes. `WALK` adds gravity and terrain following at avatarSize[1]
+// above the ground, stepping onto obstacles up to avatarSize[2] high. `EXAMINE`
+// and `LOOKAT` transitions are not collision-checked.
 // Spec grounding (ISO/IEC 19775-1:2023):
 //   §23.2.3  Navigation is performed relative to the viewpoint's location.
 //   §23.3.1  centerOfRotation in the same local frame as position/orientation;
-//            the up vector is +Y of the viewpoint-local coord system (NOT the
+//            the up vector is +Y of the viewpoint-local coord system (not the
 //            orientation field); default pose: on +Z looking down -Z.
 //   §23.4.4  NavigationInfo type list (first recognized type wins), speed,
-//            transitionType/transitionTime; EXAMINE orbit; FLY free-flight;
-//            LOOKAT frame-and-animate to a picked object's bbox center.
+//            transitionType/transitionTime; `EXAMINE` orbit; `FLY` free-flight;
+//            `LOOKAT` frame-and-animate to a picked object's bbox center.
 //   §23.4.6  Viewpoint position/orientation/centerOfRotation/fieldOfView.
 //   §23.4.2  Collision; §23.4.4 avatarSize (radius, eye height, step height),
 //            scaled — like speed — by the bound Viewpoint's transform hierarchy.
-//
-// The pointer-drag delta is the change in the consumer-supplied NORMALIZED
-// SCREEN cursor (PointerState::screenX/Y) across ticks — a camera-independent
-// signal, so no projection params cross the seam. It is deliberately NOT derived
-// from the world Ray: the ray is recomputed from the camera each frame, so the
-// same cursor maps to a different world point as the camera turns — feeding that
-// back into rotation spins the view on a single click and scales the rotation by
-// the scene's near-plane size. The world Ray stays for picking only. Keys are
-// opaque ints; this System maps a small fixed set (kKey*) to FLY movement,
-// matching Annex G.3's informative arrow-key mapping. The consumer chooses which
-// native key codes it forwards as these values.
-//
-// Codegen-free: reads/writes Viewpoint + NavigationInfo through the existing
-// generated accessors + ctx.writeField/postEvent. namespace x3d::runtime.
+// Pointer drag uses normalized screen deltas to avoid feeding camera motion
+// back into navigation. The world ray is used for picking. Consumers map native
+// keys to the opaque kKey* values (Annex G.3).
 #ifndef X3D_RUNTIME_NAVIGATION_SYSTEM_HPP
 #define X3D_RUNTIME_NAVIGATION_SYSTEM_HPP
 
@@ -48,6 +36,7 @@
 #include "X3DSystem.hpp"
 
 #include "x3d/nodes/NavigationInfo.hpp" // getType/getSpeed/getTransition*; emitTransitionComplete
+#include "x3d/nodes/GeoViewpoint.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -65,7 +54,7 @@ using x3d::nodes::NavigationInfo;
  *          the cascade drains. The active mode is the first recognized value of
  *          the bound NavigationInfo.type (§23.4.4). Cross-tick state holds the
  *          last pointer position (for drag deltas), the last tick time (for dt),
- *          and the in-flight LOOKAT transition.
+ *          and the in-flight `LOOKAT` transition.
  */
 class NavigationSystem : public System {
 public:
@@ -74,8 +63,8 @@ public:
 
   // Opaque key codes this System understands. The consumer maps its native key
   // constants onto these via ctx.setKey (Annex G.3 informative arrow mapping).
-  static constexpr int kKeyForward = 1; // UP    arrow / W
-  static constexpr int kKeyBack    = 2; // DOWN  arrow / S
+  static constexpr int kKeyForward = 1; // up    arrow / W
+  static constexpr int kKeyBack    = 2; // down  arrow / S
   static constexpr int kKeyLeft    = 3; // LEFT  arrow / A
   static constexpr int kKeyRight   = 4; // RIGHT arrow / D
 
@@ -97,9 +86,8 @@ public:
   // mode-cycle key). std::nullopt = scene-driven (default).
   void setForcedMode(std::optional<Mode> m) { forcedMode_ = m; }
 
-
   void update(double now, X3DExecutionContext &ctx) override {
-    // BIND-03: any bound X3DViewpointNode (Viewpoint/Ortho/Geo) — boundViewpoint()
+    // any bound X3DViewpointNode (Viewpoint/Ortho/Geo) — boundViewpoint()
     // returns whichever is bound; read its pose via reflection, never a typed cast.
     X3DNode *vp = ctx.boundViewpoint();
     if (!vp) {
@@ -119,23 +107,15 @@ public:
     haveTime_ = true;
 
     const Mode mode = forcedMode_ ? *forcedMode_ : resolveMode(nav);
-    // NAV-FLY-ROLL: entering FLY (from another mode or a different vp) requires
-    // re-decomposing the current orientation into yaw/pitch scalars so FLY drag
+    // entering `FLY` (from another mode or a different vp) requires
+    // re-decomposing the current orientation into yaw/pitch scalars so `FLY` drag
     // continues from the effective pose without carrying stale state.
     if (mode != lastMode_ || vp != lastFlyVp_) flyOrientValid_ = false;
     lastMode_ = mode;
     lastFlyVp_ = vp;
 
-    // Pointer drag delta from the NORMALIZED SCREEN cursor (PointerState::screenX/
-    // Y), NOT the world ray. The world ray is recomputed from the camera each
-    // frame, so using it would make the same cursor map to a different reference
-    // as the camera rotates — a positive-feedback loop that spins the view on a
-    // single click, scaled by the scene's near-plane size. The screen cursor is
-    // camera-independent, so a still cursor never self-navigates and a drag gives
-    // the same rotation at any scene scale. (The world ray stays for picking.)
+    // Use screen deltas; camera-derived rays would feed camera motion back into navigation.
     const PointerState &ps = ctx.pointerState();
-    const bool pointerChanged = ps.revision != lastPointerRev_;
-    lastPointerRev_ = ps.revision;
     float dx = 0.0f, dy = 0.0f;
     // Arbitration: a pointing-device sensor grab owns the pointer (§20.2.1);
     // do not also drag-navigate this tick.
@@ -148,9 +128,8 @@ public:
     } else {
       dragActive_ = false;
     }
-    (void)pointerChanged;
 
-    // An in-flight LOOKAT transition takes precedence (it owns the pose until
+    // An in-flight `LOOKAT` transition takes precedence (it owns the pose until
     // it completes), regardless of the current mode — it was committed at click.
     if (lookat_.active) {
       finishContacts(now, ctx);
@@ -161,7 +140,7 @@ public:
     switch (mode) {
     case Mode::None:
       finishContacts(now, ctx);
-      return; // §23.4.4: NONE produces no output.
+      return; // §23.4.4: `NONE` produces no output.
     case Mode::Examine:
       finishContacts(now, ctx);
       if (dragging && (dx != 0.0f || dy != 0.0f)) examineOrbit(ctx, vp, dx, dy);
@@ -178,7 +157,7 @@ public:
       return;
     case Mode::Lookat:
       finishContacts(now, ctx);
-      // LOOKAT triggers on a button-DOWN edge over a picked object.
+      // `LOOKAT` triggers on a button-down edge over a picked object.
       if (ps.present && ps.buttonDown && !buttonWasDown_ && !ctx.pointerConsumedBySensor())
         beginLookat(now, ctx, vp, nav, ps);
       buttonWasDown_ = ps.buttonDown;
@@ -193,15 +172,15 @@ private:
   // viewport width/height) orbits kPi radians. Browser-defined; the spec only
   // mandates "tied to pointer, no damping" (§23.4.4).
   static constexpr float kRotScale = kPi; // radians per unit of normalized screen drag
-  // NAV-FLY-ROLL: clamp pitch just shy of +/-90 deg so asin() stays defined
+  // clamp pitch just shy of +/-90 deg so asin() stays defined
   // and the camera never flips through the pole.
   static constexpr float kPitchLimit = kPi * 0.5f - 0.001f;
-  // WALK: gravity (m/s², scaled into the viewpoint's frame) and how far below
+  // `WALK`: gravity (m/s², scaled into the viewpoint's frame) and how far below
   // the eye, in avatar heights, to look for ground before hovering.
   static constexpr double kGravity = 9.81;
   static constexpr float kGroundSearch = 1000.0f;
 
-  // First recognized type wins (§23.4.4). ANY and unrecognized -> EXAMINE.
+  // First recognized type wins (§23.4.4). `ANY` and unrecognized values use `EXAMINE`.
   // NavigationInfo.type is an open MFString vocabulary, so match tokens (not a
   // closed enum) and skip unrecognized/custom types per the spec.
   static Mode resolveMode(NavigationInfo *nav) {
@@ -213,12 +192,12 @@ private:
       if (t == "WALK")    return Mode::Walk;
       if (t == "LOOKAT")  return Mode::Lookat;
       if (t == "ANY")     return Mode::Examine; // sensible default
-      // EXPLORE not implemented (niche) -> try next token.
+      // Unsupported `EXPLORE` falls through to the next token.
     }
     return Mode::Examine;
   }
 
-  // ---- vector helpers -------------------------------------------------------
+  // vector helpers
   static SFVec3f sub(const SFVec3f &a, const SFVec3f &b) { return {a.x-b.x, a.y-b.y, a.z-b.z}; }
   static SFVec3f add(const SFVec3f &a, const SFVec3f &b) { return {a.x+b.x, a.y+b.y, a.z+b.z}; }
   static SFVec3f mul(const SFVec3f &a, float s) { return {a.x*s, a.y*s, a.z*s}; }
@@ -231,13 +210,13 @@ private:
   }
   static float dot(const SFVec3f &a, const SFVec3f &b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
 
-  // ---- user-offset I/O (CONF-VIEWNAV) --------------------------------------
-  // Navigation reads the EFFECTIVE local eye (authored pose ∘ offset) and writes
+  // user-offset I/O
+  // Navigation reads the effective local eye (authored pose ∘ offset) and writes
   // a new offset — it never touches the authored position/orientation (§23.2.3).
   static Mat4 poseOf(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.position is SFVec3d; read leniently so a bound GeoViewpoint
-    // isn't pinned to the origin (GEO-1 sibling).
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    // isn't pinned to the origin .
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       Mat4 frame;
       if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame, projection))
         return frame * Mat4::rotation(geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0}));
@@ -252,8 +231,8 @@ private:
     return rotationFromMatrix(poseOf(vp, ctx.geoProjection()) * ctx.viewpointOffset(vp).local);
   }
   static SFVec3f cor(X3DNode *vp, const geo::GeoProjection &projection) {
-    // GeoViewpoint.centerOfRotation is SFVec3d; read leniently (GEO-1 sibling).
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    // GeoViewpoint.centerOfRotation is SFVec3d; read leniently.
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3f world;
       if (geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0,0,0}), world, projection))
         return world;
@@ -268,13 +247,6 @@ private:
     ctx.setViewpointOffset(vp, off);
   }
 
-  static Quat quatMul(const Quat &a, const Quat &b) {
-    return Quat{
-      a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
-      a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
-      a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
-      a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z};
-  }
   static Quat axisAngleQuat(const SFVec3f &axis, float angle) {
     return quatFromRotation(SFRotation{axis.x, axis.y, axis.z, angle});
   }
@@ -286,11 +258,11 @@ private:
     return SFVec3f{static_cast<float>(r.x), static_cast<float>(r.y), static_cast<float>(r.z)};
   }
 
-  // NAV-FLY-ROLL: decompose an orientation into yaw (about world up +Y) and
+  // decompose an orientation into yaw (about world up +Y) and
   // pitch (about the yawed camera-local right), such that Rpitch * Ryaw ≈ q.
   // Roll-free by construction: Ryaw is about world-up; Rpitch is about the
   // yawed right (horizontal, no y-component). Used to seed flyYaw_/flyPitch_
-  // when entering FLY mode or binding a new viewpoint.
+  // when entering `FLY` mode or binding a new viewpoint.
   static void decomposeLookRotation(const Quat &q, float &yaw, float &pitch) {
     SFVec3f f = norm(rotateByQuat(q, SFVec3f{0,0,-1})); // camera forward
     yaw = std::atan2(-f.x, -f.z);                        // angle about world Y
@@ -313,35 +285,10 @@ private:
     m.m[0]=r.x;  m.m[1]=r.y;  m.m[2]=r.z;
     m.m[4]=u.x;  m.m[5]=u.y;  m.m[6]=u.z;
     m.m[8]=-f.x; m.m[9]=-f.y; m.m[10]=-f.z;
-    return rotationFromQuat(quatFromMat(m));
+    return rotationFromMatrix(m);
   }
 
-  // Rotation matrix (upper-left 3x3, column-major) -> unit quaternion (Shepperd).
-  static Quat quatFromMat(const Mat4 &m) {
-    const float m00=m.m[0], m01=m.m[4], m02=m.m[8];
-    const float m10=m.m[1], m11=m.m[5], m12=m.m[9];
-    const float m20=m.m[2], m21=m.m[6], m22=m.m[10];
-    const float tr = m00 + m11 + m22;
-    double x,y,z,w;
-    if (tr > 0.0f) {
-      float s = std::sqrt(tr + 1.0f) * 2.0f;
-      w = 0.25 * s; x = (m21 - m12)/s; y = (m02 - m20)/s; z = (m10 - m01)/s;
-    } else if (m00 > m11 && m00 > m22) {
-      float s = std::sqrt(1.0f + m00 - m11 - m22) * 2.0f;
-      w = (m21 - m12)/s; x = 0.25 * s; y = (m01 + m10)/s; z = (m02 + m20)/s;
-    } else if (m11 > m22) {
-      float s = std::sqrt(1.0f + m11 - m00 - m22) * 2.0f;
-      w = (m02 - m20)/s; x = (m01 + m10)/s; y = 0.25 * s; z = (m12 + m21)/s;
-    } else {
-      float s = std::sqrt(1.0f + m22 - m00 - m11) * 2.0f;
-      w = (m10 - m01)/s; x = (m02 + m20)/s; y = (m12 + m21)/s; z = 0.25 * s;
-    }
-    double l = std::sqrt(x*x+y*y+z*z+w*w);
-    if (l < 1e-12) return Quat{0,0,0,1};
-    return Quat{x/l, y/l, z/l, w/l};
-  }
-
-  // ---- EXAMINE (orbit/turntable) -------------------------------------------
+  // `EXAMINE` (orbit/turntable)
   // Orbit the eye about centerOfRotation; re-aim the camera at the pivot.
   // up = (0,1,0) in viewpoint-local coords (§23.3.1).
   void examineOrbit(X3DExecutionContext &ctx, X3DNode *vp, float dx, float dy) {
@@ -366,8 +313,8 @@ private:
     commitEye(ctx, vp, Pnew, Onew); // accumulate into the offset (not the fields)
   }
 
-  // ---- FLY (free flight) ----------------------------------------------------
-  // FLY moves along the view direction; WALK (walk=true) moves horizontally —
+  // `FLY` (free flight)
+  // `FLY` moves along the view direction; `WALK` (walk=true) moves horizontally —
   // the view direction projected onto the viewpoint-local horizontal plane —
   // then applies gravity and terrain following. Both are collision-checked.
   void flyUpdate(X3DExecutionContext &ctx, X3DNode *vp, NavigationInfo *nav,
@@ -377,10 +324,10 @@ private:
     SFVec3f P = effPos(ctx, vp);
     bool changed = false;
 
-    // NAV-FLY-ROLL: hold orientation as yaw/pitch scalars and reconstruct
+    // hold orientation as yaw/pitch scalars and reconstruct
     // q = Rpitch * Ryaw each step. Roll-free by construction (Ryaw is about
     // world-up; Rpitch is about the yawed horizontal right). Re-decompose
-    // from the effective orientation when entering FLY or binding a new vp.
+    // from the effective orientation when entering `FLY` or binding a new vp.
     if (!flyOrientValid_) {
       decomposeLookRotation(q, flyYaw_, flyPitch_);
       flyOrientValid_ = true;
@@ -405,7 +352,7 @@ private:
 
     // Keys -> translate along view dir / strafe, scaled by speed*dt (§23.4.4).
     float speed = nav ? nav->getSpeed() : 1.0f;
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       // §25.3.11: refresh elevation-based velocity as the eye moves.
       SFVec3d authored;
       double lat, lon, elevation;
@@ -433,7 +380,7 @@ private:
     if (changed) commitEye(ctx, vp, P, rotationFromQuat(q));
   }
 
-  // ---- collision + terrain following (§23.4.2, §23.4.4) ---------------------
+  // collision + terrain following (§23.4.2, §23.4.4)
   struct Avatar {
     float radius = 0.25f, height = 1.6f, step = 0.75f; // §23.4.4 defaults
   };
@@ -452,7 +399,7 @@ private:
         baseVisibility_ = nav->getVisibilityLimit();
       }
     }
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3d authored;
       double lat, lon, elevation;
       if (geo::fromWorld(*vp, ctx.cameraWorldPosition(), authored, ctx.geoProjection()) &&
@@ -526,7 +473,7 @@ private:
   }
 
   // Clamp a move so the avatar stops `radius` short of collidable geometry. It
-  // probes along the motion from the eye and, in WALK, from step height (the
+  // probes along the motion from the eye and, in `WALK`, from step height (the
   // body below the eye) so an obstacle taller than avatarSize[2] blocks while a
   // lower one is stepped onto by terrain following. Sideways clearance is not
   // modelled: a wall parallel to the motion does not push the avatar away.
@@ -556,7 +503,7 @@ private:
     return f.world.inverse().transformPoint(add(from, mul(dir, allowed)));
   }
 
-  // WALK: keep the eye avatarSize[1] above the ground below it. Rising ground
+  // `WALK`: keep the eye avatarSize[1] above the ground below it. Rising ground
   // (a step no taller than avatarSize[2] — taller ones were blocked by
   // resolveMove) lifts the eye at once; falling integrates gravity until the
   // eye is back at its height. With no ground below, the avatar hovers.
@@ -596,8 +543,8 @@ private:
     if (h.hit) touch(groups);
   }
 
-  // §23.4.2: isActive TRUE + collideTime when a Collision group's collision
-  // starts, isActive FALSE when it no longer occurs.
+  // §23.4.2: isActive `TRUE` + collideTime when a Collision group's collision
+  // starts, isActive `FALSE` when it no longer occurs.
   void finishContacts(double now, X3DExecutionContext &ctx) {
     for (X3DNode *g : touched_)
       if (std::find(colliding_.begin(), colliding_.end(), g) == colliding_.end()) {
@@ -612,7 +559,7 @@ private:
     if (colliding_.empty()) haveBlockedDir_ = false;
   }
 
-  // ---- LOOKAT (frame + animate to a picked object) -------------------------
+  // `LOOKAT` (frame + animate to a picked object)
   void beginLookat(double now, X3DExecutionContext &ctx, X3DNode *vp,
                    NavigationInfo *nav, const PointerState &ps) {
     PickResult pick = ctx.pick(ps.ray);
@@ -648,8 +595,8 @@ private:
     SFVec3f upLocal = norm(parentInv.transformDirection(SFVec3f{0,1,0}));
     SFRotation targetOri = lookRotation(dirLocal, upLocal);
 
-    // Set the pivot for subsequent EXAMINE in the bound viewpoint's own frame.
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    // Set the pivot for subsequent `EXAMINE` in the bound viewpoint's own frame.
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       SFVec3d geoCenter;
       if (geo::fromWorld(*vp, centerLocal, geoCenter, ctx.geoProjection()))
         (void)ctx.writeField(vp, "centerOfRotation", std::any(geoCenter));
@@ -657,13 +604,13 @@ private:
       (void)ctx.writeField(vp, "centerOfRotation", std::any(centerLocal));
     }
 
-    // Begin transition from the CURRENT effective eye (offset-aware).
+    // Begin transition from the current effective eye (offset-aware).
     lookat_.start = effPos(ctx, vp);
     lookat_.startOri = effOri(ctx, vp);
     lookat_.endPos = targetLocal;
     lookat_.endOri = targetOri;
     lookat_.t0 = now;
-    lookat_.duration = resolveTransitionTime(nav);
+    lookat_.duration = nav ? nav->getTransitionTime() : 1.0;
     lookat_.teleport = isTeleport(nav) || lookat_.duration <= 0.0;
     lookat_.active = true;
     buttonWasDown_ = ps.buttonDown;
@@ -693,22 +640,19 @@ private:
     }
   }
 
-  static double resolveTransitionTime(NavigationInfo *nav) {
-    return nav ? nav->getTransitionTime() : 1.0;
-  }
-  // First recognized transitionType wins; default LINEAR (§23.4.4).
+  // First recognized transitionType wins; default `LINEAR` (§23.4.4).
   // transitionType is an open MFString vocabulary — match tokens, skip unknown.
   static bool isTeleport(NavigationInfo *nav) {
     if (!nav) return false;
     for (const std::string &tt : nav->getTransitionType()) {
       if (tt == "TELEPORT") return true;
       if (tt == "LINEAR") return false;
-      if (tt == "ANIMATE") return false; // treat as LINEAR (NAV-EXTRA)
+      if (tt == "ANIMATE") return false; // treat as `LINEAR`
     }
     return false;
   }
 
-  // ---- cross-tick state -----------------------------------------------------
+  // cross-tick state
   double lastNow_ = 0.0;
   NavigationInfo *geoNav_ = nullptr;
   MFFloat baseAvatar_;
@@ -718,7 +662,6 @@ private:
   bool geoScaled_ = false;
   float geoAvatarFactor_ = 1.0f;
   bool haveTime_ = false;
-  unsigned long lastPointerRev_ = static_cast<unsigned long>(-1);
   bool dragActive_ = false;
   float lastPx_ = 0.0f, lastPy_ = 0.0f;
   bool buttonWasDown_ = false;
@@ -726,7 +669,7 @@ private:
   // Consumer mode override: when set, ignores NavigationInfo.type.
   std::optional<Mode> forcedMode_; // consumer mode override (dev mode-cycle key)
 
-  // NAV-FLY-ROLL: FLY orientation held as yaw/pitch scalars (roll-free).
+  // `FLY` orientation held as yaw/pitch scalars (roll-free).
   // Invalidated on mode switch or viewpoint bind change so the next flyUpdate
   // re-decomposes from the effective orientation.
   Mode lastMode_ = Mode::None;
@@ -735,7 +678,7 @@ private:
   float flyYaw_ = 0.0f, flyPitch_ = 0.0f;
 
   // Collision (§23.4.2): Collision groups in contact this tick / last tick, the
-  // last blocked motion direction (for resting contact), WALK fall speed.
+  // last blocked motion direction (for resting contact), `WALK` fall speed.
   std::vector<X3DNode *> touched_;
   std::vector<X3DNode *> colliding_;
   SFVec3f blockedDir_{0, 0, -1};

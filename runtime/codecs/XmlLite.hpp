@@ -4,7 +4,7 @@
 // Scope: handles elements, attributes (single- or double-quoted), self-closing
 // tags, nested children, XML declarations (<?xml ...?>), DOCTYPE (<!DOCTYPE ...>),
 // comments (<!-- ... -->), and the five predefined entities (&amp; &lt; &gt;
-// &quot; &apos;) plus numeric character references. It deliberately does NOT aim
+// &quot; &apos;) plus numeric character references. It deliberately does not aim
 // at full XML conformance (no namespaces, no CDATA processing beyond passthrough,
 // no DTD validation) — only what is needed to round-trip the X3D-XML encoding
 // emitted by the writer in this project, and to read typical hand-authored .x3d.
@@ -73,7 +73,9 @@ struct Element {
   }
 };
 
-/// Escape a string for use as XML element text / attribute value content.
+/// Escape a string for use as an XML attribute value. Tab, LF and CR become
+/// character references because attribute-value normalization (XML 1.0
+/// §3.3.3) turns the literal characters into spaces on reparse.
 inline std::string escape(const std::string &s) {
   std::string out;
   out.reserve(s.size());
@@ -84,6 +86,9 @@ inline std::string escape(const std::string &s) {
     case '>': out += "&gt;"; break;
     case '"': out += "&quot;"; break;
     case '\'': out += "&apos;"; break;
+    case '\t': out += "&#x9;"; break;
+    case '\n': out += "&#xA;"; break;
+    case '\r': out += "&#xD;"; break;
     default: out += c; break;
     }
   }
@@ -91,7 +96,7 @@ inline std::string escape(const std::string &s) {
 }
 
 /// Make text safe for a CDATA body: a literal `]]>` would close the section
-/// early (silently truncating e.g. Script source — ENC-CDATA-SCRIPT), so split
+/// early (silently truncating e.g. Script source — ), so split
 /// it across two sections: `]]` ends one, `>` starts the next. The reader
 /// concatenates consecutive CDATA sections, restoring the original text.
 inline std::string cdataEscape(const std::string &s) {
@@ -192,7 +197,7 @@ public:
 private:
   std::string src_;
   std::size_t pos_ = 0;
-  std::size_t depth_ = 0; // SEC-1: element nesting depth (DoS guard).
+  std::size_t depth_ = 0; // element nesting depth (DoS guard).
 
   static bool isSpace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -267,7 +272,7 @@ private:
 
   std::unique_ptr<Element> parseElement() {
     // Precondition: src_[pos_] == '<' and not a comment/PI/decl.
-    NestingGuard guard(depth_, "XML"); // SEC-1: bound parseElement<->parseContent.
+    NestingGuard guard(depth_, "XML"); // bound parseElement<->parseContent.
     ++pos_; // consume '<'
     auto el = std::make_unique<Element>();
     el->name = parseName();
@@ -353,7 +358,15 @@ private:
           // accept the original (narrow) value, matching prior behavior.
         }
       }
-      std::string raw = src_.substr(vstart, pos_ - vstart);
+      std::string raw;
+      raw.reserve(pos_ - vstart);
+      // ISO/IEC 19776-1 4.3 uses XML 1.0: normalize literal whitespace
+      // before decoding references (XML 1.0 2.11 and 3.3.3).
+      for (std::size_t i = vstart; i < pos_; ++i) {
+        const char c = src_[i];
+        if (c == '\r' && i + 1 < pos_ && src_[i + 1] == '\n') ++i;
+        raw += isSpace(c) ? ' ' : c;
+      }
       ++pos_; // closing quote
       el->attributes.emplace_back(key, unescape(raw));
     }

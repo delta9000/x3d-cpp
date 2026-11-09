@@ -1,22 +1,4 @@
-// stl_reader_test.cpp — TDD for binary STL → PackedMesh codec.
-// Gated on X3D_CPP_BUILD_EXT; registered in the ext quarantine block in CMakeLists.txt.
-// The test synthesizes a binary STL payload in-memory and verifies the
-// correctness of the resulting PackedMesh against known-good values.
-//
-// Binary STL format (all little-endian):
-//   [0,80)       = 80-byte header (ignored by reader, freeform text)
-//   [80,84)      = uint32_t triangle count N
-//   then N × 50-byte records:
-//     float32[3] = facet normal
-//     float32[3] = v0
-//     float32[3] = v1
-//     float32[3] = v2
-//     uint16_t   = attribute byte count (ignored)
-//
-// Detection note: binary STLs sometimes start with "solid" — the same prefix
-// as ASCII STL. Size-based detection (len == 84 + N*50) is more reliable.
-// This test only covers binary; ASCII is TODO.
-
+// Binary STL decoding from synthesized little-endian facet records.
 #include "StlReader.hpp"
 
 #include "PackedMesh.hpp"  // VertexAttrib, ComponentType, PackedMesh
@@ -27,9 +9,8 @@
 #include <cstdint>
 #include <vector>
 
-// ---------------------------------------------------------------------------
 // Helper: write a little-endian uint32_t into a buffer at byte offset `off`.
-// ---------------------------------------------------------------------------
+
 static void write_u32(std::vector<uint8_t>& buf, std::size_t off, uint32_t v) {
     buf[off+0] = static_cast<uint8_t>(v      );
     buf[off+1] = static_cast<uint8_t>(v >>  8);
@@ -50,11 +31,10 @@ static void write_u16(std::vector<uint8_t>& buf, std::size_t off, uint16_t v) {
     buf[off+1] = static_cast<uint8_t>(v >> 8);
 }
 
-// ---------------------------------------------------------------------------
 // build_stl_binary — builds a synthetic binary STL with N=2 triangles.
 // Triangle 0: normal (0,0,1), verts (0,0,0), (1,0,0), (0,1,0)
 // Triangle 1: normal (0,1,0), verts (2,0,0), (3,0,0), (2,1,0)
-// ---------------------------------------------------------------------------
+
 static std::vector<uint8_t> build_stl_binary() {
     const uint32_t N = 2;
     std::vector<uint8_t> buf(80 + 4 + N * 50, 0);
@@ -101,9 +81,8 @@ static std::vector<uint8_t> build_stl_binary() {
     return buf;
 }
 
-// ---------------------------------------------------------------------------
 // Helper: read a float from a byte buffer at a given byte offset.
-// ---------------------------------------------------------------------------
+
 static float read_f32_at(const uint8_t* base, std::size_t byte_offset) {
     float v;
     std::memcpy(&v, base + byte_offset, sizeof(float));
@@ -114,9 +93,8 @@ int main() {
     using namespace x3d::runtime::ext;
     using namespace x3d::runtime::extract;
 
-    // =========================================================================
-    // TEST 1: nominal two-triangle binary STL
-    // =========================================================================
+    // nominal two-triangle binary STL
+
     {
         auto stl = build_stl_binary();
         PackedMesh mesh = parseStlBinary(stl.data(), stl.size());
@@ -140,9 +118,8 @@ int main() {
         assert(mesh.ccw   == true  && "ccw must be true");
         assert(mesh.solid == true  && "solid must be true");
 
-        // -----------------------------------------------------------------------
         // Verify known position values via VertexBufferView + attribute_data
-        // -----------------------------------------------------------------------
+
         const VertexBufferView& pv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Position)];
         assert(pv.component_type == ComponentType::Float);
         assert(pv.components_per_vertex == 3);
@@ -167,10 +144,9 @@ int main() {
         assert(read_f32_at(pos_base, 40) == 0.0f);
         assert(read_f32_at(pos_base, 44) == 0.0f);
 
-        // -----------------------------------------------------------------------
         // Verify normal: the facet normal replicated to all 3 verts of each triangle
         // Triangle 0 normal = (0,0,1); Triangle 1 normal = (0,1,0)
-        // -----------------------------------------------------------------------
+
         const VertexBufferView& nv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Normal)];
         assert(nv.component_type == ComponentType::Float);
         assert(nv.components_per_vertex == 3);
@@ -191,18 +167,16 @@ int main() {
             assert(read_f32_at(nor_base, (i*3+2)*4) == 0.0f); // nz
         }
 
-        // -----------------------------------------------------------------------
         // Verify AABB: positions span (0,0,0)-(3,1,0)
-        // -----------------------------------------------------------------------
+
         const auto& bb = mesh.bounds;
         assert(!bb.empty && "bounds must not be empty");
         assert(bb.min.x == 0.0f && bb.min.y == 0.0f && bb.min.z == 0.0f);
         assert(bb.max.x == 3.0f && bb.max.y == 1.0f && bb.max.z == 0.0f);
     }
 
-    // =========================================================================
-    // TEST 2: malformed / truncated input → empty PackedMesh, no crash
-    // =========================================================================
+    // malformed / truncated input → empty PackedMesh, no crash
+
     {
         // Buffer shorter than the 84-byte minimum header
         std::vector<uint8_t> too_short(10, 0);
@@ -224,9 +198,8 @@ int main() {
         assert(mesh.empty() && "null/0-length input must produce empty PackedMesh");
     }
 
-    // =========================================================================
-    // TEST 3: convenience overload — span-via-vector
-    // =========================================================================
+    // convenience overload — span-via-vector
+
     {
         auto stl = build_stl_binary();
         PackedMesh mesh = parseStlBinary(stl);

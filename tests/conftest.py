@@ -15,12 +15,14 @@ import os
 import re
 import shutil
 import subprocess
+import tomllib
+from pathlib import Path
 
 import pytest
 
-# Keep in sync with mise.toml [tools] and scripts/check_golden.sh
-# (test_formatter_pin.py asserts the mise pin).
-PINNED_CLANG_FORMAT = "22.1.8"
+PINNED_CLANG_FORMAT = tomllib.loads(
+    (Path(__file__).resolve().parent.parent / "mise.toml").read_text()
+)["tools"]["clang-format"]
 
 _INSTALL_HINT = (
     f"install the pin with `mise install clang-format@{PINNED_CLANG_FORMAT}`, "
@@ -91,3 +93,24 @@ def generated_tree(tmp_path_factory):
         f"regeneration failed (exit {result.returncode}):\n"
         f"{result.stdout}\n{result.stderr}")
     return out
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_checked(*command: str) -> str:
+    result = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    return result.stdout
+
+
+@pytest.fixture(scope="session")
+def configured_ci(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    build_dir = tmp_path_factory.mktemp("cmake-aggregates")
+    run_checked("cmake", "--preset", "ci", "-B", str(build_dir))
+    return build_dir

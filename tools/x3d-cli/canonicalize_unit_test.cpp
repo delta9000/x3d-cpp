@@ -1,23 +1,4 @@
-// tools/x3d-cli/canonicalize_unit_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// Unit tests for CanonicalXmlWriter (X3DC14N).
-//
-// Tests:
-//   1.  XML prolog present.
-//   2.  DOCTYPE line present (version-specific).
-//   3.  Single-quote attribute delimiters.
-//   4.  Attributes sorted alphabetically within each element.
-//   5.  Minimal float format (0.8 not 0.800000, 0 not 0.0).
-//   6.  Integer attrs without .0 (height='3' not height='3.0').
-//   7.  xmlns:xsd and xsd:noNamespaceSchemaLocation on <X3D>.
-//   8.  DEF/USE preserved across round-trip.
-//   9.  Idempotence: canonicalize(canonicalize(x)) == canonicalize(x).
-//  10.  2-space-per-level indentation (no tabs).
-//  11.  Default writer (XmlWriter) output is byte-identical before/after
-//       CanonicalXmlWriter is used (isolation proof).
-//  12.  meta content/name attrs appear in alphabetical order (content < name).
-//  13.  &apos; escaping in single-quote context.
-// ─────────────────────────────────────────────────────────────────────────────
+// Check canonical XML formatting, escaping, and idempotence.
 #include "CanonicalXmlWriter.hpp"
 #include "XmlWriter.hpp"
 #include "x3d/sdk.hpp"
@@ -36,7 +17,6 @@ namespace sdk = x3d::sdk;
 using x3d::codec::CanonicalXmlWriter;
 using x3d::codec::XmlWriter;
 
-// ── helpers ───────────────────────────────────────────────────────────────────
 
 static int failures = 0;
 
@@ -77,9 +57,8 @@ static sdk::X3DDocument parseXml(const std::string &xml) {
     return sdk::parseDocument(xml, sdk::Encoding::XML);
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
 
-// T1: XML prolog.
+// XML prolog.
 static void testXmlProlog() {
     auto doc = makeMinimalDoc("3.3");
     CanonicalXmlWriter w;
@@ -87,7 +66,7 @@ static void testXmlProlog() {
     checkContains("T1-prolog", out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
 }
 
-// T2: DOCTYPE line is present with correct version.
+// DOCTYPE line is present with correct version.
 static void testDoctype() {
     auto doc32 = makeMinimalDoc("3.2");
     CanonicalXmlWriter w;
@@ -101,7 +80,7 @@ static void testDoctype() {
                   "<!DOCTYPE X3D PUBLIC \"ISO//Web3D//DTD X3D 4.0//EN\"");
 }
 
-// T3: Single-quote attribute delimiters (not double-quotes).
+// Single-quote attribute delimiters (not double-quotes).
 static void testSingleQuotes() {
     auto doc = makeMinimalDoc("3.3");
     CanonicalXmlWriter w;
@@ -111,7 +90,7 @@ static void testSingleQuotes() {
     checkNotContains("T3-no-double-quote-profile", out, "profile=\"Interchange\"");
 }
 
-// T4: Alphabetical attribute order.
+// Alphabetical attribute order.
 static void testAttrOrder() {
     // <meta content='...' name='...'/>  — content < name alphabetically.
     auto doc = makeMinimalDoc("3.3");
@@ -133,7 +112,7 @@ static void testAttrOrder() {
                                   xmlnsPos < xsdPos);
 }
 
-// T5: Minimal float format (use shortest representation).
+// Minimal float format (use shortest representation).
 static void testMinimalFloats() {
     // Parse a small X3D with a known float value (0.8 should stay as "0.8").
     const std::string xml =
@@ -151,7 +130,7 @@ static void testMinimalFloats() {
     checkNotContains("T5-no-trailing-zero", out, "0.0 0.0");
 }
 
-// T6: Integer values without .0 (e.g. size='3 4 5' not '3.0 4.0 5.0').
+// Integer values without .0 (e.g. size='3 4 5' not '3.0 4.0 5.0').
 // Use non-default size (default Box size is 2 2 2 so we use 3 4 5).
 static void testIntegerAttrs() {
     const std::string xml =
@@ -167,7 +146,7 @@ static void testIntegerAttrs() {
     checkNotContains("T6-no-float-size", out, "size='3.0");
 }
 
-// T7: xmlns:xsd and xsd:noNamespaceSchemaLocation on <X3D>.
+// xmlns:xsd and xsd:noNamespaceSchemaLocation on <X3D>.
 static void testSchemaAttrs() {
     auto doc = makeMinimalDoc("4.0");
     CanonicalXmlWriter w;
@@ -176,7 +155,7 @@ static void testSchemaAttrs() {
     checkContains("T7-schema-loc", out, "xsd:noNamespaceSchemaLocation='https://www.web3d.org/specifications/x3d-4.0.xsd'");
 }
 
-// T8: DEF/USE preserved.
+// DEF/USE preserved.
 static void testDefUse() {
     const std::string xml =
         R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -192,7 +171,7 @@ static void testDefUse() {
     checkContains("T8-USE", out, "USE='S1'");
 }
 
-// T9: Idempotence — canonicalize(canonicalize(x)) == canonicalize(x).
+// Idempotence — canonicalize(canonicalize(x)) == canonicalize(x).
 static void testIdempotence() {
     const std::string xml =
         R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -228,7 +207,7 @@ static void testIdempotence() {
     }
 }
 
-// T10: 2-space indentation (no tabs).
+// 2-space indentation (no tabs).
 static void testIndentation() {
     auto doc = makeMinimalDoc("3.3");
     CanonicalXmlWriter w;
@@ -240,8 +219,8 @@ static void testIndentation() {
     checkContains("T10-4space-meta", out, "    <meta ");
 }
 
-// T11: XmlWriter (default) output byte-identical before vs after CanonicalXmlWriter use.
-// This proves the canonical mode does NOT modify the default writer's code path.
+// XmlWriter (default) output byte-identical before vs after CanonicalXmlWriter use.
+// This proves the canonical mode does not modify the default writer's code path.
 static void testDefaultWriterUnchanged() {
     const std::string xml =
         R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -266,7 +245,7 @@ static void testDefaultWriterUnchanged() {
     check("T11-default-writer-unchanged", before == after);
 }
 
-// T12: meta attrs in canonical order (content < name).
+// meta attrs in canonical order (content < name).
 static void testMetaOrder() {
     const std::string xml =
         R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -286,7 +265,7 @@ static void testMetaOrder() {
           contentPos < namePos);
 }
 
-// T13: &apos; escaping for apostrophes in attribute values.
+// &apos; escaping for apostrophes in attribute values.
 static void testAposEscaping() {
     const std::string xml =
         R"(<?xml version="1.0" encoding="UTF-8"?>)"
@@ -302,7 +281,6 @@ static void testAposEscaping() {
     checkNotContains("T13-no-bare-apos-in-attr", out, "content='it's here'");
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
 
 int main() {
     std::cout << "=== CanonicalXmlWriter unit tests ===\n\n";

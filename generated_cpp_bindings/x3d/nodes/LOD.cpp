@@ -1,4 +1,3 @@
-// LOD.cpp
 #include "x3d/nodes/LOD.hpp"
 
 namespace x3d::nodes {

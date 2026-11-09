@@ -1,4 +1,3 @@
-// ToneMappedVolumeStyle.cpp
 #include "x3d/nodes/ToneMappedVolumeStyle.hpp"
 
 namespace x3d::nodes {

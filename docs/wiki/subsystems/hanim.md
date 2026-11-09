@@ -33,13 +33,13 @@ placement.
 
 `compileBinding()` builds an immutable `SkinBinding` for one HAnimHumanoid:
 
-- **Joint order.** Palette order is `HAnimHumanoid.joints` with repeats removed,
+- Joint order. Palette order is `HAnimHumanoid.joints` with repeats removed,
   followed by any skeleton-reachable joint with skin weights that the list
   omits.
-- **Influences.** All valid vertex influences are kept in CSR form (never
+- Influences. All valid vertex influences are kept in CSR form (never
   capped at four) and normalized per vertex. Malformed list lengths, indices
   and weight sums are recorded in `diagnostics`.
-- **Bind pose.** Authored `skinBindingCoords` / `skinBindingNormals` replace the
+- Bind pose. Authored `skinBindingCoords` / `skinBindingNormals` replace the
   skin source arrays; `Coordinate` and `CoordinateDouble` are both accepted.
   `jointBindingPositions` / `Rotations` / `Scales` replace each joint's own
   translation, rotation and scale in the binding pose (19774-1 §6.2), associated
@@ -69,10 +69,10 @@ The SDK never writes deformed values into `skinCoord.point`.
 
 ## Displacers
 
-A **Joint** displacer is part of the binding. Its `weight` is pose state: a
+A Joint displacer is part of the binding. Its `weight` is pose state: a
 weight change reports a pose update and does not recompile the binding.
 
-A **Segment** displacer offsets points of its Segment's own `coord`, in Segment
+A Segment displacer offsets points of its Segment's own `coord`, in Segment
 coordinates. When the extractor builds a mesh under an HAnimSegment, it passes
 the nearest enclosing Segment in `MeshBuildOptions::hanimSegment`. The mesh
 builder then calls `displaceSegmentPoints(segment, coord, points)`, which
@@ -101,15 +101,19 @@ placed there directly (§26.3.2). The `joints`, `segments`, `sites` and
 Each skin item carries `RenderItem::SkinDesc`:
 
 - the shared `SkinBinding`;
-- the source coordinate index of every expanded mesh corner (and source normal
-  indices when authored);
 - a pose version.
 
-A joint transform or Joint-displacer weight change advances the version and
-lists the item in `RenderDelta::updatedSkinPose`. The geometry ID and mesh stay
-the same, so a GPU consumer uploads only the palette. The binding is recompiled
-only when a binding field changes: the humanoid's skin or binding fields, a
-joint's `skinCoordIndex` / `skinCoordWeight`, or the skeleton structure.
+The shared `item.mesh` carries each expanded corner's `sourceCoordIndex` and
+`sourceNormalIndex` remaps. CPU and GPU skinning read these arrays directly;
+`SkinDesc` does not copy them per placement.
+
+Motion of a skeletal frame, including an HAnimSite above a joint, or a
+Joint-displacer weight change advances the version and lists the item in
+`RenderDelta::updatedSkinPose`. Pose-only changes retain the geometry ID, mesh,
+and binding, so a GPU consumer uploads only the palette. Binding edits recompile
+the binding: the humanoid's skin or binding fields, a joint's `skinCoordIndex`,
+`skinCoordWeight`, `center`, or `scaleOrientation`, a Joint-displacer's
+`coordIndex` or `displacements`, or the skeleton structure.
 
 CPU consumers call `SceneExtractor::deformedMesh(id)`. It evaluates the pose,
 deforms the source coordinates and maps them to the expanded corners. Each
@@ -131,28 +135,19 @@ Both renderers flip the front face under a negative-determinant world
 transform (`ccw` XOR reflection). Leif and Lily use `ccw=false` under the
 humanoid scale `1 1 -1`.
 
-### Visual verification
-
-Posed archive humanoids (ROUTEs stripped, fixed joint rotations, one fixed
-camera) were rendered in `cpu_raster`, `poc_renderer` and an independent X3D
-browser. Poses agree for JoeKick, Leif, Lily and BoxMan2. The archive files are
-not committed, so this is a manual check; the committed GL regressions are
-`x3d_poc_skin_gl` (GPU skin against precomputed deformed geometry, including a
-five-influence vertex) and `x3d_poc_positional_light_gl`.
-
 ## Motion
 
 `HAnimMotionSystem` (`runtime/hanim/HAnimMotionSystem.hpp`, registered by
 `attachStandardRuntime`) plays each motion in `HAnimHumanoid.motions`.
 
-**Motions list.** `HAnimHumanoid.motions` is `[in,out]`. When it changes, the
+Motions list. `HAnimHumanoid.motions` is `[in,out]`. When it changes, the
 system re-syncs on the next tick: new motions start, removed ones stop, and
 motions still referenced keep their playback state.
 
-**Gating.** Playback needs both the humanoid's `motionsEnabled` entry and the
+Gating. Playback needs both the humanoid's `motionsEnabled` entry and the
 motion's `enabled` field; an absent `motionsEnabled` entry means enabled.
 
-**Channels.** Joint names resolve against the humanoid's joints, including
+Channels. Joint names resolve against the humanoid's joints, including
 those in the skeleton hierarchy.
 
 - `channels` gives, for each name in `joints`, a count followed by that many
@@ -168,7 +163,7 @@ those in the skeleton hierarchy.
 Joint changes are posted through the event context, so ROUTEs and dirty
 tracking see them before transform propagation.
 
-**Frame control.**
+Frame control.
 
 - `frameDuration` sets the frame interval.
 - `frameIncrement` sets direction and stride; zero pauses automatic advance.
@@ -186,24 +181,6 @@ The channel and control rules follow the
 because the published 2.0 motion-node page could not be retrieved. Units follow
 [published 19774-2 §5.2.3–5.2.4](https://www.web3d.org/documents/specifications/19774-2/V2.0/MotionDataAnimation/AnimationUsingInterpolators.html).
 
-## Not implemented
+## Conformance
 
-- `llimit`, `ulimit`, `limitOrientation`, `stiffness`: inverse-kinematics hints.
-- `skeletalConfiguration`, `loa`.
-- The mass properties.
-
-
-## Tests
-
-- `runtime/hanim/tests/hanim_skin_test.cpp`: constructed scenes for arm
-  rotation, blended normals, more than four influences, binding fields, Joint
-  and Segment displacers, and bad input.
-- `runtime/extract/tests/scene_extractor_hanim_test.cpp`: skin placement,
-  corner remap, pose-only deltas, displacer weights and binding recompiles.
-- `runtime/events/tests/hanim_motion_test.cpp`: motion playback.
-- `examples/poc_renderer/tests/skin_gl_test.py`: llvmpipe image comparisons
-  for a rotated skin and a five-influence skin against ordinary geometry.
-
-Setting `X3D_ARCHIVE_DIR` to the Web3D archive's `examples` directory enables
-the archive smoke cases. These cover BoxMan2, Leif and Gramps skinning (with
-timings) and KoreanCharacterMotionAnnexD01Jin motion.
+See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) for conformance status.

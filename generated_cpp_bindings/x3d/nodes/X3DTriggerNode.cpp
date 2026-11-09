@@ -1,4 +1,3 @@
-// X3DTriggerNode.cpp
 #include "x3d/nodes/X3DTriggerNode.hpp"
 
 namespace x3d::nodes {

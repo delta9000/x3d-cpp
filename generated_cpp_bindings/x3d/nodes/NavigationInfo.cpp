@@ -1,4 +1,3 @@
-// NavigationInfo.cpp
 #include "x3d/nodes/NavigationInfo.hpp"
 
 namespace x3d::nodes {

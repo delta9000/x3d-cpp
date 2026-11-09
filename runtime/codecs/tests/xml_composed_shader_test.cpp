@@ -1,15 +1,4 @@
-// xml_composed_shader_test.cpp
-// XML ComposedShader capture (Phase-3 author-shader plumbing).
-//
-// Proves the XML reader un-tables a file-authored ComposedShader the same way it
-// already did for <Script>:
-//   1. A <ComposedShader> with author <field name accessType type value> children
-//      lands those fields in the per-node DynamicFieldStore (visible via
-//      effectiveFields), so the renderer can bind them as uniforms.
-//   2. Each child <ShaderPart>'s inline <![CDATA[...]]> GLSL body is captured into
-//      ShaderPart.sourceCode (previously dropped — only <Script> was handled).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// ComposedShader author fields and inline ShaderPart source survive XML round-trips.
 
 #include "DynamicField.hpp"
 #include "X3DCodecs.hpp"

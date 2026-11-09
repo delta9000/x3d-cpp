@@ -1,4 +1,3 @@
-// MotorJoint.cpp
 #include "x3d/nodes/MotorJoint.hpp"
 
 namespace x3d::nodes {

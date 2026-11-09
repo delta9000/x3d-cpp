@@ -1,4 +1,3 @@
-// IndexedTriangleStripSet.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,63 +27,35 @@ using namespace x3d::core;
  */
 class IndexedTriangleStripSet : public virtual X3DComposedGeometryNode {
 public:
-  /**
-   * @brief Default constructor for IndexedTriangleStripSet
-   */
   IndexedTriangleStripSet() = default;
 
-  /**
-   * @brief Destructor for IndexedTriangleStripSet
-   */
   ~IndexedTriangleStripSet() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "geometry"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Rendering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of index. AccessType: initializeOnly
+   * MFInt32; access: initializeOnly. Borrows the stored value.
    * @details index list specifies triangles by connecting Coordinate vertices
    * for each individual strip, separated by -1 sentinel values.
-   * @return const MFInt32& The current value of index.
    */
   const MFInt32 &getIndex() const { return _index; }
   /**
-   * @brief Data-layer write of index (reader/init ingest path).
-   * @details index is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setIndex().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setIndexUnchecked(const MFInt32 &value) { _index = value; }
 
   /**
-   * @brief Event handler invoked when an event is received on set_index.
-   * AccessType: inputOnly
+   * MFInt32; access: inputOnly.
    * @details index list specifies triangles by connecting Coordinate vertices
    * for each individual strip, separated by -1 sentinel values. Dispatches to
    * the handler registered via setOnSet_indexHandler(); a no-op if none is set.
-   * The event cascade reaches this through the node's reflected field table, so
-   * routing is node-agnostic.
-   * @param value The value of the received event.
    */
   void onSet_index(const MFInt32 &value) {
     if (_onSet_indexHandler)
@@ -92,39 +63,24 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on set_index.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_indexHandler(std::function<void(const MFInt32 &)> handler) {
     _onSet_indexHandler = std::move(handler);
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "IndexedTriangleStripSet").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -140,14 +96,10 @@ protected:
                                std::vector<RangeDiagnostic> &out);
 
 private:
-  /**
-   * @brief Member variable for index.
-   */
-
   MFInt32 _index{};
 
   /**
-   * @brief Registered event handler for set_index (inputOnly); empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const MFInt32 &)> _onSet_indexHandler{};
 };

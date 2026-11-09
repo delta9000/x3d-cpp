@@ -1,4 +1,3 @@
-// X3DParticlePhysicsModelNode.cpp
 #include "x3d/nodes/X3DParticlePhysicsModelNode.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// NurbsCurve2D.cpp
 #include "x3d/nodes/NurbsCurve2D.hpp"
 
 namespace x3d::nodes {

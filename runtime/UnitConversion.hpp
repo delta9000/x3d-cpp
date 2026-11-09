@@ -33,7 +33,7 @@ inline bool includes(std::string_view words, std::string_view word) {
 // animation, navigation and physics systems. Numeric types alone imply no unit
 // (e.g. normals, colors, scale, fractions, texture coordinates, generic scalars).
 inline Dimension dimension(std::string_view node, std::string_view field) {
-  // X3DBoundedObject hints (grouping nodes, Shape, Inline, ...) are lengths on
+  // X3DBoundedObject hints (grouping nodes, Shape, Inline,...) are lengths on
   // every node that has them. bboxSize's -1 -1 -1 sentinel is kept by normalize.
   if (field == "bboxCenter" || field == "bboxSize") return {1};
   struct Entry { std::string_view nodes, fields; Dimension units; };

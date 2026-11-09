@@ -1,7 +1,7 @@
 // contact_response_test.cpp — ungated test that PhysicsSystem honours
 // CollisionCollection.appliedParameters when forwarding friction/bounce to
 // setContactResponse. §37: FRICTION_COEFFICIENT-2 gates frictionCoefficients;
-// BOUNCE gates bounce (default ["BOUNCE"]). The SELECTOR gates, not the value
+// BOUNCE gates bounce (default ["BOUNCE"]). The selector gates, not the value
 // (an explicit selection with value 0 still overrides; no selection leaves the
 // engine default untouched). No engine.
 #include "PhysicsSystem.hpp"
@@ -76,7 +76,7 @@ makeColl(std::vector<AppliedParametersChoices> ap, SFVec2f fc, float bounce) {
 
 int main() {
   // Case 1: FRICTION_COEFFICIENT_2 selected, frictionCoefficients (1,1), bounce 0.
-  // Selector present -> frictionCoefficients.x applied; BOUNCE NOT selected -> restitution unset.
+  // Selector present -> frictionCoefficients.x applied; BOUNCE not selected -> restitution unset.
   {
     auto backend = std::make_shared<RecordingBackend>();
     PhysicsSystem sys(backend);
@@ -92,7 +92,7 @@ int main() {
           "no BOUNCE selector -> restitution unset (-1)");
   }
   // Case 2: BOUNCE selected, frictionCoefficients (0,0), bounce 0.8.
-  // Selector present -> bounce applied; FRICTION_COEFFICIENT-2 NOT selected -> friction unset.
+  // Selector present -> bounce applied; FRICTION_COEFFICIENT-2 not selected -> friction unset.
   {
     auto backend = std::make_shared<RecordingBackend>();
     PhysicsSystem sys(backend);
@@ -136,7 +136,7 @@ int main() {
           "empty appliedParameters -> both unset (-1)");
   }
   // Case 5: selector gates, not the value: {} but frictionCoefficients (1,1).
-  // No FRICTION_COEFFICIENT-2 selector -> friction NOT applied despite non-zero value.
+  // No FRICTION_COEFFICIENT-2 selector -> friction not applied despite non-zero value.
   {
     auto backend = std::make_shared<RecordingBackend>();
     PhysicsSystem sys(backend);

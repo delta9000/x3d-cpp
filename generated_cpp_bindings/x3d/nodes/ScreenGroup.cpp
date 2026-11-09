@@ -1,4 +1,3 @@
-// ScreenGroup.cpp
 #include "x3d/nodes/ScreenGroup.hpp"
 
 namespace x3d::nodes {

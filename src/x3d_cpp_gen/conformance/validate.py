@@ -12,7 +12,7 @@ from x3d_cpp_gen.conformance.codes import (
 )
 from x3d_cpp_gen.conformance.manifest import Manifest
 
-# X3D statement elements that are NOT nodes (skip structural node checks for these).
+# X3D statement elements that are not nodes (skip structural node checks for these).
 _STATEMENTS = {
     "X3D", "head", "Scene", "component", "unit", "meta", "ROUTE", "IMPORT",
     "EXPORT", "ProtoDeclare", "ExternProtoDeclare", "ProtoInterface", "ProtoBody",
@@ -21,10 +21,10 @@ _STATEMENTS = {
 # Field-like attributes that are structural, not node fields.
 _STRUCT_ATTRS = {"DEF", "USE", "containerField", "class", "profile", "version"}
 
-# Nodes whose ROUTE-able interface is AUTHOR-DECLARED (not in the UOM): Script and
+# Nodes whose ROUTE-able interface is author-declared (not in the UOM): Script and
 # shader nodes declare custom <field>s; a ProtoInstance exposes its prototype's
 # interface fields. A route endpoint on one of these cannot be access-checked from
-# the static manifest — so we DO NOT flag it ROUTE_ACCESS_ILLEGAL (unverifiable, not
+# the static manifest — so we do not flag it ROUTE_ACCESS_ILLEGAL (unverifiable, not
 # illegal). The opposite (standard-node) endpoint of the same route is still checked.
 _DYNAMIC_INTERFACE_NODES = {
     "Script", "ProtoInstance",

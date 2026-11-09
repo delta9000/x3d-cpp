@@ -1,4 +1,3 @@
-// UnlitMaterial.cpp
 #include "x3d/nodes/UnlitMaterial.hpp"
 
 namespace x3d::nodes {

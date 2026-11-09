@@ -1,6 +1,4 @@
-// runtime/io/curl/HttpResolver.cpp — libcurl HTTP backend for the
-// AssetResolver seam. The single TU where libcurl meets the seam (mirrors the
-// QuickJsBackend.cpp isolation discipline).
+// libcurl AssetResolver implementation; see ADR-0023.
 #include "HttpResolver.hpp"
 #include "SchemeRouter.hpp"
 
@@ -23,7 +21,7 @@ namespace x3d::runtime::io::curl {
 
 namespace {
 
-// ── Resolved-address guard (SEC-6) ──────────────────────────────────────────
+// Resolved-address guard
 // Runs in CURLOPT_OPENSOCKETFUNCTION, i.e. on the actual sockaddr libcurl is
 // about to connect to — after DNS resolution and for every redirect hop. A
 // hostname or a redirect therefore cannot bypass the check.
@@ -36,6 +34,10 @@ bool isBlockedV4(std::uint32_t a /* host byte order */) {
   if ((a >> 20) == 0xAC1) return true;   // 172.16.0.0/12  RFC1918
   if ((a >> 16) == 0xC0A8) return true;  // 192.168.0.0/16 RFC1918
   if ((a >> 22) == 0x191) return true;   // 100.64.0.0/10  CGNAT
+  if ((a >> 28) == 0xE) return true;    // 224.0.0.0/4 multicast
+  if ((a >> 28) == 0xF) return true;    // 240.0.0.0/4 reserved, including broadcast
+  if ((a >> 8) == 0xC00000) return true; // 192.0.0.0/24 protocol assignments
+  if ((a >> 17) == 0x6309) return true; // 198.18.0.0/15 benchmarking
   return false;
 }
 
@@ -92,7 +94,7 @@ curl_socket_t openSocketCb(void *clientp, curlsocktype /*purpose*/,
   return ::socket(address->family, address->socktype, address->protocol);
 }
 
-// ── Size-capped write sink ──────────────────────────────────────────────────
+// Size-capped write sink
 
 struct WriteSink {
   std::vector<std::uint8_t> bytes;
@@ -148,7 +150,7 @@ makeResolver(HttpResolverOptions options, bool ftp) {
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, &openSocketCb);
     curl_easy_setopt(curl, CURLOPT_OPENSOCKETDATA, &options);
 
-    // SEC-6: the guard above runs on the sockaddr libcurl actually connects to.
+    // The guard above runs on the sockaddr libcurl actually connects to.
     // With http_proxy/https_proxy/all_proxy in the environment libcurl connects
     // to the *proxy*, so the guard would inspect the proxy, not the target, and
     // a private target is reachable through it. Disable environment proxies in

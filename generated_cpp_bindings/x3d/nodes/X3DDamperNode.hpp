@@ -1,4 +1,3 @@
-// X3DDamperNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -28,78 +27,43 @@ using namespace x3d::core;
  */
 class X3DDamperNode : public virtual X3DFollowerNode {
 public:
-  /**
-   * @brief Default constructor for X3DDamperNode
-   */
   X3DDamperNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DDamperNode
-   */
   virtual ~X3DDamperNode() = default;
 
-  /**
-   * @brief Get the default value for order
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultOrder() { return 3; }
 
-  /**
-   * @brief Get the default value for tau
-   * @return SFTime The default value
-   */
   static SFTime getDefaultTau() { return 0.3; }
 
-  /**
-   * @brief Get the default value for tolerance
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultTolerance() { return -1; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Followers"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of order. AccessType: initializeOnly
+   * SFInt32; access: initializeOnly. Borrows the stored value.
    * @details
-   * @return const SFInt32& The current value of order.
    */
   const SFInt32 &getOrder() const { return _order; }
   /**
-   * @brief Data-layer write of order (reader/init ingest path).
-   * @details order is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setOrder().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setOrderUnchecked(const SFInt32 &value) { _order = value; }
 
   /**
-   * @brief Gets the value of tau. AccessType: inputOutput
+   * SFTime; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFTime& The current value of tau.
    */
   const SFTime &getTau() const { return _tau; }
 
   /**
-   * @brief Sets the value of tau. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for tau.
    */
   void setTau(const SFTime &value) {
 
@@ -116,53 +80,35 @@ public:
   }
 
   /**
-   * @brief Non-validating write of tau (runtime/reader ingest path).
-   * @details Assigns without the range check setTau() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setTau() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setTau() for range validation.
    */
   void setTauUnchecked(const SFTime &value) { _tau = value; }
 
   /**
-   * @brief Gets the value of tolerance. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of tolerance.
    */
   const SFFloat &getTolerance() const { return _tolerance; }
 
   /**
-   * @brief Sets the value of tolerance. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for tolerance.
    */
   void setTolerance(const SFFloat &value) { _tolerance = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DDamperNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -192,21 +138,9 @@ private:
       throw std::out_of_range("tau below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for order.
-   */
-
   SFInt32 _order{3};
 
-  /**
-   * @brief Member variable for tau.
-   */
-
   SFTime _tau{0.3};
-
-  /**
-   * @brief Member variable for tolerance.
-   */
 
   SFFloat _tolerance{-1};
 };

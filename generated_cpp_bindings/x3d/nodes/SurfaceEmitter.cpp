@@ -1,4 +1,3 @@
-// SurfaceEmitter.cpp
 #include "x3d/nodes/SurfaceEmitter.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// RigidBodyCollection.cpp
 #include "x3d/nodes/RigidBodyCollection.hpp"
 
 namespace x3d::nodes {

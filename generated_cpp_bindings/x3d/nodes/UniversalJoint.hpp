@@ -1,4 +1,3 @@
-// UniversalJoint.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,219 +24,141 @@ using namespace x3d::core;
  */
 class UniversalJoint : public virtual X3DRigidJointNode {
 public:
-  /**
-   * @brief Default constructor for UniversalJoint
-   */
   UniversalJoint() = default;
 
-  /**
-   * @brief Destructor for UniversalJoint
-   */
   ~UniversalJoint() = default;
 
-  /**
-   * @brief Get the default value for anchorPoint
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultAnchorPoint() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for axis1
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultAxis1() { return SFVec3f{1, 0, 0}; }
 
-  /**
-   * @brief Get the default value for axis2
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultAxis2() { return SFVec3f{0, 1, 0}; }
 
-  /**
-   * @brief Get the default value for stop1Bounce
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultStop1Bounce() { return 0; }
 
-  /**
-   * @brief Get the default value for stop1ErrorCorrection
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultStop1ErrorCorrection() { return 0.8; }
 
-  /**
-   * @brief Get the default value for stop2Bounce
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultStop2Bounce() { return 0; }
 
-  /**
-   * @brief Get the default value for stop2ErrorCorrection
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultStop2ErrorCorrection() { return 0.8; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "joints"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "RigidBodyPhysics"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of anchorPoint. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details anchorPoint is joint center, specified in world coordinates.
-   * @return const SFVec3f& The current value of anchorPoint.
    */
   const SFVec3f &getAnchorPoint() const { return _anchorPoint; }
 
   /**
-   * @brief Sets the value of anchorPoint. AccessType: inputOutput
+   * Access: inputOutput.
    * @details anchorPoint is joint center, specified in world coordinates.
-   * @param value The new value for anchorPoint.
    */
   void setAnchorPoint(const SFVec3f &value) { _anchorPoint = value; }
 
   void setAnchorPoint(SFVec3f &&value) { _anchorPoint = std::move(value); }
 
   /**
-   * @brief Gets the value of axis1. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details axis1 defines axis vector of joint connection to body1.
-   * @return const SFVec3f& The current value of axis1.
    */
   const SFVec3f &getAxis1() const { return _axis1; }
 
   /**
-   * @brief Sets the value of axis1. AccessType: inputOutput
+   * Access: inputOutput.
    * @details axis1 defines axis vector of joint connection to body1.
-   * @param value The new value for axis1.
    */
   void setAxis1(const SFVec3f &value) { _axis1 = value; }
 
   void setAxis1(SFVec3f &&value) { _axis1 = std::move(value); }
 
   /**
-   * @brief Gets the value of axis2. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details axis2 defines axis vector of joint connection to body2.
-   * @return const SFVec3f& The current value of axis2.
    */
   const SFVec3f &getAxis2() const { return _axis2; }
 
   /**
-   * @brief Sets the value of axis2. AccessType: inputOutput
+   * Access: inputOutput.
    * @details axis2 defines axis vector of joint connection to body2.
-   * @param value The new value for axis2.
    */
   void setAxis2(const SFVec3f &value) { _axis2 = value; }
 
   void setAxis2(SFVec3f &&value) { _axis2 = std::move(value); }
 
   /**
-   * @brief Gets the value of body1AnchorPoint. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details body1AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return const SFVec3f& The current value of body1AnchorPoint.
    */
   const SFVec3f &getBody1AnchorPoint() const { return _body1AnchorPoint; }
 
   /**
-   * @brief Emit an output value on body1AnchorPoint. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details body1AnchorPoint describes anchorPoint position relative to local
-   * coordinate reference frame. outputOnly fields have no author-facing setter;
-   * a node's behavior or the runtime calls this to produce an output event. The
-   * event cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * coordinate reference frame.
    */
   void emitBody1AnchorPoint(const SFVec3f &value) { _body1AnchorPoint = value; }
 
   /**
-   * @brief Gets the value of body1Axis. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details body1Axis describes report the current location of the anchor
    * point relative to the corresponding body.
-   * @return const SFVec3f& The current value of body1Axis.
    */
   const SFVec3f &getBody1Axis() const { return _body1Axis; }
 
   /**
-   * @brief Emit an output value on body1Axis. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details body1Axis describes report the current location of the anchor
-   * point relative to the corresponding body. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * point relative to the corresponding body.
    */
   void emitBody1Axis(const SFVec3f &value) { _body1Axis = value; }
 
   /**
-   * @brief Gets the value of body2AnchorPoint. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details body2AnchorPoint describes anchorPoint position relative to local
    * coordinate reference frame.
-   * @return const SFVec3f& The current value of body2AnchorPoint.
    */
   const SFVec3f &getBody2AnchorPoint() const { return _body2AnchorPoint; }
 
   /**
-   * @brief Emit an output value on body2AnchorPoint. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details body2AnchorPoint describes anchorPoint position relative to local
-   * coordinate reference frame. outputOnly fields have no author-facing setter;
-   * a node's behavior or the runtime calls this to produce an output event. The
-   * event cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
+   * coordinate reference frame.
    */
   void emitBody2AnchorPoint(const SFVec3f &value) { _body2AnchorPoint = value; }
 
   /**
-   * @brief Gets the value of body2Axis. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details body1Axis describes report the current location of the anchor
    * point relative to the corresponding body.
-   * @return const SFVec3f& The current value of body2Axis.
    */
   const SFVec3f &getBody2Axis() const { return _body2Axis; }
 
   /**
-   * @brief Emit an output value on body2Axis. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details body1Axis describes report the current location of the anchor
-   * point relative to the corresponding body. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * point relative to the corresponding body.
    */
   void emitBody2Axis(const SFVec3f &value) { _body2Axis = value; }
 
   /**
-   * @brief Gets the value of stop1Bounce. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details stop1Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return const SFFloat& The current value of stop1Bounce.
    */
   const SFFloat &getStop1Bounce() const { return _stop1Bounce; }
 
   /**
-   * @brief Sets the value of stop1Bounce. AccessType: inputOutput
+   * Access: inputOutput.
    * @details stop1Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @param value The new value for stop1Bounce.
    */
   void setStop1Bounce(const SFFloat &value) {
 
@@ -247,29 +168,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of stop1Bounce (runtime/reader ingest path).
-   * @details Assigns without the range check setStop1Bounce() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setStop1Bounce() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setStop1Bounce() for range validation.
    */
   void setStop1BounceUnchecked(const SFFloat &value) { _stop1Bounce = value; }
 
   /**
-   * @brief Gets the value of stop1ErrorCorrection. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details stop1ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return const SFFloat& The current value of stop1ErrorCorrection.
    */
   const SFFloat &getStop1ErrorCorrection() const {
     return _stop1ErrorCorrection;
   }
 
   /**
-   * @brief Sets the value of stop1ErrorCorrection. AccessType: inputOutput
+   * Access: inputOutput.
    * @details stop1ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @param value The new value for stop1ErrorCorrection.
    */
   void setStop1ErrorCorrection(const SFFloat &value) {
 
@@ -279,30 +195,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of stop1ErrorCorrection (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setStop1ErrorCorrection()
-   * enforces, so a permissive reader keeps an out-of-range authored value
-   * rather than reject the whole document. setStop1ErrorCorrection() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setStop1ErrorCorrection() for range validation.
    */
   void setStop1ErrorCorrectionUnchecked(const SFFloat &value) {
     _stop1ErrorCorrection = value;
   }
 
   /**
-   * @brief Gets the value of stop2Bounce. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details stop2Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @return const SFFloat& The current value of stop2Bounce.
    */
   const SFFloat &getStop2Bounce() const { return _stop2Bounce; }
 
   /**
-   * @brief Sets the value of stop2Bounce. AccessType: inputOutput
+   * Access: inputOutput.
    * @details stop2Bounce is velocity factor for bounce back once stop point is
    * reached.
-   * @param value The new value for stop2Bounce.
    */
   void setStop2Bounce(const SFFloat &value) {
 
@@ -312,29 +222,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of stop2Bounce (runtime/reader ingest path).
-   * @details Assigns without the range check setStop2Bounce() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setStop2Bounce() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setStop2Bounce() for range validation.
    */
   void setStop2BounceUnchecked(const SFFloat &value) { _stop2Bounce = value; }
 
   /**
-   * @brief Gets the value of stop2ErrorCorrection. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details stop2ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @return const SFFloat& The current value of stop2ErrorCorrection.
    */
   const SFFloat &getStop2ErrorCorrection() const {
     return _stop2ErrorCorrection;
   }
 
   /**
-   * @brief Sets the value of stop2ErrorCorrection. AccessType: inputOutput
+   * Access: inputOutput.
    * @details stop2ErrorCorrection is fraction of error correction performed
    * during time step once stop point is reached.
-   * @param value The new value for stop2ErrorCorrection.
    */
   void setStop2ErrorCorrection(const SFFloat &value) {
 
@@ -344,42 +249,25 @@ public:
   }
 
   /**
-   * @brief Non-validating write of stop2ErrorCorrection (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setStop2ErrorCorrection()
-   * enforces, so a permissive reader keeps an out-of-range authored value
-   * rather than reject the whole document. setStop2ErrorCorrection() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setStop2ErrorCorrection() for range validation.
    */
   void setStop2ErrorCorrectionUnchecked(const SFFloat &value) {
     _stop2ErrorCorrection = value;
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "UniversalJoint").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -452,69 +340,25 @@ private:
       throw std::out_of_range("stop2ErrorCorrection above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for anchorPoint.
-   */
-
   SFVec3f _anchorPoint{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for axis1.
-   */
 
   SFVec3f _axis1{SFVec3f{1, 0, 0}};
 
-  /**
-   * @brief Member variable for axis2.
-   */
-
   SFVec3f _axis2{SFVec3f{0, 1, 0}};
-
-  /**
-   * @brief Member variable for body1AnchorPoint.
-   */
 
   SFVec3f _body1AnchorPoint{};
 
-  /**
-   * @brief Member variable for body1Axis.
-   */
-
   SFVec3f _body1Axis{};
-
-  /**
-   * @brief Member variable for body2AnchorPoint.
-   */
 
   SFVec3f _body2AnchorPoint{};
 
-  /**
-   * @brief Member variable for body2Axis.
-   */
-
   SFVec3f _body2Axis{};
-
-  /**
-   * @brief Member variable for stop1Bounce.
-   */
 
   SFFloat _stop1Bounce{0};
 
-  /**
-   * @brief Member variable for stop1ErrorCorrection.
-   */
-
   SFFloat _stop1ErrorCorrection{0.8};
 
-  /**
-   * @brief Member variable for stop2Bounce.
-   */
-
   SFFloat _stop2Bounce{0};
-
-  /**
-   * @brief Member variable for stop2ErrorCorrection.
-   */
 
   SFFloat _stop2ErrorCorrection{0.8};
 };

@@ -52,8 +52,7 @@ example; no part of it is committed here.
   stb_image.h       examples/poc_renderer/third_party/     MIT OR Public Domain
                     (PoC renderer; also TextureResolver decode Backend A,
                      -DX3D_CPP_BUILD_STB=ON)
-  stb_image_write.h examples/cpu_raster/third_party/       MIT OR Public Domain
-                    examples/asset_import/third_party/
+  stb_image_write.h third_party/                          MIT OR Public Domain
                     (PNG/JPEG encode; cpu_raster export + asset_import
                      texture re-encode)
   assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause
@@ -69,11 +68,6 @@ example; no part of it is committed here.
                     (see runtime/io/wuffs/vendor/WUFFS_LICENSE.txt; TextureResolver
                      decode Backend B. Flag-gated OFF — the default build stays
                      MIT / Public-Domain-clean.)
-  miniaudio         runtime/sound/miniaudio/vendor/          Public Domain (Unlicense) OR MIT-0
-  (v0.11.25)        miniaudio.h                              (-DX3D_CPP_BUILD_MINIAUDIO=ON)
-                    (see runtime/sound/miniaudio/vendor/MINIAUDIO_LICENSE.txt;
-                     AudioBackend miniaudio synthesis backend. Flag-gated OFF —
-                     the default build stays MIT / Public-Domain-clean.)
   stb_truetype.h    runtime/io/stbtt/vendor/stb_truetype.h   MIT OR Public Domain  (-DX3D_CPP_BUILD_STBTT=ON or -DX3D_CPP_BUILD_POC=ON)
                     (see runtime/io/stbtt/vendor/STB_TRUETYPE_LICENSE.txt)
   tinygeoid         runtime/io/tinygeoid/vendor/tinygeoid.hpp  MIT  (© Ben Sandbrook;
@@ -104,22 +98,15 @@ binaries you distribute that link it.
   libcurl           curl.se (via vcpkg)                      curl/MIT-X   (-DX3D_CPP_BUILD_CURL=ON)
   PROJ              proj.org (system package)                MIT         (-DX3D_CPP_BUILD_PROJ=ON)
                     (see PROJ COPYING; GeoProjection backend and optional geoid grids)
-  AWS SDK for C++   github.com/aws/aws-sdk-cpp (via vcpkg)   Apache-2.0   (-DX3D_CPP_BUILD_S3=ON)
-  FreeType          freetype.org (via vcpkg)                 FTL OR GPL-2.0  (-DX3D_CPP_BUILD_FREETYPE=ON)
-  libtheora+libogg  xiph.org (system / pkg-config)           BSD-3-Clause (Xiph)  (-DX3D_CPP_BUILD_THEORA=ON)
-                    MovieDecoder Backend B — Ogg/Theora video (royalty-free Xiph
-                    codec). Linked PRIVATE to the one TU; default build unaffected.
   tinyusdz          github.com/lighttransport/tinyusdz       Apache-2.0   (-DX3D_CPP_BUILD_USD=ON)
                     (asset_import USD/USDZ ImportSource backend; fetched via
                      FetchContent and patched at configure time — see
                      examples/asset_import/patches/. Flag-gated OFF; the default
                      build does not link it.)
 
-The AWS S3 backend (-DX3D_CPP_BUILD_S3=ON) pulls these transitive dependencies
-via vcpkg, each under its own license:
+The optional libcurl backend can link these transitive dependencies, depending
+on the installed libcurl build:
 
-    aws-crt-cpp, aws-c-* (common/cal/io/http/auth/s3/sdkutils/…)  Apache-2.0
-    aws-checksums, s2n-tls                                        Apache-2.0
     OpenSSL 3.x                                                   Apache-2.0
     zlib                                                          zlib
 

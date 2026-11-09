@@ -37,7 +37,7 @@ TEST_CASE("usdz_embedded_texture_keeps_original_compressed_bytes") {
 }
 
 // Node transforms must convert USD's row-major/row-vector matrix4d into our
-// column-major/column-vector Mat4 WITHOUT transposing. A stray transpose
+// column-major/column-vector Mat4 without transposing. A stray transpose
 // inverts every rotation (renders the model upside-down / mirrored) and drops
 // translation into the always-zero last column. texture-cat-plane.usdz places
 // its plane with a +90° rotation about X (Z-up->Y-up) and a translation of

@@ -1,4 +1,3 @@
-// ProtoInstance.cpp
 #include "x3d/nodes/ProtoInstance.hpp"
 
 namespace x3d::nodes {

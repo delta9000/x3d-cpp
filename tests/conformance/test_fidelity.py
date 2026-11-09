@@ -6,10 +6,7 @@ UOM_41 = "tests/fixtures/X3dUnifiedObjectModel-4.1.xml"
 
 
 def test_all_40_defaults_materialize():
-    # GENERATION FIDELITY (the non-circular pillar): every UOM-declared non-enum
-    # default translates to a C++ default expression. Zero findings == the generator
-    # faithfully carries every spec default (the audit's "defaults don't reach the
-    # object" bug class would surface here as findings).
+    # Every UOM non-enum default must translate to a C++ expression.
     m = extract_manifest(UOM_40)
     findings = check_defaults_materialize(m)
     assert findings == [], (
@@ -29,8 +26,6 @@ def test_check_is_non_trivial():
 
 
 def test_check_flags_an_unmaterializable_default():
-    # A field whose type cannot resolve but carries a default IS flagged (the bug
-    # shape: a default declared on a field the generator can't type).
     m = extract_manifest(UOM_40)
     # synthesize the failure on a copy of the manifest data
     m.nodes["__Synthetic__"] = {

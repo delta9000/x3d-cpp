@@ -1,4 +1,3 @@
-// TextureTransform3D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,211 +25,130 @@ using namespace x3d::core;
  */
 class TextureTransform3D : public virtual X3DTextureTransformNode {
 public:
-  /**
-   * @brief Default constructor for TextureTransform3D
-   */
   TextureTransform3D() = default;
 
-  /**
-   * @brief Destructor for TextureTransform3D
-   */
   ~TextureTransform3D() = default;
 
-  /**
-   * @brief Get the default value for center
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultCenter() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for rotation
-   * @return SFRotation The default value
-   */
   static SFRotation getDefaultRotation() { return SFRotation{0, 0, 1, 0}; }
 
-  /**
-   * @brief Get the default value for scale
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultScale() { return SFVec3f{1, 1, 1}; }
 
-  /**
-   * @brief Get the default value for translation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultTranslation() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "textureTransform"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Texturing3D"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of center. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details center point in 2D (s,t) texture coordinates for rotation and
    * scaling.
-   * @return const SFVec3f& The current value of center.
    */
   const SFVec3f &getCenter() const { return _center; }
 
   /**
-   * @brief Sets the value of center. AccessType: inputOutput
+   * Access: inputOutput.
    * @details center point in 2D (s,t) texture coordinates for rotation and
    * scaling.
-   * @param value The new value for center.
    */
   void setCenter(const SFVec3f &value) { _center = value; }
 
   void setCenter(SFVec3f &&value) { _center = std::move(value); }
 
   /**
-   * @brief Gets the value of mapping. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @return const SFString& The current value of mapping.
    */
   const SFString &getMapping() const { return _mapping; }
 
   /**
-   * @brief Sets the value of mapping. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The mapping label identifies which texture coordinates and
    * transformations are used to compute texture effects from corresponding
    * geometry on a given material.
-   * @param value The new value for mapping.
    */
   void setMapping(const SFString &value) { _mapping = value; }
 
   void setMapping(SFString &&value) { _mapping = std::move(value); }
 
   /**
-   * @brief Gets the value of rotation. AccessType: inputOutput
+   * SFRotation; access: inputOutput. Borrows the stored value.
    * @details rotation angle of texture about center (opposite effect appears on
    * geometry).
-   * @return const SFRotation& The current value of rotation.
    */
   const SFRotation &getRotation() const { return _rotation; }
 
   /**
-   * @brief Sets the value of rotation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details rotation angle of texture about center (opposite effect appears on
    * geometry).
-   * @param value The new value for rotation.
    */
   void setRotation(const SFRotation &value) { _rotation = value; }
 
   void setRotation(SFRotation &&value) { _rotation = std::move(value); }
 
   /**
-   * @brief Gets the value of scale. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Non-uniform planar scaling of texture about center (opposite
    * effect appears on geometry).
-   * @return const SFVec3f& The current value of scale.
    */
   const SFVec3f &getScale() const { return _scale; }
 
   /**
-   * @brief Sets the value of scale. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Non-uniform planar scaling of texture about center (opposite
    * effect appears on geometry).
-   * @param value The new value for scale.
    */
   void setScale(const SFVec3f &value) { _scale = value; }
 
   void setScale(SFVec3f &&value) { _scale = std::move(value); }
 
   /**
-   * @brief Gets the value of translation. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Lateral/vertical shift in 2D (s,t) texture coordinates (opposite
    * effect appears on geometry).
-   * @return const SFVec3f& The current value of translation.
    */
   const SFVec3f &getTranslation() const { return _translation; }
 
   /**
-   * @brief Sets the value of translation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Lateral/vertical shift in 2D (s,t) texture coordinates (opposite
    * effect appears on geometry).
-   * @param value The new value for translation.
    */
   void setTranslation(const SFVec3f &value) { _translation = value; }
 
   void setTranslation(SFVec3f &&value) { _translation = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "TextureTransform3D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for center.
-   */
-
   SFVec3f _center{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for mapping.
-   */
 
   SFString _mapping{};
 
-  /**
-   * @brief Member variable for rotation.
-   */
-
   SFRotation _rotation{SFRotation{0, 0, 1, 0}};
 
-  /**
-   * @brief Member variable for scale.
-   */
-
   SFVec3f _scale{SFVec3f{1, 1, 1}};
-
-  /**
-   * @brief Member variable for translation.
-   */
 
   SFVec3f _translation{SFVec3f{0, 0, 0}};
 };

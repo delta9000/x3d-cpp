@@ -1,5 +1,5 @@
 """Earliest-defining-version per node, derived from the committed per-version
-manifests (data only — no UOM re-parse). Consumed by the VP-2 inference ladder's
+manifests (data only — no UOM re-parse). Consumed by the version inference ladder's
 node-floor rung (§1 step 2)."""
 from __future__ import annotations
 

@@ -1,4 +1,3 @@
-// X3DViewportNode.cpp
 #include "x3d/nodes/X3DViewportNode.hpp"
 
 namespace x3d::nodes {

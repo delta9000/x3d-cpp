@@ -1,4 +1,3 @@
-// ShaderPart.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -24,121 +23,70 @@ using namespace x3d::core;
  */
 class ShaderPart : public virtual X3DNode, public virtual X3DUrlObject {
 public:
-  /**
-   * @brief Default constructor for ShaderPart
-   */
   ShaderPart() = default;
 
-  /**
-   * @brief Destructor for ShaderPart
-   */
   ~ShaderPart() = default;
 
-  /**
-   * @brief Get the default value for type
-   * @return SFString The default value
-   */
   static SFString getDefaultType() { return "VERTEX"; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesShaderPart";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "parts"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Shaders"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of sourceCode. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Embedded scripting source code can be contained within the parent
    * node as a plain-text CDATA block, without requiring escaping of special
    * characters.
-   * @return const SFString& The current value of sourceCode.
    */
   const SFString &getSourceCode() const { return _sourceCode; }
 
   /**
-   * @brief Sets the value of sourceCode. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Embedded scripting source code can be contained within the parent
    * node as a plain-text CDATA block, without requiring escaping of special
    * characters.
-   * @param value The new value for sourceCode.
    */
   void setSourceCode(const SFString &value) { _sourceCode = value; }
 
   void setSourceCode(SFString &&value) { _sourceCode = std::move(value); }
 
   /**
-   * @brief Gets the value of type. AccessType: initializeOnly
+   * SFString; access: initializeOnly. Borrows the stored value.
    * @details type indicates whether this ShaderProgram is a vertex or fragment
    * (pixel) shader.
-   * @return const SFString& The current value of type.
    */
   const SFString &getType() const { return _type; }
   /**
-   * @brief Data-layer write of type (reader/init ingest path).
-   * @details type is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setType().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setTypeUnchecked(const SFString &value) { _type = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "ShaderPart").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
-  /**
-   * @brief Member variable for sourceCode.
-   */
-
   SFString _sourceCode{};
-
-  /**
-   * @brief Member variable for type.
-   */
 
   SFString _type{"VERTEX"};
 };

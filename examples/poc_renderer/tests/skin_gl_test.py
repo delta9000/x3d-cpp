@@ -1,6 +1,6 @@
 """Compare a posed GPU skin with equivalent ordinary geometry under llvmpipe."""
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -9,21 +9,11 @@ fixtures = pathlib.Path(sys.argv[2])
 
 
 def pixels(path):
-    data = path.read_bytes()
-    header, image = data.split(b'\n255\n', 1)
-    assert header.startswith(b'P6\n'), header[:32]
-    return image
+    return screenshot_pixels(path)[2]
 
 
 def render(scene, output):
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    return result.stderr
+    return render_gl(renderer, scene, output)
 
 
 with tempfile.TemporaryDirectory() as directory:

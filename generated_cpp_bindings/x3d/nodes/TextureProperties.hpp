@@ -1,4 +1,3 @@
-// TextureProperties.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -23,133 +22,65 @@ using namespace x3d::core;
  */
 class TextureProperties : public virtual X3DNode {
 public:
-  /**
-   * @brief Default constructor for TextureProperties
-   */
   TextureProperties() = default;
 
-  /**
-   * @brief Destructor for TextureProperties
-   */
   ~TextureProperties() = default;
 
-  /**
-   * @brief Get the default value for anisotropicDegree
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultAnisotropicDegree() { return 1; }
 
-  /**
-   * @brief Get the default value for borderColor
-   * @return SFColorRGBA The default value
-   */
   static SFColorRGBA getDefaultBorderColor() { return SFColorRGBA{0, 0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for borderWidth
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultBorderWidth() { return 0; }
 
-  /**
-   * @brief Get the default value for boundaryModeR
-   * @return TextureBoundaryModeChoices The default value
-   */
   static TextureBoundaryModeChoices getDefaultBoundaryModeR() {
     return TextureBoundaryModeChoices::REPEAT;
   }
 
-  /**
-   * @brief Get the default value for boundaryModeS
-   * @return TextureBoundaryModeChoices The default value
-   */
   static TextureBoundaryModeChoices getDefaultBoundaryModeS() {
     return TextureBoundaryModeChoices::REPEAT;
   }
 
-  /**
-   * @brief Get the default value for boundaryModeT
-   * @return TextureBoundaryModeChoices The default value
-   */
   static TextureBoundaryModeChoices getDefaultBoundaryModeT() {
     return TextureBoundaryModeChoices::REPEAT;
   }
 
-  /**
-   * @brief Get the default value for generateMipMaps
-   * @return SFBool The default value
-   */
   static SFBool getDefaultGenerateMipMaps() { return false; }
 
-  /**
-   * @brief Get the default value for magnificationFilter
-   * @return TextureMagnificationModeChoices The default value
-   */
   static TextureMagnificationModeChoices getDefaultMagnificationFilter() {
     return TextureMagnificationModeChoices::FASTEST;
   }
 
-  /**
-   * @brief Get the default value for minificationFilter
-   * @return TextureMinificationModeChoices The default value
-   */
   static TextureMinificationModeChoices getDefaultMinificationFilter() {
     return TextureMinificationModeChoices::FASTEST;
   }
 
-  /**
-   * @brief Get the default value for textureCompression
-   * @return TextureCompressionModeChoices The default value
-   */
   static TextureCompressionModeChoices getDefaultTextureCompression() {
     return TextureCompressionModeChoices::FASTEST;
   }
 
-  /**
-   * @brief Get the default value for texturePriority
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultTexturePriority() { return 0; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "textureProperties"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Texturing"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of anisotropicDegree. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details anisotropicDegree defines minimum degree of anisotropy to account
    * for in texture filtering (1=no effect for symmetric filtering, otherwise
    * provide higher value).
-   * @return const SFFloat& The current value of anisotropicDegree.
    */
   const SFFloat &getAnisotropicDegree() const { return _anisotropicDegree; }
 
   /**
-   * @brief Sets the value of anisotropicDegree. AccessType: inputOutput
+   * Access: inputOutput.
    * @details anisotropicDegree defines minimum degree of anisotropy to account
    * for in texture filtering (1=no effect for symmetric filtering, otherwise
    * provide higher value).
-   * @param value The new value for anisotropicDegree.
    */
   void setAnisotropicDegree(const SFFloat &value) {
 
@@ -159,28 +90,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of anisotropicDegree (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setAnisotropicDegree() enforces,
-   * so a permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAnisotropicDegree() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAnisotropicDegree() for range validation.
    */
   void setAnisotropicDegreeUnchecked(const SFFloat &value) {
     _anisotropicDegree = value;
   }
 
   /**
-   * @brief Gets the value of borderColor. AccessType: inputOutput
+   * SFColorRGBA; access: inputOutput. Borrows the stored value.
    * @details borderColor defines border pixel color.
-   * @return const SFColorRGBA& The current value of borderColor.
    */
   const SFColorRGBA &getBorderColor() const { return _borderColor; }
 
   /**
-   * @brief Sets the value of borderColor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details borderColor defines border pixel color.
-   * @param value The new value for borderColor.
    */
   void setBorderColor(const SFColorRGBA &value) {
 
@@ -197,27 +122,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of borderColor (runtime/reader ingest path).
-   * @details Assigns without the range check setBorderColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setBorderColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setBorderColor() for range validation.
    */
   void setBorderColorUnchecked(const SFColorRGBA &value) {
     _borderColor = value;
   }
 
   /**
-   * @brief Gets the value of borderWidth. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details borderWidth number of pixels for texture border.
-   * @return const SFInt32& The current value of borderWidth.
    */
   const SFInt32 &getBorderWidth() const { return _borderWidth; }
 
   /**
-   * @brief Sets the value of borderWidth. AccessType: inputOutput
+   * Access: inputOutput.
    * @details borderWidth number of pixels for texture border.
-   * @param value The new value for borderWidth.
    */
   void setBorderWidth(const SFInt32 &value) {
 
@@ -227,28 +147,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of borderWidth (runtime/reader ingest path).
-   * @details Assigns without the range check setBorderWidth() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setBorderWidth() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setBorderWidth() for range validation.
    */
   void setBorderWidthUnchecked(const SFInt32 &value) { _borderWidth = value; }
 
   /**
-   * @brief Gets the value of boundaryModeR. AccessType: inputOutput
+   * TextureBoundaryModeChoices; access: inputOutput. Borrows the stored value.
    * @details boundaryModeR describes handling of texture-coordinate boundaries.
-   * @return const TextureBoundaryModeChoices& The current value of
-   * boundaryModeR.
    */
   const TextureBoundaryModeChoices &getBoundaryModeR() const {
     return _boundaryModeR;
   }
 
   /**
-   * @brief Sets the value of boundaryModeR. AccessType: inputOutput
+   * Access: inputOutput.
    * @details boundaryModeR describes handling of texture-coordinate boundaries.
-   * @param value The new value for boundaryModeR.
    */
   void setBoundaryModeR(const TextureBoundaryModeChoices &value) {
 
@@ -256,19 +170,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of boundaryModeS. AccessType: inputOutput
+   * TextureBoundaryModeChoices; access: inputOutput. Borrows the stored value.
    * @details boundaryModeS describes handling of texture-coordinate boundaries.
-   * @return const TextureBoundaryModeChoices& The current value of
-   * boundaryModeS.
    */
   const TextureBoundaryModeChoices &getBoundaryModeS() const {
     return _boundaryModeS;
   }
 
   /**
-   * @brief Sets the value of boundaryModeS. AccessType: inputOutput
+   * Access: inputOutput.
    * @details boundaryModeS describes handling of texture-coordinate boundaries.
-   * @param value The new value for boundaryModeS.
    */
   void setBoundaryModeS(const TextureBoundaryModeChoices &value) {
 
@@ -276,19 +187,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of boundaryModeT. AccessType: inputOutput
+   * TextureBoundaryModeChoices; access: inputOutput. Borrows the stored value.
    * @details boundaryModeT describes handling of texture-coordinate boundaries.
-   * @return const TextureBoundaryModeChoices& The current value of
-   * boundaryModeT.
    */
   const TextureBoundaryModeChoices &getBoundaryModeT() const {
     return _boundaryModeT;
   }
 
   /**
-   * @brief Sets the value of boundaryModeT. AccessType: inputOutput
+   * Access: inputOutput.
    * @details boundaryModeT describes handling of texture-coordinate boundaries.
-   * @param value The new value for boundaryModeT.
    */
   void setBoundaryModeT(const TextureBoundaryModeChoices &value) {
 
@@ -296,36 +204,32 @@ public:
   }
 
   /**
-   * @brief Gets the value of generateMipMaps. AccessType: initializeOnly
+   * SFBool; access: initializeOnly. Borrows the stored value.
    * @details Determines whether MIPMAPs are generated for texture images.
-   * @return const SFBool& The current value of generateMipMaps.
    */
   const SFBool &getGenerateMipMaps() const { return _generateMipMaps; }
   /**
-   * @brief Data-layer write of generateMipMaps (reader/init ingest path).
-   * @details generateMipMaps is initializeOnly: author-settable at parse
-   *          time but not via runtime events. No public setGenerateMipMaps().
+   * initializeOnly fields can be written at parse time, but not by runtime
+   * events.
    */
   void setGenerateMipMapsUnchecked(const SFBool &value) {
     _generateMipMaps = value;
   }
 
   /**
-   * @brief Gets the value of magnificationFilter. AccessType: inputOutput
+   * TextureMagnificationModeChoices; access: inputOutput. Borrows the stored
+   * value.
    * @details magnificationFilter indicates texture filter when image is smaller
    * than screen space representation.
-   * @return const TextureMagnificationModeChoices& The current value of
-   * magnificationFilter.
    */
   const TextureMagnificationModeChoices &getMagnificationFilter() const {
     return _magnificationFilter;
   }
 
   /**
-   * @brief Sets the value of magnificationFilter. AccessType: inputOutput
+   * Access: inputOutput.
    * @details magnificationFilter indicates texture filter when image is smaller
    * than screen space representation.
-   * @param value The new value for magnificationFilter.
    */
   void setMagnificationFilter(const TextureMagnificationModeChoices &value) {
 
@@ -333,21 +237,19 @@ public:
   }
 
   /**
-   * @brief Gets the value of minificationFilter. AccessType: inputOutput
+   * TextureMinificationModeChoices; access: inputOutput. Borrows the stored
+   * value.
    * @details minificationFilter indicates texture filter when image is larger
    * than screen space representation.
-   * @return const TextureMinificationModeChoices& The current value of
-   * minificationFilter.
    */
   const TextureMinificationModeChoices &getMinificationFilter() const {
     return _minificationFilter;
   }
 
   /**
-   * @brief Sets the value of minificationFilter. AccessType: inputOutput
+   * Access: inputOutput.
    * @details minificationFilter indicates texture filter when image is larger
    * than screen space representation.
-   * @param value The new value for minificationFilter.
    */
   void setMinificationFilter(const TextureMinificationModeChoices &value) {
 
@@ -355,19 +257,17 @@ public:
   }
 
   /**
-   * @brief Gets the value of textureCompression. AccessType: inputOutput
+   * TextureCompressionModeChoices; access: inputOutput. Borrows the stored
+   * value.
    * @details textureCompression indicates compression algorithm selection mode.
-   * @return const TextureCompressionModeChoices& The current value of
-   * textureCompression.
    */
   const TextureCompressionModeChoices &getTextureCompression() const {
     return _textureCompression;
   }
 
   /**
-   * @brief Sets the value of textureCompression. AccessType: inputOutput
+   * Access: inputOutput.
    * @details textureCompression indicates compression algorithm selection mode.
-   * @param value The new value for textureCompression.
    */
   void setTextureCompression(const TextureCompressionModeChoices &value) {
 
@@ -375,20 +275,18 @@ public:
   }
 
   /**
-   * @brief Gets the value of texturePriority. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details texturePriority defines relative priority for this texture when
    * allocating texture memory, an important rendering resource in graphics-card
    * hardware.
-   * @return const SFFloat& The current value of texturePriority.
    */
   const SFFloat &getTexturePriority() const { return _texturePriority; }
 
   /**
-   * @brief Sets the value of texturePriority. AccessType: inputOutput
+   * Access: inputOutput.
    * @details texturePriority defines relative priority for this texture when
    * allocating texture memory, an important rendering resource in graphics-card
    * hardware.
-   * @param value The new value for texturePriority.
    */
   void setTexturePriority(const SFFloat &value) {
 
@@ -398,42 +296,25 @@ public:
   }
 
   /**
-   * @brief Non-validating write of texturePriority (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setTexturePriority() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setTexturePriority() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setTexturePriority() for range validation.
    */
   void setTexturePriorityUnchecked(const SFFloat &value) {
     _texturePriority = value;
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "TextureProperties").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -519,72 +400,28 @@ private:
       throw std::out_of_range("texturePriority above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for anisotropicDegree.
-   */
-
   SFFloat _anisotropicDegree{1};
-
-  /**
-   * @brief Member variable for borderColor.
-   */
 
   SFColorRGBA _borderColor{SFColorRGBA{0, 0, 0, 0}};
 
-  /**
-   * @brief Member variable for borderWidth.
-   */
-
   SFInt32 _borderWidth{0};
-
-  /**
-   * @brief Member variable for boundaryModeR.
-   */
 
   TextureBoundaryModeChoices _boundaryModeR{TextureBoundaryModeChoices::REPEAT};
 
-  /**
-   * @brief Member variable for boundaryModeS.
-   */
-
   TextureBoundaryModeChoices _boundaryModeS{TextureBoundaryModeChoices::REPEAT};
-
-  /**
-   * @brief Member variable for boundaryModeT.
-   */
 
   TextureBoundaryModeChoices _boundaryModeT{TextureBoundaryModeChoices::REPEAT};
 
-  /**
-   * @brief Member variable for generateMipMaps.
-   */
-
   SFBool _generateMipMaps{false};
-
-  /**
-   * @brief Member variable for magnificationFilter.
-   */
 
   TextureMagnificationModeChoices _magnificationFilter{
       TextureMagnificationModeChoices::FASTEST};
 
-  /**
-   * @brief Member variable for minificationFilter.
-   */
-
   TextureMinificationModeChoices _minificationFilter{
       TextureMinificationModeChoices::FASTEST};
 
-  /**
-   * @brief Member variable for textureCompression.
-   */
-
   TextureCompressionModeChoices _textureCompression{
       TextureCompressionModeChoices::FASTEST};
-
-  /**
-   * @brief Member variable for texturePriority.
-   */
 
   SFFloat _texturePriority{0};
 };

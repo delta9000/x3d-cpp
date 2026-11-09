@@ -4,9 +4,11 @@
 // activate, live uniform values and source edits reaching RenderItem::
 // shaderProgram through the incremental delta channel.
 #include "RuntimeSession.hpp"
+#include "SaiContext.hpp"
 #include "ShaderExtract.hpp"
 #include "X3DParse.hpp"
 #include "x3d/nodes/PixelTexture.hpp"
+#include "x3d/nodes/Script.hpp"
 #include "doctest/doctest.h"
 
 #include <algorithm>
@@ -195,6 +197,35 @@ TEST_CASE("Author field events update the uniform values on the next delta") {
   CHECK(h.events("S.isSelected") == std::vector<bool>{true});
 }
 
+TEST_CASE("directOutput author uniform writes reach the render delta") {
+  Host h(shape("<ComposedShader DEF='S' language='GLSL'>"
+               "<field name='uColor' type='SFColor' accessType='inputOutput' value='1 0 0'/>"
+               "<field name='uWeights' type='MFFloat' accessType='inputOutput' value='1 2'/>" +
+               part("VERTEX", kVert) + part("FRAGMENT", kFrag) + "</ComposedShader>"));
+  x3d::nodes::Script actor;
+  actor.setDirectOutputUnchecked(true);
+  SaiContext sai(h.session->context(), actor, "test", "1");
+  h.session->tick(h.now += 0.1);
+  sai.setField(&h.node("S"), "uColor", SFColor{0, 1, 0});
+  sai.setField(&h.node("S"), "uWeights", MFFloat{4, 5, 6});
+  CHECK(std::any_cast<SFColor>(h.session->context().authorFields().getValue(
+            h.node("S"), "uColor")) == SFColor{0, 1, 0});
+  const auto d = h.session->delta();
+  CHECK(updatedMaterial(d));
+  CHECK(std::get<SFColor>(field(*h.item().shaderProgram, "uColor")->value.value) ==
+        SFColor{0, 1, 0});
+  CHECK(field(*h.item().shaderProgram, "uWeights")->elements.size() == 3);
+  h.session->tick(h.now += 0.1);
+  CHECK(h.session->context().writeField(&h.node("S"), "uColor", SFFloat{3}) ==
+        FieldWriteResult::TypeMismatch);
+  sai.setField(&h.node("S"), "uColor", SFFloat{3});
+  const auto rejected = h.session->delta();
+  CHECK(rejected.updatedMaterial.empty());
+  CHECK(rejected.added.empty());
+  CHECK(std::get<SFColor>(field(*h.item().shaderProgram, "uColor")->value.value) ==
+        SFColor{0, 1, 0});
+}
+
 TEST_CASE("MF author fields reach the descriptor as array elements") {
   Host h(shape("<ComposedShader DEF='S' language='GLSL'>"
                "<field name='uWeights' type='MFFloat' accessType='inputOutput' value='1 2 3'/>"
@@ -268,6 +299,27 @@ TEST_CASE("Texture author fields reach the descriptor as resolved TextureRefs") 
   blue->setImage(SFImage{2, 1, 3, {0, 0, 255, 0, 0, 255}});
   h.post("S", "uTex", std::any(SFNode(blue)));
   CHECK(field(*h.item().shaderProgram, "uTex")->textures.at(0).inlinePixels.width == 2);
+}
+
+TEST_CASE("replacement author texture remains a live shader dependency") {
+  for (const auto *type : {"SFNode", "MFNode"}) {
+    CAPTURE(type);
+    Host h(shape("<ComposedShader DEF='S' language='GLSL'>"
+                 "<field name='uTex' type='" + std::string(type) +
+                 "' accessType='inputOutput'>"
+                 "<PixelTexture image='1 1 3 0xff0000'/></field>" +
+                 part("VERTEX", kVert) + part("FRAGMENT", kFrag) + "</ComposedShader>"));
+    auto replacement = std::make_shared<x3d::nodes::PixelTexture>();
+    replacement->setImage(SFImage{2, 1, 3, {0, 0, 255, 0, 0, 255}});
+    h.post("S", "uTex", std::string(type) == "SFNode"
+                               ? std::any(SFNode(replacement))
+                               : std::any(MFNode{replacement}));
+    CHECK(field(*h.item().shaderProgram, "uTex")->textures.at(0).inlinePixels.width == 2);
+    h.session->context().postEvent(replacement.get(), "image", SFImage{3, 1, 1, {0, 0, 0}});
+    const auto d = h.tick();
+    CHECK((!d.updatedMaterial.empty() || !d.added.empty()));
+    CHECK(field(*h.item().shaderProgram, "uTex")->textures.at(0).inlinePixels.width == 3);
+  }
 }
 
 TEST_CASE("Part sources resolve from data: urls and the host resolver") {

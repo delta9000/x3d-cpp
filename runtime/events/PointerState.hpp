@@ -3,8 +3,7 @@
 // flag. A monotonic `revision` counter is bumped by every setter so the
 // PointingSensorSystem can cheaply detect "changed since last tick" without
 // comparing field values.
-//
-// Pure data + setters; no logic. (M2.5 input seam, spec §4.1/§6.)
+// Pure data + setters; no logic. (input seam, spec §4.1/§6.)
 #ifndef X3D_RUNTIME_POINTER_STATE_HPP
 #define X3D_RUNTIME_POINTER_STATE_HPP
 
@@ -22,13 +21,13 @@ namespace x3d::runtime {
  */
 struct PointerState {
     /// Current world-space bearing supplied by the consumer (renderer). Used for
-    /// picking / pointing-device sensors — NOT for navigation drag (the ray moves
+    /// picking / pointing-device sensors — not for navigation drag (the ray moves
     /// with the camera, so it can't be a stable drag reference; see screenX/Y).
     Ray ray{};
 
     /// Normalized cursor position in the viewport, supplied by the consumer:
     /// x rightward, y upward, nominally [0,1] across the view. This is the
-    /// camera-INDEPENDENT signal NavigationSystem uses for EXAMINE/FLY drag, so a
+    /// camera-independent signal NavigationSystem uses for `EXAMINE`/`FLY` drag, so a
     /// drag produces the same rotation regardless of scene scale and a still
     /// cursor never self-navigates as the camera turns.
     float screenX = 0.0f;
@@ -42,11 +41,7 @@ struct PointerState {
 
     /// Monotonic counter; bumped by every setter call.
     unsigned long revision = 0;
-
-    // ------------------------------------------------------------------
     // Setters — each bumps revision.
-    // ------------------------------------------------------------------
-
     void setRay(const Ray &r) {
         ray = r;
         ++revision;

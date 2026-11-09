@@ -1,24 +1,6 @@
-// DynamicField.hpp
-// S1 dynamic-field foundation: the reader->runtime contract for author-declared
-// Script fields and the per-node side-table that makes them visible to every
-// consumer that resolves fields through reflection.
-//
-// WHY A SIDE-TABLE (not a generator change). The generated reflection layer is
-// codegen-frozen (golden byte-identical). Author <field> declarations are a
-// Script-local concern, so rather than regenerate every X3DNode with a virtual
-// effectiveFields() + an instance store (which would churn golden), we keep a
-// per-node side-table keyed by node identity (const X3DNode*) — the same memo
-// pattern as TransformSystem.world_ / BoundsSystem / PickSystem path cache.
-// Lifetime: readers register through the shared_ptr overloads, so an entry
-// tracks its node with a weak_ptr and expires (and is swept) when the node is
-// destroyed — a node reallocated at the same address never inherits stale
-// author fields (see DynamicFieldStore).
-//
-// SEAM 1 — AuthorFieldDecl: a neutral, encoding-agnostic struct every reader
-//   (XML/ClassicVRML/VRML97/JSON) emits for one author field declaration.
-// SEAM 2 — DynamicFieldStore + effectiveFields(node): the storage model + the
-//   "static fields() concatenated with the node's author fields" view that
-//   X3DSceneBridge::findField and SaiContext::findField switch to.
+// Author fields use a side table to preserve generated node layouts.
+// Shared-pointer registrations expire with the node, preventing stale fields
+// from being inherited by a new node at the same address.
 #ifndef X3D_RUNTIME_DYNAMIC_FIELD_HPP
 #define X3D_RUNTIME_DYNAMIC_FIELD_HPP
 
@@ -40,7 +22,7 @@ namespace x3d::runtime {
 
 using namespace x3d::core;
 
-// AUD-MEM-1: validate that a boxed std::any value matches its declared X3DFieldType.
+// Validate the boxed value against its declared X3D field type.
 inline bool anyMatchesFieldType(const std::any &value, X3DFieldType type) {
   switch (type) {
   case X3DFieldType::SFBool:       return value.type() == typeid(bool);
@@ -92,7 +74,7 @@ inline bool anyMatchesFieldType(const std::any &value, X3DFieldType type) {
 }
 
 /**
- * @brief Seam 1: one author-declared field, encoding-agnostic.
+ * @brief One author-declared field, encoding-agnostic.
  * @details Readers parse `<field name accessType type value>` (XML) /
  *          `field SFFloat x 0.5` (VRML) / a JSON field member into this neutral
  *          struct, decoupling the four codecs from the storage model. The four
@@ -108,7 +90,7 @@ struct AuthorFieldDecl {
 };
 
 /**
- * @brief Seam 2: per-node side-table of synthesized author FieldInfos + values.
+ * @brief Per-node side-table of synthesized author FieldInfos + values.
  * @details Keyed by node identity (const X3DNode*). For each node it holds:
  *            - the live boxed std::any value store (one entry per author field),
  *            - a vector of synthesized FieldInfo entries whose get/set thunks
@@ -124,7 +106,7 @@ struct AuthorFieldDecl {
  *          node allocated at the same address never inherits the old node's
  *          fields) and it is swept from the table on a later insertion, so the
  *          table does not grow for the life of a long-running embedder. The
- *          `const X3DNode&` overloads register an UNTRACKED entry — the caller
+ *          `const X3DNode&` overloads register an untracked entry — the caller
  *          guarantees the node outlives it or calls erase()/clear().
  *
  *          Ownership: each Scene or standalone execution context owns a store.
@@ -135,7 +117,7 @@ struct AuthorFieldDecl {
  *          thunks hold a weak_ptr to their entry, so a FieldInfo copied out by
  *          authorFields() stays safe after erase()/clear(): it is inert once no
  *          store retains the entry, or its tracked node expires. The set thunk enforces the
- *          same AUD-MEM-1 type check as setValue(), so the event cascade cannot
+ *          same type check as setValue(), so the event cascade cannot
  *          bypass it.
  */
 class DynamicFieldStore {
@@ -167,7 +149,7 @@ public:
   }
 
   /**
-   * @brief Add author fields to a node the caller keeps alive (UNTRACKED).
+   * @brief Add author fields to a node the caller keeps alive (untracked).
    * @details The entry never expires on its own: the caller must guarantee the
    *          node outlives it, or erase()/clear() it. Prefer the shared_ptr
    *          overload wherever the node is shared-owned.
@@ -179,7 +161,7 @@ public:
     for (const AuthorFieldDecl &decl : decls) addOne(entry, decl);
   }
 
-  /** @brief Add a single UNTRACKED author field (see the vector overload). */
+  /** @brief Add a single untracked author field (see the vector overload). */
   void addAuthorField(const X3DNode &node, const AuthorFieldDecl &decl) {
     std::lock_guard<std::mutex> lock(mutex_);
     addOne(entryFor(&node, nullptr), decl);
@@ -255,7 +237,7 @@ public:
     table_.erase(&node);
   }
 
-  /// Adopt entries for the SAME imported nodes, preserving shared value identity.
+  /// Adopt entries for the same imported nodes, preserving shared value identity.
   /// Removing a parent view never destroys fields retained by the child Scene.
   /// A conflicting live entry is an ownership error, not a last-writer-wins merge.
   /// Optional identity selection retains only a temporarily inactive subgraph.
@@ -282,14 +264,7 @@ public:
     drops_->store(0);
   }
 
-  /**
-   * @brief AUD-MEM-1: number of author-field writes dropped for a type mismatch.
-   * @details Counts drops from both setValue() and the synthesized set thunks.
-   *          Makes the otherwise-silent drop observable. A nonzero value flags
-   *          either hostile/buggy input or an internal boxing-invariant
-   *          violation (a producer boxed the wrong C++ type for the declared
-   *          X3DFieldType). Reset by clear().
-   */
+  /// Counts rejected writes through setValue() and synthesized setters; clear() resets it.
   std::size_t typeMismatchDrops() const { return drops_->load(); }
 
   /** @brief Number of table entries, stale ones included (sweep diagnostics). */
@@ -378,14 +353,7 @@ private:
     return vIt == entry.values.end() ? std::any{} : vIt->second;
   }
 
-  // AUD-MEM-1: reject mismatched types at the API boundary rather than
-  // deferring the error to a later bad_any_cast in a reader. This is a hardened
-  // boundary — it must tolerate arbitrary mismatched input without crashing
-  // (hostile/buggy callers), so the drop is non-fatal. But a silent drop is
-  // near-impossible to trace, so we COUNT drops: a nonzero typeMismatchDrops()
-  // flags either bad input or (more usefully) an internal boxing-invariant
-  // violation where a producer boxed the wrong C++ type for the declared
-  // X3DFieldType.
+  // Reject mismatched boxed types before storage; count drops for diagnostics.
   static void writeValue(NodeEntry &entry, DropCounter &drops,
                          const std::string &name, std::any value) {
     std::lock_guard<std::mutex> lock(entry.mutex);
@@ -452,24 +420,14 @@ private:
   mutable std::mutex mutex_;
   mutable std::unordered_map<const X3DNode *, std::shared_ptr<NodeEntry>> table_;
   std::size_t sweepAt_ = kMinSweep;
-  /// AUD-MEM-1 drop count; shared with the set thunks, which may outlive a
+  /// Drop count; shared with the set thunks, which may outlive a
   /// clear() of the table.
   std::shared_ptr<DropCounter> drops_ = std::make_shared<DropCounter>(0);
 };
 
 /**
- * @brief The node's effective field table: static fields() + author fields.
- * @details Returns a freshly-built FieldTable that is the node's generated
- *          reflection table concatenated with its author FieldInfos from the
- *          explicit owner's store. Consumers that must see author fields
- *          (ROUTE endpoint resolution in X3DSceneBridge, script get/set/route in
- *          SaiContext) resolve through this instead of node.fields(). Geometry/
- *          extraction/bounds/range-validate/material/texture sites stay on
- *          node.fields() — they operate on generated nodes only (design §3.1).
- *
- *          A free function (not an X3DNode method) precisely because the storage
- *          is a side-table: keeping it out of the generated node preserves the
- *          golden-byte-identical invariant.
+ * Returns a copy of the generated field table followed by this owner's author fields.
+ * Use it for author-field lookup; generated-only consumers can use node.fields().
  */
 inline FieldTable effectiveFields(const X3DNode &node,
                                   const DynamicFieldStore &store) {

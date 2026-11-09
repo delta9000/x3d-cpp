@@ -1,4 +1,3 @@
-// ColorChaser.cpp
 #include "x3d/nodes/ColorChaser.hpp"
 
 namespace x3d::nodes {

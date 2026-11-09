@@ -1,4 +1,3 @@
-// BooleanFilter.cpp
 #include "x3d/nodes/BooleanFilter.hpp"
 
 namespace x3d::nodes {

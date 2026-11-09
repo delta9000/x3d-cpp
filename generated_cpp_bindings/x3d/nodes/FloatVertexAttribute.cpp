@@ -1,4 +1,3 @@
-// FloatVertexAttribute.cpp
 #include "x3d/nodes/FloatVertexAttribute.hpp"
 
 namespace x3d::nodes {

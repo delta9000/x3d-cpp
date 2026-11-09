@@ -25,10 +25,6 @@ const std::vector<std::string> &Vrml97Reader::warnings() const {
   return warnings_;
 }
 
-std::string Vrml97Reader::mapNodeName(const std::string &token) const {
-  return dialectOn_ ? vrml97::mapNodeName(token) : token;
-}
-
 std::string Vrml97Reader::mapFieldName(const std::string &nodeType,
                                        const std::string &token) const {
   return dialectOn_ ? vrml97::mapFieldName(nodeType, token) : token;
@@ -38,11 +34,8 @@ void Vrml97Reader::warn(const std::string &message) {
   warnings_.push_back(message);
 }
 
-void Vrml97Reader::onHeaderLine(std::string_view src,
+void Vrml97Reader::onHeaderLine(const std::vector<std::string> &parts,
                                 runtime::X3DDocument &doc) {
-  std::string_view line = firstLine(src);
-  std::vector<std::string> parts = splitOnSpace(line);
-
   if (parts.empty() || parts[0].empty() || parts[0][0] != '#') {
     warn("missing VRML header line; assuming VRML97 (#VRML V2.0 utf8)");
     doc.profile = runtime::Profile::Immersive;
@@ -85,24 +78,6 @@ void Vrml97Reader::onHeaderLine(std::string_view src,
   // baseline. (Writers emit an X3D header on output regardless.)
   doc.profile = runtime::Profile::Immersive;
   doc.version = "3.0";
-}
-
-std::vector<std::string> Vrml97Reader::splitOnSpace(std::string_view line) {
-  std::vector<std::string> parts;
-  std::string cur;
-  for (char c : line) {
-    if (c == ' ' || c == '\t') {
-      if (!cur.empty()) {
-        parts.push_back(cur);
-        cur.clear();
-      }
-    } else {
-      cur += c;
-    }
-  }
-  if (!cur.empty())
-    parts.push_back(cur);
-  return parts;
 }
 
 } // namespace x3d::codec

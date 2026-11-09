@@ -1,9 +1,3 @@
-// tools/x3d-cli/profile_fit.hpp
-// ─────────────────────────────────────────────────────────────────────────────
-// Profile-fit machinery — promoted out of tools/x3d_cli.cpp (see task-2-report)
-// so it can be reused by other tools/consumers (e.g. the asset-import
-// consumer), not just the CLI's `validate --profile-fit` flag.
-//
 // Each X3D 4.0 profile is defined by a set of (component, maxLevel) pairs.
 // A scene "fits" a profile if every (component, level) it uses is ≤ the
 // profile's allowed level for that component (and the component is listed at all).
@@ -16,20 +10,15 @@
 //     without a node list falls back to Core:1
 //   Full — maximum component levels found across UOM concrete nodes
 //
-// LIMITATION: The inferred profiles are not checked against normative profile
+// The inferred profiles are not checked against normative profile
 // component tables. This fit check compares only the node component levels it
 // knows; passing does not establish full profile conformance. Components missing
 // from a profile table are treated as disallowed, and an unknown component is
 // treated as requiring Full.
-// ─────────────────────────────────────────────────────────────────────────────
 #ifndef X3D_CLI_PROFILE_FIT_HPP
 #define X3D_CLI_PROFILE_FIT_HPP
 
-// x3d/sdk.hpp pulls in x3d::runtime::Scene/Profile (as sdk::Scene/sdk::Profile)
-// plus x3d::nodes::X3DNode and the x3d::core reflection types (FieldInfo,
-// X3DFieldType) used below. The generated *.gen.inc fragments included further
-// down were emitted with literal `sdk::Profile::...` tokens (see
-// scripts/gen_profile_tables.py), so the `sdk` alias must be in scope here.
+// The generated profile fragments require the sdk alias below.
 #include "x3d/sdk.hpp"
 
 #include <any>
@@ -45,8 +34,6 @@
 
 namespace sdk = x3d::sdk;
 
-// Brings X3DNode, FieldInfo, X3DFieldType into unqualified scope (matches the
-// convention already used at tools/x3d_cli.cpp file scope).
 using namespace x3d::core;
 
 namespace profile_fit {

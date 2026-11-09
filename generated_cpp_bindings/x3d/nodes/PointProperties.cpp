@@ -1,4 +1,3 @@
-// PointProperties.cpp
 #include "x3d/nodes/PointProperties.hpp"
 
 namespace x3d::nodes {

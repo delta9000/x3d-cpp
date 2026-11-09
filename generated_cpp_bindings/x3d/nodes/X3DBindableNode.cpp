@@ -1,4 +1,3 @@
-// X3DBindableNode.cpp
 #include "x3d/nodes/X3DBindableNode.hpp"
 
 namespace x3d::nodes {

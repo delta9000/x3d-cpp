@@ -1,4 +1,3 @@
-// Group.cpp
 #include "x3d/nodes/Group.hpp"
 
 namespace x3d::nodes {

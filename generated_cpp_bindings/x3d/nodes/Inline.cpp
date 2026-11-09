@@ -1,4 +1,3 @@
-// Inline.cpp
 #include "x3d/nodes/Inline.hpp"
 
 namespace x3d::nodes {

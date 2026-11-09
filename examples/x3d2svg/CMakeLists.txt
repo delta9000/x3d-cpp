@@ -1,18 +1,4 @@
-# examples/x3d2svg/CMakeLists.txt
-#
-# Out-of-SDK HEADLESS SVG PROJECTOR (a CONSUMER of the x3d_cpp extraction seam,
-# NOT part of the SDK). Firewalled behind X3D_CPP_BUILD_X3D2SVG=OFF at the root
-# so the default build/golden/ctest path never configures or compiles it.
-#
-# The smallest possible reference consumer: ZERO third-party dependencies and —
-# unlike cpu_raster, which links the internal x3d_cpp::x3d_cpp target and reaches
-# into runtime/ headers — this links ONLY the public façade x3d_cpp::sdk and
-# includes ONLY "x3d/sdk.hpp". So it doubles as proof that the public embedder
-# surface alone is enough to write a real renderer.
-#
-# Entered only via the root CMake's
-#   if(X3D_CPP_BUILD_X3D2SVG) add_subdirectory(examples/x3d2svg) endif()
-# so it can assume the x3d_cpp::sdk INTERFACE target already exists.
+# Headless SVG projector using the public x3d_cpp::sdk facade.
 
 cmake_minimum_required(VERSION 3.21)
 

@@ -1,4 +1,3 @@
-// PolylineEmitter.cpp
 #include "x3d/nodes/PolylineEmitter.hpp"
 
 namespace x3d::nodes {

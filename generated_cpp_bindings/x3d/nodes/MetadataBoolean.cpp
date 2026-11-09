@@ -1,4 +1,3 @@
-// MetadataBoolean.cpp
 #include "x3d/nodes/MetadataBoolean.hpp"
 
 namespace x3d::nodes {

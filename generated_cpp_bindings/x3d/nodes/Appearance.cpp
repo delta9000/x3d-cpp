@@ -1,4 +1,3 @@
-// Appearance.cpp
 #include "x3d/nodes/Appearance.hpp"
 
 namespace x3d::nodes {

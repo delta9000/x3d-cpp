@@ -26,7 +26,7 @@ def test_committed_manifests_match_fresh_extraction():
         assert committed == fresh, f"committed x3d-{ver}.json drifted from the UOM"
 
 def test_every_committed_manifest_passes_the_meta_validator():
-    # The moat's future-proofing across the FULL version range, zero extractor edits:
+    # Extract the supported version range with the same implementation:
     # every one of the six genuine UOMs extracts + passes the admission gates.
     for ver, uom in UOM.items():
         m = extract_manifest(uom)
@@ -34,9 +34,9 @@ def test_every_committed_manifest_passes_the_meta_validator():
         assert_field_types_mapped(uom)   # strict mode: no unmapped field type
 
 def test_41_has_eight_more_nodes_than_40():
-    # The manifest extracts ALL UOM node types (concrete + abstract). 4.1 adds the
+    # The manifest extracts all UOM node types (concrete + abstract). 4.1 adds the
     # 6 new concrete nodes (EnvironmentLight, FontLibrary, HAnimPose, InlineGeometry,
-    # RenderedTexture, Tangent) PLUS 2 new abstract node types (X3DTangentNode,
+    # RenderedTexture, Tangent) plus 2 new abstract node types (X3DTangentNode,
     # X3DUrlOutputObject) — confirmed against the authoritative UOM, so the real
     # extracted delta is 8.
     n40 = json.loads(extract_manifest(UOM["4.0"]).to_json())["provenance"]["nodeCount"]

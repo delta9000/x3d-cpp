@@ -1,35 +1,5 @@
-// script_corpus_e2e_test.cpp
-// PHASE-2 CORPUS END-TO-END proof: a FILE-AUTHORED Script that the v1 SDK
-// shipped INERT now actually EXECUTES through the full pipeline
-//   read (real codec) -> expand (PROTO) -> attach ScriptSystem(EcmaScriptBackend)
-//   -> deliver an author inputOnly event -> tick -> author outputOnly write is
-//   observable.
-//
-// This is the behavioral closure for SCR-SAI-DYN (S1): before the un-tabling, a
-// <Script> carrying author <field> decls + a <![CDATA[...]]> body parsed to an
-// inert node (no author fields in the reflection table, no captured source) — its
-// handlers never fired. The ecmascript_corpus_smoke_test documents that exact
-// hole ("the reader does not yet capture either ... those scenes therefore parse
-// to an inert Script"). This test loads the SAME real corpus file and proves it
-// is no longer inert.
-//
-// Three real-reader paths exercised:
-//   (a) XML fixture        — AuthorScriptExample.x3d, a self-contained analogue
-//                            of CanopyExample.x3d: drives the inputOnly 'enabled'
-//                            event and asserts the outputOnly 'status' write.
-//   (b) ClassicVRML (.x3dv)— AuthorScriptExample.x3dv, the VRML analogue (url
-//                            inline body mirrored to sourceCode), same drive.
-//   (c) REAL Savage corpus — CanopyExample.x3d itself (previously inert per the
-//                            smoke test): proves the author <field>s + CDATA body
-//                            are captured AND the handler now actually DISPATCHES
-//                            (the engine invokes it — observable because the
-//                            handler executes its body, which references the
-//                            surrounding-prototype global 'traceEnabled' and so
-//                            raises inside the engine, whereas the inert v1 Script
-//                            silently never ran the handler at all).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+#include "FieldRead.hpp"
+// File-authored Script lifecycle and output behavior.
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"
 
@@ -73,22 +43,14 @@ void check(bool cond, const std::string &what) {
   }
 }
 
-// Blind child walk (mirrors PickSystem::forEachChild) — visit every Script node
+// Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
   if (!n) return;
   if (auto *s = dynamic_cast<Script *>(n)) out.push_back(s);
-  for (const auto &fi : n->fields()) {
-    if (!fi.get) continue;  // inputOnly fields have no get thunk
-    if (fi.type == X3DFieldType::SFNode) {
-      auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-      if (c) collectScripts(c.get(), out);
-    } else if (fi.type == X3DFieldType::MFNode) {
-      for (const auto &c :
-           std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-        if (c) collectScripts(c.get(), out);
-    }
-  }
+  x3d::runtime::forEachChildNode(*n, [&](const auto &, const auto &child) {
+    collectScripts(child.get(), out);
+  });
 }
 
 std::string slurp(const std::string &path) {
@@ -133,9 +95,8 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
   }
 }
 
-// ---------------------------------------------------------------------------
 // (a) XML fixture loaded through the real XmlReader: author <field>s + CDATA.
-// ---------------------------------------------------------------------------
+
 void testXmlFixture(const std::string &dataDir) {
 
   std::string xml = slurp(dataDir + "/AuthorScriptExample.x3d");
@@ -171,9 +132,8 @@ void testXmlFixture(const std::string &dataDir) {
   driveAndAssertStatus(script, *sys, ctx, "xml fixture");
 }
 
-// ---------------------------------------------------------------------------
 // (b) ClassicVRML (.x3dv) fixture loaded through the real ClassicVrmlReader.
-// ---------------------------------------------------------------------------
+
 void testVrmlFixture(const std::string &dataDir) {
 
   std::string vrml = slurp(dataDir + "/AuthorScriptExample.x3dv");
@@ -205,11 +165,8 @@ void testVrmlFixture(const std::string &dataDir) {
   driveAndAssertStatus(script, *sys, ctx, "vrml fixture");
 }
 
-// ---------------------------------------------------------------------------
-// (c) The REAL Savage CanopyExample.x3d — the file the smoke test ran INERT.
-//     Proves the un-tabling captures its author <field>s + CDATA body and that
-//     its handler now genuinely DISPATCHES (rather than being a silent no-op).
-// ---------------------------------------------------------------------------
+// CanopyExample.x3d: capture author fields and dispatch its CDATA handler.
+
 void testRealCorpusNotInert() {
 
   // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
@@ -238,8 +195,6 @@ void testRealCorpusNotInert() {
   if (scripts.empty()) return;
   Script *script = scripts[0];
 
-  // The author interface from the <field> children is now visible (was wholly
-  // absent when the Script was inert).
   check(hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
             hasAuthorField(*script, *doc.scene.authorFields, "status") &&
             hasAuthorField(*script, *doc.scene.authorFields, "landed"),
@@ -256,12 +211,9 @@ void testRealCorpusNotInert() {
         "real corpus: Script LOADED from captured CDATA source (was inert)");
 
   // Deliver the inputOnly 'enabled' event the TouchSensor.isActive ROUTE feeds.
-  // The handler now actually RUNS (it is no longer inert). CanopyExample's
-  // handler references 'traceEnabled' — a field of the SURROUNDING Canopy
-  // prototype, not declared on this Script — so the engine raises ReferenceError
-  // INSIDE the handler. That raise IS the proof of dispatch: an inert Script
-  // would never have entered the handler at all. We assert no crash + that the
-  // pipeline ran to completion.
+  // The handler references traceEnabled on the enclosing Canopy prototype,
+  // rather than on this Script, so it raises ReferenceError. The host must
+  // complete the tick despite the script error.
   sys->deliverInputEvent(script, "enabled", std::any(SFBool(true)),
                          X3DFieldType::SFBool, 1.0);
   ctx.tick(1.0);
@@ -271,12 +223,11 @@ void testRealCorpusNotInert() {
 
 } // namespace
 
-// ---------------------------------------------------------------------------
-// (d) SCRIPT-EVENTIN end to end: a document ROUTE into a Script eventIn runs
+// (d)  end to end: a document ROUTE into a Script eventIn runs
 //     the handler with no embedder bridging (§29.2), and the handler's output
 //     ROUTEs on into the scene within the same tick.
 //       Src.translation -> S.set_pos (inputOnly) ; S.pos (outputOnly) -> T.translation
-// ---------------------------------------------------------------------------
+
 void testRoutedEventInEndToEnd() {
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Transform DEF='Src'/>
@@ -320,11 +271,10 @@ void testRoutedEventInEndToEnd() {
         "eventIn e2e: ROUTE -> Script handler -> ROUTE moved T in one tick");
 }
 
-// ---------------------------------------------------------------------------
 // (e) A ROUTEd write to a Script's inputOutput author field must stick: the
 //     script sees the new value, and a later handler that does not touch the
 //     field must not write the stale script-side value back over it.
-// ---------------------------------------------------------------------------
+
 void testRoutedInputOutputSticks() {
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Script DEF='S' mustEvaluate='true'>

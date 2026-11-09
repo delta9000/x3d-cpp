@@ -4,6 +4,8 @@ This is the moat capstone — provenance (manifest hashes) + clean% + residual
 classified by code, reproducible and machine-readable."""
 import json
 
+import pytest
+
 from x3d_cpp_gen.conformance.report import build_report, format_markdown
 
 CLEAN_40 = """<X3D profile='Immersive' version='4.0'><Scene>
@@ -12,7 +14,7 @@ CLEAN_40 = """<X3D profile='Immersive' version='4.0'><Scene>
 BAD_NODE_40 = """<X3D profile='Immersive' version='4.0'><Scene>
   <Shape><NotARealNode/></Shape></Scene></X3D>"""
 
-# a real 3.0 erratum case: route into Viewpoint.orientation — clean ONLY because
+# a real 3.0 erratum case: route into Viewpoint.orientation — clean only because
 # the errata overlay corrects orientation to inputOutput
 ERRATA_30 = """<X3D version='3.0'><Scene>
   <OrientationInterpolator DEF='OI'/><Viewpoint DEF='V'/>
@@ -38,7 +40,7 @@ def test_per_version_scorecard_and_provenance(tmp_path):
     root = _corpus(tmp_path, {"clean.x3d": CLEAN_40, "bad.x3d": BAD_NODE_40})
     v40 = build_report(root)["perVersion"]["4.0"]
     assert v40["validated"] == 2 and v40["clean"] == 1
-    # provenance ties the scorecard to the exact UOM extraction (the moat anchor)
+    # provenance ties the scorecard to the exact UOM extraction
     assert v40["provenance"]["uomManifestHash"]
     assert v40["provenance"]["nodeCount"] > 0
 
@@ -74,3 +76,21 @@ def test_markdown_renders_headline_numbers(tmp_path):
     root = _corpus(tmp_path, {"clean.x3d": CLEAN_40, "bad.x3d": BAD_NODE_40})
     md = format_markdown(build_report(root))
     assert "Conformance" in md and "4.0" in md and "%" in md
+
+
+def test_malformed_xml_is_counted_separately(tmp_path):
+    root = _corpus(tmp_path, {"bad.x3d": "<X3D>", "clean.x3d": CLEAN_40})
+    totals = build_report(root)["totals"]
+    assert totals["parseError"] == 1
+    assert totals["validated"] == 1
+
+
+def test_validator_failure_surfaces(tmp_path, monkeypatch):
+    root = _corpus(tmp_path, {"clean.x3d": CLEAN_40})
+
+    def broken_validator(xml, manifest):
+        raise RuntimeError("validator failure")
+
+    monkeypatch.setattr("x3d_cpp_gen.conformance.report.validate_document", broken_validator)
+    with pytest.raises(RuntimeError, match="validator failure"):
+        build_report(root)

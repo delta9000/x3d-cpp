@@ -1,4 +1,3 @@
-// SquadOrientationInterpolator.cpp
 #include "x3d/nodes/SquadOrientationInterpolator.hpp"
 
 namespace x3d::nodes {

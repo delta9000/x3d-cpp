@@ -1,4 +1,3 @@
-// LayoutLayer.cpp
 #include "x3d/nodes/LayoutLayer.hpp"
 
 namespace x3d::nodes {

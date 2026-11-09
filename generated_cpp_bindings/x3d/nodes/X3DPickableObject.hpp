@@ -1,4 +1,3 @@
-// X3DPickableObject.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -21,61 +20,32 @@ using namespace x3d::core;
  */
 class X3DPickableObject {
 public:
-  /**
-   * @brief Default constructor for X3DPickableObject
-   */
   X3DPickableObject() = default;
 
-  /**
-   * @brief Virtual destructor for X3DPickableObject
-   */
   virtual ~X3DPickableObject() = default;
 
-  /**
-   * @brief Get the default value for pickable
-   * @return SFBool The default value
-   */
   static SFBool getDefaultPickable() { return true; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Picking"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of pickable. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of pickable.
    */
   const SFBool &getPickable() const { return _pickable; }
 
   /**
-   * @brief Sets the value of pickable. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for pickable.
    */
   void setPickable(const SFBool &value) { _pickable = value; }
 
 private:
-  /**
-   * @brief Member variable for pickable.
-   */
-
   SFBool _pickable{true};
 };
 

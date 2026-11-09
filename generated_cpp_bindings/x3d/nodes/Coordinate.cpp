@@ -1,4 +1,3 @@
-// Coordinate.cpp
 #include "x3d/nodes/Coordinate.hpp"
 
 namespace x3d::nodes {

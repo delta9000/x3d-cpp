@@ -1,21 +1,4 @@
-// json_script_field_test.cpp
-// TASK C (SCR-SAI-DYN S1, JSON encoding): the JSON reader must capture a
-// Script node's author field declarations (the "field" member array on the
-// Script object, mirroring ProtoInterface's "field") and its inline source
-// (the canonical X3D-JSON "#sourceText" array, or an @url inline scheme) into
-// the runtime model:
-//
-//   * each author <field> decl -> AuthorFieldDecl -> DynamicFieldStore, so it
-//     shows up in effectiveFields(script, store) (the view ROUTE endpoint
-//     resolution and the SAI use);
-//   * the inline body -> Script.sourceCode.
-//
-// The JSON writer must re-emit both so a read -> write -> reparse round-trip
-// preserves the decls + source (the PRF-style fidelity the corpus run depends
-// on). Follows the JSON proto round-trip tests as a pattern.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// JSON Script author fields and inline source survive read/write round-trips.
 #include "DynamicField.hpp"
 #include "JsonWriter.hpp"
 #include "X3DParse.hpp"
@@ -52,11 +35,8 @@ std::shared_ptr<X3DNode> firstScript(const X3DDocument &doc) {
   return nullptr;
 }
 
-// Search a caller-owned FieldTable. The table MUST outlive the returned pointer:
-// effectiveFields() returns a fresh FieldTable by value, so callers keep it in a
-// local and take pointers into it. (An earlier version searched a single shared
-// `static` table reassigned on every call — holding two results across a second
-// call then read freed memory; ASan flagged the use-after-free.)
+// The caller-owned FieldTable must outlive the returned pointer.
+// effectiveFields() returns by value, so callers keep the table in a local.
 const FieldInfo *byName(const FieldTable &table, const std::string &name) {
   for (const auto &f : table)
     if (f.x3dName == name)

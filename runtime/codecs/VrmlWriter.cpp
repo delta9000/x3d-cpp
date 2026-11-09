@@ -28,7 +28,6 @@ void writePrototypeMetadata(std::ostringstream &os, const std::string &appinfo,
      << ", " << json::quote(documentation) << "]\n";
 }
 
-
 std::string defaultVrmlValue(X3DFieldType type) {
   if (type == X3DFieldType::SFNode)
     return "NULL";
@@ -51,7 +50,7 @@ void VrmlWriter::writeInterfaceValue(std::ostringstream &os,
     os << " \"" << vrmlEscapeString(val) << "\"";
   else if (type == X3DFieldType::SFEnum)
     os << " " << (value.has_value() ? val : "\"\"");
-  else if (type == X3DFieldType::MFEnum || isMultiField(type))
+  else if (type == X3DFieldType::MFNode || isMF(type))
     os << " [ " << vrmlBoolCase(type, val) << " ]";
   else
     os << " " << vrmlBoolCase(type, val);
@@ -97,6 +96,12 @@ std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
     os << "ROUTE " << r.fromNode << "." << r.fromField << " TO " << r.toNode
        << "." << r.toField << "\n";
   }
+  for (const auto &i : doc.scene.imports)
+    os << "IMPORT " << i.inlineDEF << "." << i.importedDEF << " AS "
+       << (i.as.empty() ? i.importedDEF : i.as) << "\n";
+  for (const auto &e : doc.scene.exports)
+    os << "EXPORT " << e.localDEF << " AS "
+       << (e.as.empty() ? e.localDEF : e.as) << "\n";
   return os.str();
 }
 
@@ -120,36 +125,6 @@ std::string VrmlWriter::vrmlBoolCase(X3DFieldType type, const std::string &in) {
     }
   }
   return out;
-}
-
-bool VrmlWriter::isMultiField(X3DFieldType t) {
-  switch (t) {
-  case X3DFieldType::MFBool:
-  case X3DFieldType::MFInt32:
-  case X3DFieldType::MFFloat:
-  case X3DFieldType::MFDouble:
-  case X3DFieldType::MFTime:
-  case X3DFieldType::MFString:
-  case X3DFieldType::MFVec2f:
-  case X3DFieldType::MFVec2d:
-  case X3DFieldType::MFVec3f:
-  case X3DFieldType::MFVec3d:
-  case X3DFieldType::MFVec4f:
-  case X3DFieldType::MFVec4d:
-  case X3DFieldType::MFColor:
-  case X3DFieldType::MFColorRGBA:
-  case X3DFieldType::MFRotation:
-  case X3DFieldType::MFMatrix3f:
-  case X3DFieldType::MFMatrix3d:
-  case X3DFieldType::MFMatrix4f:
-  case X3DFieldType::MFMatrix4d:
-  case X3DFieldType::MFImage:
-  case X3DFieldType::MFNode:
-  case X3DFieldType::MFEnum:
-    return true;
-  default:
-    return false;
-  }
 }
 
 std::string VrmlWriter::vrmlEscapeString(const std::string &in) {
@@ -176,23 +151,6 @@ X3DNode *VrmlWriter::defaultFor(const std::string &typeName) {
   X3DNode *raw = fresh.get();
   defaults_[typeName] = std::move(fresh);
   return raw;
-}
-
-const runtime::ProtoField *
-VrmlWriter::interfaceField(const runtime::ProtoInstance &src,
-                           const std::string &name) {
-  auto scan = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const runtime::ProtoField &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (src.declaration)
-    return scan(src.declaration->interface);
-  if (src.externDeclaration)
-    return scan(src.externDeclaration->interface);
-  return nullptr;
 }
 
 void VrmlWriter::writeVrmlProtoInstance(std::ostringstream &os,
@@ -223,18 +181,27 @@ void VrmlWriter::writeVrmlProtoInstance(std::ostringstream &os,
         os << "]\n";
       }
     } else if (fv.value.has_value()) {
-      const runtime::ProtoField *pf = interfaceField(src, fv.name);
+      const runtime::ProtoField *pf = src.interfaceField(fv.name);
       if (pf) {
         pad(os, depth + 1);
         std::string valStr = formatValue(pf->type, fv.value);
         if (pf->type == X3DFieldType::SFString)
           os << fv.name << " \"" << vrmlEscapeString(valStr) << "\"\n";
-        else if (isMultiField(pf->type))
+        else if (pf->type == X3DFieldType::MFNode || isMF(pf->type))
           os << fv.name << " [ " << vrmlBoolCase(pf->type, valStr) << " ]\n";
         else
           os << fv.name << " " << vrmlBoolCase(pf->type, valStr) << "\n";
       }
+    } else if (const auto *pf = src.interfaceField(fv.name);
+               pf && (pf->type == X3DFieldType::SFNode ||
+                      pf->type == X3DFieldType::MFNode)) {
+      pad(os, depth + 1);
+      os << fv.name << (pf->type == X3DFieldType::SFNode ? " NULL\n" : " []\n");
     }
+  }
+  for (const auto &c : src.isConnections) {
+    pad(os, depth + 1);
+    os << c.nodeField << " IS " << c.protoField << "\n";
   }
   pad(os, depth);
   os << "}";
@@ -312,10 +279,10 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
   os << "] {\n";
 
   // Body uses the interface's local scope; scene_=null prevents redirect.
-  // PRF-1: hand the body's IS list to the body writer so writeNode emits
+  // hand the body's IS list to the body writer so writeNode emits
   // `field IS protoField` lines inside the node braces at every depth.
-  // PRF-3: thread the nested-instance list so writeNode injects each Case-A
-  // instance INSIDE its parent body node's body (in its slot), not after it.
+  // thread the nested-instance list so writeNode injects each Case-A
+  // instance inside its parent body node's body (in its slot), not after it.
   for (const auto &entry : d.body.orderedStatements()) {
     switch (entry.kind) {
     case runtime::ProtoBodyStatement::Kind::Node: {
@@ -365,7 +332,7 @@ void VrmlWriter::writeVrmlExternProtoDeclare(
 void VrmlWriter::writeNode(std::ostringstream &os,
                            const std::shared_ptr<X3DNode> &node, int depth) {
   // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original Inline node and do NOT descend into the
+  // <Inline>, re-emit the original Inline node and do not descend into the
   // Group's child content (which the reader will re-fetch on load).
   if (scene_) {
     auto il = scene_->expandedInlines.find(node.get());
@@ -445,7 +412,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     pad(os, depth + 1);
     if (f.type == X3DFieldType::SFString)
       os << f.x3dName << " \"" << vrmlEscapeString(text) << "\"\n";
-    else if (isMultiField(f.type))
+    else if (f.type == X3DFieldType::MFNode || isMF(f.type))
       os << f.x3dName << " [ " << vrmlBoolCase(f.type, text) << " ]\n";
     else
       os << f.x3dName << " " << vrmlBoolCase(f.type, text) << "\n";
@@ -551,12 +518,12 @@ void VrmlWriter::writeNode(std::ostringstream &os,
       writeNodeField(os, node, *cf, depth + 1);
   }
 
-  // Task B: re-emit author (Script) field declarations captured by the reader
-  // into the S1 store as `accessType FieldType name [default]` interface lines
+  // re-emit author (Script) field declarations captured by the reader
+  // into the author-field store as `accessType FieldType name [default]` interface lines
   // inside the node body, so a re-parse recovers them (round-trip).
   writeAuthorFields(os, *node, depth + 1);
 
-  // PRF-1: re-emit IS connections bound to THIS node (at any depth) as
+  // re-emit IS connections bound to this node (at any depth) as
   // `nodeField IS protoField` lines inside the node body, matching what the
   // ClassicVrmlReader parses (`name IS protoField` in parseNodeBody).
   if (bodyIsc_) {
@@ -568,7 +535,7 @@ void VrmlWriter::writeNode(std::ostringstream &os,
     }
   }
 
-  // PRF-3: inject Case-A nested ProtoInstances whose parent is THIS node,
+  // inject Case-A nested ProtoInstances whose parent is this node,
   // grouped by parentField, as `slot [ <instance> ... ]` blocks inside the
   // node body — mirroring XmlWriter pushing them onto the parent element's
   // children so the ClassicVrmlReader recovers parent == this node (the
@@ -576,8 +543,8 @@ void VrmlWriter::writeNode(std::ostringstream &os,
   if (!hasOrder) writeVrmlNestedFor(os, node, depth + 1);
 
   // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
-  // scene.protoInstances whose parent is THIS node. These are NOT in the node
-  // graph (expansion failed) and NOT scene-root (parent is live), so without
+  // scene.protoInstances whose parent is this node. These are not in the node
+  // graph (expansion failed) and not scene-root (parent is live), so without
   // this injection they are lost. Emit per-slot, respecting SFNode vs MFNode:
   // SFNode slots emit a bare `slot TypeName { ... }` (no brackets); MFNode
   // slots emit `slot [ TypeName { ... } ... ]` — the ClassicVrmlReader's
@@ -669,7 +636,26 @@ void VrmlWriter::writeAuthorFields(std::ostringstream &os, const X3DNode &node,
        << f.x3dName;
     const bool valued = f.access == AccessType::InitializeOnly ||
                         f.access == AccessType::InputOutput;
-    if (valued)
+    if (valued && f.isNode()) {
+      std::any value = f.get ? f.get(node) : std::any{};
+      if (f.type == X3DFieldType::SFNode) {
+        os << " ";
+        auto *child = std::any_cast<SFNode>(&value);
+        if (child && *child) writeNode(os, *child, depth);
+        else os << "NULL";
+      } else {
+        os << " [\n";
+        if (auto *children = std::any_cast<MFNode>(&value))
+          for (const auto &child : *children) {
+            if (!child) continue;
+            pad(os, depth + 1);
+            writeNode(os, child, depth + 1);
+            os << "\n";
+          }
+        pad(os, depth);
+        os << "]";
+      }
+    } else if (valued)
       writeInterfaceValue(os, f.type, f.get ? f.get(node) : std::any{});
     os << "\n";
   }

@@ -56,17 +56,11 @@ template <> struct FollowerArith<SFRotation> {
   static Delta delta(const SFRotation &from, const SFRotation &to) {
     Quat a = quatFromRotation(from), b = quatFromRotation(to);
     Quat inverse{-a.x, -a.y, -a.z, a.w};
-    return Quat{inverse.w*b.x + inverse.x*b.w + inverse.y*b.z - inverse.z*b.y,
-                inverse.w*b.y - inverse.x*b.z + inverse.y*b.w + inverse.z*b.x,
-                inverse.w*b.z + inverse.x*b.y - inverse.y*b.x + inverse.z*b.w,
-                inverse.w*b.w - inverse.x*b.x - inverse.y*b.y - inverse.z*b.z};
+    return quatMul(inverse, b);
   }
   static SFRotation applyTap(const SFRotation &value, const Delta &delta, float s) {
     Quat current = quatFromRotation(value);
-    Quat target{current.w*delta.x + current.x*delta.w + current.y*delta.z - current.z*delta.y,
-                current.w*delta.y - current.x*delta.z + current.y*delta.w + current.z*delta.x,
-                current.w*delta.z + current.x*delta.y - current.y*delta.x + current.z*delta.w,
-                current.w*delta.w - current.x*delta.x - current.y*delta.y - current.z*delta.z};
+    Quat target = quatMul(current, delta);
     return rotationFromQuat(slerp(current, target, s));
   }
 };

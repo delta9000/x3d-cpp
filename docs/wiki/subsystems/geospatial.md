@@ -40,51 +40,47 @@ coordinates. The design is [ADR-0053](../decisions/0053-geo-projection-seam.md).
 
 ## Conventions
 
-- **Units:** GD latitude and longitude in degrees (see the ADR for the
+- Units: GD latitude and longitude in degrees (see the ADR for the
   "angle base units" wording), everything else in metres.
-- **Axis order:** GD defaults to latitude first (`longitude_first` swaps), UTM
+- Axis order: GD defaults to latitude first (`longitude_first` swaps), UTM
   to northing first (`easting_first` swaps).
-- **Local frames:** +X east, +Y up (the ellipsoid normal), −Z north (§25.3.3).
-- **GeoOrigin:** world = geocentric − origin, rotated so the origin's up is +Y
+- Local frames: +X east, +Y up (the ellipsoid normal), −Z north (§25.3.3).
+- GeoOrigin: world = geocentric − origin, rotated so the origin's up is +Y
   when `rotateYUp` is TRUE. Without a GeoOrigin the world is geocentric.
-- **Precision:** double until the point is relative to its GeoOrigin, then
+- Precision: double until the point is relative to its GeoOrigin, then
   float.
-- **No datum shifts:** each ellipsoid's geometry maps into the one earth-fixed
+- No datum shifts: each ellipsoid's geometry maps into the one earth-fixed
   frame; GC and WM are WGS84.
-- **Geoid:** the `"WGS84"` option adds the backend's geoid undulation. The
+- Geoid: the `"WGS84"` option adds the backend's geoid undulation. The
   built-in backend has none by itself; `runtime/io/tinygeoid` supplies one from
   a tinygeoid `.tng` grid, and the PROJ backend from a PROJ grid. Without
   either, heights stay ellipsoidal.
 
-## Status
+## Node conversion
 
 The conversion core ships and is tested against PROJ, and every Geospatial
 node converts through it:
 
-- **Geometry and bounds:** GeoCoordinate points; GeoElevationGrid lattices
+- Geometry and bounds: GeoCoordinate points; GeoElevationGrid lattices
   (east/longitude columns, north/latitude rows, absolute `height × yScale`,
   authored normals rotated from the tangent frame). GeoMetadata.data and
   metadata references are not rendered.
-- **Transforms:** GeoLocation (tangent frame at `geoCoords`) and GeoTransform
+- Transforms: GeoLocation (tangent frame at `geoCoords`) and GeoTransform
   (TRS inside the `geoCenter` tangent frame).
-- **Camera:** GeoViewpoint position, orientation relative to the tangent frame,
+- Camera: GeoViewpoint position, orientation relative to the tangent frame,
   geographic centre of rotation (including LOOKAT), and navigation speed
   `elevation / 10 × speedFactor`. Avatar size and a finite visibility limit are
   multiplied by `max(1, elevation / 10)` (never below the authored values); an
   unlimited visibility limit stays unlimited (ADR-0054).
-- **Behaviour:** GeoPositionInterpolator interpolates in its geoSystem;
+- Behaviour: GeoPositionInterpolator interpolates in its geoSystem;
   GeoProximitySensor (tangent box at `geoCenter`, `geoCoord_changed`);
   GeoTouchSensor (`hitGeoCoord_changed`); GeoLOD loads rootUrl when rootNode is
   empty, waits for all specified child URLs before switching, and unloads
   children outside range. The children output and extractor use the displayed set.
-- **Optional PROJ backend** (`-DX3D_CPP_BUILD_PROJ=ON`) with the swap-test
-  `x3d_proj_geo_swap`: worst differences against the built-in backend are
-  0 m geocentric, 3 nm UTM, 3e-11° latitude and 3.7 µm height (PROJ's
-  non-iterated inverse).
+- Optional PROJ implementation: enable `X3D_CPP_BUILD_PROJ`. Its numerical comparison tests are in `runtime/io/proj/tests/proj_geo_swap_test.cpp`.
 
 Set `X3D_GEOID_GRID` to a local GTX or GTG grid to exercise the PROJ backend's
 geoid lookup in the swap-test; without it that case is skipped.
-
 
 ## World ownership and migration
 
@@ -107,5 +103,5 @@ GeoProjection mathematical virtual interface is unchanged. Independent worlds
 may run on separate owner threads; operations within one mutable world remain
 serialized. A shared custom backend must provide stable conversion behavior and
 synchronize its own mutable caches. Sharing mutable native node graphs between
-active worlds is not an isolation guarantee. This ownership proof does not add
+active worlds is not an isolation guarantee. This ownership model does not add
 Geospatial capabilities to the portable four-node SAI provider.

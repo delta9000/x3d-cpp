@@ -1,4 +1,3 @@
-// DynamicsCompressor.cpp
 #include "x3d/nodes/DynamicsCompressor.hpp"
 
 namespace x3d::nodes {

@@ -46,7 +46,7 @@ inline BuiltinFont makeBuiltinFont(float advanceEm = 0.6f) {
 
   // Atlas is bottom-up (GL origin), matching Texture + the glyph quad UVs
   // (emitQuad writes (u0,v0) at the bottom-left corner). Grid row 0 sits at the
-  // TOP (high v); within a cell, the glyph's top row (byte 0) is at the top.
+  // top (high v); within a cell, the glyph's top row (byte 0) is at the top.
   std::vector<std::uint8_t> rgba(static_cast<std::size_t>(W) * H * 4, 0);
   for (int cp = 0; cp < 128; ++cp) {
     const int col = cp % C, gridRow = cp / C;

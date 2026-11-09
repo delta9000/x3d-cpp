@@ -1,20 +1,6 @@
-// JsonWriter.hpp
-// Node-agnostic X3D-JSON serializer (writer only; round-trip not required).
-//
-// Emits the X3D-JSON encoding per the Web3D X3D JSON schema conventions:
-//   { "X3D": { "@profile": "...", "@version": "...",
-//              "head": { "meta": [ { "@name":..., "@content":... } ], ... },
-//              "Scene": { "-children": [ <node>, ... ] } } }
-// where each node is { "TypeName": { "@field": value, "-childField": [ ... ] }
-// }. Value attributes are prefixed '@'; SFNode/MFNode child fields are prefixed
-// '-' and always hold an array of child node objects. DEF/USE map to
-// "@DEF"/"@USE". MF numeric values are emitted as JSON arrays; SF structured
-// values (vectors, colors, rotations) are emitted as JSON arrays of their
-// components; scalars use native JSON types where natural (numbers, booleans),
-// strings stay strings.
-//
-// Public declaration, namespace x3d::codec. The implementation is compiled in
-// x3d_cpp_authoring_runtime.
+// X3D-JSON writer: value fields use @ keys; node fields use - keys and arrays.
+// Numeric fields retain their scalar or array shape.
+
 #ifndef X3D_JSON_WRITER_HPP
 #define X3D_JSON_WRITER_HPP
 
@@ -50,7 +36,6 @@ namespace x3d::codec {
 using namespace x3d::core;
 using x3d::nodes::X3DNode;
 
-/// Serializes the runtime document model to X3D-JSON.
 class JsonWriter {
 public:
   std::string writeDocument(const runtime::X3DDocument &doc);
@@ -62,15 +47,9 @@ private:
   // fresh writers so proto expansion redirect is off inside proto bodies.
   const runtime::Scene *scene_ = nullptr;
   const runtime::DynamicFieldStore *authorFields_ = nullptr;
-  // PRF-1: while re-emitting a ProtoBody, the body's IsConnection list so that
-  // writeNode can attach an "IS":{"connect":[...]} member to EVERY emitted body
-  // node at any depth (mirrors the XML writer's bodyIsc_). Null outside a body.
+  // Borrowed ProtoBody connections; null outside body serialization.
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
-  // PRF-3: while re-emitting a ProtoBody, the body's nestedInstances list so
-  // writeNode can inject each Case-A instance (parent == the node being
-  // written) INSIDE that node's child slot — mirroring XmlWriter pushing the
-  // instance onto the parent element's children — rather than appending it as a
-  // sibling. Null outside a body.
+  // Borrowed nested placements; null outside body serialization.
   const std::vector<runtime::ProtoInstance> *bodyNested_ = nullptr;
   const runtime::ProtoBody *bodyOrder_ = nullptr;
 
@@ -93,19 +72,12 @@ private:
   void writeSceneStatements(std::ostringstream &os, const runtime::Scene &scene,
                             int depth);
 
-  // ---- PROTO emit helpers ----
-
-  /// Look up a ProtoInstance's interface field by name (for type information).
-  static const runtime::ProtoField *
-  interfaceField(const runtime::ProtoInstance &src, const std::string &name);
-
   /// Re-emit a captured <ProtoInstance> as a JSON object.
   void writeJsonProtoInstance(std::ostringstream &os,
                               const runtime::ProtoInstance &src, int depth);
 
   /// Emit one proto interface `field` as a JSON object.
-  std::string jsonProtoField(const runtime::ProtoField &f,
-                             [[maybe_unused]] int depth);
+  std::string jsonProtoField(const runtime::ProtoField &f);
 
   /// Emit a <ProtoDeclare> as a JSON object entry in the -children array.
   void writeJsonProtoDeclare(std::ostringstream &os,
@@ -120,12 +92,12 @@ private:
   void writeNode(std::ostringstream &os, const std::shared_ptr<X3DNode> &node,
                  int depth);
 
-  /// PRF-1: emit the "IS" member for `node` if bodyIsc_ holds any IsConnection
+  /// emit the "IS" member for `node` if bodyIsc_ holds any IsConnection
   /// bound to it (by identity). Returns "" when there is none. Shape:
   ///   "IS": { "connect": [ { "@nodeField":..., "@protoField":... }, ... ] }
   std::string jsonIsBlock(const std::shared_ptr<X3DNode> &node);
 
-  /// PRF-3: build "-<slot>": [ <ProtoInstance> ] member strings for every
+  /// build "-<slot>": [ <ProtoInstance> ] member strings for every
   /// Case-A nested instance whose parent is `node`, grouped by parentField slot
   /// so the JsonReader recovers parent == node and the same slot. Empty when
   /// there are none (or no body nested list threaded in). `depth` is the slot's
@@ -141,11 +113,8 @@ private:
   std::vector<std::string>
   jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node, int depth);
 
-  /// jsonValueOf on the (raw) defaults instance, for default elision.
-  std::string jsonValueOf(const X3DNode &node, const FieldInfo &f);
-
   /// Format a value field as a JSON value (scalar, string, or array). Returns
-  /// "" to omit (e.g. empty MF or unsupported type).
+  /// "" for an unsupported type; empty multi-fields produce [].
   std::string jsonValue(const X3DNode &node, const FieldInfo &f);
 
   /// Emit one node child field as a "-field": [ children ] member, or "" if the
@@ -153,14 +122,11 @@ private:
   std::string jsonNodeField(const std::shared_ptr<X3DNode> &node,
                             const FieldInfo &f, int depth);
 
-  /// SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations from the
-  /// dynamic-field side-table as a single-line "field": [ ... ] array member,
-  /// each element { "@name", "@type", "@accessType", "@value"? }. Returns "" if
-  /// the Script declared no author fields. The "@value" is emitted only for
-  /// fields that carry a persistent default (initializeOnly / inputOutput).
-  std::string jsonScriptFields(const X3DNode &node);
+  /// Emit author fields as declarations with scalar or structural defaults
+  /// (ISO/IEC 19775-1, 29.4.1 and Clause 31). Return "" when none are stored.
+  std::string jsonAuthorFields(const X3DNode &node);
 
-  /// SCR-SAI-DYN (S1): re-emit a Script's inline source (Script.sourceCode) as
+  /// re-emit a Script's inline source (Script.sourceCode) as
   /// the canonical X3D-JSON "#sourceText" array, one element per source line so
   /// the JsonReader recovers it. Returns "" when the Script has no inline body.
   std::string jsonScriptSource(const X3DNode &node);

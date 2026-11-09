@@ -1,4 +1,3 @@
-// CoordinateInterpolator.cpp
 #include "x3d/nodes/CoordinateInterpolator.hpp"
 
 namespace x3d::nodes {

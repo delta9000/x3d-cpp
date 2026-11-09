@@ -1,4 +1,3 @@
-// QuadSet.cpp
 #include "x3d/nodes/QuadSet.hpp"
 
 namespace x3d::nodes {

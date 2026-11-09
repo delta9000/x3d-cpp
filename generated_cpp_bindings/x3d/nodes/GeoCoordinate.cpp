@@ -1,4 +1,3 @@
-// GeoCoordinate.cpp
 #include "x3d/nodes/GeoCoordinate.hpp"
 
 namespace x3d::nodes {

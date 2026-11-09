@@ -2,16 +2,13 @@
 // shading core:
 //
 //   (a) §23.4.4 NavigationInfo.headlight: headlight TRUE (default) turns on a
-//       camera-space headlight REGARDLESS of the scene's own lights; FALSE turns
+//       camera-space headlight regardless of the scene's own lights; FALSE turns
 //       it off. buildEyeLights() is the consumer's headlight seam.
 //
 //   (b) §17.2.2.4 per-light ambientIntensity: a light's ambientIntensity scales
 //       the ambient term (ambientIntensity_i · materialAmbientIntensity ·
 //       diffuseColor), so a light with ambientIntensity 0 contributes none.
 //
-// Regression target: both were ignored — the headlight was a no-lights fallback,
-// and the ambient term was light-independent (LightDesc.ambientIntensity was
-// extracted but never read).
 #include "RenderItem.hpp"
 #include "cpuraster/MaterialShader.hpp"
 #include "cpuraster/SceneRender.hpp"
@@ -76,7 +73,7 @@ int main() {
                                          /*headlightOn=*/false);
   };
 
-  // ---- (b) per-light ambientIntensity ----
+  // (b) per-light ambientIntensity
   {
     // ambientIntensity 0 => the light contributes no ambient (only the light's
     // diffuse/specular, which are N·L=0 here) => black.
@@ -95,7 +92,7 @@ int main() {
   CHECK(ambientLuma(render_detail::buildEyeLights({ambientOnly}, view, false),
                     0.2f) > 0.1f);
 
-  // ---- (a) headlight independence ----
+  // (a) headlight independence
   {
     // No scene lights, headlight on (default) => the headlight alone.
     CHECK(render_detail::buildEyeLights({}, view, true).size() == 1);
@@ -117,7 +114,7 @@ int main() {
     CHECK(capped.back().ambientIntensity == 0.0f);
   }
 
-  // ---- ADR-0027: ambient linear in diffuse; colour space per material model --
+  // ADR-0027: ambient linear in diffuse; colour space per material model --
   auto near = [](float a, float b) { return std::fabs(a - b) < 2e-3f; };
   // One ambient-only light (travels +Z, so N·L = 0) of ambientIntensity 1.
   EyeLight amb;

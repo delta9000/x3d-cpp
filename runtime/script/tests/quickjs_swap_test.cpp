@@ -1,56 +1,7 @@
-// quickjs_swap_test.cpp
-// UNIT 3 — THE GENERICITY PROOF for the ScriptEngine seam.
-//
-// A behavioral SWAP-TEST: the SAME authored Script fixtures are driven through
-// the full runtime (Script node -> ScriptSystem -> X3DExecutionContext cascade)
-// under BOTH ScriptEngine backends — the reference Duktape EcmaScriptBackend and
-// the new QuickJsBackend — over an IDENTICAL fixed tick schedule, and the
-// OBSERVABLE behavior is captured and compared tick-for-tick. If both backends
-// produce an identical observable trace for every fixture, the seam is proven
-// genuinely backend-agnostic: a backend is a constructor argument, nothing more.
-//
-// WHAT "OBSERVABLE" MEANS HERE (Risk 2 of the design):
-//   The trace is the runtime's OWN field representation, never JS-internal state
-//   and never a raw JS string. Two runtime channels are snapshotted after each
-//   tick:
-//     (1) the script's author outputOnly/inputOutput field VALUES, read out of
-//         the DynamicFieldStore — these are exactly what the backend marshalled
-//         back across the seam (post-toValue) and posted into the cascade; and
-//     (2) the VALUES on ROUTE-target nodes (a real Transform's translation,
-//         etc.), read via the generated typed accessors — i.e. what the cascade
-//         actually delivered downstream of the script's writes.
-//   Both are stringified with CANONICAL numeric formatting (a fixed-precision
-//   round) so float-formatting differences between engines can never masquerade
-//   as a behavioral divergence: we compare the marshalled field VALUE, with the
-//   coercion kept inside each backend.
-//
-// FIXTURES (each runs through both backends):
-//   F1  Author output drives a ROUTE — set_value(v) writes position_changed =
-//       (v,v,v) which a ROUTE carries to a Transform.translation. (Mirrors the
-//       script_author_runtime_test T5 proof; the simplest cross-seam write.)
-//   F2  inputOutput round-trip — count seeded 10, set_bump(v) does count+=v over
-//       several ticks: a STATEFUL accumulation, so the trace is a real running
-//       sequence (10 -> 15 -> 23 -> ...), not a constant.
-//   F3  NON-TRIVIAL COMPUTED fixture (anti-vacuous): set_fraction(f) computes a
-//       linear interpolation  value_changed = lo + f*(hi-lo)  over 3 control
-//       fractions, with lo/hi seeded as author initializeOnly fields. The trace
-//       is a genuine computed numeric sequence; the test ASSERTS the expected
-//       interpolated values appear, so a backend that silently produced zeros
-//       (or never ran the handler) would fail the anti-vacuous guard, not pass.
-//   F4  The authored CDATA corpus fixture (data/AuthorScriptExample.x3d) loaded
-//       through the REAL XmlReader -> expand -> attach path (the file the corpus
-//       e2e test proves runs): drives enabled(true) and snapshots the outputOnly
-//       'status' + initializeOnly 'landed' author fields. A real file-authored
-//       Script, end to end, under both backends.
-//
-// A divergence between backends on ANY (fixture, tick, field) is a genericity
-// leak and is reported with the exact field + tick + both values.
-//
-// Built ONLY when X3D_CPP_BUILD_QUICKJS=ON (when ON, Duktape is also available
-// since x3d_ecmascript_backend is always built). ctest name: x3d_quickjs_swap.
-//
-// Exit code 0 on success; nonzero on any failed assertion / divergence.
-
+#include "FieldRead.hpp"
+// Compare author fields and ROUTE targets after each tick under both engines.
+// Numeric traces use fixed-precision rounding to compare marshalled field
+// values without engine-specific formatting differences. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 #include "QuickJsBackend.hpp"
 #include "ScriptSystem.hpp"
@@ -98,11 +49,10 @@ void check(bool cond, const std::string &what) {
   }
 }
 
-// --------------------------------------------------------------------------
-// Backend factory list. With X3D_CPP_BUILD_QUICKJS=ON, BOTH the Duktape backend
+// Backend factory list. With X3D_CPP_BUILD_QUICKJS=ON, both the Duktape backend
 // (x3d_ecmascript_backend — always built) and the QuickJS backend are linked.
 // Each factory returns a fresh engine so no state leaks between fixtures.
-// --------------------------------------------------------------------------
+
 struct BackendFactory {
   std::string name;
   std::function<std::shared_ptr<ScriptEngine>()> make;
@@ -113,12 +63,11 @@ const std::vector<BackendFactory> kBackends = {
     {"quickjs", [] { return std::make_shared<QuickJsBackend>(); }},
 };
 
-// --------------------------------------------------------------------------
-// CANONICAL stringification of a boxed field value (Risk 2). Floats/doubles are
+// canonical stringification of a boxed field value (Risk 2). Floats/doubles are
 // rounded to a fixed precision and formatted identically regardless of engine,
 // so engine-specific JS number->string coercion can never show up as a diff.
-// We compare runtime field VALUES, not JS strings.
-// --------------------------------------------------------------------------
+// We compare runtime field values, not JS strings.
+
 std::string num(double v) {
   // Round to 6 decimals, then trim trailing zeros so 4.0 and 4.000000 match.
   std::ostringstream ss;
@@ -168,10 +117,9 @@ std::string canon(const std::any &v, X3DFieldType type) {
   }
 }
 
-// --------------------------------------------------------------------------
 // A watched field: read its value either from the DynamicFieldStore (an author
 // field on a Script) or via the runtime reflection accessor (a ROUTE target).
-// --------------------------------------------------------------------------
+
 struct Watch {
   std::string label;          // stable name in the trace
   X3DNode *node;              // the node whose field we read
@@ -242,10 +190,9 @@ bool traceNonTrivial(const Trace &t) {
   return false;
 }
 
-// --------------------------------------------------------------------------
 // F1: author output drives a ROUTE. set_value(v) -> position_changed=(v,v,v) ->
 // ROUTE -> Transform.translation. Driven over a fixed schedule of input values.
-// --------------------------------------------------------------------------
+
 Trace runF1(const BackendFactory &bf) {
   X3DExecutionContext ctx;
 
@@ -293,9 +240,8 @@ Trace runF1(const BackendFactory &bf) {
   return trace;
 }
 
-// --------------------------------------------------------------------------
-// F2: inputOutput STATEFUL accumulation. count seeded 10; set_bump(v): count+=v.
-// --------------------------------------------------------------------------
+// F2: inputOutput stateful accumulation. count seeded 10; set_bump(v): count+=v.
+
 Trace runF2(const BackendFactory &bf) {
   X3DExecutionContext ctx;
 
@@ -333,14 +279,13 @@ Trace runF2(const BackendFactory &bf) {
   return trace;
 }
 
-// --------------------------------------------------------------------------
-// F3: NON-TRIVIAL COMPUTED fixture — linear interpolation in the handler.
+// F3: non-trivial computed fixture — linear interpolation in the handler.
 //   value_changed = lo + f * (hi - lo), with lo=2, hi=10 seeded as author
 //   initializeOnly fields. Driven over fractions {0, 0.25, 0.5, 0.75, 1.0}
 //   => expected outputs {2, 4, 6, 8, 10}. The handler also writes the SFVec3f
 //   pos_changed=(value,value,value) to drive a ROUTE so the computed value is
-//   observed BOTH as the script author field AND on a downstream Transform.
-// --------------------------------------------------------------------------
+// observed both as the script author field and on a downstream Transform.
+
 Trace runF3(const BackendFactory &bf) {
   X3DExecutionContext ctx;
 
@@ -409,25 +354,16 @@ std::string slurp(const std::string &path) {
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
   if (!n) return;
   if (auto *s = dynamic_cast<Script *>(n)) out.push_back(s);
-  for (const auto &fi : n->fields()) {
-    if (!fi.get) continue;
-    if (fi.type == X3DFieldType::SFNode) {
-      auto c = std::any_cast<std::shared_ptr<X3DNode>>(fi.get(*n));
-      if (c) collectScripts(c.get(), out);
-    } else if (fi.type == X3DFieldType::MFNode) {
-      for (const auto &c :
-           std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(fi.get(*n)))
-        if (c) collectScripts(c.get(), out);
-    }
-  }
+  x3d::runtime::forEachChildNode(*n, [&](const auto &, const auto &child) {
+    collectScripts(child.get(), out);
+  });
 }
 
-// --------------------------------------------------------------------------
-// F4: the authored CDATA corpus fixture, loaded through the REAL XmlReader ->
+// F4: the authored CDATA corpus fixture, loaded through the real XmlReader ->
 // expand -> attach path (the same file the corpus e2e test proves runs). We own
 // the scene per-backend (a fresh parse) so the two runs are independent. Drives
 // enabled(true) twice and snapshots the outputOnly 'status' + 'landed' fields.
-// --------------------------------------------------------------------------
+
 Trace runF4(const BackendFactory &bf, const std::string &dataDir, bool &loaded) {
   loaded = false;
 
@@ -511,7 +447,7 @@ int main(int argc, char **argv) {
   swap("F2 inputOutput-accumulation", runF2);
   swap("F3 computed-interpolation", runF3);
 
-  // F3 anti-vacuous CONTENT assertion: the duktape reference trace must contain
+  // F3 anti-vacuous content assertion: the duktape reference trace must contain
   // the expected interpolated endpoints (2 at f=0, 10 at f=1) — proves the
   // handler genuinely computed, not that both backends silently produced zeros.
   {

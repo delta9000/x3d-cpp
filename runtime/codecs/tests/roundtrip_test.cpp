@@ -1,20 +1,9 @@
 #include "doctest/doctest.h"
-// roundtrip_test.cpp
-// Integration test for the X3D codecs (Stage C): build a sample scene
-// programmatically, serialize to X3D-XML, parse it back, serialize again, and
-// prove the XML round-trip is stable (modulo insignificant whitespace), that a
-// DEF/USE-shared node resolves to a single shared_ptr, and that a ROUTE
-// survives. Also exercises the JSON and ClassicVRML writers (writer-only).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Codec round-trips preserve shared identity, ROUTEs, and field values.
 
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
 
-// The JSON and ClassicVRML *readers* (X3DCodecs.hpp exposes the XML reader and
-// every writer, but the non-XML readers are pulled in explicitly) — needed to
-// parse those encodings back and prove the FULL cross-encoding cycle, not just
-// that the writers emit the right text.
 #include "parse/ClassicVrmlReader.hpp"
 #include "parse/JsonReader.hpp"
 
@@ -27,7 +16,6 @@
 #include "x3d/nodes/Transform.hpp"
 
 #include <cctype>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -36,17 +24,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 // Collapse runs of whitespace to a single space and trim, for whitespace-
 // insensitive comparison of two XML serializations.
@@ -103,7 +80,7 @@ runtime::X3DDocument buildSampleDocument() {
   auto box1 = std::make_shared<Box>();
   shape1->setGeometry(box1);
 
-  // Second shape: USES the SAME appearance shared_ptr (identity sharing).
+  // Second shape: uses the same appearance shared_ptr (identity sharing).
   auto shape2 = std::make_shared<Shape>();
   shape2->setAppearance(sharedApp); // same shared_ptr -> emits USE
   auto box2 = std::make_shared<Box>();
@@ -130,99 +107,63 @@ TEST_CASE("roundtrip_test") {
   codec::XmlReader xmlReader;
   codec::JsonWriter jsonWriter;
   codec::VrmlWriter vrmlWriter;
-
-  // ---- Build + first serialization ----
   runtime::X3DDocument doc = buildSampleDocument();
   std::string xml1 = xmlWriter.writeDocument(doc);
-
-  std::cout << "===== ROUND-TRIP: XML #1 (model -> XML) =====\n";
-  std::cout << xml1 << "\n";
-
-  // ---- Parse back ----
   runtime::X3DDocument doc2 = xmlReader.readDocument(xml1);
-
-  // ---- Re-serialize ----
   std::string xml2 = xmlWriter.writeDocument(doc2);
-  std::cout << "===== ROUND-TRIP: XML #2 (XML -> model -> XML) =====\n";
-  std::cout << xml2 << "\n";
-
-  // ---- Stability (modulo whitespace) ----
-  check(canon(xml1) == canon(xml2),
+  CHECK_MESSAGE((canon(xml1) == canon(xml2)),
         "XML round-trip is stable modulo whitespace");
-
-  // ---- DEF/USE resolves to ONE shared node ----
-  check(doc2.scene.rootNodes.size() == 2, "two root nodes parsed back");
+  CHECK_MESSAGE((doc2.scene.rootNodes.size() == 2), "two root nodes parsed back");
   auto root = std::dynamic_pointer_cast<Transform>(doc2.scene.rootNodes[0]);
-  check(static_cast<bool>(root), "first root is a Transform");
+  CHECK_MESSAGE((static_cast<bool>(root)), "first root is a Transform");
   std::shared_ptr<X3DNode> app1, app2;
   if (root) {
     const auto &kids = root->getChildren();
-    check(kids.size() == 2, "transform has two children");
+    CHECK_MESSAGE((kids.size() == 2), "transform has two children");
     if (kids.size() == 2) {
       auto s1 = std::dynamic_pointer_cast<Shape>(kids[0]);
       auto s2 = std::dynamic_pointer_cast<Shape>(kids[1]);
-      check(s1 && s2, "both children are Shapes");
+      CHECK_MESSAGE((s1 && s2), "both children are Shapes");
       if (s1 && s2) {
         app1 = s1->getAppearance();
         app2 = s2->getAppearance();
       }
     }
   }
-  check(app1 && app2 && app1.get() == app2.get(),
+  CHECK_MESSAGE((app1 && app2 && app1.get() == app2.get()),
         "DEF/USE-shared Appearance is ONE shared_ptr after round-trip");
-  check(app1.use_count() >= 2, "shared Appearance use_count reflects sharing");
-
-  // ---- ROUTE survives ----
-  check(doc2.scene.routes.size() == 1, "one ROUTE parsed back");
+  CHECK_MESSAGE((app1.use_count() >= 2), "shared Appearance use_count reflects sharing");
+  CHECK_MESSAGE((doc2.scene.routes.size() == 1), "one ROUTE parsed back");
   if (doc2.scene.routes.size() == 1) {
     const auto &r = doc2.scene.routes[0];
-    check(r.fromNode == "Clock" && r.fromField == "fraction_changed" &&
-              r.toNode == "Root" && r.toField == "set_translation",
+    CHECK_MESSAGE((r.fromNode == "Clock" && r.fromField == "fraction_changed" &&
+              r.toNode == "Root" && r.toField == "set_translation"),
           "ROUTE endpoints preserved");
-    check(!r.from.expired() && !r.to.expired(),
+    CHECK_MESSAGE((!r.from.expired() && !r.to.expired()),
           "ROUTE resolved to live node endpoints via DEF table");
   }
-
-  // ---- meta survives ----
-  check(doc2.head.meta.size() == 1 && doc2.head.meta[0].name == "title",
+  CHECK_MESSAGE((doc2.head.meta.size() == 1 && doc2.head.meta[0].name == "title"),
         "head <meta> survives round-trip");
-
-  // ---- JSON writer ----
   std::string json = jsonWriter.writeDocument(doc);
-  std::cout << "===== JSON (model -> X3D-JSON) =====\n" << json << "\n";
-  check(json.find("\"Transform\"") != std::string::npos &&
-            json.find("\"@USE\"") != std::string::npos &&
-            json.find("\"-children\"") != std::string::npos,
-        "JSON output contains node, USE reference, and child array");
 
-  // ---- ClassicVRML writer ----
+  CHECK_MESSAGE((json.find("\"Transform\"") != std::string::npos &&
+            json.find("\"@USE\"") != std::string::npos &&
+            json.find("\"-children\"") != std::string::npos),
+        "JSON output contains node, USE reference, and child array");
   std::string vrml = vrmlWriter.writeDocument(doc);
-  std::cout << "===== ClassicVRML (model -> .x3dv) =====\n" << vrml << "\n";
-  check(vrml.find("#X3D V4.0 utf8") != std::string::npos &&
+
+  CHECK_MESSAGE((vrml.find("#X3D V4.0 utf8") != std::string::npos &&
             vrml.find("DEF Root Transform") != std::string::npos &&
             vrml.find("USE SharedApp") != std::string::npos &&
             vrml.find("ROUTE Clock.fraction_changed TO Root.set_translation") !=
-                std::string::npos,
+                std::string::npos),
         "ClassicVRML output contains header, DEF, USE, and ROUTE");
 
-  if (failures == 0) {
-    std::cout << "\nALL ROUND-TRIP CHECKS PASSED\n";
-    return;
-  }
-  std::cerr << "\n" << failures << " CHECK((S)) FAILED\n";
-  CHECK(false);
   return;
 }
 
-// The case above proves the XML round-trip and exercises the JSON/ClassicVRML
-// writers *writer-only* — it never parses those encodings back. A reader-side
-// regression that dropped a USE reference or a ROUTE in JsonReader or
-// ClassicVrmlReader would therefore pass unnoticed. This case closes that gap:
-// it drives the sample document through the FULL cross-encoding cycle
-//   model -> XML -> JSON -> ClassicVRML -> XML
-// parsing back at every hop, and asserts the two invariants that a lossy hop
-// would break: a DEF/USE node stays a single shared instance (USE is a shared
-// reference, ISO/IEC 19775-1 §4.4.3 — not a copy), and a ROUTE survives intact.
+// USE retains shared identity (ISO/IEC 19775-1 §4.4.3) and ROUTEs retain endpoints
+// across the XML -> JSON -> ClassicVRML -> XML cycle.
 TEST_CASE("roundtrip_test: USE + ROUTE survive XML->JSON->VRML->XML") {
   codec::XmlReader xmlReader;
   codec::XmlWriter xmlWriter;
@@ -243,13 +184,13 @@ TEST_CASE("roundtrip_test: USE + ROUTE survive XML->JSON->VRML->XML") {
   const std::string xmlN = xmlWriter.writeDocument(dv);
   runtime::X3DDocument dFinal = xmlReader.readDocument(xmlN);
 
-  // The USE token must be carried by EVERY intermediate encoding's text — if any
+  // The USE token must be carried by every intermediate encoding's text — if any
   // reader silently expanded it into a copy, the next encoding would lose it.
   CHECK(json.find("\"@USE\"") != std::string::npos);
   CHECK(vrml.find("USE SharedApp") != std::string::npos);
   CHECK(xmlN.find("USE=\"SharedApp\"") != std::string::npos);
 
-  // ...and after the whole cycle the DEF/USE-shared Appearance is still ONE node.
+  // ...and after the whole cycle the DEF/USE-shared Appearance is still one node.
   auto root = std::dynamic_pointer_cast<Transform>(dFinal.scene.rootNodes.at(0));
   REQUIRE(root);
   const auto &kids = root->getChildren();

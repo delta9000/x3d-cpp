@@ -1,4 +1,3 @@
-// LocalFog.cpp
 #include "x3d/nodes/LocalFog.hpp"
 
 namespace x3d::nodes {

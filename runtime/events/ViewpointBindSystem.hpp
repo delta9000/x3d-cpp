@@ -1,11 +1,11 @@
-// ViewpointBindSystem.hpp — CONF-VIEWNAV Phases 2-3: bind-time offset rules
+// ViewpointBindSystem.hpp — bind-time offset rules
 // (ISO/IEC 19775-1 §23.3.1). A post-cascade hook that, when the bound viewpoint
 // changes, applies jump / retainUserOffsets to the per-viewpoint user offset —
-// never the authored fields (BIND-04/07/08), dispatches the viewpoint's
-// navigationInfo (BIND-02), and animates the effective camera between viewpoints
-// over the bound NavigationInfo's transitionTime, emitting transitionComplete
-// (BIND-05). The per-node offset store persists each viewpoint's "stored relative
-// transformation" (BIND-08).
+// never the authored fields, dispatches the viewpoint's
+// navigationInfo, and animates the effective camera between viewpoints
+// over the bound NavigationInfo's transitionTime, emitting transitionComplete.
+// The per-node offset store persists each viewpoint's "stored relative
+// transformation".
 #ifndef X3D_RUNTIME_VIEWPOINT_BIND_SYSTEM_HPP
 #define X3D_RUNTIME_VIEWPOINT_BIND_SYSTEM_HPP
 
@@ -42,7 +42,7 @@ public:
       advance(ctx);
     }
     if (cur) {
-      lastCam_ = ctx.viewMatrix().inverse(); // effective camera of the bound vp
+      lastCam_ = relativeCamera(ctx); // relative camera of the bound vp
       haveCam_ = true;
     }
   }
@@ -57,11 +57,19 @@ private:
     double t0 = 0.0, dur = 0.0;
   } anim_;
 
+  // Bind rules keep operating on the relative camera while a host owns the
+  // effective world camera. Clearing the override resumes this ordinary state.
+  static Mat4 relativeCamera(const X3DExecutionContext &ctx) {
+    const HeadPose &h = ctx.headPose();
+    return ctx.boundViewpointWorldPose() * ctx.viewpointOffset(ctx.boundViewpoint()).local *
+           (Mat4::translation(h.position) * Mat4::rotation(h.orientation));
+  }
+
   // Choose the offset so the effective camera equals `targetCam` (§23.3.1):
   //   Onew = Ocur · head · currentCam⁻¹ · targetCam · head⁻¹   (all public API).
   static void driveCameraTo(X3DExecutionContext &ctx, X3DNode *vp, const Mat4 &targetCam) {
     const Mat4 Ocur = ctx.viewpointOffset(vp).local;
-    const Mat4 currentCam = ctx.viewMatrix().inverse();
+    const Mat4 currentCam = relativeCamera(ctx);
     const HeadPose &h = ctx.headPose();
     const Mat4 head = Mat4::translation(h.position) * Mat4::rotation(h.orientation);
     ViewpointOffset off;
@@ -91,22 +99,22 @@ private:
     const bool jump = geombounds::getField<bool>(*vp, "jump", true);
     const bool retain = geombounds::getField<bool>(*vp, "retainUserOffsets", false);
 
-    // 1. Decide the final offset (BIND-04/07/08, BIND-09).
-    //    BIND-09 §23.3.1 r6.3: a Pop restores the popped-to vp's stored offset
-    //    — never reset it, regardless of jump/retain (those govern push binds).
+    // 1. Decide the final offset.
+    //    §23.3.1 r6.3: a Pop restores the popped-to vp's stored offset
+    //    never reset it, regardless of jump/retain (those govern push binds).
     if (kind == BindTransition::Pop) {
       // stored offset in offsets_[vp] is already correct; leave it be
     } else if (!jump) {
       if (haveCam_) driveCameraTo(ctx, vp, lastCam_); // continuous: view doesn't move
     } else if (!retain) {
       ctx.setViewpointOffset(vp, ViewpointOffset{}); // snap to authored pose
-    } // retain=TRUE: keep the viewpoint's stored offset
+    } // retain=`TRUE`: keep the viewpoint's stored offset
 
-    // 2. BIND-05: animate the effective camera from the old view to the target,
-    //    unless TELEPORT / zero transitionTime / no prior view. The transition is
-    //    governed by the BINDING viewpoint's own navigationInfo if it names one
+    // 2. animate the effective camera from the old view to the target,
+    //    unless `TELEPORT` / zero transitionTime / no prior view. The transition is
+    //    governed by the binding viewpoint's own navigationInfo if it names one
     //    (that NavigationInfo is becoming bound), else the currently-bound one.
-    const Mat4 targetCam = ctx.viewMatrix().inverse();
+    const Mat4 targetCam = relativeCamera(ctx);
     SFNode niField = geombounds::getField<SFNode>(*vp, "navigationInfo", nullptr);
     X3DNode *nav = niField ? niField.get() : ctx.boundNavigationInfo();
     const double dur = nav ? geombounds::getField<double>(*nav, "transitionTime", 1.0) : 0.0;
@@ -118,7 +126,7 @@ private:
       ctx.postEvent(nav, "transitionComplete", std::any(SFBool{true}));
     }
 
-    // 3. BIND-02: bind this viewpoint's navigationInfo, if it names one.
+    // 3. bind this viewpoint's navigationInfo, if it names one.
     if (niField) ctx.postEvent(niField.get(), "set_bind", std::any(SFBool{true}));
   }
 

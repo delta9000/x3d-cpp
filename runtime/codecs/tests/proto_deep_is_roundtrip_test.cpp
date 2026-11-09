@@ -1,13 +1,5 @@
-// proto_deep_is_roundtrip_test.cpp
-// PRF-2: an IS/connect block on a body node nested DEEPER than the direct body
-// child (here a <Box> inside a <Transform>) must survive a full XML round-trip:
-//   read -> write -> re-read, then the IsConnection must reappear bound to the
-//   deep node's field.
-//
-// Before PRF-2 the writer only attached <IS> to the top body node and the
-// reader only scanned the top body node's direct children, so a depth-2 IS was
-// silently dropped on write (and would not have been re-read). This test fails
-// without the recursive attach/collect on both sides.
+// Nested ProtoBody IS connections survive XML round-trips.
+
 #include "X3DParse.hpp"
 #include "XmlWriter.hpp"
 

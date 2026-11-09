@@ -1,4 +1,3 @@
-// GeoElevationGrid.cpp
 #include "x3d/nodes/GeoElevationGrid.hpp"
 
 namespace x3d::nodes {

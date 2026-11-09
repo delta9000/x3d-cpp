@@ -1,5 +1,3 @@
-// mesh_builder_geom2d_test.cpp — G2D-1 / G2D-2 / SEAM-2D-NURBS acceptance.
-//
 // The eight Geometry2D (§14) nodes: extraction into the XY plane (z=0) and
 // exact local bounds. Per node: topology, vertex-count sanity, bounds, and a
 // degenerate case.
@@ -35,8 +33,7 @@ static std::vector<SFVec2f> v2(std::initializer_list<SFVec2f> l) {
   return std::vector<SFVec2f>(l);
 }
 
-// --- local-bounds + mesh checks are separate so failures point at one node ---
-
+// local-bounds + mesh checks are separate so failures point at one node
 TEST_CASE("geom2d_recognized") {
   for (const char *t :
        {"Arc2D", "ArcClose2D", "Circle2D", "Disk2D", "Polyline2D",
@@ -44,7 +41,6 @@ TEST_CASE("geom2d_recognized") {
     CHECK(recognizedGeometryType(t));
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_arc2d") {
   auto a = createX3DNode("Arc2D");
   setF(a, "radius", std::any(2.0f)); // startAngle 0, endAngle pi/2
@@ -74,7 +70,6 @@ TEST_CASE("geom2d_arc2d") {
   CHECK(localGeometryBounds(d.get(), geo::builtinProjection()).empty);
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_circle2d") {
   auto c = createX3DNode("Circle2D");
   setF(c, "radius", std::any(3.0f));
@@ -92,7 +87,6 @@ TEST_CASE("geom2d_circle2d") {
   CHECK(localGeometryBounds(z.get(), geo::builtinProjection()).empty);
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_polyline2d") {
   auto p = createX3DNode("Polyline2D");
   setF(p, "lineSegments", std::any(v2({{0, 0}, {1, 0}, {1, 1}})));
@@ -111,7 +105,6 @@ TEST_CASE("geom2d_polyline2d") {
   CHECK(localGeometryBounds(one.get(), geo::builtinProjection()).empty == false); // a point is a valid bound.
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_polypoint2d") {
   auto p = createX3DNode("Polypoint2D");
   setF(p, "point", std::any(v2({{0, 0}, {2, 1}})));
@@ -129,7 +122,6 @@ TEST_CASE("geom2d_polypoint2d") {
   CHECK(localGeometryBounds(e.get(), geo::builtinProjection()).empty);
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_rectangle2d") {
   auto r = createX3DNode("Rectangle2D");
   setF(r, "size", std::any(SFVec2f{2.0f, 4.0f}));
@@ -155,7 +147,6 @@ TEST_CASE("geom2d_rectangle2d") {
   CHECK(zm.positions.size() == 6);
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_triangleset2d") {
   auto t = createX3DNode("TriangleSet2D");
   setF(t, "vertices", std::any(v2({{0, 0}, {1, 0}, {0, 1}, {5, 5}, {6, 5}, {5, 6}})));
@@ -176,7 +167,6 @@ TEST_CASE("geom2d_triangleset2d") {
   CHECK(buildLocalMesh(d.get(), geo::builtinProjection()).positions.empty());
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_disk2d") {
   // Solid fan (innerRadius 0).
   auto d = createX3DNode("Disk2D");
@@ -216,7 +206,6 @@ TEST_CASE("geom2d_disk2d") {
   CHECK(localGeometryBounds(z.get(), geo::builtinProjection()).empty);
 }
 
-// ---------------------------------------------------------------------------
 TEST_CASE("geom2d_arcclose2d") {
   // PIE (default): fan from the centre over the arc.
   auto p = createX3DNode("ArcClose2D"); // radius 1, 0..pi/2.
@@ -227,7 +216,7 @@ TEST_CASE("geom2d_arcclose2d") {
   Aabb pb = localGeometryBounds(p.get(), geo::builtinProjection());
   CHECK((feq(pb.min.x, 0) && feq(pb.min.y, 0) && feq(pb.max.x, 1) && feq(pb.max.y, 1)));
 
-  // CHORD: fan from the first arc endpoint (one fewer triangle).
+  // chord: fan from the first arc endpoint (one fewer triangle).
   auto c = createX3DNode("ArcClose2D");
   setF(c, "closureType", std::any(ClosureTypeChoices::CHORD));
   MeshData cm = buildLocalMesh(c.get(), geo::builtinProjection());

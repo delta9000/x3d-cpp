@@ -1,4 +1,3 @@
-// X3DFogObject.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -21,65 +20,32 @@ using namespace x3d::core;
  */
 class X3DFogObject {
 public:
-  /**
-   * @brief Default constructor for X3DFogObject
-   */
   X3DFogObject() = default;
 
-  /**
-   * @brief Virtual destructor for X3DFogObject
-   */
   virtual ~X3DFogObject() = default;
 
-  /**
-   * @brief Get the default value for color
-   * @return SFColor The default value
-   */
   static SFColor getDefaultColor() { return SFColor{1, 1, 1}; }
 
-  /**
-   * @brief Get the default value for fogType
-   * @return FogTypeChoices The default value
-   */
   static FogTypeChoices getDefaultFogType() { return FogTypeChoices::LINEAR; }
 
-  /**
-   * @brief Get the default value for visibilityRange
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultVisibilityRange() { return 0; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EnvironmentalEffects"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of color. AccessType: inputOutput
+   * SFColor; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFColor& The current value of color.
    */
   const SFColor &getColor() const { return _color; }
 
   /**
-   * @brief Sets the value of color. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for color.
    */
   void setColor(const SFColor &value) {
 
@@ -96,39 +62,32 @@ public:
   }
 
   /**
-   * @brief Non-validating write of color (runtime/reader ingest path).
-   * @details Assigns without the range check setColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setColor() for range validation.
    */
   void setColorUnchecked(const SFColor &value) { _color = value; }
 
   /**
-   * @brief Gets the value of fogType. AccessType: inputOutput
+   * FogTypeChoices; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const FogTypeChoices& The current value of fogType.
    */
   const FogTypeChoices &getFogType() const { return _fogType; }
 
   /**
-   * @brief Sets the value of fogType. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for fogType.
    */
   void setFogType(const FogTypeChoices &value) { _fogType = value; }
 
   /**
-   * @brief Gets the value of visibilityRange. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of visibilityRange.
    */
   const SFFloat &getVisibilityRange() const { return _visibilityRange; }
 
   /**
-   * @brief Sets the value of visibilityRange. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for visibilityRange.
    */
   void setVisibilityRange(const SFFloat &value) {
 
@@ -138,12 +97,8 @@ public:
   }
 
   /**
-   * @brief Non-validating write of visibilityRange (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setVisibilityRange() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setVisibilityRange() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setVisibilityRange() for range validation.
    */
   void setVisibilityRangeUnchecked(const SFFloat &value) {
     _visibilityRange = value;
@@ -193,21 +148,9 @@ private:
       throw std::out_of_range("visibilityRange below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for color.
-   */
-
   SFColor _color{SFColor{1, 1, 1}};
 
-  /**
-   * @brief Member variable for fogType.
-   */
-
   FogTypeChoices _fogType{FogTypeChoices::LINEAR};
-
-  /**
-   * @brief Member variable for visibilityRange.
-   */
 
   SFFloat _visibilityRange{0};
 };

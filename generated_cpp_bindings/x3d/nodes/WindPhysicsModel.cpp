@@ -1,4 +1,3 @@
-// WindPhysicsModel.cpp
 #include "x3d/nodes/WindPhysicsModel.hpp"
 
 namespace x3d::nodes {

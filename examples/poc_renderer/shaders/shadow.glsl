@@ -5,7 +5,7 @@
 // texture before the scene pass: one layer for a DirectionalLight (an
 // orthographic view over the scene bounds) or a SpotLight (a perspective view
 // over its cone), six for a PointLight (a cube of 90-degree views). Each
-// layer's matrix maps EYE-space positions to that light's clip space. A
+// layer's matrix maps eye-space positions to that light's clip space. A
 // fragment the light's depth map shows to be occluded receives the light
 // scaled by 1 - shadowIntensity, as the CPU host's ray test does. Fragments
 // outside every layer of a light are unshadowed.

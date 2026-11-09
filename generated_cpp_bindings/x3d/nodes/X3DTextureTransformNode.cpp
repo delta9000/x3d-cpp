@@ -1,4 +1,3 @@
-// X3DTextureTransformNode.cpp
 #include "x3d/nodes/X3DTextureTransformNode.hpp"
 
 namespace x3d::nodes {

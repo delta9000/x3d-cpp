@@ -1,4 +1,3 @@
-// EspduTransform.cpp
 #include "x3d/nodes/EspduTransform.hpp"
 
 namespace x3d::nodes {

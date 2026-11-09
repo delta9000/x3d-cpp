@@ -1,18 +1,5 @@
-// KeyDeviceSensorSystem.hpp
-// Time-driven System for the ISO/IEC 19775-1 §21 Key Device Sensor cluster
-// (campaign wave-4 fix). KeySensor and StringSensor were inert; this drains the
-// per-tick KeyState::events queue (the extended keyboard seam) in update() and
-// emits the spec-mandated outputs to every enabled sensor, then clears the queue.
-//
-//   - KeySensor (§21.4.1): keyPress/keyRelease (single UTF-8 char), actionKeyPress/
-//     actionKeyRelease (Table 21.2), shiftKey/controlKey/altKey, isActive (TRUE on
-//     any key down, FALSE on release).
-//   - StringSensor (§21.4.2): enteredText accumulator (with deletionAllowed delete),
-//     finalText on the terminate key + accumulator reset, isActive (TRUE when typing
-//     begins, FALSE on terminate).
-//
-// The keyboard seam (KeyState) serves BOTH NavigationSystem (the `held` set) and
-// these sensors (the discrete `events` queue) — KDS-10.
+// §21.4.1/§21.4.2: drain discrete KeyState events for enabled keyboard sensors,
+// then clear the queue. Navigation uses the separate held-key set.
 #ifndef X3D_RUNTIME_KEY_DEVICE_SENSOR_SYSTEM_HPP
 #define X3D_RUNTIME_KEY_DEVICE_SENSOR_SYSTEM_HPP
 
@@ -42,7 +29,7 @@ public:
     else return;
     // §21.2: "Only one key device sensor may be active at a time"; when one is
     // enabled, "any other key device sensor which may be active will be sent
-    // an enabled event with value FALSE" (KDS-6).
+    // an enabled event with value `FALSE`".
     if (!focusListener_) {
       focusListener_ = true;
       ctx.addFieldWriteListener(ctx.guardCallback(*this, [this, &ctx](const FieldAddress &a) {
@@ -94,8 +81,8 @@ private:
                              X3DExecutionContext &ctx) {
     // Coalesce to one net event per output field per tick: a field reached by
     // several events this timestamp must produce a single (last-wins) event so
-    // the field value AND its ROUTE consumers agree (§4.4.8.3 one-event-per-
-    // field-per-timestamp). Posting per-event would fan out only the FIRST value.
+    // the field value and its ROUTE consumers agree (§4.4.8.3 one-event-per-
+    // field-per-timestamp). Posting per-event would fan out only the first value.
     std::optional<std::string> keyPress, keyRelease;
     std::optional<int> actionPress, actionRelease;
     std::optional<bool> shift, control, alt, isActive;
@@ -147,7 +134,7 @@ private:
           }
           textChanged = true;
         }
-        continue; // deletionAllowed=FALSE -> ignored
+        continue; // deletionAllowed=`FALSE` -> ignored
       }
       if (e.character.empty()) continue; // non-text key (e.g. modifier) -> no effect
       if (!st.active) {

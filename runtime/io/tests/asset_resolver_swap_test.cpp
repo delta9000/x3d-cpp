@@ -1,18 +1,6 @@
-// runtime/io/tests/asset_resolver_swap_test.cpp
-// U3 swap-test: the AssetResolver/IO genericity proof. Drives identical
-// fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3 SDK)
-// and asserts byte-equal AssetResult.bytes, plus equal AssetStatus::Failed
-// for missing keys.
-//
-// Self-contained: starts an in-process HTTP server on localhost serving the
-// fixture directory, and (when $X3D_S3_ENDPOINT is set, i.e. docker minio is
-// reachable) uploads the same fixtures to a minio bucket via the AWS SDK.
-// Skips with a status message when minio is not available so local dev
-// without docker doesn't get a spurious failure.
+// HTTP fixture bytes and missing-asset contract through AssetResolver.
 #include "AssetResolver.hpp"
 #include "HttpResolver.hpp"
-#include "S3Resolver.hpp"
-#include "S3TestSupport.hpp"  // AWS-free fixture-seeding helper (x3d_s3_testsupport)
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -36,7 +24,7 @@
 using namespace x3d::runtime::extract;
 using x3d::runtime::extract::AssetResolver;
 
-// ── In-process HTTP server (serves a directory of files on localhost) ──────
+// In-process HTTP server (serves a directory of files on localhost)
 class FixtureServer {
  public:
   explicit FixtureServer(std::string root)
@@ -169,7 +157,7 @@ class FixtureServer {
   int port_ = 0;
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// Helpers
 std::vector<std::uint8_t> readFile(const std::string &p) {
   std::ifstream in(p, std::ios::binary);
   if (!in) return {};
@@ -199,94 +187,27 @@ int main() {
   std::cerr << "[swap-test] HTTP server on http://127.0.0.1:" << port << "\n";
 
   // 2. Resolve backend A (libcurl HTTP). The fixture server is on 127.0.0.1,
-  //    so opt in to private-network destinations (SEC-6 default blocks them).
+  //    so opt in to private-network destinations ( default blocks them).
   auto backendA = x3d::runtime::io::curl::makeHttpResolver(
       x3d::runtime::io::curl::HttpResolverOptions{
           /*allowPrivateNetworks=*/true});
   assert(static_cast<bool>(backendA));
 
-  // 3. Resolve backend B (AWS S3). Skip the swap loop if minio isn't up.
-  const char *endpoint_env = std::getenv("X3D_S3_ENDPOINT");
-  if (!endpoint_env || !*endpoint_env) {
-    std::cerr << "[swap-test] SKIP: $X3D_S3_ENDPOINT unset (no minio). "
-                 "Set it (e.g. http://localhost:9000) and create bucket "
-                 "'fixtures' to run the swap-test.\n";
-    // Still validate HTTP success path so the wiring is exercised.
-    for (const auto &p : fixtures) {
-      auto fname = p.substr(p.find_last_of('/') + 1);
-      std::string url = "http://127.0.0.1:" + std::to_string(port) + "/" + fname;
-      AssetResult r = backendA(url, AssetKind::Texture);
-      assert(r.ready());
-      auto expected = readFile(p);
-      assert(r.bytes.size() == expected.size());
-      assert(std::equal(r.bytes.begin(), r.bytes.end(), expected.begin()));
-    }
-    std::cerr << "[swap-test] HTTP-only path OK (3 fixtures).\n";
-    return 0;
-  }
-
-  // 4. Upload fixtures to minio.
-  const std::string endpoint = endpoint_env;
-  const std::string bucket = "x3d-swap-fixtures";
-
-  // For localhost endpoints (docker minio), default to minioadmin/minioadmin
-  // so local dev doesn't need to set env vars. For non-localhost endpoints
-  // (real AWS), require AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY in env.
-  if (endpoint.find("localhost") != std::string::npos ||
-      endpoint.find("127.0.0.1") != std::string::npos) {
-    if (!std::getenv("AWS_ACCESS_KEY_ID"))
-      ::setenv("AWS_ACCESS_KEY_ID", "minioadmin", 0);
-    if (!std::getenv("AWS_SECRET_ACCESS_KEY"))
-      ::setenv("AWS_SECRET_ACCESS_KEY", "minioadmin", 0);
-  }
-
-  if (!x3d::runtime::io::s3::s3EnsureBucket(endpoint, bucket)) {
-    std::cerr << "[swap-test] FAIL: could not create/access bucket on minio\n";
-    return 1;
-  }
   for (const auto &p : fixtures) {
     auto fname = p.substr(p.find_last_of('/') + 1);
-    if (!x3d::runtime::io::s3::s3PutObject(endpoint, bucket, fname,
-                                           readFile(p))) {
-      std::cerr << "[swap-test] FAIL: upload " << fname << " to minio failed\n";
-      return 1;
-    }
-  }
-  std::cerr << "[swap-test] Uploaded 3 fixtures to s3://" << bucket << "/\n";
-
-  auto backendB = x3d::runtime::io::s3::makeS3Resolver(endpoint);
-
-  // 5. Swap-test loop: same logical content via A and B → bytes equal.
-  for (const auto &p : fixtures) {
-    auto fname = p.substr(p.find_last_of('/') + 1);
-    std::string urlA = "http://127.0.0.1:" + std::to_string(port) + "/" + fname;
-    std::string urlB = "s3://" + bucket + "/" + fname;
-
-    AssetResult rA = backendA(urlA, AssetKind::Texture);
-    AssetResult rB = backendB(urlB, AssetKind::Texture);
-
-    assert(rA.ready());
-    assert(rB.ready());
-    assert(rA.bytes.size() == rB.bytes.size());
-    assert(std::equal(rA.bytes.begin(), rA.bytes.end(), rB.bytes.begin()));
-    std::cerr << "[swap-test] OK " << fname << " (" << rA.bytes.size()
-              << " bytes, A==B)\n";
+    std::string url = "http://127.0.0.1:" + std::to_string(port) + "/" + fname;
+    AssetResult r = backendA(url, AssetKind::Texture);
+    assert(r.ready());
+    auto expected = readFile(p);
+    assert(r.bytes.size() == expected.size());
+    assert(std::equal(r.bytes.begin(), r.bytes.end(), expected.begin()));
   }
 
-  // 6. Failure parity: missing key returns Failed on both backends.
-  {
-    AssetResult rA = backendA("http://127.0.0.1:" + std::to_string(port) +
-                                  "/does-not-exist.bin",
-                              AssetKind::Texture);
-    AssetResult rB = backendB("s3://" + bucket + "/does-not-exist.bin",
-                              AssetKind::Texture);
-    assert(rA.failed());
-    assert(rB.failed());
-    assert(rA.bytes.empty());
-    assert(rB.bytes.empty());
-    std::cerr << "[swap-test] OK missing-key parity (both Failed)\n";
-  }
-
-  std::cerr << "[swap-test] ALL OK\n";
+  AssetResult missing = backendA("http://127.0.0.1:" + std::to_string(port) +
+                                     "/does-not-exist.bin",
+                                 AssetKind::Texture);
+  assert(missing.failed());
+  assert(missing.bytes.empty());
+  std::cerr << "[asset-resolver] HTTP fixtures and missing-asset contract OK\n";
   return 0;
 }

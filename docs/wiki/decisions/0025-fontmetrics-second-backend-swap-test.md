@@ -13,6 +13,8 @@ related:
 
 # ADR-0025: Second FontMetrics Backend (FreeType) + Advance Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0025 amendment
+
 ## Status
 
 Accepted (2026-06-24). Implemented on `feat/fontmetrics-seam-proof`: Backend A
@@ -162,3 +164,10 @@ Concretely, for the `FontMetrics` seam:
 - [ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test](0022-scriptengine-second-backend-swap-test.md)
   — the original pattern.
 - Design spec: `docs/superpowers/specs/2026-06-24-fontmetrics-seam-genericity-design.md`.
+
+## Amendment (2026-11-05)
+
+Removed the FreeType metrics backend, dependency, build option, parity
+cases, and dedicated CI job because no consumer selected this backend. The
+FontMetrics interface, stb metrics and atlas implementations, and their
+contract tests remain.

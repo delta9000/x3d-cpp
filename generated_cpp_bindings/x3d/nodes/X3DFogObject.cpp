@@ -1,4 +1,3 @@
-// X3DFogObject.cpp
 #include "x3d/nodes/X3DFogObject.hpp"
 
 namespace x3d::nodes {

@@ -74,7 +74,7 @@ static void xmlNestedDepth2Test() {
   auto gkids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
       fieldByName(*kids[0], "children")->get(*kids[0]));
   CHECK((gkids.size() == 1 && gkids[0] && gkids[0]->nodeTypeName() == "Box"));
-  // The nested Leaf instance must NOT have leaked to scene.protoInstances;
+  // The nested Leaf instance must not have leaked to scene.protoInstances;
   // only the top-level Wrap instance should be there (size==1).
   CHECK((doc.scene.protoInstances.size() == 1 &&
          doc.scene.protoInstances[0].name == "Wrap"));

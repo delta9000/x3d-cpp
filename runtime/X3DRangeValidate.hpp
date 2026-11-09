@@ -1,6 +1,6 @@
 // X3DRangeValidate.hpp — collect out-of-range values kept by the lenient read
 // path. Node-agnostic: walks the graph via reflection and aggregates each
-// node's validateRanges(). Range constraints ONLY (SFColor/SFColorRGBA [0,1],
+// node's validateRanges(). Range constraints only (SFColor/SFColorRGBA [0,1],
 // numeric minInclusive/maxInclusive) — enum/required/type/structural
 // validation is out of scope here.
 #ifndef X3D_RANGE_VALIDATE_HPP
@@ -9,6 +9,7 @@
 #include "x3d/nodes/X3DNode.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/X3DBackgroundNode.hpp"
+#include "x3d/nodes/TextureProjectorParallel.hpp"
 #include "GeoProjection.hpp"
 
 #include <any>
@@ -47,8 +48,8 @@ inline void validateSpecial(const x3d::nodes::X3DNode &node,
     if (!std::is_sorted(bg->getGroundAngle().begin(), bg->getGroundAngle().end()))
       add(node, "groundAngle", "BACKGROUND_ANGLE_ORDER", "angles must be non-decreasing", out);
   }
-  if (node.nodeTypeName() == "OrthoViewpoint" ||
-      node.nodeTypeName() == "TextureProjectorParallel") {
+  if (dynamic_cast<const x3d::nodes::OrthoViewpoint *>(&node) != nullptr ||
+      dynamic_cast<const x3d::nodes::TextureProjectorParallel *>(&node) != nullptr) {
     for (const core::FieldInfo &f : node.fields()) {
       if (f.x3dName != "fieldOfView") continue;
       auto v = f.get(node);
@@ -115,7 +116,7 @@ inline void validateSpecial(const x3d::nodes::X3DNode &node,
 /// Depth-first range-diagnostic walk guarded against graph cycles. `onPath`
 /// holds the nodes on the current recursion stack: a child already on the path
 /// is a USE referencing an ancestor (a true cycle) and is skipped, so the walk
-/// terminates. A node NOT on the current path is still descended each time it is
+/// terminates. A node not on the current path is still descended each time it is
 /// reached, preserving the per-usage-site semantics for shared (DAG) subtrees.
 inline void collect(const x3d::nodes::X3DNode &node, std::vector<x3d::core::RangeDiagnostic> &out,
                     std::unordered_set<const x3d::nodes::X3DNode *> &onPath) {

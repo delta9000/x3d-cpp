@@ -1,4 +1,3 @@
-// X3DParametricGeometryNode.cpp
 #include "x3d/nodes/X3DParametricGeometryNode.hpp"
 
 namespace x3d::nodes {

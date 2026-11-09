@@ -1,4 +1,3 @@
-// WindPhysicsModel.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -24,95 +23,53 @@ using namespace x3d::core;
  */
 class WindPhysicsModel : public virtual X3DParticlePhysicsModelNode {
 public:
-  /**
-   * @brief Default constructor for WindPhysicsModel
-   */
   WindPhysicsModel() = default;
 
-  /**
-   * @brief Destructor for WindPhysicsModel
-   */
   ~WindPhysicsModel() = default;
 
-  /**
-   * @brief Get the default value for direction
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultDirection() { return SFVec3f{1, 0, 0}; }
 
-  /**
-   * @brief Get the default value for gustiness
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultGustiness() { return 0.1; }
 
-  /**
-   * @brief Get the default value for speed
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultSpeed() { return 0.1; }
 
-  /**
-   * @brief Get the default value for turbulence
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultTurbulence() { return 0; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "physics"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "ParticleSystems"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of direction. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details direction in which wind is travelling in the form of a normalized,
    * unit vector.
-   * @return const SFVec3f& The current value of direction.
    */
   const SFVec3f &getDirection() const { return _direction; }
 
   /**
-   * @brief Sets the value of direction. AccessType: inputOutput
+   * Access: inputOutput.
    * @details direction in which wind is travelling in the form of a normalized,
    * unit vector.
-   * @param value The new value for direction.
    */
   void setDirection(const SFVec3f &value) { _direction = value; }
 
   void setDirection(SFVec3f &&value) { _direction = std::move(value); }
 
   /**
-   * @brief Gets the value of gustiness. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details gustiness specifies how much wind speed varies from the average
    * speed.
-   * @return const SFFloat& The current value of gustiness.
    */
   const SFFloat &getGustiness() const { return _gustiness; }
 
   /**
-   * @brief Sets the value of gustiness. AccessType: inputOutput
+   * Access: inputOutput.
    * @details gustiness specifies how much wind speed varies from the average
    * speed.
-   * @param value The new value for gustiness.
    */
   void setGustiness(const SFFloat &value) {
 
@@ -122,27 +79,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of gustiness (runtime/reader ingest path).
-   * @details Assigns without the range check setGustiness() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setGustiness() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setGustiness() for range validation.
    */
   void setGustinessUnchecked(const SFFloat &value) { _gustiness = value; }
 
   /**
-   * @brief Gets the value of speed. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Initial linear speed (default is m/s) imparted to all particles
    * along their direction of movement.
-   * @return const SFFloat& The current value of speed.
    */
   const SFFloat &getSpeed() const { return _speed; }
 
   /**
-   * @brief Sets the value of speed. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Initial linear speed (default is m/s) imparted to all particles
    * along their direction of movement.
-   * @param value The new value for speed.
    */
   void setSpeed(const SFFloat &value) {
 
@@ -152,29 +104,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of speed (runtime/reader ingest path).
-   * @details Assigns without the range check setSpeed() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setSpeed() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setSpeed() for range validation.
    */
   void setSpeedUnchecked(const SFFloat &value) { _speed = value; }
 
   /**
-   * @brief Gets the value of turbulence. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details turbulence field specifies how much the wind acts directly in line
    * with the direction, and how much variation is applied in directions other
    * than the wind direction.
-   * @return const SFFloat& The current value of turbulence.
    */
   const SFFloat &getTurbulence() const { return _turbulence; }
 
   /**
-   * @brief Sets the value of turbulence. AccessType: inputOutput
+   * Access: inputOutput.
    * @details turbulence field specifies how much the wind acts directly in line
    * with the direction, and how much variation is applied in directions other
    * than the wind direction.
-   * @param value The new value for turbulence.
    */
   void setTurbulence(const SFFloat &value) {
 
@@ -184,39 +131,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of turbulence (runtime/reader ingest path).
-   * @details Assigns without the range check setTurbulence() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setTurbulence() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setTurbulence() for range validation.
    */
   void setTurbulenceUnchecked(const SFFloat &value) { _turbulence = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "WindPhysicsModel").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -270,27 +201,11 @@ private:
       throw std::out_of_range("turbulence above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for direction.
-   */
-
   SFVec3f _direction{SFVec3f{1, 0, 0}};
-
-  /**
-   * @brief Member variable for gustiness.
-   */
 
   SFFloat _gustiness{0.1};
 
-  /**
-   * @brief Member variable for speed.
-   */
-
   SFFloat _speed{0.1};
-
-  /**
-   * @brief Member variable for turbulence.
-   */
 
   SFFloat _turbulence{0};
 };

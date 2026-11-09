@@ -1,4 +1,3 @@
-// ExplosionEmitter.cpp
 #include "x3d/nodes/ExplosionEmitter.hpp"
 
 namespace x3d::nodes {

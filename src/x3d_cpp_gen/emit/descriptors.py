@@ -1,7 +1,7 @@
 """Per-field descriptors: every per-field decision computed in Python.
 
 A :class:`FieldDescriptor` is the fully-resolved, render-ready view of one X3D
-field. :func:`build_descriptor` computes ALL decisions — C++ type, accessor
+field. :func:`build_descriptor` computes the decisions — C++ type, accessor
 names, default literal, access-type role flags, move-overload eligibility, and
 the *rendered* constraint-check C++ — so the Jinja template can stay thin and
 never branch on raw type strings.
@@ -36,7 +36,6 @@ class FieldDescriptor:
     access_type: str
     description: str
     default_init_expr: Optional[str]
-    value_init: bool                      # member uses {} (no spec default)
     constraint_checks: Optional[str]      # rendered C++ validator body, or None
     range_collect_body: Optional[str]     # rendered C++ for checkRanges<Name>(), or None
     getter_name: str
@@ -62,12 +61,6 @@ class FieldDescriptor:
         if self.inherited_from:
             return f"{self.inherited_from}::{self.getter_name}"
         return self.getter_name
-
-    @property
-    def setter_call(self) -> str:
-        if self.inherited_from:
-            return f"{self.inherited_from}::{self.setter_name}"
-        return self.setter_name
 
     @property
     def handler_setter_name(self) -> str:
@@ -193,7 +186,6 @@ class FieldDescriptor:
     def has_acceptable_node_types(self) -> bool:
         return bool(self.acceptable_node_types)
 
-    # --- role predicates the template iterates on ---
     @property
     def is_readable(self) -> bool:
         """Has a getter: inputOutput / initializeOnly / outputOnly."""
@@ -340,7 +332,6 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
     is_event = access == "inputOnly"
     is_readonly = access == "outputOnly"
 
-    # --- Bounded-enum fields short-circuit the normal type resolution. ---
     enum_def = None
     simple_type = getattr(field, "simple_type", None)
     if enum_defs and simple_type and simple_type in enum_defs:
@@ -350,7 +341,7 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
         return _build_enum_descriptor(field, enum_def, access, is_event, is_readonly)
 
     # Signatures/members use the X3D type *spelling* as stored on the field
-    # (e.g. 'SFBool', or the remapped 'xs_nmtoken'), NOT the resolved C++ type.
+    # (e.g. 'SFBool', or the remapped 'xs_nmtoken'), not the resolved C++ type.
     # X3Dtypes.hpp provides the matching `typedef bool SFBool;` aliases, and the
     # golden output is emitted in terms of those spellings.
     cpp_type = field.type
@@ -403,7 +394,7 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
     )
 
     return FieldDescriptor(
-        # x3d_name is the WIRE name (e.g. "class"); the C++ identifier / accessor
+        # x3d_name is the wire name (e.g. "class"); the C++ identifier / accessor
         # names below stay derived from the sanitized field.name (e.g. "class_").
         x3d_name=getattr(field, "x3d_name", None) or field.name,
         cpp_ident=f"_{field.name}",
@@ -413,7 +404,6 @@ def build_descriptor(field, enum_defs: Optional[Dict] = None) -> FieldDescriptor
         access_type=access,
         description=field.description or "",
         default_init_expr=default_expr,
-        value_init=default_expr is None,
         constraint_checks=constraint_checks,
         range_collect_body=range_collect_body,
         getter_name=f"get{name_pascal}",
@@ -455,7 +445,6 @@ def _build_enum_descriptor(field, enum_def, access, is_event,
         access_type=access,
         description=field.description or "",
         default_init_expr=default_expr,
-        value_init=default_expr is None,
         constraint_checks=None,
         range_collect_body=None,
         getter_name=f"get{name_pascal}",

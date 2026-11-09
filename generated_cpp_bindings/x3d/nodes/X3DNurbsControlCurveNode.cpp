@@ -1,4 +1,3 @@
-// X3DNurbsControlCurveNode.cpp
 #include "x3d/nodes/X3DNurbsControlCurveNode.hpp"
 
 namespace x3d::nodes {

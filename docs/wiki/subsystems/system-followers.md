@@ -13,7 +13,7 @@ related:
 
 ## Purpose
 
-The Followers System animates scene-graph field values by *smoothing* a stream of `set_destination` events toward their target, rather than sampling a keyframe table the way the [Interpolator System](system-interpolators.md) does. It covers all fourteen nodes of ISO/IEC 19775-1 §39 (Followers component) — seven value types, each as a **Damper** (a critically-shaped IIR low-pass) and a **Chaser** (a fixed-duration FIR tap sum). A follower has no `key`/`keyValue`; it holds an output and chases a moving `set_destination`, emitting `value_changed` each tick while in transition and toggling `isActive` at the transition boundaries.
+The Followers System animates scene-graph field values by *smoothing* a stream of `set_destination` events toward their target, rather than sampling a keyframe table the way the [Interpolator System](system-interpolators.md) does. It covers all fourteen nodes of ISO/IEC 19775-1 §39 (Followers component) — seven value types, each as a Damper (a critically-shaped IIR low-pass) and a Chaser (a fixed-duration FIR tap sum). A follower has no `key`/`keyValue`; it holds an output and chases a moving `set_destination`, emitting `value_changed` each tick while in transition and toggling `isActive` at the transition boundaries.
 
 This subsystem mirrors the shape of the Interpolator System: a small arithmetic layer (`FollowerArith`) plus two generic `System`-derived templates wired into node handlers at scene-construction time by an `attachFollowers` scene-walk.
 
@@ -51,26 +51,19 @@ DamperSystem<TexCoordDamper2D, MFVec2f>    ChaserSystem<TexCoordChaser2D, MFVec2
 
 ### Seam points
 
-- **`set_destination` / `set_value` handler registration** — `attach(node, ctx)` installs `setOnSet_destinationHandler` and `setOnSet_valueHandler` lambdas (matched by `dynamic_cast<NodeT*>`, so the scene-walk is safe to offer every node). `set_destination` updates the target and activates the transition; `set_value` snaps the output and stops it.
-- **Dual write on output** — each emission both calls the node's own `emitValue_changed` / `emitIsActive` setter **and** `ctx.postEvent(node, "value_changed"|"isActive", …)` to seed the [event cascade](event-cascade.md), so downstream ROUTEs fire. This matches the Interpolator System's `postEvent` path.
-- **`attachFollowers` scene-walk** — mirrors `attachInterpolators`; `makeFollowerSystems()` is the registry, `attachFollowers` in `X3DSceneBridge.hpp` is the production wiring.
+- `set_destination` / `set_value` handler registration — `attach(node, ctx)` installs `setOnSet_destinationHandler` and `setOnSet_valueHandler` lambdas (matched by `dynamic_cast<NodeT*>`, so the scene-walk is safe to offer every node). `set_destination` updates the target and activates the transition; `set_value` snaps the output and stops it.
+- Dual write on output — each emission both calls the node's own `emitValue_changed` / `emitIsActive` setter and `ctx.postEvent(node, "value_changed"|"isActive", …)` to seed the [event cascade](event-cascade.md), so downstream ROUTEs fire. This matches the Interpolator System's `postEvent` path.
+- `attachFollowers` scene-walk — mirrors `attachInterpolators`; `makeFollowerSystems()` is the registry, `attachFollowers` in `X3DSceneBridge.hpp` is the production wiring.
 
 ### Spec-conformance annotations
 
-- **Damper (§39.3.2)** — `DamperSystem` models a cascade of `order` first-order IIR lerp-filters, each driven with `α = exp(-dt/τ)`. `order==0` or `τ<=0` is a passthrough (immediate snap to destination, then `isActive=false`). Convergence is tested **before** the update pass (the end-of-transition snap fires before the next filter step) using `FollowerArith<ValueT>::dist` against the per-filter `tolerance` (a negative `tolerance` uses the `0.001` default per the spec). `set_value` resets all filter states and stops the transition.
-- **Chaser (§39.3.1)** — each `set_destination` adds a timestamped delta tap from the previously received destination to the new destination. Tap progress uses `R(x) = (1 − cos(πx))/2`. During the duration window, weighted taps are summed onto the latest settled baseline; expired taps advance that baseline. `SFRotation` taps compose quaternion deltas using SLERP. `set_value` clears all taps.
-- **Initial transition** — if `initialValue ≠ initialDestination` at attach time, the follower starts active and emits `isActive=TRUE` immediately (§39 requires `isActive` TRUE when a transition begins).
-- **MF length reconciliation (FOL overlap fix)** — for the `MFVec3f`/`MFVec2f` (Coordinate/TexCoord) followers, `reshapeLike` broadcasts a length-1 seed up to the destination's length so the damper cascade / chaser FIR taps can converge element-wise rather than stalling on a length mismatch.
-- **FOL-5** — overlapping destination events accumulate as independent FIR taps using the §39.3.1 response, including quaternion delta composition for `SFRotation`.
+- Damper (§39.3.2) — `DamperSystem` models a cascade of `order` (clamped to the field range [0,5]) first-order IIR lerp-filters, each driven with `α = exp(-dt/τ)`. `order==0` or `τ<=0` is a passthrough (immediate snap to destination, then `isActive=false`). Convergence is tested before the update pass (the end-of-transition snap fires before the next filter step) using `FollowerArith<ValueT>::dist` against the per-filter `tolerance` (a negative `tolerance` uses the `0.001` default per the spec). `set_value` resets all filter states and stops the transition.
+- Chaser (§39.3.1) — each `set_destination` adds a timestamped delta tap from the previously received destination to the new destination. Tap progress uses `R(x) = (1 − cos(πx))/2`. During the duration window, weighted taps are summed onto the latest settled baseline; expired taps advance that baseline. `SFRotation` taps compose quaternion deltas using SLERP. `set_value` clears all taps.
+- Initial transition — if `initialValue ≠ initialDestination` at attach time, the follower starts active and emits `isActive=TRUE` immediately (§39 requires `isActive` TRUE when a transition begins).
+- MF length reconciliation (FOL overlap fix) — for the `MFVec3f`/`MFVec2f` (Coordinate/TexCoord) followers, `reshapeLike` broadcasts a length-1 seed up to the destination's length so the damper cascade / chaser FIR taps can converge element-wise rather than stalling on a length mismatch.
+- FOL-5 — overlapping destination events accumulate as independent FIR taps using the §39.3.1 response, including quaternion delta composition for `SFRotation`.
 
-## How it is tested
+## Related
 
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `follower_conformance_test`) — behavioral-conformance tests (`runtime/events/tests/follower_conformance_test.cpp`). Covers `FollowerArith` ops (incl. `SFRotation` slerp + geodesic `dist`), `DamperSystem` IIR convergence and passthrough, `ChaserSystem` tap superposition and exact end-of-transition value, the initial-active `isActive` emission, MF element-wise reconciliation, and `attachFollowers` production wiring.
-
-## Related specs and ADRs
-
-- Spec: ISO/IEC 19775-1 §39 (Followers component) — normative source for the §39.3.1 cosine-response Chaser FIR and §39.3.2 Damper IIR cascade.
-- Conformance view: `docs/conformance/components/Followers.md` — `FOL-*` finding records (including FOL-5 overlapping-transition superposition).
-- Conformance findings source of truth: `docs/conformance/findings.yaml`.
-- [Interpolator System](system-interpolators.md) — the sibling animation subsystem this one mirrors (registry + `attach…` scene-walk + `postEvent`).
-- [Event Cascade subsystem](event-cascade.md) — delivers the `value_changed` / `isActive` events the follower handlers post.
+- [Interpolator System](system-interpolators.md)
+- [Event Cascade subsystem](event-cascade.md)

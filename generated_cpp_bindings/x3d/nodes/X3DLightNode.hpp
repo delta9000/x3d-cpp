@@ -1,4 +1,3 @@
-// X3DLightNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,83 +25,38 @@ using namespace x3d::core;
  */
 class X3DLightNode : public virtual X3DChildNode {
 public:
-  /**
-   * @brief Default constructor for X3DLightNode
-   */
   X3DLightNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DLightNode
-   */
   virtual ~X3DLightNode() = default;
 
-  /**
-   * @brief Get the default value for ambientIntensity
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultAmbientIntensity() { return 0; }
 
-  /**
-   * @brief Get the default value for color
-   * @return SFColor The default value
-   */
   static SFColor getDefaultColor() { return SFColor{1, 1, 1}; }
 
-  /**
-   * @brief Get the default value for intensity
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultIntensity() { return 1; }
 
-  /**
-   * @brief Get the default value for on
-   * @return SFBool The default value
-   */
   static SFBool getDefaultOn() { return true; }
 
-  /**
-   * @brief Get the default value for shadowIntensity
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultShadowIntensity() { return 1; }
 
-  /**
-   * @brief Get the default value for shadows
-   * @return SFBool The default value
-   */
   static SFBool getDefaultShadows() { return false; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Lighting"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of ambientIntensity. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of ambientIntensity.
    */
   const SFFloat &getAmbientIntensity() const { return _ambientIntensity; }
 
   /**
-   * @brief Sets the value of ambientIntensity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for ambientIntensity.
    */
   void setAmbientIntensity(const SFFloat &value) {
 
@@ -112,28 +66,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of ambientIntensity (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setAmbientIntensity() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setAmbientIntensity() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAmbientIntensity() for range validation.
    */
   void setAmbientIntensityUnchecked(const SFFloat &value) {
     _ambientIntensity = value;
   }
 
   /**
-   * @brief Gets the value of color. AccessType: inputOutput
+   * SFColor; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFColor& The current value of color.
    */
   const SFColor &getColor() const { return _color; }
 
   /**
-   * @brief Sets the value of color. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for color.
    */
   void setColor(const SFColor &value) {
 
@@ -150,25 +98,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of color (runtime/reader ingest path).
-   * @details Assigns without the range check setColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setColor() for range validation.
    */
   void setColorUnchecked(const SFColor &value) { _color = value; }
 
   /**
-   * @brief Gets the value of intensity. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of intensity.
    */
   const SFFloat &getIntensity() const { return _intensity; }
 
   /**
-   * @brief Sets the value of intensity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for intensity.
    */
   void setIntensity(const SFFloat &value) {
 
@@ -178,39 +121,32 @@ public:
   }
 
   /**
-   * @brief Non-validating write of intensity (runtime/reader ingest path).
-   * @details Assigns without the range check setIntensity() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setIntensity() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setIntensity() for range validation.
    */
   void setIntensityUnchecked(const SFFloat &value) { _intensity = value; }
 
   /**
-   * @brief Gets the value of on. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of on.
    */
   const SFBool &getOn() const { return _on; }
 
   /**
-   * @brief Sets the value of on. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for on.
    */
   void setOn(const SFBool &value) { _on = value; }
 
   /**
-   * @brief Gets the value of shadowIntensity. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of shadowIntensity.
    */
   const SFFloat &getShadowIntensity() const { return _shadowIntensity; }
 
   /**
-   * @brief Sets the value of shadowIntensity. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for shadowIntensity.
    */
   void setShadowIntensity(const SFFloat &value) {
 
@@ -220,56 +156,37 @@ public:
   }
 
   /**
-   * @brief Non-validating write of shadowIntensity (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setShadowIntensity() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setShadowIntensity() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setShadowIntensity() for range validation.
    */
   void setShadowIntensityUnchecked(const SFFloat &value) {
     _shadowIntensity = value;
   }
 
   /**
-   * @brief Gets the value of shadows. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of shadows.
    */
   const SFBool &getShadows() const { return _shadows; }
 
   /**
-   * @brief Sets the value of shadows. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for shadows.
    */
   void setShadows(const SFBool &value) { _shadows = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DLightNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -352,39 +269,15 @@ private:
       throw std::out_of_range("shadowIntensity above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for ambientIntensity.
-   */
-
   SFFloat _ambientIntensity{0};
-
-  /**
-   * @brief Member variable for color.
-   */
 
   SFColor _color{SFColor{1, 1, 1}};
 
-  /**
-   * @brief Member variable for intensity.
-   */
-
   SFFloat _intensity{1};
-
-  /**
-   * @brief Member variable for on.
-   */
 
   SFBool _on{true};
 
-  /**
-   * @brief Member variable for shadowIntensity.
-   */
-
   SFFloat _shadowIntensity{1};
-
-  /**
-   * @brief Member variable for shadows.
-   */
 
   SFBool _shadows{false};
 };

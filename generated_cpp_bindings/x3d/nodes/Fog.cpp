@@ -1,4 +1,3 @@
-// Fog.cpp
 #include "x3d/nodes/Fog.hpp"
 
 namespace x3d::nodes {

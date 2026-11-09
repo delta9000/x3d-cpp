@@ -19,7 +19,7 @@
 
 namespace x3d::runtime {
 
-// §9.4.2: load=FALSE removes the content; a changed URL replaces it.
+// §9.4.2: load=`FALSE` removes the content; a changed URL replaces it.
 class InlineRuntimeSystem : public System {
 public:
   InlineRuntimeSystem(Scene &scene, InlineResolver resolver, std::string baseUrl)
@@ -85,7 +85,7 @@ public:
     for (const Route &r : scene_.routes)
       routeBound.push_back(!r.from.expired() && !r.to.expired());
 
-    expandInlines(scene_, resolver_, baseUrl_, warnings_,
+    expandInlines(scene_, resolver_, baseUrl_, scene_.pendingInlineWarnings,
                   [&](X3DNode *parent, const std::shared_ptr<X3DNode> &group) {
                     splices.push_back({parent, group});
                   });
@@ -156,12 +156,7 @@ private:
     if (!tile.group) return;
     if (!tile.everAttached) { tile = {}; return; }
     std::unordered_set<const X3DNode *> nodes;
-    std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
-      if (!n || !nodes.insert(n).second) return;
-      forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        collect(c.get());
-      });
-    };
+    auto collect = [&](X3DNode *n) { ctx.collectSubtreeNodes(n, nodes); };
     collect(tile.group.get());
     for (const auto &peer : tile.scene->protoPeerNodes) collect(peer.get());
     std::vector<X3DNode *> nested;
@@ -183,12 +178,7 @@ private:
                   X3DExecutionContext &ctx) {
     if (state.displayed >= 0) {
       std::unordered_set<const X3DNode *> oldNodes;
-      std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
-        if (!n || !oldNodes.insert(n).second) return;
-        forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-          collect(c.get());
-        });
-      };
+      auto collect = [&](X3DNode *n) { ctx.collectSubtreeNodes(n, oldNodes); };
       for (const auto &n : lod->getChildren()) collect(n.get());
       auto collectPeers = [&](const Tile &tile) {
         if (tile.scene)
@@ -250,12 +240,7 @@ private:
       if (tile.group) tile.everAttached = true;
     if (level == 0 && !lod->getRootNode().empty()) {
       std::unordered_set<const X3DNode *> active;
-      std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
-        if (!n || !active.insert(n).second) return;
-        forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-          collect(c.get());
-        });
-      };
+      auto collect = [&](X3DNode *n) { ctx.collectSubtreeNodes(n, active); };
       for (const auto &node : displayed) collect(node.get());
       for (const Route &r : scene_.routes) {
         auto from = r.from.lock(), to = r.to.lock();
@@ -333,12 +318,7 @@ private:
     if (it == loaded_.end()) return;
     Loaded old = it->second; // retain ownership throughout detach
     std::unordered_set<const X3DNode *> nodes;
-    std::function<void(X3DNode *)> collect = [&](X3DNode *n) {
-      if (!n || !nodes.insert(n).second) return;
-      forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        collect(c.get());
-      });
-    };
+    auto collect = [&](X3DNode *n) { ctx.collectSubtreeNodes(n, nodes); };
     collect(old.group.get());
     std::vector<X3DNode *> nested;
     for (const auto &[n, entry] : loaded_)
@@ -393,7 +373,6 @@ private:
   std::unordered_map<X3DNode *, MFString> attempted_;
   std::unordered_map<X3DNode *, Loaded> loaded_;
   std::unordered_map<X3DNode *, GeoLodState> geoLods_;
-  std::vector<InlineWarning> warnings_;
 };
 
 } // namespace x3d::runtime

@@ -1,28 +1,12 @@
-// Inflate.hpp
-// Header-only gzip (RFC 1952) inflate for the parsing front-end.
-//
-// Wraps the bundled public-domain DEFLATE decompressor (tinfl.h, from miniz —
-// Unlicense; see that file's header for full provenance/license) with a small
-// C++ helper that:
-//   1. Validates the gzip magic (0x1f 0x8b) and the DEFLATE method byte (0x08).
-//   2. Parses the fixed 10-byte RFC-1952 header and any optional FEXTRA / FNAME
-//      / FCOMMENT / FHCRC fields indicated by the flag byte.
-//   3. Hands the raw DEFLATE stream to tinfl in single-shot, non-wrapping mode,
-//      growing the output buffer until TINFL_STATUS_DONE.
-//   4. Verifies the trailing CRC32 and ISIZE (mod 2^32) from the 8-byte footer.
-//
-// The point of bundling tinfl is to inflate without an -lz client dependency,
-// matching the header-only / zero-dependency promise of XmlLite.hpp /
-// JsonLite.hpp. Throws std::runtime_error("inflateGzip: ...") on any
-// truncation / corruption / checksum mismatch.
-//
-// Header-only, namespace x3d::codec.
+// RFC 1952 gzip decoding via bundled public-domain miniz tinfl (see tinfl.h).
+// Throws std::runtime_error on truncation, corruption, checksum mismatch, or output limits.
+
 #ifndef X3D_INFLATE_HPP
 #define X3D_INFLATE_HPP
 
 #include "tinfl.h"
 
-#include "../RecursionLimits.hpp" // x3d::kMaxDecompressedBytes (SEC-5 cap)
+#include "../RecursionLimits.hpp" // x3d::kMaxDecompressedBytes (decompressed-size cap)
 
 #include <cstddef>
 #include <cstdint>
@@ -133,7 +117,7 @@ inline std::string inflateGzip(std::string_view compressed,
   std::size_t cap = expected_isize ? expected_isize : (deflate_len * 4 + 64);
   if (cap < 64)
     cap = 64;
-  // SEC-5: never reserve past the decompressed-size ceiling. ISIZE is attacker-
+  // never reserve past the decompressed-size ceiling. ISIZE is attacker-
   // controlled and can claim ~4 GiB, so clamp the initial reservation; the grow
   // loop below stops at the same ceiling rather than doubling toward OOM.
   if (cap > maxOut)
@@ -154,7 +138,7 @@ inline std::string inflateGzip(std::string_view compressed,
       break;
     }
     if (st == TINFL_STATUS_HAS_MORE_OUTPUT) {
-      // SEC-5: the stream wants more than `cap` bytes. If we are already at the
+      // the stream wants more than `cap` bytes. If we are already at the
       // ceiling the decompressed output exceeds the policy limit — reject it as
       // a decompression bomb rather than doubling the buffer toward OOM.
       if (cap >= maxOut)

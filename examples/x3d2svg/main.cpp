@@ -2,7 +2,7 @@
 //
 // x3d2svg — a headless X3D → SVG "technical illustration" projector, and the
 // smallest possible reference consumer of the x3d-cpp extraction seam: it links
-// ONLY the public façade (`x3d_cpp::sdk`) and uses no GPU, display, image codec,
+// only the public façade (`x3d_cpp::sdk`) and uses no GPU, display, image codec,
 // or font backend. It parses a scene, resolves a camera, projects every
 // extracted triangle, flat-shades each facet with a headlight, and paints them
 // back-to-front into an SVG. With --animate it steps the simulation clock and

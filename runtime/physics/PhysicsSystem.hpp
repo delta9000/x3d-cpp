@@ -1,27 +1,5 @@
-// PhysicsSystem.hpp
-// The System that simulates X3D §37 RigidBodyPhysics dynamics: it reads each
-// RigidBodyCollection / RigidBody / CollidableShape, drives an (abstract)
-// PhysicsBackend, and writes each body's integrated pose back onto its RigidBody
-// node via ctx.writeField — so position_changed / orientation_changed flow over
-// the author's existing ROUTEs to the scene's Transforms. No new event
-// mechanism: the standard cascade carries the motion.
-//
-// ENGINE-AGNOSTIC: this layer names NO physics-engine type. It depends only on
-// the abstract PhysicsBackend seam (constructed with a shared_ptr; inert when
-// none, exactly like ScriptSystem without a backend) and the generated §37
-// nodes. A seam-purity check greps this header for Jolt/JPH leakage: there is
-// none.
-//
-// MAPPING (per the design):
-//   RigidBodyCollection -> createWorld(gravity)
-//   each RigidBody in .bodies:
-//     read its CollidableShape geometry (.geometry -> CollidableShape -> .shape
-//       -> Shape -> .geometry -> Box | Sphere); Box -> half-extents = size/2;
-//       Sphere -> radius; anything else -> skip the body + a one-line stderr note
-//     read mass / position / orientation / linearVelocity / angularVelocity /
-//       fixed -> addBody(...); remember RigidBody* <-> BodyHandle.
-//   update(now): dt = now - lastNow (clamped); step(dt); for each mapped body
-//     getBodyTransform -> writeField(rigidBody, "position"|"orientation", ...).
+// Drive §37 rigid-body dynamics through PhysicsBackend and post integrated poses
+// as RigidBody events. See docs/wiki/decisions/0019-physics-seam.md.
 #ifndef X3D_RUNTIME_PHYSICS_SYSTEM_HPP
 #define X3D_RUNTIME_PHYSICS_SYSTEM_HPP
 
@@ -60,13 +38,7 @@ namespace x3d::runtime {
 using namespace x3d::core;
 namespace xn = x3d::nodes;
 
-/**
- * @brief Drives §37 rigid-body dynamics through an abstract PhysicsBackend.
- * @details A time-driven System: attach() walks each RigidBodyCollection into a
- *          backend world + bodies, update() steps the worlds and writes each
- *          body's pose back onto its RigidBody node. Inert (a clean no-op) when
- *          constructed without a backend, so the System can always be attached.
- */
+/** Inert without a backend. */
 class PhysicsSystem : public System {
 public:
   /**
@@ -77,17 +49,7 @@ public:
   explicit PhysicsSystem(std::shared_ptr<PhysicsBackend> backend)
       : backend_(std::move(backend)) {}
 
-  // --------------------------------------------------------------------------
-  // System interface.
-  // --------------------------------------------------------------------------
-
-  /**
-   * @brief Enroll one RigidBodyCollection: create its world + all its bodies.
-   * @details A no-op for any other node type, and inert without a backend. Reads
-   *          gravity off the collection, then each RigidBody in .bodies: maps its
-   *          CollidableShape geometry to a ShapeDesc (Box/Sphere; else skips with
-   *          a stderr note) and reads its mass/pose/velocity/fixed into addBody.
-   */
+  /** No-op for unsupported node types or without a backend. */
   void attach(X3DNode *node, X3DExecutionContext &ctx) override {
     (void)ctx;
     if (!backend_) return;
@@ -117,10 +79,8 @@ public:
 
       ShapeDesc shape;
       SFNode collidableShape;
-      if (!shapeForBody(*body, shape, &collidableShape)) {
-        // Unsupported collidable geometry (not Box/Sphere): the body is excluded.
-        // Count it so the exclusion is OBSERVABLE (droppedBodyCount), not a silent
-        // data loss — non-primitive collidable shapes are a tracked §37 gap.
+      if (!shapeForBody(*body, shape, collidableShape)) {
+        // Count unsupported bodies for droppedBodyCount().
         ++droppedBodies_;
         std::cerr << "[PhysicsSystem] RigidBody has no supported collidable "
                      "shape (Box/Sphere/Cylinder/Cone); excluding body from "
@@ -157,7 +117,7 @@ public:
 
     // §37 RigidBodyCollection auto-disable: autoDisable gates whether anything in
     // this world may sleep; disableTime / disableLinearSpeed tune Jolt's
-    // WORLD-wide sleep thresholds (Jolt has no per-body equivalent, so the
+    // world-wide sleep thresholds (Jolt has no per-body equivalent, so the
     // collection's values apply to the whole world). disableAngularSpeed has no
     // world-wide Jolt counterpart and stays deferred (see CONF-RBP-DAMP).
     const double disableTime = collection->getDisableTime();
@@ -167,7 +127,7 @@ public:
         disableTime > 0.0 ? static_cast<float>(disableTime) : -1.0f,
         disableLinSpeed > 0.0f ? disableLinSpeed : -1.0f);
 
-    // Joints: every body of this collection now exists (constraints require it),
+    // Joints require every body in the collection to exist,
     // so resolve each §37 RigidJoint into a ConstraintDesc and add it.
     attachJoints(*collection, world, handleFor);
 
@@ -176,8 +136,8 @@ public:
     // frictionCoefficients, BOUNCE gates bounce (default ["BOUNCE"]).
     // A selected param overrides the engine default even when its value is 0
     // (an explicit author choice); an unselected param stays -1 (engine default
-    // left untouched). Scalar friction uses .x; anisotropic .y is deferred
-    // (CONF-RBP-SOLVER).
+    // left untouched). Scalar friction uses .x; anisotropic .y is unsupported.
+    // Unsupported response parameters retain backend defaults.
     float contactFriction = -1.0f, contactRestitution = -1.0f;
     if (auto *cc =
             dynamic_cast<xn::CollisionCollection *>(collection->getCollider().get())) {
@@ -193,7 +153,7 @@ public:
     backend_->setContactResponse(world, contactFriction, contactRestitution);
 
     // §37 solver tuning: map the collection's solver fields onto the backend.
-    // Each field is sent ONLY when it differs from the §37 default — at the spec
+    // Each field is sent only when it differs from the §37 default — at the spec
     // defaults every field stays at its sentinel and the backend's own solver
     // settings are left untouched (spec-default behavior is preserved). Fields
     // with no honest backend equivalent (constantForceMix, preferAccuracy) are
@@ -233,19 +193,8 @@ public:
     }
   }
 
-  /**
-   * @brief Step every world to `now` and write each body's pose back.
-   * @details dt = now - lastNow, clamped to kMaxStep so a huge first frame (or a
-   *          paused/long gap) can't blow the integrator up. The first update for
-   *          a world produces no step (no prior time). For each mapped body the
-   *          integrated pose is read back and posted as an event on the RigidBody
-   *          node via ctx.postEvent — which both writes the node's own
-   *          position/orientation field (last-writer-wins seed) AND fans out along
-   *          the author's ROUTEs (position_changed / orientation_changed flow to
-   *          the Transforms). This is the same mechanism every other System uses
-   *          (InterpolatorSystem, KeyDeviceSensorSystem); writeField alone would
-   *          update the node + dirty tracker but NOT fire the routes.
-   */
+  /** Clamp long frame gaps and integrate fixed substeps; the first update does not step.
+   *  Post poses as RigidBody events to update fields and dispatch ROUTEs. */
   void update(double now, X3DExecutionContext &ctx) override {
     if (!backend_ || bodies_.empty()) return;
 
@@ -273,7 +222,7 @@ public:
     accumulator_ += dt;
     int substeps = 0;
     while (accumulator_ >= kFixedStep && substeps < kMaxSubsteps) {
-      // §37: forces/torques are applied EVERY frame (continuously, until the
+      // §37: forces/torques are applied every frame (continuously, until the
       // author resets them). Re-apply before each substep — engines clear
       // accumulated forces after each integration.
       for (const auto &m : bodies_) applyBodyForces(m);
@@ -291,7 +240,7 @@ public:
 
     // Write back each body's integrated pose -> emits *_changed over the routes.
     // postEvent seeds the cascade: it writes the RigidBody's own position/
-    // orientation field AND fans out along the author ROUTEs to the Transforms.
+    // orientation field and fans out along the author ROUTEs to the Transforms.
     for (const auto &m : bodies_) {
       SFVec3f pos{0, 0, 0};
       SFRotation ori{0, 0, 1, 0};
@@ -344,7 +293,6 @@ public:
     reporter_.report(resolved, ctx);
   }
 
-  /** @brief Number of bodies enrolled in simulation (for tests). */
   std::size_t bodyCount() const { return bodies_.size(); }
 
   /**
@@ -359,21 +307,10 @@ public:
     return backend_->isBodyActive(m.world, m.handle);
   }
 
-  /**
-   * @brief Number of RigidBodies EXCLUDED from the simulation because their
-   *        collidable geometry was not a supported primitive (Box/Sphere).
-   * @details Makes the "unsupported shape -> skip the body" path observable
-   *          instead of a silent data loss: a consumer (or test) can detect that
-   *          bodies were dropped. See shapeForBody().
-   */
+  /** Count bodies skipped because their collision geometry is unsupported. */
   std::size_t droppedBodyCount() const { return droppedBodies_; }
 
-  /**
-   * @brief Number of drained contacts skipped because a contact body had no
-   *        enrolled RigidBody/CollidableShape (e.g. a collidable not tied to a
-   *        simulated body). Makes the skip OBSERVABLE rather than silent
-   *        (mirrors droppedBodyCount()); a consumer or test can detect it.
-   */
+  /** Count contacts skipped because a body has no enrolled scene node. */
   std::size_t unmappedContactCount() const { return unmappedContacts_; }
 
 private:
@@ -392,13 +329,7 @@ private:
   /// Hard cap on substeps per frame (belt-and-braces with kMaxFrame).
   static constexpr int kMaxSubsteps = 16;
 
-  /**
-   * @brief Apply a body's continuous §37 forces/torques for the next step.
-   * @details Sums RigidBody.forces and .torques (each a set of MFVec3f vectors,
-   *          §37.4.10) and hands the resultant to the backend. Called once per
-   *          substep so the force is applied every frame (the spec's continuous-
-   *          force model). A body with no forces/torques is a cheap no-op.
-   */
+  /** §37.4.10 forces/torques persist until reset. Reapply them before each substep. */
   void applyBodyForces(const Mapped &m) {
     SFVec3f force{0, 0, 0};
     for (const SFVec3f &f : m.body->getForces()) {
@@ -441,15 +372,9 @@ private:
     return true;
   }
 
-  /**
-   * @brief Resolve a RigidBody's collidable primitive into a ShapeDesc.
-   * @details Walks the first usable CollidableShape in .geometry -> its .shape
-   *          (a Shape) -> Shape.geometry (a Box or Sphere). Box -> half-extents
-   *          from size/2; Sphere -> radius. Returns false if no Box/Sphere is
-   *          found (the caller skips + notes it).
-   */
+  /** Use the first supported CollidableShape; return false if none is found. */
   static bool shapeForBody(const xn::RigidBody &body, ShapeDesc &out,
-                           SFNode *outShape = nullptr) {
+                           SFNode &outShape) {
     for (const auto &geomNode : body.getGeometry()) {
       auto *collidable = dynamic_cast<xn::CollidableShape *>(geomNode.get());
       if (!collidable) continue;
@@ -459,17 +384,17 @@ private:
       if (auto *box = dynamic_cast<xn::Box *>(geom)) {
         const SFVec3f s = box->getSize();
         out = ShapeDesc::box(SFVec3f{s.x * 0.5f, s.y * 0.5f, s.z * 0.5f});
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *sphere = dynamic_cast<xn::Sphere *>(geom)) {
         out = ShapeDesc::sphere(sphere->getRadius());
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *cyl = dynamic_cast<xn::Cylinder *>(geom)) {
         out = ShapeDesc::cylinder(cyl->getRadius(), cyl->getHeight() * 0.5f);
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
       if (auto *cone = dynamic_cast<xn::Cone *>(geom)) {
@@ -478,19 +403,14 @@ private:
         // the body in the simulation instead of dropping it.
         const float r = cone->getBottomRadius();
         out = ShapeDesc::box(SFVec3f{r, cone->getHeight() * 0.5f, r});
-        if (outShape) *outShape = geomNode;
+        outShape = geomNode;
         return true;
       }
     }
     return false;
   }
 
-  /**
-   * @brief Resolve a joint's body1/body2 SFNode into a BodyHandle.
-   * @details Unset (nullptr) or a body not enrolled in this world -> the
-   *          world-anchor sentinel (kInvalidBodyHandle), which the backend binds
-   *          to the world (a fixed anchor — the pendulum case).
-   */
+  /** Unset or unenrolled bodies resolve to the world-anchor sentinel. */
   static BodyHandle resolveBody(
       const SFNode &node,
       const std::unordered_map<const xn::RigidBody *, BodyHandle> &handleFor) {
@@ -501,18 +421,7 @@ private:
     return it == handleFor.end() ? kInvalidBodyHandle : it->second;
   }
 
-  /**
-   * @brief Read a collection's joints into ConstraintDescs and add them.
-   * @details Iterates RigidBodyCollection.joints; branches on nodeTypeName:
-   *            BallJoint            -> Kind::Ball   (anchorPoint).
-   *            SingleAxisHingeJoint -> Kind::Hinge  (anchorPoint, axis, min/max).
-   *            SliderJoint          -> Kind::Slider (axis, min/max separation;
-   *                                    anchorPoint defaults to the body1 base —
-   *                                    SliderJoint has no anchorPoint field, so
-   *                                    the constraint point rides body1's pose).
-   *          body1/body2 resolve via the body map; an unset body binds the other
-   *          to the world. Unsupported joint types are skipped + noted on stderr.
-   */
+  /** Unsupported joint types are skipped with a stderr diagnostic. */
   void attachJoints(
       const xn::RigidBodyCollection &collection, WorldHandle world,
       const std::unordered_map<const xn::RigidBody *, BodyHandle> &handleFor) {

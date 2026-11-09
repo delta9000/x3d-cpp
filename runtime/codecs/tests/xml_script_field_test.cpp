@@ -1,20 +1,4 @@
-// xml_script_field_test.cpp
-// TASK A — XML Script capture + round-trip (design §3.4, encoding=XML).
-//
-// Proves the file-authored Script un-tabling for the XML codec:
-//   1. An <Script> with author <field name accessType type value> children plus
-//      a <![CDATA[...]]> source body parses so the author fields land in the
-//      DynamicFieldStore (visible via effectiveFields) and the CDATA body lands
-//      in Script.sourceCode.
-//   2. An inline ecmascript: scheme in `url` is still accepted as a source.
-//   3. read -> write -> reparse round-trips: the <field> children (with their
-//      accessType/type/value) and the CDATA body survive.
-//   4. SFNode/MFNode author fields read their child nodes (USE included)
-//      and are written back as children.
-//   5. An author-field ROUTE resolves (an endpoint on a Script author field
-//      wires through X3DSceneBridge, which resolves via effectiveFields).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// XML Script author fields and inline source survive round-trips (design §3.4).
 
 #include "DynamicField.hpp"
 #include "X3DCodecs.hpp"
@@ -143,12 +127,8 @@ void checkDecls(const runtime::Scene &scene, const std::string &phase) {
 int main() {
   codec::XmlReader reader;
   codec::XmlWriter writer;
-
-  // ---- Phase 1: parse captures decls + source ----
   runtime::X3DDocument doc = reader.readDocument(sampleXml());
   checkDecls(doc.scene, "parse");
-
-  // ---- Author-field ROUTE resolves ----
   {
     runtime::X3DExecutionContext ctx(doc.scene.authorFields);
     runtime::BridgeResult br = runtime::buildRoutes(doc.scene, ctx);
@@ -156,8 +136,6 @@ int main() {
           "author-field ROUTE not rejected (resolves via effectiveFields)");
     check(br.routesAdded == 1, "author-field ROUTE added to context");
   }
-
-  // ---- Phase 2: round-trip read -> write -> reparse ----
   std::string out = writer.writeDocument(doc);
   check(out.find("set_fraction") != std::string::npos,
         "writer re-emits author field set_fraction");
@@ -178,8 +156,6 @@ int main() {
     check(br.rejected.empty(), "reparse: author-field ROUTE still resolves");
     check(br.routesAdded == 1, "reparse: author-field ROUTE added");
   }
-
-  // ---- Inline ecmascript: scheme in url is still accepted as a source ----
   {
     const std::string urlXml =
         "<X3D profile=\"Interchange\" version=\"4.0\"><Scene>"
@@ -199,8 +175,6 @@ int main() {
             "author field present alongside url source");
     }
   }
-
-  // ---- Node-typed author fields: child elements, USE included ----
   {
     const std::string nodeXml =
         "<X3D profile=\"Immersive\" version=\"4.0\"><Scene>"

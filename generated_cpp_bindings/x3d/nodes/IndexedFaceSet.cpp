@@ -1,4 +1,3 @@
-// IndexedFaceSet.cpp
 #include "x3d/nodes/IndexedFaceSet.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// TriangleFanSet.cpp
 #include "x3d/nodes/TriangleFanSet.hpp"
 
 namespace x3d::nodes {

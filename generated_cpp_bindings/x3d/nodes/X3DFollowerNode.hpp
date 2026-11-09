@@ -1,4 +1,3 @@
-// X3DFollowerNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,86 +24,44 @@ using namespace x3d::core;
  */
 class X3DFollowerNode : public virtual X3DChildNode {
 public:
-  /**
-   * @brief Default constructor for X3DFollowerNode
-   */
   X3DFollowerNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DFollowerNode
-   */
   virtual ~X3DFollowerNode() = default;
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Followers"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of isActive. AccessType: outputOnly
+   * SFBool; access: outputOnly. Borrows the stored value.
    * @details
-   * @return const SFBool& The current value of isActive.
    */
   const SFBool &getIsActive() const { return _isActive; }
 
   /**
-   * @brief Emit an output value on isActive. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details
-   *          outputOnly fields have no author-facing setter; a node's behavior
-   *          or the runtime calls this to produce an output event. The event
-   *          cascade reaches it through the reflected field table so producing
-   *          outputs is node-agnostic.
-   * @param value The value to emit.
    */
   void emitIsActive(const SFBool &value) { _isActive = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DFollowerNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for isActive.
-   */
-
   SFBool _isActive{};
 };
 

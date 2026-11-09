@@ -13,6 +13,8 @@ related:
 
 # ADR-0022: Second ScriptEngine Backend (QuickJS) + Behavioral Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0022 amendment
+
 ## Status
 
 Accepted — implemented across the `feat/scriptengine-quickjs` branch (units U1–U4, 2026-06-22..23).
@@ -109,3 +111,11 @@ for a second implementation too).
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](0019-physics-seam.md) — the flag-gated
   isolated-backend precedent (Jolt) this build isolation mirrors; a candidate for the next GREEN row.
 - Design spec: `docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md`.
+
+## Amendment (2026-11-05)
+
+Optional backend defaults now use normal CMake variables within the SDK subtree
+instead of forcing values into the parent's cache. QuickJS's older CMake policy
+baseline needs `CMAKE_POLICY_DEFAULT_CMP0077=NEW` so its `option()` calls honor
+those values. The parent keeps its own `BUILD_SHARED_LIBS`, `ENABLE_INSTALL`,
+and `GENERATE_DEBUG_SYMBOLS` choices. Backend libraries remain static.

@@ -1,9 +1,9 @@
 #version 330 core
-// unlit.vert — PoC B4 unlit vertex shader for the topology!=Triangles OR
+// unlit.vert — Unlit vertex shader for the topology!=Triangles OR
 // !hasNormals shading path (lines, points, and any normal-less mesh). Positions
-// are in the geometry's LOCAL frame; uModel is the per-PATH world transform.
+// are in the geometry's local frame; uModel is the per-path world transform.
 // No normal attribute / no light uniforms are consulted — this program is the
-// explicit unlit selector the B4 consumer contract names. The per-vertex Color
+// unlit path for lines, points, and meshes without normals. The per-vertex Color
 // (aColor) is forwarded; the fragment shader picks vColor vs uBaseColor.
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal; // only the §18.4.8 generators read it.
@@ -40,12 +40,12 @@ vec3 skinPosition(vec3 bindPos) {
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
-// REQ-CLIP (§11.4.1): the item's enabled ClipPlanes in EYE space. The host
+// (§11.4.1): the item's enabled ClipPlanes in eye space. The host
 // enables GL_CLIP_DISTANCE0..n-1; a point with a*x + b*y + c*z + d < 0 is cut.
 uniform int uNumClipPlanes;
 uniform vec4 uClipPlane[6];
 out float gl_ClipDistance[6];
-// TXF-2/SEAM-LINEPOINT: §12.4.8 PointProperties. Point size = (A + B·d + C·d²)·
+// §12.4.8 PointProperties. Point size = (A + B·d + C·d²)·
 // scale clamped to [min,max] with d the eye-space distance; defaults (scale 1,
 // atten (1,0,0), min=max=1) reproduce the historic fixed size.
 uniform float uPointSizeScale;

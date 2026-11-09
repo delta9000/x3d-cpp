@@ -1,8 +1,8 @@
 // runtime/ext/ExtResolver.hpp
-// Factory for the ExternalGeometry EXTERNPROTO ProtoDeclaration + the install()
-// resolver seam. Namespace: x3d::runtime::ext.
+// Factories and opt-in EXTERNPROTO resolver for ExternalGeometry and the CAVE
+// sensors/composed RoomGroup. Namespace: x3d::runtime::ext.
 // Part of the runtime/ext/ quarantine (x3d_cpp_ext target, default OFF).
-// Core (x3d_cpp, sdk.hpp) MUST NEVER include this file.
+// Core (x3d_cpp, sdk.hpp) must never include this file.
 //
 // Usage:
 //   auto resolver = x3d::runtime::ext::install();  // or install(myBaseResolver)
@@ -18,6 +18,7 @@
 #define X3D_RUNTIME_EXT_RESOLVER_HPP
 
 #include "ExternalGeometry.hpp"     // x3d::runtime::ext::ExternalGeometry
+#include "CaveProtos.hpp"
 #include "X3DProto.hpp"             // ProtoDeclaration, ProtoField, IsConnection, ProtoBody
 #include "X3DParse.hpp"             // x3d::codec::localFileProtoResolver, ProtoDeclarationResolver
 #include "X3DProtoClone.hpp"        // explicit CloneContext
@@ -32,26 +33,8 @@ namespace x3d::runtime::ext {
 inline constexpr const char* kExternalGeometryUrn =
     "urn:x3d-cpp-gen:ext:ExternalGeometry";
 
-/// Build the ProtoDeclaration that backs ExternalGeometry instances.
-/// A fresh declaration for one resolver. Structure:
-///
-///   PROTO ExternalGeometry [
-///     initializeOnly MFString  url         []
-///     initializeOnly SFVec3f   bboxCenter  0 0 0
-///     initializeOnly SFVec3f   bboxSize    -1 -1 -1
-///     initializeOnly SFString  contentType ""
-///   ] {
-///     ExternalGeometry { url IS url; bboxCenter IS bboxCenter; ... }
-///   }
-///
-/// The IS connections are represented as entries in body.isConnections:
-///   { node=body_node, nodeField="url",         protoField="url" }
-///   { node=body_node, nodeField="bboxCenter",  protoField="bboxCenter" }
-///   { node=body_node, nodeField="bboxSize",    protoField="bboxSize" }
-///   { node=body_node, nodeField="contentType", protoField="contentType" }
-///
-/// expandInstance uses cloneMap[is.node.get()] to find the clone and forwards
-/// each fieldValue override through findField(clone, is.nodeField)->set().
+/// Return a fresh declaration for one resolver. The body wires interface fields
+/// through IS connections; its native node is cloned with resolver-local services.
 inline std::shared_ptr<x3d::runtime::ProtoDeclaration>
 makeExternalGeometryProto() {
     auto decl = std::make_shared<x3d::runtime::ProtoDeclaration>();
@@ -60,77 +43,48 @@ makeExternalGeometryProto() {
         return type == "ExternalGeometry" ? std::make_shared<ExternalGeometry>() : nullptr;
     };
 
-    // ── Interface fields ─────────────────────────────────────────────────
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "url";
-        f.type   = X3DFieldType::MFString;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(MFString{});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "bboxCenter";
-        f.type   = X3DFieldType::SFVec3f;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFVec3f{0.0f, 0.0f, 0.0f});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "bboxSize";
-        f.type   = X3DFieldType::SFVec3f;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFVec3f{-1.0f, -1.0f, -1.0f});
-        decl->interface.push_back(std::move(f));
-    }
-    {
-        x3d::runtime::ProtoField f;
-        f.name   = "contentType";
-        f.type   = X3DFieldType::SFString;
-        f.access = AccessType::InitializeOnly;
-        f.value  = std::any(SFString{});
-        decl->interface.push_back(std::move(f));
-    }
-
-    // ── Body: one ExternalGeometry node ─────────────────────────────────
     auto body_node = std::make_shared<ExternalGeometry>();
     decl->body.nodes.push_back(body_node);
+    for (const auto& info : body_node->fields()) {
+        if (info.access != AccessType::InitializeOnly) continue;
+        x3d::runtime::ProtoField f;
+        f.name   = info.x3dName;
+        f.type   = info.type;
+        f.access = info.access;
+        f.value  = info.get(*body_node);
+        decl->interface.push_back(std::move(f));
 
-    // ── IS connections: each interface field → the matching body field ──
-    // expandInstance uses body.isConnections to forward fieldValues from the
-    // ProtoInstance onto the cloned body node (cloneMap[body_node.get()]).
-    auto add_is = [&](const std::string& field) {
         x3d::runtime::IsConnection is;
-        is.node       = body_node;  // the original body node (cloneMap key)
-        is.nodeField  = field;
-        is.protoField = field;
+        is.node       = body_node;
+        is.nodeField  = info.x3dName;
+        is.protoField = info.x3dName;
         decl->body.isConnections.push_back(std::move(is));
-    };
-    add_is("url");
-    add_is("bboxCenter");
-    add_is("bboxSize");
-    add_is("contentType");
+    }
 
     return decl;
 }
 
-/// Returns a ProtoDeclarationResolver that intercepts the ExternalGeometry URN
-/// and returns the factory ProtoDeclaration; delegates everything else to `base`.
+/// Intercepts supported ext URNs and returns resolver-local declarations;
+/// delegates other URL lists to `base`. CAVE URNs carry a :1 version suffix.
 ///
 /// Resolver-local declaration and clone services; there is no global installation.
 inline x3d::codec::ProtoDeclarationResolver
 install(x3d::codec::ProtoDeclarationResolver base =
             x3d::codec::localFileProtoResolver) {
     auto decl = makeExternalGeometryProto();
+    auto tracked = makeTrackedDeviceSensorProto();
+    auto room = makeRoomFrameSensorProto();
+    auto group = makeRoomGroupProto();
 
-    return [base, decl](const std::vector<std::string>& urls,
+    return [base, decl, tracked, room, group](const std::vector<std::string>& urls,
                         const std::string& baseUrl)
         -> std::shared_ptr<x3d::runtime::ProtoDeclaration> {
         // Check if any url matches our URN.
         for (const auto& u : urls) {
             if (u == kExternalGeometryUrn) return decl;
+            if (u == kTrackedDeviceSensorUrn) return tracked;
+            if (u == kRoomFrameSensorUrn) return room;
+            if (u == kRoomGroupUrn) return group;
         }
         // Otherwise delegate to the base resolver (file-local or embedder override).
         if (base) return base(urls, baseUrl);

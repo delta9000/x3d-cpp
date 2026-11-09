@@ -5,7 +5,7 @@
 //
 // Uses the parseDocument front door: it sniffs "#VRML V2.0" -> Encoding::VRML97
 // -> Vrml97Reader -> expandScene, identical to the json_proto_test pattern.
-// This is unambiguous AND exercises the full sniff+dispatch path.
+// This is unambiguous and exercises the full sniff+dispatch path.
 #include "X3DParse.hpp"
 #include "x3d/core/X3DReflection.hpp"
 
@@ -30,7 +30,7 @@ static std::shared_ptr<X3DNode> firstRoot(const runtime::X3DDocument &doc) {
 // PROTO Ball [ field SFFloat r 2.0 ] { Sphere { radius IS r } }
 // Ball { r 7.0 }
 // After expansion the root node should be a Sphere with radius == 7.0f.
-// "field" is the VRML97 alias for initializeOnly; ClassicVrmlReader::accessTypeFromString
+// "field" is the VRML97 alias for initializeOnly; codec::accessTypeFromName
 // already handles it, so no reader change is required.
 static void vrml97ProtoExpandTest() {
   const char *wrl =

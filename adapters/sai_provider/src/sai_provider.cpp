@@ -9,6 +9,8 @@
 #include "x3d/nodes/X3DGeometryNode.hpp"
 #include "x3d/nodes/X3DMetadataObject.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
+#include "x3d/nodes/Inline.hpp"
+#include "x3d/nodes/Script.hpp"
 #include <cmath>
 #include <map>
 #include <limits>
@@ -109,17 +111,38 @@ bool supported_field(const X3DNode &n, const x3d::core::FieldInfo &f) {
   using T = x3d::core::X3DFieldType;
   if (f.x3dName == "metadata")
     return true;
-  if (n.nodeTypeName() == "Transform")
+  if (dynamic_cast<const x3d::nodes::Transform *>(&n) != nullptr)
     return f.x3dName == "children" || f.type == T::SFBool ||
            f.type == T::SFVec3f || f.type == T::SFRotation;
-  if (n.nodeTypeName() == "PositionInterpolator")
+  if (dynamic_cast<const x3d::nodes::PositionInterpolator *>(&n) != nullptr)
     return f.type == T::SFFloat || f.type == T::MFFloat ||
            f.type == T::SFVec3f || f.type == T::MFVec3f;
-  if (n.nodeTypeName() == "Shape")
+  if (dynamic_cast<const x3d::nodes::Shape *>(&n) != nullptr)
     return f.x3dName == "geometry";
-  if (n.nodeTypeName() == "Box")
+  if (dynamic_cast<const x3d::nodes::Box *>(&n) != nullptr)
     return f.x3dName == "size" || f.x3dName == "solid";
   return false;
+}
+// Adopted access is independent of the bounded creation whitelist.
+bool adopted_field(const x3d::core::FieldInfo &f) {
+  using T = x3d::core::X3DFieldType;
+  switch (f.type) {
+  case T::SFBool:
+  case T::SFFloat:
+  case T::SFDouble:
+  case T::SFTime:
+  case T::SFInt32:
+  case T::SFString:
+  case T::SFEnum:
+  case T::SFColor:
+  case T::SFVec3f:
+  case T::SFRotation:
+  case T::SFNode:
+  case T::MFNode:
+    return true;
+  default:
+    return false;
+  }
 }
 bool accepts_node(const X3DNode &owner, std::string_view field,
                   const std::shared_ptr<X3DNode> &child) {
@@ -128,10 +151,10 @@ bool accepts_node(const X3DNode &owner, std::string_view field,
   if (field == "metadata")
     return dynamic_cast<const x3d::nodes::X3DMetadataObject *>(child.get()) !=
            nullptr;
-  if (owner.nodeTypeName() == "Transform" && field == "children")
+  if (dynamic_cast<const x3d::nodes::Transform *>(&owner) != nullptr && field == "children")
     return dynamic_cast<const x3d::nodes::X3DChildNode *>(child.get()) !=
            nullptr;
-  if (owner.nodeTypeName() == "Shape" && field == "geometry")
+  if (dynamic_cast<const x3d::nodes::Shape *>(&owner) != nullptr && field == "geometry")
     return dynamic_cast<const x3d::nodes::X3DGeometryNode *>(child.get()) !=
            nullptr;
   return false;
@@ -141,7 +164,11 @@ std::any scalar_native(const sai::value &v) {
   return std::visit(
       [](const auto &p) -> std::any {
         using T = std::decay_t<decltype(p)>;
-        if constexpr (std::is_same_v<T, sai::vec3f>)
+        if constexpr (std::is_same_v<T, sai::color3f>)
+          return x3d::core::SFColor{p.r, p.g, p.b};
+        else if constexpr (std::is_same_v<T, sai::time_value>)
+          return p.seconds;
+        else if constexpr (std::is_same_v<T, sai::vec3f>)
           return x3d::core::SFVec3f{p.x, p.y, p.z};
         else if constexpr (std::is_same_v<T, sai::rotation>)
           return x3d::core::SFRotation{p.x, p.y, p.z, p.angle};
@@ -153,6 +180,9 @@ std::any scalar_native(const sai::value &v) {
           return out;
         } else if constexpr (std::is_same_v<T, bool> ||
                              std::is_same_v<T, float> ||
+                             std::is_same_v<T, double> ||
+                             std::is_same_v<T, std::int32_t> ||
+                             std::is_same_v<T, std::string> ||
                              std::is_same_v<T, std::vector<float>>)
           return p;
         else
@@ -162,6 +192,8 @@ std::any scalar_native(const sai::value &v) {
       v);
 }
 sai::value scalar_portable(const x3d::core::FieldInfo &f, const X3DNode &n) {
+  if (f.type == x3d::core::X3DFieldType::SFEnum)
+    return f.getEnumString(n);
   const auto v = f.get(n);
   using T = x3d::core::X3DFieldType;
   switch (f.type) {
@@ -169,6 +201,18 @@ sai::value scalar_portable(const x3d::core::FieldInfo &f, const X3DNode &n) {
     return std::any_cast<bool>(v);
   case T::SFFloat:
     return std::any_cast<float>(v);
+  case T::SFDouble:
+    return std::any_cast<double>(v);
+  case T::SFTime:
+    return sai::time_value{std::any_cast<double>(v)};
+  case T::SFInt32:
+    return std::any_cast<std::int32_t>(v);
+  case T::SFString:
+    return std::any_cast<std::string>(v);
+  case T::SFColor: {
+    const auto c = std::any_cast<x3d::core::SFColor>(v);
+    return sai::color3f{c.r, c.g, c.b};
+  }
   case T::MFFloat:
     return std::any_cast<x3d::core::MFFloat>(v);
   case T::SFVec3f:
@@ -190,6 +234,11 @@ sai::value scalar_portable(const x3d::core::FieldInfo &f, const X3DNode &n) {
 } // namespace
 
 namespace detail {
+struct host_state {
+  const p::service *owner = nullptr;
+  p::scene source;
+  RuntimeSession *session = nullptr;
+};
 struct presentation_state {
   const p::service *owner = nullptr; // Compared only; never dereferenced.
   p::scene source;
@@ -199,6 +248,7 @@ struct presentation_state {
   using mesh_ref = x3d::runtime::extract::MeshRef;
   std::map<mesh_ref, std::uint64_t, std::owner_less<mesh_ref>> meshes;
   std::uint64_t next_placement = 1, next_mesh = 1;
+  std::uint64_t next_material = 1;
 
   static std::uint64_t mint(std::uint64_t &next) {
     if (next == std::numeric_limits<std::uint64_t>::max())
@@ -218,6 +268,15 @@ struct presentation_state {
     decltype(placements) next_placements;
     decltype(meshes) next_meshes;
     auto placement_counter = next_placement, mesh_counter = next_mesh;
+    auto material_counter = next_material;
+    std::map<std::uint64_t, std::uint64_t> previous_materials;
+    if (current)
+      for (const auto &item : current->items)
+        previous_materials.emplace(item.placement_key, item.material_revision);
+    std::set<x3d::runtime::extract::RenderItemId> material_dirty(
+        delta.added.begin(), delta.added.end());
+    material_dirty.insert(delta.updatedMaterial.begin(),
+                          delta.updatedMaterial.end());
     auto frame = std::make_shared<presentation_frame>();
     frame->source = source;
     frame->native_tick = session.context().tickGeneration();
@@ -245,8 +304,13 @@ struct presentation_state {
             ? mint(mesh_counter) : previous_mesh->second;
         mesh = next_meshes.emplace(item.mesh, key).first;
       }
+      const auto old_material = previous_materials.find(placement);
+      const auto revision =
+          old_material == previous_materials.end() || material_dirty.count(id)
+              ? mint(material_counter)
+              : old_material->second;
       frame->items.push_back({placement, mesh->second, item.worldTransform,
-                              item.mesh});
+                             item.mesh, item.material, revision});
     }
     // Commit only a complete projection. These maps contain current objects,
     // never all historical paths or mesh owners. Older frames belong to hosts.
@@ -255,6 +319,7 @@ struct presentation_state {
     meshes = std::move(next_meshes);
     next_placement = placement_counter;
     next_mesh = mesh_counter;
+    next_material = material_counter;
     current = std::move(frame);
     return {};
   }
@@ -265,13 +330,145 @@ struct backend::storage {
   struct fixture {
     std::shared_ptr<X3DDocument> setup = std::make_shared<X3DDocument>();
     std::unique_ptr<RuntimeSession> session;
-    std::map<std::uint64_t, std::shared_ptr<X3DNode>> nodes;
-    std::unordered_map<const X3DNode *, std::uint64_t> identities;
-    std::uint64_t next_node = 1;
-    native_evidence evidence;
+    // Adopted graphs register lazily: native code (a Script ROUTE into
+    // addChildren, host mutation) can reach nodes after adoption. Discovery
+    // through a const read assigns them identities, so they stay mutable.
+    mutable std::map<std::uint64_t, std::shared_ptr<X3DNode>> nodes;
+    mutable std::unordered_map<const X3DNode *, std::uint64_t> identities;
+    mutable std::uint64_t next_node = 1;
     std::shared_ptr<detail::presentation_state> presentation;
-    std::vector<address> retained_seeds;
-    std::size_t next_retained_seed = 0;
+    bool adopted = false;
+    std::shared_ptr<detail::host_state> host;
+    // Opaque nodes keep their real type (or PROTO name) for type_name; the
+    // reason names the unsupported boundary in fields/ROUTE refusals.
+    struct opacity {
+      std::string type, reason;
+    };
+    mutable std::unordered_map<const X3DNode *, opacity> opaque;
+    bool supports(const X3DNode &node,
+                  const x3d::core::FieldInfo &field) const {
+      return !opaque.contains(&node) &&
+             (adopted ? adopted_field(field) : supported_field(node, field));
+    }
+    std::string proto_name(const X3DNode *node) const {
+      if (const auto found = scene().expandedSources.find(
+              const_cast<X3DNode *>(node));
+          found != scene().expandedSources.end() && !found->second.name.empty())
+        return found->second.name;
+      if (const auto *placed = scene().instanceAtPlacement(node);
+          placed && !placed->name.empty())
+        return placed->name;
+      if (const auto *wrapper =
+              dynamic_cast<const x3d::runtime::ProtoInstanceTemplate *>(node);
+          wrapper && !wrapper->instance.name.empty())
+        return wrapper->instance.name;
+      return node->nodeTypeName();
+    }
+    void register_graph(const std::shared_ptr<X3DNode> &node) const {
+      if (!node || identities.contains(node.get()))
+        return;
+      const auto id = next_node++;
+      identities.emplace(node.get(), id);
+      nodes.emplace(id, node);
+      if (scene().expandedSources.contains(node.get()) ||
+          scene().instanceAtPlacement(node.get()) ||
+          dynamic_cast<const x3d::runtime::ProtoInstanceTemplate *>(
+              node.get()))
+        opaque.emplace(node.get(),
+                       opacity{proto_name(node.get()), "PROTO instance"});
+      else if (scene().expandedInlines.contains(node.get()) ||
+               dynamic_cast<const x3d::nodes::Inline *>(node.get()) != nullptr)
+        opaque.emplace(node.get(),
+                       opacity{node->nodeTypeName(), "Inline context"});
+      else if (dynamic_cast<const x3d::nodes::Script *>(node.get()) != nullptr)
+        opaque.emplace(node.get(),
+                       opacity{node->nodeTypeName(), "Script fields"});
+      if (opaque.contains(node.get()))
+        return;
+      for (const auto &field : node->fields()) {
+        if (!field.isNode() || !field.get)
+          continue;
+        const auto value = field.get(*node);
+        if (field.type == x3d::core::X3DFieldType::SFNode)
+          register_graph(std::any_cast<x3d::core::SFNode>(value));
+        else
+          for (const auto &child : std::any_cast<x3d::core::MFNode>(value))
+            register_graph(child);
+      }
+    }
+    // Validate generated lenient setters on disposable native storage. This
+    // never mutates the authoritative graph or invokes its attached handlers.
+    result<std::any> checked_value(const address &a,
+                                   const sai::value &value) const {
+      const auto &node = *nodes.at(a.node);
+      const auto *field = field_info(node, a.field);
+      if (!field || !supports(node, *field))
+        return backend::error(
+            error_code::unsupported_operation, "native.ingress",
+            "unsupported adopted field " + node.nodeTypeName() + "." + a.field);
+      if (field->isNode())
+        return backend::error(
+            error_code::unsupported_operation, "native.ingress",
+            "adopted node-valued writes are unsupported: " + a.field);
+      if (field->access != x3d::core::AccessType::InputOnly &&
+          field->access != x3d::core::AccessType::InputOutput)
+        return backend::error(error_code::access_denied, "native.ingress",
+                              "adopted field is fixed or outputOnly: " +
+                                  a.field);
+      const bool finite = std::visit(
+          [](const auto &v) {
+            using T = std::decay_t<decltype(v)>;
+            if constexpr (std::is_floating_point_v<T>)
+              return std::isfinite(v);
+            else if constexpr (std::is_same_v<T, sai::time_value>)
+              return std::isfinite(v.seconds);
+            else if constexpr (std::is_same_v<T, sai::color3f>)
+              return std::isfinite(v.r) && std::isfinite(v.g) &&
+                     std::isfinite(v.b);
+            else if constexpr (std::is_same_v<T, sai::vec3f>)
+              return std::isfinite(v.x) && std::isfinite(v.y) &&
+                     std::isfinite(v.z);
+            else if constexpr (std::is_same_v<T, sai::rotation>)
+              return std::isfinite(v.x) && std::isfinite(v.y) &&
+                     std::isfinite(v.z) && std::isfinite(v.angle);
+            else
+              return true;
+          },
+          value);
+      if (!finite)
+        return backend::error(error_code::invalid_value, "native.ingress",
+                              "nonfinite value for " + a.field);
+      auto candidate = native_value(value);
+      auto scratch = x3d::nodes::createX3DNode(node.nodeTypeName());
+      if (!scratch)
+        return backend::error(
+            error_code::unsupported_operation, "native.ingress",
+            "cannot validate custom node " + node.nodeTypeName());
+      if (field->type == x3d::core::X3DFieldType::SFEnum) {
+        const auto &token = std::get<std::string>(value);
+        if (!field->setEnumString || !field->getEnumString || !field->get)
+          return backend::error(error_code::unsupported_operation,
+                                "native.ingress",
+                                "enum has no token service: " + a.field);
+        field->setEnumString(*scratch, token);
+        if (field->getEnumString(*scratch) != token)
+          return backend::error(error_code::invalid_value, "native.ingress",
+                                "unknown enum token for " + a.field);
+        candidate = field->get(*scratch);
+      } else {
+        if (!field->set)
+          return backend::error(error_code::access_denied, "native.ingress",
+                                "field has no native setter: " + a.field);
+        field->set(*scratch, candidate);
+      }
+      std::vector<x3d::core::RangeDiagnostic> diagnostics;
+      scratch->validateRanges(diagnostics);
+      for (const auto &diagnostic : diagnostics)
+        if (diagnostic.fieldName == a.field)
+          return backend::error(error_code::invalid_value, "native.ingress",
+                                diagnostic.message());
+      return candidate;
+    }
     Scene &scene() { return session ? session->scene() : setup->scene; }
     const Scene &scene() const {
       return session ? session->scene() : setup->scene;
@@ -280,7 +477,13 @@ struct backend::storage {
       return session ? session->document() : *setup;
     }
     result<std::uint64_t> identity(const std::shared_ptr<X3DNode> &n) const {
-      const auto i = identities.find(n.get());
+      auto i = identities.find(n.get());
+      if (i == identities.end() && adopted && n) {
+        // Reached through a supported adopted field or root/DEF list after
+        // adoption: register it (and its non-opaque subgraph) on demand.
+        register_graph(n);
+        i = identities.find(n.get());
+      }
       if (i == identities.end())
         return backend::error(error_code::invalid_context, "native.identity",
                               "native graph contains a foreign node");
@@ -381,6 +584,7 @@ struct backend::storage {
     }
   };
   std::map<std::uint64_t, std::unique_ptr<fixture>> scenes;
+  std::unique_ptr<RuntimeSession> adoption;
   std::shared_ptr<detail::presentation_state> *creation_capture = nullptr;
   std::uint64_t next_scene = 1;
   std::thread::id thread = std::this_thread::get_id();
@@ -390,26 +594,66 @@ backend::~backend() = default;
 p::capabilities backend::supported() const {
   using S = p::service_id;
   using V = value_kind;
-  return {"x3d-cpp native",
-          1,
-          {{S::scene_authoring},
-           {S::host_turns},
-           {S::notifications},
-           {S::node_values},
-           {S::indexed_writes},
-           {S::user_data},
-           {S::scene_units},
-           {S::scene_metadata}},
-          {{"Transform", "Grouping", 1},
-           {"PositionInterpolator", "Interpolation", 1},
-           {"Shape", "Shape", 1},
-           {"Box", "Geometry3D", 1}},
-          {V::sf_bool, V::sf_float, V::sf_vec3f, V::sf_rotation, V::sf_node,
-           V::mf_node, V::mf_float, V::mf_vec3f}};
+  p::capabilities caps{"x3d-cpp native",
+                       1,
+                       {{S::scene_authoring},
+                        {S::host_turns},
+                        {S::notifications},
+                        {S::node_values},
+                        {S::indexed_writes},
+                        {S::user_data},
+                        {S::scene_units},
+                        {S::scene_metadata},
+                        {S::live_routes}},
+                       {{"Transform", "Grouping", 1},
+                        {"PositionInterpolator", "Interpolation", 1},
+                        {"Shape", "Shape", 1},
+                        {"Box", "Geometry3D", 1}},
+                       {V::sf_bool, V::sf_float, V::sf_vec3f, V::sf_rotation,
+                        V::sf_node, V::mf_node, V::mf_float, V::mf_vec3f,
+                        V::sf_color, V::sf_double, V::sf_time, V::sf_int32,
+                        V::sf_string}};
+  // scene_metadata stays advertised: only the adopted scene refuses its META
+  // projection (do_metadata), so other scenes in the same service keep it.
+  return caps;
 }
 result<std::uint64_t> backend::do_create_scene() {
   auto id = state_->next_scene++;
   auto fixture = std::make_unique<storage::fixture>();
+  if (state_->adoption) {
+    fixture->session = std::move(state_->adoption);
+    fixture->setup.reset();
+    fixture->adopted = true;
+    fixture->host = std::make_shared<detail::host_state>();
+    fixture->host->session = fixture->session.get();
+    for (const auto &import : fixture->scene().imports) {
+      const auto name = import.as.empty() ? import.importedDEF : import.as;
+      const auto found = fixture->scene().defs.find(name);
+      if (found != fixture->scene().defs.end() && found->second)
+        fixture->opaque.emplace(
+            found->second.get(),
+            storage::fixture::opacity{found->second->nodeTypeName(),
+                                      "IMPORT endpoint"});
+    }
+    for (const auto &root : fixture->scene().rootNodes) {
+      if (!root)
+        return error(error_code::invalid_value, "native.adopt_session",
+                     "NULL root cannot be exposed through SAI");
+      fixture->register_graph(root);
+    }
+    for (const auto &[name, node] : fixture->scene().defs) {
+      if (!node)
+        return error(error_code::invalid_value, "native.adopt_session",
+                     "NULL DEF binding cannot be exposed through SAI: " + name);
+      fixture->register_graph(node);
+    }
+    // Root ROUTEs may retain detached direct endpoints. Internal PROTO/Inline
+    // endpoints deliberately stay opaque and are never walked here.
+    for (const auto &route : fixture->scene().routes) {
+      fixture->register_graph(route.from.lock());
+      fixture->register_graph(route.to.lock());
+    }
+  }
   if (state_->creation_capture) {
     fixture->presentation = std::make_shared<detail::presentation_state>();
     *state_->creation_capture = fixture->presentation;
@@ -443,6 +687,10 @@ result<void> backend::do_declare_unit(std::uint64_t scene,
 }
 result<std::vector<metadata_entry>>
 backend::do_metadata(std::uint64_t scene) const {
+  if (state_->scenes.at(scene)->adopted)
+    return error(
+        error_code::unsupported_operation, "native.metadata",
+        "adopted META projection is unsupported; native document is retained");
   const auto &metadata = state_->scenes.at(scene)->document().head.meta;
   std::vector<metadata_entry> out;
   out.reserve(metadata.size());
@@ -530,21 +778,54 @@ backend::do_roots(std::uint64_t scene) const {
 result<std::uint64_t> backend::do_named(std::uint64_t scene,
                                         std::string_view name) const {
   const auto &f = *state_->scenes.at(scene);
-  auto n = f.scene().resolve(std::string(name));
+  for (const auto &import : f.scene().imports)
+    if (name == (import.as.empty() ? import.importedDEF : import.as))
+      return error(error_code::unsupported_operation, "native.named",
+                   "IMPORT alias is opaque: " + std::string(name));
+  const auto found = f.scene().defs.find(std::string(name));
+  auto n = found == f.scene().defs.end() ? nullptr : found->second;
   if (!n)
     return error(error_code::unknown_node, "native.named", "unknown DEF name");
   return f.identity(n);
 }
+result<std::vector<backend::name_binding>>
+backend::do_named_nodes(std::uint64_t scene) const {
+  const auto &f = *state_->scenes.at(scene);
+  std::vector<name_binding> out;
+  for (const auto &[name, node] : f.scene().defs) {
+    if (f.adopted &&
+        std::any_of(f.scene().imports.begin(), f.scene().imports.end(),
+                    [&](const auto &import) {
+                      return name == (import.as.empty() ? import.importedDEF
+                                                        : import.as);
+                    }))
+      continue;
+    auto id = f.identity(node);
+    if (!id)
+      return failure(id.error());
+    out.push_back({name, *id});
+  }
+  return out;
+}
 result<std::string> backend::do_type_name(const address &a) const {
-  return state_->scenes.at(a.scene)->nodes.at(a.node)->nodeTypeName();
+  const auto &f = *state_->scenes.at(a.scene);
+  const auto &node = f.nodes.at(a.node);
+  if (const auto opaque = f.opaque.find(node.get()); opaque != f.opaque.end())
+    return opaque->second.type;
+  return node->nodeTypeName();
 }
 result<std::vector<p::field_info>> backend::do_fields(const address &a) const {
-  const auto &n = *state_->scenes.at(a.scene)->nodes.at(a.node);
+  const auto &fixture = *state_->scenes.at(a.scene);
+  const auto &n = *fixture.nodes.at(a.node);
+  if (const auto opaque = fixture.opaque.find(&n);
+      opaque != fixture.opaque.end())
+    return error(error_code::unsupported_operation, "native.fields",
+                 opaque->second.reason + " is opaque to SAI");
   std::vector<p::field_info> out;
   for (const auto &f : n.fields())
     if (!document_syntax(f.x3dName))
       out.push_back(
-          {f.x3dName, kind(f.type), access(f.access), supported_field(n, f)});
+          {f.x3dName, kind(f.type), access(f.access), fixture.supports(n, f)});
   return out;
 }
 result<backend::backend_value> backend::do_read(const address &a) const {
@@ -554,7 +835,7 @@ result<backend::backend_value> backend::do_read(const address &a) const {
   if (!f)
     return error(error_code::unknown_field, "native.read",
                  "unknown native field");
-  if (!supported_field(n, *f))
+  if (!fixture.supports(n, *f))
     return error(error_code::unsupported_field_type, "native.read",
                  "field outside provider capabilities");
   if (!f->get)
@@ -562,9 +843,11 @@ result<backend::backend_value> backend::do_read(const address &a) const {
                  "native field has no getter");
   if (f->type == x3d::core::X3DFieldType::SFNode ||
       f->type == x3d::core::X3DFieldType::MFNode) {
-    auto graph = fixture.graph();
-    if (!graph)
-      return failure(graph.error());
+    if (!fixture.adopted) {
+      auto graph = fixture.graph();
+      if (!graph)
+        return failure(graph.error());
+    }
     auto v = f->get(n);
     if (f->type == x3d::core::X3DFieldType::SFNode) {
       auto node = std::any_cast<x3d::core::SFNode>(v);
@@ -678,9 +961,104 @@ result<void> backend::do_add_route(const address &from, const address &to) {
   return {};
 }
 
+result<void> backend::do_check_live_route(const address &from,
+                                          const address &to) const {
+  const auto fail = [](error_code code, std::string_view message) {
+    return error(code, "native.live_route", message);
+  };
+  if (from.scene != to.scene || from.context != to.context || from.context != 1)
+    return fail(error_code::invalid_context, "ROUTE crosses lexical context");
+  const auto &f = *state_->scenes.at(from.scene);
+  if (!f.session)
+    return fail(error_code::access_denied,
+                "live ROUTE requires an active session");
+  const auto source = f.nodes.find(from.node), sink = f.nodes.find(to.node);
+  if (source == f.nodes.end() || sink == f.nodes.end())
+    return fail(error_code::unknown_node, "unknown ROUTE endpoint");
+  for (auto *node : {source->second.get(), sink->second.get()}) {
+    if (const auto opaque = f.opaque.find(node); opaque != f.opaque.end())
+      return fail(error_code::unsupported_operation,
+                  opaque->second.reason + " ROUTE redirection is unsupported");
+    if (f.scene().expandedSources.contains(node) ||
+        f.scene().protoRedirects.contains(node) ||
+        f.scene().instanceAtPlacement(node))
+      return fail(error_code::unsupported_operation,
+                  "PROTO interface ROUTE redirection is unsupported");
+  }
+  const auto *output = field_info(*source->second, from.field);
+  const auto *input = field_info(*sink->second, to.field);
+  using A = x3d::core::AccessType;
+  if (!output || !input || !f.supports(*source->second, *output) ||
+      !f.supports(*sink->second, *input))
+    return fail(error_code::unsupported_operation,
+                "unsupported ROUTE endpoint field");
+  // Live node-valued ROUTEs would bypass the containment/cycle preflight that
+  // admitted writes get (bounded) or the adopted node-write refusal.
+  if (input->isNode())
+    return fail(error_code::unsupported_operation,
+                "live node-valued ROUTE writes are unsupported");
+  // Native kinds are stricter than portable ones: SFEnum and SFString share
+  // sf_string, but a native ROUTE needs the exact field type.
+  if (output->type != input->type ||
+      (output->access != A::OutputOnly && output->access != A::InputOutput) ||
+      (input->access != A::InputOnly && input->access != A::InputOutput))
+    return fail(error_code::invalid_route,
+                "ROUTE requires exact native kind and compatible direction");
+  return {};
+}
+
+backend::backend_result backend::do_add_live_route(const address &from,
+                                                   const address &to) {
+  const auto fail = [](error_code code,
+                       std::string_view message) -> backend_result {
+    return tl::unexpected{
+        backend_failure{error(code, "native.live_route", message).value(),
+                        p::failure_effect::none}};
+  };
+  // Admission ran the same check; repeat it, since the graph may have changed.
+  if (auto ok = do_check_live_route(from, to); !ok)
+    return tl::unexpected{backend_failure{ok.error(), p::failure_effect::none}};
+  auto &f = *state_->scenes.at(from.scene);
+  const auto &source = f.nodes.at(from.node), &sink = f.nodes.at(to.node);
+  const x3d::runtime::FieldAddress native_from{source.get(), from.field};
+  const x3d::runtime::FieldAddress native_to{sink.get(), to.field};
+  auto &context = f.session->context();
+  const auto &sinks = context.graph().sinks(native_from);
+  // ISO 19775-1 4.4.8.2: a redundant ROUTE is ignored. Success, no effect.
+  if (std::find(sinks.begin(), sinks.end(), native_to) != sinks.end())
+    return {};
+  // Prepare retained document storage before touching executable state. Native
+  // addRoute appends one edge or throws before that edge is present.
+  auto added = backend::do_add_route(from, to);
+  if (!added)
+    return tl::unexpected{
+        backend_failure{added.error(), p::failure_effect::none}};
+  try {
+    context.addRoute(native_from, native_to);
+  } catch (...) {
+    f.scene().routes.pop_back();
+    throw;
+  }
+  const auto &installed = context.graph().sinks(native_from);
+  if (std::find(installed.begin(), installed.end(), native_to) ==
+      installed.end()) {
+    f.scene().routes.pop_back();
+    return fail(error_code::invalid_context, "native endpoint was detached");
+  }
+  return {};
+}
+
 result<void> backend::do_validate_configuration(
     std::uint64_t scene, const std::vector<admitted_write> &writes) const {
   const auto &f = *state_->scenes.at(scene);
+  if (f.adopted) {
+    for (const auto &write : writes) {
+      auto checked = f.checked_value(write.target, write.value);
+      if (!checked)
+        return failure(checked.error());
+    }
+    return {};
+  }
   auto graph = f.graph(nullptr, nullptr, &writes);
   if (!graph)
     return failure(graph.error());
@@ -757,27 +1135,36 @@ result<void> backend::do_validate_configuration(
 }
 result<void> backend::do_activate(std::uint64_t scene) {
   auto &f = *state_->scenes.at(scene);
-  x3d::runtime::SessionOptions options;
-  options.standardRuntime = false;
-  f.session = RuntimeSession::create(std::move(*f.setup), options);
-  f.setup.reset();
-  // The bounded backend supports interpolation behavior only. Register the
-  // real native systems over every owned node, including detached nodes; root
-  // occurrence lists remain unmodified. The native context owns these systems.
-  for (auto &system : x3d::runtime::makeInterpolatorSystems()) {
-    for (const auto &[id, node] : f.nodes)
-      system->attach(node.get(), f.session->context());
-    f.session->context().addSystem(std::move(system));
+  if (!f.adopted) {
+    x3d::runtime::SessionOptions options;
+    options.standardRuntime = false;
+    f.session = RuntimeSession::create(std::move(*f.setup), options);
+    f.setup.reset();
+    // The bounded backend supports interpolation behavior only. Register the
+    // real native systems over every owned node, including detached nodes; root
+    // occurrence lists remain unmodified. The native context owns these
+    // systems.
+    std::vector<std::shared_ptr<X3DNode>> owned;
+    owned.reserve(f.nodes.size());
+    for (const auto &[id, node] : f.nodes) owned.push_back(node);
+    f.session->context().retainNodes(owned);
+    for (auto &system : x3d::runtime::makeInterpolatorSystems()) {
+      for (const auto &[id, node] : f.nodes)
+        system->attach(node.get(), f.session->context());
+      f.session->context().addSystem(std::move(system));
+    }
   }
-  if (!f.session->routes().ok())
+  if (!f.adopted && !f.session->routes().ok())
     return error(error_code::invalid_route, "native.activate",
                  "native ROUTE bridge rejected an admitted route");
-  f.evidence.routes = f.session->routes().routesAdded;
-  const auto initial = f.session->fullSnapshot();
-  f.evidence.snapshot_items = initial.added.size();
-  if (f.presentation) {
-    auto captured = f.presentation->capture(*f.session, f.identities, initial, std::nullopt);
-    if (!captured) return failure(captured.error());
+  if (!f.adopted) {
+    const auto initial = f.session->fullSnapshot();
+    if (f.presentation) {
+      auto captured = f.presentation->capture(*f.session, f.identities, initial,
+                                              std::nullopt);
+      if (!captured)
+        return failure(captured.error());
+    }
   }
   f.session->context().addFieldWriteListener(
       [this, scene](const x3d::runtime::FieldAddress &a) {
@@ -786,30 +1173,17 @@ result<void> backend::do_activate(std::uint64_t scene) {
         if (id == f.identities.end())
           return;
         const auto *info = field_info(*a.node, a.field);
-        if (info && info->access == x3d::core::AccessType::InputOnly)
-          ++f.evidence.input_occurrences;
         const auto publish = [&](const address &source) {
+          // Nobody observes most native writes; skip the read and projection.
+          if (!observed(source))
+            return;
           auto value = do_read(source);
           if (!value)
             throw std::runtime_error(value.error().message);
           record_event(source, std::move(*value));
         };
-        if (f.next_retained_seed < f.retained_seeds.size()) {
-          const auto &expected = f.retained_seeds[f.next_retained_seed];
-          if (expected.node != id->second || expected.field != a.field)
-            throw std::runtime_error("native retained seed prefix was interrupted");
-          if (++f.next_retained_seed != f.retained_seeds.size())
-            return;
-          // Only the admitted inputOutput seed prefix is buffered. Its final
-          // graph was preflighted as a whole, so an intermediate graph must
-          // not be validated or published before all seeds are installed.
-          for (const auto &source : f.retained_seeds)
-            publish(source);
-          f.retained_seeds.clear();
-          f.next_retained_seed = 0;
-          return;
-        }
-        if (info && supported_field(*a.node, *info) && info->get)
+        if (info && f.supports(*a.node, *info) && info->get &&
+            info->access != x3d::core::AccessType::InputOnly)
           publish({scene, 1, id->second, info->x3dName});
       });
   return {};
@@ -818,65 +1192,36 @@ backend::backend_result
 backend::do_turn(std::uint64_t scene, event_time time,
                  const std::vector<admitted_write> &writes) {
   auto &f = *state_->scenes.at(scene);
+  std::vector<x3d::runtime::X3DExecutionContext::RetainedInput> ingress;
   std::vector<std::any> values;
   values.reserve(writes.size());
-  for (const auto &w : writes)
-    values.push_back(f.native_value(w.value));
-  f.evidence.input_occurrences = 0;
-  f.retained_seeds.clear();
-  f.next_retained_seed = 0;
-  // Retained inputOutput state is staged before inputOnly behavior. Preserve
-  // occurrence order within each group, in one native tick and loop-guard
-  // scope. No time perturbation or per-input reset is introduced here.
-  // EventCascade delivers these direct seeds FIFO before appended ROUTEs and
-  // outputs. This bounded backend installs only inputOnly interpolation
-  // handlers; retained writes classify dirtiness without evaluating the graph.
-  // The listener checks that exact prefix, then resumes per-occurrence reads.
-  for (bool retained : {true, false})
-    for (std::size_t i = 0; i < writes.size(); ++i) {
-      const auto &a = writes[i].target;
-      const auto *info = field_info(*f.nodes.at(a.node), a.field);
-      const bool stateful =
-          info && info->access == x3d::core::AccessType::InputOutput;
-      if (stateful == retained) {
-        if (stateful)
-          f.retained_seeds.push_back(a);
-        f.session->context().postEvent(f.nodes.at(a.node).get(), a.field,
-                                       std::move(values[i]));
-      }
-    }
-  f.session->tick(time.seconds);
-  if (!f.retained_seeds.empty())
-    throw std::runtime_error("native retained seed prefix was not delivered");
-  const auto delta = f.session->delta();
-  auto &e = f.evidence;
-  e.tick = f.session->context().tickGeneration();
-  e.host_time = f.session->context().now();
-  if (auto t = std::dynamic_pointer_cast<x3d::nodes::Transform>(
-          f.scene().resolve("Transform"))) {
-    e.translation = portable(t->getTranslation());
-    e.translation_authored =
-        f.scene().authoredScalarFields.contains(t, "translation");
-    const auto world = f.session->context().worldTransform(t.get());
-    e.world_translation = {world.m[12], world.m[13], world.m[14]};
+  for (const auto &write : writes) {
+    const auto &a = write.target;
+    auto value = f.adopted ? f.checked_value(a, write.value)
+                           : result<std::any>{f.native_value(write.value)};
+    if (!value)
+      return tl::unexpected<backend_failure>{
+          backend_failure{value.error(), p::failure_effect::none}};
+    values.push_back(std::move(*value));
   }
-  if (auto i = std::dynamic_pointer_cast<x3d::nodes::PositionInterpolator>(
-          f.scene().resolve("Interpolator"))) {
-    e.interpolated = portable(i->getValue_changed());
-    e.key_authored = f.scene().authoredScalarFields.contains(i, "key");
-    e.key_value_authored =
-        f.scene().authoredScalarFields.contains(i, "keyValue");
+  // Retained inputOutput writes are installed as one batch before systems and
+  // inputOnly behavior; inputOnly occurrences keep their order.
+  for (std::size_t i = 0; i < writes.size(); ++i) {
+    const auto &a = writes[i].target;
+    const auto *info = field_info(*f.nodes.at(a.node), a.field);
+    if (info && info->access == x3d::core::AccessType::InputOutput)
+      ingress.push_back(
+          {{f.nodes.at(a.node).get(), a.field}, std::move(values[i])});
+    else
+      f.session->context().postEvent(f.nodes.at(a.node).get(), a.field,
+                                     std::move(values[i]));
   }
-  e.added = delta.added.size();
-  e.removed = delta.removed.size();
-  e.transformed = delta.updatedTransform.size();
-  e.geometry = delta.updatedGeometry.size();
-  e.material = delta.updatedMaterial.size();
-  e.rendered_translations.clear();
-  for (auto id : delta.updatedTransform) {
-    const auto &m = f.session->extractor().item(id).worldTransform.m;
-    e.rendered_translations.push_back({m[12], m[13], m[14]});
-  }
+  // RuntimeSession::tick also drains deferred Inline diagnostics into
+  // document().inlineWarnings; calling the context directly would drop them.
+  f.session->tick(time.seconds, ingress);
+  // In adoption mode the host exclusively owns the extraction cursor.
+  const auto delta =
+      f.adopted ? x3d::runtime::extract::RenderDelta{} : f.session->delta();
   if (f.presentation) {
     auto captured = f.presentation->capture(*f.session, f.identities, delta, time);
     if (!captured)
@@ -884,11 +1229,6 @@ backend::do_turn(std::uint64_t scene, event_time time,
           backend_failure{captured.error(), p::failure_effect::partial_or_unknown}};
   }
   return {};
-}
-backend::native_evidence backend::inspect(std::uint64_t scene) const {
-  if (std::this_thread::get_id() != state_->thread)
-    throw std::logic_error("native inspection is owner-thread-affine");
-  return state_->scenes.at(scene)->evidence;
 }
 result<std::shared_ptr<Scene>>
 backend::native_scene(std::uint64_t scene) const {
@@ -919,6 +1259,33 @@ result<std::unique_ptr<p::service>> make_service(p::resource_limits limits) {
 }
 
 namespace detail {
+struct adoption_access {
+  static result<adopted_scene> create(std::unique_ptr<RuntimeSession> session,
+                                      p::resource_limits limits) {
+    if (!session || session->context().tickGeneration() != 0 ||
+        !session->context().callbacksIdle())
+      return failure(sai_error{error_code::invalid_value,
+                               "native.adopt_session",
+                               "adoption requires a quiescent non-null session "
+                               "that has not ticked"});
+    auto engine = std::make_unique<backend>();
+    auto &native = *engine;
+    native.state_->adoption = std::move(session);
+    auto service = std::make_unique<p::service>(std::move(engine), limits);
+    auto scene = service->create_scene();
+    if (!scene)
+      return failure(scene.error());
+    auto &fixture = *native.state_->scenes.begin()->second;
+    fixture.host->owner = service.get();
+    fixture.host->source = *scene;
+    host_access host;
+    host.state_ = fixture.host;
+    auto active = service->activate(*scene);
+    if (!active)
+      return failure(active.error());
+    return adopted_scene{std::move(service), *scene, *active, std::move(host)};
+  }
+};
 struct presentation_access {
   static result<presented_scene> create(p::resource_limits limits) {
     auto engine = std::make_unique<backend>();
@@ -949,8 +1316,70 @@ struct presentation_access {
 };
 } // namespace detail
 
+result<adopted_scene> adopt_session(std::unique_ptr<RuntimeSession> session,
+                                    p::resource_limits limits) {
+  return detail::adoption_access::create(std::move(session), limits);
+}
+result<RuntimeSession *> host_access::session(const p::service &service) const {
+  const auto state = state_.lock();
+  if (!state)
+    return failure(sai_error{error_code::stale_handle, "native.host.session",
+                             "adopted scene retired"});
+  if (state->owner != &service)
+    return failure(sai_error{error_code::invalid_context, "native.host.session",
+                             "host access belongs to another service"});
+  auto status = service.state(state->source);
+  if (!status)
+    return failure(status.error());
+  if (*status != p::activation_state::active)
+    return failure(sai_error{error_code::access_denied, "native.host.session",
+                             "host access requires an active scene"});
+  if (!state->session->context().callbacksIdle())
+    return failure(sai_error{error_code::operation_in_progress,
+                             "native.host.session",
+                             "native turn is in progress"});
+  return state->session;
+}
+
 result<presented_scene> make_presented_scene(p::resource_limits limits) {
   return detail::presentation_access::create(limits);
+}
+result<presentation_delta> changes_between(const presentation_frame *previous,
+                                          const presentation_frame &current) {
+  if (previous && !(previous->source == current.source))
+    return failure(sai_error{error_code::invalid_context,
+        "native.presentation.changes_between", "frames belong to different scenes"});
+  if (previous && previous->native_tick > current.native_tick)
+    return failure(sai_error{error_code::invalid_value,
+        "native.presentation.changes_between", "native ticks must not decrease"});
+  std::map<std::uint64_t, const presentation_item *> remaining;
+  if (previous)
+    for (const auto &item : previous->items)
+      remaining.emplace(item.placement_key, &item);
+  presentation_delta delta;
+  for (const auto &item : current.items) {
+    const auto found = remaining.find(item.placement_key);
+    if (found == remaining.end()) {
+      delta.added.push_back(item.placement_key);
+      delta.items.emplace(item.placement_key, item);
+      continue;
+    }
+    const auto &old = *found->second;
+    if (old.world_transform.m != item.world_transform.m)
+      delta.updated_transform.push_back(item.placement_key);
+    if (old.mesh_key != item.mesh_key || old.mesh != item.mesh)
+      delta.updated_geometry.push_back(item.placement_key);
+    if (old.material_revision != item.material_revision)
+      delta.updated_material.push_back(item.placement_key);
+    if (old.world_transform.m != item.world_transform.m ||
+        old.mesh_key != item.mesh_key || old.mesh != item.mesh ||
+        old.material_revision != item.material_revision)
+      delta.items.emplace(item.placement_key, item);
+    remaining.erase(found);
+  }
+  for (const auto &[key, item] : remaining)
+    delta.removed.push_back(key);
+  return delta;
 }
 result<std::shared_ptr<const presentation_frame>>
 render_feed::snapshot(const p::service &service) const {

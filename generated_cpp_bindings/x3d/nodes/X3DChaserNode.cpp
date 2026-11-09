@@ -1,4 +1,3 @@
-// X3DChaserNode.cpp
 #include "x3d/nodes/X3DChaserNode.hpp"
 
 namespace x3d::nodes {

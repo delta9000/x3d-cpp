@@ -1,4 +1,3 @@
-// X3DInfoNode.cpp
 #include "x3d/nodes/X3DInfoNode.hpp"
 
 namespace x3d::nodes {

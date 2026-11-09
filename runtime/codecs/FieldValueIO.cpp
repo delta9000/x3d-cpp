@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <locale>
 #include <sstream>
 #include <stdexcept>
@@ -23,6 +24,35 @@ std::string stripEnumQuotes(const std::string &wire) {
   return out;
 }
 
+bool isMF(X3DFieldType type) {
+  switch (type) {
+  case X3DFieldType::MFBool:
+  case X3DFieldType::MFColor:
+  case X3DFieldType::MFColorRGBA:
+  case X3DFieldType::MFDouble:
+  case X3DFieldType::MFFloat:
+  case X3DFieldType::MFImage:
+  case X3DFieldType::MFInt32:
+  case X3DFieldType::MFMatrix3d:
+  case X3DFieldType::MFMatrix3f:
+  case X3DFieldType::MFMatrix4d:
+  case X3DFieldType::MFMatrix4f:
+  case X3DFieldType::MFRotation:
+  case X3DFieldType::MFString:
+  case X3DFieldType::MFTime:
+  case X3DFieldType::MFVec2d:
+  case X3DFieldType::MFVec2f:
+  case X3DFieldType::MFVec3d:
+  case X3DFieldType::MFVec3f:
+  case X3DFieldType::MFVec4d:
+  case X3DFieldType::MFVec4f:
+  case X3DFieldType::MFEnum:
+    return true;
+  default:
+    return false;
+  }
+}
+
 std::string fmtFloat(float v) {
   if (v == static_cast<long long>(v) && std::fabs(v) < 1e15f) {
     return std::to_string(static_cast<long long>(v));
@@ -31,7 +61,7 @@ std::string fmtFloat(float v) {
   // parse back bit-identical, so an authored "0.9" serializes as "0.9", not
   // the precision(9) "0.899999976". Locale-free by definition ('.' always).
   // Same approach as canonFmtFloat in CanonicalXmlWriter (which is pinned
-  // separately and intentionally NOT shared — X3DC14N owns its own contract).
+  // separately and intentionally not shared — X3DC14N owns its own contract).
   std::array<char, 32> buf;
   auto [ptr, ec] = std::to_chars(buf.data(), buf.data() + buf.size(), v,
                                  std::chars_format::general);
@@ -88,6 +118,11 @@ float parseFloat(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
+  // ISO/IEC 19776-2 A.4 permits an optional leading plus sign.
+  if (begin < end && *begin == '+') {
+    ++begin;
+    if (begin < end && *begin == '-') return 0.0f;
+  }
   float v = 0.0f;
   auto [ptr, ec] = std::from_chars(begin, end, v);
   if (ec != std::errc{})
@@ -101,6 +136,10 @@ double parseDouble(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
+  if (begin < end && *begin == '+') {
+    ++begin;
+    if (begin < end && *begin == '-') return 0.0;
+  }
   double v = 0.0;
   auto [ptr, ec] = std::from_chars(begin, end, v);
   if (ec != std::errc{})
@@ -128,11 +167,22 @@ int parseInt(const std::string &s) {
   while (begin < end &&
          (*begin == ' ' || *begin == '\t' || *begin == '\n' || *begin == '\r'))
     ++begin;
-  int v = 0;
-  auto [ptr, ec] = std::from_chars(begin, end, v);
-  if (ec != std::errc{})
+  const bool negative = begin < end && *begin == '-';
+  if (begin < end && (*begin == '+' || *begin == '-')) ++begin;
+  // ISO/IEC 19776-1/-2 5.8 permits decimal and hexadecimal integers.
+  int base = 10;
+  if (end - begin >= 2 && begin[0] == '0' &&
+      (begin[1] == 'x' || begin[1] == 'X')) {
+    begin += 2;
+    base = 16;
+  }
+  std::uint64_t v = 0;
+  auto [ptr, ec] = std::from_chars(begin, end, v, base);
+  if (ec != std::errc{} ||
+      v > static_cast<std::uint64_t>(std::numeric_limits<int>::max()) + negative)
     return 0;
-  return v;
+  return negative ? static_cast<int>(-static_cast<std::int64_t>(v))
+                  : static_cast<int>(v);
 }
 
 std::vector<std::string> parseMFString(const std::string &s) {
@@ -165,7 +215,7 @@ std::vector<std::string> parseMFString(const std::string &s) {
         if (buf[i] == '\\' && i + 1 < buf.size() &&
             (buf[i + 1] == '"' || buf[i + 1] == '\\')) {
           // ISO 19776 defines exactly two escapes: \" and \\. Any other \x
-          // keeps its backslash (ENC-MFSTRING-READ: c:\new\tex must not
+          // keeps its backslash (c:\new\tex must not
           // become c:newtex).
           cur += buf[i + 1];
           i += 2;
@@ -243,11 +293,8 @@ SFImage parseImageFrom(const std::vector<std::string> &t, std::size_t &i) {
     img.height = parseInt(t[i++]);
   if (i < t.size())
     img.numComponents = parseInt(t[i++]);
-  // SEC-2: X3D §5.3.6 caps numComponents at [0,4]. A hostile token can claim a
-  // huge (or negative) count; clamping BEFORE the unpack loop bounds the output
-  // byte count and keeps the shift amount in range (the old `8 * b` overflowed
-  // a signed int for large b, UB). Width/height only ever consume one pixel
-  // token apiece, so the pixel loop is already bounded by the token stream.
+  // X3D §5.3.6 caps numComponents at [0,4]. Clamp before unpacking to bound
+  // the output byte count and keep shifts in range; tokens bound the pixel loop.
   const int nc = std::clamp(img.numComponents, 0, 4);
   img.numComponents = nc;
   const std::size_t pixels = static_cast<std::size_t>(img.width) *

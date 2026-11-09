@@ -1,19 +1,17 @@
 # Headless CPU rasterizer (`x3d_cpu_raster`)
 
-An **out-of-SDK consumer** of the `x3d_cpp` extraction seam — like
-`examples/poc_renderer/`, but it draws on the **CPU** and writes an image
+An out-of-SDK consumer of the `x3d_cpp` extraction seam — like
+`examples/poc_renderer/`, but it draws on the CPU and writes an image
 instead of opening an OpenGL window. No GPU, GLFW, glad, or OpenGL: both the
-binary and its unit tests run on a bare CI runner with no display, which is the
-point — it's a **golden-image / visual-regression harness** for the extraction
-pipeline.
+binary and its unit tests run on a bare CI runner with no display, It supplies image regression checks for the extraction pipeline.
 
-Image I/O uses single-header **stb** (vendored, not system libraries, so the
-bare-runner property holds): output is **PNG** by default (vendored
+Image I/O uses single-header stb (vendored, not system libraries, so the
+bare-runner property holds): output is PNG by default (vendored
 `stb_image_write`, a consumer-side encoder; pass `-o foo.ppm` for the
-dependency-free P6 writer), and PNG/JPEG texture *input* is decoded by
-**explicitly opting into the SDK's `TextureResolver` decode-seam backend**
+dependency-free P6 writer), and PPM/PNG/JPEG/DDS texture *input* is decoded by
+explicitly opting into the SDK's `TextureResolver` decode-seam backend
 (`-DX3D_CPP_BUILD_STB=ON`, ADR-0024) — the example composes a first-party SDK
-seam rather than vendoring its own decoder. `proc:`/`.ppm` stay built-in.
+seam rather than vendoring its own decoder. `proc:` textures stay built-in.
 
 It is firewalled behind `X3D_CPP_BUILD_CPURASTER=OFF`, so the default
 build/golden/ctest path never compiles any of it.
@@ -24,44 +22,44 @@ build/golden/ctest path never compiles any of it.
   styles 1–6 and fallback to style 1. Polygon holes leave depth untouched;
   lines and points are unaffected. Hatches use an eight-pixel window-space grid,
   preserve material alpha/coverage and receive fog.
-- **All three `MaterialModel`s** the extraction seam emits, as CPU ports of the
+- All three `MaterialModel`s the extraction seam emits, as CPU ports of the
   PoC GLSL shaders:
-  - **Phong** (`Material`) — Blinn-Phong + textures + screen-space-derivative
+  - Phong (`Material`) — Blinn-Phong + textures + screen-space-derivative
     normal mapping (`lit.frag`).
-  - **Physical** (`PhysicalMaterial`) — metallic-roughness GGX BRDF, directional
+  - Physical (`PhysicalMaterial`) — metallic-roughness GGX BRDF, directional
     lights, no IBL (`pbr.frag`).
-  - **Unlit** (`UnlitMaterial` / lines / points / normal-less) (`unlit.frag`).
-- **GLSL emulation**, in two layers:
+  - Unlit (`UnlitMaterial` / lines / points / normal-less) (`unlit.frag`).
+- GLSL emulation, in two layers:
   1. A `glsl::` math layer (vec/mat/builtins/`sampler2D`) so the fixed-function
      shaders read as near-verbatim ports of the GL GLSL — same lighting math,
      same sRGB encode, same texture-slot semantics, including `dFdx`/`dFdy` via
-     a real **2×2-quad** rasterizer (helper invocations, like a GPU).
-  2. A **GLSL-subset interpreter** (`GlslInterpreter.hpp`) that *executes* author
+     a real 2×2-quad rasterizer (helper invocations, like a GPU).
+  2. A GLSL-subset interpreter (`GlslInterpreter.hpp`) that *executes* author
      `ComposedShader`/`ProgramShader` fragment source on the CPU. Each item's
      selected program (`RenderItem::shaderProgram`) runs automatically, with
      its author `<field>`s as uniforms (`AuthorShader.hpp`); a program the
      interpreter cannot compile is invalid, so the SDK falls through to the
      next shader or the material. `--frag` forces one shader onto every item.
-- **Textures** via a `TextureResolver`: `ImageTexture url="proc:<name>"`
+- Textures via a `TextureResolver`: `ImageTexture url="proc:<name>"`
   synthesizes a test texture (`checker`, `uvgrid`, `gradient`, `brick`, `bars`)
-  on the fly and `url="foo.ppm"` decodes a binary PPM with no decoder at all;
-  PNG/JPEG decode through the opt-in stb seam (`-DX3D_CPP_BUILD_STB=ON`).
+  on the fly. PPM, PNG, JPEG, and DDS files decode through the SDK stb seam
+  (`-DX3D_CPP_BUILD_STB=ON`), with bottom-left-origin pixels.
   `PixelTexture` (inline) works directly. `--gentex <dir>` dumps the procedural set as PPMs.
   (`uvgrid` is an orientation probe: red=U, green=V — a no-V-flip check you can
   read off the image.)
-- **Text** rendered as readable letters via a built-in public-domain 8×8 glyph
+- Text rendered as readable letters via a built-in public-domain 8×8 glyph
   atlas (`BuiltinFont.hpp` + `font8x8.hpp`): the rasterizer supplies a real
   `FontMetrics` (with atlas UVs) to the extractor and alpha-tests the atlas in the
   glyph draw. Without a font atlas the SDK's metrics-only stub fills each glyph
-  cell solid (bars, not letters) — this closes that gap.
-- **`Background` sky/ground gradient**: the bound `Background`'s
+  cell solid (bars, not letters) .
+- `Background` sky/ground gradient: the bound `Background`'s
   `skyColor`/`skyAngle` + `groundColor`/`groundAngle` ramps fill the frame as a
   per-pixel spherical gradient (a lone `skyColor` stays a flat clear).
-- **Two-sided materials** (`Appearance.backMaterial`): back-facing fragments are
+- Two-sided materials (`Appearance.backMaterial`): back-facing fragments are
   shaded with the back material when present and model-compatible.
-- **`TextureCoordinateGenerator` (Sphere)**: base-texture UVs are generated from
-  the camera-space normal (sphere/reflection map) when the geometry binds one.
-- **`Background` skybox**: the bound `Background`'s six panorama faces
+- `TextureCoordinateGenerator`: the reference shaders evaluate the eleven
+  modes and apply each stage's texture transform; see [texture extraction](../../docs/wiki/subsystems/extract-textures.md).
+- `Background` skybox: the bound `Background`'s six panorama faces
   (`frontUrl`/`backUrl`/`leftUrl`/`rightUrl`/`topUrl`/`bottomUrl`) are resolved
   through the texture resolver and drawn as an infinite cube around the viewer,
   composited over the sky/ground gradient by texel alpha (§Background). A
@@ -121,6 +119,10 @@ Author fragment shaders read the same `in` varyings the PoC's `lit.vert` emits �
 `uNumLights`, `uLightDirEye[]`, `uLightColor[]`, `uShininess`, `uMetallic`,
 `uRoughness`, `uTime`, …) and binds the base-color sampler as `uTexture`. See
 `shaders/author_lambert.frag` for a worked example.
+
+Runtime `GlslError` failures keep the material fallback, log once per draw, and
+increment the thread-local `interpreterRuntimeErrors` count per failed fragment.
+Other exceptions propagate to the host.
 
 `dFdx`/`dFdy` are exact for the two varyings the rasterizer precomputes
 derivatives for (`vPosEye`, `vTexCoord`); any other argument yields zero.

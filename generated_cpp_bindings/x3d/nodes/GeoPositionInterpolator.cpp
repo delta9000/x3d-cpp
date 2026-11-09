@@ -1,4 +1,3 @@
-// GeoPositionInterpolator.cpp
 #include "x3d/nodes/GeoPositionInterpolator.hpp"
 
 namespace x3d::nodes {

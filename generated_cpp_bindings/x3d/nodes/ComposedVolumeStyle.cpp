@@ -1,4 +1,3 @@
-// ComposedVolumeStyle.cpp
 #include "x3d/nodes/ComposedVolumeStyle.hpp"
 
 namespace x3d::nodes {

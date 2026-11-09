@@ -1,24 +1,9 @@
-// scene_extractor_delta_contract_test.cpp — DELTA-CONTRACT regression.
-//
-// delta()'s one-delta-per-tick guard used to key on ctx_.now() and enforce itself
-// with assert(). That was wrong twice over:
-//
-//   * `now` is embedder-supplied and may legitimately REPEAT — a paused scene
-//     that still ticks, a fixed-timestep driver, deterministic replay. Those
-//     consumers tripped `assert(now != lastDeltaNow_)` for doing nothing wrong.
-//   * assert() compiles out under NDEBUG, and this repo's `ci` preset is
-//     RelWithDebInfo. So the contract a consumer tested against in a debug build
-//     was not the contract it shipped with.
-//
-// The guard now keys on X3DExecutionContext::tickGeneration() — a monotonic
-// advance count that cannot repeat — and every previously-asserted misuse has a
-// defined answer. These cases pin that the contract is TOTAL: no call sequence
-// is undefined, and none of them depend on NDEBUG.
-
+// Delta consumption uses tick generation, including ticks with equal clock values.
+// Before a snapshot, delta() supplies one; repeated consumption yields no changes.
 #include "SceneExtractor.hpp"
 
 #include "X3DExecutionContext.hpp"
-#include "X3DSceneBridge.hpp" // BridgeResult (buildFrom's return type)
+#include "X3DSceneBridge.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
@@ -80,15 +65,13 @@ TEST_CASE("delta contract: tickGeneration is monotonic and clock-independent") {
   CHECK(ctx.tickGeneration() == 3);
   CHECK(ctx.now() == 1.0);
 
-  // Even a clock that goes BACKWARDS (replay/scrub) still advances generation.
+  // Even a clock that goes backwards (replay/scrub) still advances generation.
   ctx.tick(0.5);
   CHECK(ctx.tickGeneration() == 4);
 }
 
 TEST_CASE("delta contract: a PAUSED clock still yields deltas") {
-  // The regression that motivated this: tick() at an unchanging timestamp is a
-  // legitimate pattern (the cascade still runs), and every delta() after the
-  // first used to trip the now()-keyed assert.
+  // Equal timestamps still run the cascade and consume distinct generations.
   std::shared_ptr<X3DNode> xf;
   Scene scene = makeScene(xf);
 
@@ -144,7 +127,7 @@ TEST_CASE("delta contract: second delta() with no tick returns EMPTY, not garbag
 }
 
 TEST_CASE("delta contract: delta() with no prior fullSnapshot yields the baseline") {
-  // No baseline to diff against => a full snapshot IS the baseline. Every item
+  // No baseline to diff against => a full snapshot is the baseline. Every item
   // lands in `added`, which is the same upload path frame 0 uses, so a consumer
   // that skipped fullSnapshot() still gets a correct first frame rather than an
   // assert (debug) or a walk over zero-initialised state (NDEBUG).
@@ -447,4 +430,145 @@ TEST_CASE("geometry delta: geometry-owned index emptiness is incremental") {
     CHECK(ex.item(snapshot.added[0]).mesh == triangleMesh);
     mirror.apply(delta, ex, ctx, f.scene);
   }
+}
+
+TEST_CASE("delta oracle: shared humanoid scalar edit preserves every placement") {
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  auto humanoid = createX3DNode("HAnimHumanoid");
+  setF(humanoid, "skin", MFNode{shape});
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(left, "translation", SFVec3f{-10,0,0});
+  setF(right, "translation", SFVec3f{10,0,0});
+  addChild(left, humanoid); addChild(right, humanoid);
+  Scene scene; scene.rootNodes = {left, right};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  mirror.apply(ex.fullSnapshot(), ex, ctx, scene);
+  REQUIRE(mirror.items.size() == 2);
+  ctx.postEvent(humanoid.get(), "name", SFString{"renamed"});
+  ctx.tick(1);
+  mirror.apply(ex.delta(), ex, ctx, scene);
+  CHECK(mirror.items.size() == 2);
+}
+
+TEST_CASE("delta oracle: LayerSet order edits reach delta membership") {
+  auto first = createX3DNode("Layer"), second = createX3DNode("Layer");
+  auto firstShape = createX3DNode("Shape"), secondShape = createX3DNode("Shape");
+  setF(firstShape, "geometry", createX3DNode("Box"));
+  setF(secondShape, "geometry", createX3DNode("Sphere"));
+  addChild(first, firstShape); addChild(second, secondShape);
+  auto layers = createX3DNode("LayerSet");
+  setF(layers, "layers", MFNode{first, second});
+  setF(layers, "order", MFInt32{0});
+  Scene scene; scene.rootNodes = {layers};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 1);
+  ctx.postEvent(layers.get(), "order", MFInt32{1}); ctx.tick(1);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK(d.removed.size() == 1);
+  CHECK(d.added.size() == 1);
+  if (!d.added.empty()) CHECK(ex.item(d.added.front()).path[1] == second.get());
+  auto full = ex.fullSnapshot();
+  REQUIRE(full.added.size() == 1);
+  CHECK(ex.item(full.added.front()).path[1] == second.get());
+}
+
+TEST_CASE("delta oracle: GeoOrigin movement invalidates geographic mesh and placement") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoSystem", MFString{"GC"});
+  setF(origin, "geoCoords", SFVec3d{6378137,0,0});
+  auto coord = createX3DNode("GeoCoordinate");
+  setF(coord, "geoSystem", MFString{"GC"}); setF(coord, "geoOrigin", origin);
+  setF(coord, "point", MFVec3d{{6378137,0,0},{6378137,1,0},{6378137,0,1}});
+  auto geom = createX3DNode("TriangleSet"), shape = createX3DNode("Shape");
+  setF(geom, "coord", coord); setF(shape, "geometry", geom);
+  auto location = createX3DNode("GeoLocation");
+  setF(location, "geoSystem", MFString{"GC"});
+  setF(location, "geoCoords", SFVec3d{6378137,0,0});
+  setF(location, "geoOrigin", origin);
+  auto boxShape = createX3DNode("Shape");
+  setF(boxShape, "geometry", createX3DNode("Box")); addChild(location, boxShape);
+  Scene scene; scene.rootNodes = {location, shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene); GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 2);
+  ctx.postEvent(origin.get(), "geoCoords", SFVec3d{6378138,0,0}); ctx.tick(1);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK((!d.updatedTransform.empty() || !d.added.empty()));
+  CHECK((!d.updatedGeometry.empty() || !d.added.empty()));
+  CHECK(ex.item(0).worldTransform.m[12] == doctest::Approx(-1));
+  CHECK(ex.item(1).mesh->positions.front().x == doctest::Approx(-1));
+  ex.fullSnapshot();
+  CHECK(ex.item(0).worldTransform.m[12] == doctest::Approx(-1));
+  CHECK(ex.item(1).mesh->positions.front().x == doctest::Approx(-1));
+}
+
+TEST_CASE("delta oracle: swept trajectory coordinate edits rebuild the surface") {
+  auto cross = createX3DNode("NurbsCurve2D");
+  setF(cross, "controlPoint", MFVec2d{{1,0},{1,1}});
+  setF(cross, "order", SFInt32{2}); setF(cross, "tessellation", SFInt32{1});
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point", MFVec3f{{0,0,0},{0,0,1}});
+  auto trajectory = createX3DNode("NurbsCurve");
+  setF(trajectory, "controlPoint", coord);
+  setF(trajectory, "order", SFInt32{2}); setF(trajectory, "tessellation", SFInt32{1});
+  auto surface = createX3DNode("NurbsSweptSurface"), shape = createX3DNode("Shape");
+  setF(surface, "crossSectionCurve", cross); setF(surface, "trajectoryCurve", trajectory);
+  setF(shape, "geometry", surface);
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx;
+  SceneExtractor ex(ctx, scene); GeometryMirror mirror;
+  auto initial = ex.fullSnapshot();
+  mirror.apply(initial, ex, ctx, scene);
+  REQUIRE(initial.added.size() == 1);
+  ctx.tick(1);
+  REQUIRE(ctx.writeField(coord.get(), "point", MFVec3f{{0,0,5},{0,0,6}}) ==
+          FieldWriteResult::Ok);
+  auto d = ex.delta();
+  mirror.apply(d, ex, ctx, scene);
+  CHECK((!d.updatedGeometry.empty() || !d.added.empty()));
+  CHECK(ex.item(0).mesh->positions.front().z == doctest::Approx(5));
+  ex.fullSnapshot();
+  CHECK(ex.item(0).mesh->positions.front().z == doctest::Approx(5));
+}
+
+TEST_CASE("delta oracle: shared GeoOrigin invalidates GeoTransform and GeoElevationGrid") {
+  auto origin = createX3DNode("GeoOrigin");
+  setF(origin, "geoSystem", MFString{"GC"});
+  setF(origin, "geoCoords", SFVec3d{6378137,0,0});
+  auto transform = createX3DNode("GeoTransform");
+  setF(transform, "geoSystem", MFString{"GC"});
+  setF(transform, "geoCenter", SFVec3d{6378137,0,0});
+  setF(transform, "geoOrigin", origin);
+  setF(transform, "scale", SFVec3f{2,2,2});
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("Box"));
+  addChild(transform, shape);
+  auto grid = createX3DNode("GeoElevationGrid");
+  setF(grid, "geoSystem", MFString{"GC"});
+  setF(grid, "geoOrigin", origin);
+  setF(grid, "geoGridOrigin", SFVec3d{6378137,0,0});
+  setF(grid, "xDimension", SFInt32{2});
+  setF(grid, "zDimension", SFInt32{2});
+  setF(grid, "height", MFDouble{0,0,0,0});
+  auto gridShape = createX3DNode("Shape");
+  setF(gridShape, "geometry", grid);
+  Scene scene; scene.rootNodes = {transform, gridShape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  GeometryMirror mirror;
+  mirror.apply(ex.fullSnapshot(), ex, ctx, scene);
+  REQUIRE(mirror.items.size() == 2);
+  ctx.postEvent(origin.get(), "geoCoords", SFVec3d{6378138,0,0}); ctx.tick(1);
+  mirror.apply(ex.delta(), ex, ctx, scene);
 }

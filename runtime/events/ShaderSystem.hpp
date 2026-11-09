@@ -1,21 +1,19 @@
 // ShaderSystem.hpp — §31 shader selection outputs (isSelected / isValid) and
 // activate handling. The program a renderer binds is assembled by the
 // extractor (SceneExtractor via ShaderExtract.hpp::selectShader); this System
-// runs the SAME selection over every Appearance so the scene sees the events
+// runs the same selection over every Appearance so the scene sees the events
 // §31.3.2 defines, and so ROUTEs and Scripts can react to them:
-//
 //   * isValid: emitted for each evaluated supported candidate when first
-//     evaluated, when its validity changes, and after every activate TRUE.
+//     evaluated, when its validity changes, and after every activate `TRUE`.
 //     A candidate whose part url is still Pending emits nothing until it
 //     resolves (the System retries each tick).
-//   * isSelected: TRUE when a shader becomes the selection of at least one
-//     Appearance, FALSE when it stops being selected anywhere.
+//   * isSelected: `TRUE` when a shader becomes the selection of at least one
+//     Appearance, `FALSE` when it stops being selected anywhere.
 //   * Re-evaluation happens after any write to Appearance.shaders, a shader's
 //     parts/programs, or a part's url/load/sourceCode/type, and on activate
-//     TRUE. Edits take effect immediately; activate re-resolves urls and
+//     `TRUE`. Edits take effect immediately; activate re-resolves urls and
 //     re-runs the validator (an interpretation recorded in the requirements
 //     audit: §31.3.2 leaves activation conditions to each language).
-//
 // Selection logic and its options live in runtime/extract/ShaderExtract.hpp.
 #ifndef X3D_RUNTIME_SHADER_SYSTEM_HPP
 #define X3D_RUNTIME_SHADER_SYSTEM_HPP
@@ -87,7 +85,7 @@ private:
   std::unordered_set<X3DNode *> appearances_;
   std::unordered_map<const X3DNode *, bool> lastSelected_;
   std::unordered_map<const X3DNode *, bool> lastValid_;
-  std::unordered_set<const X3DNode *> forced_; // activate TRUE since last update
+  std::unordered_set<const X3DNode *> forced_; // activate `TRUE` since last update
   bool dirty_ = true;
   bool retry_ = false; // a candidate's url was Pending
 };

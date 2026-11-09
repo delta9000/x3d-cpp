@@ -1,22 +1,6 @@
-// ProceduralTexture.hpp — generated test textures + a TextureResolver, so
-// ImageTexture scenes render WITHOUT any committed binary asset or image decoder.
-//
-// Two sources, both dependency-free:
-//   * "proc:<name>"  — synthesized on the fly (checker / uvgrid / gradient /
-//                       brick / bars). No files, no decode.
-//   * "*.ppm"        — a binary PPM (P6) file next to the scene (a format we can
-//                       decode in ~20 lines). Lets you drop in real images too.
-// Everything else (png/jpg/http) -> Failed (the renderer falls back to flat
-// color), matching the seam's documented behavior.
-//
-// Pixel format follows the seam contract: RGBA8, tightly packed, origin
-// BOTTOM-LEFT (GL convention — matches MeshData::texcoords, no V-flip).
-//
-// The "uvgrid" texture is a deliberate orientation probe: red = U, green = V, so
-// bottom-left reads dark, bottom-right red, top-left green, top-right yellow —
-// a no-V-flip check you can read straight off the rendered image.
-//
-// Out-of-SDK consumer code. namespace x3d::cpuraster.
+// Procedural textures and file texture resolution for the CPU renderer.
+// Pixels are tightly packed RGBA8 with a bottom-left origin.
+// The uvgrid probe maps U to red and V to green to expose orientation errors.
 #ifndef X3D_CPURASTER_PROCEDURAL_TEXTURE_HPP
 #define X3D_CPURASTER_PROCEDURAL_TEXTURE_HPP
 
@@ -51,7 +35,7 @@ inline ex::TexturePixels rgbaSurface(int W, int H, std::vector<std::uint8_t> px)
 
 } // namespace texgen
 
-// ---- Generators -----------------------------------------------------------
+// Generators
 
 // Checkerboard of `cells` x `cells` squares in two colors.
 inline ex::TexturePixels makeChecker(int size = 256, int cells = 8) {
@@ -132,46 +116,7 @@ inline ex::TexturePixels makeNamed(const std::string &name) {
   return makeChecker();
 }
 
-// ---- PPM (P6) IO ----------------------------------------------------------
-
-// Decode a binary PPM (P6) into a bottom-left-origin RGBA surface (alpha=255).
-// PPM is top-down, so rows are flipped. Returns empty on malformed input.
-inline ex::TexturePixels readPpm(const std::string &path) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) return {};
-  std::string magic;
-  in >> magic;
-  if (magic != "P6") return {};
-  auto skipws = [&]() {
-    int c;
-    while ((c = in.peek()) != EOF) {
-      if (c == '#') { std::string l; std::getline(in, l); }
-      else if (c == ' ' || c == '\t' || c == '\n' || c == '\r') in.get();
-      else break;
-    }
-  };
-  int w = 0, h = 0, maxv = 0;
-  skipws(); in >> w; skipws(); in >> h; skipws(); in >> maxv;
-  in.get(); // single whitespace after maxval.
-  if (w <= 0 || h <= 0 || maxv != 255) return {};
-  std::vector<std::uint8_t> rgb(static_cast<std::size_t>(w) * h * 3);
-  in.read(reinterpret_cast<char *>(rgb.data()), rgb.size());
-  if (!in) return {};
-  std::vector<std::uint8_t> rgba(static_cast<std::size_t>(w) * h * 4, 255);
-  for (int y = 0; y < h; ++y) {
-    const int srcRow = h - 1 - y; // top-down PPM -> bottom-up surface.
-    for (int x = 0; x < w; ++x) {
-      const std::size_t s = (static_cast<std::size_t>(srcRow) * w + x) * 3;
-      const std::size_t d = (static_cast<std::size_t>(y) * w + x) * 4;
-      rgba[d] = rgb[s]; rgba[d + 1] = rgb[s + 1]; rgba[d + 2] = rgb[s + 2];
-    }
-  }
-  ex::TexturePixels t;
-  t.width = static_cast<std::uint32_t>(w);
-  t.height = static_cast<std::uint32_t>(h);
-  t.rgba = std::move(rgba);
-  return t;
-}
+// PPM (P6) IO
 
 // Write a bottom-left-origin RGBA surface to a binary PPM (P6, top-down).
 inline bool writePpm(const std::string &path, const ex::TexturePixels &t) {
@@ -189,15 +134,12 @@ inline bool writePpm(const std::string &path, const ex::TexturePixels &t) {
   return static_cast<bool>(out);
 }
 
-// ---- The resolver ---------------------------------------------------------
+// The resolver
 
-// A TextureResolver bound to a scene dir: "proc:<name>" -> generated; "*.ppm" ->
-// decoded file; anything else -> Failed (flat-color fallback).
+// Resolve procedural textures locally and supported image files through stb.
 inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir,
                                                ex::AssetResolver fetch = {}) {
-  // PNG/JPEG decode is delegated to the SDK's TextureResolver decode-seam
-  // backend (x3d_stb, ADR-0024) — same vendored stb_image, bottom-left origin,
-  // no parallel decoder. proc:/.ppm stay built-in (synthetic + dependency-free).
+  // File decoding uses the SDK backend and returns bottom-left-origin pixels.
   ex::TextureResolver stb =
       fetch ? x3d::runtime::io::stb::makeStbTextureResolver(fetch)
             : x3d::runtime::io::stb::makeStbTextureResolver();
@@ -213,12 +155,7 @@ inline ex::TextureResolver makeTextureResolver(const std::string &sceneDir,
     };
     const std::string path =
         (!url.empty() && url[0] == '/') ? url : (sceneDir + "/" + url);
-    if (ends(".ppm")) {
-      ex::TexturePixels p = readPpm(path);
-      return p.rgba.empty() ? ex::TexturePixelResult::makeFailed()
-                            : ex::TexturePixelResult::makeReady(std::move(p));
-    }
-    if (ends(".png") || ends(".jpg") || ends(".jpeg") || ends(".dds"))
+    if (ends(".ppm") || ends(".png") || ends(".jpg") || ends(".jpeg") || ends(".dds"))
       return stb(path); // x3d_stb also decodes DDS, incl. cube maps.
     return ex::TexturePixelResult::makeFailed();
   };

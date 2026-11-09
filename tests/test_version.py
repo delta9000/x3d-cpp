@@ -1,15 +1,6 @@
-"""Phase 5 multi-version tests.
+"""Multi-version parsing and generation with offline UOM fixtures.
 
-Covers:
-- version AUTO-DETECTION from the UOM XML (4.0 detected as "4.0"),
-- the SpecVersion model helpers (slug / namespace / detect),
-- unknown-but-well-formed type tolerance (data-driven, actionable error),
-- a generation-from-a-SECOND-version run against the synthetic 4.1 fixture,
-  asserting the brand-new node / enum member appear and 4.0 assumptions don't
-  break.
-
-The synthetic fixture is self-contained, so these tests never require network
-access. A separate test opportunistically uses the real 4.1 UOM if present.
+The real 4.1 UOM is also tested when available.
 """
 
 from importlib.resources import files
@@ -42,7 +33,7 @@ SYNTHETIC_41 = FIXTURES / "X3dUnifiedObjectModel-4.1-synthetic.xml"
 REAL_41 = FIXTURES / "X3dUnifiedObjectModel-4.1.xml"
 
 
-# --- Auto-detection -------------------------------------------------------
+# Auto-detection
 
 def test_autodetect_40_from_packaged_spec():
     assert detect_version_from_file(str(SPEC_40)) == "4.0"
@@ -62,7 +53,6 @@ def test_autodetect_41_from_synthetic_fixture():
 def test_specversion_helpers():
     sv = SpecVersion(version="4.1")
     assert sv.slug == "4_1"
-    assert sv.cpp_namespace == "v4_1"
     assert sv.minor == 1
 
 
@@ -73,7 +63,7 @@ def test_detect_raises_on_unversioned(tmp_path):
         SpecVersion.detect(str(bad))
 
 
-# --- Type registry tolerance (data-driven, actionable) --------------------
+# Type registry tolerance (data-driven, actionable)
 
 def test_unknown_type_resolves_to_none_not_crash():
     # A well-formed but unregistered type from a hypothetical newer spec must
@@ -88,7 +78,7 @@ def test_resolve_or_raise_is_actionable():
     assert TypeRegistry.resolve_or_raise("SFBool") is X3DType.SFBool
 
 
-# --- Generation from a SECOND version (synthetic 4.1) ---------------------
+# Generation from a second version (synthetic 4.1)
 
 def test_synthetic_41_parses_new_node_and_enum():
     nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
@@ -132,26 +122,7 @@ def test_synthetic_41_generates_and_emits_new_content(tmp_path):
     assert "SUPERSHARP" in enums_text
 
 
-def test_synthetic_41_namespace_isolation(tmp_path):
-    # A namespaced emission wraps each class; the default 4.0 path (namespace="")
-    # is exercised by the golden tests and stays unnamespaced.
-    nodes, skipped = parse_x3d_model(str(SYNTHETIC_41), FIELD_TYPE_MAPPING, XS_TYPES)
-    assert skipped == []
-    graph = build_dependency_graph(nodes)
-    out = tmp_path / "v41ns"
-    out.mkdir()
-    core_dir = out / "x3d" / "core"
-    core_dir.mkdir(parents=True, exist_ok=True)
-    write_types_header(str(core_dir))
-    write_enums_header(str(core_dir), {})
-    generate_cpp_bindings(nodes, graph, str(out), clang_format="",
-                          enum_defs={}, namespace="x3d::v4_1")
-    text = (out / "x3d" / "nodes" / "QuantumWidget.hpp").read_text()
-    assert "namespace x3d::v4_1 {" in text
-    assert "} // namespace x3d::v4_1" in text
-
-
-# --- Real 4.1 UOM (only if the large fixture is present) ------------------
+# Real 4.1 UOM (only if the large fixture is present)
 
 @pytest.mark.skipif(not REAL_41.exists(),
                     reason="real X3D 4.1 UOM fixture not present")

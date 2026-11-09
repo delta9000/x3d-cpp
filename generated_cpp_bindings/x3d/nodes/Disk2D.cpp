@@ -1,4 +1,3 @@
-// Disk2D.cpp
 #include "x3d/nodes/Disk2D.hpp"
 
 namespace x3d::nodes {

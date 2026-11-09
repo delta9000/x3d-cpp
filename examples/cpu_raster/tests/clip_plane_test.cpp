@@ -1,7 +1,7 @@
-// clip_plane_test.cpp — REQ-CLIP (§11.4.1): the CPU rasterizer discards fragments
+// clip_plane_test.cpp — (§11.4.1): the CPU rasterizer discards fragments
 // in the clipped half-space of each enabled clip plane. A plane (a,b,c,d) is
 // satisfied where a*x+b*y+c*z+d >= 0 in the space the plane is expressed in
-// (here EYE space, matching the interpolated vPosEye).
+// (here eye space, matching the interpolated vPosEye).
 #include "cpuraster/Framebuffer.hpp"
 #include "cpuraster/Rasterizer.hpp"
 #include "cpuraster/glsl.hpp"
@@ -42,7 +42,7 @@ int main() {
   const g::mat3 I3 = g::mat3::identity();
   auto red = [](const FragmentInput &, g::vec4 &o) { o = {1, 0, 0, 1}; return true; };
 
-  // ---- No plane: the whole quad draws -------------------------------------
+  // No plane: the whole quad draws
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});
@@ -53,7 +53,7 @@ int main() {
     CHECK(near(fb.colorAt(12, 8).x, 1.0f)); // right half
   }
 
-  // ---- Plane (1,0,0,0): keep x>=0, clip the x<0 (left) half ----------------
+  // Plane (1,0,0,0): keep x>=0, clip the x<0 (left) half
   // NDC x<0 maps to screen x<8 (framebuffer is bottom-left origin).
   {
     Framebuffer fb(16, 16);
@@ -66,7 +66,7 @@ int main() {
     CHECK(near(fb.colorAt(12, 8).x, 1.0f)); // kept half -> red.
   }
 
-  // ---- Two planes keep only the +x+y quadrant ------------------------------
+  // Two planes keep only the +x+y quadrant
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});
@@ -80,7 +80,7 @@ int main() {
     CHECK(near(fb.colorAt(3, 3).x, 0.0f));   // -x -y clipped.
   }
 
-  // ---- A plane that clips everything discards the whole quad ---------------
+  // A plane that clips everything discards the whole quad
   {
     Framebuffer fb(16, 16);
     fb.clear({0, 0, 0});

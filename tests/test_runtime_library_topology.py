@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+from tests.conftest import run_checked
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -34,17 +35,6 @@ RUNTIME_SOURCES = {
 MESH_RUNTIME_SOURCE = (REPO_ROOT / "runtime" / "extract" / "MeshBuilder.cpp").resolve()
 
 
-def run_checked(*command: str) -> str:
-    result = subprocess.run(
-        command,
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    return result.stdout
-
-
 def ninja_targets(build_dir: Path) -> set[str]:
     output = run_checked("ninja", "-C", str(build_dir), "-t", "targets", "all")
     return {line.split(":", 1)[0] for line in output.splitlines() if ":" in line}
@@ -56,13 +46,6 @@ def library_artifacts(build_dir: Path, stem: str) -> set[str]:
         for target in ninja_targets(build_dir)
         if stem in Path(target).name
     }
-
-
-@pytest.fixture(scope="module")
-def configured_ci(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    build_dir = tmp_path_factory.mktemp("runtime-topology-shared")
-    run_checked("cmake", "--preset", "ci", "-B", str(build_dir))
-    return build_dir
 
 
 def test_compiled_runtime_layers_are_shared_by_default(

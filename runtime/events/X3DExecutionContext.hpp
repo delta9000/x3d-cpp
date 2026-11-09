@@ -20,18 +20,24 @@
 #include "ViewpointOffset.hpp"
 #include "TransformSystem.hpp"
 #include "UnitConversion.hpp"
-#include "X3DActiveNode.hpp"
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
 #include "X3DFieldAddress.hpp"
 #include "X3DSystem.hpp"
+#include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/LayerSet.hpp"
+#include "x3d/nodes/Switch.hpp"
 
 #include <algorithm>
 #include <any>
+#include <array>
 #include <atomic>
+#include <chrono>
+#include <cmath>
 #include <cstdint> // pickCalls_ diagnostic counter
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -40,37 +46,20 @@
 
 namespace x3d::runtime {
 
-/**
- * @brief Outcome of X3DExecutionContext::writeField.
- *
- * `writeField` is stringly-typed and `std::any`-valued — the dynamic SAI shape
- * the X3D spec asks for. That makes every argument a chance for the caller to be
- * wrong, so each way of being wrong gets its own answer rather than silence.
- * Distinguishing them is the point: `UnknownField` means the CALLER typo'd (or
- * the node's profile does not carry that field), while `NotWritable` means the
- * field is real but `outputOnly` — very different fixes, previously the same
- * silent nothing.
- */
+/// Failed writes leave both the field and dirty tracker unchanged.
 enum class FieldWriteResult {
   Ok,           ///< Written, and the dirty-tracker was updated.
   NullNode,     ///< `node` was null.
   DetachedNode, ///< Node was removed with an Inline subtree.
-  /// No field of that x3dName in this node's STATIC table (a typo, or a field
-  /// this node's profile does not carry). Also returned for a Script/PROTO
-  /// author-declared field: those live in the DynamicFieldStore side-table and
-  /// are reached via effectiveFields(), which writeField does not consult.
+  /// No field of that x3dName in the static table or author-field store.
   UnknownField,
-  /// Field exists but carries no write thunk. Defensive depth — NO node type
-  /// currently produces this. Every one of the generated fields has a set thunk,
-  /// including `outputOnly` ones (see below), and the sole hand-written fields()
-  /// override does too. Kept so that a future or embedder-supplied node with a
-  /// genuinely read-only field reports an error instead of skipping in silence.
+  /// Field exists but has no write thunk.
   NotWritable,
   TypeMismatch, ///< `value`'s type is not the field's type; nothing was written.
 };
 
 /// Human-readable form of a FieldWriteResult, for diagnostics and test failures.
-/// NOT named toString: doctest stringifies via `toString(toString(x))`, so an
+/// Avoid toString: doctest stringifies via `toString(toString(x))`, so an
 /// overload of that name in this namespace breaks any consumer that combines
 /// `using namespace x3d::runtime` with doctest.
 inline const char *fieldWriteResultName(FieldWriteResult r) {
@@ -105,9 +94,7 @@ public:
                                std::shared_ptr<const geo::GeoProjection> projection = {})
       : geoProjection_(projection ? std::move(projection) : geo::builtinProjectionOwner()),
         authorFields_(std::move(fields)), authorOwnerFixed_(true),
-        cascade_(graph_, authorFields_) {
-    if (!authorFields_) throw std::invalid_argument("null author-field owner");
-  }
+        cascade_(graph_, authorFields_) {}
 
   /// Immutable backend selection shared by all runtime paths in this context.
   const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
@@ -141,17 +128,27 @@ public:
   /// Terminal callback revocation for this activation. Idempotent; returns
   /// false without retiring anything while tick/process/writeField or one of
   /// our node callbacks is on the stack. The host must defer teardown until it
-  /// returns. All access is serial; concurrent destruction is NOT supported.
+  /// returns. All access is serial; concurrent destruction is not supported.
   /// Retire before destroying context-owned state, including on constructor
   /// unwinding. Node storage may survive; its retired runtime inputs are inert.
   [[nodiscard]] bool retireCallbacks() noexcept {
     if (!callbacks_.canRetire() || !bindings_.canRetireCallbacks()) return false;
+    {
+      auto invocation = callbacks_.enter();
+      flushDetachedNodes();
+      for (const auto &shutdown : scriptShutdown_) shutdown();
+      scriptShutdown_.clear();
+    }
     (void)callbacks_.retire();
     (void)bindings_.retireCallbacks();
     return true;
   }
 
-  /// Runtime-owned node handlers are valid only while BOTH their activation
+  auto callbackLease() const {
+    return callbacks_.guardOr([] { return true; }, false);
+  }
+
+  /// Runtime-owned node handlers are valid only while both their activation
   /// and their behavior system live. Weak guards cover partial attachment
   /// failure before addSystem(), without retaining nodes or either owner.
   template <class F> auto guardCallback(System &owner, F callback) const {
@@ -165,7 +162,7 @@ public:
   /** @brief Register a ROUTE from a source field endpoint to a sink endpoint.
    */
   void addRoute(const FieldAddress &from, const FieldAddress &to) {
-    if (detached_.count(from.node) || detached_.count(to.node)) return;
+    if (cascade_.removed_.count(from.node) || cascade_.removed_.count(to.node)) return;
     graph_.addRoute(from, to);
   }
 
@@ -185,17 +182,18 @@ public:
    */
   BridgeResult buildFrom(Scene &scene);
 
-  /// Build the M2a scene-graph layer for a parsed Scene: index the Transform
+  /// Build the scene-graph layer for a parsed Scene: index the Transform
   /// hierarchy and route the cascade's field deliveries into the dirty tracker.
   void buildSceneGraph(Scene &scene) {
     bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
-    detached_.clear();
+    cascade_.removed_.clear();
     // Sanitize first: sever any containment cycle (a node that is its own
     // ancestor, e.g. from a malformed <X DEF='a' USE='a'/>) so the recursive
     // walkers below (transform/bounds/binding/pick + later extract) traverse a
     // DAG and cannot stack-overflow. No-op on well-formed scenes. See CycleBreaker.
     breakContainmentCycles(scene);
+    captureSceneNodes(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     bindings_.enrollScene(scene,
@@ -204,14 +202,16 @@ public:
         [this](BindTransition k) { lastVpTransition_ = k; });
     bindings_.bindDefaults();
     pick_.build(scene);
-    cascade_.setFieldObserver(
-        [this](const FieldAddress &a) { onFieldWritten(a); });
+    cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
+      onFieldWritten(a, std::move(retained));
+    };
   }
 
   // Called after an Inline subtree is spliced into the live Scene.
   void refreshSceneTopology(Scene &scene) {
     bindSceneAuthorFields(scene);
     normalizeRuntimeUnits(scene);
+    captureSceneNodes(scene);
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     pick_.build(scene);
@@ -219,21 +219,34 @@ public:
 
   void attachNewSubtree(X3DNode *root) {
     std::unordered_set<const X3DNode *> seen;
-    std::function<void(X3DNode *, std::size_t)> walk =
-        [&](X3DNode *n, std::size_t depth) {
-          if (!n || depth >= kMaxNestingDepth || !seen.insert(n).second) return;
-          detached_.erase(n);
-          for (const auto &s : systems_) s->attach(n, *this);
-          forEachChildNode(*n, [&](const FieldInfo &,
-                                   const std::shared_ptr<X3DNode> &c) {
-            walk(c.get(), depth + 1);
-          });
-        };
-    walk(root, 0);
-    bindings_.enrollAdditional(root);
+    collectSubtreeNodes(root, seen);
+    for (const auto *n : seen) attachNode(const_cast<X3DNode *>(n));
   }
 
-  void detachNodes(const std::unordered_set<const X3DNode *> &nodes) {
+  void collectSubtreeNodes(const X3DNode *root,
+                           std::unordered_set<const X3DNode *> &nodes,
+                           std::size_t depth = 0) const {
+    if (!root || depth >= kMaxNestingDepth || !nodes.insert(root).second) return;
+    forEachChildNode(*root, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &child) {
+      collectSubtreeNodes(child.get(), nodes, depth + 1);
+    });
+    for (const auto &field : authorFields_->authorFields(*root)) {
+      if (!field.get) continue;
+      if (field.type == X3DFieldType::SFNode) {
+        const auto value = field.get(*root);
+        if (const auto *child = std::any_cast<SFNode>(&value))
+          collectSubtreeNodes(child->get(), nodes, depth + 1);
+      } else if (field.type == X3DFieldType::MFNode) {
+        const auto value = field.get(*root);
+        if (const auto *children = std::any_cast<MFNode>(&value))
+          for (const auto &child : *children)
+            collectSubtreeNodes(child.get(), nodes, depth + 1);
+      }
+    }
+  }
+
+  void detachNodes(const std::unordered_set<const X3DNode *> &nodes,
+                   bool eraseAuthorFields = true) {
     graph_.removeNodes(nodes);
     cascade_.removeNodes(nodes);
     dirty_.removeNodes(nodes);
@@ -245,16 +258,19 @@ public:
       // the node's shared_ptr (e.g. InlineRuntimeSystem tile retirement).
       removeFieldWriteListeners(n);
       bindings_.removeNode(node);
-      authorFields_->erase(*node);
-      detached_.insert(node);
+      if (eraseAuthorFields) authorFields_->erase(*node);
+      sceneNodes_.erase(n);
+      pendingDetach_.erase(n);
+      offsets_.erase(node);
     }
     cascade_.removeNodes(nodes); // discard unbind events addressed to removed nodes
   }
 
+  // Structural field writes advance this automatically. Call explicitly after
+  // direct root/PROTO-route edits that bypass writeField and cascade delivery.
   void markSceneTopologyChanged() { ++sceneTopologyRevision_; }
   std::uint64_t sceneTopologyRevision() const { return sceneTopologyRevision_; }
 
-  /** @brief Remove all registered ROUTEs from the execution context. */
   void clearRoutes() { graph_.clear(); }
 
   /**
@@ -274,21 +290,9 @@ public:
   }
 
   /**
-   * @brief Deprecated compatibility shim: adapt an ActiveNode to a System.
-   * @details Wraps the per-node ActiveNode in a one-node System so existing
-   *          callers (and the legacy reference behaviors) keep working while
-   * the codebase migrates to `addSystem`. New code should implement System
-   *          directly. The wrapped node is updated each tick exactly as before.
-   */
-  [[deprecated("use addSystem(std::shared_ptr<System>) instead")]]
-  void addActiveNode(std::shared_ptr<ActiveNode> node) {
-    systems_.push_back(std::make_shared<ActiveNodeAdapter>(std::move(node)));
-  }
-
-  /**
    * @brief Register a post-cascade hook run after the per-tick cascade drains.
    * @details ISO 19775-1 §29.2.4 requires a Script's eventsProcessed() to run
-   *          AFTER the batch of received events has drained — i.e. after the
+   *          after the batch of received events has drained — i.e. after the
    *          cascade, not in the pre-cascade System pass. The ScriptSystem
    *          installs its eventsProcessed phase here; it is invoked each tick
    *          after `cascade_.process()` and may post + drain further events.
@@ -300,17 +304,19 @@ public:
   }
 
   /**
-   * @brief Convenience: register a ScriptSystem as the FIRST System (so its
+   * @brief Convenience: register a ScriptSystem as the first System (so its
    *        prepareEvents/update runs before other sensors and the cascade) and
    *        wire its post-cascade eventsProcessed phase.
    * @details `sys` must expose `update(now, ctx)` (prepareEvents phase) and
-   *          `runEventsProcessed(ctx)` (post-cascade phase). Templated so this
+   *          `runEventsProcessed(ctx)` (post-cascade phase), and `shutdown()`
+   *          (ISO/IEC 19775-1 §29.2.3). Templated so this
    *          header stays free of a ScriptSystem include (avoids the cycle:
    *          ScriptSystem includes this header).
    */
   template <class ScriptSystemT>
   void addScriptSystem(std::shared_ptr<ScriptSystemT> sys) {
-    systems_.insert(systems_.begin(), sys);  // FIRST: prepareEvents before routes
+    systems_.insert(systems_.begin(), sys);  // first: prepareEvents before routes
+    scriptShutdown_.push_back([sys] { sys->shutdown(); });
     addPostCascadeHook(
         [sys](X3DExecutionContext &ctx) { sys->runEventsProcessed(ctx); });
     // §29.2: an event reaching a Script's inputOnly author field (a ROUTE, or
@@ -324,16 +330,16 @@ public:
 
   /** @brief External input or legacy seed; preserves every accepted occurrence. */
   void postEvent(X3DNode *node, const std::string &field, std::any value) {
-    if (detached_.count(node)) return;
+    if (cascade_.removed_.count(node)) return;
     cascade_.postEvent(node, field, std::move(value));
   }
 
   /// Queue an outputOnly production for first-admitted, per-timestamp delivery.
-  /// Producers MUST NOT call a node emitter/setter before this: the cascade
+  /// Producers must not call a node emitter/setter before this: the cascade
   /// owns admission and storage mutation together. Legacy postEvent producers
   /// are unchanged and are outside this scoped generated-output guarantee.
   void postOutputEvent(X3DNode *node, const std::string &field, std::any value) {
-    if (detached_.count(node)) return;
+    if (cascade_.removed_.count(node)) return;
     cascade_.postOutputEvent(node, field, std::move(value));
   }
 
@@ -342,52 +348,25 @@ public:
   }
 
   /**
-   * @brief Dirty-aware direct field write for use by Systems.
-   * @details Writes `value` into `field` on `node` via reflection, then calls
-   *          `classifyDirty` so the dirty-tracker is updated exactly as if the
-   *          write had been delivered by the event cascade.  Use this instead of
-   *          a raw `info.set` call when a System needs to poke a field directly
-   *          (not via a posted event) — omitting `classifyDirty` would leave the
-   *          dirty state stale, which is a silent footgun (M2C-3).
-   *
-   *          REPORTS, never guesses. This is a stringly-typed, `std::any`-valued
-   *          write, so every argument is a chance for the caller to be wrong: a
-   *          dangling node, a misspelled or profile-absent field name, an
-   *          `outputOnly` field with no write thunk, a value whose type does not
-   *          match the field's. Each returns a distinct
-   *          @ref FieldWriteResult rather than doing nothing — the previous
-   *          `void` signature made a caller's typo indistinguishable from a
-   *          runtime bug, and a type mismatch escaped as an uncaught
-   *          `std::bad_any_cast` from inside the generated setter thunk.
-   *
-   *          `[[nodiscard]]`: a discarded result is exactly the silent no-op this
-   *          exists to remove. A caller that genuinely does not care must say so
-   *          with an explicit `(void)` cast, which is greppable.
-   *
-   *          The write is ATOMIC with respect to failure: on any non-Ok result
-   *          neither the field nor the dirty-tracker is touched, so a failed
-   *          write cannot leave a node dirty-flagged for a change that did not
-   *          happen.
-   *
-   *          Field-scan logic mirrors `EventCascade::deliver`; if you change the
-   *          lookup here, update that method too (intentional small duplication —
-   *          the cascade fans one value to N sinks via const&, this moves to one).
+   * Write through reflection and classify dirty state as cascade delivery does.
+   * Returns a distinct FieldWriteResult for null, detached, unknown, unwritable,
+   * or wrongly typed inputs. A failed write changes neither storage nor dirty state.
    */
   [[nodiscard]] FieldWriteResult writeField(X3DNode *node,
                                             const std::string &field,
                                             std::any value) {
     auto invocation = callbacks_.enter();
     if (!node) return FieldWriteResult::NullNode;
-    if (detached_.count(node)) return FieldWriteResult::DetachedNode;
+    if (cascade_.removed_.count(node)) return FieldWriteResult::DetachedNode;
     if (!cascade_.acceptsInput(FieldAddress{node, resolveFieldAlias(node, field)}, value))
       return FieldWriteResult::Ok;
     for (const auto &info : node->fields()) {
       if (info.x3dName != field) continue;
-      // Defensive: no node type currently reaches this. `outputOnly` does NOT
-      // mean "no set thunk" — the generator gives those a thunk that routes to
-      // the field's EMITTER, which is why writing e.g. TouchSensor.isActive
-      // succeeds and fires the event rather than being rejected.
+      // Generated outputOnly setters invoke the emitter; their presence permits writes.
       if (!info.set) return FieldWriteResult::NotWritable;
+      std::any retained = info.get &&
+          (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+          ? info.get(*node) : std::any{};
       try {
         info.set(*node, std::move(value));
       } catch (const std::bad_any_cast &) {
@@ -397,7 +376,17 @@ public:
         // before assignment), so skipping classifyDirty keeps the tracker honest.
         return FieldWriteResult::TypeMismatch;
       }
-      onFieldWritten(FieldAddress{node, field});
+      onFieldWritten(FieldAddress{node, field}, std::move(retained));
+      return FieldWriteResult::Ok;
+    }
+    for (const auto &info : authorFields_->authorFields(*node)) {
+      if (info.x3dName != field) continue;
+      if (!anyMatchesFieldType(value, info.type)) return FieldWriteResult::TypeMismatch;
+      std::any retained = info.get &&
+          (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+          ? info.get(*node) : std::any{};
+      authorFields_->setValue(*node, field, std::move(value));
+      onFieldWritten(FieldAddress{node, field}, std::move(retained));
       return FieldWriteResult::Ok;
     }
     return FieldWriteResult::UnknownField;
@@ -405,20 +394,41 @@ public:
 
   /**
    * @brief Advance to time `now`: update active nodes, then drain the cascade.
-   * @details RTC-6 — ISO 19775-1 §4.4.8.3 step 4: steps 2–3 (evaluate
+   * @details ISO 19775-1 §4.4.8.3 steps 2–3 (evaluate
    *          systems/sensors → drain the routed cascade) repeat until a pass
-   *          produces no new events, BEFORE post-processing. This lets a
+   *          produces no new events, before post-processing. This lets a
    *          sensor→route→sensor chain resolve within one tick even when the
    *          downstream sensor is ordered earlier in `systems_` (it would
    *          otherwise read the stale value and lag a frame). The whole loop is
-   *          ONE timestamp: the per-field cap (RTC-5) persists across the passes
-   *          (each drain continues the timestamp via `process(false)`), so a
+   *          one timestamp: the per-field cap persists across the passes
+   *          (each drain continues the timestamp via `process(false)`), so
    *          generated outputOnly fields using postOutputEvent emit once. The
    *          reached-field bookkeeping is monotone and bounded by the finite
    *          set of fields; repeated inputOnly occurrences still deliver. Legacy
    *          seed producers are not covered by the generated-output cap.
    */
-  void tick(double now) {
+  struct TickTimings {
+    double systemsAndCascadeMs = 0;
+    double postCascadeMs = 0;
+    double transformsMs = 0;
+    double boundsMs = 0;
+  };
+
+  void tick(double now) { tick(now, nullptr); }
+
+  using RetainedInput = EventCascade::RetainedInput;
+  /// Prevalidated retained candidates become visible together, before systems.
+  /// Queued input occurrences and ROUTEs share this tick's timestamp guards.
+  /// A failure can leave partial native effects; no rollback is promised.
+  void tick(double now, const std::vector<RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+
+  /// Optional phase timings for host profiling; no clock reads when null.
+  void tick(double now, TickTimings *timings) { tick(now, timings, {}); }
+
+  void tick(double now, TickTimings *timings,
+            const std::vector<RetainedInput> &ingress) {
     auto invocation = callbacks_.enter();
     // Guard against re-entrant tick() (e.g. a System calling tick() from
     // update()).  A recursive tick would clobber the outer tick's timestamp
@@ -432,33 +442,49 @@ public:
       ~Guard() { ref = false; }
     } guard{ticking_};
 
-    // A MONOTONIC count of completed advances, independent of the simulation
-    // clock. `now` is not a usable tick identity: it is embedder-supplied and may
-    // legitimately repeat (a paused scene that still ticks, a fixed-timestep or
-    // deterministic-replay driver, a coarse clock), and a double cannot
-    // distinguish "a new tick at the same clock value" from "no tick happened".
-    // Incremented AFTER the re-entrancy guard, so a nested tick() -- which is a
-    // documented no-op -- does not fabricate an advance. See SceneExtractor::
-    // delta(), which keys its one-delta-per-tick contract on this.
+    // Count completed advances independently of simulation time, which may repeat.
+    // Increment after the re-entrancy guard so a nested no-op creates no advance.
     ++tickGeneration_;
 
+    using Clock = std::chrono::steady_clock;
+    auto phaseStart = timings ? Clock::now() : Clock::time_point{};
+    if (timings) *timings = {};
+    const auto finishPhase = [&](double TickTimings::*phase) {
+      if (!timings) return;
+      const auto end = Clock::now();
+      timings->*phase = std::chrono::duration<double, std::milli>(end - phaseStart).count();
+      phaseStart = end;
+    };
     now_ = now;
     pointerConsumedBySensor_ = false;     // reset per-tick arbitration flag
     dirty_.clear();                       // drop last tick's changed-set
     cascade_.beginTimestamp();            // open the tick's single timestamp
-    // §4.4.8.3 step 4: re-evaluate systems + drain until quiescence.
+    if (!ingress.empty()) {
+      cascade_.stageRetained(ingress);
+      cascade_.process(/*freshTimestamp=*/false);
+      flushDetachedNodes();
+    }
+    // §4.4.8.3 re-evaluate systems + drain until quiescence.
+    std::size_t productions;
     do {
       for (const auto &s : systems_) {
         s->update(now, *this);
       }
-    } while (cascade_.process(/*freshTimestamp=*/false) != 0);  // observer fills dirty_
-    // §29.2.4: Script eventsProcessed() runs AFTER the batch drains. Each hook
+      productions = cascade_.process(/*freshTimestamp=*/false);
+      flushDetachedNodes();
+    } while (productions != 0);
+    finishPhase(&TickTimings::systemsAndCascadeMs);
+    // §29.2.4: Script eventsProcessed() runs after the batch drains. Each hook
     // may post + drain further events (it calls process() internally).
     for (const auto &hook : postCascade_) {
       hook(*this);
+      flushDetachedNodes();
     }
+    finishPhase(&TickTimings::postCascadeMs);
     transforms_.propagate(dirty_);        // dirtied locals -> world transforms
+    finishPhase(&TickTimings::transformsMs);
     bounds_.propagate(dirty_, transforms_); // dirtied geometry -> bounds
+    finishPhase(&TickTimings::boundsMs);
   }
 
   /** @brief Drain pending events without advancing the clock.
@@ -468,6 +494,7 @@ public:
   void process() {
     auto invocation = callbacks_.enter();
     cascade_.process(/*freshTimestamp=*/!ticking_);
+    if (!ticking_) flushDetachedNodes();
   }
 
   double now() const { return now_; }
@@ -482,35 +509,37 @@ public:
   std::uint64_t tickGeneration() const { return tickGeneration_; }
   /// True while tick() runs (systems, cascade drains, post-cascade hooks).
   bool ticking() const { return ticking_; }
+  /// No guarded native call is in flight, and callbacks have not retired.
+  /// This is an owner-thread lifecycle check, not a concurrency lock.
+  bool callbacksIdle() const {
+    return callbacks_.canRetire() && !callbacks_.retired();
+  }
 
   const EventGraph &graph() const { return graph_; }
 
   /// Pull surface (read after tick): the per-node dirty set for this tick.
   const DirtyTracker &dirtyTracker() const { return dirty_; }
-  /// Mark a grouping node's ACTIVE-CHILD selection as changed so the next
-  /// delta() re-walks its subtree. View-dependent selection — an LOD level
-  /// computed from the camera each tick — is not a settable field, so it never
-  /// flows through the cascade's field observer (classifyDirty). Without this,
-  /// only full-snapshot consumers see the swap; incremental delta() consumers
-  /// (e.g. the OpenGL PoC) stay on the stale level. The settable-field analogue
-  /// is Switch.whichChoice -> DirtyChildren in classifyDirty (SW-DELTA-1).
+  /// View-dependent selection (an LOD level computed from the camera) is not a
+  /// settable field, so it bypasses classifyDirty; this marks the subtree for
+  /// the next delta() re-walk.
   void markActiveChildChanged(X3DNode *n) {
-    if (n) dirty_.markDirty(n, DirtyChildren | DirtyBounds);
+    if (n) dirty_.markDirty(n, DirtyActiveChild);
   }
-  /// Pull surface: world transform of a Transform node (identity if unknown).
+  /// Pull surface: first-path world transform of a node; a non-Transform node
+  /// inherits its nearest Transform ancestor (identity if unknown).
   Mat4 worldTransform(const X3DNode *n) const {
     return transforms_.worldTransform(n);
   }
-  /// Pull surface: world transform of ANY node — Transform nodes get their own
+  /// Pull surface: world transform of any node — Transform nodes get their own
   /// world; non-Transform nodes inherit their nearest ancestor Transform's
   /// world. Identity if unindexed or no Transform ancestor. Required when the
   /// target is reachable via both a non-Transform reference (e.g. targetObject,
-  /// use field) AND a Transform ancestor (e.g. children); the scene-graph walk
-  /// from roots can find the wrong path, so we walk UP via the parent index.
+  /// use field) and a Transform ancestor (e.g. children); the scene-graph walk
+  /// from roots can find the wrong path, so we walk up via the parent index.
   Mat4 worldTransformAny(const X3DNode *n) const {
     return transforms_.worldTransformAny(n);
   }
-  /// Pull surface: world transform of a Transform node through ONE parent edge
+  /// Pull surface: world transform of a Transform node through one parent edge
   /// (a DEF/USE node under two parents has a world per parent; computed live).
   Mat4 worldTransformUnder(const X3DNode *parent, const X3DNode *n) const {
     return transforms_.worldTransformUnder(parent, n);
@@ -520,19 +549,19 @@ public:
   /// A cheap cache key for transform-derived consumer state (e.g. a pick index).
   std::uint64_t transformRevision() const { return transforms_.revision(); }
   /// Pull surface: scene root nodes captured at buildSceneGraph — the walk roots
-  /// for view-dependent active-path reachability (SENSOR-SWITCH/ENV-06).
+  /// for view-dependent active-path reachability.
   const std::vector<const X3DNode *> &sceneRoots() const {
     return transforms_.sceneRoots();
   }
   /// Pull surface: local-frame AABB of a node (empty if unknown).
   Aabb localBounds(const X3DNode *n) const { return bounds_.localBounds(n); }
   /// Pull surface: world-space AABB (= local bounds x composed ancestor
-  /// transforms). Uses TransformSystem::worldTransformAny (walk UP via parent
-  /// index) rather than PickSystem::worldOf (walk DOWN from roots) so a
+  /// transforms). Uses TransformSystem::worldTransformAny (walk up via parent
+  /// index) rather than PickSystem::worldOf (walk down from roots) so a
   /// non-Transform target reachable via a non-Transform reference (e.g.
   /// TransformSensor.targetObject) still resolves through its Transform
   /// ancestor — the latter would pick whichever root-path finds it first.
-  /// O(1) per call; fine for LOOKAT/sensors.
+  /// O(1) per call; fine for `LOOKAT`/sensors.
   Aabb worldBounds(const X3DNode *n) const {
     return bounds_.localBounds(n).transformed(transforms_.worldTransformAny(n));
   }
@@ -540,25 +569,21 @@ public:
   /// Pull surface: the currently bound node per bindable category (null if none).
   X3DNode *boundBindable(const std::string &category) const { return bindings_.bound(category); }
   X3DNode *boundViewpoint() const { return bindings_.bound("Viewpoint"); }
-  // BIND-06: a deleted bound node behaves as set_bind FALSE (pop its stack).
+  // a deleted bound node behaves as set_bind `FALSE` (pop its stack).
   void removeBoundNode(X3DNode *node) { bindings_.removeNode(node); }
   X3DNode *boundNavigationInfo() const { return bindings_.bound("NavigationInfo"); }
   X3DNode *boundBackground() const { return bindings_.bound("Background"); }
   X3DNode *boundFog() const { return bindings_.bound("Fog"); }
 
-  // BIND-09: side-channel — kind of the latest viewpoint bind transition.
+  // side-channel — kind of the latest viewpoint bind transition.
   BindTransition lastViewpointBindTransition() const { return lastVpTransition_; }
   void setLastViewpointBindTransition(BindTransition k) { lastVpTransition_ = k; }
-
-  // ------------------------------------------------------------------
-  // Consumer → runtime pointer input (M2.5 input seam, spec §4.1/§6).
+  // Consumer → runtime pointer input (input seam, spec §4.1/§6).
   // Call these between ticks to feed the current pointer state; each
   // bumps PointerState::revision so PointingSensorSystem can skip ticks
   // where nothing changed (§20.4.4 — isOver events only on pointer motion).
   // The consumer is responsible for un-projecting the screen position to a
   // world-space ray; no projection/near/far parameters ever cross this seam.
-  // ------------------------------------------------------------------
-
   /// Set the current world-space bearing (ray origin + direction).
   void setPointer(const Ray &worldRay) { pointer_.setRay(worldRay); }
 
@@ -570,19 +595,15 @@ public:
 
   /// Set the normalized cursor position (x rightward, y upward, ~[0,1] across
   /// the view). This is the camera-independent signal NavigationSystem uses for
-  /// EXAMINE/FLY drag — feed raw cursor pixels divided by the framebuffer size.
+  /// `EXAMINE`/`FLY` drag — feed raw cursor pixels divided by the framebuffer size.
   void setPointerScreen(float x, float y) { pointer_.setScreen(x, y); }
 
   /// Read-only access to the current pointer snapshot (for PointingSensorSystem).
   const PointerState &pointerState() const { return pointer_; }
-
-  // ------------------------------------------------------------------
-  // Consumer → runtime keyboard input (M2D PDS-4, unit U3).
+  // Consumer keyboard input.
   // Call setKey between ticks to feed key press/release events; each call
   // bumps KeyState::revision so NavigationSystem can skip ticks where no
   // key activity occurred (mirrors the PointerState revision pattern).
-  // ------------------------------------------------------------------
-
   /// Record a key press (down=true) or release (down=false).
   void setKey(int code, bool down) { keys_.setKey(code, down); }
 
@@ -627,7 +648,9 @@ public:
     fieldWriteListeners_.push_back({owner, std::move(l)});
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
-    cascade_.setFieldObserver([this](const FieldAddress &a) { onFieldWritten(a); });
+    cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
+      onFieldWritten(a, std::move(retained));
+    };
   }
   /// Remove every listener registered with this owner (no-op if none).
   void removeFieldWriteListeners(const X3DNode *owner) {
@@ -644,7 +667,7 @@ public:
   /// local matrices). Identity if not found. A pointing-device sensor has no
   /// transform of its own, so this is its parent-group frame — the coordinate
   /// system its hitPoint_changed/hitNormal_changed outputs are expressed in
-  /// (§20.4.4, M2.5 design §5.1). Delegates to PickSystem::worldOf.
+  /// (§20.4.4). Delegates to PickSystem::worldOf.
   Mat4 worldOf(const X3DNode *node) const { return pick_.worldOf(node); }
 
   /// Closest pick along a world-space ray (PickResult.hit == false on a miss).
@@ -676,16 +699,29 @@ public:
     return pick_.castCollidable(worldRay, maxDist, groups);
   }
 
-  /// World->camera (view) matrix from the bound Viewpoint (identity if none).
-  // CONF-VIEWNAV: the EFFECTIVE view = worldOf · authoredPose · navOffset · headPose.
-  // Authored position/orientation stay pristine (§23.2.3); navigation accumulates
-  // the per-viewpoint offset and the consumer supplies the head pose.
+  /// World->camera (view) matrix. An absolute host pose takes precedence;
+  /// otherwise view = worldOf · authoredPose · navOffset · headPose. Authored
+  /// position/orientation stay pristine (§23.2.3). With no bound Viewpoint,
+  /// head tracking composes at the world origin.
   Mat4 viewMatrix() const {
+    if (viewerWorldPose_) return viewerWorldPose_->inverse();
+    X3DNode *vp = boundViewpoint();
+    const Mat4 base = vp ? boundViewpointWorldPose() * viewpointOffset(vp).local
+                        : Mat4::identity();
+    const Mat4 cam = base *
+                     (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
+    return cam.inverse();
+  }
+
+  /// Authored camera-to-world pose of the bound Viewpoint, or identity if none.
+  /// Includes its ancestor frame (first path) and GeoViewpoint tangent frame;
+  /// excludes navigation, head tracking, and the absolute host override.
+  Mat4 boundViewpointWorldPose() const {
     X3DNode *vp = boundViewpoint();
     if (!vp) return Mat4::identity();
     SFRotation ori = geombounds::getField<SFRotation>(*vp, "orientation", {0,0,1,0});
     Mat4 pose;
-    if (vp->nodeTypeName() == "GeoViewpoint") {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       // §25.3.11: position is geographic; orientation is relative to local east/up/south.
       if (!geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), pose, geoProjection()))
         pose = Mat4::identity();
@@ -694,10 +730,7 @@ public:
       pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
              Mat4::rotation(ori);
     }
-    Mat4 cam = pick_.worldOf(vp) * pose *
-               viewpointOffset(vp).local *
-               (Mat4::translation(head_.position) * Mat4::rotation(head_.orientation));
-    return cam.inverse();
+    return pick_.worldOf(vp) * pose;
   }
 
   // Per-viewpoint user offset (process-local; §23.3.1 relative viewing transform).
@@ -708,26 +741,156 @@ public:
   }
   void setViewpointOffset(X3DNode *vp, const ViewpointOffset &off) { offsets_[vp] = off; }
 
-  // CAVE head-tracking seam (process-local; composed after the navigation offset).
+  /// Override the viewer with a rigid camera-to-world matrix in X3D world
+  /// coordinates (translation + rotation). Takes effect immediately, even
+  /// without a bound Viewpoint; persists across binds and setHeadPose calls
+  /// until explicitly cleared.
+  ///
+  /// Returns false, and keeps the previous pose, for a matrix that is not
+  /// finite, has a projective bottom row, or whose 3x3 part is not a proper
+  /// rotation within kViewerPoseTolerance (scale, shear or a reflection).
+  /// Accepted matrices are re-orthonormalized, so float drift accumulated by a
+  /// host's tracking or navigation never reaches the view as scale or shear.
+  static constexpr float kViewerPoseTolerance = 1e-3f;
+  bool setViewerWorldPose(const Mat4 &pose) {
+    auto rigid = rigidViewerPose(pose);
+    if (!rigid) return false;
+    viewerWorldPose_ = *rigid;
+    return true;
+  }
+  /// Resume the bound Viewpoint (or world origin) + stored head pose.
+  void clearViewerWorldPose() { viewerWorldPose_.reset(); }
+
+  // Relative head tracking, composed after navigation when no world override is set.
+  // Writes remain stored while overridden and take effect when it is cleared.
   void setHeadPose(const SFVec3f &pos, const SFRotation &ori) { head_.set(pos, ori); }
   const HeadPose &headPose() const { return head_; }
 
-  /// Viewer world-space position = camera-to-world translation (M2e).
+  /// Viewer world-space position = camera-to-world translation.
   SFVec3f cameraWorldPosition() const {
     return viewMatrix().inverse().transformPoint(SFVec3f{0, 0, 0});
   }
-  /// Viewer world-space up vector (+Y of the camera frame) (M2e).
+  /// Viewer world-space up vector (+Y of the camera frame).
   SFVec3f cameraWorldUp() const {
     return viewMatrix().inverse().transformDirection(SFVec3f{0, 1, 0});
   }
 
+  /// The rigid pose setViewerWorldPose would store for `pose`, or nullopt when
+  /// it rejects the matrix (see there).
+  static std::optional<Mat4> rigidViewerPose(const Mat4 &pose) {
+    for (float v : pose.m)
+      if (!std::isfinite(v)) return std::nullopt;
+    const float tol = kViewerPoseTolerance;
+    if (std::fabs(pose.m[3]) > tol || std::fabs(pose.m[7]) > tol ||
+        std::fabs(pose.m[11]) > tol || std::fabs(pose.m[15] - 1.0f) > tol)
+      return std::nullopt;
+    using V = std::array<double, 3>;
+    auto col = [&](int c) { return V{pose.m[c * 4], pose.m[c * 4 + 1], pose.m[c * 4 + 2]}; };
+    auto dot = [](const V &a, const V &b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+    const V x = col(0), y = col(1), z = col(2);
+    for (const V &c : {x, y, z})
+      if (std::fabs(dot(c, c) - 1.0) > 2.0 * tol) return std::nullopt;
+    if (std::fabs(dot(x, y)) > tol || std::fabs(dot(y, z)) > tol ||
+        std::fabs(dot(x, z)) > tol)
+      return std::nullopt;
+    const V cr{x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2],
+               x[0] * y[1] - x[1] * y[0]};
+    if (dot(cr, z) <= 0.0) return std::nullopt; // reflection
+    // Gram-Schmidt: keep x's direction, then y's plane; z completes the frame.
+    auto norm = [&](V v) {
+      const double l = std::sqrt(dot(v, v));
+      return V{v[0] / l, v[1] / l, v[2] / l};
+    };
+    const V nx = norm(x);
+    const double d = dot(nx, y);
+    const V ny = norm(V{y[0] - d * nx[0], y[1] - d * nx[1], y[2] - d * nx[2]});
+    const V nz{nx[1] * ny[2] - nx[2] * ny[1], nx[2] * ny[0] - nx[0] * ny[2],
+               nx[0] * ny[1] - nx[1] * ny[0]};
+    Mat4 out = pose;
+    for (int r = 0; r < 3; ++r) {
+      out.m[r] = static_cast<float>(nx[r]);
+      out.m[4 + r] = static_cast<float>(ny[r]);
+      out.m[8 + r] = static_cast<float>(nz[r]);
+    }
+    out.m[3] = out.m[7] = out.m[11] = 0.0f;
+    out.m[15] = 1.0f;
+    return out;
+  }
+
+  /// Keep host-owned nodes live while they are unreachable from the scene
+  /// roots: their fields, ROUTEs and attached systems keep working when a graph
+  /// edit detaches them. They are not render roots. The caller attaches its own
+  /// systems; this only records liveness.
+  void retainNodes(const std::vector<std::shared_ptr<X3DNode>> &nodes) {
+    for (const auto &node : nodes) {
+      if (!node) continue;
+      retainedNodes_.push_back(node);
+      collectSubtreeNodes(node.get(), sceneNodes_);
+    }
+  }
+
 private:
+  void attachNode(X3DNode *node) {
+    cascade_.removed_.erase(node);
+    if (pendingDetach_.erase(node)) return;
+    for (const auto &system : systems_) system->attach(node, *this);
+    if (dynamic_cast<X3DBindableNode *>(node)) bindings_.enrollAdditional(node);
+  }
+
+  void captureSceneNodes(const Scene &scene) {
+    sceneRoots_.clear();
+    for (const auto &root : scene.rootNodes) sceneRoots_.push_back(root);
+    for (const auto &peer : scene.protoPeerNodes) sceneRoots_.push_back(peer);
+    sceneNodes_.clear();
+    for (const auto &root : sceneRoots_)
+      if (const auto node = root.lock()) collectSubtreeNodes(node.get(), sceneNodes_);
+    for (const auto &node : retainedNodes_) collectSubtreeNodes(node.get(), sceneNodes_);
+  }
+
+  void synchronizeSceneNodes() {
+    std::unordered_set<const X3DNode *> reachable;
+    for (const auto &root : sceneRoots_)
+      if (const auto node = root.lock()) collectSubtreeNodes(node.get(), reachable);
+    for (const auto &node : retainedNodes_) collectSubtreeNodes(node.get(), reachable);
+    std::unordered_set<const X3DNode *> removed;
+    for (const auto *node : sceneNodes_)
+      if (!reachable.count(node)) removed.insert(node);
+    const auto previous = std::move(sceneNodes_);
+    sceneNodes_ = reachable;
+    if (ticking_ || cascade_.processDepth_ != 0) {
+      pendingDetach_.insert(removed.begin(), removed.end());
+      cascade_.removeNodes(removed);
+    } else {
+      detachNodes(removed, false);
+    }
+    for (const auto *node : reachable)
+      if (!previous.count(node) && sceneNodes_.count(node))
+        attachNode(const_cast<X3DNode *>(node));
+  }
+
+  void flushDetachedNodes() {
+    if (cascade_.processDepth_ != 0) return;
+    while (!pendingDetach_.empty()) {
+      auto nodes = std::move(pendingDetach_);
+      pendingDetach_.clear();
+      auto retained = std::move(retainedNodeValues_);
+      retainedNodeValues_.clear();
+      detachNodes(nodes, false);
+    }
+    retainedNodeValues_.clear();
+  }
+
   /// Map a delivered field to dirty flags on its node.
   // A field was written (cascade delivery or writeField): feed dirty tracking,
   // then the Systems that react to inputOutput writes.
-  void onFieldWritten(const FieldAddress &a) {
+  void onFieldWritten(const FieldAddress &a, std::any retained = {}) {
+    // ISO/IEC 19775-1 §4.4.3: retain removed nodes until their callbacks return.
+    if (retained.has_value() && (ticking_ || cascade_.processDepth_ != 0))
+      retainedNodeValues_.push_back(std::move(retained));
     classifyDirty(a);
-    for (const auto &l : fieldWriteListeners_) l.fn(a);
+    const auto listeners = fieldWriteListeners_;
+    for (const auto &l : listeners)
+      if (!l.owner || !cascade_.removed_.count(l.owner)) l.fn(a);
   }
 
   void classifyDirty(const FieldAddress &a) {
@@ -736,35 +899,40 @@ private:
                                  "scaleOrientation"};
     static const char *kChildren[] = {"children", "addChildren", "removeChildren"};
     unsigned flags = DirtyField;
-    // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
+    bool nodeReferencesChanged = false;
     bool isTransformNode = TransformSystem::isTransform(a.node);
     for (const char *f : kChildren)
-      if (a.field == f) flags = DirtyChildren;
+      if (a.field == f) { flags = DirtyChildren; nodeReferencesChanged = true; }
     // Every node-valued field participates in the scene indexes, not just
     // grouping children. Shape.geometry and geometry.coord replacements can
     // release their old node immediately and must refresh both indexes.
-    for (const auto &f : a.node->fields())
+    for (const auto &f : effectiveFields(*a.node, *authorFields_))
       if (f.x3dName == a.field &&
           (f.type == X3DFieldType::SFNode || f.type == X3DFieldType::MFNode)) {
         flags |= DirtyChildren;
+        nodeReferencesChanged = true;
+        markSceneTopologyChanged();
         break;
       }
-    // Switch.whichChoice selects the active child: changing it is an active-CHILD
-    // change for extraction, so it must trigger a subtree re-walk (DirtyChildren)
-    // — not a plain DirtyField, which delta() ignores for a grouping node (it is
-    // in neither geomDeps_ nor materialDeps_). Without this, incremental delta()
-    // consumers (e.g. the OpenGL PoC) never see the swap; only full-snapshot
-    // consumers (cpuraster) do. The extractor already reads whichChoice on a full
-    // walk, so this only fixes the INCREMENTAL channel.
-    if (a.field == "whichChoice") flags = DirtyChildren;
+    // Switch selection changes preserve node references and the transform
+    // index. A PROTO/Script field that happens to be named whichChoice is an
+    // ordinary field write and keeps DirtyField.
+    if (a.field == "whichChoice" && dynamic_cast<const x3d::nodes::Switch *>(a.node) != nullptr)
+      flags = DirtyActiveChild;
     // visible changes active traversal even when the hidden branch emitted no
-    // RenderItems, so it must invalidate the extraction baseline like Switch.
+    // RenderItems, so it must invalidate the extraction baseline.
     if (a.field == "visible") flags |= DirtyChildren;
+    // ISO/IEC 19775-1 §35.4.2: order selects the rendered Layer placements.
+    if (a.field == "order" && dynamic_cast<const x3d::nodes::LayerSet *>(a.node) != nullptr)
+      flags |= DirtyChildren;
     if (isTransformNode)
       for (const char *f : kTRS)
         if (a.field == f) flags = DirtyLocalTransform;
     if (isTransformNode && (a.field == "geoCoords" || a.field == "geoCenter"))
       flags = DirtyLocalTransform; // §25.3.3 / §25.3.10 dynamic tangent anchors
+    // geoSystem selects the frame's spatial reference, so it changes the local
+    // matrix too; TransformSystem's cached local matrix refreshes only on this bit.
+    if (isTransformNode && a.field == "geoSystem") flags |= DirtyLocalTransform;
 
     static const char *kBounds[] = {"size", "radius", "height", "bottomRadius",
         "point", "coord", "controlPoint", "crossSection", "spine", "scale",
@@ -772,26 +940,9 @@ private:
     for (const char *f : kBounds)
       if (a.field == f) { flags |= DirtyBounds; break; }
     if (flags & DirtyChildren) flags |= DirtyBounds;
+    if (nodeReferencesChanged) synchronizeSceneNodes();
     dirty_.markDirty(a.node, flags);
   }
-
-  /**
-   * @brief One-node System wrapping a legacy ActiveNode (for `addActiveNode`).
-   */
-  class ActiveNodeAdapter : public System {
-  public:
-    explicit ActiveNodeAdapter(std::shared_ptr<ActiveNode> node)
-        : node_(std::move(node)) {}
-    void attach(X3DNode *, X3DExecutionContext &) override {}
-    void update(double now, X3DExecutionContext &ctx) override {
-      if (node_) {
-        node_->update(now, ctx);
-      }
-    }
-
-  private:
-    std::shared_ptr<ActiveNode> node_;
-  };
 
   // Declare before every dependent system so the owner also survives their teardown.
   const std::shared_ptr<const geo::GeoProjection> geoProjection_ = geo::builtinProjectionOwner();
@@ -801,7 +952,12 @@ private:
   EventGraph graph_;
   EventCascade cascade_{graph_, authorFields_};
   std::vector<std::shared_ptr<System>> systems_;
-  std::unordered_set<const X3DNode *> detached_;
+  std::vector<std::function<void()>> scriptShutdown_;
+  std::vector<std::weak_ptr<X3DNode>> sceneRoots_;
+  std::vector<std::shared_ptr<X3DNode>> retainedNodes_;
+  std::unordered_set<const X3DNode *> sceneNodes_;
+  std::unordered_set<const X3DNode *> pendingDetach_;
+  std::vector<std::any> retainedNodeValues_;
   std::uint64_t sceneTopologyRevision_ = 0;
   std::vector<std::function<void(X3DExecutionContext &)>> postCascade_;
   DirtyTracker dirty_;
@@ -811,9 +967,10 @@ private:
   PickSystem pick_{geoProjection_};
   PointerState pointer_;
   KeyState keys_;
-  HeadPose head_;                                          // CONF-VIEWNAV head seam
+  std::optional<Mat4> viewerWorldPose_; // host-owned absolute camera override
+  HeadPose head_;                                          // head seam
   std::unordered_map<X3DNode *, ViewpointOffset> offsets_; // per-viewpoint user offset
-  BindTransition lastVpTransition_ = BindTransition::None; // BIND-09
+  BindTransition lastVpTransition_ = BindTransition::None; //
   double now_ = 0.0;
   std::uint64_t tickGeneration_ = 0; // monotonic advance count; see tickGeneration()
   bool ticking_ = false; // reentrancy guard for tick()

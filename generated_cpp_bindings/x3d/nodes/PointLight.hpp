@@ -1,4 +1,3 @@
-// PointLight.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -26,77 +25,37 @@ using namespace x3d::core;
  */
 class PointLight : public virtual X3DLightNode {
 public:
-  /**
-   * @brief Default constructor for PointLight
-   */
   PointLight() = default;
 
-  /**
-   * @brief Destructor for PointLight
-   */
   ~PointLight() = default;
 
-  /**
-   * @brief Get the default value for attenuation
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultAttenuation() { return SFVec3f{1, 0, 0}; }
 
-  /**
-   * @brief Get the default value for global
-   * @return SFBool The default value
-   */
   static SFBool getDefaultGlobal() { return true; }
 
-  /**
-   * @brief Get the default value for location
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultLocation() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the default value for radius
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultRadius() { return 100; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Lighting"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of attenuation. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Constant, linear-distance and squared-distance dropoff factors as
    * radial distance increases from the source.
-   * @return const SFVec3f& The current value of attenuation.
    */
   const SFVec3f &getAttenuation() const { return _attenuation; }
 
   /**
-   * @brief Sets the value of attenuation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Constant, linear-distance and squared-distance dropoff factors as
    * radial distance increases from the source.
-   * @param value The new value for attenuation.
    */
   void setAttenuation(const SFVec3f &value) {
 
@@ -113,59 +72,50 @@ public:
   }
 
   /**
-   * @brief Non-validating write of attenuation (runtime/reader ingest path).
-   * @details Assigns without the range check setAttenuation() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAttenuation() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAttenuation() for range validation.
    */
   void setAttenuationUnchecked(const SFVec3f &value) { _attenuation = value; }
 
   /**
-   * @brief Gets the value of global. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Global lights illuminate all objects within their volume of
    * lighting influence.
-   * @return const SFBool& The current value of global.
    */
   const SFBool &getGlobal() const { return _global; }
 
   /**
-   * @brief Sets the value of global. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Global lights illuminate all objects within their volume of
    * lighting influence.
-   * @param value The new value for global.
    */
   void setGlobal(const SFBool &value) { _global = value; }
 
   /**
-   * @brief Gets the value of location. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Position of light relative to local coordinate system.
-   * @return const SFVec3f& The current value of location.
    */
   const SFVec3f &getLocation() const { return _location; }
 
   /**
-   * @brief Sets the value of location. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Position of light relative to local coordinate system.
-   * @param value The new value for location.
    */
   void setLocation(const SFVec3f &value) { _location = value; }
 
   void setLocation(SFVec3f &&value) { _location = std::move(value); }
 
   /**
-   * @brief Gets the value of radius. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Maximum effective distance of light relative to local light
    * position, affected by ancestor scaling.
-   * @return const SFFloat& The current value of radius.
    */
   const SFFloat &getRadius() const { return _radius; }
 
   /**
-   * @brief Sets the value of radius. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Maximum effective distance of light relative to local light
    * position, affected by ancestor scaling.
-   * @param value The new value for radius.
    */
   void setRadius(const SFFloat &value) {
 
@@ -175,39 +125,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of radius (runtime/reader ingest path).
-   * @details Assigns without the range check setRadius() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setRadius() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setRadius() for range validation.
    */
   void setRadiusUnchecked(const SFFloat &value) { _radius = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "PointLight").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -250,27 +184,11 @@ private:
       throw std::out_of_range("radius below minimum of 0");
   }
 
-  /**
-   * @brief Member variable for attenuation.
-   */
-
   SFVec3f _attenuation{SFVec3f{1, 0, 0}};
-
-  /**
-   * @brief Member variable for global.
-   */
 
   SFBool _global{true};
 
-  /**
-   * @brief Member variable for location.
-   */
-
   SFVec3f _location{SFVec3f{0, 0, 0}};
-
-  /**
-   * @brief Member variable for radius.
-   */
 
   SFFloat _radius{100};
 };

@@ -38,7 +38,7 @@ public:
     interp->setOnSet_fractionHandler(
         ctx.guardCallback(*this, [&ctx, interp, lerp](const SFFloat &fraction) {
           // §19.3.1: an interpolator with no keys shall produce no events
-          // (INTERP-02). Checked live so a later non-empty key re-enables it.
+          //. Checked live so a later non-empty key re-enables it.
           if (interp->getKey().empty()) return;
           ctx.postOutputEvent(interp, "value_changed",
                         std::any(interpolateValue(interp->getKey(),
@@ -78,7 +78,7 @@ public:
     LerpFn lerp = lerp_;
     interp->setOnSet_fractionHandler(
         ctx.guardCallback(*this, [&ctx, interp, lerp](const SFFloat &fraction) {
-          // §19.3.1: no keys -> no events (INTERP-02).
+          // §19.3.1: no keys -> no events.
           if (interp->getKey().empty()) return;
           ctx.postOutputEvent(interp, "value_changed",
                         std::any(interpolateMulti(interp->getKey(),

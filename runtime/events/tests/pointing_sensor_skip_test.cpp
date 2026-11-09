@@ -1,11 +1,9 @@
-// pointing_sensor_skip_test.cpp — PERF-POINTING regression.
-//
+// pointing_sensor_skip_test.cpp — regression.
 // PointingSensorSystem resolves the pointer against the scene with a full-scene
 // pick (ctx.pick) on every pointer motion. A consumer that re-feeds the pointer
 // ray each frame (the OpenGL PoC does) therefore drove a brute-force scene pick
 // EVERY tick — ~8ms/frame on the kelp exhibit — even though that scene contains
 // no pointing-device sensors at all, so the pick can never resolve to one.
-//
 // Contract: when a full scene inventory (the per-node attach pass the bridge
 // runs) finds ZERO pointing-device sensors, the system performs no pick. When
 // the inventory was never taken, or a sensor exists, it still picks (so sensors
@@ -69,7 +67,7 @@ void wireInventoried(X3DExecutionContext &ctx, Scene &scene,
 TEST_CASE("pointing system performs no per-frame pick when the scene has no "
           "pointing sensors") {
   auto root = std::make_shared<Group>();
-  addChild(root, boxShape()); // a plain Shape — NO TouchSensor / drag sensor
+  addChild(root, boxShape()); // a plain Shape — no TouchSensor / drag sensor
   Scene scene;
   scene.addRootNode(root);
 

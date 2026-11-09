@@ -1,4 +1,3 @@
-// X3DComposableVolumeRenderStyleNode.cpp
 #include "x3d/nodes/X3DComposableVolumeRenderStyleNode.hpp"
 
 namespace x3d::nodes {

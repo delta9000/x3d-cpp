@@ -1,10 +1,7 @@
-// {{ class_name }}.cpp
 #include "x3d/nodes/{{ class_name }}.hpp"
 
-{% if namespace %}
-namespace {{ namespace }} {
+namespace x3d::nodes {
 using namespace x3d::core;
-{% endif %}
 {% if emit_reflection %}
 std::string {{ class_name }}::nodeTypeName() const {
     return "{{ class_name }}";
@@ -120,7 +117,7 @@ void {{ class_name }}::validateRanges(std::vector<RangeDiagnostic>& out) const {
 {% endif %}
 
 {#- checkRanges* definitions: emitted for any node declaring constrained own
-    fields, INDEPENDENT of emit_reflection — mixin object-types (e.g.
+    fields, independent of emit_reflection — mixin object-types (e.g.
     X3DFogObject, X3DUrlObject) declare these statics in their header even
     though they do not participate in reflection, and derived nodes call them
     base-qualified from validateRanges(). -#}
@@ -132,7 +129,7 @@ void {{ class_name }}::{{ field.range_checker_name }}(const {{ field.cpp_type }}
     {{ field.range_collect_body | indent(4) }}
 }
 {% endfor %}
-{% if namespace and not is_abstract %}
+{% if not is_abstract %}
 namespace factory_detail {
 std::shared_ptr<X3DNode> create{{ class_name }}() {
     return std::make_shared<{{ class_name }}>();
@@ -140,6 +137,5 @@ std::shared_ptr<X3DNode> create{{ class_name }}() {
 } // namespace factory_detail
 
 {% endif %}
-{% if namespace %}
-} // namespace {{ namespace }}
-{% endif %}
+} // namespace x3d::nodes
+{# Preserve the final newline in generated C++. #}

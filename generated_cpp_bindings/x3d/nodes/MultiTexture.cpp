@@ -1,4 +1,3 @@
-// MultiTexture.cpp
 #include "x3d/nodes/MultiTexture.hpp"
 
 namespace x3d::nodes {

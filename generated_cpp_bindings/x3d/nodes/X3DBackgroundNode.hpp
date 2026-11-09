@@ -1,4 +1,3 @@
-// X3DBackgroundNode.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,61 +26,32 @@ using namespace x3d::core;
  */
 class X3DBackgroundNode : public virtual X3DBindableNode {
 public:
-  /**
-   * @brief Default constructor for X3DBackgroundNode
-   */
   X3DBackgroundNode() = default;
 
-  /**
-   * @brief Virtual destructor for X3DBackgroundNode
-   */
   virtual ~X3DBackgroundNode() = default;
 
-  /**
-   * @brief Get the default value for skyColor
-   * @return MFColor The default value
-   */
   static MFColor getDefaultSkyColor() {
     return std::vector<SFColor>{SFColor{0, 0, 0}};
   }
 
-  /**
-   * @brief Get the default value for transparency
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultTransparency() { return 0; }
 
-  /**
-   * @brief Get the default container field value
-   * @details No explicit containerField in the spec for this node; falls back
-   *          to the X3D default field "children".
-   * @return std::string The default container field value
-   */
+  /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "EnvironmentalEffects"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of groundAngle. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFFloat& The current value of groundAngle.
    */
   const MFFloat &getGroundAngle() const { return _groundAngle; }
 
   /**
-   * @brief Sets the value of groundAngle. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for groundAngle.
    */
   void setGroundAngle(const MFFloat &value) {
 
@@ -98,25 +68,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of groundAngle (runtime/reader ingest path).
-   * @details Assigns without the range check setGroundAngle() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setGroundAngle() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setGroundAngle() for range validation.
    */
   void setGroundAngleUnchecked(const MFFloat &value) { _groundAngle = value; }
 
   /**
-   * @brief Gets the value of groundColor. AccessType: inputOutput
+   * MFColor; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFColor& The current value of groundColor.
    */
   const MFColor &getGroundColor() const { return _groundColor; }
 
   /**
-   * @brief Sets the value of groundColor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for groundColor.
    */
   void setGroundColor(const MFColor &value) {
 
@@ -133,25 +98,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of groundColor (runtime/reader ingest path).
-   * @details Assigns without the range check setGroundColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setGroundColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setGroundColor() for range validation.
    */
   void setGroundColorUnchecked(const MFColor &value) { _groundColor = value; }
 
   /**
-   * @brief Gets the value of skyAngle. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFFloat& The current value of skyAngle.
    */
   const MFFloat &getSkyAngle() const { return _skyAngle; }
 
   /**
-   * @brief Sets the value of skyAngle. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for skyAngle.
    */
   void setSkyAngle(const MFFloat &value) {
 
@@ -168,25 +128,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of skyAngle (runtime/reader ingest path).
-   * @details Assigns without the range check setSkyAngle() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setSkyAngle() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setSkyAngle() for range validation.
    */
   void setSkyAngleUnchecked(const MFFloat &value) { _skyAngle = value; }
 
   /**
-   * @brief Gets the value of skyColor. AccessType: inputOutput
+   * MFColor; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const MFColor& The current value of skyColor.
    */
   const MFColor &getSkyColor() const { return _skyColor; }
 
   /**
-   * @brief Sets the value of skyColor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for skyColor.
    */
   void setSkyColor(const MFColor &value) {
 
@@ -203,25 +158,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of skyColor (runtime/reader ingest path).
-   * @details Assigns without the range check setSkyColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setSkyColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setSkyColor() for range validation.
    */
   void setSkyColorUnchecked(const MFColor &value) { _skyColor = value; }
 
   /**
-   * @brief Gets the value of transparency. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details
-   * @return const SFFloat& The current value of transparency.
    */
   const SFFloat &getTransparency() const { return _transparency; }
 
   /**
-   * @brief Sets the value of transparency. AccessType: inputOutput
+   * Access: inputOutput.
    * @details
-   * @param value The new value for transparency.
    */
   void setTransparency(const SFFloat &value) {
 
@@ -231,39 +181,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of transparency (runtime/reader ingest path).
-   * @details Assigns without the range check setTransparency() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setTransparency() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setTransparency() for range validation.
    */
   void setTransparencyUnchecked(const SFFloat &value) { _transparency = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "X3DBackgroundNode").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -387,33 +321,13 @@ private:
       throw std::out_of_range("transparency above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for groundAngle.
-   */
-
   MFFloat _groundAngle{};
-
-  /**
-   * @brief Member variable for groundColor.
-   */
 
   MFColor _groundColor{};
 
-  /**
-   * @brief Member variable for skyAngle.
-   */
-
   MFFloat _skyAngle{};
 
-  /**
-   * @brief Member variable for skyColor.
-   */
-
   MFColor _skyColor{std::vector<SFColor>{SFColor{0, 0, 0}}};
-
-  /**
-   * @brief Member variable for transparency.
-   */
 
   SFFloat _transparency{0};
 };

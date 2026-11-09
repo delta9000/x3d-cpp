@@ -1,11 +1,11 @@
-// scene_extractor_clip_test.cpp — REQ-CLIP (§11.4.1): enabled ClipPlane nodes are
+// scene_extractor_clip_test.cpp —  (§11.4.1): enabled ClipPlane nodes are
 // collected into extraction and carried on the RenderItem as world-space planes.
 //
 // X3D §11.4.1 semantics exercised here:
 //   * a ClipPlane affects the FOLLOWING siblings (and their subtrees) within its
 //     parent grouping node;
-//   * `plane` is authored in the ClipPlane's LOCAL frame, so the reported
-//     descriptor is that plane mapped to WORLD space;
+//   * `plane` is authored in the ClipPlane's local frame, so the reported
+//     descriptor is that plane mapped to world space;
 //   * `enabled=false` disables the plane (it is not carried).
 //
 // Scene under test:
@@ -68,7 +68,7 @@ static const extract::RenderItem *itemOf(extract::SceneExtractor &ex,
 }
 
 TEST_CASE("scene_extractor_clip_test") {
-  // === 1) A plane affects the following sibling, not the preceding one ======
+  // 1) A plane affects the following sibling, not the preceding one
   {
     auto shapeBefore = makeTriShape();
     auto clip = createX3DNode("ClipPlane");
@@ -97,7 +97,7 @@ TEST_CASE("scene_extractor_clip_test") {
     CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, 0.0f)));
   }
 
-  // === 2) enabled=false disables the plane ==================================
+  // 2) enabled=false disables the plane
   {
     auto clip = createX3DNode("ClipPlane");
     setF(clip, "enabled", std::any(false));
@@ -118,7 +118,7 @@ TEST_CASE("scene_extractor_clip_test") {
     CHECK((it->clipPlanes.empty()));
   }
 
-  // === 3) the plane is transformed into WORLD space (Transform translation) ==
+  // 3) the plane is transformed into world space (Transform translation) ==
   // A ClipPlane under a Transform translated +5 in Y: the authored plane
   // (0,1,0,0) (visible where y>=0) becomes (0,1,0,-5) in world (visible y>=5).
   {
@@ -143,7 +143,7 @@ TEST_CASE("scene_extractor_clip_test") {
     CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, -5.0f)));
   }
 
-  // === 4) a plane scoped to a child group does not leak to its siblings =====
+  // 4) a plane scoped to a child group does not leak to its siblings
   // root > { inner > { ClipPlane, shapeIn }, shapeOut }: shapeIn carries the
   // plane, shapeOut (a following sibling of inner) does not.
   {
@@ -172,7 +172,7 @@ TEST_CASE("scene_extractor_clip_test") {
     CHECK((out->clipPlanes.empty()));
   }
 
-  // === 5) a live plane edit is reflected by a fresh snapshot ================
+  // 5) a live plane edit is reflected by a fresh snapshot
   {
     auto clip = createX3DNode("ClipPlane");
     setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));

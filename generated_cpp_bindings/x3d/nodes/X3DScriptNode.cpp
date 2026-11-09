@@ -1,4 +1,3 @@
-// X3DScriptNode.cpp
 #include "x3d/nodes/X3DScriptNode.hpp"
 
 namespace x3d::nodes {

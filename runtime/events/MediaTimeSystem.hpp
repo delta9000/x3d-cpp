@@ -1,7 +1,6 @@
 // MediaTimeSystem.hpp — the X3DTimeDependentNode lifecycle for media nodes
 // (ISO/IEC 19775-1 §8.2.4, §16.4.2 AudioClip, §16.4.5 BufferAudioSource,
 // §18.4.6 MovieTexture).
-//
 // AudioClip, BufferAudioSource and MovieTexture are time-dependent:
 // startTime / stopTime / pauseTime / resumeTime / loop drive isActive, isPaused
 // and elapsedTime exactly as for a TimeSensor. This System reuses the shared
@@ -15,7 +14,7 @@
 //                 BufferAudioSource without an authored sampleRate has no
 //                 knowable seconds) the node plays until its stopTime.
 // Decoding and playback are separate (the AudioBackend / MovieDecoder seams);
-// this System only owns the timing outputs (TDN-5).
+// this System only owns the timing outputs.
 #ifndef X3D_RUNTIME_MEDIA_TIME_SYSTEM_HPP
 #define X3D_RUNTIME_MEDIA_TIME_SYSTEM_HPP
 

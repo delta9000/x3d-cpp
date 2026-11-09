@@ -1,4 +1,3 @@
-// AudioClip.cpp
 #include "x3d/nodes/AudioClip.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// OscillatorSource.cpp
 #include "x3d/nodes/OscillatorSource.hpp"
 
 namespace x3d::nodes {

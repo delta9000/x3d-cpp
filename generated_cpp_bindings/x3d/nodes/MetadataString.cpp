@@ -1,4 +1,3 @@
-// MetadataString.cpp
 #include "x3d/nodes/MetadataString.hpp"
 
 namespace x3d::nodes {

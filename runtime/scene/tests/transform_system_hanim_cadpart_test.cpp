@@ -1,10 +1,4 @@
-// transform_system_hanim_cadpart_test.cpp — M2C-4: TransformSystem covers
-// HAnimHumanoid, HAnimJoint, and CADPart as transform-bearing nodes (each
-// carries the full TRS field set: translation/rotation/scale/center/
-// scaleOrientation). Asserts that a child Shape's world matrix is composed
-// correctly through each new type, just as it is for Transform.
-//
-// Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
+// HAnimHumanoid, HAnimJoint and CADPart compose child world matrices through TRS.
 #include "TransformSystem.hpp"
 #include "DirtyTracker.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -40,7 +34,7 @@ static void setChildren(const std::shared_ptr<X3DNode> &parent,
 // We add a Transform child via the "children" slot where available; if the
 // node doesn't carry "children" we use any MFNode field it does have. For
 // world-transform purposes it doesn't matter which slot — the walk descends
-// ALL node-typed fields.
+// all node-typed fields.
 static bool addToFirstMFNodeField(const std::shared_ptr<X3DNode> &parent,
                                   const std::shared_ptr<X3DNode> &child) {
   for (auto &f : parent->fields()) {
@@ -73,7 +67,7 @@ static bool addToNamedMFNodeField(const std::shared_ptr<X3DNode> &parent,
 static void addChild(const std::shared_ptr<X3DNode> &parent,
                      const std::shared_ptr<X3DNode> &child) {
   // Prefer the real geometry-hierarchy container: "children" (Transform/Group),
-  // then "skeleton" (HAnimHumanoid's child-hierarchy slot — NOT "joints", which
+  // then "skeleton" (HAnimHumanoid's child-hierarchy slot — not "joints", which
   // is a list of USE references). Fall back to any MFNode for other types.
   for (auto &f : parent->fields())
     if (f.x3dName == "children" && f.set) { setChildren(parent, child); return; }
@@ -136,19 +130,19 @@ static void runPropagateScenario(const char *parentType) {
 }
 
 TEST_CASE("transform_system_hanim_cadpart_test") {
-  // --- HAnimHumanoid ---
+  // HAnimHumanoid
   runScenario("HAnimHumanoid", 1, 0, 0, 0, 2, 0);
   runPropagateScenario("HAnimHumanoid");
 
-  // --- HAnimJoint ---
+  // HAnimJoint
   runScenario("HAnimJoint", 0, 1, 0, 0, 0, 3);
   runPropagateScenario("HAnimJoint");
 
-  // --- CADPart ---
+  // CADPart
   runScenario("CADPart", 0, 0, 2, 4, 0, 0);
   runPropagateScenario("CADPart");
 
-  // --- Nested: HAnimHumanoid > HAnimJoint > Transform ---
+  // Nested: HAnimHumanoid > HAnimJoint > Transform
   {
     auto humanoid = createX3DNode("HAnimHumanoid");
     setTranslation(humanoid, {1, 0, 0});

@@ -1,41 +1,8 @@
-// AudioBackend.hpp  [STABLE]
-// The engine-agnostic audio seam (ISO/IEC 19775-1 §16 Sound: the X3D 4.0 sound
-// component models a Web-Audio-style directed processing graph but mandates no
-// specific DSP engine). A backend (a built-in DSP, miniaudio, LabSound, or a
-// browser's Web Audio) implements this interface; SoundSystem drives it by
-// reading the §16 `children` audio graph.
-//
-// STATUS: [STABLE] — proven generic by two independent backends:
-//   Backend A: BuiltinDspBackend (runtime/sound/dsp/BuiltinDspBackend.{hpp,cpp},
-//              always-built, dependency-free)
-//   Backend B: MiniaudioBackend (runtime/sound/miniaudio/MiniaudioBackend.{hpp,cpp},
-//              -DX3D_CPP_BUILD_MINIAUDIO=ON, vendored single-header,
-//              Unlicense OR MIT-0)
-// The CI-gated headless swap-test `x3d_sound_swaptest` asserts both backends
-// agree on the synthesis chain (RMS ±2%, Goertzel ±5%) and on spatial
-// invariants (ear-sign, symmetry, monotonic distance falloff). See ADR-0026.
-//
-// ENGINE-AGNOSTIC CONTRACT (mirrors the PhysicsBackend seam, §37, and the
-// ScriptEngine seam, §29.1): this seam carries NO DSP-engine types and NO DSP
-// implementation. Every value crossing it is a node KIND, a small set of SF*
-// scalar parameters + bounded waveform/filter enums, or a plain sample buffer
-// (std::vector<float>). There is no oscillator math, no biquad coefficient, no
-// phase accumulator, no filter state in this header — all DSP lives ONLY in a
-// backend's .cpp (dsp/BuiltinDspBackend.cpp). A seam-purity check greps this
-// header (and SoundSystem.hpp) for DSP leakage: there must be none.
-//
-// Spatial-audio purity extension: POSITIONS (source, listener orientation) may
-// cross the seam for Panner nodes — the backend computes pan/attenuation from
-// the geometry itself. What MUST NEVER cross the seam: gainL, gainR, any
-// precomputed pan coefficient or biquad DSP coefficient. Crossing a precomputed
-// gain instead of a position would couple the runtime to the backend's distance
-// model and break backend-swappability.
-//
-// Sample-buffer extension (ADR-0050): decoded PCM crosses ONCE, at createNode,
-// for a Buffer source (an AudioClip or MovieTexture decoded through the AudioDecoder
-// seam). Nothing else carries samples inbound; playback (cursor, rate, looping)
-// is the backend's own DSP, driven only by the PlaybackState / PlaybackRate
-// scalars.
+// ISO/IEC 19775-1 §16 audio graph interface. See ADR-0026.
+// DSP implementation and engine types remain private to each backend.
+// Panners receive positions rather than channel gains so each backend chooses
+// its attenuation model. Decoded PCM is supplied at Buffer creation; playback
+// state and rate are updated separately. See ADR-0050.
 #ifndef X3D_RUNTIME_AUDIO_BACKEND_HPP
 #define X3D_RUNTIME_AUDIO_BACKEND_HPP
 
@@ -52,16 +19,8 @@ namespace x3d::runtime {
  */
 using NodeHandle = std::uint64_t;
 
-/** @brief The invalid / unset node handle. */
 inline constexpr NodeHandle kInvalidNodeHandle = 0;
 
-/**
- * @brief Which §16 audio-graph node a backend should instantiate.
- * @details The seam speaks node KINDS, never an engine's node class. v1 covers
- *          the synthesis chain (OscillatorSource -> BiquadFilter -> Gain ->
- *          AudioDestination); extensible (add a Kind + its NodeParams) without
- *          engine-type leakage.
- */
 enum class NodeKind { Oscillator, Biquad, Gain, Destination, Panner, Buffer,
                       Delay,
                       Compressor,
@@ -94,7 +53,6 @@ enum class Waveform { Sine, Square, Sawtooth, Triangle, Custom };
 /**
  * @brief Biquad filter algorithm, in the runtime's own terms (mirrors X3D's
  *        BiquadTypeFilterChoices). The seam never names a DSP-engine filter type.
- *        v1 implements at least Lowpass + Highpass; the rest are extension points.
  */
 enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
                         Peaking, Notch, Allpass };
@@ -119,9 +77,9 @@ enum class FilterType { Lowpass, Highpass, Bandpass, Lowshelf, Highshelf,
  *                           it crosses once, at createNode), gain, enabled.
  *            - Panner:      sourcePosition, listenerPosition, listenerForward,
  *                           listenerUp, distanceModel, referenceDistance,
- *                           maxDistance, rolloffFactor. POSITIONS cross the seam
+ *                           maxDistance, rolloffFactor. positions cross the seam
  *                           — the backend computes pan/attenuation from geometry.
- *                           A precomputed gainL/gainR/coefficient MUST NOT cross
+ *                           A precomputed gainL/gainR/coefficient must not cross
  *                           the seam (see seam-purity note at top of file).
  *          Unused fields keep their defaults. Only SF* scalars + bounded enums
  *          cross the seam — never any DSP state.
@@ -140,9 +98,9 @@ struct NodeParams {
   /** @brief Oscillator waveform (Oscillator nodes). */
   Waveform waveform = Waveform::Sine;
 
-  // ── Custom-waveform fields (Waveform::Custom, the §16.4.18 PeriodicWave) ──
+  // Custom-waveform fields (Waveform::Custom, the §16.4.18 PeriodicWave)
   //
-  // The real/imag harmonic terms cross ONCE, here, like a Buffer's samples —
+  // The real/imag harmonic terms cross once, here, like a Buffer's samples —
   // they are waveform data, not DSP state. Index 0 is the DC term (ignored);
   // harmonic k sums real[k]*cos(k*phase) + imag[k]*sin(k*phase), normalized so
   // the peak absolute value is 1 (Web Audio's default; X3D 4.0's PeriodicWave
@@ -154,23 +112,23 @@ struct NodeParams {
   std::vector<float> optionsImag;
   /** @brief Filter algorithm (Biquad nodes). */
   FilterType filterType = FilterType::Lowpass;
-  /** @brief Max channel count (Destination nodes). v1 is mono. */
+  /** @brief Max channel count (Destination nodes). */
   int maxChannelCount = 2;
   /** @brief Delay duration in seconds (Delay nodes). Clamped to [0, maxDelayTime]. */
   float delayTime = 0.0f;
   /** @brief Maximum delay in seconds (Delay nodes) — bounds the ring buffer. */
   float maxDelayTime = 1.0f;
 
-  // ── WaveShaper field (like Buffer's samples, the curve crosses ONCE, here) ─
+  // WaveShaper field (like Buffer's samples, the curve crosses once, here) ─
   /** @brief Transfer curve (WaveShaper nodes): input x in [-1,1] maps to index
    *         (N-1)/2*(x+1) with linear interpolation; out-of-range x clamps to
    *         the first/last value; empty = pass-through. */
   std::vector<float> curve;
 
-  // ── Panner-only fields (unused / defaulted for all other node kinds) ──────
+  // Panner-only fields (unused / defaulted for all other node kinds)
   //
-  // POSITIONS cross the seam; the backend derives pan/attenuation from geometry.
-  // NEVER pass a precomputed gainL/gainR/coefficient here — that would violate
+  // positions cross the seam; the backend derives pan/attenuation from geometry.
+  // never pass a precomputed gainL/gainR/coefficient here — that would violate
   // the seam-purity contract and couple the runtime to a specific pan law.
 
   /** @brief Sound source position in world space (Panner nodes). */
@@ -190,8 +148,8 @@ struct NodeParams {
   /** @brief Rolloff rate multiplier (Panner nodes). */
   float rolloffFactor          = 1.0f;
 
-  // ── Ellipsoid Panner fields (DistanceModel::Ellipsoid, the §16.4.17 Sound
-  //    node). Geometry only: the backend computes the attenuation. ──────────
+  // Ellipsoid Panner fields (DistanceModel::Ellipsoid, the §16.4.17 Sound
+  // node). Geometry only: the backend computes the attenuation.
   /** @brief Sound direction (unit-less; the ellipsoids' axis), world space. */
   float direction[3] = {0.0f, 0.0f, 1.0f};
   float minFront = 1.0f, minBack = 1.0f, maxFront = 10.0f, maxBack = 10.0f;
@@ -200,13 +158,13 @@ struct NodeParams {
   /** @brief Sound.spatialize: pan by direction to the listener, else centred. */
   bool spatialize = true;
 
-  // ── Buffer source fields (NodeKind::Buffer). The samples cross ONCE, here. ─
+  // Buffer source fields (NodeKind::Buffer). The samples cross once, here. ─
   /** @brief Decoded mono PCM in [-1, 1]. */
   std::vector<float> samples;
   /** @brief The samples' own rate in hertz. */
   float sampleRate = 44100.0f;
 
-  // ── DynamicsCompressor fields (NodeKind::Compressor, §16.4.9) ─────────────
+  // DynamicsCompressor fields (NodeKind::Compressor, §16.4.9)
   /** @brief Compression threshold in dB (DynamicsCompressor). */
   float threshold = -24.0f;
   /** @brief Soft-knee width in dB (DynamicsCompressor). */
@@ -254,7 +212,7 @@ enum class Param {
  *          The lifecycle mirrors the §16 graph SoundSystem reads:
  *            - createNode(): one per §16 node (OscillatorSource / BiquadFilter /
  *              Gain / AudioDestination), with its initial NodeParams.
- *            - connect(dst, src): wire `src` as an INPUT feeding INTO `dst`
+ *            - connect(dst, src): wire `src` as an input feeding into `dst`
  *              (matching §16 `children` = inputs; the graph flows children ->
  *              parent up to the destination).
  *            - setParam(): update one animatable scalar (route-animation each
@@ -278,8 +236,8 @@ public:
   virtual NodeHandle createNode(NodeKind kind, const NodeParams &params) = 0;
 
   /**
-   * @brief Wire `src` as an input feeding INTO `dst` (§16 children = inputs).
-   * @details Both handles MUST already have been created. A node may have many
+   * @brief Wire `src` as an input feeding into `dst` (§16 children = inputs).
+   * @details Both handles must already have been created. A node may have many
    *          inputs (they sum). The destination's inputs are its `children`.
    */
   virtual void connect(NodeHandle dst, NodeHandle src) = 0;
@@ -301,10 +259,7 @@ public:
   /**
    * @brief Render `frames` stereo sample-pairs (interleaved L,R,L,R,…) from
    *        `destination` into `outLR` (resized to `2*frames`).
-   * @details Backends that do not yet implement spatial panning (Task 3+) MUST
-   *          still provide this: duplicate the mono signal into both channels.
-   *          Equal-power panning for Panner nodes is added in Task 3
-   *          (BuiltinDspBackend) and Task 4 (MiniaudioBackend).
+   * @details Backends without spatial panning duplicate mono into both channels.
    *
    *          outLR[2*i]   = left  sample for frame i
    *          outLR[2*i+1] = right sample for frame i

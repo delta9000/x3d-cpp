@@ -1,15 +1,15 @@
-// texture_extract_test.cpp — T-TEX v1 end-to-end texture extraction.
+// End-to-end texture extraction.
 //
 // Covers the new TextureExtract.hpp seam that closes textures end-to-end:
-//   1. AUTHORED TextureCoordinate is extracted onto MeshData.texcoords
+//   1. authored TextureCoordinate is extracted onto MeshData.texcoords
 //      (texCoordIndex / coordIndex fallback per §13.3.6) — confirmed via the
 //      existing MeshBuilder path (authored coords WIN over default §13 coords).
 //      MultiTextureCoordinate and TextureCoordinate3D/4D are normalized onto the
 //      current MeshData.texcoords (s,t) seam by taking the first usable channel
 //      and first two coordinates.
 //   2. TextureTransform (center/rotation/scale/translation, §18.4.10) is baked
-//      into the mesh texcoords by applyTextureTransformToMesh().
-//   3. textureTransformParamsOf(appearance) reads the authored TextureTransform
+//      into the mesh texcoords by applyTextureTransformsToMesh().
+//   3. textureTransformParamsListOf(appearance) reads the authored TextureTransform
 //      node from Appearance.textureTransform.
 //   4. ExtendedSampler / TextureProperties boundary+filter modes are surfaced on
 //      TextureRef::extSampler (§18.4.9), and repeatS/T derive a BoundaryMode when
@@ -17,7 +17,7 @@
 //   5. TextureCoordinateGenerator on a geometry's texCoord slot surfaces a
 //      TexCoordGenDesc descriptor (mode + parameter, §18.4.8).
 //   6. resolveTextureRefs() threads a consumer TextureResolver onto each
-//      TextureRef::resolvedPixels (Url goes through the resolver; Inline does NOT).
+//      TextureRef::resolvedPixels (Url goes through the resolver; Inline does not).
 #include "GeoFrame.hpp"
 #include "MaterialSystem.hpp"
 #include "MeshBuilder.hpp"
@@ -54,7 +54,7 @@ static void setEnum(const std::shared_ptr<X3DNode> &n, const char *nm,
     if (f.x3dName == nm && f.setEnumString) { f.setEnumString(*n, token); return; }
 }
 
-// --- 1. AUTHORED TextureCoordinate wins over default §13 coords -------------
+// 1. authored TextureCoordinate wins over default §13 coords
 static void testAuthoredTexCoord() {
   // A single triangle TriangleSet with an authored TextureCoordinate. The
   // authored point[] must surface verbatim (positional order for non-indexed).
@@ -139,7 +139,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
   CHECK((feq(m4.texcoords[2].x, 0.75f) && feq(m4.texcoords[2].y, 0.85f)));
 }
 
-// --- 2. applyTextureTransformToMesh bakes the transform into texcoords ------
+// 2. applyTextureTransformsToMesh bakes the transform into texcoords
 static void testApplyTransformToMesh() {
   MeshData m;
   m.texcoords = {{0.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f}};
@@ -148,15 +148,15 @@ static void testApplyTransformToMesh() {
   TextureTransform2DParams p;
   p.translationS = 0.5f;
   p.translationT = 0.25f;
-  applyTextureTransformToMesh(m, p);
+  applyTextureTransformsToMesh(m, {p});
   CHECK((feq(m.texcoords[0].x, 0.5f) && feq(m.texcoords[0].y, 0.25f)));
   CHECK((feq(m.texcoords[1].x, 1.5f) && feq(m.texcoords[1].y, 0.25f)));
   CHECK((feq(m.texcoords[2].x, 0.5f) && feq(m.texcoords[2].y, 1.25f)));
 
-  // Identity transform must be a no-op (cheap early-exit; bytes unchanged).
+  // Identity transforms preserve UV values.
   MeshData m2;
   m2.texcoords = {{0.3f, 0.7f}};
-  applyTextureTransformToMesh(m2, TextureTransform2DParams{});
+  applyTextureTransformsToMesh(m2, {TextureTransform2DParams{}});
   CHECK((feq(m2.texcoords[0].x, 0.3f) && feq(m2.texcoords[0].y, 0.7f)));
 
   // Scale (2,2) about default center 0: doubles each coordinate.
@@ -165,15 +165,15 @@ static void testApplyTransformToMesh() {
   TextureTransform2DParams sp;
   sp.scaleS = 2.0f;
   sp.scaleT = 2.0f;
-  applyTextureTransformToMesh(m3, sp);
+  applyTextureTransformsToMesh(m3, {sp});
   CHECK((feq(m3.texcoords[0].x, 0.5f) && feq(m3.texcoords[0].y, 1.0f)));
 }
 
-// --- 2b. TXF-1: §18.4.10 application ORDER on a non-trivial transform --------
+// 2b. §18.4.10 application order on a non-trivial transform
 // The normative matrix Tc' = C⁻¹ · S · R · C · T · Tc applies, right-to-left,
-// translate → pivot → ROTATE → SCALE → un-pivot (rotation BEFORE scaling). A
+// translate → pivot → rotate → scale → un-pivot (rotation before scaling). A
 // rotation about a non-zero center plus a non-uniform scale makes the two orders
-// (rotate-then-scale vs the previously-coded scale-then-rotate) disagree. The
+// (rotate-then-scale vs scale-then-rotate) disagree. The
 // expected values below are the hand-expanded matrix result and differ from the
 // scale-then-rotate order's (-0.1, 0.2), so this test pins the order.
 static void testTextureTransformOrder() {
@@ -215,13 +215,13 @@ static void testTextureTransformOrder() {
   }
 }
 
-// --- 3. textureTransformParamsOf reads Appearance.textureTransform ---------
-static void testTextureTransformParamsOf() {
-  // No appearance / no textureTransform => identity.
-  CHECK((isIdentityTextureTransform(textureTransformParamsOf(nullptr))));
+// 3. textureTransformParamsListOf reads Appearance.textureTransform
+static void testTextureTransformParamsListOf() {
+  // No appearance / no textureTransform => no authored transforms.
+  CHECK((textureTransformParamsListOf(nullptr).empty()));
   {
     auto app = createX3DNode("Appearance");
-    CHECK((isIdentityTextureTransform(textureTransformParamsOf(app.get()))));
+    CHECK((textureTransformParamsListOf(app.get()).empty()));
   }
   // Authored TextureTransform => fields surfaced.
   {
@@ -233,15 +233,16 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(tt)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
+    auto params = textureTransformParamsListOf(app.get());
+    REQUIRE(params.size() == 1);
+    const auto &p = params.front();
     CHECK((!isIdentityTextureTransform(p)));
     CHECK((feq(p.centerS, 0.5f) && feq(p.centerT, 0.5f)));
     CHECK((feq(p.rotation, 1.0f)));
     CHECK((feq(p.scaleS, 2.0f) && feq(p.scaleT, 3.0f)));
     CHECK((feq(p.translationS, 0.1f) && feq(p.translationT, 0.2f)));
   }
-  // MultiTextureTransform => first usable 2D child surfaced on the current
-  // single-texture transform seam.
+  // MultiTextureTransform preserves each channel's transform.
   {
     auto tt = createX3DNode("TextureTransform");
     setF(tt, "translation", std::any(SFVec2f{0.25f, 0.5f}));
@@ -252,8 +253,6 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(mtt)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
-    CHECK((feq(p.translationS, 0.25f) && feq(p.translationT, 0.5f)));
     auto params = textureTransformParamsListOf(app.get());
     CHECK((params.size() == 2));
     CHECK((feq(params[0].translationS, 0.25f) &&
@@ -285,16 +284,17 @@ static void testTextureTransformParamsOf() {
     auto app = createX3DNode("Appearance");
     setF(app, "textureTransform", std::any(std::shared_ptr<X3DNode>(tm)));
 
-    TextureTransform2DParams p = textureTransformParamsOf(app.get());
+    auto params = textureTransformParamsListOf(app.get());
+    REQUIRE(params.size() == 1);
     MeshData mesh;
     mesh.texcoords = {{0.5f, 0.25f}};
-    applyTextureTransformToMesh(mesh, p);
+    applyTextureTransformsToMesh(mesh, params);
     CHECK((feq(mesh.texcoords[0].x, 1.25f)));
     CHECK((feq(mesh.texcoords[0].y, 1.25f)));
   }
 }
 
-// --- 4. ExtendedSampler / TextureProperties boundary+filter modes ----------
+// 4. ExtendedSampler / TextureProperties boundary+filter modes
 static void testExtendedSampler() {
   // No TextureProperties: repeatS/T derive BoundaryMode (Repeat / ClampToEdge).
   {
@@ -328,7 +328,7 @@ static void testExtendedSampler() {
     CHECK((feq(s.anisotropicDegree, 4.0f)));
     CHECK((feq(s.borderColor.r, 0.2f) && feq(s.borderColor.a, 0.5f)));
   }
-  // 3D textures carry repeatR; without TextureProperties it derives boundaryModeR (T3D-2).
+  // 3D textures carry repeatR; without TextureProperties it derives boundaryModeR.
   {
     auto tex = createX3DNode("ComposedTexture3D");
     setF(tex, "repeatS", std::any(true));
@@ -337,7 +337,7 @@ static void testExtendedSampler() {
     CHECK((s.repeatR == false));
     CHECK((s.boundaryModeR == BoundaryMode::ClampToEdge));
   }
-  // With TextureProperties, boundaryModeR governs the R axis (T3D-2).
+  // With TextureProperties, boundaryModeR governs the R axis.
   {
     auto tp = createX3DNode("TextureProperties");
     setEnum(tp, "boundaryModeR", "MIRRORED_REPEAT");
@@ -348,7 +348,7 @@ static void testExtendedSampler() {
   }
 }
 
-// --- 5. TextureCoordinateGenerator surfaces a TexCoordGenDesc --------------
+// 5. TextureCoordinateGenerator surfaces a TexCoordGenDesc
 static void testTexCoordGen() {
   // Geometry whose texCoord is a TextureCoordinateGenerator (no point array).
   auto gen = createX3DNode("TextureCoordinateGenerator");
@@ -370,7 +370,7 @@ static void testTexCoordGen() {
   CHECK((!has2));
 }
 
-// --- 6. resolveTextureRefs threads a resolver onto resolvedPixels ----------
+// 6. resolveTextureRefs threads a resolver onto resolvedPixels
 static void testResolverRoundTrip() {
   // A stub resolver that returns a 1x1 magenta pixel for any URL.
   TextureResolver resolver = [](const std::string &url) -> TexturePixelResult {
@@ -409,7 +409,7 @@ static void testResolverRoundTrip() {
   CHECK((refs[0].resolvedPixels.pixels->rgba[0] == 255 &&
          refs[0].resolvedPixels.pixels->rgba[1] == 0));
 
-  // Inline => resolver NEVER called; stays Failed (consumer reads inlinePixels).
+  // Inline => resolver never called; stays Failed (consumer reads inlinePixels).
   CHECK((refs[1].resolvedPixels.failed()));
 
   // Url with empty url list => Failed.
@@ -422,7 +422,7 @@ static void testResolverRoundTrip() {
   CHECK((refs2[0].resolvedPixels.failed()));
 }
 
-// --- 3D textures (T3D-1): PixelTexture3D inline voxels; ComposedTexture3D stack
+// 3D textures: PixelTexture3D inline voxels; ComposedTexture3D stack
 static void test3DTextures() {
   // PixelTexture3D.image MFInt32: [numComponents, width, height, depth, packed
   // pixels]. 3 comps, 2x1x2 = 4 pixels.
@@ -461,6 +461,15 @@ static void test3DTextures() {
     CHECK((texs[0].tex3d.width == 0 && texs[0].tex3d.texels.empty()));
   }
 
+  // A header claiming 10^15 voxels with no voxel data allocates nothing: the
+  // decode is bounded by the tokens actually present, not the claimed size.
+  {
+    const auto d = pixelTexture3DDesc(std::vector<int>{1, 100000, 100000, 100000});
+    CHECK((d.width == 100000 && d.texels.empty()));
+    const auto e = pixelTexture3DDesc(std::vector<int>{1, 2147483647, 2147483647, 2147483647, 7});
+    CHECK((e.texels.size() == 1 && e.texels[0] == 7));
+  }
+
   // ComposedTexture3D: depth = number of 2D slice nodes; reuses the 2D path.
   {
     auto px = createX3DNode("PixelTexture");
@@ -492,7 +501,7 @@ TEST_CASE("texture_extract_test") {
   testTextureCoordinate3DAnd4DProjectToST();
   testApplyTransformToMesh();
   testTextureTransformOrder();
-  testTextureTransformParamsOf();
+  testTextureTransformParamsListOf();
   testExtendedSampler();
   testTexCoordGen();
   testResolverRoundTrip();

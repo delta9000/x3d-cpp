@@ -1,0 +1,176 @@
+#include "GeoFrame.hpp"
+#include "MeshBuilder.hpp"
+#include "x3d/nodes/X3DNode.hpp"
+
+#include "x3d/nodes/X3DNodeFactory.hpp"
+
+#include <any>
+#include "doctest/doctest.h"
+#include <cmath>
+#include <memory>
+#include <vector>
+
+using namespace x3d::runtime;
+using namespace x3d::runtime::extract;
+using namespace x3d::core;
+using namespace x3d::nodes;
+
+static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
+
+static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
+  for (auto &f : n->fields())
+    if (f.x3dName == nm && f.set) {
+      f.set(*n, std::move(v));
+      return;
+    }
+}
+
+TEST_CASE("mesh_builder_tc3_test") {
+  // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
+  // Edges are all length 2 => perimeter 8; accumulated chord at verts:
+  //   k0: 0, k1: 2/8=0.25, k2: 4/8=0.5, k3: 6/8=0.75, k4: 8/8=1.0.
+  const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
+
+  // 1. ACCEPTANCE: side-wall S spans 0..1 around cs, T spans 0..1 spine --
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection", std::any(unitSquare));
+    // Straight 2-point spine of length 1 along +Y.
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
+    // Drop caps so every corner is a side-wall corner -> isolate the side param.
+    setF(g, "beginCap", std::any(SFBool(false)));
+    setF(g, "endCap", std::any(SFBool(false)));
+
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+    CHECK((!m.texcoords.empty()));
+    CHECK((m.texcoords.size() == m.positions.size()));     // parallel.
+    CHECK((m.latticeIndex.size() == m.positions.size()));
+
+    // Side walls only: (ns-1)*(nc-1)*2 = 1*4*2 = 8 tris -> 24 corners.
+    CHECK((m.indices.size() == 24));
+
+    // T (the spine axis) takes only {0,1}: section 0 -> t=0, section 1 -> t=1.
+    // S (around the cross-section) sweeps the accumulated-chord set {0,.25,.5,
+    // .75,1}. Verify the spanning extremes appear and T/S stay within [0,1].
+    bool sawT0 = false, sawT1 = false, sawS0 = false, sawS1 = false;
+    float tmin = 1e9f, tmax = -1e9f, smin = 1e9f, smax = -1e9f;
+    for (const auto &uv : m.texcoords) {
+      // lattice id = section*nc + csVertex; T is per-section, S per-csVertex.
+      if (feq(uv.y, 0.0f)) sawT0 = true;
+      if (feq(uv.y, 1.0f)) sawT1 = true;
+      if (feq(uv.x, 0.0f)) sawS0 = true;
+      if (feq(uv.x, 1.0f)) sawS1 = true;
+      tmin = std::min(tmin, uv.y); tmax = std::max(tmax, uv.y);
+      smin = std::min(smin, uv.x); smax = std::max(smax, uv.x);
+    }
+    CHECK((sawT0 && sawT1));   // T spans the full spine: 0 at start, 1 at end.
+    CHECK((sawS0 && sawS1));   // S spans the full (closed) cross-section: 0..1.
+    CHECK((feq(tmin, 0.0f) && feq(tmax, 1.0f))); // T within [0,1], spanning.
+    CHECK((feq(smin, 0.0f) && feq(smax, 1.0f))); // S within [0,1], spanning.
+
+    // Per-corner correspondence: each side corner's S must equal the accumulated
+    // chord of its cross-section vertex (lid % nc) and T its section (lid / nc).
+    const int nc = 5;
+    const float chord[5] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+    for (std::size_t i = 0; i < m.texcoords.size(); ++i) {
+      const std::uint32_t lid = m.latticeIndex[i];
+      const int sec = static_cast<int>(lid) / nc;
+      const int k = static_cast<int>(lid) % nc;
+      CHECK((feq(m.texcoords[i].x, chord[k])));
+      CHECK((feq(m.texcoords[i].y, sec == 0 ? 0.0f : 1.0f)));
+    }
+  }
+
+  // 2. S by accumulated chord length (non-uniform cross-section)
+  // An open L-shaped cross-section: edges of length 1, 3 => perimeter 4.
+  //   verts (0,0),(1,0),(1,3) => accumulated chord {0, 1/4=0.25, 4/4=1.0}.
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection", std::any(MFVec2f{{0, 0}, {1, 0}, {1, 3}}));
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
+    setF(g, "beginCap", std::any(SFBool(false)));
+    setF(g, "endCap", std::any(SFBool(false)));
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+
+    const int nc = 3;
+    const float chord[3] = {0.0f, 0.25f, 1.0f};
+    for (std::size_t i = 0; i < m.texcoords.size(); ++i) {
+      const int k = static_cast<int>(m.latticeIndex[i]) % nc;
+      CHECK((feq(m.texcoords[i].x, chord[k]))); // chord-proportional, not k/nc.
+    }
+  }
+
+  // 3. T by accumulated spine length (non-uniform spine)
+  // 3-section spine with segment lengths 1 then 3 => total 4.
+  //   section 0 t=0, section 1 t=1/4=0.25, section 2 t=4/4=1.0 (not 0.5).
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection", std::any(unitSquare));
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}, {0, 4, 0}}));
+    setF(g, "beginCap", std::any(SFBool(false)));
+    setF(g, "endCap", std::any(SFBool(false)));
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+
+    const int nc = 5;
+    const float tparam[3] = {0.0f, 0.25f, 1.0f};
+    bool sawMid = false;
+    for (std::size_t i = 0; i < m.texcoords.size(); ++i) {
+      const int sec = static_cast<int>(m.latticeIndex[i]) / nc;
+      CHECK((feq(m.texcoords[i].y, tparam[sec])));
+      if (sec == 1) sawMid = true;
+    }
+    CHECK((sawMid));
+  }
+
+  // 4. CAP mapping: cross-section coords normalized to bbox
+  // Caps ON. The square cross-section bbox is [-1,1]x[-1,1]; normalized corners
+  // are the 4 combinations of {0,1}. A cap corner therefore carries s,t in {0,1}.
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection", std::any(unitSquare));
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
+    // caps default true.
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+    CHECK((m.texcoords.size() == m.positions.size()));
+
+    // The last four triangles are the two caps. Check their generated UVs
+    // against their actual positions in the square's X-Z plane.
+    REQUIRE(m.indices.size() == 36);
+    for (std::size_t i = 24; i < m.indices.size(); ++i) {
+      const auto corner = m.indices[i];
+      const auto &p = m.positions[corner];
+      const auto &uv = m.texcoords[corner];
+      CHECK(feq(uv.x, (p.x + 1.0f) * 0.5f));
+      CHECK(feq(uv.y, (p.z + 1.0f) * 0.5f));
+    }
+  }
+
+  // 5. Zero-extent guards: no div-by-zero / NaN
+  // A degenerate cross-section (all coincident) => zero perimeter & zero bbox;
+  // a coincident spine => zero spine length. The builder must guard to finite UVs.
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection",
+         std::any(MFVec2f{{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}));
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+    for (const auto &uv : m.texcoords) {
+      CHECK((std::isfinite(uv.x) && std::isfinite(uv.y)));
+    }
+  }
+
+  // 6. ccw=false keeps texcoords parallel + finite (winding swap)
+  {
+    auto g = createX3DNode("Extrusion");
+    setF(g, "crossSection", std::any(unitSquare));
+    setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
+    setF(g, "ccw", std::any(SFBool(false)));
+    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+    CHECK((m.texcoords.size() == m.positions.size()));
+    for (std::size_t i = 0; i < m.texcoords.size(); ++i) {
+      CHECK((std::isfinite(m.texcoords[i].x) && std::isfinite(m.texcoords[i].y)));
+    }
+  }
+
+  return;
+}

@@ -1,4 +1,3 @@
-// MetadataSet.cpp
 #include "x3d/nodes/MetadataSet.hpp"
 
 namespace x3d::nodes {

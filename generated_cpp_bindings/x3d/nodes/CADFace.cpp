@@ -1,4 +1,3 @@
-// CADFace.cpp
 #include "x3d/nodes/CADFace.hpp"
 
 namespace x3d::nodes {

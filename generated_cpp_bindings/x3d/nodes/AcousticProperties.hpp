@@ -1,4 +1,3 @@
-// AcousticProperties.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,83 +24,39 @@ using namespace x3d::core;
  */
 class AcousticProperties : public virtual X3DAppearanceChildNode {
 public:
-  /**
-   * @brief Default constructor for AcousticProperties
-   */
   AcousticProperties() = default;
 
-  /**
-   * @brief Destructor for AcousticProperties
-   */
   ~AcousticProperties() = default;
 
-  /**
-   * @brief Get the default value for absorption
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultAbsorption() { return 0; }
 
-  /**
-   * @brief Get the default value for diffuse
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultDiffuse() { return 0; }
 
-  /**
-   * @brief Get the default value for enabled
-   * @return SFBool The default value
-   */
   static SFBool getDefaultEnabled() { return true; }
 
-  /**
-   * @brief Get the default value for refraction
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultRefraction() { return 0; }
 
-  /**
-   * @brief Get the default value for specular
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultSpecular() { return 0; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "acousticProperties"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Shape"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 5; }
 
   /**
-   * @brief Gets the value of absorption. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details specifies the sound absorption coefficient of a surface, meaning
    * the ratio of sound intensity not reflected by a surface.
-   * @return const SFFloat& The current value of absorption.
    */
   const SFFloat &getAbsorption() const { return _absorption; }
 
   /**
-   * @brief Sets the value of absorption. AccessType: inputOutput
+   * Access: inputOutput.
    * @details specifies the sound absorption coefficient of a surface, meaning
    * the ratio of sound intensity not reflected by a surface.
-   * @param value The new value for absorption.
    */
   void setAbsorption(const SFFloat &value) {
 
@@ -111,45 +66,38 @@ public:
   }
 
   /**
-   * @brief Non-validating write of absorption (runtime/reader ingest path).
-   * @details Assigns without the range check setAbsorption() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAbsorption() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAbsorption() for range validation.
    */
   void setAbsorptionUnchecked(const SFFloat &value) { _absorption = value; }
 
   /**
-   * @brief Gets the value of description. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Author-provided prose that describes intended purpose of the url
    * asset.
-   * @return const SFString& The current value of description.
    */
   const SFString &getDescription() const { return _description; }
 
   /**
-   * @brief Sets the value of description. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Author-provided prose that describes intended purpose of the url
    * asset.
-   * @param value The new value for description.
    */
   void setDescription(const SFString &value) { _description = value; }
 
   void setDescription(SFString &&value) { _description = std::move(value); }
 
   /**
-   * @brief Gets the value of diffuse. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details diffuse coefficient of sound reflection indicates how much of the
    * incident sound energy is reflected back in multiple directions.
-   * @return const SFFloat& The current value of diffuse.
    */
   const SFFloat &getDiffuse() const { return _diffuse; }
 
   /**
-   * @brief Sets the value of diffuse. AccessType: inputOutput
+   * Access: inputOutput.
    * @details diffuse coefficient of sound reflection indicates how much of the
    * incident sound energy is reflected back in multiple directions.
-   * @param value The new value for diffuse.
    */
   void setDiffuse(const SFFloat &value) {
 
@@ -159,43 +107,36 @@ public:
   }
 
   /**
-   * @brief Non-validating write of diffuse (runtime/reader ingest path).
-   * @details Assigns without the range check setDiffuse() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setDiffuse() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setDiffuse() for range validation.
    */
   void setDiffuseUnchecked(const SFFloat &value) { _diffuse = value; }
 
   /**
-   * @brief Gets the value of enabled. AccessType: inputOutput
+   * SFBool; access: inputOutput. Borrows the stored value.
    * @details Enables/disables node operation.
-   * @return const SFBool& The current value of enabled.
    */
   const SFBool &getEnabled() const { return _enabled; }
 
   /**
-   * @brief Sets the value of enabled. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Enables/disables node operation.
-   * @param value The new value for enabled.
    */
   void setEnabled(const SFBool &value) { _enabled = value; }
 
   /**
-   * @brief Gets the value of refraction. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details sound refraction coefficient of a medium, which determines change
    * in propagation direction of sound wave when obliquely crossing boundary
    * between two mediums where its speed is different.
-   * @return const SFFloat& The current value of refraction.
    */
   const SFFloat &getRefraction() const { return _refraction; }
 
   /**
-   * @brief Sets the value of refraction. AccessType: inputOutput
+   * Access: inputOutput.
    * @details sound refraction coefficient of a medium, which determines change
    * in propagation direction of sound wave when obliquely crossing boundary
    * between two mediums where its speed is different.
-   * @param value The new value for refraction.
    */
   void setRefraction(const SFFloat &value) {
 
@@ -205,29 +146,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of refraction (runtime/reader ingest path).
-   * @details Assigns without the range check setRefraction() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setRefraction() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setRefraction() for range validation.
    */
   void setRefractionUnchecked(const SFFloat &value) { _refraction = value; }
 
   /**
-   * @brief Gets the value of specular. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details specular coefficient of sound reflection striking a plane surface,
    * directly reflected back into space, where angle of reflection equals angle
    * of incidence.
-   * @return const SFFloat& The current value of specular.
    */
   const SFFloat &getSpecular() const { return _specular; }
 
   /**
-   * @brief Sets the value of specular. AccessType: inputOutput
+   * Access: inputOutput.
    * @details specular coefficient of sound reflection striking a plane surface,
    * directly reflected back into space, where angle of reflection equals angle
    * of incidence.
-   * @param value The new value for specular.
    */
   void setSpecular(const SFFloat &value) {
 
@@ -237,39 +173,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of specular (runtime/reader ingest path).
-   * @details Assigns without the range check setSpecular() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setSpecular() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setSpecular() for range validation.
    */
   void setSpecularUnchecked(const SFFloat &value) { _specular = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "AcousticProperties").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -344,39 +264,15 @@ private:
       throw std::out_of_range("specular above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for absorption.
-   */
-
   SFFloat _absorption{0};
-
-  /**
-   * @brief Member variable for description.
-   */
 
   SFString _description{};
 
-  /**
-   * @brief Member variable for diffuse.
-   */
-
   SFFloat _diffuse{0};
-
-  /**
-   * @brief Member variable for enabled.
-   */
 
   SFBool _enabled{true};
 
-  /**
-   * @brief Member variable for refraction.
-   */
-
   SFFloat _refraction{0};
-
-  /**
-   * @brief Member variable for specular.
-   */
 
   SFFloat _specular{0};
 };

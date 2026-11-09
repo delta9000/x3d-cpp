@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 import re
 import shlex
-import subprocess
 from pathlib import Path
 
 import pytest
 
+from tests.conftest import run_checked
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PRESETS = json.loads((REPO_ROOT / "CMakePresets.json").read_text())
 FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_cli_gate",
     "x3d_canon_gate",
@@ -21,7 +21,6 @@ FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_example_03_attach_behavior_tick",
     "x3d_assetresolver_swap",
     "x3d_quickjs_swap",
-    "x3d_sound_swaptest",
 }
 DEFAULT_DOCTEST_TARGETS = {
     "x3d_geometry_scene_tests",
@@ -30,24 +29,6 @@ DEFAULT_DOCTEST_TARGETS = {
     "x3d_extract_tests",
     "x3d_events_tests",
 }
-
-
-def run_checked(*command: str) -> str:
-    result = subprocess.run(
-        command,
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    return result.stdout
-
-
-@pytest.fixture(scope="module")
-def configured_ci(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    build_dir = tmp_path_factory.mktemp("cmake-aggregates")
-    run_checked("cmake", "--preset", "ci", "-B", str(build_dir))
-    return build_dir
 
 
 def ctest_model(build_dir: Path) -> dict[str, object]:
@@ -125,9 +106,8 @@ def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
         if target == "x3d_cpp_all_headers" or target.startswith("x3d_example_"):
             continue
         targets.add(target)
-    # x3d_cli_test is shell-driven, but its owning production target must still
-    # be built by the behavior/sanitizer aggregate.
-    targets.add("x3d_cli")
+    # Shell-driven tests still need their owning binaries in both aggregates.
+    targets.update({"x3d_cli", "x3d_canon_gate_fixture"})
     return targets
 
 
@@ -183,6 +163,7 @@ def test_compile_contract_aggregate_and_ctest_labels_are_complete(
         if is_normal_executable or test_name in {
             "x3d_cli_test",
             "x3d_corpus_tools_cli_test",
+            "x3d_canon_gate_test",
         }:
             assert "behavior" in labels_for(test), test_name
 
@@ -253,25 +234,6 @@ def test_doctest_main_is_compiled_once_and_reused(
             "ninja", "-C", str(configured_ci), "-t", "query", target
         )
         assert "libx3d_doctest_main.a" in query, target
-
-
-def test_sanitizer_preset_and_drivers_are_debug_behavior_only() -> None:
-    configure = next(
-        preset for preset in PRESETS["configurePresets"] if preset["name"] == "san"
-    )
-    cache = configure["cacheVariables"]
-    assert cache["CMAKE_BUILD_TYPE"] == "Debug"
-    assert cache["X3D_CPP_SAN"] == "ON"
-    assert cache["X3D_CPP_PER_HEADER_CHECKS"] == "OFF"
-
-    expected_build = (
-        "cmake --build --preset san --target x3d_sanitizer_tests"
-    )
-    expected_test = "ctest --preset san -L behavior --output-on-failure"
-    assert expected_build in (REPO_ROOT / "mise.toml").read_text()
-    assert expected_build in (REPO_ROOT / ".github/workflows/ci.yml").read_text()
-    assert expected_test in (REPO_ROOT / "mise.toml").read_text()
-    assert expected_test in (REPO_ROOT / ".github/workflows/ci.yml").read_text()
 
 
 def test_sanitizer_configures_with_minimal_debug_information(

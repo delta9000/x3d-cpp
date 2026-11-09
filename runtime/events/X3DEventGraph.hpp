@@ -113,12 +113,7 @@ public:
     return n;
   }
 
-  /**
-   * @brief Remove all routes from the graph.
-   * @details Call this before the nodes referenced by existing routes are
-   *          destroyed, or when switching to a new scene, to avoid dangling
-   *          raw pointers in the internal route table.
-   */
+    /// Clear before referenced nodes die to avoid dangling route endpoints.
   void clear() { routes_.clear(); }
 
   void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {

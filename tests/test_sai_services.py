@@ -32,7 +32,7 @@ def _row(**over):
     return row
 
 
-# --- schema ----------------------------------------------------------------
+# schema
 def test_valid_register_has_no_errors():
     reg = _register([_row()])
     assert css.check_schema(reg, "<<: *query\n") == []
@@ -79,7 +79,7 @@ def test_empty_tests_rejected():
     assert any("tests" in e for e in errs)
 
 
-# --- evidence --------------------------------------------------------------
+# evidence
 def test_unknown_evidence_flagged():
     errs = css.check_evidence(_register([_row(tests=["x3d_sai_context", "nope"])]),
                               {"x3d_sai_context"})
@@ -102,6 +102,6 @@ def test_evidence_comes_from_cmake_and_doctest(tmp_path):
     assert "beta_test" in evidence
 
 
-# --- real register ---------------------------------------------------------
+# real register
 def test_real_register_is_clean():
     assert css.run(REPO) == [], "docs/conformance/sai-services.yaml is invalid"

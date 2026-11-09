@@ -1,22 +1,9 @@
-"""The citable conformance-report artifact — the M3 moat capstone.
+"""Produce a deterministic structural-conformance scorecard by resolved X3D version.
 
-Runs the L2 structural validator over a corpus, binding each `.x3d` file to its
-OWN declared version's (errata-corrected) manifest (Vc := Vd), and aggregates a
-deterministic, machine-readable scorecard:
+Files and maps are sorted for reproducible output. Each file is checked against
+its declared version's errata-corrected manifest.
 
-  - per-version: validated / clean / clean% / findings-by-code + the UOM
-    provenance (uomManifestHash + nodeCount) that anchors the oracle to the spec;
-  - overall findings-by-code (count + distinct files);
-  - the residual surfaced for transparency (top unknown nodes / fields);
-  - the cited errata corrections that fired, per version.
-
-The point it proves: a validator whose criteria are EXTRACTED from the official
-ISO UOM (not hand-authored) judges the official 16.7k-file archive ~99.7%
-structurally clean against each file's own-version oracle, with every residual
-finding inspectable. Deterministic: files iterated in sorted order, all maps
-emitted sorted — same corpus → byte-identical report.
-
-CLI:  python -m x3d_cpp_gen.conformance.report <corpus_root> [--json OUT] [--md OUT]
+CLI: python -m x3d_cpp_gen.conformance.report <corpus_root> [--json OUT] [--md OUT]
 """
 from __future__ import annotations
 
@@ -81,11 +68,7 @@ def build_report(corpus_root: str) -> Dict[str, Any]:
         if m is None:
             totals["skippedNoManifest"] += 1  # version with no committed manifest
             continue
-        try:
-            findings = validate_document(xml, m)
-        except Exception:
-            totals["parseError"] += 1
-            continue
+        findings = validate_document(xml, m)
 
         stamp_tally[res.stamp] += 1
         if res.declared:

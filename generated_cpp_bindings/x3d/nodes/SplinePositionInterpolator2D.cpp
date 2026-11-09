@@ -1,4 +1,3 @@
-// SplinePositionInterpolator2D.cpp
 #include "x3d/nodes/SplinePositionInterpolator2D.hpp"
 
 namespace x3d::nodes {

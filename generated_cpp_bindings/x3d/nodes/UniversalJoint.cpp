@@ -1,4 +1,3 @@
-// UniversalJoint.cpp
 #include "x3d/nodes/UniversalJoint.hpp"
 
 namespace x3d::nodes {

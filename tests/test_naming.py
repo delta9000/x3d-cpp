@@ -2,21 +2,11 @@
 
 import pytest
 
-from x3d_cpp_gen.generator import pascal
-from x3d_cpp_gen.parser import sanitize_field_name, CPP_RESERVED_KEYWORDS
-# emit.naming is the single canonicalizer; parser/generator must re-export it.
-from x3d_cpp_gen.emit import naming as naming_mod
-
-
-def test_naming_is_single_source_of_truth():
-    # The functions exposed via parser/generator must BE the ones in emit.naming.
-    assert sanitize_field_name is naming_mod.sanitize_field_name
-    assert pascal is naming_mod.pascal
-    assert CPP_RESERVED_KEYWORDS is naming_mod.CPP_RESERVED_KEYWORDS
+from x3d_cpp_gen.emit.naming import pascal, sanitize_field_name, CPP_RESERVED_KEYWORDS
 
 
 def test_pascal_capitalizes_first_only():
-    # Must NOT lowercase the tail (camelCase-safe), unlike str.capitalize().
+    # Must not lowercase the tail (camelCase-safe), unlike str.capitalize().
     assert pascal("bboxCenter") == "BboxCenter"
 
 
@@ -80,9 +70,9 @@ def test_cpp_str_handles_comment_terminator():
     # Doxygen block early -- cpp_str itself only escapes string-literal
     # metacharacters, but this test documents the exact input that would
     # break an @details comment if a caller used raw interpolation instead
-    # of routing through cpp_str (or a comment-safe filter) -- see Step 5.
+    # of routing through cpp_str (or a comment-safe filter).
     from x3d_cpp_gen.emit.naming import cpp_str
     # cpp_str's job is string-literal safety, not comment safety -- "*/"
-    # inside a STRING LITERAL is completely inert, this assertion just pins
+    # inside a string literal is completely inert, this assertion just pins
     # that cpp_str does not mangle it.
     assert cpp_str("ends with */ here") == "ends with */ here"

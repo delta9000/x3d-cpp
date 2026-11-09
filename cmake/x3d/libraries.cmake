@@ -1,20 +1,10 @@
 # cmake/x3d/libraries.cmake — compiled node + runtime libraries and the x3d::sdk facade.
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
-# ---------------------------------------------------------------------------
-# Compiled node library (C1): the generated *.cpp (per-node out-of-line
-# reflection/validate definitions + the X3DNodeFactory registry) are compiled
-# ONCE here instead of re-instantiated in every consumer TU. Consumers link
-# this transitively via x3d_cpp::x3d_cpp.
-# ---------------------------------------------------------------------------
+# Compile generated reflection definitions and the node factory once.
 file(GLOB X3D_CPP_NODE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/*.cpp")
 
-# generator.py also emits a standalone value-smoke program beside the node
-# definitions. Its main() was inert in the old static archive because no link
-# requested that object; it is not a production node definition and must never
-# enter either library form.
+# Exclude the generated smoke program: its main() is not a node definition.
 set(_x3d_generated_test_source
     "${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings/x3d/nodes/test.cpp")
 list(REMOVE_ITEM X3D_CPP_NODE_SOURCES "${_x3d_generated_test_source}")
@@ -33,13 +23,7 @@ endif()
 add_library(x3d_cpp_nodes ${_x3d_node_library_type} ${X3D_CPP_NODE_SOURCES})
 add_library(x3d_cpp::nodes ALIAS x3d_cpp_nodes)
 
-# Unity-build the generated node TUs: batching the per-node .cpp into grouped
-# TUs eliminates the repeated framework-header re-parse that dominated this
-# library's compile — ~2x faster cold build (measured: 30s -> 14s, 16 cores),
-# at ~0.4 GB peak RSS per default 8-node TU (well within CI runner limits; the
-# pre-C1-split OOM scare was the inline thunks, since removed). Consumers that
-# add_subdirectory() this project inherit the speedup.
-#
+# Unity builds share framework-header parsing across generated node sources.
 set_target_properties(x3d_cpp_nodes PROPERTIES
     EXPORT_NAME nodes
     UNITY_BUILD ON)
@@ -52,16 +36,15 @@ endif()
 target_link_libraries(x3d_cpp_nodes PUBLIC x3d_cpp_headers)
 target_compile_features(x3d_cpp_nodes PUBLIC cxx_std_20)
 
-# ---------------------------------------------------------------------------
 # Compiled hand-written runtime layers. They follow the generated node
 # library's linkage mode so an implementation graph is either entirely shared
 # (the default) or entirely static (X3D_CPP_SHARED_NODES=OFF). Mixing modes can
 # absorb the same generated symbols into multiple DSOs, so it is deliberately
 # not exposed as a supported configuration.
-# ---------------------------------------------------------------------------
 add_library(x3d_cpp_authoring_runtime ${_x3d_node_library_type}
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/FieldValueIO.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/ChildOrder.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlGraphBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/XmlWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/JsonWriter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/VrmlWriter.cpp"
@@ -112,7 +95,7 @@ endif()
 # the full runtime's public dependency chain.
 target_link_libraries(x3d_cpp INTERFACE x3d_cpp::runtime)
 
-# ── Authoring slim target: node reflection + writers + range-validate only ──
+# Authoring slim target: node reflection + writers + range-validate only
 # INTERFACE facade over the compiled node library plus the authoring-only
 # headers (document model, range-validate, codec writers). Deliberately omits
 # the parse/execution/extract include dirs so consumers cannot reach those APIs.
@@ -130,11 +113,6 @@ target_include_directories(x3d_cpp_authoring INTERFACE
 target_compile_features(x3d_cpp_authoring INTERFACE cxx_std_20)
 install(TARGETS x3d_cpp_authoring EXPORT x3d_cppTargets)
 
-# ---------------------------------------------------------------------------
-# T-SDK: the curated embedder façade. A thin INTERFACE target that adds the
-# include/ path (so consumers write #include "x3d/sdk.hpp") on top of the full
-# x3d_cpp interface. No new compiled TU — sdk.hpp only re-exports.
-# ---------------------------------------------------------------------------
 add_library(x3d_cpp_sdk INTERFACE)
 add_library(x3d_cpp::sdk ALIAS x3d_cpp_sdk)
 set_target_properties(x3d_cpp_sdk PROPERTIES EXPORT_NAME sdk)

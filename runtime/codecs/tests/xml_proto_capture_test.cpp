@@ -1,5 +1,5 @@
 // xml_proto_capture_test.cpp
-// Verifies the XML reader CAPTURES the PROTO element family (ProtoDeclare,
+// Verifies the XML reader captures the PROTO element family (ProtoDeclare,
 // ProtoInterface/field, ProtoBody, IS/connect, ProtoInstance/fieldValue) into
 // the Scene data model, rather than skipping them as unknown elements.
 #include "XmlReader.hpp"

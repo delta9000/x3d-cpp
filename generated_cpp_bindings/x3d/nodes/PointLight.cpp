@@ -1,4 +1,3 @@
-// PointLight.cpp
 #include "x3d/nodes/PointLight.hpp"
 
 namespace x3d::nodes {

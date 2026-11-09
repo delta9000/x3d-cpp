@@ -1,5 +1,5 @@
 #include "doctest/doctest.h"
-// range_validate_audit_test.cpp — AUD-RNG-VAL corpus audit of the
+// range_validate_audit_test.cpp —  corpus audit of the
 // range-validation + lenient-reflection path.
 //
 // Scope (subsystem: range validation + the lenient reflection path):
@@ -15,10 +15,10 @@
 //      DAG diamond is visited per-usage (path-based contract); the contract
 //      matches CycleBreaker's onStack pattern.
 //   3. MFColor per-element counting — N elements each with OOR components
-//      produce one finding PER element per component, not one per MF.
+//      produce one finding per element per component, not one per MF.
 //   4. SFColorRGBA [0,1] — 4 components all checked (incl. alpha).
 //   5. Material.transparency — SFFloat [0,1] emits above/below findings.
-//   6. SFRotation axis [-1,1] — known manifest gap: validator does NOT catch
+//   6. SFRotation axis [-1,1] — known manifest gap: validator does not catch
 //      axis OOR (manifest has no bounds; codegen is data-driven).
 //   7. Fields without ranges (SFString, SFNode) emit no findings.
 //   8. Generated validateRanges() completeness for Material — all 8
@@ -75,11 +75,9 @@ int countDiagnostic(const std::vector<RangeDiagnostic> &ds,
 } // namespace
 
 TEST_CASE("range_validate_audit_test") {
-  // =========================================================================
   // (1) Reflection thunk uniformity — every range-constrained field of
   //     Material is reached via setXxxUnchecked in the reflection table,
   //     so the f.set path is non-validating by construction.
-  // =========================================================================
   {
     auto m = std::make_shared<Material>();
     auto *f = findField(*m, "diffuseColor");
@@ -118,11 +116,8 @@ TEST_CASE("range_validate_audit_test") {
     CHECK((!threw));
     CHECK((m->getSpecularColor().r == -0.5f));
   }
-
-  // =========================================================================
   // (2) Typed setters stay strict — programmatic callers still get the
   //     std::out_of_range throw. This is the binding contract.
-  // =========================================================================
   {
     Material m;
     bool threw = false;
@@ -157,15 +152,12 @@ TEST_CASE("range_validate_audit_test") {
     }
     CHECK((threw));
   }
-
-  // =========================================================================
   // (3) Cycle guard — three sub-cases:
   //   (3a) self-cycle (existing regression): Group whose only child is itself.
   //   (3b) longer true cycle: A → B → A. Must terminate, no findings.
   //   (3c) USE/DEF diamond: A → B and A → C, where B and C share a child D.
   //        D is reached via two distinct paths; both visits should happen
   //        (path-based semantics — matches CycleBreaker's onStack contract).
-  // =========================================================================
   // (3a) self-cycle
   {
     auto g = std::make_shared<Group>();
@@ -218,17 +210,14 @@ TEST_CASE("range_validate_audit_test") {
     frt->set(*root, std::any(rtk));
     std::vector<RangeDiagnostic> ds;
     collectRangeWarnings(*root, ds);
-    // Shared Material's specularColor must produce findings TWICE — once
+    // Shared Material's specularColor must produce findings twice — once
     // per usage path. This is the path-based contract shared with
     // CycleBreaker (visited per use site; only true back-edges are skipped).
     int n = countDiagnostic(ds, "Material", "specularColor");
     CHECK((n == 2));
   }
-
-  // =========================================================================
   // (4) MFColor per-element counting — N elements with OOR components
-  //     produce per-element, per-component findings (NOT aggregate).
-  // =========================================================================
+  //     produce per-element, per-component findings (not aggregate).
   {
     auto c = std::make_shared<Color>();
     MFColor vec;
@@ -241,7 +230,7 @@ TEST_CASE("range_validate_audit_test") {
     c->validateRanges(ds);
     // vec[0] has r OOR (1 finding); vec[1] is clean (0 findings); vec[2]
     // has g and b OOR (2 findings). Total = 3 component findings on
-    // field "color" (NOT one aggregate per MF).
+    // field "color" (not one aggregate per MF).
     CHECK((countDiagnostic(ds, "Color", "color") == 3));
     // Make sure it's the .r and the .g/.b components that surface (not
     // an aggregate). Grep the detail string for component-suffix.
@@ -256,10 +245,7 @@ TEST_CASE("range_validate_audit_test") {
     CHECK((with_r == 1));
     CHECK((with_b == 1));
   }
-
-  // =========================================================================
   // (5) SFColorRGBA [0,1] — 4-component color (incl. alpha) is validated.
-  // =========================================================================
   {
     auto c = std::make_shared<ColorRGBA>();
     auto *fcol = findField(*c, "color");
@@ -276,10 +262,7 @@ TEST_CASE("range_validate_audit_test") {
            d.detail.find(".a\"") != std::string::npos)) ++with_a;
     CHECK((with_a == 1)); // alpha specifically
   }
-
-  // =========================================================================
   // (6) Material.transparency SFFloat [0,1] — produces above-max finding.
-  // =========================================================================
   {
     auto m = std::make_shared<Material>();
     auto *ft = findField(*m, "transparency");
@@ -301,15 +284,8 @@ TEST_CASE("range_validate_audit_test") {
     CHECK((!ds.empty() &&
           ds[0].detail.find("below minimum of 0") != std::string::npos));
   }
-
-  // =========================================================================
-  // (7) SFRotation axis [-1,1] — KNOWN BY-DESIGN GAP. The manifest does not
-  //     carry per-component bounds for SFRotation (only color types get
-  //     implicit [0,1] in the codegen). So the validator does NOT catch an
-  //     axis component of 2.0 even though the spec says [-1,1] for axis.
-  //     This is a codegen-time/manifest-data gap, not a runtime validator
-  //     bug; flagged here so a future spec revision can add per-axis bounds.
-  // =========================================================================
+  // SFRotation has no per-component manifest bounds, so axis values outside
+  // the spec range [-1,1] do not produce a diagnostic.
   {
     auto t = std::make_shared<Transform>();
     auto *fr = findField(*t, "rotation");
@@ -317,15 +293,12 @@ TEST_CASE("range_validate_audit_test") {
     fr->set(*t, std::any(SFRotation{2.0f, 0.0f, 1.0f, 1.0f})); // x OOR
     std::vector<RangeDiagnostic> ds;
     t->validateRanges(ds);
-    CHECK((ds.empty())); // BY-DESIGN: no range in manifest → no finding
+    CHECK((ds.empty())); // by-design: no range in manifest → no finding
   }
-
-  // =========================================================================
   // (7b) Transform.translation (SFVec3f, no range in manifest) — reflection
   //      keeps an OOR value; validator doesn't catch it (no range to check).
   //      This is the correct contract: reflection is lenient, and only
   //      manifest-bounded fields are validated.
-  // =========================================================================
   {
     auto t = std::make_shared<Transform>();
     auto *ft = findField(*t, "translation");
@@ -342,10 +315,7 @@ TEST_CASE("range_validate_audit_test") {
     t->validateRanges(ds);
     CHECK((ds.empty())); // no manifest range → no finding
   }
-
-  // =========================================================================
-  // (8) Fields without ranges (SFString / SFNode) emit NO findings.
-  // =========================================================================
+  // (8) Fields without ranges (SFString / SFNode) emit no findings.
   {
     auto m = std::make_shared<Material>();
     auto *fcls = findField(*m, "class");
@@ -364,14 +334,11 @@ TEST_CASE("range_validate_audit_test") {
     c->validateRanges(ds);
     CHECK((ds.empty())); // SFNode without range → no finding
   }
-
-  // =========================================================================
   // (9) Generated validateRanges() completeness for Material — every
   //     manifest-range field produces a finding when OOR. Covers the 8
   //     inputOutput fields with ranges:
   //       ambientIntensity, diffuseColor, emissiveColor, normalScale (inherited),
   //       occlusionStrength, shininess, specularColor, transparency.
-  // =========================================================================
   {
     auto m = std::make_shared<Material>();
     auto set = [&](const char *name, std::any v) {
@@ -401,11 +368,8 @@ TEST_CASE("range_validate_audit_test") {
     CHECK((hasDiagnostic(ds, "Material", "specularColor")));
     CHECK((hasDiagnostic(ds, "Material", "transparency")));
   }
-
-  // =========================================================================
   // (10) Front-door: parseDocument populates X3DDocument.rangeWarnings for
   //      OOR authored values. Lenient-read contract surface.
-  // =========================================================================
   {
     const std::string xml =
         "<X3D profile='Interchange' version='4.0'><Scene>"

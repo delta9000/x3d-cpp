@@ -1,11 +1,3 @@
-// scene_extractor_audit_test.cpp — AUD-EXTRACT regression audit.
-//
-// Covers the five risk areas of the scene-extraction walk:
-//   1) Null/empty node handling (null children in MFNode fields).
-//   2) Unsupported node type skip logic (graceful, no crash).
-//   3) World transform accumulation under scaling + rotation.
-//   4) Material/geometry pairing when one is missing.
-//   5) USE-node extraction (shared geometry extracted once, not duplicated).
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp"
@@ -52,7 +44,7 @@ static std::shared_ptr<X3DNode> makeTriShape() {
 }
 
 TEST_CASE("scene_extractor_audit_test") {
-  // === 1) Null/empty node handling in extraction walk =======================
+  // 1) Null/empty node handling in extraction walk
   {
     auto group = createX3DNode("Group");
     // Manually construct an MFNode children vector containing a nullptr.
@@ -74,7 +66,7 @@ TEST_CASE("scene_extractor_audit_test") {
     CHECK((snap.added.size() == 1));
   }
 
-  // === 2) Unsupported node type skip logic (graceful, no crash) =============
+  //   2) Unsupported node type skip logic (graceful, no crash)
   {
     auto root = createX3DNode("Group");
     addChild(root, makeTriShape()); // supported
@@ -98,7 +90,7 @@ TEST_CASE("scene_extractor_audit_test") {
     CHECK((counts.at("NurbsTrimmedSurface") == 1));
   }
 
-  // === 3) World transform accumulation under scaling + rotation =============
+  //   3) World transform accumulation under scaling + rotation
   {
     // Build a transform chain: root -> T(scale) -> T(rotate 90° Z) -> shape.
     // Expected world transform of a point: scale first, then rotate.
@@ -135,9 +127,9 @@ TEST_CASE("scene_extractor_audit_test") {
     CHECK((feq(worldP.z, 0.0f)));
   }
 
-  // === 4) Material/geometry pairing when one is missing =====================
+  //   4) Material/geometry pairing when one is missing
   {
-    // 4a) Shape with NO geometry field set => nothing emits.
+    // 4a) Shape with no geometry field set => nothing emits.
     {
       auto shape = createX3DNode("Shape");
       // geometry left unset.
@@ -150,7 +142,7 @@ TEST_CASE("scene_extractor_audit_test") {
       CHECK((snap.added.empty()));
     }
 
-    // 4b) Shape with geometry but NO Appearance => Unlit white fallback.
+    // 4b) Shape with geometry but no Appearance => Unlit white fallback.
     {
       auto shape = makeTriShape();
       Scene scene;
@@ -167,7 +159,7 @@ TEST_CASE("scene_extractor_audit_test") {
       CHECK((feq(it.material.toRGBA().b, 1.0f)));
     }
 
-    // 4c) Shape with Appearance present but material null => Unlit white (MAT-001).
+    // 4c) Shape with Appearance present but material null => Unlit white.
     {
       auto coord = createX3DNode("Coordinate");
       setF(coord, "point",
@@ -196,7 +188,7 @@ TEST_CASE("scene_extractor_audit_test") {
     }
   }
 
-  // === 5) USE-node extraction (shared geometry extracted once) ==============
+  // 5) USE-node extraction (shared geometry extracted once)
   {
     auto sharedGeom = createX3DNode("TriangleSet");
     auto coord = createX3DNode("Coordinate");
@@ -235,7 +227,7 @@ TEST_CASE("scene_extractor_audit_test") {
     // Distinct PathKeys => distinct RenderItemIds.
     CHECK((snap.added[0] != snap.added[1]));
 
-    // But both reference the SAME geometry node (shared, uploaded once).
+    // But both reference the same geometry node (shared, uploaded once).
     CHECK((itA.geometry.node == itB.geometry.node));
     CHECK((itA.geometry.node == sharedGeom.get()));
 

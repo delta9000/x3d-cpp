@@ -1,4 +1,3 @@
-// X3DComposedGeometryNode.cpp
 #include "x3d/nodes/X3DComposedGeometryNode.hpp"
 
 namespace x3d::nodes {

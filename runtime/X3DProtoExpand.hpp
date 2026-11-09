@@ -272,6 +272,14 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     // Retain the selected external source on the expanded ProtoInstance. The
     // instance is copied into Scene::expandedSources after this call.
     inst.declaration = decl;
+    // Each instance resolves (and may re-fetch) its declaration; the fetched
+    // document's warnings are reported once per collection, not per instance.
+    for (const auto &w : decl->sourceWarnings)
+      if (std::none_of(warnings.begin(), warnings.end(), [&](const ProtoWarning &seen) {
+            return seen.kind == w.kind && seen.instanceName == w.instanceName &&
+                   seen.detail == w.detail;
+          }))
+        warnings.push_back(w);
   }
   if (!decl) {
     warnings.push_back(
@@ -298,7 +306,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
 
   // Validate an IS access-type mapping per ISO/IEC 19775-1 Table 4.4.
   // inputOutput body fields may map to any interface type; all other body
-  // fields must map to an interface of the SAME access type.
+  // fields must map to an interface of the same access type.
   auto isValidIsMapping = [](AccessType body, AccessType iface) -> bool {
     switch (body) {
       case AccessType::InputOutput:
@@ -582,7 +590,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
   }
 
   // Expand ProtoInstances captured inside this body, once per outer
-  // instantiation. Each was recorded against an ORIGINAL body node (a cloneMap
+  // instantiation. Each was recorded against an original body node (a cloneMap
   // key) or with an empty parent (a direct body-root child). Recurse through the
   // shared guard — increment/decrement depth so deep/cyclic nesting terminates
   // with a RecursionLimit warning rather than overflowing.

@@ -96,7 +96,7 @@ public:
                      double &easting, double &northing) const override {
     if (zone < 1 || zone > 60 || !std::isfinite(lat) || !std::isfinite(lon)) return false;
     const Krueger k(e);
-    const double dlon = remainder(lon - centralMeridian(zone), 2.0 * kPi);
+    const double dlon = std::remainder(lon - centralMeridian(zone), 2.0 * kPi);
     const double taup = taupFromTau(std::tan(lat), e.e2());
     const double xip = std::atan2(taup, std::cos(dlon));
     const double etap = std::asinh(std::sin(dlon) / std::hypot(taup, std::cos(dlon)));
@@ -121,7 +121,6 @@ private:
   static constexpr double kFalseNorthingSouth = 10000000.0;
 
   static double centralMeridian(int zone) { return (zone * 6.0 - 183.0) * kPi / 180.0; }
-  static double remainder(double x, double y) { return std::remainder(x, y); }
 
   // Krüger series in the third flattening n (Karney 2011, eqs. 14, 35, 36).
   struct Krueger {

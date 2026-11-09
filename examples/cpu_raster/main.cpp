@@ -1,16 +1,5 @@
-// examples/cpu_raster/main.cpp
-//
-// Headless CPU rasterizer — an out-of-SDK CONSUMER of the x3d_cpp extraction
-// seam. Unlike the PoC OpenGL renderer it needs NO GPU, NO GLFW, NO display and
-// NO image library: it parses an X3D scene, extracts RenderItems, rasterizes them
-// on the CPU through the GLSL-emulation pipeline, and writes a PPM. That makes it
-// a dependency-free golden-image / visual-regression harness that runs on a bare
-// CI runner.
-//
-// It supports ALL THREE material models (Phong / Physical / Unlit) and a GLSL
-// emulation layer: the fixed-function shaders are CPU ports of the PoC GLSL, and
-// `--frag <file>` runs an author GLSL fragment shader through the interpreter
-// (GlslInterpreter.hpp) against the extracted geometry — the ComposedShader path.
+// Headless CPU rasterizer for extracted X3D scenes.
+// --frag runs an author GLSL fragment shader through the interpreter.
 //
 // USAGE:
 //   x3d_cpu_raster [options] [scene.x3d]

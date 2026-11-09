@@ -1,4 +1,3 @@
-// TextureBackground.cpp
 #include "x3d/nodes/TextureBackground.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// StreamAudioSource.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -32,74 +31,41 @@ using namespace x3d::core;
  */
 class StreamAudioSource : public virtual X3DSoundSourceNode {
 public:
-  /**
-   * @brief Default constructor for StreamAudioSource
-   */
   StreamAudioSource() = default;
 
-  /**
-   * @brief Destructor for StreamAudioSource
-   */
   ~StreamAudioSource() = default;
 
-  /**
-   * @brief Get the default value for channelCountMode
-   * @return ChannelCountModeChoices The default value
-   */
   static ChannelCountModeChoices getDefaultChannelCountMode() {
     return ChannelCountModeChoices::MAX;
   }
 
-  /**
-   * @brief Get the default value for channelInterpretation
-   * @return ChannelInterpretationChoices The default value
-   */
   static ChannelInterpretationChoices getDefaultChannelInterpretation() {
     return ChannelInterpretationChoices::SPEAKERS;
   }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() {
     return "containerFieldChoicesSoundSource";
   }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Sound"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 2; }
 
   /**
-   * @brief Gets the value of channelCountMode. AccessType: inputOutput
+   * ChannelCountModeChoices; access: inputOutput. Borrows the stored value.
    * @details channelCountMode determines how individual channels are counted
    * when up-mixing and down-mixing connections to any inputs.
-   * @return const ChannelCountModeChoices& The current value of
-   * channelCountMode.
    */
   const ChannelCountModeChoices &getChannelCountMode() const {
     return _channelCountMode;
   }
 
   /**
-   * @brief Sets the value of channelCountMode. AccessType: inputOutput
+   * Access: inputOutput.
    * @details channelCountMode determines how individual channels are counted
    * when up-mixing and down-mixing connections to any inputs.
-   * @param value The new value for channelCountMode.
    */
   void setChannelCountMode(const ChannelCountModeChoices &value) {
 
@@ -107,21 +73,19 @@ public:
   }
 
   /**
-   * @brief Gets the value of channelInterpretation. AccessType: inputOutput
+   * ChannelInterpretationChoices; access: inputOutput. Borrows the stored
+   * value.
    * @details channelInterpretation determines how individual channels are
    * treated when up-mixing and down-mixing connections to any inputs.
-   * @return const ChannelInterpretationChoices& The current value of
-   * channelInterpretation.
    */
   const ChannelInterpretationChoices &getChannelInterpretation() const {
     return _channelInterpretation;
   }
 
   /**
-   * @brief Sets the value of channelInterpretation. AccessType: inputOutput
+   * Access: inputOutput.
    * @details channelInterpretation determines how individual channels are
    * treated when up-mixing and down-mixing connections to any inputs.
-   * @param value The new value for channelInterpretation.
    */
   void setChannelInterpretation(const ChannelInterpretationChoices &value) {
 
@@ -129,18 +93,16 @@ public:
   }
 
   /**
-   * @brief Gets the value of streamIdentifier. AccessType: inputOutput
+   * SFString; access: inputOutput. Borrows the stored value.
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
-   * @return const SFString& The current value of streamIdentifier.
    */
   const SFString &getStreamIdentifier() const { return _streamIdentifier; }
 
   /**
-   * @brief Sets the value of streamIdentifier. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
-   * @param value The new value for streamIdentifier.
    */
   void setStreamIdentifier(const SFString &value) { _streamIdentifier = value; }
 
@@ -149,50 +111,25 @@ public:
     _streamIdentifier = std::move(value);
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "StreamAudioSource").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for channelCountMode.
-   */
-
   ChannelCountModeChoices _channelCountMode{ChannelCountModeChoices::MAX};
-
-  /**
-   * @brief Member variable for channelInterpretation.
-   */
 
   ChannelInterpretationChoices _channelInterpretation{
       ChannelInterpretationChoices::SPEAKERS};
-
-  /**
-   * @brief Member variable for streamIdentifier.
-   */
 
   SFString _streamIdentifier{};
 };

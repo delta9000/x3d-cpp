@@ -1,4 +1,3 @@
-// X3DNBodyCollidableNode.cpp
 #include "x3d/nodes/X3DNBodyCollidableNode.hpp"
 
 namespace x3d::nodes {

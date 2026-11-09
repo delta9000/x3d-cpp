@@ -1,11 +1,6 @@
-// TransformSystem.hpp — transform-hierarchy index + world-transform side table
-// + incremental world-transform propagation. M2C-4: covers all static
-// transform-bearing types (Transform, HAnimHumanoid, HAnimJoint, CADPart).
-// M2C-2: propagate() also structurally re-indexes a grouping node whose children
-// changed (DirtyChildren) — add/remove only the affected subtree — and exposes a
-// monotonic revision() cache key. Billboard is view-dependent (active Viewpoint)
-// — deferred to M2c/M2d. World transforms are stored in a side table keyed by
-// const X3DNode* (nothing on the node). namespace x3d::runtime.
+// Incremental world-transform propagation with structural re-indexing of changed
+// grouping nodes. Cached transforms use the first path to a shared node; per-path
+// walkers accumulate their own matrices. Billboard rotation is view-dependent.
 #ifndef X3D_RUNTIME_TRANSFORM_SYSTEM_HPP
 #define X3D_RUNTIME_TRANSFORM_SYSTEM_HPP
 
@@ -39,15 +34,9 @@ public:
   /// Fixed for this index's lifetime, including dirty and live transform reads.
   const geo::GeoProjection &geoProjection() const { return *geoProjection_; }
 
-  /// Diagnostic counter: number of localMatrix() TRS recompositions performed
-  /// process-wide. localMatrix() is non-trivial — five reflective field scans
-  /// plus a quaternion compose — so incremental consumers must memoize shared
-  /// ancestors instead of recomposing them once per dependent render item. Tests
-  /// snapshot this around delta() to assert the re-accumulation stays
-  /// O(distinct transforms), not O(items * depth).
-  // Process-wide diagnostics only, not semantic state or per-world metrics.
-  // Independent owner-thread worlds may contribute concurrently. Relaxed
-  // ordering counts work without imposing synchronization on scene state.
+  /// Process-wide diagnostic count of localMatrix() recompositions.
+  /// Independent owner-thread worlds may contribute concurrently. Relaxed
+  /// ordering counts work without synchronizing scene state.
   static inline std::atomic<std::uint64_t> localMatrixCalls_{0};
   static std::uint64_t localMatrixCallCount() {
     return localMatrixCalls_.load(std::memory_order_relaxed);
@@ -55,7 +44,7 @@ public:
 
   /// Build the Transform hierarchy index + initial world transforms from a Scene.
   void buildIndex(const Scene &scene) {
-    parent_.clear(); children_.clear(); world_.clear(); walked_.clear();
+    parent_.clear(); children_.clear(); world_.clear(); local_.clear(); walked_.clear();
     nearestTransform_.clear(); directChildren_.clear(); refCount_.clear();
     roots_.clear(); lifetime_.clear();
     for (const auto &root : scene.rootNodes)
@@ -67,25 +56,21 @@ public:
     ++revision_;
   }
 
-  /// World matrix for a Transform node (identity if not indexed).
+  /// First-path world matrix. A Transform node gets its own; any other indexed
+  /// node inherits its nearest Transform ancestor's (a sensor, LOD or Shape
+  /// under a scaled Transform is scaled with it). Identity if not indexed.
   Mat4 worldTransform(const X3DNode *n) const {
     auto it = world_.find(n);
-    return it == world_.end() ? Mat4::identity() : it->second;
+    if (it != world_.end()) return it->second;
+    auto nt = nearestTransform_.find(n);
+    if (nt == nearestTransform_.end() || !nt->second) return Mat4::identity();
+    auto wt = world_.find(nt->second);
+    return wt == world_.end() ? Mat4::identity() : wt->second;
   }
 
-  /// World matrix for ANY node — Transform nodes get their own world; non-Transform
-  /// nodes inherit their nearest ancestor Transform's world. Identity if the node
-  /// is unindexed or has no Transform ancestor. Used by TransformSensor (whose
-  /// targetObject may be reachable via both a non-Transform reference like
-  /// `targetObject` AND a Transform ancestor via `children`; the scene-graph
-  /// walk from roots picks the wrong path, but walking UP via the parent index
-  /// always finds the Transform ancestor).
-  ///
-  /// Reads `localMatrix` on every call (which reads CURRENT field values), so
-  /// mid-tick writes via `setF` are reflected immediately — unlike the cached
-  /// `worldTransform`, which only refreshes via `propagate()` at the END of a
-  /// tick (after systems have run). Critical for TransformSensor, whose target
-  /// can move between ticks.
+  /// Unindexed nodes return identity; others inherit their nearest Transform ancestor.
+  /// Read live local matrices along the parent index so mid-tick writes are visible.
+  /// This avoids selecting a non-Transform reference path for TransformSensor targets.
   Mat4 worldTransformAny(const X3DNode *n) const {
     if (!n) return Mat4::identity();
     const X3DNode *root = nullptr;
@@ -96,9 +81,7 @@ public:
       if (it == nearestTransform_.end()) return Mat4::identity();
       root = it->second;
     }
-    // Accumulate from `root` UP through Transform ancestors via the parent
-    // index. localMatrix() is a static read of current field values — always
-    // fresh, no stale-cache hazard.
+    // Accumulate live local matrices through the indexed Transform ancestors.
     Mat4 m = localMatrix(root, geoProjection());
     for (const X3DNode *a = parentOf(root); a; a = parentOf(a)) {
       if (!isTransform(a)) break; // parent_ only stores Transform parents
@@ -109,9 +92,9 @@ public:
 
   /// World matrix of Transform node `n` as reached through the parent edge
   /// `parent` (a transform-bearing node, or nullptr for a root placement). A
-  /// DEF/USE node shared under two parents has a DISTINCT world matrix per
+  /// DEF/USE node shared under two parents has a distinct world matrix per
   /// parent; this resolves the one for `parent` live as `worldTransform(parent)
-  /// * localMatrix(n, geoProjection())` — always fresh, no stale cache. Returns identity when
+  /// * localMatrix(n, geoProjection())`. Returns identity when
   /// `parent` is not an indexed parent edge of `n`. For `n`'s canonical (first)
   /// parent it equals `worldTransform(n)`.
   Mat4 worldTransformUnder(const X3DNode *parent, const X3DNode *n) const {
@@ -147,7 +130,7 @@ public:
   /// revisited.
   void propagate(DirtyTracker &dirty) {
     // Collect the dirtied Transform roots: nodes flagged DirtyLocalTransform with
-    // NO ancestor also so flagged (the ancestor's subtree pass covers them).
+    // no ancestor also so flagged (the ancestor's subtree pass covers them).
     // Also collect the grouping nodes whose children changed. Snapshot both
     // before marking -- recompute/reindex append to changedNodes().
     std::vector<const X3DNode *> roots;
@@ -215,7 +198,7 @@ public:
   // Returns true for any node type that carries a full TRS frame
   // (translation/rotation/scale/center/scaleOrientation) and participates in
   // the transform hierarchy. Public so callers can share a single definition.
-  // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
+  // Billboard rotation is applied by the view-dependent path walkers.
   static bool isTransform(const X3DNode *n) {
     if (!n) return false;
     const std::string t = n->nodeTypeName();
@@ -257,19 +240,20 @@ private:
   }
 
   // Record a Transform node's edge to `parentTransform`: canonical parent/world
-  // on the FIRST edge seen, and a children_ entry on EVERY edge so a USE-shared
+  // on the first edge seen, and a children_ entry on every edge so a USE-shared
   // node under two parents is reachable via both (worldTransformUnder()).
   void registerEdge(const X3DNode *n, const X3DNode *parentTransform) {
+    local_[n] = localMatrix(n, geoProjection());
     auto pit = parent_.find(n);
     if (pit == parent_.end()) {
       parent_[n] = parentTransform;
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n, geoProjection());
+                  local_.at(n);
     } else if (pit->second == parentTransform) {
       world_[n] = (parentTransform ? worldTransform(parentTransform)
                                    : Mat4::identity()) *
-                  localMatrix(n, geoProjection());
+                  local_.at(n);
     }
     if (parentTransform) {
       auto &kids = children_[parentTransform];
@@ -295,7 +279,7 @@ private:
     // Record the direct-parent edge (all node types) for structural diffing; a
     // USE-shared node reached via several parents counts each distinct edge.
     if (parentNode && directChildren_[parentNode].insert(n).second) ++refCount_[n];
-    // Recurse each subtree ONCE: a USE-shared node reachable by many paths must not
+    // Recurse each subtree once: a USE-shared node reachable by many paths must not
     // re-walk its subtree per path (multiplicative explosion / hang). world_ stays the
     // documented per-node (first-path) approximation; the extractor re-accumulates
     // per-path itself, so the render path is unaffected.
@@ -317,7 +301,11 @@ private:
     if (itLive == lifetime_.end()) return;
     auto live = itLive->second.lock();
     if (!live) return; // a dirty ancestor may precede the removing parent's diff
-    Mat4 w = parentWorld * localMatrix(n, geoProjection());
+    // DirtyField too: a non-TRS field can still feed the local matrix (a geo
+    // node's geoSystem) when the writer's classification did not say so.
+    if (dirty.flags(n) & (DirtyLocalTransform | DirtyField))
+      local_[n] = localMatrix(n, geoProjection());
+    Mat4 w = parentWorld * local_.at(n);
     if (parentOf(n) == parentNode) world_[n] = w; // canonical edge only
     dirty.markDirty(n, DirtyWorldTransform);
     auto it = children_.find(n);
@@ -326,7 +314,7 @@ private:
       if (parentOf(c) == n) recompute(c, n, w, dirty, visited);
   }
 
-  // Remove ONE occurrence of `c` from children_[serving] (no-op if absent).
+  // Remove one occurrence of `c` from children_[serving] (no-op if absent).
   void removeEdgeChild(const X3DNode *serving, const X3DNode *c) {
     auto it = children_.find(serving);
     if (it == children_.end()) return;
@@ -375,11 +363,11 @@ private:
         eraseSubtree(k, serving);
       }
     }
-    parent_.erase(c); world_.erase(c); children_.erase(c); lifetime_.erase(c);
+    parent_.erase(c); world_.erase(c); local_.erase(c); children_.erase(c); lifetime_.erase(c);
     nearestTransform_.erase(c); walked_.erase(c); refCount_.erase(c);
   }
 
-  // Re-walk ONLY the direct children of grouping node `g` whose set changed: new
+  // Re-walk only the direct children of grouping node `g` whose set changed: new
   // children are indexed (their whole subtree), removed children are dropped (if
   // no other parent still references them), and unchanged children are left
   // untouched. Returns true when the index changed.
@@ -421,6 +409,7 @@ private:
   std::unordered_map<const X3DNode *, const X3DNode *> parent_;
   std::unordered_map<const X3DNode *, std::vector<const X3DNode *>> children_;
   std::unordered_map<const X3DNode *, Mat4> world_;
+  std::unordered_map<const X3DNode *, Mat4> local_; // unchanged descendant TRS reuse
   std::unordered_set<const X3DNode *> walked_;   // subtrees already recursed (cycle/sharing guard)
   // For non-Transform nodes visited during walk: the nearest ancestor Transform
   // (NULL = no ancestor). Powers worldTransformAny() so non-Transform targets

@@ -49,20 +49,20 @@ int main() {
   f.frontFacing = true;
   bool disc = false;
 
-  // ---- 1. literal vec4 ----
+  // 1. literal vec4
   {
     g::vec4 o = run("void main(){ FragColor = vec4(0.25, 0.5, 0.75, 1.0); }", f, disc);
     CHECK(!disc && near(o.x, 0.25f) && near(o.y, 0.5f) && near(o.z, 0.75f) && near(o.w, 1));
   }
 
-  // ---- 2. swizzle reorder + scalar splat constructor ----
+  // 2. swizzle reorder + scalar splat constructor
   {
     g::vec4 o = run("void main(){ vec4 c = vec4(1.0,2.0,3.0,4.0);"
                     " FragColor = vec4(c.zyx, c.w); }", f, disc);
     CHECK(near(o.x, 3) && near(o.y, 2) && near(o.z, 1) && near(o.w, 4));
   }
 
-  // ---- 3. for-loop accumulation ----
+  // 3. for-loop accumulation
   {
     g::vec4 o = run("void main(){ float s = 0.0;"
                     " for (int i = 0; i < 4; i++) { s += 1.0; }"
@@ -70,7 +70,7 @@ int main() {
     CHECK(near(o.x, 4.0f));
   }
 
-  // ---- 4. user function + builtins (sq, clamp, max) ----
+  // 4. user function + builtins (sq, clamp, max)
   {
     g::vec4 o = run("float sq(float x){ return x*x; }"
                     " void main(){ FragColor = vec4(sq(3.0),"
@@ -78,20 +78,20 @@ int main() {
     CHECK(near(o.x, 9) && near(o.y, 1) && near(o.z, 7));
   }
 
-  // ---- 5. discard ----
+  // 5. discard
   {
     g::vec4 o = run("void main(){ discard; }", f, disc);
     (void)o;
     CHECK(disc);
   }
 
-  // ---- 6. read a host-bound varying (vNormalEye) ----
+  // 6. read a host-bound varying (vNormalEye)
   {
     g::vec4 o = run("void main(){ FragColor = vec4(vNormalEye, 1.0); }", f, disc);
     CHECK(near(o.x, 0) && near(o.y, 0) && near(o.z, 1));
   }
 
-  // ---- 7. light loop over host-bound uniform arrays ----
+  // 7. light loop over host-bound uniform arrays
   {
     EyeLight L; L.dirEye = {0, 0, -1}; L.color = {1, 1, 1};
     g::vec4 o = run("void main(){ vec3 N = normalize(vNormalEye); float s = 0.0;"
@@ -102,7 +102,7 @@ int main() {
     CHECK(near(o.x, 1.0f, 1e-3f));
   }
 
-  // ---- 8. conditional + gl_FrontFacing ----
+  // 8. conditional + gl_FrontFacing
   {
     FragmentInput back = f; back.frontFacing = false;
     g::vec4 o = run("void main(){ FragColor = gl_FrontFacing ?"
@@ -110,7 +110,7 @@ int main() {
     CHECK(near(o.y, 1.0f) && near(o.x, 0.0f)); // back face -> green branch.
   }
 
-  // ---- 9. parse error is reported, not crashed ----
+  // 9. parse error is reported, not crashed
   {
     InterpretedProgram prog;
     std::string err;
@@ -118,7 +118,7 @@ int main() {
     CHECK(!err.empty());
   }
 
-  // ---- 10. dFdx of the precomputed varying vPosEye is exact ----
+  // 10. dFdx of the precomputed varying vPosEye is exact
   {
     FragmentInput d = f;
     d.dPosEyeDx = {2, 0, 0};
@@ -127,10 +127,7 @@ int main() {
     CHECK(near(o.x, 2.0f));
   }
 
-  // ---- 11. UsdPreviewSurface fidelity uniforms seeded with spec defaults ----
-  // Regression guard for the portable usd_preview_surface.frag seam: before the
-  // slot/fidelity binding was added, these names were undefined and the author
-  // shader would throw and fall back to the flat material color.
+  // 11. UsdPreviewSurface fidelity uniforms seeded with spec defaults
   {
     g::vec4 o = run("void main(){ FragColor = vec4(uIor, float(uHasNormalTex),"
                     " uOcclusionStrength, float(uUseSpecularWorkflow)); }", f, disc);
@@ -138,9 +135,7 @@ int main() {
           near(o.w, 0.0f));
   }
 
-  // ---- 12. non-base texture slots are bound + sampleable by author GLSL ----
-  // The interpreter used to bind only the base-color sampler; the metallic-
-  // roughness (and normal/emissive/occlusion) slots now reach author shaders.
+  // 12. non-base texture slots are bound + sampleable by author GLSL
   {
     ex::MaterialDesc m;
     ex::TextureRef t;
@@ -156,7 +151,7 @@ int main() {
     CHECK(!disc && near(o.x, 1.0f) && o.y > 0.9f); // flag set; B (metallic) ~ 1.0
   }
 
-  // ---- 13. usd_preview_surface.frag alpha wire contract (MASK==1, BLEND==2) ----
+  // 13. usd_preview_surface.frag alpha wire contract (MASK==1, BLEND==2)
   // The portable shader reads the raw enum int(alphaMode) as its uAlphaMode, so
   // the canonical mapping (Opaque=0, Mask=1, Blend=2) must land on it. Guards the
   // historical transposition where the shader discarded on == 2 (old "Mask").
@@ -189,7 +184,7 @@ int main() {
     CHECK(kept(ex::AlphaMode::Mask, 0.05f, 0.9f));  // above cutoff -> kept.
   }
 
-  // ---- 14. plain (non-uniform) globals are per-fragment-invocation ----
+  // 14. plain (non-uniform) globals are per-fragment-invocation
   // The interpreter is reused for every fragment of a draw; a global written by
   // main() must not leak into the next invocation. Two consecutive fragments of
   // a shader that increments/scales a global must produce identical colors.
@@ -209,7 +204,7 @@ int main() {
     CHECK(a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w);
   }
 
-  // ---- 15. control flow: Flow propagation ----
+  // 15. control flow: Flow propagation
   // return/break/continue/discard are a Flow value that unwinds through blocks,
   // loop nests and user-function calls. Each case asserts its exact result.
 

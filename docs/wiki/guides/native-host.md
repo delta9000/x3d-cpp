@@ -1,232 +1,193 @@
 ---
-title: Native Host Integration
-summary: A renderer-free embedding contract for host-owned frame timing, input, resources, scene lifetime, and render-feed consumption.
-tags: [guide, embedding, native, runtime, extraction]
-updated: 2026-09-30
-related:
-  - ../architecture.md
-  - ../seam-status.md
-  - ../subsystems/execution-context.md
-  - ../subsystems/extract.md
+title: Native host integration
+summary: Own session timing, input, resources, and render-feed consumption.
+tags: [guide, embedding]
+updated: 2026-11-05
+related: []
 ---
 
 # Native host integration
 
-The boundary is an **in-process C++20 library**: include `x3d/sdk.hpp` and link
-`x3d_cpp::sdk` from `find_package(x3d_cpp CONFIG REQUIRED)`. Java, a browser,
-windowing, a display server, and a graphics device are not required. The host
-owns its Vulkan instance/device/queues, swapchains or direct-display outputs,
-tracking devices, frame pacing, per-eye projection, synchronization, and GPU
-resource retirement. None is created or driven by `RuntimeSession`.
+Include `x3d/sdk.hpp` and link `x3d_cpp::sdk` from
+`find_package(x3d_cpp CONFIG REQUIRED)`. The boundary is an in-process C++20
+library. `RuntimeSession` does not create a window, graphics device, or renderer.
+The host owns presentation, input mapping, frame pacing, and GPU lifetime.
 
-`examples/embed_minimal/native_host.cpp` is the executable contract. It runs a
-CPU mirror of the actual render delta stream through the **installed package**,
-including a moved install prefix. The named host configuration is a single-threaded
-C++ runtime with standard behaviors, host-controlled resources, static AoS meshes
-and Phong materials in the fixture; it is not a Full-profile browser claim. It also runs as `x3d_native_host_contract` in
-the in-tree behavior/sanitizer suite. This demonstrates the library boundary;
-it is not a Vulkan renderer, a CAVEOS adapter, or hardware validation.
+`examples/embed_minimal/native_host.cpp` exercises a CPU mirror of the render
+feed with static meshes and Phong materials. It runs in-tree as
+`x3d_native_host_contract`; `scripts/verify_install_embed.sh` also builds and
+runs it against installed and relocated packages. These are library-boundary
+checks, not Vulkan or CAVEOS renderer validation.
 
-Build and run the installed consumer from the repository root:
+To build an installed consumer from the repository root:
 
 ```sh
 cmake -S . -B build -G Ninja -DX3D_CPP_PER_HEADER_CHECKS=OFF
-cmake --build build --target x3d_cpp_runtime
+cmake --build build --target x3d_cpp_runtime -j3
 cmake --install build --prefix "$PWD/install"
 cmake -S examples/embed_minimal -B build-host -G Ninja -DCMAKE_PREFIX_PATH="$PWD/install"
-cmake --build build-host --target x3d_embed_native_host
+cmake --build build-host --target x3d_embed_native_host -j3
 ./build-host/x3d_embed_native_host
 ```
 
-## One runtime owner, one tick owner
+## Session and tick ownership
 
-`RuntimeSession::create(document, options)` owns the document, execution context,
-and extractor, in lifetime-safe destruction order. Its `unique_ptr` can move;
-the session itself cannot. Construction performs `buildSceneGraph`, `buildFrom`,
-and (by default) `attachStandardRuntime`. That last step is required to drive
-authored TimeSensor/interpolator ROUTEs; resolving ROUTEs alone is insufficient.
-`interactive` defaults to false so pointer navigation is not silently installed.
-Scripts, physics, audio, and other optional backends require explicit wiring.
-A host that runs scene-authored shaders sets `meshOptions.shaders`: a
-`validator` that compiles each candidate with the host's own compiler (so an
-invalid program falls through to the next shader or the material) and a
-`resolver` for ShaderPart urls. The session gives both the extractor and the
-shader event system the same options.
+`RuntimeSession::create(document, options)` owns the document, context, and
+extractor in dependency order. The session is heap-pinned and cannot move;
+its `unique_ptr` can. Standard behaviors attach by default. Pointer navigation
+requires `SessionOptions::interactive`. A host that owns navigation can set
+`SessionOptions::pointingSensors` to install pointing-device sensors alone and
+query them with `session->pointingSensors(hit)`; see
+[host-owned navigation](../subsystems/system-pointing.md#host-owned-navigation).
+Scripts, physics, and audio need explicit backend wiring.
 
-Drive a session from one host thread:
+Drive the session from one host thread:
 
-1. Feed the host's current inputs and tracking pose
-2. Tick with simulation time in seconds
-3. Consume `delta()` before the next tick, copying needed descriptor fields
-4. Submit the host's own renderer work, with its own per-eye view/projection
+1. Supply mapped input and tracking pose.
+2. Call `tick(now)` with simulation time in seconds.
+3. Consume and apply `delta()` before the next tick.
+4. Submit renderer work with host-owned view/projection and synchronization.
 
-A paused clock may repeat a timestamp; `tickGeneration()` still advances. The
-SDK neither sleeps nor acquires a display. The host chooses simulation time and
-its relationship to presentation time. It must avoid concurrent mutation,
-extraction, or reentrant calls through callbacks. Callback execution is
-synchronous on the calling thread; a slow callback can block it.
+The dirty set covers one tick. Consume a delta after every simulation substep,
+or recover a missed delta with a full snapshot. Callback execution is synchronous;
+avoid concurrent mutation, extraction, and reentrant calls.
 
-If simulation takes several substeps per presented frame, consume and apply a
-delta after **each** tick. The dirty set holds one tick only. If a delta was
-missed, recover with an authoritative full snapshot rather than expecting a
-later delta to replay history.
+`setPointer` takes a world-space ray. `setHeadPose` composes tracking after the
+bound Viewpoint and navigation offset; with no bound Viewpoint it composes at
+the world origin. The host owns unprojection, device mapping, per-eye
+projection, and graphics API clip conventions.
 
-### Input and view conventions
+A host that owns the camera absolutely passes its rigid camera-to-world matrix:
 
-`context().setHeadPose(position, orientation)` composes the tracked pose after
-the bound Viewpoint's authored pose and per-viewpoint navigation offset. A bound
-Viewpoint is required; without one, `viewMatrix()` is identity. The tracked pose
-is relative to that composed frame, not an arbitrary absolute world-camera
-matrix. Supply a consistent viewer pose before ticking view-dependent systems.
+```cpp
+session->context().setViewerWorldPose(worldFromHead);
+session->tick(now);
+auto authored = session->context().boundViewpointWorldPose();
+// Return camera control to the bound Viewpoint and stored relative inputs:
+session->context().clearViewerWorldPose();
+```
 
-`setPointer` accepts a **world-space ray**. Unprojection and device mapping belong
-to the host. `setPointerButton`, `setPointerPresent`, `setPointerScreen`, `setKey`,
-and the `pushKeyCharacter`/action/modifier/string methods accept mapped input;
-setting a pointer alone does not install pointing or navigation systems. An
-application that wants those can opt into `interactive`, or explicitly wire
-its chosen systems. The runtime models one effective viewer/input state per
-context; multi-user arbitration belongs to the host.
+The override works without a Viewpoint and stays active across binds and
+`setHeadPose` calls until cleared. `setViewerWorldPose` returns `false` and
+keeps the previous pose for a non-finite matrix or one with scale, shear, or
+reflection beyond a 1e-3 tolerance; small float drift is re-orthonormalized.
+Set it before ticking view-dependent systems. `boundViewpointWorldPose()`
+excludes navigation, head tracking, and the override, and returns identity when
+no Viewpoint is bound. See
+[ADR-0065](../decisions/0065-absolute-viewer-world-pose.md).
 
-Meshes are in local X3D coordinates; each placement carries a column-major
-`worldTransform`. Upload a shared mesh once and apply the placement transform.
-The host owns Vulkan clip-depth conventions, viewport orientation, calibrated
-screen geometry and asymmetric per-eye projections. Do not assume an example
-OpenGL projection is a Vulkan/direct-display integration contract.
+## Mutation
 
-## Mutation is not ownership
+Raw generated setters bypass context dirty tracking. The example queues host
+writes and applies `context.writeField` from `System::update`, checking each
+`FieldWriteResult`. Consume that queue once: settlement can run a System more
+than once during one tick. A write immediately before `tick` loses its dirty
+mark when the tick clears the previous set. X3D input events can instead use
+`postEvent` for delivery in the next cascade.
 
-Owning the scene safely does not make every mutation safe. `scene()`,
-`document()`, `context()`, and `extractor()` remain low-level escape hatches.
-Raw generated setters bypass the context's dirty tracking and runtime wiring.
+A field write does not enroll arbitrary behavior nodes, resolve new ROUTEs, or
+repair every scene index. For whole-scene changes, prepare a new session and
+swap it at a frame boundary. `RuntimeSession` has no transactional reload API.
 
-The example queues host writes and applies them with `context.writeField`
-inside a host `System::update`. It checks every `FieldWriteResult`. A System can
-run more than once during cascade settlement, so consume its command queue
-once. Calling `writeField` immediately before `tick` is not this protocol:
-`tick` clears the previous dirty set first. For actual X3D input events,
-`postEvent(node, "set_translation", value)` between ticks queues delivery into
-the next cascade. It is not a checked generic write API.
+Structural SFNode/MFNode edits and `visible` changes produce a replacement
+extraction snapshot. Scoped descriptors and visibility-hint changes can also
+require that path. Ordinary scalar geometry/material/TRS edits use incremental
+channels where possible. See [Extraction](../subsystems/extract.md) for the
+dependency and replacement rules; don't assume subtree-cost updates.
 
-A field write does not automatically enroll an arbitrary newly attached
-behavior node, resolve new ROUTEs, repair DEF tables, or rebuild every subsystem.
-`RuntimeSession` has no transactional edit/reload method. For whole-scene or
-behavior-topology changes, prepare a **new session**, validate it, then swap at a
-host frame boundary. Do not replace `session.scene()` underneath live systems.
-If a callback throws midway through tick/extraction, do not assume rollback;
-discard/recreate the candidate or recover according to a host-owned policy.
+Switch `whichChoice` and per-placement LOD selection changes keep unaffected
+`RenderItemId`s and immutable mesh payloads. Only placements entering or
+leaving the active selection appear in `removed`/`added`. A level that leaves
+and re-enters the selection without an edit returns with the same `GeomId` and
+mesh, so a `GeomId`-keyed upload cache can keep its buffers across LOD boundary
+crossings if it retains them for removed placements. An edit while the level
+was inactive gives it a new `GeomId`. Surviving placements whose material,
+shader, or skin binding changed are listed in `updatedMaterial` or
+`updatedSkinPose`. Records whose scoped light, fog, or clip-plane state changed
+appear in both `removed` and `added` with the same ID. Surviving external
+packed placements receive `updatedGeometry`. Node-reference edits in the same
+tick still take the replacement snapshot. Selection refresh walks the active
+scene within a budget, so its cost is not proportional to the changed subtree
+alone. See [ADR-0069](../decisions/0069-selection-deltas-and-cheap-ticks.md).
 
-Structural SFNode/MFNode and active-child edits now take an authoritative
-remove-all/add-all extraction baseline in the next delta. This is a bounded
-full-scene walk, not an incremental subtree-cost promise. Ordinary scalar
-geometry/material/TRS changes remain incremental. **Switch/LOD activation changes
-also use this path**: head movement around an LOD boundary can cause full
-extraction and upload churn on successive frames. The example verifies TRS-only
-updates retain their mesh payload, whereas structural replacement reconstructs
-even unchanged meshes. Measure representative scenes on the actual host before
-setting frame budgets; no hardware throughput or hard real-time bound is claimed.
-The host does not need to
-mark extraction topology itself for these supported writes.
+`lightsChanged` compares the complete world-resolved light list with the last
+published one, including scope, attenuation, radius, and shadow controls, and
+covers lights the geometry walk does not reach (`visible=FALSE`,
+`Collision.proxy`). An idle tick or unrelated animation leaves it false; full
+snapshots set it true. Camera, background, and fog flags are set on every
+delta. `snapshotLights()` owns the indices that items reference; advancing
+`delta()` calls in scenes with lights re-collect it and re-tag live items.
 
-## Consume changes and own lifetime
+## Delta consumption and lifetime
 
-`RenderDelta` names placements; it does not own full render payloads. Read
-`extractor.item(id)` while the extractor is current and copy what is needed.
-References into the extractor are borrowed: conservatively invalidate them at
-any tick, extraction, rebuild, or session destruction.
+`RenderDelta` identifies placements. Read `extractor.item(id)` and copy needed
+descriptor fields before the next mutation or extraction. Apply removals before
+additions because replacement can reuse dense IDs. Apply every supported update
+channel and camera/light/background/fog flag. A `fullSnapshot()` replaces the
+host's placement set rather than appending to it.
 
-- Apply `removed` before `added`; a rebuild can use the same integer in both.
-  Evict a content-cache entry when its last live placement is removed before
-  accepting new content, even if its old GPU allocation awaits retirement
-- Apply all update channels to live records, including skin pose if supported
-- Honor camera, light, background and fog flags; a static test is not full
-  renderer coverage
-- A fresh `fullSnapshot()` means **replace** the host's live placement set,
-  not append to it. It rebuilds extraction caches and restarts dense IDs
-- Do not iterate `itemCount()` as the live set; incremental removals can leave
-  old slots. Track additions/removals in the host
-- On unload, drop borrowed references and all ID-indexed lookup tables
+Track the live set from deltas; `itemCount()` can include old slots. Clear
+ID-indexed state on unload and use a host-owned session/baseline epoch when
+buffering frames. `RenderItemId`, pointer-based `PathKey`, and `GeomId` are
+local identities, not persistent IDs or a transport format.
 
-`MeshRef` (`shared_ptr<const MeshData>`) and `TexturePixelsRef` own immutable CPU
-payloads. Retaining these handles preserves those bytes across replacement or
-session destruction. Copying an entire descriptor does **not** make its raw
-node/path/light/skin identities owning or portable. Keeping a node `shared_ptr`
-alive also does not keep its former session or runtime callbacks valid: do not
-write through retained runtime-bound nodes after unload. A GPU upload or draw may
-outlive the CPU frame: hold required payloads and defer freeing GPU resources
-until the host's own fences/timeline values permit it.
+`MeshRef` and `TexturePixelsRef` retain immutable CPU payloads. Copying an
+entire descriptor does not make its raw node/path/light/skin identities owning.
+For skin items, corner remaps live on the shared mesh; the skin descriptor
+carries binding and pose state. Defer GPU resource retirement using the host's
+own fences or timeline values. Distributed rendering needs a separate,
+versioned host protocol.
 
-### Identity is local, not a transport
+## Measure runtime phases
 
-`RenderItemId` is an extractor-local dense integer. `PathKey` is a vector of raw
-node pointers. `GeomId` combines a raw node pointer and a content version.
-These are not UUIDs, persistent asset IDs, globally unique handles, or a wire
-format. Separate placements can share geometry while having distinct paths and
-transforms. Pointer reuse, session replacement and snapshot/rebuild boundaries
-must not alias stale host resources.
+With `X3D_CPP_BUILD_EXAMPLES=ON`, the `x3d_runtime_tick_profile` target
+(`tools/runtime_tick_profile.cpp`) takes a scene filename and a positive tick
+count:
 
-Keep a **host-owned session/baseline epoch** and frame serial if buffering work
-across frames. The example increments its epoch on replacement/unload. Scope
-all SDK identities to that baseline; clear caches conservatively on rebuild.
-A mesh cache may use immutable payload ownership to distinguish extracted mesh
-variants. Do not rely on a bare geometry-node address as an eternal GPU key.
+```sh
+./build/x3d_runtime_tick_profile /path/to/scene.x3d 91
+```
 
-For out-of-process or distributed CAVE rendering, explicitly translate copied
-values/payloads into a separately versioned host protocol with its own IDs,
-ordering, recovery, and ownership. This example deliberately defines none.
-CAVEOS headers/source are needed before deciding whether any public SDK
-identity addition is necessary.
+It parses the scene, creates a standard `RuntimeSession`, takes a full
+snapshot, and advances from zero at 30 Hz with a fixed authored viewer and no
+pointer. It prints parse, session, and snapshot milliseconds, then CSV rows for
+systems/cascade, post-cascade hooks, transforms, bounds, total tick, and delta,
+plus placement/update counts and `lightsChanged`. It fails if the extraction
+walk budget is exhausted. Compare runs built with identical settings; the
+timings are not a real-time guarantee.
+
+In your own host, pass a `sdk::X3DExecutionContext::TickTimings` to
+`session.context().tick(now, &timings)` to receive the same per-phase
+milliseconds. Plain `tick(now)` reads no clocks.
 
 ## Resources and errors are explicit
 
-For host-controlled resources, parse **memory** with both EXTERNPROTO and Inline
-resolver callbacks supplied explicitly. The default callbacks of
-`parseDocument`, as well as `parseFile`, can read local files. Empty callbacks
-are not a blanket permission policy; the example supplies callable deny
-resolvers that return null. A real host can inject its own bounded, confined
-resource cache, preserving URL fallback order and base-URL meaning.
+For complete resource control, parse memory with explicit EXTERNPROTO and
+Inline callbacks. Defaults can read local files, even through `parseDocument`.
+Use callable deny resolvers to reject access; empty callbacks are not a global
+resource policy. Parse-time resolution must complete synchronously or fail.
 
-Parse-time callbacks must resolve synchronously or fail. Session options expose
-separate `assetResolver` (for LoadSensor), `textureResolver`, runtime
-`inlineResolver`, and `baseUrl`; configuring one is not a universal fetch policy
-for every resource type. Defaults do not fetch images or open devices. A
-texture callback receives authored URL strings; resolve their base/path and
-allowlisted schemes in the host.
+Session options expose separate asset, texture, runtime Inline, base URL, and
+shader configuration. One callback does not configure every resource path.
+`textureResolverWithBase` and `assetResolverWithBase` are optional variants
+that receive the authored URL and the requesting node's source base (see
+[ADR-0063](../decisions/0063-resolver-base-urls.md)).
+`Pending` creates no background job; the host owns loading, timeout, and
+cancellation. Advancing deltas retry pending texture and geometry resources.
+Ready textures are memoized; changing bytes behind an unchanged Ready URL
+requires a full snapshot. Failed textures are not automatically polled.
 
-`Pending` does not create a background job. Ready texture results are memoized;
-Pending/Failed results are not, but an unchanged material is not necessarily
-re-extracted by a later delta. Arrange an explicit material refresh or use a
-full snapshot after asynchronous completion, and replace host state accordingly.
-Likewise, changing bytes behind an unchanged Ready URL needs explicit cache
-invalidation/rebaselining. The host owns timeouts, cancellation and diagnostics.
+Inspect parse warnings, rejected routes, skipped geometry, and extraction
+budgets before accepting a scene. Unresolved DEF/IMPORT endpoints can be
+silently skipped, so an empty rejection list is insufficient; the example
+checks an expected `routesAdded` count.
 
-Catch parse/create exceptions before replacing an active session. Inspect
-`rangeWarnings`, `protoWarnings`, `session.routes().rejected`,
-`extractor.skippedGeometryCounts()`, and `extractor.budgetExceeded()`; a parsed
-scene is not proof that every feature is executable or renderable. Check
-`FieldWriteResult` rather than discarding it. `routes().rejected` reports known
-endpoint validation errors, but unresolved DEF/IMPORT endpoints are silently
-skipped by `buildFrom`; an empty rejection list is not proof that every authored
-ROUTE was bound. The example pins its expected `routesAdded` count; production
-hosts need a corresponding expected-feature/route validation policy.
+Reject a budget-exceeded snapshot before publishing partial authoritative
+state. After fixing the content or budget, require a successful full snapshot
+before resuming deltas. Exceptions do not imply rollback; preserve the host's
+last valid state or recreate the session according to host policy.
 
-The example rejects
-`budgetExceeded()` before installing partial authoritative state, invalidates
-its delta baseline, and requires a successful fresh snapshot (after fixing the
-budget/content policy) before it resumes deltas. Do not accept the next empty
-delta as recovery: extraction has already advanced its own baseline. The host
-mirror also marks itself invalid before mutation, so a copy/allocation/check
-exception cannot publish a partial frame as valid. The caller must not present
-invalid state, and must accept a fresh successful snapshot before resuming.
-Unsupported or denied resources
-need a visible host policy (fallback, rejection, diagnostics), not a silent
-claim of complete X3D support.
-
-## Validation and limits
-
-The render-feed surface is **EXPERIMENTAL**, consistently with the seam-status
-matrix. The executable checks only its stated static-geometry/material/input
-fixture and lifecycle paths. It does not establish full X3D conformance,
-thread safety, a stable C ABI, binary serialization, a device backend, hard
-real-time bounds, Vulkan rendering correctness, display timing, or CAVEOS
-integration. Pin an exact SDK revision while integrating, and add application
-fixtures against the actual host boundary.
+The [seam matrix](../seam-status.md) records the experimental render-feed
+boundary. Pin an SDK revision during integration and test the actual host;
+the example does not establish full X3D conformance, thread safety, a stable
+C ABI, hard real-time bounds, or hardware rendering correctness.

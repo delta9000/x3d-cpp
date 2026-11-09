@@ -1,4 +1,3 @@
-// OpacityMapVolumeStyle.cpp
 #include "x3d/nodes/OpacityMapVolumeStyle.hpp"
 
 namespace x3d::nodes {

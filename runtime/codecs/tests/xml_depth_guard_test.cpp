@@ -1,9 +1,5 @@
-// xml_depth_guard_test.cpp
-// Regression for SEC-1 (#11), XML half: a pathologically deep document drove
-// XmlLite's parseElement<->parseContent mutual recursion past the native stack
-// and SIGSEGV'd with no diagnostic. The shared nesting cap turns that into a
-// catchable std::runtime_error while leaving legitimately-nested documents
-// untouched.
+// XML nesting is bounded to prevent native stack exhaustion.
+
 #include "XmlLite.hpp"
 
 #include "doctest/doctest.h"
@@ -20,7 +16,6 @@ static std::string nestedXml(int depth) {
 }
 
 TEST_CASE("xml_rejects_pathological_nesting") {
-  // Pre-fix: stack overflow (process SIGSEGV). Post-fix: a clean throw.
   CHECK_THROWS_AS((void)x3d::xml::parse(nestedXml(50000)), std::runtime_error);
 }
 

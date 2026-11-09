@@ -1,4 +1,3 @@
-// GeneratedCubeMapTexture.cpp
 #include "x3d/nodes/GeneratedCubeMapTexture.hpp"
 
 namespace x3d::nodes {

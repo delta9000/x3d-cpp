@@ -3,13 +3,13 @@
 //
 // Scope: handles objects, arrays, strings (with the standard JSON escapes
 // \" \\ \/ \b \f \n \r \t and \uXXXX), numbers (int/float/exponent), the
-// literals true/false/null, comments are NOT supported (JSON has none). It is a
+// literals true/false/null, comments are not supported (JSON has none). It is a
 // deliberate sibling to XmlLite: just enough to read back the X3D-JSON the
 // JsonWriter in this project emits, plus typical hand-authored .json. It does
-// NOT aim at exhaustive RFC 8259 validation (e.g. it is lenient about trailing
+// not aim at exhaustive RFC 8259 validation (e.g. it is lenient about trailing
 // garbage after the root value, and accepts a leading UTF-8 BOM).
 //
-// Number values are kept BOTH as a parsed double and as their original lexeme
+// Number values are kept both as a parsed double and as their original lexeme
 // so a reader can re-emit integers without a float artifact (e.g. `3` not
 // `3.0`) when round-tripping into the X3D wire-string form.
 //
@@ -88,7 +88,7 @@ public:
 private:
   const std::string &s_;
   std::size_t i_ = 0;
-  std::size_t depth_ = 0; // SEC-1: value nesting depth (DoS guard).
+  std::size_t depth_ = 0; // value nesting depth (DoS guard).
 
   [[noreturn]] void fail(const std::string &msg) const {
     throw std::runtime_error("JsonLite: " + msg + " at offset " +
@@ -115,7 +115,7 @@ private:
   char peek() const { return i_ < s_.size() ? s_[i_] : '\0'; }
 
   std::unique_ptr<Value> parseValue() {
-    NestingGuard guard(depth_, "JsonLite"); // SEC-1: bound recursive value nesting.
+    NestingGuard guard(depth_, "JsonLite"); // bound recursive value nesting.
     skipWs();
     if (i_ >= s_.size())
       fail("unexpected end of input");
@@ -368,14 +368,14 @@ private:
 
 } // namespace detail
 
-/// Parse a JSON document. Returns the root value (never null on success);
+/// Parse a JSON value prefix. Returns the root value (never null on success);
 /// throws std::runtime_error on malformed input.
 inline std::unique_ptr<Value> parse(const std::string &text) {
   detail::Parser p(text);
   return p.parse();
 }
 
-// For embedded metadata payloads that must contain exactly one JSON value.
+// Parse exactly one JSON value, rejecting trailing non-whitespace content.
 inline std::unique_ptr<Value> parseComplete(const std::string &text) {
   detail::Parser p(text);
   return p.parseComplete();

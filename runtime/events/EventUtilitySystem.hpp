@@ -1,18 +1,5 @@
-// EventUtilitySystem.hpp
-// Event-driven Systems for the ISO/IEC 19775-1 §30 Event Utilities cluster
-// (campaign wave-3 fix). Each node was behaviorally inert (no System wired);
-// these wire the node's inputOnly handlers in attach(). OutputOnly producers
-// use checked admission before storage/observer/ROUTE delivery. BooleanToggle's
-// inputOutput state flips per TRUE input and is published once per cascade.
-//
-//   - BooleanTriggerSystem  §30.4.4: set_triggerTime -> triggerTrue=TRUE
-//   - IntegerTriggerSystem  §30.4.6: set_boolean=TRUE -> triggerValue=integerKey (FALSE ignored)
-//   - TimeTriggerSystem     §30.4.7: set_boolean (any value) -> triggerTime=now
-//   - BooleanFilterSystem   §30.4.1: set_boolean -> inputTrue|inputFalse (by value) + always inputNegate
-//   - BooleanToggleSystem   §30.4.3: set_boolean=TRUE flips toggle; FALSE is a no-op
-//   - SequencerSystem<N,V>  §30.2.4/§30.3.1: stepwise (NON-interpolated) keyValue
-//     selection on set_fraction (one value_changed per key interval) +
-//     next/previous index stepping with wrap-around
+// §30: wire input handlers and admit outputs before storage, observers and ROUTEs.
+// BooleanToggle state flips per `TRUE` input and is published once per cascade.
 #ifndef X3D_RUNTIME_EVENT_UTILITY_SYSTEM_HPP
 #define X3D_RUNTIME_EVENT_UTILITY_SYSTEM_HPP
 
@@ -33,7 +20,7 @@
 namespace x3d::runtime {
 using namespace x3d::core;
 
-/// §30.4.4 BooleanTrigger: any set_triggerTime -> triggerTrue=TRUE.
+/// §30.4.4 BooleanTrigger: any set_triggerTime -> triggerTrue=`TRUE`.
 class BooleanTriggerSystem : public System {
 public:
   ~BooleanTriggerSystem() override { retireCallbacksBeforeDestruction(); }
@@ -51,11 +38,11 @@ public:
   }
 };
 
-/// §30.4.6 IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey; FALSE
+/// §30.4.6 IntegerTrigger: set_boolean=`TRUE` -> triggerValue=integerKey; `FALSE`
 /// ignored. "Resetting the value of the integerKey field itself generates
 /// corresponding integerKey_changed and triggerValue_changed events" with that
 /// same value — integerKey_changed comes from the inputOutput fan-out, and a
-/// field-write listener adds triggerValue (TRIG-4), same value or not.
+/// field-write listener adds triggerValue, same value or not.
 class IntegerTriggerSystem : public System {
 public:
   ~IntegerTriggerSystem() override { retireCallbacksBeforeDestruction(); }
@@ -64,7 +51,7 @@ public:
     auto *n = dynamic_cast<x3d::nodes::IntegerTrigger *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n](const SFBool &v) {
-      if (!v) return; // honored only on TRUE
+      if (!v) return; // honored only on `TRUE`
       ctx.postOutputEvent(n, "triggerValue", std::any(SFInt32{n->getIntegerKey()}));
     }));
     // The field-write listener captures `n` raw, so it is owner-tagged: it is
@@ -130,15 +117,15 @@ public:
   }
 };
 
-/// §30.4.3 BooleanToggle: each set_boolean=TRUE flips toggle; FALSE is a no-op.
+/// §30.4.3 BooleanToggle: each set_boolean=`TRUE` flips toggle; `FALSE` is a no-op.
 ///
 /// `toggle` is inputOutput, so it is the node's state and its output at once.
-/// Each TRUE flips the stored state immediately, so a second TRUE in the same
+/// Each `TRUE` flips the stored state immediately, so a second `TRUE` in the same
 /// cascade flips the first one's result instead of recomputing from the same
 /// old value. The output is one re-read seed per cascade: it delivers the state
 /// as it stands when drained, so storage, observers and ROUTEs agree on one
 /// toggle_changed carrying the final value. An explicit set_toggle is ordinary
-/// inputOutput delivery and later TRUE inputs flip from it.
+/// inputOutput delivery and later `TRUE` inputs flip from it.
 class BooleanToggleSystem : public System {
 public:
   ~BooleanToggleSystem() override { retireCallbacksBeforeDestruction(); }
@@ -147,13 +134,13 @@ public:
     auto *n = dynamic_cast<x3d::nodes::BooleanToggle *>(node);
     if (!n) return;
     n->setOnSet_booleanHandler(ctx.guardCallback(*this, [&ctx, n, this](const SFBool &v) {
-      if (!v) return; // FALSE has no effect (§30.4.3)
+      if (!v) return; // `FALSE` has no effect (§30.4.3)
       n->setToggle(!n->getToggle());
       // An empty value asks the cascade to deliver the field as it stands then.
       if (scheduled_.insert(n).second) ctx.postEvent(n, "toggle", std::any{});
     }));
     // Any delivery to toggle (ours or an explicit set) publishes the current
-    // state, so a later TRUE needs a fresh publication. Owner-tagged like
+    // state, so a later `TRUE` needs a fresh publication. Owner-tagged like
     // IntegerTrigger's listener, and guarded against attach churn.
     if (listened_.insert(n).second)
       ctx.addFieldWriteListener(n, ctx.guardCallback(*this, [n, this](const FieldAddress &a) {
@@ -176,7 +163,7 @@ private:
 
 /// §30.2.4 stepwise selection index: largest i with key[i] <= t (boundary-clamped),
 /// then walk back over equal keys so the lowest index of a duplicated key wins
-/// (SEQ-7, "first definition wins"). NOT interpolated.
+/// ("first definition wins"). not interpolated.
 inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
   const std::size_t n = key.size();
   if (n == 0) return 0;
@@ -190,7 +177,7 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
   std::size_t i = 0;
   for (std::size_t k = 0; k < n; ++k)
     if (key[k] <= t) i = k;
-  // SEQ-7: only when t sits exactly ON a duplicated key value does the lowest
+  // only when t sits exactly on a duplicated key value does the lowest
   // such index win; a fraction strictly above the duplicate keeps the floor index.
   while (i > 0 && key[i] == t && key[i - 1] == key[i]) --i;
   return i;
@@ -198,7 +185,7 @@ inline std::size_t sequencerStepIndex(const MFFloat &key, float t) {
 
 /// §30.2.4/§30.3.1 X3DSequencerNode: BooleanSequencer (SFBool/MFBool) and
 /// IntegerSequencer (SFInt32/MFInt32). Stepwise value_changed on set_fraction;
-/// next/previous step an internal index (TRUE only) with wrap-around.
+/// next/previous step an internal index (`TRUE` only) with wrap-around.
 ///
 /// §30.2.4: "only one value_changed output event per key[i] interval". A
 /// fraction that stays in the interval the previous fraction selected produces

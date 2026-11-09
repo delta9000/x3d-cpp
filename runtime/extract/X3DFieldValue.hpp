@@ -1,9 +1,9 @@
 // X3DFieldValue.hpp — discriminated union for X3D scalar/matrix SF field values.
 // Used by MaterialExtensionField (RenderItem.hpp) and ShaderFieldBinding
-// (Phase 3 shader descriptors).
+// (shader descriptors).
 //
-// DESIGN NOTE — circular-dependency avoidance:
-//   This header is included BY RenderItem.hpp (which defines TextureRef), so
+// design note — circular-dependency avoidance:
+//   This header is included by RenderItem.hpp (which defines TextureRef), so
 //   including RenderItem.hpp here would create a circular dependency.
 //   TextureRef is therefore intentionally omitted from the variant; texture
 //   bindings are handled at the ShaderFieldBinding level by the consumer.
@@ -12,8 +12,8 @@
 #ifndef X3D_RUNTIME_EXTRACT_X3D_FIELD_VALUE_HPP
 #define X3D_RUNTIME_EXTRACT_X3D_FIELD_VALUE_HPP
 
-#include "x3d/core/X3DReflection.hpp"  // X3DFieldType
-#include "x3d/core/X3Dtypes.hpp"       // SF* value types
+#include "x3d/core/X3DReflection.hpp"
+#include "x3d/core/X3Dtypes.hpp"
 #include <variant>
 
 namespace x3d::runtime::extract {
@@ -22,7 +22,7 @@ using namespace x3d::core;
 // Discriminated union covering the scalar + matrix SF field types used in
 // author-shader <field> declarations (ComposedShader, Script, etc.).
 // TextureRef is intentionally omitted to preserve the leaf-header invariant:
-// X3DFieldValue.hpp is included BY RenderItem.hpp (which defines TextureRef),
+// X3DFieldValue.hpp is included by RenderItem.hpp (which defines TextureRef),
 // so including RenderItem.hpp here would create a circular dependency.
 // Texture bindings are handled at the ShaderFieldBinding level by the consumer.
 struct X3DFieldValue {
@@ -30,6 +30,7 @@ struct X3DFieldValue {
   std::variant<std::monostate, float, int, bool, SFColor, SFColorRGBA,
                SFVec2f, SFVec3f, SFVec4f, SFMatrix3f, SFMatrix4f,
                SFString> value;
+  bool operator==(const X3DFieldValue &) const = default;
 };
 
 } // namespace x3d::runtime::extract

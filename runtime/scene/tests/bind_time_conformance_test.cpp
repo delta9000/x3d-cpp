@@ -1,6 +1,5 @@
 // bind_time_conformance_test.cpp — ISO/IEC 19775-1 §23.3.1 conformance for bindTime:
 // (a) load-time default bind emits bindTime; (b) unbinding an active node emits bindTime.
-// RTC-9 regression: drop `if (bound)` guard + load-time clock call.
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DBindableNode.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -17,7 +16,7 @@ static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());
 }
 
-// ── Test (a): load-time default bind must emit bindTime ──────────────────────
+// Test (a): load-time default bind must emit bindTime
 // buildSceneGraph -> bindDefaults -> first Viewpoint default-bound;
 // its getBindTime() must reflect the clock value used at build time (non-zero).
 static void test_load_time_bind_emits_bindTime() {
@@ -37,7 +36,7 @@ static void test_load_time_bind_emits_bindTime() {
   CHECK((bnd(vp)->getBindTime() == kLoadTime && "load-time bind must emit bindTime (§23.3.1 case 1)"));
 }
 
-// ── Test (b): explicit unbind of active node must emit bindTime ───────────────
+// Test (b): explicit unbind of active node must emit bindTime
 // When set_bind FALSE fires on the currently-bound node, bindTime must be emitted
 // (with the timestamp of the unbind) in addition to isBound FALSE.
 static void test_unbind_emits_bindTime() {
@@ -61,7 +60,7 @@ static void test_unbind_emits_bindTime() {
   // §23.3.1: "sends the time at which the node is bound or unbound"
   CHECK((bnd(vp2)->getBindTime() == 2.0 && "unbind must emit bindTime (§23.3.1)"));
 
-  // vp1 is now back on top and also got a bindTime at t=2 (the restore-bind event).
+  // vp1 is back on top and also got a bindTime at t=2 (the restore-bind event).
   CHECK((bnd(vp1)->getIsBound() == true));
   CHECK((bnd(vp1)->getBindTime() == 2.0 && "restored top must emit bindTime on re-bind"));
 }

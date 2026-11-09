@@ -23,7 +23,7 @@ void require(bool ok, const std::string &message) {
 }
 bool near(float a, float b) { return std::abs(a - b) < 0.00001f; }
 
-// Host-owned command queue: all writes occur INSIDE tick(), after the SDK has
+// Host-owned command queue: all writes occur inside tick(), after the SDK has
 // cleared the previous tick's dirty set. Retain node ownership until delivery.
 // A System may update multiple times during one event cascade; drain once.
 class HostWrites final : public sdk::System {
@@ -50,7 +50,7 @@ public:
 
 // Borrowed RenderItem references never escape extraction. Copy the fields the
 // renderer needs; immutable mesh/pixel payloads can be retained by shared_ptr.
-// The path/node pointers below are opaque IN-PROCESS comparison keys only.
+// The path/node pointers below are opaque in-process comparison keys only.
 struct Placement {
   sdk::PathKey path;
   sdk::Mat4 world;
@@ -146,7 +146,7 @@ void agreesWithSnapshot(const HostMirror &host, sdk::RuntimeSession &s) {
   }
 }
 
-// Explicit deny resolvers prevent the parse path's DEFAULT local-file loaders
+// Explicit deny resolvers prevent the parse path's default local-file loaders
 // from running. A real host substitutes its own confined synchronous cache.
 sdk::X3DDocument parseMemory(const std::string &text) {
   return sdk::parseDocument(text, sdk::Encoding::Unknown, "mem:/scene.x3d",
@@ -332,9 +332,6 @@ void exerciseResourcesAndDiagnostics() {
   cache->ready = true; // the host's resource work completed outside the SDK
   textured->tick(0);
   host.apply(textured->delta(), textured->extractor());
-  // Completion is a deliberate rebaseline. Pending does not schedule work and
-  // an unchanged material need not be re-extracted by delta().
-  host.replace(*textured);
   const auto &a = host.placements.begin()->second.material.textures.front().resolvedPixels;
   const auto &b = std::next(host.placements.begin())->second.material.textures.front().resolvedPixels;
   require(a.ready() && a.pixels == b.pixels && cache->decoded == 1,

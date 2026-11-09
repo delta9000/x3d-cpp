@@ -1,4 +1,3 @@
-// HAnimHumanoid.cpp
 #include "x3d/nodes/HAnimHumanoid.hpp"
 
 namespace x3d::nodes {

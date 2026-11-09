@@ -1,14 +1,5 @@
 #include "doctest/doctest.h"
-// event_utility_test.cpp
-// Behavioral-conformance tests for the §30 Event Utilities cluster (campaign
-// wave-3 fix cycle). Each node was previously INERT (no System); these drive the
-// new Systems through the cascade and assert the spec-mandated outputs:
-//   - TRIG-1/2/3/4/5: BooleanTrigger/IntegerTrigger/TimeTrigger emission rules
-//   - SEQ-1..5/7/8:   Boolean/IntegerSequencer stepwise selection + next/previous
-//   - EUF-1/2/4:      BooleanFilter routing + BooleanToggle flip
-//   - production wiring via attachEventUtilities (no manual per-node attach)
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// Event Utilities outputs under routed inputs (§30).
 
 #include "EventUtilitySystem.hpp"
 #include "X3DExecutionContext.hpp"
@@ -26,7 +17,6 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include <any>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -36,13 +26,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) { std::cerr << "FAIL: " << what << "\n"; ++failures; }
-  else std::cout << "ok: " << what << "\n";
-}
-
-// -- TRIG-1: BooleanTrigger ------------------------------------------------
+// BooleanTrigger
 void test_boolean_trigger() {
   auto n = std::make_shared<BooleanTrigger>();
   X3DExecutionContext ctx;
@@ -51,10 +35,10 @@ void test_boolean_trigger() {
   n->emitTriggerTrue(SFBool{false}); // sentinel (default is false anyway)
   ctx.postEvent(n.get(), "set_triggerTime", std::any(SFTime{1.5}));
   ctx.process();
-  check(n->getTriggerTrue() == true, "BooleanTrigger: set_triggerTime -> triggerTrue=TRUE");
+  CHECK_MESSAGE((n->getTriggerTrue() == true), ("BooleanTrigger: set_triggerTime -> triggerTrue=TRUE"));
 }
 
-// -- TRIG-2: IntegerTrigger (honor TRUE only) ------------------------------
+// IntegerTrigger (honor `TRUE` only)
 void test_integer_trigger() {
   auto n = std::make_shared<IntegerTrigger>();
   n->setIntegerKey(SFInt32{42});
@@ -65,14 +49,14 @@ void test_integer_trigger() {
   n->emitTriggerValue(SFInt32{-99}); // sentinel
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{false}));
   ctx.process();
-  check(n->getTriggerValue() == -99, "IntegerTrigger: set_boolean=FALSE ignored (no emit)");
+  CHECK_MESSAGE((n->getTriggerValue() == -99), ("IntegerTrigger: set_boolean=FALSE ignored (no emit)"));
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{true}));
   ctx.process();
-  check(n->getTriggerValue() == 42, "IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey(42)");
+  CHECK_MESSAGE((n->getTriggerValue() == 42), ("IntegerTrigger: set_boolean=TRUE -> triggerValue=integerKey(42)"));
 }
 
-// -- TRIG-3/5: TimeTrigger (fires on any boolean, value=now) ---------------
+// TimeTrigger (fires on any boolean, value=now)
 void test_time_trigger() {
   auto n = std::make_shared<TimeTrigger>();
   X3DExecutionContext ctx;
@@ -81,14 +65,14 @@ void test_time_trigger() {
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{true}));
   ctx.tick(5.0); // tick sets now_=5.0 then drains the seeded event
-  check(n->getTriggerTime() == 5.0, "TimeTrigger: set_boolean=TRUE -> triggerTime=now(5.0)");
+  CHECK_MESSAGE((n->getTriggerTime() == 5.0), ("TimeTrigger: set_boolean=TRUE -> triggerTime=now(5.0)"));
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{false}));
   ctx.tick(8.0);
-  check(n->getTriggerTime() == 8.0, "TimeTrigger: set_boolean=FALSE also fires (value ignored) -> 8.0 (TRIG-5)");
+  CHECK_MESSAGE((n->getTriggerTime() == 8.0), ("TimeTrigger: set_boolean=FALSE also fires (value ignored) -> 8.0 (TRIG-5)"));
 }
 
-// -- EUF-1/4: BooleanFilter ------------------------------------------------
+// BooleanFilter
 void test_boolean_filter() {
   auto n = std::make_shared<BooleanFilter>();
   X3DExecutionContext ctx;
@@ -100,39 +84,39 @@ void test_boolean_filter() {
   n->emitInputNegate(SFBool{false});
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{true}));
   ctx.process();
-  check(n->getInputTrue() == true, "BooleanFilter TRUE -> inputTrue=TRUE");
-  check(n->getInputNegate() == false, "BooleanFilter TRUE -> inputNegate=FALSE");
-  check(n->getInputFalse() == true, "BooleanFilter TRUE -> inputFalse untouched (only one of true/false)");
+  CHECK_MESSAGE((n->getInputTrue() == true), ("BooleanFilter TRUE -> inputTrue=TRUE"));
+  CHECK_MESSAGE((n->getInputNegate() == false), ("BooleanFilter TRUE -> inputNegate=FALSE"));
+  CHECK_MESSAGE((n->getInputFalse() == true), ("BooleanFilter TRUE -> inputFalse untouched (only one of true/false)"));
 
   n->emitInputNegate(SFBool{false});
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{false}));
   ctx.process();
-  check(n->getInputFalse() == false, "BooleanFilter FALSE -> inputFalse=FALSE");
-  check(n->getInputNegate() == true, "BooleanFilter FALSE -> inputNegate=TRUE");
+  CHECK_MESSAGE((n->getInputFalse() == false), ("BooleanFilter FALSE -> inputFalse=FALSE"));
+  CHECK_MESSAGE((n->getInputNegate() == true), ("BooleanFilter FALSE -> inputNegate=TRUE"));
 }
 
-// -- EUF-2: BooleanToggle (flip on TRUE, FALSE no-op) ----------------------
+// BooleanToggle (flip on `TRUE`, `FALSE` no-op)
 void test_boolean_toggle() {
   auto n = std::make_shared<BooleanToggle>();
   X3DExecutionContext ctx;
   BooleanToggleSystem sys;
   sys.attach(n.get(), ctx);
-  check(n->getToggle() == false, "BooleanToggle default toggle=FALSE");
+  CHECK_MESSAGE((n->getToggle() == false), ("BooleanToggle default toggle=FALSE"));
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{true}));
   ctx.process();
-  check(n->getToggle() == true, "BooleanToggle set_boolean=TRUE flips FALSE->TRUE");
+  CHECK_MESSAGE((n->getToggle() == true), ("BooleanToggle set_boolean=TRUE flips FALSE->TRUE"));
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{true}));
   ctx.process();
-  check(n->getToggle() == false, "BooleanToggle set_boolean=TRUE again flips TRUE->FALSE");
+  CHECK_MESSAGE((n->getToggle() == false), ("BooleanToggle set_boolean=TRUE again flips TRUE->FALSE"));
 
   ctx.postEvent(n.get(), "set_boolean", std::any(SFBool{false}));
   ctx.process();
-  check(n->getToggle() == false, "BooleanToggle set_boolean=FALSE is a no-op");
+  CHECK_MESSAGE((n->getToggle() == false), ("BooleanToggle set_boolean=FALSE is a no-op"));
 }
 
-// -- SEQ-1/2: IntegerSequencer stepwise selection (no interpolation) -------
+// IntegerSequencer stepwise selection (no interpolation)
 void test_integer_sequencer() {
   auto n = std::make_shared<IntegerSequencer>();
   n->setKey(MFFloat{0.0f, 0.5f, 1.0f});
@@ -143,22 +127,22 @@ void test_integer_sequencer() {
 
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{0.25f}));
   ctx.process();
-  check(n->getValue_changed() == 10, "IntegerSequencer f=0.25 in [0,0.5) -> 10 (stepwise, not 15)");
+  CHECK_MESSAGE((n->getValue_changed() == 10), ("IntegerSequencer f=0.25 in [0,0.5) -> 10 (stepwise, not 15)"));
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{0.75f}));
   ctx.process();
-  check(n->getValue_changed() == 20, "IntegerSequencer f=0.75 in [0.5,1) -> 20");
+  CHECK_MESSAGE((n->getValue_changed() == 20), ("IntegerSequencer f=0.75 in [0.5,1) -> 20"));
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{1.0f}));
   ctx.process();
-  check(n->getValue_changed() == 30, "IntegerSequencer f=1.0 -> last keyValue 30");
+  CHECK_MESSAGE((n->getValue_changed() == 30), ("IntegerSequencer f=1.0 -> last keyValue 30"));
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{-1.0f}));
   ctx.process();
-  check(n->getValue_changed() == 10, "IntegerSequencer f<key0 -> first keyValue 10");
+  CHECK_MESSAGE((n->getValue_changed() == 10), ("IntegerSequencer f<key0 -> first keyValue 10"));
 }
 
-// -- SEQ-7: duplicate keys select the lowest index (first definition wins) -
+// duplicate keys select the lowest index (first definition wins)
 void test_sequencer_duplicate_keys() {
   auto n = std::make_shared<IntegerSequencer>();
-  // key 0.5 is duplicated; at t=0.5 the spec selects v_i at the LOWEST such i.
+  // key 0.5 is duplicated; at t=0.5 the spec selects v_i at the lowest such i.
   n->setKey(MFFloat{0.0f, 0.5f, 0.5f, 1.0f});
   n->setKeyValue(MFInt32{10, 20, 30, 40});
   X3DExecutionContext ctx;
@@ -166,16 +150,14 @@ void test_sequencer_duplicate_keys() {
   sys.attach(n.get(), ctx);
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{0.5f}));
   ctx.process();
-  check(n->getValue_changed() == 20,
-        "IntegerSequencer t=0.5 on duplicated key -> lowest index (20, not 30)");
-  // t strictly ABOVE the duplicated key is in [key[2]=0.5, key[3]=1.0) -> v_2=30.
+  CHECK_MESSAGE((n->getValue_changed() == 20), ("IntegerSequencer t=0.5 on duplicated key -> lowest index (20, not 30)"));
+  // t strictly above the duplicated key is in [key[2]=0.5, key[3]=1.0) -> v_2=30.
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{0.7f}));
   ctx.process();
-  check(n->getValue_changed() == 30,
-        "IntegerSequencer t=0.7 above duplicated key -> index 2 (30), not collapsed to 20");
+  CHECK_MESSAGE((n->getValue_changed() == 30), ("IntegerSequencer t=0.7 above duplicated key -> index 2 (30), not collapsed to 20"));
 }
 
-// -- SEQ-3/4/5: BooleanSequencer next/previous with wrap -------------------
+// BooleanSequencer next/previous with wrap
 void test_boolean_sequencer_next_previous() {
   auto n = std::make_shared<BooleanSequencer>();
   n->setKey(MFFloat{0.0f, 0.5f, 1.0f});
@@ -187,22 +169,22 @@ void test_boolean_sequencer_next_previous() {
   // Seat the index at 0 via set_fraction, then step.
   ctx.postEvent(n.get(), "set_fraction", std::any(SFFloat{0.0f}));
   ctx.process();
-  check(n->getValue_changed() == false, "BooleanSequencer f=0 -> keyValue[0]=FALSE");
+  CHECK_MESSAGE((n->getValue_changed() == false), ("BooleanSequencer f=0 -> keyValue[0]=FALSE"));
   ctx.postEvent(n.get(), "next", std::any(SFBool{true}));
   ctx.process();
-  check(n->getValue_changed() == true, "BooleanSequencer next -> index 1 = TRUE");
+  CHECK_MESSAGE((n->getValue_changed() == true), ("BooleanSequencer next -> index 1 = TRUE"));
   ctx.postEvent(n.get(), "next", std::any(SFBool{true}));
   ctx.process();
-  check(n->getValue_changed() == false, "BooleanSequencer next -> index 2 = FALSE");
+  CHECK_MESSAGE((n->getValue_changed() == false), ("BooleanSequencer next -> index 2 = FALSE"));
   ctx.postEvent(n.get(), "next", std::any(SFBool{true}));
   ctx.process();
-  check(n->getValue_changed() == false, "BooleanSequencer next wraps 2->0 = FALSE");
+  CHECK_MESSAGE((n->getValue_changed() == false), ("BooleanSequencer next wraps 2->0 = FALSE"));
   ctx.postEvent(n.get(), "previous", std::any(SFBool{true}));
   ctx.process();
-  check(n->getValue_changed() == false, "BooleanSequencer previous wraps 0->2 = FALSE");
+  CHECK_MESSAGE((n->getValue_changed() == false), ("BooleanSequencer previous wraps 0->2 = FALSE"));
 }
 
-// -- production wiring: attachEventUtilities (no manual attach) -------------
+// production wiring: attachEventUtilities (no manual attach)
 void test_attach_event_utilities() {
   auto tog = createX3DNode("BooleanToggle");
   auto seq = createX3DNode("IntegerSequencer");
@@ -224,11 +206,11 @@ void test_attach_event_utilities() {
   bool tv = false;
   for (auto &f : tog->fields())
     if (f.x3dName == "toggle" && f.get) tv = std::any_cast<SFBool>(f.get(*tog));
-  check(tv == true, "attachEventUtilities wires BooleanToggle (flip -> TRUE)");
+  CHECK_MESSAGE((tv == true), ("attachEventUtilities wires BooleanToggle (flip -> TRUE)"));
   SFInt32 sv = 0;
   for (auto &f : seq->fields())
     if (f.x3dName == "value_changed" && f.get) sv = std::any_cast<SFInt32>(f.get(*seq));
-  check(sv == 9, "attachEventUtilities wires IntegerSequencer (f=1 -> 9)");
+  CHECK_MESSAGE((sv == 9), ("attachEventUtilities wires IntegerSequencer (f=1 -> 9)"));
 }
 
 } // namespace
@@ -243,11 +225,9 @@ TEST_CASE("event_utility_test") {
   test_sequencer_duplicate_keys();
   test_boolean_sequencer_next_previous();
   test_attach_event_utilities();
-  if (failures) { std::cerr << failures << " check(s) failed\n"; CHECK(false); return; }
-  std::cout << "all event-utility tests passed\n";
+
   return;
 }
-
 
 TEST_CASE("integer_sequencer_duplicate_last_key_uses_first_value") {
   auto n = std::make_shared<IntegerSequencer>();

@@ -12,7 +12,7 @@
 #ifndef X3D_RUNTIME_EXTRACT_SHADER_UNIFORM_VOCABULARY_HPP
 #define X3D_RUNTIME_EXTRACT_SHADER_UNIFORM_VOCABULARY_HPP
 
-#include "x3d/core/X3DReflection.hpp"  // X3DFieldType
+#include "x3d/core/X3DReflection.hpp"
 #include <cstdint>
 #include <string_view>
 
@@ -49,7 +49,7 @@ struct VocabEntry {
 };
 
 inline constexpr VocabEntry kVocabulary[] = {
-  // --- Transform matrices --------------------------------------------------
+  // Transform matrices
   {"modelViewMatrix",     UniformSource::ModelViewMatrix,     X3DFieldType::SFMatrix4f, false,
    "RenderItem.worldTransform * CameraDesc.viewMatrix"},
   {"projectionMatrix",    UniformSource::ProjectionMatrix,    X3DFieldType::SFMatrix4f, false,
@@ -64,7 +64,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "CameraDesc.viewMatrix"},
   {"textureMatrix",       UniformSource::TextureMatrix,       X3DFieldType::SFMatrix4f, false,
    "TextureTransform2D baked matrix"},
-  // --- Lights --------------------------------------------------------------
+  // Lights
   {"numLights",           UniformSource::NumLights,           X3DFieldType::SFInt32,   false,
    "active LightDesc count"},
   {"lightType",           UniformSource::LightType,           X3DFieldType::SFInt32,   true,
@@ -85,7 +85,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "LightDesc.beamWidth"},
   {"lightCutOffAngle",    UniformSource::LightCutOffAngle,    X3DFieldType::SFFloat,   true,
    "LightDesc.cutOffAngle"},
-  // --- Material (Phong) ----------------------------------------------------
+  // Material (Phong)
   {"diffuseColor",        UniformSource::DiffuseColor,        X3DFieldType::SFColor,   false,
    "MaterialDesc.phong.diffuse"},
   {"specularColor",       UniformSource::SpecularColor,       X3DFieldType::SFColor,   false,
@@ -96,14 +96,14 @@ inline constexpr VocabEntry kVocabulary[] = {
    "MaterialDesc.phong.shininess"},
   {"ambientIntensity",    UniformSource::AmbientIntensity,    X3DFieldType::SFFloat,   false,
    "MaterialDesc.phong.ambientIntensity"},
-  // --- Material (Physical) -------------------------------------------------
+  // Material (Physical)
   {"baseColor",           UniformSource::BaseColor,           X3DFieldType::SFColor,   false,
    "MaterialDesc.physical.baseColor"},
   {"metallic",            UniformSource::Metallic,            X3DFieldType::SFFloat,   false,
    "MaterialDesc.physical.metallic"},
   {"roughness",           UniformSource::Roughness,           X3DFieldType::SFFloat,   false,
    "MaterialDesc.physical.roughness"},
-  // --- Material (shared) ---------------------------------------------------
+  // Material (shared)
   {"occlusionStrength",   UniformSource::OcclusionStrength,   X3DFieldType::SFFloat,   false,
    "MaterialDesc.phong/physical.occlusionStrength"},
   {"normalScale",         UniformSource::NormalScale,         X3DFieldType::SFFloat,   false,
@@ -114,7 +114,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "MaterialDesc.alphaMode enum"},
   {"alphaCutoff",         UniformSource::AlphaCutoff,         X3DFieldType::SFFloat,   false,
    "MaterialDesc.alphaCutoff"},
-  // --- Texture samplers ----------------------------------------------------
+  // Texture samplers
   {"baseColorTex",        UniformSource::BaseColorTex,        X3DFieldType::SFNode,    false,
    "TextureRef slot BaseColor sampler"},
   {"diffuseTex",          UniformSource::DiffuseTex,          X3DFieldType::SFNode,    false,
@@ -133,7 +133,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "TextureRef slot Shininess sampler"},
   {"ambientTex",          UniformSource::AmbientTex,          X3DFieldType::SFNode,    false,
    "TextureRef slot Ambient sampler"},
-  // --- Texture presence flags ----------------------------------------------
+  // Texture presence flags
   {"hasBaseColorTex",     UniformSource::HasBaseColorTex,     X3DFieldType::SFInt32,   false,
    "1 if BaseColor texture bound, else 0"},
   {"hasDiffuseTex",       UniformSource::HasDiffuseTex,       X3DFieldType::SFInt32,   false,
@@ -152,7 +152,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "1 if Shininess texture bound, else 0"},
   {"hasAmbientTex",       UniformSource::HasAmbientTex,       X3DFieldType::SFInt32,   false,
    "1 if Ambient texture bound, else 0"},
-  // --- Environment / IBL ---------------------------------------------------
+  // Environment / IBL
   {"envDiffuse",          UniformSource::EnvDiffuse,          X3DFieldType::SFNode,    false,
    "LightDesc.environment.diffuseTexture cubemap"},
   {"envSpecular",         UniformSource::EnvSpecular,         X3DFieldType::SFNode,    false,
@@ -165,7 +165,7 @@ inline constexpr VocabEntry kVocabulary[] = {
    "LightDesc.environment.intensity"},
   {"envRotation",         UniformSource::EnvRotation,         X3DFieldType::SFVec4f,   false,
    "LightDesc.environment.rotation (quaternion)"},
-  // --- Fog -----------------------------------------------------------------
+  // Fog
   {"fogColor",            UniformSource::FogColor,            X3DFieldType::SFColor,   false,
    "FogDesc.color"},
   {"fogType",             UniformSource::FogType,             X3DFieldType::SFInt32,   false,
@@ -174,12 +174,12 @@ inline constexpr VocabEntry kVocabulary[] = {
    "FogDesc.visibilityRange / max fog distance"},
   {"fogVisibilityRange",  UniformSource::FogVisibilityRange,  X3DFieldType::SFFloat,   false,
    "FogDesc.visibilityRange"},
-  // --- Clip planes ---------------------------------------------------------
+  // Clip planes
   {"numClipPlanes",       UniformSource::NumClipPlanes,       X3DFieldType::SFInt32,   false,
    "active ClipPlane count"},
   {"clipPlane",           UniformSource::ClipPlane,           X3DFieldType::SFVec4f,   true,
    "ClipPlane equation (ax+by+cz+d=0, eye-space)"},
-  // --- Per-frame / viewport ------------------------------------------------
+  // Per-frame / viewport
   {"time",                UniformSource::Time,                X3DFieldType::SFFloat,   false,
    "wall-clock seconds since viewer start"},
   {"viewportSize",        UniformSource::ViewportSize,        X3DFieldType::SFVec2f,   false,

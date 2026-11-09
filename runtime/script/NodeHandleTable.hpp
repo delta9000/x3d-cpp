@@ -11,7 +11,7 @@
 //     hostile content can never aim the runtime at an arbitrary address;
 //   - the table holds a weak_ptr, so a node the scene has since dropped
 //     resolves to null instead of dangling;
-//   - a live node resolves to its REAL owning shared_ptr. An SFNode a script
+//   - a live node resolves to its real owning shared_ptr. An SFNode a script
 //     writes into a field (e.g. `children`) therefore shares ownership exactly
 //     like a DEF/USE reference — the ECMAScript binding's SFNode is a node
 //     reference (ISO/IEC 19777-1), not a borrowed pointer.

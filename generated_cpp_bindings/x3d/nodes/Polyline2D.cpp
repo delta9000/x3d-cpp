@@ -1,4 +1,3 @@
-// Polyline2D.cpp
 #include "x3d/nodes/Polyline2D.hpp"
 
 namespace x3d::nodes {

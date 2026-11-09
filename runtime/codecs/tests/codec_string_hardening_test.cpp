@@ -1,40 +1,21 @@
 #include "doctest/doctest.h"
-// codec_string_hardening_test.cpp
-// Regressions for the ENC-* string/value-handling findings
-// (docs/conformance/findings.yaml, encoding review + round-trip sweep):
-//
-//   ENC-VRML-STRING   — VrmlWriter must escape '"' and '\' in META (an embedded
-//                       quote truncates the value and swallows following lines).
-//   ENC-MFSTRING-READ — MFString/VRML-string readers must keep the backslash on
-//                       escapes other than \" and \\ (c:\new\tex -> c:newex).
-//   ENC-VRML-SFIMAGE  — the ClassicVRML reader must consume width*height pixel
-//                       words after the `w h comp` header (a 2x2 texture parsed
-//                       back as `2 0 0`).
-//   ENC-CDATA-SCRIPT  — XmlWriter must split a literal ]]> in Script source
-//                       into consecutive CDATA sections instead of truncating.
-//   ENC-JSON-UNIT     — JsonWriter must emit the head `unit` array (JsonReader
-//                       already reads it; the asymmetry silently dropped UNIT).
-//   ENC-JSON-CTRL     — JsonWriter must escape control chars (U+0000..001F) as
-//                       \u00XX per RFC 8259 instead of emitting raw bytes.
-//   ENC-C14N-ATTR     — canonical attribute values must escape tab/newline/CR
-//                       as &#x9;/&#xA;/&#xD; (raw whitespace is normalized to a
-//                       space by any conformant reader: non-portable canon).
-//
-// Exit code 0 on success; nonzero on any failed assertion.
+// String escaping, image pixels, units, and attribute whitespace survive round-trips.
 
 #include "ClassicVrmlReader.hpp"
 #include "DynamicField.hpp"
 #include "JsonReader.hpp"
+#include "JsonLite.hpp"
 #include "VrmlWriter.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
+#include "X3DParse.hpp"
 
 #include "x3d/nodes/PixelTexture.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/WorldInfo.hpp"
 
 #include <functional>
-#include <iostream>
+#include <algorithm>
 #include <memory>
 #include <string>
 
@@ -42,17 +23,6 @@ using namespace x3d;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 bool contains(const std::string &hay, const std::string &needle) {
   return hay.find(needle) != std::string::npos;
@@ -65,11 +35,8 @@ std::shared_ptr<T> findNode(const runtime::Scene &scene) {
       return t;
   return nullptr;
 }
-
-// ---------------------------------------------------------------------------
-// ENC-VRML-STRING: META + string fields with embedded quote/backslash survive
+// META + string fields with embedded quote/backslash survive
 // the XML -> ClassicVRML -> reparse hop.
-// ---------------------------------------------------------------------------
 void testVrmlStringEscaping() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
@@ -83,12 +50,12 @@ void testVrmlStringEscaping() {
 )XML";
   codec::XmlReader xml;
   auto doc = xml.readDocument(kXml);
-  check(doc.head.meta.size() == 1 &&
-            doc.head.meta[0].content == "adding a \"red\" ball via c:\\tex",
+  CHECK_MESSAGE((doc.head.meta.size() == 1 &&
+            doc.head.meta[0].content == "adding a \"red\" ball via c:\\tex"),
         "ENC-VRML-STRING: XML parse keeps quote+backslash in meta content");
   {
     auto wi0 = findNode<WorldInfo>(doc.scene);
-    check(wi0 && wi0->getInfo().size() == 2,
+    CHECK_MESSAGE((wi0 && wi0->getInfo().size() == 2),
           "ENC-VRML-STRING: fixture sanity — XML parse yields 2 MFString "
           "elements");
   }
@@ -98,40 +65,37 @@ void testVrmlStringEscaping() {
   codec::ClassicVrmlReader cv;
   auto doc2 = cv.readDocument(vrml);
 
-  check(doc2.head.meta.size() == 1,
+  CHECK_MESSAGE((doc2.head.meta.size() == 1),
         "ENC-VRML-STRING: META statement count survives the VRML hop");
   if (doc2.head.meta.size() == 1) {
-    check(doc2.head.meta[0].name == "description",
+    CHECK_MESSAGE((doc2.head.meta[0].name == "description"),
           "ENC-VRML-STRING: META name survives");
-    check(doc2.head.meta[0].content == doc.head.meta[0].content,
-          "ENC-VRML-STRING: META content with embedded quote survives (got '" +
-              doc2.head.meta[0].content + "')");
+    CHECK_MESSAGE((doc2.head.meta[0].content == doc.head.meta[0].content),
+          ("ENC-VRML-STRING: META content with embedded quote survives (got '" +
+              doc2.head.meta[0].content + "')"));
   }
   auto wi = findNode<WorldInfo>(doc2.scene);
-  check(wi != nullptr, "ENC-VRML-STRING: WorldInfo survives the VRML hop");
+  CHECK_MESSAGE((wi != nullptr), "ENC-VRML-STRING: WorldInfo survives the VRML hop");
   if (wi) {
-    check(wi->getTitle() == "say \"hi\"",
-          "ENC-VRML-STRING: SFString title with quote survives (got '" +
-              wi->getTitle() + "')");
+    CHECK_MESSAGE((wi->getTitle() == "say \"hi\""),
+          ("ENC-VRML-STRING: SFString title with quote survives (got '" +
+              wi->getTitle() + "')"));
     const auto &info = wi->getInfo();
-    check(info.size() == 2,
-          "ENC-VRML-STRING: MFString element count survives (got " +
-              std::to_string(info.size()) + ")");
+    CHECK_MESSAGE((info.size() == 2),
+          ("ENC-VRML-STRING: MFString element count survives (got " +
+              std::to_string(info.size()) + ")"));
     if (info.size() == 2) {
-      check(info[0] == "first \"quoted\" item",
-            "ENC-VRML-STRING: MFString element with quote survives (got '" +
-                info[0] + "')");
-      check(info[1] == "second item",
+      CHECK_MESSAGE((info[0] == "first \"quoted\" item"),
+            ("ENC-VRML-STRING: MFString element with quote survives (got '" +
+                info[0] + "')"));
+      CHECK_MESSAGE((info[1] == "second item"),
             "ENC-VRML-STRING: following MFString element intact");
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// ENC-MFSTRING-READ: an unknown escape keeps its backslash; the two defined
+// an unknown escape keeps its backslash; the two defined
 // escapes (\" and \\) still unescape. Exercised through the XML attribute
 // MFString path (FieldValueIO::parseMFString).
-// ---------------------------------------------------------------------------
 void testMfStringUnknownEscape() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
@@ -141,17 +105,17 @@ void testMfStringUnknownEscape() {
   codec::XmlReader xml;
   auto doc = xml.readDocument(kXml);
   auto wi = findNode<WorldInfo>(doc.scene);
-  check(wi != nullptr, "ENC-MFSTRING-READ: WorldInfo parsed");
+  CHECK_MESSAGE((wi != nullptr), "ENC-MFSTRING-READ: WorldInfo parsed");
   if (!wi)
     return;
   const auto &info = wi->getInfo();
-  check(info.size() == 3, "ENC-MFSTRING-READ: 3 MFString elements");
+  CHECK_MESSAGE((info.size() == 3), "ENC-MFSTRING-READ: 3 MFString elements");
   if (info.size() == 3) {
-    check(info[0] == "c:\\new\\tex",
-          "ENC-MFSTRING-READ: unknown escape keeps backslash (got '" +
-              info[0] + "')");
-    check(info[1] == "a\"b", "ENC-MFSTRING-READ: \\\" still unescapes");
-    check(info[2] == "a\\b", "ENC-MFSTRING-READ: \\\\ still unescapes");
+    CHECK_MESSAGE((info[0] == "c:\\new\\tex"),
+          ("ENC-MFSTRING-READ: unknown escape keeps backslash (got '" +
+              info[0] + "')"));
+    CHECK_MESSAGE((info[1] == "a\"b"), "ENC-MFSTRING-READ: \\\" still unescapes");
+    CHECK_MESSAGE((info[2] == "a\\b"), "ENC-MFSTRING-READ: \\\\ still unescapes");
   }
 
   // Same rule on the ClassicVRML tokenizer path.
@@ -161,17 +125,14 @@ void testMfStringUnknownEscape() {
   codec::ClassicVrmlReader cv;
   auto doc2 = cv.readDocument(kVrml);
   auto wi2 = findNode<WorldInfo>(doc2.scene);
-  check(wi2 != nullptr, "ENC-MFSTRING-READ: VRML WorldInfo parsed");
+  CHECK_MESSAGE((wi2 != nullptr), "ENC-MFSTRING-READ: VRML WorldInfo parsed");
   if (wi2)
-    check(wi2->getTitle() == "c:\\new\\tex",
-          "ENC-MFSTRING-READ: VRML tokenizer keeps backslash on unknown "
+    CHECK_MESSAGE((wi2->getTitle() == "c:\\new\\tex"),
+          ("ENC-MFSTRING-READ: VRML tokenizer keeps backslash on unknown "
           "escape (got '" +
-              wi2->getTitle() + "')");
+              wi2->getTitle() + "')"));
 }
-
-// ---------------------------------------------------------------------------
-// ENC-VRML-SFIMAGE: an inline PixelTexture survives the ClassicVRML hop.
-// ---------------------------------------------------------------------------
+// an inline PixelTexture survives the ClassicVRML hop.
 void testVrmlSfImageRead() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
@@ -213,12 +174,12 @@ void testVrmlSfImageRead() {
   for (const auto &n : doc.scene.rootNodes)
     if ((orig = dig(n)))
       break;
-  check(orig != nullptr, "ENC-VRML-SFIMAGE: PixelTexture parsed from XML");
+  CHECK_MESSAGE((orig != nullptr), "ENC-VRML-SFIMAGE: PixelTexture parsed from XML");
   if (!orig)
     return;
   const core::SFImage &img = orig->getImage();
-  check(img.width == 2 && img.height == 2 && img.numComponents == 3 &&
-            img.data.size() == 12,
+  CHECK_MESSAGE((img.width == 2 && img.height == 2 && img.numComponents == 3 &&
+            img.data.size() == 12),
         "ENC-VRML-SFIMAGE: XML parse yields a full 2x2x3 image");
 
   codec::VrmlWriter vw;
@@ -229,21 +190,18 @@ void testVrmlSfImageRead() {
   for (const auto &n : doc2.scene.rootNodes)
     if ((re = dig(n)))
       break;
-  check(re != nullptr, "ENC-VRML-SFIMAGE: PixelTexture survives the VRML hop");
+  CHECK_MESSAGE((re != nullptr), "ENC-VRML-SFIMAGE: PixelTexture survives the VRML hop");
   if (re)
-    check(re->getImage() == img,
-          "ENC-VRML-SFIMAGE: SFImage identical after the VRML hop (got " +
+    CHECK_MESSAGE((re->getImage() == img),
+          ("ENC-VRML-SFIMAGE: SFImage identical after the VRML hop (got " +
               std::to_string(re->getImage().width) + " " +
               std::to_string(re->getImage().height) + " " +
               std::to_string(re->getImage().numComponents) + ", " +
-              std::to_string(re->getImage().data.size()) + " bytes)");
+              std::to_string(re->getImage().data.size()) + " bytes)"));
 }
-
-// ---------------------------------------------------------------------------
-// ENC-CDATA-SCRIPT: Script source containing a literal ]]> survives the XML
+// Script source containing a literal ]]> survives the XML
 // writer (split CDATA) and reparses intact (XmlLite concatenates consecutive
 // CDATA sections).
-// ---------------------------------------------------------------------------
 void testCdataSplit() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
@@ -253,7 +211,7 @@ void testCdataSplit() {
   codec::XmlReader xml;
   auto doc = xml.readDocument(kXml);
   auto script = findNode<Script>(doc.scene);
-  check(script != nullptr, "ENC-CDATA-SCRIPT: Script parsed");
+  CHECK_MESSAGE((script != nullptr), "ENC-CDATA-SCRIPT: Script parsed");
   if (!script)
     return;
   const std::string source = "ecmascript: if (a]]>b) { mask(); }";
@@ -261,21 +219,18 @@ void testCdataSplit() {
 
   codec::XmlWriter xw;
   std::string out = xw.writeDocument(doc);
-  check(!contains(out, "if (a]]>b)"),
+  CHECK_MESSAGE((!contains(out, "if (a]]>b)")),
         "ENC-CDATA-SCRIPT: writer does not emit a raw ]]> inside CDATA");
 
   auto doc2 = xml.readDocument(out);
   auto script2 = findNode<Script>(doc2.scene);
-  check(script2 != nullptr, "ENC-CDATA-SCRIPT: Script survives round-trip");
+  CHECK_MESSAGE((script2 != nullptr), "ENC-CDATA-SCRIPT: Script survives round-trip");
   if (script2)
-    check(contains(script2->getSourceCode(), "if (a]]>b) { mask(); }"),
-          "ENC-CDATA-SCRIPT: ]]> in source survives round-trip (got '" +
-              script2->getSourceCode() + "')");
+    CHECK_MESSAGE((contains(script2->getSourceCode(), "if (a]]>b) { mask(); }")),
+          ("ENC-CDATA-SCRIPT: ]]> in source survives round-trip (got '" +
+              script2->getSourceCode() + "')"));
 }
-
-// ---------------------------------------------------------------------------
-// ENC-JSON-UNIT: <unit> statements survive the JSON hop.
-// ---------------------------------------------------------------------------
+// <unit> statements survive the JSON hop.
 void testJsonUnit() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
@@ -287,30 +242,27 @@ void testJsonUnit() {
 )XML";
   codec::XmlReader xml;
   auto doc = xml.readDocument(kXml);
-  check(doc.head.units.size() == 1, "ENC-JSON-UNIT: XML parse reads the unit");
+  CHECK_MESSAGE((doc.head.units.size() == 1), "ENC-JSON-UNIT: XML parse reads the unit");
 
   codec::JsonWriter jw;
   std::string json = jw.writeDocument(doc);
-  check(contains(json, "\"unit\""),
+  CHECK_MESSAGE((contains(json, "\"unit\"")),
         "ENC-JSON-UNIT: JSON output has a unit array");
 
   codec::JsonReader jr;
   auto doc2 = jr.readDocument(json);
-  check(doc2.head.units.size() == 1,
+  CHECK_MESSAGE((doc2.head.units.size() == 1),
         "ENC-JSON-UNIT: unit survives the JSON round-trip");
   if (doc2.head.units.size() == 1) {
-    check(doc2.head.units[0].category == "angle" &&
-              doc2.head.units[0].name == "degrees",
+    CHECK_MESSAGE((doc2.head.units[0].category == "angle" &&
+              doc2.head.units[0].name == "degrees"),
           "ENC-JSON-UNIT: category/name survive");
-    check(doc2.head.units[0].conversionFactor > 0.017 &&
-              doc2.head.units[0].conversionFactor < 0.018,
+    CHECK_MESSAGE((doc2.head.units[0].conversionFactor > 0.017 &&
+              doc2.head.units[0].conversionFactor < 0.018),
           "ENC-JSON-UNIT: conversionFactor survives");
   }
 }
-
-// ---------------------------------------------------------------------------
-// ENC-JSON-CTRL: control characters are escaped per RFC 8259 and round-trip.
-// ---------------------------------------------------------------------------
+// control characters are escaped per RFC 8259 and round-trip.
 void testJsonControlChars() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene><WorldInfo title='t'/></Scene></X3D>
@@ -332,7 +284,7 @@ void testJsonControlChars() {
     if (inString && static_cast<unsigned char>(c) < 0x20 && c != '\n')
       rawCtrl = true; // raw control byte inside a JSON string: RFC violation
   }
-  check(!rawCtrl,
+  CHECK_MESSAGE((!rawCtrl),
         "ENC-JSON-CTRL: no raw control bytes inside JSON string literals");
 
   codec::JsonReader jr;
@@ -341,13 +293,10 @@ void testJsonControlChars() {
   for (const auto &m : doc2.head.meta)
     if (m.name == "ctrl" && m.content == ctrl)
       found = true;
-  check(found, "ENC-JSON-CTRL: control chars survive the JSON round-trip");
+  CHECK_MESSAGE((found), "ENC-JSON-CTRL: control chars survive the JSON round-trip");
 }
-
-// ---------------------------------------------------------------------------
-// ENC-C14N-ATTR: tab/newline/CR in attribute values are emitted as character
+// 14N-attr: tab/newline/CR in attribute values are emitted as character
 // references so a conformant reader does not normalize them away.
-// ---------------------------------------------------------------------------
 void testCanonAttrWhitespace() {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene><WorldInfo title='t'/></Scene></X3D>
@@ -359,11 +308,11 @@ void testCanonAttrWhitespace() {
 
   codec::CanonicalXmlWriter cw;
   std::string canon = cw.writeDocument(doc);
-  check(contains(canon, "&#xA;"),
+  CHECK_MESSAGE((contains(canon, "&#xA;")),
         "ENC-C14N-ATTR: newline escaped as &#xA; in attribute value");
-  check(contains(canon, "&#x9;"),
+  CHECK_MESSAGE((contains(canon, "&#x9;")),
         "ENC-C14N-ATTR: tab escaped as &#x9; in attribute value");
-  check(contains(canon, "&#xD;"),
+  CHECK_MESSAGE((contains(canon, "&#xD;")),
         "ENC-C14N-ATTR: CR escaped as &#xD; in attribute value");
 
   auto doc2 = xml.readDocument(canon);
@@ -371,7 +320,7 @@ void testCanonAttrWhitespace() {
   for (const auto &m : doc2.head.meta)
     if (m.name == "ws" && m.content == multi)
       found = true;
-  check(found,
+  CHECK_MESSAGE((found),
         "ENC-C14N-ATTR: whitespace-bearing attribute survives reparse of the "
         "canonical form");
 }
@@ -386,6 +335,224 @@ TEST_CASE("codec_string_hardening_test") {
   testJsonUnit();
   testJsonControlChars();
   testCanonAttrWhitespace();
-  std::cout << (failures == 0 ? "ALL OK" : "FAILURES") << "\n";
-  CHECK(failures == 0);
+
+}
+
+TEST_CASE("XML literal attribute whitespace normalizes but references survive") {
+  for (const std::string quote : {"'", "\""}) {
+    CAPTURE(quote);
+    const auto raw = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><WorldInfo title=" + quote +
+        "  a\tb\nc\rd\r\ne  " + quote + "/></Scene></X3D>");
+    const auto refs = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><WorldInfo title=" + quote +
+        "a&#10;b&#x9;c&#13;d&amp;#10;" + quote + "/></Scene></X3D>");
+    const auto literal = findNode<WorldInfo>(raw.scene);
+    const auto referenced = findNode<WorldInfo>(refs.scene);
+    REQUIRE(literal);
+    REQUIRE(referenced);
+    CHECK(literal->getTitle() == "  a b c d e  ");
+    CHECK(referenced->getTitle() == "a\nb\tc\rd&#10;");
+  }
+}
+
+TEST_CASE("XmlWriter keeps tab, LF and CR in attribute values across reparse") {
+  const auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><WorldInfo title='a&#x9;b&#xA;c&#xD;d'/>"
+      "</Scene></X3D>");
+  const auto output = codec::XmlWriter().writeDocument(before);
+  const auto after = codec::XmlReader().readDocument(output);
+  const auto info = findNode<WorldInfo>(after.scene);
+  REQUIRE(info);
+  CHECK(info->getTitle() == "a\tb\nc\rd");
+}
+
+TEST_CASE("JSON retains an explicitly empty numeric MF field") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><NavigationInfo avatarSize=''/></Scene></X3D>");
+  auto a = before.scene.rootNodes.at(0);
+  REQUIRE(a->nodeTypeName() == "NavigationInfo");
+  const auto &field = *std::find_if(a->fields().begin(), a->fields().end(),
+      [](const auto &f) { return f.x3dName == "avatarSize"; });
+  CHECK(std::any_cast<core::MFFloat>(field.get(*a)).empty());
+  auto after = codec::JsonReader().readDocument(codec::JsonWriter().writeDocument(before));
+  auto b = after.scene.rootNodes.at(0);
+  CHECK(std::any_cast<core::MFFloat>(field.get(*b)).empty());
+}
+
+TEST_CASE("Classic writer retains IMPORT and EXPORT") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><Inline DEF='I' load='false'/><Group DEF='G'/>"
+      "<IMPORT inlineDEF='I' importedDEF='X' AS='Remote'/>"
+      "<IMPORT inlineDEF='I' importedDEF='Unaliased'/>"
+      "<EXPORT localDEF='G' AS='Public'/><EXPORT localDEF='G'/></Scene></X3D>");
+  REQUIRE(before.scene.imports.size() == 2);
+  REQUIRE(before.scene.exports.size() == 2);
+  auto after = codec::ClassicVrmlReader().readDocument(codec::VrmlWriter().writeDocument(before));
+  REQUIRE(after.scene.imports.size() == 2);
+  REQUIRE(after.scene.exports.size() == 2);
+  CHECK(after.scene.imports[0].inlineDEF == "I");
+  CHECK(after.scene.imports[0].importedDEF == "X");
+  CHECK(after.scene.imports[0].as == "Remote");
+  CHECK(after.scene.imports[1].importedDEF == "Unaliased");
+  CHECK(after.scene.imports[1].as == "Unaliased");
+  CHECK(after.scene.exports[0].localDEF == "G");
+  CHECK(after.scene.exports[0].as == "Public");
+  CHECK(after.scene.exports[1].localDEF == "G");
+  CHECK(after.scene.exports[1].as == "G");
+}
+
+TEST_CASE("JSON retains extended metadata attributes") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><head><meta name='description' content='salut' "
+      "dir='ltr' lang='fr' scheme='urn:test' http-equiv='Content-Language'/>"
+      "</head><Scene/></X3D>");
+  auto after = codec::JsonReader().readDocument(codec::JsonWriter().writeDocument(before));
+  REQUIRE(after.head.meta.size() == 1);
+  CHECK(after.head.meta[0].name == "description");
+  CHECK(after.head.meta[0].content == "salut");
+  CHECK(after.head.meta[0].dir == "ltr");
+  CHECK(after.head.meta[0].lang == "fr");
+  CHECK(after.head.meta[0].scheme == "urn:test");
+  CHECK(after.head.meta[0].httpEquiv == "Content-Language");
+}
+
+TEST_CASE("canonical output retains MFImage and every MFMatrix type") {
+  const std::pair<const char *, const char *> fields[] = {
+      {"MFImage", "1 1 3 16711680 1 1 4 4278255360"},
+      {"MFMatrix3f", "1.25 2 3 4 5 6 7 8 9 9 8 7 6 5 4 3 2 1.5"},
+      {"MFMatrix3d", "1.25 2 3 4 5 6 7 8 9 9 8 7 6 5 4 3 2 1.5"},
+      {"MFMatrix4f", "1.25 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"},
+      {"MFMatrix4d", "1.25 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16"}};
+  std::string source = "<X3D version='4.0'><Scene><Script>";
+  for (const auto &[type, value] : fields)
+    source += "<field name='" + std::string(type) + "' type='" + type +
+        "' accessType='initializeOnly' value='" + value + "'/>";
+  source += "</Script></Scene></X3D>";
+  auto before = codec::XmlReader().readDocument(source);
+  const auto output = codec::CanonicalXmlWriter().writeDocument(before);
+  auto after = codec::XmlReader().readDocument(output);
+  auto a = findNode<Script>(before.scene);
+  auto b = findNode<Script>(after.scene);
+  REQUIRE(a);
+  REQUIRE(b);
+  for (const auto &f : before.scene.authorFields->authorFields(*a)) {
+    CAPTURE(f.x3dName);
+    auto expected = codec::formatValue(f.type, f.get(*a));
+    CHECK_FALSE(expected.empty());
+    auto actual = after.scene.authorFields->getValue(*b, f.x3dName);
+    REQUIRE(actual.has_value());
+    CHECK(codec::formatValue(f.type, actual) == expected);
+  }
+  CHECK(codec::CanonicalXmlWriter().writeDocument(after) == output);
+}
+
+TEST_CASE("Script node defaults survive canonical JSON and Classic writers") {
+  auto before = codec::XmlReader().readDocument(
+      "<X3D version='4.0'><Scene><Script>"
+      "<field name='target' type='SFNode' accessType='initializeOnly'><Group/></field>"
+      "<field name='items' type='MFNode' accessType='inputOutput'><Shape><Box/></Shape></field>"
+      "</Script></Scene></X3D>");
+  const std::pair<std::string, codec::Encoding> outputs[] = {
+      {codec::CanonicalXmlWriter().writeDocument(before), codec::Encoding::XML},
+      {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+      {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+  for (const auto &[output, encoding] : outputs) {
+    CAPTURE(output);
+    if (encoding == codec::Encoding::JSON) {
+      auto dom = json::parseComplete(output);
+      auto children = dom->member("X3D")->member("Scene")->member("-children");
+      REQUIRE(children->array.size() == 1);
+      auto fields = children->array[0]->member("Script")->member("field");
+      REQUIRE(fields);
+      REQUIRE(fields->array.size() == 2);
+      for (std::size_t i = 0; i < fields->array.size(); ++i) {
+        auto defaults = fields->array[i]->member("-children");
+        CHECK(defaults != nullptr);
+        if (!defaults) continue;
+        REQUIRE(defaults->array.size() == 1);
+        CHECK(defaults->array[0]->member(i == 0 ? "Group" : "Shape") != nullptr);
+      }
+    } else if (encoding == codec::Encoding::ClassicVRML) {
+      CHECK(output.find("SFNode target Group {") != std::string::npos);
+      CHECK(output.find("MFNode items [") != std::string::npos);
+      CHECK(output.find("Shape {") != std::string::npos);
+      CHECK(output.find("Box {") != std::string::npos);
+    }
+    try {
+      auto after = codec::parseDocument(output, encoding);
+      auto script = findNode<Script>(after.scene);
+      REQUIRE(script);
+      auto one = after.scene.authorFields->getValue(*script, "target");
+      auto many = after.scene.authorFields->getValue(*script, "items");
+      auto p = std::any_cast<core::SFNode>(&one);
+      auto v = std::any_cast<core::MFNode>(&many);
+      const bool hasTarget = p && *p && (*p)->nodeTypeName() == "Group";
+      const bool hasItems = v && v->size() == 1 && (*v)[0]->nodeTypeName() == "Shape";
+      if (encoding == codec::Encoding::XML) {
+        CHECK(hasTarget);
+        CHECK(hasItems);
+      } else {
+        CHECK(hasTarget);
+        CHECK(hasItems);
+      }
+    } catch (const std::exception &e) {
+      CAPTURE(e.what());
+      if (encoding == codec::Encoding::XML) CHECK(false);
+      else CHECK(false);
+    }
+  }
+}
+
+TEST_CASE("shader author interfaces survive every writer") {
+  for (const std::string type : {"ComposedShader", "PackagedShader", "ShaderProgram"}) {
+    auto before = codec::XmlReader().readDocument(
+        "<X3D version='4.0'><Scene><" + type + " DEF='Shader' language='GLSL'>"
+        "<field name='tint' type='SFColor' accessType='inputOutput' value='1 0.25 0'/>"
+        "<field name='pulse' type='SFFloat' accessType='inputOnly'/>"
+        "</" + type + "></Scene></X3D>");
+    auto original = before.scene.resolve("Shader");
+    REQUIRE(original);
+    REQUIRE(before.scene.authorFields->authorFields(*original).size() == 2);
+    const std::pair<std::string, codec::Encoding> outputs[] = {
+        {codec::XmlWriter().writeDocument(before), codec::Encoding::XML},
+        {codec::CanonicalXmlWriter().writeDocument(before), codec::Encoding::XML},
+        {codec::JsonWriter().writeDocument(before), codec::Encoding::JSON},
+        {codec::VrmlWriter().writeDocument(before), codec::Encoding::ClassicVRML}};
+    for (const auto &[output, encoding] : outputs) {
+      CAPTURE(type);
+      CAPTURE(output);
+      if (encoding == codec::Encoding::JSON) {
+        auto dom = json::parseComplete(output);
+        auto children = dom->member("X3D")->member("Scene")->member("-children");
+        REQUIRE(children->array.size() == 1);
+        auto fields = children->array[0]->member(type)->member("field");
+        CHECK(fields != nullptr);
+        if (fields) CHECK(fields->array.size() == 2);
+      } else if (encoding == codec::Encoding::ClassicVRML) {
+        CHECK(output.find("inputOutput SFColor tint 1 0.25 0") != std::string::npos);
+        CHECK(output.find("inputOnly SFFloat pulse") != std::string::npos);
+      }
+      auto after = codec::parseDocument(output, encoding);
+      auto shader = after.scene.resolve("Shader");
+      REQUIRE(shader);
+      const auto fields = after.scene.authorFields->authorFields(*shader);
+      if (encoding == codec::Encoding::XML) {
+        CHECK(fields.size() == 2);
+      } else {
+        CHECK(fields.size() == 2);
+      }
+      if (fields.size() == 2) {
+        CHECK(fields[0].x3dName == "tint");
+        CHECK(fields[0].type == core::X3DFieldType::SFColor);
+        CHECK(fields[0].access == core::AccessType::InputOutput);
+        auto value = std::any_cast<core::SFColor>(fields[0].get(*shader));
+        CHECK(value.r == 1.f);
+        CHECK(value.g == 0.25f);
+        CHECK(value.b == 0.f);
+        CHECK(fields[1].x3dName == "pulse");
+        CHECK(fields[1].access == core::AccessType::InputOnly);
+      }
+    }
+  }
 }

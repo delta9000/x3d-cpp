@@ -1,4 +1,3 @@
-// SpotLight.cpp
 #include "x3d/nodes/SpotLight.hpp"
 
 namespace x3d::nodes {

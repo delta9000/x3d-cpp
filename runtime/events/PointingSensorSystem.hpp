@@ -1,4 +1,4 @@
-// PointingSensorSystem.hpp — the pointing-device sensor driver for the M2.5
+// PointingSensorSystem.hpp — the pointing-device sensor driver for the
 // input seam. Resolves the pointer bearing (PointerState) against the scene via
 // the context's PickSystem each tick and drives the spec-complete pointing
 // sensors: the TouchSensor (isOver / isActive / touchTime / hitPoint_changed /
@@ -6,20 +6,18 @@
 // three drag sensors PlaneSensor / SphereSensor / CylinderSensor (§20.4.2 /
 // §20.4.3 / §20.4.1 + the drag-sensor common protocol §20.2.2). Stateful across
 // ticks (over-sensor + grab bookkeeping).
-//
 // The resolution + grab + isOver/isActive machinery (§20.2.1: nearest geometry,
 // lowest enabled sensor on the hit path; the grab takes exclusive ownership of
 // motion until button-up) is shared by ALL pointing-device sensors. This file
 // is the stateful glue: it resolves + grabs, then dispatches per-type behavior
 // by `nodeTypeName()`:
-//   - TouchSensor  → hit/touch outputs (unchanged from the M2.5 seam).
+//   - TouchSensor  → hit/touch outputs (unchanged from the seam).
 //   - drag sensors → on activation record the activation hit + sensor frame; on
-//     each grabbed motion run the matching PURE drag math (drag/PlaneDrag.hpp,
+//     each grabbed motion run the matching pure drag math (drag/PlaneDrag.hpp,
 //     SphereDrag.hpp, CylinderDrag.hpp) and emit trackPoint_changed + the
 //     sensor's <value>_changed; on deactivation honor autoOffset.
 // The drag math itself lives in the drag/*.hpp headers — this file holds no
 // per-motion geometry, only the cross-tick activation state and the dispatch.
-//
 // Codegen-free: every emit* / accessor used here already exists (generated);
 // this System only calls them. namespace x3d::runtime.
 #ifndef X3D_RUNTIME_POINTING_SENSOR_SYSTEM_HPP
@@ -66,8 +64,27 @@ using namespace x3d::core;
  */
 class PointingSensorSystem : public System {
 public:
+  // All enabled pointing-device sensors tied lowest in the hit's hierarchy
+  // (§20.2.1). Returns borrowed nodes without changing input state; a miss
+  // returns empty. The pick path is root→hit-geometry; a sensor watches geometry
+  // that is a descendant of the sensor's parent group and is typically a sibling
+  // of that geometry. So we walk the path from the hit geometry upward and, at
+  // each grouping ancestor, inspect its children for enabled sensor siblings;
+  // the deepest such ancestor's sensors are the lowest ones and all activate.
+  static std::vector<X3DNode *> resolve(const PickResult &pick) {
+    if (!pick.hit) return {};
+    const extract::PathKey &path = pick.path;
+    // path.back() is the hit geometry-bearing node; its parent is path[n-2].
+    for (std::size_t i = path.size(); i-- > 1;) {
+      const X3DNode *parent = path[i - 1];
+      auto siblings = enabledSensorChildrenOf(parent);
+      if (!siblings.empty()) return siblings;
+    }
+    return {};
+  }
+
   // Pointing sensors are resolved live from the pick path each tick, so attach()
-  // does no per-node enrollment — but it DOES take a one-time inventory: a scene
+  // does no per-node enrollment — but it does take a one-time inventory: a scene
   // with zero pointing-device sensors can never resolve a pick to one, so the
   // per-motion whole-scene pick (the dominant per-tick cost on large static
   // scenes) is pure waste there and is skipped in update(). The inventory only
@@ -99,7 +116,7 @@ public:
     // 1. No events when the pointer state is unchanged since the last tick
     //    (§20.4.4 — over/hit events are generated only on pointer motion, not
     //    when geometry animates under a still pointer).
-    // §20.4.2: enabled=FALSE deactivates an active sensor even without motion.
+    // §20.4.2: enabled=`FALSE` deactivates an active sensor even without motion.
     const bool hadGrab = !active_.empty();
     for (auto it = active_.begin(); it != active_.end();) {
       auto *sensor = dynamic_cast<x3d::nodes::X3DSensorNode *>(it->node);
@@ -163,10 +180,10 @@ public:
       }
       if (!ps.buttonDown) active_.clear();
       // Keep the button-edge detector current even while grabbed, so that after
-      // this grab releases (button-up) a NEW button-down press on the following
+      // this grab releases (button-up) a new button-down press on the following
       // tick is seen as an edge and can re-activate the sensor (§20.4.4: after
       // deactivation the sensor may be re-activated by a new press). Without
-      // this, buttonWasDown_ stays stale-TRUE across the whole grab and the next
+      // this, buttonWasDown_ stays stale-`TRUE` across the whole grab and the next
       // press is missed.
       buttonWasDown_ = ps.buttonDown;
       // Arbitration (§20.2.1): while this system holds a grab, the pointer is
@@ -176,7 +193,7 @@ public:
       return;
     }
 
-    // 3. NOT grabbed: resolve the lowest enabled sensor under the pointer.
+    // 3. not grabbed: resolve the lowest enabled sensor under the pointer.
     std::vector<X3DNode *> resolved;
     PickResult pick;
     if (ps.present) {
@@ -230,11 +247,11 @@ private:
     nodes.erase(std::remove(nodes.begin(), nodes.end(), node), nodes.end());
   }
 
-  // ---- sensor type predicates ----------------------------------------------
+  // sensor type predicates
 
   static bool isTouchSensor(const X3DNode *n) {
-    return n && (n->nodeTypeName() == "TouchSensor" ||
-                 n->nodeTypeName() == "GeoTouchSensor");
+    return n && (dynamic_cast<const x3d::nodes::TouchSensor *>(n) != nullptr ||
+                 dynamic_cast<const x3d::nodes::GeoTouchSensor *>(n) != nullptr);
   }
   static bool isDragSensor(const X3DNode *n) {
     if (!n)
@@ -246,7 +263,7 @@ private:
     return isTouchSensor(n) || isDragSensor(n);
   }
 
-  // ---- sensor resolution ----------------------------------------------------
+  // sensor resolution
 
   // Is `n` an enabled pointing-device sensor (TouchSensor or a drag sensor)? A
   // disabled sensor tracks nothing; enabling mid-drag must not activate it
@@ -263,23 +280,6 @@ private:
     return const_cast<X3DNode *>(n);
   }
 
-  // Lowest enabled pointing-device sensor in the hit's hierarchy (§20.2.1). The
-  // pick path is root→hit-geometry; a sensor watches geometry that is a
-  // descendant of the sensor's PARENT GROUP and is typically a sibling of that
-  // geometry. So we walk the path from the hit geometry UPWARD and, at each
-  // grouping ancestor, inspect its children for an enabled sensor sibling; the
-  // deepest such ancestor's sensor is the lowest one and wins.
-  static std::vector<X3DNode *> resolve(const PickResult &pick) {
-    const extract::PathKey &path = pick.path;
-    // path.back() is the hit geometry-bearing node; its parent is path[n-2].
-    for (std::size_t i = path.size(); i-- > 1;) {
-      const X3DNode *parent = path[i - 1];
-      auto siblings = enabledSensorChildrenOf(parent);
-      if (!siblings.empty()) return siblings;
-    }
-    return {};
-  }
-
   static std::vector<X3DNode *> enabledSensorChildrenOf(const X3DNode *group) {
     std::vector<X3DNode *> found;
     if (!group) return found;
@@ -290,7 +290,7 @@ private:
     return found;
   }
 
-  // ---- TouchSensor output emission (unchanged from the M2.5 seam) -----------
+  // TouchSensor output emission (unchanged from the seam)
   // Each emit goes through the cascade so any ROUTEs fan out at `now`. We post
   // the event (postEvent) so author ROUTEs from the outputOnly field fire; the
   // node's own emit* thunk is applied by the cascade during the drain.
@@ -306,7 +306,7 @@ private:
   }
 
   // hitPoint/hitNormal in the sensor's coordinate frame; hitTexCoord raw
-  // (surface attribute, NOT spatially transformed) — §5.1 of the M2.5 design.
+  // (surface attribute, not spatially transformed) — §5.1 of the design.
   static void emitHit(X3DExecutionContext &ctx, X3DNode *ts,
                       const PickResult &pick) {
     const Mat4 M = ctx.worldOf(ts);
@@ -322,17 +322,17 @@ private:
     ctx.postEvent(ts, "hitNormal_changed", std::any(SFVec3f{localNormal}));
     ctx.postEvent(ts, "hitTexCoord_changed", std::any(SFVec2f{pick.texCoord}));
     // §25.3.9: the geo output is the picked world point in this sensor's geoSystem.
-    if (ts->nodeTypeName() == "GeoTouchSensor") {
+    if (dynamic_cast<const x3d::nodes::GeoTouchSensor *>(ts) != nullptr) {
       SFVec3d geoPoint;
       if (geo::fromWorld(*ts, localPoint, geoPoint, ctx.geoProjection()))  // sensor-local frame (ADR-0053)
         ctx.postEvent(ts, "hitGeoCoord_changed", std::any(geoPoint));
     }
   }
 
-  // ---- drag-sensor glue (§20.2.2 + §20.4.x) ---------------------------------
+  // drag-sensor glue (§20.2.2 + §20.4.x)
   // beginDrag freezes the activation state; emitDragMotion runs the per-type
   // pure drag math (drag/*.hpp) each grabbed motion; emitDragDeactivate applies
-  // autoOffset. The actual geometry lives in the U1 headers — this is glue only.
+  // autoOffset. The actual geometry lives in the drag headers.
 
   // Build the sensor frame M_sensor and freeze the activation hit (sensor-local)
   // + the activation bearing direction (sensor-local, for CylinderSensor's
@@ -396,7 +396,7 @@ private:
     }
   }
 
-  // Deactivation: if autoOffset TRUE, offset ← last <value>_changed and emit
+  // Deactivation: if autoOffset `TRUE`, offset ← last <value>_changed and emit
   // offset_changed (posting to the inputOutput `offset` field updates the
   // stored value and fans out the implicit offset_changed ROUTEs). §20.2.2.
   void emitDragDeactivate(X3DExecutionContext &ctx, const ActiveSensor &a) {
@@ -413,7 +413,7 @@ private:
     }
   }
 
-  // Transpose of the upper-left 3x3 of m (used to carry a WORLD surface normal
+  // Transpose of the upper-left 3x3 of m (used to carry a world surface normal
   // into the sensor-local frame; see emitHit for the derivation). Column-major:
   // m.m[c*4+row]; the transpose swaps c and row.
   static Mat4 upperTranspose(const Mat4 &m) {
@@ -429,11 +429,11 @@ private:
     return l > 1e-12f ? SFVec3f{v.x / l, v.y / l, v.z / l} : v;
   }
 
-  // ---- cross-tick state -----------------------------------------------------
+  // cross-tick state
   unsigned long lastRevision_ = static_cast<unsigned long>(-1); // force 1st run
-  std::vector<X3DNode *> over_;         // tied sensors currently isOver==TRUE
+  std::vector<X3DNode *> over_;         // tied sensors currently isOver==`TRUE`
   std::vector<ActiveSensor> active_;    // independently grabbed tied sensors
-  bool buttonWasDown_ = false;          // for button-DOWN edge detection
+  bool buttonWasDown_ = false;          // for button-down edge detection
   bool inventoried_ = false;            // did attach() scan the scene?
   int sensorCount_ = 0;                 // pointing-device sensors found by attach()
 

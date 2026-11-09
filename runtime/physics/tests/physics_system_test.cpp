@@ -1,15 +1,4 @@
-// physics_system_test.cpp — gated (X3D_CPP_BUILD_PHYSICS) unit test for the CORE
-// PhysicsSystem driving the Jolt backend over a programmatically-built §37 scene.
-//
-// Proves the end-to-end path the design specifies:
-//   RigidBodyCollection -> RigidBody -> CollidableShape -> Shape -> Box
-//   attach(collection) + tick():
-//     (a) RigidBody.position is updated by the simulation (it fell), AND
-//     (b) position_changed was DELIVERED over a wired ROUTE to a Transform's
-//         translation (proving ctx.writeField -> event -> cascade, not just the
-//         backend call). We assert the Transform moved, which can ONLY happen if
-//         the event was routed.
-
+// §37 physics integration: body poses and ROUTE events through PhysicsSystem.
 #include "JoltBackend.hpp"
 #include "PhysicsSystem.hpp"
 
@@ -58,7 +47,7 @@ static int g_failures = 0;
   } while (0)
 
 int main() {
-  // ── Build a §37 scene programmatically: a single dynamic box falling.
+  // Build a §37 scene programmatically: a single dynamic box falling.
   auto box = std::make_shared<Box>();
   box->setSizeUnchecked(SFVec3f{1, 1, 1});
 
@@ -114,7 +103,7 @@ int main() {
   CHECK(bodyPos.y < 9.0f, "RigidBody fell (position updated by simulation)");
   CHECK(std::fabs(bodyPos.y - 5.1f) < 0.5f, "RigidBody near free-fall y=5.1");
 
-  // (b) position_changed was DELIVERED to the routed Transform (cascade proof).
+  // (b) position_changed was delivered to the routed Transform (cascade proof).
   SFVec3f tPos = transform->getTranslation();
   std::fprintf(stderr, "Transform.translation.y = %f (routed from body)\n",
                tPos.y);
@@ -122,7 +111,7 @@ int main() {
         "Transform.translation tracks RigidBody.position via the ROUTE");
   CHECK(tPos.y < 9.0f, "Transform moved (event delivered, not just backend)");
 
-  // ── (c) §37 JOINT via the CORE PhysicsSystem path: a BallJoint pins a dynamic
+  // §37 joint via the core PhysicsSystem path: a BallJoint pins a dynamic
   //     RigidBody to a fixed world anchor at the origin; the body starts 1 unit
   //     out and swings under gravity. Proves attach() reads RigidBodyCollection
   //     .joints, resolves body1 (body2 unset -> world anchor), and the
@@ -190,9 +179,9 @@ int main() {
           "joint motion routed onto the Transform via the ROUTE");
   }
 
-  // ── (d) per-body enabled=FALSE excludes the body from the simulation.
+  // per-body enabled=FALSE excludes the body from the simulation.
   //     §37: a RigidBody with enabled FALSE "is not part of the calculations."
-  //     A disabled body must NOT be enrolled (and must not move).
+  //     A disabled body must not be enrolled (and must not move).
   {
     auto dBox = std::make_shared<Box>();
     dBox->setSizeUnchecked(SFVec3f{1, 1, 1});
@@ -234,8 +223,8 @@ int main() {
           "disabled RigidBody does not fall (not simulated)");
   }
 
-  // ── (e) a body whose collidable geometry is an unsupported mesh (IndexedFaceSet,
-  //     no analytic primitive) is excluded — but OBSERVABLY (droppedBodyCount),
+  // a body whose collidable geometry is an unsupported mesh (IndexedFaceSet,
+  //     no analytic primitive) is excluded — but observably (droppedBodyCount),
   //     not silently dropped. (Box/Sphere/Cylinder/Cone are supported.)
   {
     auto mesh = std::make_shared<IndexedFaceSet>();  // unsupported mesh shape
@@ -264,7 +253,7 @@ int main() {
           "dropped body is observable via droppedBodyCount(), not silent");
   }
 
-  // ── (f) RigidBody.forces applies a continuous force every frame (§37: forces
+  // RigidBody.forces applies a continuous force every frame (§37: forces
   //     "are applied to the object every presentation frame ... continuously
   //     applied until reset"). With zero gravity, a constant upward force of 10 N
   //     on a 1 kg body accelerates it: after 1 s, y = ½·a·t² = ½·10·1² = 5.
@@ -310,7 +299,7 @@ int main() {
           "force integrates to ~½·a·t² (a=F/m=10)");
   }
 
-  // ── (g) useGlobalGravity=FALSE: the body ignores the collection's gravity
+  // useGlobalGravity=FALSE: the body ignores the collection's gravity
   //     (§37.4.10). In a -9.8 field, a body with useGlobalGravity FALSE does not
   //     fall, while the default (TRUE) body would.
   {
@@ -351,7 +340,7 @@ int main() {
           "useGlobalGravity=FALSE body ignores gravity (does not fall)");
   }
 
-  // ── (h) autoDamp: the damping factors apply a velocity-opposing force
+  // autoDamp: the damping factors apply a velocity-opposing force
   //     (§37.4.10 worked example: force = factor × velocity × -1). In zero
   //     gravity a body launched up at 5 m/s with autoDamp + linearDampingFactor=5
   //     decays quickly (v(t)=5·e^-5t → y(1s)≈1), vs ~5 undamped.
@@ -396,7 +385,7 @@ int main() {
           "autoDamp decays the motion (well short of the undamped ~5)");
   }
 
-  // ── (i) Cylinder + Cone collidable geometry now enroll (Cylinder exact, Cone
+  // Cylinder + Cone collidable geometry enroll (Cylinder exact, Cone
   //     via an analytic AABB box) instead of being dropped — both fall.
   {
     auto cyl = std::make_shared<Cylinder>();
@@ -448,7 +437,7 @@ int main() {
     CHECK(coneBody->getPosition().y < 9.5f, "cone body fell (simulated)");
   }
 
-  // ── Collision reporting: a dynamic box falls onto a fixed floor; a
+  // Collision reporting: a dynamic box falls onto a fixed floor; a
   //    CollisionSensor watching both collidables must emit a Contact + isActive.
   {
     auto floorBox = std::make_shared<Box>();
@@ -552,8 +541,8 @@ int main() {
     CHECK(r1 == r2, "collision reporting is deterministic (two runs identical)");
   }
 
-  // ── Inertia honored: under a constant torque about x, the roll angle after t
-  //    must match theta = 1/2 * (tau/Ixx) * t^2, AND differ from the shape-derived
+  // Inertia honored: under a constant torque about x, the roll angle after t
+  //    must match theta = 1/2 * (tau/Ixx) * t^2, and differ from the shape-derived
   //    (default-inertia) case — proving the authored tensor is actually used.
   {
     auto run = [](bool authored) -> float {
@@ -594,8 +583,8 @@ int main() {
           "authored inertia DIFFERS from shape-derived (tensor is honored)");
   }
 
-  // ── centerOfMass honored: a body given a pure spin (no forces/gravity) with an
-  //    offset COM has its reported ORIGIN orbit the COM (origin != COM), while a
+  // centerOfMass honored: a body given a pure spin (no forces/gravity) with an
+  //    offset COM has its reported origin orbit the COM (origin != COM), while a
   //    centered body's origin stays put. Requires getBodyTransform = GetPosition.
   {
     auto originMoved = [](bool offset) -> float {
@@ -632,7 +621,7 @@ int main() {
           "centered COM: body origin stays put under spin");
   }
 
-  // ── (j) Rear-wheel-drive vehicle: chassis + 4 cylinder wheels on free hinge
+  // Rear-wheel-drive vehicle: chassis + 4 cylinder wheels on free hinge
   //     axles. With appliedParameters including FRICTION_COEFFICIENT-2 and
   //     frictionCoefficients (1,1) the rear tyres grip the ground and drive the
   //     vehicle forward; with default appliedParameters {BOUNCE} only (no
@@ -687,7 +676,7 @@ int main() {
       }
       auto cc = std::make_shared<CollisionCollection>();
       // Both grip and slip runs author frictionCoefficients (1,1); the
-      // DIFFERENCE is appliedParameters: grip selects FRICTION_COEFFICIENT-2,
+      // difference is appliedParameters: grip selects FRICTION_COEFFICIENT-2,
       // slip uses the default {BOUNCE} only (no friction selector).
       cc->setFrictionCoefficients(SFVec2f{1.0f, 1.0f});
       if (gripFriction) {
@@ -729,9 +718,9 @@ int main() {
     CHECK(std::fabs(grip.dz - grip2.dz) < 1e-3f, "vehicle drive is deterministic");
   }
 
-  // ── Vehicle dynamics (backend-level, mirrors the validated spike): skid-steer
+  // Vehicle dynamics (backend-level, mirrors the validated spike): skid-steer
   //    pivot, incline climb, brake/reverse. Reuses the existing vehicle geometry;
-  //    friction via setContactResponse. The turn is a skid-steer PIVOT (un-steered
+  //    friction via setContactResponse. The turn is a skid-steer pivot (un-steered
   //    gripping wheels can't roll an Ackermann arc — gentle differential yaws ~1°).
   {
     struct Veh { x3d::runtime::WorldHandle world; x3d::runtime::BodyHandle chassis;
@@ -770,7 +759,7 @@ int main() {
       for (int i = 0; i < 30; ++i) b.step(v.world, 1.0 / 60.0);  // settle
       auto p0 = chassisPose(b, v);
       for (int i = 0; i < 180; ++i) {
-        // applyForce(world, body, force, torque): zero force, opposing axle TORQUE
+        // applyForce(world, body, force, torque): zero force, opposing axle torque
         // (left wheels +16, right -16) -> skid-steer yaw.
         b.applyForce(v.world, v.wheels[0], kZero, SFVec3f{16,0,0});
         b.applyForce(v.world, v.wheels[2], kZero, SFVec3f{16,0,0});
@@ -846,7 +835,7 @@ int main() {
     }
   }
 
-  // ── (f) §37 autoDisable wiring end-to-end: a ball resting on a fixed ground in
+  // §37 autoDisable wiring end-to-end: a ball resting on a fixed ground in
   //     a RigidBodyCollection. With the collection's autoDisable=TRUE and a short
   //     disableTime, a body whose own autoDisable=TRUE sleeps (isBodyActive
   //     false); one whose autoDisable=FALSE keeps integrating (isBodyActive true)

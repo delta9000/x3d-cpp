@@ -58,7 +58,7 @@ struct FragmentInput {
 // already gamma-encoded by the shader as in GL).
 using FragmentShader = std::function<bool(const FragmentInput &, glsl::vec4 &)>;
 
-// One vertex of input geometry, in the geometry's LOCAL frame (MeshData order).
+// One vertex of input geometry, in the geometry's local frame (MeshData order).
 struct Vertex {
   glsl::vec3 pos{0, 0, 0};
   glsl::vec3 normal{0, 1, 0};
@@ -74,7 +74,7 @@ class Rasterizer {
 public:
   explicit Rasterizer(Framebuffer &fb) : fb_(fb) {}
 
-  // Draw an indexed triangle list. `verts` are LOCAL-frame; matrices place them.
+  // Draw an indexed triangle list. `verts` are local-frame; matrices place them.
   // ccw/solid come from MeshData; blend selects the opaque (depth-write) or the
   // transparency (source-over, no depth-write) path.
   void drawTriangles(const std::vector<Vertex> &verts,
@@ -376,9 +376,9 @@ private:
             p.frag.dTexSetsDy.push_back(q[2].frag.texcoordSets[i] -
                                         q[0].frag.texcoordSets[i]);
           }
-          // REQ-CLIP (§11.4.1): a clip plane is satisfied where
+          // (§11.4.1): a clip plane is satisfied where
           // a*x+b*y+c*z+d >= 0; discard the fragment in the clipped half-space.
-          // Planes are EYE-space (the space the interpolated vPosEye lives in).
+          // Planes are eye-space (the space the interpolated vPosEye lives in).
           bool clipped = false;
           for (const glsl::vec4 &pl : clipPlanesEye)
             if (pl.x * p.frag.posEye.x + pl.y * p.frag.posEye.y +
@@ -399,7 +399,7 @@ private:
             fb_.setDepth(px, py, p.depth);
             fb_.setColor(px, py, out);
           } else {
-            // Transparency: test against opaque depth, do NOT write depth.
+            // Transparency: test against opaque depth, do not write depth.
             fb_.blendColor(px, py, out);
           }
         }

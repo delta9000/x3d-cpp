@@ -1,4 +1,3 @@
-// PlaneSensor.cpp
 #include "x3d/nodes/PlaneSensor.hpp"
 
 namespace x3d::nodes {

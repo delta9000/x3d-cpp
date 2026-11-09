@@ -2,7 +2,7 @@
 // headless CPU rasterizer, with PNG (default) and dependency-free PPM (P6)
 // writers.
 //
-// PNG output uses a vendored stb_image_write (ImageWrite.cpp) — a CONSUMER-side
+// PNG output uses a vendored stb_image_write (ImageWrite.cpp) — a consumer-side
 // encoder, kept outside the SDK. PPM stays available (zero third-party code) so
 // the target still builds/writes on a bare runner, and mirrors the PoC
 // renderer's --screenshot P6 output so the two can be diffed.

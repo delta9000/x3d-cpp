@@ -28,13 +28,12 @@ def test_enum_contains_core_interfaces(model):
     for name in ("X3DTimeDependentNode", "X3DSensorNode", "X3DChildNode",
                  "X3DInterpolatorNode", "X3DGroupingNode", "X3DBoundedObject"):
         assert name in ids, f"{name} missing from InterfaceId enum"
-    # The doc's "~30" was wrong: the real count is ~70+.
     assert len(ids) > 60
 
 
 def test_multi_interface_node(model):
     nodes, graph = model
-    # TimeSensor implements BOTH X3DTimeDependentNode and X3DSensorNode.
+    # TimeSensor implements both X3DTimeDependentNode and X3DSensorNode.
     ifaces = interfaces_of("TimeSensor", nodes, graph)
     assert "X3DTimeDependentNode" in ifaces
     assert "X3DSensorNode" in ifaces
@@ -66,15 +65,11 @@ def test_header_and_source_render(model):
 def test_nodes_implementing_cache_is_thread_safe(model):
     nodes, graph = model
     src = gen_interface_registry_source(nodes, graph)
-    # The old lazy cache was a mutable function-local static -- an unsynchronized
-    # data race on first use from two threads. It must be gone.
+    # A mutable shared cache would race on concurrent first use.
     assert "static std::unordered_map<InterfaceId, std::vector<std::string>> cache;" not in src
-    # Replacement: an eagerly-built map, initialized by an immediately-invoked
-    # lambda into a *const* function-local static, whose initialization C++11
-    # guarantees is thread-safe (no mutex needed).
+    # C++11 guarantees thread-safe initialization of the const local static.
     assert ("static const std::unordered_map<InterfaceId, std::vector<std::string>>"
             " byIface = []" in src)
     assert "}();" in src
-    # No unsynchronized mutation of a shared static remains anywhere.
     assert "cache.emplace" not in src
     assert "static std::unordered_map" not in src

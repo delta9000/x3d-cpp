@@ -1,9 +1,4 @@
-"""End-to-end emission tests: render real-spec nodes and assert on the C++.
-
-These render through the actual backend + Jinja template (clang-format disabled
-so the test is deterministic regardless of clang-format availability) and assert
-on the emitted text for the Phase 4 features.
-"""
+"""Render real-spec nodes without formatting to make text assertions deterministic."""
 
 from importlib.resources import files
 
@@ -55,7 +50,6 @@ def test_appearance_alpha_mode_is_enum(rendered):
     raw, src = _read(rendered, "Appearance.hpp")
     assert "const AlphaModeChoices& getAlphaMode()" in src
     assert "AlphaModeChoices _alphaMode{ AlphaModeChoices::AUTO }" in src
-    # Must NOT be a plain std::string member any more.
     assert "std::string _alphaMode" not in src
 
 
@@ -123,7 +117,7 @@ def test_reflection_header_defines_range_diagnostic():
 
 def test_node_emits_checkranges_and_validateranges(rendered):
     # Material has several constrained fields (e.g. specularColor clamped [0,1]).
-    # C1 decl/def split: the header DECLARES checkRanges*/validateRanges; the
+    # The header declares checkRanges*/validateRanges; the
     # out-of-line bodies live in Material.cpp.
     raw, src = _read(rendered, "Material.hpp")
     raw_c, src_c = _read(rendered, "Material.cpp")
@@ -131,11 +125,10 @@ def test_node_emits_checkranges_and_validateranges(rendered):
     assert "out.push_back(RangeDiagnostic{" in raw_c
     assert "void validateRanges(std::vector<RangeDiagnostic>& out) const override" in src
 
-    # Fix 2: validateRanges passes nodeTypeName() as the concrete type argument.
+    # validateRanges passes nodeTypeName() as the concrete type argument.
     assert 'nodeTypeName(), "", out' in src_c
-    # Fix 2: the static no longer hard-codes nodeType; nodeType is now a parameter.
+    # The checker accepts the concrete node type as a parameter.
     assert 'const std::string nodeType = "Material"' not in src_c
-    # Fix 2: the static signature has the extra nodeType parameter.
     assert "const std::string& nodeType" in src
 
     # X3DNode must emit the virtual base no-op.
@@ -150,19 +143,19 @@ def test_validateranges_covers_inherited_mixin_fields(rendered):
     # not Fog's own fields.
     raw, src = _read(rendered, "Fog.hpp")
     raw_c, src_c = _read(rendered, "Fog.cpp")
-    # C1 decl/def split: the override is DECLARED in the header; its body
+    # The override is declared in the header; its body
     # (the base-qualified checker calls) lives in Fog.cpp.
     assert "void validateRanges(std::vector<RangeDiagnostic>& out) const override" in src
     assert ("X3DFogObject::checkRangesColor" in src_c
             or "X3DFogObject::checkRangesVisibilityRange" in src_c)
-    # Fix 1: Fog itself has no own constrained fields, so no bare protected: on Fog.
+    # Fog itself has no own constrained fields, so no bare protected: on Fog.
     # The protected: lives on X3DFogObject (where the statics are defined).
-    # Fix 2: Fog's validateRanges passes nodeTypeName() so diagnostics say "Fog".
+    # Fog's validateRanges passes nodeTypeName() so diagnostics say "Fog".
     assert 'nodeTypeName(), "", out' in src_c
 
 
 def test_unconstrained_node_has_no_bare_protected(rendered):
-    # Fix 1: nodes with no own constrained fields must not emit a bare protected:.
+    # nodes with no own constrained fields must not emit a bare protected:.
     raw, src = _read(rendered, "Box.hpp")
     assert "protected:" not in raw
     raw2, src2 = _read(rendered, "Group.hpp")

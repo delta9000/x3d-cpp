@@ -62,7 +62,7 @@ TEST_CASE("nurbs_curve_exact_unit_circle") {
 }
 
 TEST_CASE("nurbs_curve_premultiplied_unit_circle") {
-  // NRB-4: same unit circle, but control points PREMULTIPLIED by weight (the
+  // same unit circle, but control points premultiplied by weight (the
   // default, ecosystem convention). The corner points become s*(±1,±1) and the
   // evaluator uses them verbatim in the numerator. Must trace the same circle.
   const double s = std::sqrt(2.0)/2.0;
@@ -79,7 +79,7 @@ TEST_CASE("nurbs_curve_premultiplied_unit_circle") {
 }
 
 TEST_CASE("nurbs_curve_unit_weights_mode_agnostic") {
-  // NRB-4: with all weights == 1 the two conventions coincide bit-for-bit, so
+  // with all weights == 1 the two conventions coincide bit-for-bit, so
   // the common case (and every existing unit-weight golden) is unaffected.
   nurbs::CurveDef base;
   base.cp = {{0,0,0},{1,2,0},{3,1,0},{4,4,0}};
@@ -113,7 +113,7 @@ TEST_CASE("nurbs_curve_closed_periodic") {
   CHECK((feq(pts[2].x,0.94444,1e-4) && feq(pts[2].y,0.22222,1e-4)));
   // C1 across the seam: the seam vertex must be no more "kinked" than the
   // vertex diametrically opposite it. By the square's symmetry those two
-  // chord-turning values are IDENTICAL (verified == to 1e-16) for a correct
+  // chord-turning values are identical (verified == to 1e-16) for a correct
   // periodic basis; a C0 kink at the seam would make the seam value far smaller.
   // (An absolute "tangent ~ 1" check is wrong here: adjacent chords straddle the
   // true tangent by the curvature, capping the dot at ~0.923 at every vertex.)
@@ -153,7 +153,7 @@ TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
           {0,1,1},{1,1,2},{2,1,1},
           {0,2,0},{1,2,1},{2,2,0}};
   auto g = nurbs::tessellateSurface(s, 8, 8);
-  // central-difference point sampler over the SAME prepared surface
+  // central-difference point sampler over the same prepared surface
   auto P = [&](double u,double v){
     return nurbs::detail::evalSurface(
       nurbs::detail::prepareSurface(s).cp, nurbs::detail::prepareSurface(s).w,
@@ -178,7 +178,7 @@ TEST_CASE("nurbs_surface_analytic_normal_matches_finite_difference") {
 
 TEST_CASE("nurbs_surface_already_closed_net_not_wrapped") {
   // Author supplies a net whose first u-column == last u-column (already closed)
-  // AND sets uClosed. The coincident-boundary guard must SKIP the periodic wrap
+  // and sets uClosed. The coincident-boundary guard must SKIP the periodic wrap
   // (wrapping would duplicate the seam into zero-area sliver triangles). Proof:
   // the uClosed result is identical to the unwrapped (uClosed=false) result.
   nurbs::SurfaceDef base;

@@ -1,22 +1,17 @@
 // examples/03_attach_behavior_tick.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// ATTACH A BEHAVIOR + DRIVE TICKS, using only the x3d::sdk façade.
+// attach a behavior + drive ticks, using only the x3d::sdk façade.
 //
-// The SDK lets an embedder add its OWN behavior by subclassing x3d::sdk::System
+// The SDK lets an embedder add its own behavior by subclassing x3d::sdk::System
 // (attach + update) and registering it with ctx.addSystem(). Each tick the
 // runtime calls update(now, ctx); the system writes fields via ctx.writeField,
 // which is dirty-aware so the extractor sees the change. Here a "Spinner"
 // rotates a DEF'd Transform a little every tick. We drive a handful of ticks
 // and watch the node's resolved world transform change.
 //
-// (The same registration path carries the X3D Script node: implement
-//  x3d::sdk::ScriptEngine, wrap it in x3d::sdk::ScriptSystem, and call
-//  ctx.addScriptSystem(ss). That seam is STABLE — frozen pre-v2, proven generic
-//  by a second-backend swap test (ADR-0022) — but it needs a language backend;
-//  this example uses the System base so it has no such dependency.)
+// This example uses System directly, so it needs no scripting backend.
+// ScriptEngine integration: ADR-0022.
 //
 // Run: 03_attach_behavior_tick
-// ─────────────────────────────────────────────────────────────────────────────
 #include "x3d/sdk.hpp"
 
 #include <any>
@@ -55,7 +50,7 @@ public:
     float angle = static_cast<float>(now * rate_);
     // Dirty-aware write: the extractor's delta() will report updatedTransform.
     //
-    // writeField is stringly-typed and std::any-valued, so it REPORTS rather than
+    // writeField is stringly-typed and std::any-valued, so it reports rather than
     // guessing: a misspelled field name, an outputOnly field, or a value of the
     // wrong type each come back as a distinct FieldWriteResult. Check it — a
     // discarded result is the silent no-op the API exists to prevent. Here a

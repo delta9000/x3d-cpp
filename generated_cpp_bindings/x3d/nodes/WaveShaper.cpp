@@ -1,4 +1,3 @@
-// WaveShaper.cpp
 #include "x3d/nodes/WaveShaper.hpp"
 
 namespace x3d::nodes {

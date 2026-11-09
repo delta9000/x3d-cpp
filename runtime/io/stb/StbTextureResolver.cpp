@@ -1,13 +1,10 @@
-// runtime/io/stb/StbTextureResolver.cpp — the ONE translation unit where
-// stb_image meets the TextureResolver seam. STB_IMAGE_IMPLEMENTATION is defined
-// here and nowhere else; stb_image.h is included PRIVATE (see CMake) so it never
-// leaks to consumers. The factory returns a plain std::function exchanging only
-// std types, so linking x3d_stb pulls in no stb headers.
+// Compile stb_image in this translation unit; decoder headers stay private.
+// See ADR-0024.
 #include "StbTextureResolver.hpp"
+#include "../ReadFile.hpp"
 #include "DdsDecode.hpp"
 
 #include <cstdint>
-#include <fstream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -22,29 +19,6 @@
 #include "stb_image.h"
 
 namespace x3d::runtime::io::stb {
-
-namespace {
-
-// Read an entire local file into bytes. Returns false if the path cannot be
-// opened (the resolver maps this to Failed).
-bool readFile(const std::string& path, std::vector<std::uint8_t>& out) {
-  std::ifstream f(path, std::ios::binary | std::ios::ate);
-  if (!f) {
-    return false;
-  }
-  const std::streamoff size = f.tellg();
-  if (size < 0) {
-    return false;
-  }
-  out.resize(static_cast<std::size_t>(size));
-  f.seekg(0);
-  if (size > 0 && !f.read(reinterpret_cast<char*>(out.data()), size)) {
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
 
 x3d::runtime::extract::TextureResolver
 makeStbTextureResolver(x3d::runtime::extract::AssetResolver fetch) {
@@ -102,7 +76,7 @@ x3d::runtime::extract::TextureResolver makeStbTextureResolver() {
   return makeStbTextureResolver([](const std::string &url,
                                    x3d::runtime::extract::AssetKind) {
     std::vector<std::uint8_t> bytes;
-    return readFile(url, bytes)
+    return ::x3d::runtime::io::detail::readFile(url, bytes)
                ? x3d::runtime::extract::AssetResult::makeReady(std::move(bytes))
                : x3d::runtime::extract::AssetResult::makeFailed();
   });

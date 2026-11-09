@@ -33,7 +33,7 @@ def test_findings_carry_version_stamps():
     assert all(hasattr(f, "pointer") for f in fs)
 
 
-# --- ROUTE event-alias handling (VP-0.1) ----------------------------------------
+# ROUTE event-alias handling
 # An inputOutput field X carries implicit event aliases: set_X (input) and
 # X_changed (output). A route through those aliases is legal; direction matters.
 
@@ -42,13 +42,13 @@ LEGAL_ROUTE_ALIAS = """<X3D version='4.0'><Scene>
   <ROUTE fromNode='A' fromField='translation_changed' toNode='B' toField='set_translation'/>
 </Scene></X3D>"""
 
-# set_translation is an INPUT alias — routing FROM it is illegal (wrong direction).
+# set_translation is an input alias; routing from it is illegal (wrong direction).
 ILLEGAL_ROUTE_DIRECTION = """<X3D version='4.0'><Scene>
   <Transform DEF='A'/><Transform DEF='B'/>
   <ROUTE fromNode='A' fromField='set_translation' toNode='B' toField='translation'/>
 </Scene></X3D>"""
 
-# A genuinely illegal route: from an inputOnly field with no output reading.
+# A illegal route: from an inputOnly field with no output reading.
 ILLEGAL_ROUTE_ACCESS = """<X3D version='4.0'><Scene>
   <TimeSensor DEF='T'/><Transform DEF='X'/>
   <ROUTE fromNode='X' fromField='translation' toNode='T' toField='startTime'/>
@@ -61,10 +61,10 @@ def test_route_event_aliases_are_legal():
 def test_route_set_alias_as_source_is_illegal():
     assert "ROUTE_ACCESS_ILLEGAL" in _codes(ILLEGAL_ROUTE_DIRECTION)
 
-# --- dynamic-interface endpoints (Script / ProtoInstance / shaders) -------------
-# These nodes carry AUTHOR-DECLARED fields (Script <field>, proto interface fields,
+# dynamic-interface endpoints (Script / ProtoInstance / shaders)
+# These nodes carry author-declared fields (Script <field>, proto interface fields,
 # shader uniforms) that no static UOM manifest can contain. A route through such a
-# field must NOT be flagged ROUTE_ACCESS_ILLEGAL — it is unverifiable, not illegal.
+# field must not be flagged ROUTE_ACCESS_ILLEGAL — it is unverifiable, not illegal.
 
 SCRIPT_AUTHOR_FIELD_ROUTE = """<X3D version='4.0'><Scene>
   <Script DEF='S'><field name='trig' type='SFBool' accessType='outputOnly'/></Script>
@@ -88,7 +88,7 @@ def test_proto_interface_routes_not_flagged():
     assert "ROUTE_ACCESS_ILLEGAL" not in _codes(PROTO_INTERFACE_ROUTE)
 
 def test_dynamic_interface_does_not_suppress_the_other_endpoint():
-    # the NON-dynamic side is still checked: routing INTO a Script is fine, but the
+    # the non-dynamic side is still checked: routing into a Script is fine, but the
     # standard-node side using a bad field is still flagged.
     doc = """<X3D version='4.0'><Scene>
       <Script DEF='S'><field name='out' type='SFBool' accessType='outputOnly'/></Script>
@@ -97,10 +97,10 @@ def test_dynamic_interface_does_not_suppress_the_other_endpoint():
     </Scene></X3D>"""
     assert "ROUTE_ACCESS_ILLEGAL" in _codes(doc)
 
-# --- foreign-namespace elements (XML-DSig / XML-Enc) ----------------------------
+# foreign-namespace elements (XML-DSig / XML-Enc)
 # X3D nodes live in no namespace; documents may embed signature/encryption subtrees
 # in a foreign namespace (e.g. http://www.w3.org/2000/09/xmldsig#). Those elements
-# are NOT X3D nodes and must be skipped, not reported NODE_UNKNOWN_FOR_VERSION on
+# are not X3D nodes and must be skipped, not reported NODE_UNKNOWN_FOR_VERSION on
 # their bare localname (e.g. <ds:Signature>, <ds:KeyInfo>, <ds:X509Certificate>).
 FOREIGN_NAMESPACE = """<X3D profile='Immersive' version='4.0'
     xmlns:ds='http://www.w3.org/2000/09/xmldsig#'><Scene>
@@ -116,7 +116,7 @@ def test_foreign_namespace_elements_not_flagged_as_unknown_nodes():
     assert "NODE_UNKNOWN_FOR_VERSION" not in _codes(FOREIGN_NAMESPACE)
 
 def test_foreign_namespace_does_not_suppress_real_unknown_x3d_node():
-    # a genuinely unknown *X3D-namespace* node alongside foreign elements is still flagged
+    # a unknown *X3D-namespace* node alongside foreign elements is still flagged
     doc = FOREIGN_NAMESPACE.replace("<Shape><Box size='1 2 3'/></Shape>",
                                     "<Shape><NotARealNode/></Shape>")
     assert "NODE_UNKNOWN_FOR_VERSION" in _codes(doc)
@@ -131,9 +131,9 @@ def test_route_literal_event_fields_still_resolve():
     assert "ROUTE_ACCESS_ILLEGAL" not in _codes(doc)
 
 
-# --- containerField overrides (CONTAINERFIELD-FALSEPOS) -------------------------
-# An explicit containerField that names a legal SF/MFNode field on the PARENT is a
-# valid override of the child's own default and must NOT be flagged.
+# containerField overrides
+# An explicit containerField that names a legal SF/MFNode field on the parent is a
+# valid override of the child's own default and must not be flagged.
 
 LEGAL_CONTAINERFIELD_OVERRIDE = """<X3D profile='Immersive' version='4.0'><Scene>
   <NurbsCurve><Coordinate containerField='controlPoint'/></NurbsCurve>

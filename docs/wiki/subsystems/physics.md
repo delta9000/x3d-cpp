@@ -1,6 +1,6 @@
 ---
 title: "Physics (RigidBody dynamics)"
-summary: "X3D §37 rigid-body dynamics via a CORE engine-agnostic seam + a flag-gated Jolt example backend; sim traces it."
+summary: "X3D §37 rigid-body dynamics via a engine-agnostic seam + a flag-gated Jolt example backend; sim traces it."
 tags: [subsystem, physics, seam, jolt]
 updated: 2026-06-21
 related:
@@ -10,105 +10,59 @@ related:
   - ../subsystems/cli-suite.md
 ---
 
-# Physics (RigidBody dynamics)
+# Rigid-body physics
 
-## Purpose
-
-Simulates the X3D §37 RigidBodyPhysics nodes (`RigidBodyCollection`, `RigidBody`, `CollidableShape`) — previously modeled but behaviorally inert — by stepping a physics engine each tick and writing the results back into the scene. It owns the boundary between the X3D §37 node model and a third-party physics engine, using the SDK's **seam pattern** (the same shape as the [Script/SAI](../subsystems/system-script-sai.md) `ScriptEngine`→Duktape seam): the runtime defines an engine-agnostic contract; an engine (Jolt) is one backend an embedder plugs in. The spec-correct core never depends on the engine.
+`PhysicsSystem` maps X3D §37 nodes to `PhysicsBackend`, steps the backend on
+host ticks, and posts pose changes through the event cascade. The interface
+contains runtime values and opaque handles, without engine-library types.
 
 ## Key files
 
-| File / directory | Role |
+The implementation is split at the engine boundary.
+
+| Source | Role |
 |---|---|
-| `runtime/physics/PhysicsBackend.hpp` | **CORE** abstract seam. Pure-virtual; opaque `WorldHandle`/`BodyHandle`; `ShapeDesc` (Box \| Sphere); `createWorld`/`addBody`/`step`/`getBodyTransform`. Contains **zero engine types** — every value is the runtime's own `SFVec3f`/`SFRotation`. |
-| `runtime/physics/PhysicsSystem.hpp` | **CORE** `System`. Reads §37 nodes, drives the backend, writes bodies back. Constructed with a `shared_ptr<PhysicsBackend>` — inert if none (like `ScriptSystem`). Engine-agnostic. |
-| `runtime/physics/jolt/JoltBackend.{hpp,cpp}` | The Jolt v5.5.0 implementation of `PhysicsBackend`. The **only** translation unit where Jolt (`JPH::`) appears; a pImpl (`struct Impl`) hides Jolt even from `JoltBackend.hpp`. Built only when `X3D_CPP_BUILD_PHYSICS=ON`. |
-| `tools/x3d-cli/fixtures/sim-physics.x3d` + `tools/x3d-cli/goldens/sim-physics.trace.json` | A falling-box §37 fixture + its committed `x3d sim` golden trace (same-host regression). |
-| `cmake/x3d/backends.cmake` (gated physics block) | `X3D_CPP_BUILD_PHYSICS` option (default OFF) + Jolt via `FetchContent` (pinned v5.5.0) built as an isolated lib; `X3D_HAVE_PHYSICS` define on targets that link the backend. |
+| `runtime/physics/PhysicsBackend.hpp` | World, body, shape, constraint, and solver contracts |
+| `runtime/physics/PhysicsSystem.hpp` | Node enrollment, parameter mapping, stepping, and pose events |
+| `runtime/physics/ContactReporter.hpp` | CollisionSensor output from resolved contacts |
+| `runtime/physics/jolt/JoltBackend.cpp` | Jolt implementation |
+| `cmake/x3d/backends.cmake` | Optional backend build |
 
-## Interfaces and seams
+## Backend configuration
 
-### Exposed interface
+Enable `X3D_CPP_BUILD_PHYSICS` to fetch and build Jolt. Jolt dependencies stay
+private to `x3d_physics_jolt`; the default SDK build does not fetch it.
+`tools/x3d-cli/sim_runtime.hpp` attaches the Jolt-backed system when linked.
 
-```cpp
-// runtime/physics/PhysicsBackend.hpp (CORE, engine-agnostic)
-struct ShapeDesc { enum class Kind { Box, Sphere } kind; SFVec3f boxHalfExtents; float sphereRadius; };
-class PhysicsBackend {
-public:
-  virtual WorldHandle createWorld(const SFVec3f &gravity) = 0;
-  virtual BodyHandle  addBody(WorldHandle, const ShapeDesc&, float mass, bool fixed,
-                              const SFVec3f &pos, const SFRotation &ori,
-                              const SFVec3f &linVel, const SFVec3f &angVel) = 0;
-  virtual void        step(WorldHandle, double dt) = 0;
-  virtual void        getBodyTransform(WorldHandle, BodyHandle, SFVec3f &pos, SFRotation &ori) const = 0;
-};
-```
+Jolt defaults to a single-threaded job system. Passing a nonzero worker count
+selects a thread pool; deterministic comparisons require a fixed count.
+World capacity is 1024 bodies with bounded contact storage, and one collision
+substep is used per update. Fast bodies can tunnel.
 
-`PhysicsSystem::attach` finds each `RigidBodyCollection` → `createWorld(gravity)`; for each `RigidBody` in `bodies` it reads the `CollidableShape` geometry (`Box`→half-extents = `Box.size`/2, `Sphere`→`radius`; unsupported shapes are skipped with a note) plus `mass`/`position`/`orientation`/`linearVelocity`/`angularVelocity`/`fixed` → `addBody`. `PhysicsSystem::update(now)` computes `dt`, `step`s, reads each body back, and writes it into the scene.
+## Node mapping
 
-### Seam points
+`PhysicsSystem::attach` creates a backend world per RigidBodyCollection and
+maps supported CollidableShape geometry to shape descriptors. Bodies with
+unsupported geometry are excluded and counted by `droppedBodyCount()`.
+Collection and body fields configure mass, pose, velocities, gravity, forces,
+damping, and sleeping through backend parameters.
 
-- **`PhysicsBackend`** — the engine seam. `JoltBackend` is the shipped backend; Bullet/PhysX/a custom integrator could implement the same interface. The seam carries no engine types, so swapping backends touches only `runtime/physics/jolt/` + CMake.
-- **Route-out via `postEvent` (no new mechanism)** — `PhysicsSystem` calls `ctx.postEvent(rigidBody, "position", pos)` and `"orientation", ori` each tick. `postEvent` writes the `RigidBody`'s own `position`/`orientation` (both `inputOutput`) **and** seeds the cascade with `position_changed`/`orientation_changed`, so the existing [event cascade](../subsystems/event-cascade.md) carries them over the author's ROUTEs to the visible `Transform`s. See [Execution Context](../subsystems/execution-context.md).
-- **Contact reporting via `ContactReporter`** — after stepping, `PhysicsSystem` drains each world's contacts (`backend_->drainContacts`), resolves engine handles back to scene `RigidBody`/`CollidableShape` nodes, and hands the engine-agnostic, handle-free `ContactReporter` a vector of `ResolvedContact`. The reporter builds `Contact` nodes per watched `CollisionSensor` and posts `contacts`/`intersections`/`isActive` (`isActive` only on change) — read-only output, never routed back into the solver (§37.4.5). `ContactReporter.hpp` names no engine type, so it compiles without `X3D_CPP_BUILD_PHYSICS`.
-- **`sim` integration** — `tools/x3d-cli/sim_runtime.hpp`'s `attachPhysics(scene, ctx)` hook (a real no-op when `X3D_HAVE_PHYSICS` is undefined) constructs a `JoltBackend` + `PhysicsSystem` and attaches them when the backend is built, so [`x3d sim`](../subsystems/cli-suite.md) traces physics with no change to the tick loop or tracer.
-- **The build firewall** — Jolt is fetched/built/linked **only** under `X3D_CPP_BUILD_PHYSICS=ON`, as an isolated lib linked **PRIVATE** (so Jolt's `-mavx2/-mfma` arch flags don't leak onto other targets and perturb FP results). Default OFF → no fetch, no link, standard build/golden/ctest unaffected. See [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md) for the sibling isolation pattern.
+Ball, single-axis hinge, and slider joints map to constraint descriptors.
+A missing body endpoint binds the other endpoint to the world. Jolt hinge
+limits reverse sign to match the authored rotation convention.
 
-## How it is tested
+Solver fields cross the seam only when different from their X3D defaults,
+leaving backend defaults intact otherwise. See `PhysicsSystem::attach` for
+the field-to-parameter mapping and the
+[findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) for remaining §37 gaps.
 
-- `ctest --preset dev -R x3d_physics_jolt` (gated) — Jolt free-fall (`y(1s) ≈ 5.10` = `10 − ½·9.8·1²`), rest-on-ground (a sphere settles at radius above a fixed ground, no tunnelling), and bit-identical determinism across two sequential runs.
-- `ctest --preset dev -R x3d_physics_system` (gated) — a §37 scene built programmatically (`RigidBodyCollection`→`RigidBody`→`CollidableShape`+`Box`) → attach + tick → asserts `RigidBody.position` updates **and** `position_changed` is delivered to a wired sink (proves the `postEvent`→event path, not just the backend call).
-- `ctest --preset dev -R x3d_physics_solver_settings` (always built, no Jolt) — the `PhysicsSystem` solver-tuning seam: at the §37 defaults every `SolverSettings` field stays a sentinel (engine default preserved), authored values cross verbatim, and `constantForceMix`/`preferAccuracy` have no seam field (engine-agnostic recording fake backend).
-- `x3d sim` physics fixture (gated) — golden trace `sim-physics.trace.json` + the free-fall/rest behavioral asserts + two-run byte-identical determinism, in `tools/tests/x3d_cli_test.sh`.
-- **Firewall gate** — with `X3D_CPP_BUILD_PHYSICS=OFF` (default) the full `ctest` is **150/150** and `mise run golden` is zero-drift, with zero Jolt symbols in any binary; ON adds the 2 physics tests (**152/152**). This is the proof the engine never touches the core build.
+## Events and contacts
 
-## §37 field & node coverage (ground truth)
+After stepping, the system posts RigidBody position and orientation changes.
+Authored ROUTEs can drive visible transforms from those values.
+`ContactReporter` resolves engine contacts to native nodes and emits
+CollisionSensor contacts, intersections, and isActive. Reports are read-only;
+contacts are not fed back to the solver (§37.4.5).
 
-This is a **partial** §37 implementation, now covering the core dynamics: Box/Sphere/Cylinder/Cone bodies under gravity with collision *response* **and** *reporting* (`CollisionSensor` `contacts`/`intersections`/`isActive`), applied forces/torques, damping, and three joint types, with pose routed back and host-independent determinism. The fields/nodes still read-but-ignored or unsupported are below. This table is the single source of truth; the conformance findings (`CONF-RBP*` in `docs/conformance/components/RigidBodyPhysics.md`) and the deferral trackers (`docs/conformance/findings.yaml`; the GitHub Project for engineering deferrals) point here.
-
-**RigidBody — read:** `geometry`, `mass`, `fixed`, `enabled`, `position`, `orientation`, `linearVelocity`, `angularVelocity`, `forces`, `torques`, `autoDamp`, `linear`/`angularDampingFactor`, `useGlobalGravity`, `autoDisable`.
-
-| RigidBody field | Status | Notes |
-|---|---|---|
-| `enabled` | ✅ honored | `enabled=FALSE` excludes the body (`75a7878`) |
-| `forces`, `torques` | ✅ applied | per-frame continuous force/torque (`9560686`) |
-| `autoDamp`, `linear`/`angularDampingFactor` | ✅ applied | damping force `−factor·velocity` (`2e9d8f3`) |
-| `useGlobalGravity` | ✅ honored | FALSE → body ignores collection gravity (`2e9d8f3`) |
-| `inertia`, `centerOfMass` | ✅ honored | explicit tensor → Jolt `MassAndInertiaProvided`; non-zero COM → `OffsetCenterOfMassShape` (non-default detection); see `CONF-RBP-INERTIA` |
-| `massDensityModel`, `finiteRotationAxis` | ❌ ignored | mass always shape+density derived; no finite-rotation integration |
-| `autoDisable` | ✅ honored | FALSE → body never sleeps (Jolt per-body allow-sleeping; `isBodyActive()`) |
-| `disableTime`, `disable*Speed` (per-body) | ❌ ignored | Jolt sleep thresholds are world-wide only; the collection's values govern (see `CONF-RBP-DAMP`) |
-
-**RigidBodyCollection — read:** `gravity`, `enabled`, `bodies`, `joints`, `collider` (a `CollisionCollection` supplies per-contact friction/bounce → `setContactResponse`), `autoDisable`, `disableTime`, `disableLinearSpeed`, and the solver-tuning fields below (→ `setSolverSettings`). Sleeping: one collection = one Jolt world, so `autoDisable` → `PhysicsSettings.mAllowSleeping`, `disableTime` → `mTimeBeforeSleep`, `disableLinearSpeed` → `mPointVelocitySleepThreshold`; `disableAngularSpeed` has no Jolt counterpart and is ignored. **Ignored:** `constantForceMix` (no Jolt constant-force-mix/softness knob), `preferAccuracy` (a performance hint, no boolean accuracy dial), `disableAngularSpeed`.
-
-| RigidBodyCollection field | Status | Notes |
-|---|---|---|
-| `iterations` | ✅ honored | → Jolt `mNumVelocitySteps` (only the velocity solver; `mNumPositionSteps` stays default) |
-| `errorCorrection` | ✅ honored | → Jolt `mBaumgarte` (both are the [0,1] fraction of position error corrected per update) |
-| `contactSurfaceThickness` | ✅ honored | → Jolt `mPenetrationSlop` (allowed post-contact interpenetration, m); **not** `mSpeculativeContactDistance` (a speculative pre-contact radius, a different concept) |
-| `maxCorrectionSpeed` | ✅ honored | → Jolt `mMaxPenetrationDistance` (closest real cap; caveat: Jolt's is a per-iteration distance, §37's is a speed) |
-| `constantForceMix`, `preferAccuracy` | ❌ ignored | no honest engine equivalent (see `CONF-RBP-SOLVER`); `autoDisable` and the sleep thresholds are honored separately (`CONF-RBP-DAMP`) |
-
-Each solver field is sent across the seam **only when authored off its §37 default** (`PhysicsSystem::attach` compares against `RigidBodyCollection::getDefault*`), so at the spec defaults every field is a sentinel and Jolt's own settings are left untouched — spec-default behavior is unchanged.
-
-| Node / capability | Status |
-|---|---|
-| `CollidableShape` Box / Sphere / Cylinder (exact) / Cone (analytic AABB) | ✅ |
-| `CollidableShape` non-analytic mesh (IndexedFaceSet, …) | ❌ body excluded (observable via `droppedBodyCount()`) |
-| `CollidableOffset`; compound (multiple `CollidableShape`) | ❌ unhandled / only first used |
-| Collision *response* (bodies don't interpenetrate / rest) | ✅ (Jolt broadphase + contacts) |
-| `CollisionSensor` / `Contact` / `CollisionCollection` / `CollisionSpace` reporting | ✅ `contacts` / `intersections` / `isActive` emitted (engine-agnostic `ContactReporter`; per-pair dedupe, deterministic order, `isActive` on change) |
-| `BallJoint` / `SingleAxisHingeJoint` / `SliderJoint` | ✅ (input only) |
-| `DoubleAxisHingeJoint` / `MotorJoint` / `UniversalJoint` | ❌ skipped with a note |
-| Joint **output** events (`angle`/`separation`/`*Rate`/anchor-point `*_changed`) | ❌ none produced |
-
-**Engine caveats:** **determinism is host-independent** — `JoltBackend` defaults to a single-threaded deterministic job system (identical results regardless of CPU core count; `JoltBackend(workerThreads>0)` opts into a thread pool for large scenes, deterministic only for a fixed count). One world is capped at **1024** bodies/pairs/contacts (overflow now *warns* rather than dropping silently; raising it needs a larger temp allocator), and there is a **single** collision substep per `Update` (fast bodies can tunnel).
-
-## Related specs and ADRs
-
-- [ADR-0019: Physics via a Flag-Gated Engine Backend](../decisions/0019-physics-seam.md) — why physics is a core seam + an isolated backend, not engine code in the core.
-- [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md) — the sibling one-way-isolation pattern for foreign code.
-- [Script / SAI Runtime](../subsystems/system-script-sai.md) — the seam this one mirrors (`ScriptEngine`→Duktape).
-- [Event Cascade](../subsystems/event-cascade.md) + [Execution Context](../subsystems/execution-context.md) — the route-out path the bodies drive.
-- Spec: `docs/superpowers/specs/2026-06-20-physics-jolt-seam-design.md` — the design (architecture, scope, validation).
-- **Scope (partial — see the [§37 coverage matrix](#37-field-node-coverage-ground-truth) above):** Box/Sphere/Cylinder/Cone + gravity + applied forces/torques + damping + collision **response** + collision **reporting** (`CollisionSensor` `contacts`/`intersections`/`isActive` via the engine-agnostic `ContactReporter`) + route-out **and joints** — `BallJoint`→`PointConstraint`, `SingleAxisHingeJoint`→`HingeConstraint` (with min/max limits), `SliderJoint`→`SliderConstraint`, via `ConstraintDesc` + `addConstraint` on the same seam; a joint with one body unset binds the other to the world (`Body::sFixedToWorld`), the pendulum case. Deferred follow-ons against the same seam: `disableAngularSpeed` and the per-body `RigidBody.disableTime`/`disable*Speed` (Jolt's sleep tuning is world-wide), `massDensityModel`/`finiteRotationAxis`, the unmapped collection solver fields (`constantForceMix`, `preferAccuracy`), the compound joints (`DoubleAxisHingeJoint`/`UniversalJoint`/`MotorJoint`), joint **output** events (`angle_changed`/`separation_changed`/…), `CollidableOffset` + compound/mesh shapes, `ParticleSystem`. Specs: `docs/superpowers/specs/2026-06-20-physics-joints-design.md`, `docs/superpowers/plans/2026-06-21-physics-contact-reporting.md`.
+The engine boundary is recorded in
+[ADR-0019](../decisions/0019-physics-seam.md).

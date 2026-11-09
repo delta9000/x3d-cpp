@@ -5,7 +5,7 @@
 //   <ProtoBody> (implementation body)
 //   <ProtoInstance> + <fieldValue> (instantiation)
 //
-// NOTE: This models the *structure* of prototypes so a document can carry and
+// This models the *structure* of prototypes so a document can carry and
 //       round-trip their declarations and instances. Full PROTO expansion
 //       (instantiating the body with field substitution / IS routing) is a
 //       documented stub: see ProtoInstance::expand().
@@ -78,7 +78,7 @@ struct ProtoRedirect {
 struct ProtoWarning {
   enum class Kind {
     UnresolvedExtern, MissingDeclaration, InterfaceMismatch,
-    RecursionLimit, UnknownField, BuiltinShadow
+    RecursionLimit, UnknownField, BuiltinShadow, SourceWarning
   };
   Kind kind;
   std::string instanceName;
@@ -87,7 +87,7 @@ struct ProtoWarning {
 
 /// Non-fatal Inline diagnostic, collected into X3DDocument.inlineWarnings.
 struct InlineWarning {
-  enum class Kind { UnresolvedUrl, LoadError };
+  enum class Kind { UnresolvedUrl, LoadError, Cycle, SourceWarning };
   Kind kind;
   std::string inlineDEF; // DEF of the Inline node, or "" if anonymous
   std::string detail;    // e.g. the url that failed to resolve
@@ -157,10 +157,10 @@ struct ProtoBody {
   std::vector<std::shared_ptr<X3DNode>> nodes;
   std::vector<Route> routes;
   std::vector<IsConnection> isConnections;
-  // ProtoInstances that appear INSIDE this body (template). Each carries its
+  // ProtoInstances that appear inside this body (template). Each carries its
   // placement (parent = an original body node, or empty for a direct body-root
   // child) so the expansion engine can splice the expanded primary into the
-  // per-instantiation CLONE of that parent. Kept here, not in scene.protoInstances,
+  // per-instantiation clone of that parent. Kept here, not in scene.protoInstances,
   // so a body-nested instance is expanded once per outer instantiation rather
   // than once globally / mis-attached to the un-cloned template.
   std::vector<ProtoInstance> nestedInstances;
@@ -237,6 +237,8 @@ struct ProtoDeclaration {
   // Source directory for deferred body/default URL resolution. nullopt is a
   // programmatic declaration; an engaged empty base is an in-memory source.
   std::optional<std::string> sourceBaseUrl;
+  // Diagnostics of the fetched source document, hoisted on EXTERN expansion.
+  std::vector<ProtoWarning> sourceWarnings;
 };
 
 /**
@@ -310,6 +312,16 @@ public:
   // after PROTO declarations are collected). Either a local or extern decl.
   std::shared_ptr<ProtoDeclaration> declaration;
   std::shared_ptr<ExternProtoDeclaration> externDeclaration;
+
+  /// Find an interface field, preferring a local declaration over an extern.
+  const ProtoField *interfaceField(const std::string &fieldName) const {
+    const auto *fields = declaration ? &declaration->interface
+        : externDeclaration ? &externDeclaration->interface : nullptr;
+    if (fields)
+      for (const auto &field : *fields)
+        if (field.name == fieldName) return &field;
+    return nullptr;
+  }
 
   // Set by expandScene when this instance was successfully expanded into the
   // graph (its primary node is then re-emitted via Scene::expandedSources).

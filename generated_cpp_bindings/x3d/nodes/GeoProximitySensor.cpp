@@ -1,4 +1,3 @@
-// GeoProximitySensor.cpp
 #include "x3d/nodes/GeoProximitySensor.hpp"
 
 namespace x3d::nodes {

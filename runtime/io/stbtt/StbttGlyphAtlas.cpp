@@ -1,13 +1,13 @@
 // runtime/io/stbtt/StbttGlyphAtlas.cpp — see StbttGlyphAtlas.hpp. Rasterizes a
 // Basic Latin + Latin-1 Supplement atlas via stb_truetype and returns it with
-// ready FontMetrics (advances + glyph boxes + UVs). stb_truetype.h is included WITHOUT the implementation define
+// ready FontMetrics (advances + glyph boxes + UVs). stb_truetype.h is included without the implementation define
 // — StbttFontMetrics.cpp is the one TU that defines STB_TRUETYPE_IMPLEMENTATION;
 // this TU links against those symbols within the x3d_stbtt lib. The public
 // header stays decoder-free, so no stb header leaks to consumers.
 #include "StbttGlyphAtlas.hpp"
+#include "../ReadFile.hpp"
 
 #include <algorithm>
-#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -27,16 +27,6 @@ constexpr std::uint32_t kFirstCp = 0x20;  // space
 constexpr std::uint32_t kLastCp = 0xff;   // Latin-1 Supplement end
 constexpr int kAtlasWidth = 512;
 constexpr int kPad = 2;
-
-bool readFile(const std::string& path, std::vector<unsigned char>& out) {
-  std::ifstream f(path, std::ios::binary | std::ios::ate);
-  if (!f) return false;
-  const std::streamoff size = f.tellg();
-  if (size <= 0) return false;
-  out.resize(static_cast<std::size_t>(size));
-  f.seekg(0);
-  return static_cast<bool>(f.read(reinterpret_cast<char*>(out.data()), size));
-}
 
 // Raw unitsPerEm (head + 18, big-endian) — same exact-integer path as
 // StbttFontMetrics so the atlas's advanceEm bit-matches the metrics backend.
@@ -64,13 +54,13 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
   if (emPx < 8) emPx = 8;
 
   // Load every distinct face; keep byte buffers alive for the whole bake (each
-  // stbtt_fontinfo points INTO its buffer).
+  // stbtt_fontinfo points into its buffer).
   std::vector<std::vector<unsigned char>> fontBytes;
   std::vector<stbtt_fontinfo> fonts;
   std::vector<std::string> families;
   for (auto& [family, path] : faces) {
     std::vector<unsigned char> bytes;
-    if (!readFile(path, bytes)) continue;
+    if (!::x3d::runtime::io::detail::readFile(path, bytes) || bytes.empty()) continue;
     stbtt_fontinfo fi{};
     const int off = stbtt_GetFontOffsetForIndex(bytes.data(), 0);
     if (off < 0 || !stbtt_InitFont(&fi, bytes.data(), off)) continue;
@@ -92,7 +82,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
     for (std::uint32_t cp = kFirstCp; cp <= kLastCp; ++cp) {
       if (cp >= 0x7f && cp < 0xa0) continue;  // DEL + C1 controls have no display cells
       const int glyph = stbtt_FindGlyphIndex(&fi, static_cast<int>(cp));
-      if (glyph == 0) continue;  // .notdef → Failed (no cell, no entry)
+      if (glyph == 0) continue;  //.notdef → Failed (no cell, no entry)
       int adv = 0, lsb = 0;
       stbtt_GetGlyphHMetrics(&fi, glyph, &adv, &lsb);  // unscaled
       Cell c;
@@ -134,7 +124,7 @@ GlyphAtlasResult makeStbttGlyphAtlas(FontFaceMap faces, int emPx) {
   }
   const int atlasH = yTop + rowH + kPad;
 
-  // Rasterize into a TOP-DOWN buffer, then flip to bottom-up for GL upload.
+  // Rasterize into a top-down buffer, then flip to bottom-up for GL upload.
   std::vector<std::uint8_t> top(static_cast<std::size_t>(atlasW) * atlasH, 0);
   for (const Cell& c : cells) {
     if (c.gw == 0 || c.gh == 0) continue;  // space / blank glyph

@@ -1,5 +1,5 @@
 """Headless GL regression for §42 texture projectors in the OpenGL PoC
-(REQ-PROJECTION, ADR-0061).
+(ADR-0061).
 
 A white plane at z = 0 faces a camera on +Z with the headlight off and no
 other light. A projector 5 in front of it casts a 2 x 2 PixelTexture (red,
@@ -14,7 +14,7 @@ ambient floor keeps above black. Before this change the plane stayed unlit.
 """
 import math
 import pathlib
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -43,15 +43,8 @@ def render(tmp, name, projector, material):
 <Shape><Appearance>{material}</Appearance><IndexedFaceSet coordIndex="0 1 2 3 -1">
 <Coordinate point="-10 -10 0 10 -10 0 10 10 0 -10 10 0"/></IndexedFaceSet></Shape>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(column, row):
         offset = (row * width + column) * 3

@@ -1,4 +1,3 @@
-// ForcePhysicsModel.cpp
 #include "x3d/nodes/ForcePhysicsModel.hpp"
 
 namespace x3d::nodes {

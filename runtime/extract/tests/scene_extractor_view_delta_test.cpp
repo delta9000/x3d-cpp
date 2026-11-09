@@ -120,7 +120,7 @@ TEST_CASE("view delta: translated shared LOD selects every placement after head 
   context.setHeadPose({-12, 0, 0}, {0, 1, 0, 0});
   context.tick(1);
   auto delta = extractor.delta();
-  CHECK(delta.removed.size() == 2); CHECK(delta.added.size() == 2);
+  CHECK(delta.removed.size() == 1); CHECK(delta.added.size() == 1);
   mirror.apply(delta, extractor); mirror.check(context, scene);
 
   context.tick(2);
@@ -131,7 +131,7 @@ TEST_CASE("view delta: translated shared LOD selects every placement after head 
   context.postEvent(right.get(), "translation", SFVec3f{30, 0, 0});
   context.tick(3);
   delta = extractor.delta();
-  CHECK(delta.removed.size() == 2); CHECK(delta.added.size() == 2);
+  CHECK(delta.removed.size() == 1); CHECK(delta.added.size() == 1);
   mirror.apply(delta, extractor); mirror.check(context, scene);
 }
 

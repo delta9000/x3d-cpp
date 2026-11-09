@@ -1,46 +1,16 @@
-// TextureExtract.hpp — T-TEX v1: close textures end-to-end.
-//
-// namespace x3d::runtime::extract. Header-only, golden-untouched, node-as-truth
-// (every read goes through the geombounds reflection helpers / nodeTypeName()
-// dispatch; adds NO members to generated nodes). This is the "heavy logic" file
-// the v1-closure design (2026-06-16 §3) keeps OUT of SceneExtractor/MeshBuilder so
-// those take only a thin dispatch hook — see SceneExtractor::emit().
-//
-// RESPONSIBILITIES (the gaps the design's T-TEX track lists):
-//   1. textureTransformParamsOf(appearance) — read the authored TextureTransform /
-//      TextureTransform2D node from Appearance.textureTransform into the pure
-//      TextureTransform2DParams field bag (§18.4.10). NULL / identity => identity.
-//   2. applyTextureTransformToMesh(mesh, params) — BAKE that transform into every
-//      MeshData.texcoord at extraction time (CPU-side §18.4.10 application). A
-//      cheap identity early-exit keeps untransformed meshes byte-unchanged.
-//   3. extendedSamplerOf(texNode) — full §18.4.9 sampler descriptor: repeatS/T,
-//      TextureProperties boundary/filter modes, mipmaps, anisotropy. When no
-//      TextureProperties is present the boundary modes derive from repeatS/T
-//      (Repeat / ClampToEdge per §18.2.3).
-//   4. texCoordGenOf(geom, &has) — when a geometry node's texCoord field is a
-//      TextureCoordinateGenerator (not a TextureCoordinate), surface the
-//      mode+parameter as a TexCoordGenDesc (the renderer computes UVs per §18.4.8).
-//   5. resolveTextureRefs(refs, resolver) — thread the embedder's TextureResolver
-//      onto each TextureRef.resolvedPixels (Url goes through the resolver after
-//      applying the MFString fallback order; Inline / Movie do NOT).
-//   6. enrichTextureRefs(refs, geom) — fill each ref's extSampler from its source
-//      texture node and the geometry-borne TexCoordGenDesc (a single pass an
-//      embedder/extractor calls after materialOf()).
-//
-// AUTHORED TEXTURECOORDINATE: extraction of explicit TextureCoordinate.point onto
-// MeshData.texcoords (indexed by texCoordIndex, falling back to coordIndex per
-// §13.3.6) already lives in MeshBuilder.hpp (buildAttrs/pickT) and ALWAYS wins
-// over the default §13 bbox/grid projection. This file does NOT duplicate it; it
-// adds the TextureTransform bake on top + the descriptor/resolver surface.
+// Extract §18 texture transforms, sampler descriptors and coordinate generators.
+// Authored TextureCoordinate values take precedence over default projections;
+// TextureTransform is baked into mesh UVs.
 #ifndef X3D_RUNTIME_EXTRACT_TEXTURE_EXTRACT_HPP
 #define X3D_RUNTIME_EXTRACT_TEXTURE_EXTRACT_HPP
 
-#include "GeometryBounds.hpp"     // geombounds::getField/getNode/hasField
-#include "RenderItem.hpp"         // MeshData / TextureRef
-#include "TextureResolver.hpp"    // TextureResolver / TexturePixelResult
-#include "TextureTransform2D.hpp" // TextureTransform2DParams / Extended sampler / TexCoordGen
+#include "GeometryBounds.hpp"
+#include "RenderItem.hpp"
+#include "TextureResolver.hpp"
+#include "TextureTransform2D.hpp"
 #include "FieldRead.hpp"
 #include "x3d/nodes/X3DNode.hpp"
+#include "x3d/nodes/MultiTextureCoordinate.hpp"
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <algorithm>
@@ -154,26 +124,6 @@ inline TextureTransform2DParams textureTransformParamsOfNode(const x3d::nodes::X
   return p;
 }
 
-// ---------------------------------------------------------------------------
-// textureTransformParamsOf — read Appearance.textureTransform into the pure
-// TextureTransform2DParams field bag (§18.4.10).
-//
-//   * appearance == nullptr / no textureTransform / null node => identity.
-//   * A 2D TextureTransform / TextureTransform2D node => its center/rotation/
-//     scale/translation SFVec2f+SFFloat fields.
-//   * MultiTextureTransform => first usable contained transform for legacy
-//     callers; use textureTransformParamsListOf() for per-channel transforms.
-//   * TextureTransformMatrix3D => project the 4x4 transform over (s,t,0,1) onto
-//     the same 2D seam.
-// ---------------------------------------------------------------------------
-inline TextureTransform2DParams textureTransformParamsOf(const x3d::nodes::X3DNode *appearance) {
-  TextureTransform2DParams p; // identity by default.
-  if (!appearance) return p;
-  auto tt = geombounds::getNode(*appearance, "textureTransform");
-  if (!tt) return p;
-  return textureTransformParamsOfNode(*tt);
-}
-
 inline std::vector<TextureTransform2DParams>
 textureTransformParamsListOfNode(const x3d::nodes::X3DNode &tt) {
   if (tt.nodeTypeName() != "MultiTextureTransform")
@@ -193,23 +143,6 @@ textureTransformParamsListOf(const x3d::nodes::X3DNode *appearance) {
   auto tt = geombounds::getNode(*appearance, "textureTransform");
   if (!tt) return {};
   return textureTransformParamsListOfNode(*tt);
-}
-
-// ---------------------------------------------------------------------------
-// applyTextureTransformToMesh — BAKE a TextureTransform into mesh.texcoords
-// (§18.4.10), in place. Identity transforms early-exit (no allocation, no write)
-// so untransformed meshes stay byte-for-byte identical. Operates on whatever
-// texcoords MeshBuilder already produced (authored TextureCoordinate or the
-// default §13 projection) — both are in the same [0,1]-ish UV space.
-// ---------------------------------------------------------------------------
-inline void applyTextureTransformToMesh(MeshData &mesh,
-                                        const TextureTransform2DParams &p) {
-  if (isIdentityTextureTransform(p)) return;
-  for (SFVec2f &uv : mesh.texcoords) {
-    const std::array<float, 2> r = applyTextureTransform(uv.x, uv.y, p);
-    uv.x = r[0];
-    uv.y = r[1];
-  }
 }
 
 inline void applyTextureTransformsToMesh(
@@ -252,7 +185,7 @@ textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom) {
       });
   if (!named)
     return params;
-  MFNode coordinates = tc->nodeTypeName() == "MultiTextureCoordinate"
+  MFNode coordinates = dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr
                            ? geombounds::getField<MFNode>(*tc, "texCoord", {})
                            : MFNode{tc};
   std::vector<TextureTransform2DParams> out(coordinates.size());
@@ -270,7 +203,6 @@ textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom) {
   return out;
 }
 
-// ---------------------------------------------------------------------------
 // pixelTexture3DDesc — decode a PixelTexture3D.image MFInt32 (§33.4.3) into a
 // Texture3DDesc. Wire form: numComponents, width, height, depth, then
 // width*height*depth pixel values; each pixel packs numComponents bytes as one
@@ -278,7 +210,6 @@ textureTransformsForGeometry(const X3DNode *appearance, const X3DNode *geom) {
 // parseImageFrom). numComponents is clamped to [0,4]; the pixel loop is bounded
 // by both the claimed count and the token stream, so a hostile image cannot
 // over-allocate. A short/empty image yields a zero-size descriptor.
-// ---------------------------------------------------------------------------
 inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
   Texture3DDesc d;
   if (image.size() < 4) return d;
@@ -290,7 +221,16 @@ inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
   d.width = static_cast<uint32_t>(w);
   d.height = static_cast<uint32_t>(h);
   d.depth = static_cast<uint32_t>(dep);
-  const std::size_t pixels = static_cast<std::size_t>(w * h * dep);
+  // Size from the tokens present, never from the header alone: w*h*dep can
+  // overflow and a four-token image can claim any size.
+  const std::size_t avail = image.size() - 4;
+  std::size_t pixels = 0;
+  if (w > 0 && h > 0 && dep > 0) {
+    const auto wh = static_cast<unsigned long long>(w) * static_cast<unsigned long long>(h);
+    pixels = (wh > avail || static_cast<unsigned long long>(dep) > avail / wh)
+                 ? avail
+                 : static_cast<std::size_t>(wh * static_cast<unsigned long long>(dep));
+  }
   d.texels.reserve(pixels * static_cast<std::size_t>(nc));
   std::size_t i = 4;
   for (std::size_t p = 0; p < pixels && i < image.size(); ++p) {
@@ -301,7 +241,6 @@ inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
   return d;
 }
 
-// ---------------------------------------------------------------------------
 // extendedSamplerOf — resolve a texture node's §18.4.9 sampler state.
 //
 //   * No TextureProperties: repeatS/T read off the texture node; boundary modes
@@ -312,7 +251,6 @@ inline Texture3DDesc pixelTexture3DDesc(const std::vector<int> &image) {
 //     but the boundary enums are authoritative (§18.4.9). repeatS/T are also
 //     back-derived from the boundary modes so a legacy bool-only consumer still
 //     sees a sensible REPEAT vs non-REPEAT value.
-// ---------------------------------------------------------------------------
 inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<x3d::nodes::X3DNode> &texNode) {
   using namespace texextract;
   ExtendedSamplerParams s;
@@ -352,13 +290,11 @@ inline ExtendedSamplerParams extendedSamplerOf(const std::shared_ptr<x3d::nodes:
   return s;
 }
 
-// ---------------------------------------------------------------------------
 // texCoordGenOf — when a geometry node's texCoord field is a
 // TextureCoordinateGenerator, surface the mode+parameter as a TexCoordGenDesc
 // (§18.4.8). The renderer computes the actual per-vertex UVs from view state.
 // Sets *has=true only when a generator is present; otherwise *has=false and the
 // returned (default-Sphere) descriptor must be ignored.
-// ---------------------------------------------------------------------------
 inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
                                      int channel = 0) {
   using namespace texextract;
@@ -366,7 +302,7 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
   if (has) *has = false;
   if (!geom) return d;
   auto tc = geombounds::getNode(*geom, "texCoord");
-  if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+  if (tc && dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr) {
     const auto children = geombounds::getField<MFNode>(*tc, "texCoord", {});
     if (children.empty())
       return d;
@@ -381,60 +317,65 @@ inline TexCoordGenDesc texCoordGenOf(const x3d::nodes::X3DNode *geom, bool *has,
   return d;
 }
 
-// ---------------------------------------------------------------------------
 // resolveTextureRefs — thread the embedder's TextureResolver onto each ref's
 // resolvedPixels. The caller applies the MFString fallback order: try each URL
-// in order and keep the FIRST Ready (or Pending) result; only when every URL
+// in order and keep the `FIRST` Ready (or Pending) result; only when every URL
 // Fails does the ref stay Failed. Source::Inline (PixelTexture) and Source::Movie
-// NEVER go through the resolver (Inline is decoded from inlinePixels; Movie is
+// never go through the resolver (Inline is decoded from inlinePixels; Movie is
 // descriptor-only) — their resolvedPixels stays makeFailed().
 //
-// `resolver` must be a valid callable (use makeNullTextureResolver() for the
-// default white-fallback PoC path; a null std::function is NOT legal to call).
+// At least one callback must be valid; resolverWithBase takes precedence.
+// The default makeNullTextureResolver() supplies the white-fallback PoC path.
 //
-// `memo` (optional, ADR-0045) de-duplicates resolves BY URL. Decoding is the most
-// expensive thing at this seam and one URL is routinely shared by many
+// `memo` (optional, ADR-0045) de-duplicates resolves by URL, plus baseUrl
+// when resolverWithBase is supplied. Decoding is the most expensive thing at
+// this seam and one URL is routinely shared by many
 // placements, so the extractor threads a per-snapshot memo through and N
-// placements of one textured DEF'd Shape cost ONE embedder call and ONE shared
+// placements of one textured DEF'd Shape cost one embedder call and one shared
 // buffer instead of N of each.
 //
-// ONLY Ready results are memoized, deliberately. Pending means "not decoded yet,
+// only Ready results are memoized, deliberately. Pending means "not decoded yet,
 // retry on a later frame" — caching it would freeze the retry and the texture
 // would never appear. Failed is likewise re-offered, so a resolver that recovers
 // (a late mount, a warmed cache) is not permanently written off. Neither carries
 // pixel payload, so re-offering them costs nothing that matters.
-// ---------------------------------------------------------------------------
 inline void resolveTextureRefs(
     std::vector<TextureRef> &refs, const TextureResolver &resolver,
-    std::unordered_map<std::string, TexturePixelResult> *memo = nullptr) {
-  if (!resolver) return; // defensive: never call a null std::function.
+    std::unordered_map<std::string, TexturePixelResult> *memo = nullptr,
+    const TextureResolverWithBase &resolverWithBase = {}) {
+  if (!resolver && !resolverWithBase) return; // defensive: never call a null std::function.
   for (TextureRef &ref : refs) {
     if (ref.source == TextureRef::Source::Multi) {
-      resolveTextureRefs(ref.multiStages, resolver, memo);
+      resolveTextureRefs(ref.multiStages, resolver, memo, resolverWithBase);
       continue;
     }
     if (ref.source == TextureRef::Source::Cube && !ref.cubeFaces.empty()) {
-      resolveTextureRefs(ref.cubeFaces, resolver, memo); // each face (CMT-1)
+      resolveTextureRefs(ref.cubeFaces, resolver, memo, resolverWithBase); // Each cube face.
       continue;
     }
-    // Url, or an ImageCubeMapTexture's single six-face image (REQ-CUBE).
+    // Url, or an ImageCubeMapTexture's single six-face image.
     if (ref.source != TextureRef::Source::Url &&
         ref.source != TextureRef::Source::Cube)
       continue; // Inline/Movie: skip.
     TexturePixelResult result = TexturePixelResult::makeFailed();
     for (const std::string &url : ref.url) {
       if (url.empty()) continue;
+      // Length-prefix the base so even embedded separators cannot collide.
+      // Preserve the legacy key for callers using the one-argument resolver.
+      const std::string key = resolverWithBase
+          ? std::to_string(ref.baseUrl.size()) + ":" + ref.baseUrl + url : url;
       if (memo) {
-        auto hit = memo->find(url);
+        auto hit = memo->find(key);
         if (hit != memo->end()) {
           // Ready-only memo, so a hit always wins the MFString fallback race.
           result = hit->second; // shares the pixel buffer, copies no bytes.
           break;
         }
       }
-      TexturePixelResult r = resolver(url);
+      TexturePixelResult r = resolverWithBase
+          ? resolverWithBase(url, ref.baseUrl) : resolver(url);
       if (r.ready() || r.pending()) {
-        if (memo && r.ready()) memo->emplace(url, r);
+        if (memo && r.ready()) memo->emplace(key, r);
         result = std::move(r);
         break; // first non-failed URL wins (MFString fallback order).
       }
@@ -443,30 +384,17 @@ inline void resolveTextureRefs(
   }
 }
 
-// ---------------------------------------------------------------------------
-// enrichTextureRefs — single pass an extractor calls after materialOf(): fills
-// each ref's extended sampler from its SOURCE texture node, and attaches the
-// geometry-borne TexCoordGenDesc (one generator per geometry applies to every
-// texture channel that uses default coords). MaterialSystem already populated the
-// legacy SamplerParams + URLs; this layers the §18.4.9/§18.4.8 descriptor surface.
-//
-// `texNodes` is parallel to `refs` (the concrete texture node each ref came from,
-// or nullptr); pass an empty vector to skip the sampler enrichment (the legacy
-// SamplerParams on each ref still stands).
-// ---------------------------------------------------------------------------
+// Attach coordinate mapping, generators, and their transforms to material refs.
 inline void enrichTextureRefs(
     std::vector<TextureRef> &refs,
-    const std::vector<std::shared_ptr<x3d::nodes::X3DNode>> &texNodes,
     const x3d::nodes::X3DNode *geom,
     const x3d::nodes::X3DNode *appearance = nullptr) {
   bool hasGen = false;
   const auto transforms = textureTransformsForGeometry(appearance, geom);
   for (std::size_t i = 0; i < refs.size(); ++i) {
-    if (i < texNodes.size() && texNodes[i])
-      refs[i].extSampler = extendedSamplerOf(texNodes[i]);
     if (geom && !refs[i].texCoordMapping.empty()) {
       auto tc = geombounds::getNode(*geom, "texCoord");
-      if (tc && tc->nodeTypeName() == "MultiTextureCoordinate") {
+      if (tc && dynamic_cast<const x3d::nodes::MultiTextureCoordinate *>(tc.get()) != nullptr) {
         auto sets = geombounds::getField<MFNode>(*tc, "texCoord", {});
         refs[i].channel = 0;
         for (std::size_t j = 0; j < sets.size(); ++j)

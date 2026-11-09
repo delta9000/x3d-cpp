@@ -1,4 +1,3 @@
-// CartoonVolumeStyle.cpp
 #include "x3d/nodes/CartoonVolumeStyle.hpp"
 
 namespace x3d::nodes {

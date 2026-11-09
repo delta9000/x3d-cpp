@@ -21,10 +21,7 @@ namespace x3d::codec {
 
 /// Identifies an X3D encoding for sniffing and reader dispatch.
 enum class Encoding { Unknown, XML, ClassicVRML, VRML97, JSON };
-
-// ---------------------------------------------------------------------------
 // Helpers.
-// ---------------------------------------------------------------------------
 
 /// Lowercase a copy of an ASCII string_view (used for extension matching).
 inline std::string toLowerAscii(std::string_view s) {
@@ -48,10 +45,7 @@ inline std::string_view skipBomAndSpace(std::string_view s) {
   s.remove_prefix(i);
   return s;
 }
-
-// ---------------------------------------------------------------------------
 // Extension sniffing.
-// ---------------------------------------------------------------------------
 
 /// Map a file path's extension to an encoding (case-insensitive):
 /// `.x3d`->XML, `.x3dv`->ClassicVRML, `.wrl`->VRML97, `.json`->JSON.
@@ -84,10 +78,7 @@ inline Encoding sniffByExtension(std::string_view path) {
     return Encoding::JSON;
   return Encoding::Unknown;
 }
-
-// ---------------------------------------------------------------------------
 // Content sniffing.
-// ---------------------------------------------------------------------------
 
 /// Returns true if `bytes` begins with the gzip magic (0x1f 0x8b). The front
 /// end does not inflate; this lets a caller detect a compressed payload.
@@ -131,10 +122,7 @@ inline Encoding sniffByContent(std::string_view raw) {
 
   return Encoding::Unknown;
 }
-
-// ---------------------------------------------------------------------------
 // Combined sniffing.
-// ---------------------------------------------------------------------------
 
 /// Combine extension and content sniffing. Content wins whenever it yields a
 /// confident (non-Unknown) answer; otherwise the extension is used. This makes

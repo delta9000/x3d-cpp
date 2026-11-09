@@ -11,11 +11,11 @@ def test_real_40_manifest_passes():
 
 def test_node_count_floor_catches_under_extraction(tmp_path):
     # guard-the-guard: mutate the UOM so the extractor finds ~no nodes, and assert
-    # the meta-validator FAILS (proving silent under-extraction is caught).
+    # the meta-validator fails (proving silent under-extraction is caught).
     broken = tmp_path / "broken.xml"
     text = Path(UOM_40).read_text()
     # rename the element the extractor keys on, so findall under-extracts.
-    # Rename BOTH the open and close tags so the doc stays well-formed XML (the
+    # Rename both the open and close tags so the doc stays well-formed XML (the
     # version attr survives on the root); the extractor then finds few nodes.
     broken.write_text(
         text.replace("<ConcreteNode ", "<ConcreteNodeX ").replace(
@@ -34,7 +34,6 @@ def test_missing_required_attr_is_caught(tmp_path):
         validate_manifest(m)
 
 
-# --- strict-mode: catch a future unmapped field type (VP-0.1) -------------------
 from x3d_cpp_gen.conformance.meta_validator import assert_field_types_mapped
 
 def test_real_40_field_types_all_mapped():

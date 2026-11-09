@@ -1,4 +1,3 @@
-// SilhouetteEnhancementVolumeStyle.cpp
 #include "x3d/nodes/SilhouetteEnhancementVolumeStyle.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// GeoLOD.cpp
 #include "x3d/nodes/GeoLOD.hpp"
 
 namespace x3d::nodes {

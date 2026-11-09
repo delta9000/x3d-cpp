@@ -1,8 +1,7 @@
-// SphereDrag.hpp — PURE SphereSensor drag math (ISO/IEC 19775-1:2023 §20.4.3 +
+// SphereDrag.hpp — pure SphereSensor drag math (ISO/IEC 19775-1:2023 §20.4.3 +
 // drag-sensor common §20.2.2). No node/System coupling.
-//
-// Model (all math in the sensor-LOCAL frame; SphereSensor has NO axisRotation,
-// so the sensor frame IS the parent's local frame):
+// Model (all math in the sensor-local frame; SphereSensor has no axisRotation,
+// so the sensor frame is the parent's local frame):
 //   Activation (frozen): p0Local = inv(sensorFrame)*worldHit; r = |p0Local|;
 //                        p0_hat = p0Local / r.
 //   Per motion:
@@ -13,7 +12,7 @@
 //     R_rel = rotation taking p0_hat -> p_hat:
 //       axis = normalize(cross(p0_hat, p_hat)); angle = acos(clamp(dot,-1,1)).
 //       (anti)parallel: parallel -> identity; antiparallel -> (any perp, pi).
-//     rotation_changed = toAxisAngle( q_rel * q_offset )   (offset is the base).
+//     rotation_changed = toAxisAngle( q_rel * q_offset)   (offset is the base).
 #ifndef X3D_RUNTIME_DRAG_SPHERE_DRAG_HPP
 #define X3D_RUNTIME_DRAG_SPHERE_DRAG_HPP
 
@@ -45,21 +44,13 @@ inline SFVec3f scross(const SFVec3f &a, const SFVec3f &b) {
 }
 inline float slen(const SFVec3f &a) { return std::sqrt(sdot(a, a)); }
 
-// Hamilton product of two quaternions (x,y,z,w): result = a * b.
-inline Quat qmul(const Quat &a, const Quat &b) {
-  return Quat{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-              a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-              a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-              a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
-}
-
 } // namespace detail
 
 // sphereDrag — one pointer-motion evaluation.
-//   sensorFrame : M_sensor (world matrix of the sensor's parent group).
-//   p0Local     : activation hit in sensor-local coords (defines r and p0_hat).
-//   worldRay    : current bearing in WORLD space.
-//   offset      : SFRotation accumulator composed as the base (q_rel * q_offset).
+//   sensorFrame: M_sensor (world matrix of the sensor's parent group).
+//   p0Local: activation hit in sensor-local coords (defines r and p0_hat).
+//   worldRay: current bearing in world space.
+//   offset: SFRotation accumulator composed as the base (q_rel * q_offset).
 inline SphereDragResult sphereDrag(const Mat4 &sensorFrame,
                                    const SFVec3f &p0Local, const Ray &worldRay,
                                    const SFRotation &offset) {
@@ -121,7 +112,7 @@ inline SphereDragResult sphereDrag(const Mat4 &sensorFrame,
   }
 
   // rotation_changed = q_rel * q_offset (offset is the base, drag on top).
-  const Quat qOut = qmul(quatFromRotation(rRel), quatFromRotation(offset));
+  const Quat qOut = quatMul(quatFromRotation(rRel), quatFromRotation(offset));
   out.rotation = rotationFromQuat(qOut);
   return out;
 }

@@ -1,29 +1,4 @@
-// script_author_runtime_test.cpp
-// Task D (Phase 1) END-TO-END behavioral proof — the reason the whole
-// file-authored-Script un-tabling effort exists: a Script whose interface is
-// declared as AUTHOR fields (the S1 DynamicFieldStore) and whose body lives in
-// Script.sourceCode (the CDATA destination, not url) actually RUNS through the
-// real EcmaScriptBackend, and an author outputOnly write the handler makes
-// drives a ROUTE to an observed field.
-//
-// Proves (ISO/IEC 19775-1 §29.2 + §3.3/§3.5 of the design):
-//   1. ScriptSystem sources from Script.getSourceCode() when non-empty (the
-//      CDATA path), falling back to the url inline scheme only when empty;
-//   2. initialize() seeds JS globals from each author field's boxed
-//      initialValue (initializeOnly/inputOutput), so the script reads its
-//      authored defaults;
-//   3. an author inputOnly/inputOutput event dispatches to the handler resolved
-//      by author-field name (deliverInputEvent -> engine.invoke);
-//   4. after the handler runs, the backend reads back the script's outputOnly /
-//      inputOutput author-field globals into the DynamicFieldStore AND emits
-//      them as cascade events carrying the triggering timestamp — which fan out
-//      along a ROUTE from the author field to a real target node.
-//
-// Author fields are created directly via the Phase-0 DynamicFieldStore API; this
-// test does NOT depend on the Phase-1 A/B/C codec readers.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
-
+// Author-field marshalling and routed output behavior.
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"
 
@@ -65,7 +40,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
   return nearly(a.x, x) && nearly(a.y, y) && nearly(a.z, z);
 }
 
-// Declare one author field on a node via the Phase-0 store (encoding-agnostic).
+// Declare one author field on a node via the dynamic-field store (encoding-agnostic).
 AuthorFieldDecl decl(const std::string &name, X3DFieldType type,
                      AccessType access, std::any initial = {}) {
   AuthorFieldDecl d;
@@ -76,10 +51,9 @@ AuthorFieldDecl decl(const std::string &name, X3DFieldType type,
   return d;
 }
 
-// ---------------------------------------------------------------------------
-// T1: source from sourceCode (the CDATA destination), NOT url. A Script with an
+// source from sourceCode (the CDATA destination), not url. A Script with an
 //     empty url but a non-empty sourceCode must still load + initialize.
-// ---------------------------------------------------------------------------
+
 void testSourceFromSourceCode() {
   X3DExecutionContext ctx;
   Script script;
@@ -100,9 +74,8 @@ void testSourceFromSourceCode() {
         "T1: initialize() ran from Script.sourceCode (CDATA path)");
 }
 
-// ---------------------------------------------------------------------------
-// T2: sourceCode takes precedence over url when both are present.
-// ---------------------------------------------------------------------------
+// sourceCode takes precedence over url when both are present.
+
 void testSourceCodePrecedence() {
   X3DExecutionContext ctx;
   Script script;
@@ -119,9 +92,8 @@ void testSourceCodePrecedence() {
         "T2: sourceCode preferred over url when both present");
 }
 
-// ---------------------------------------------------------------------------
-// T3: url fallback still works when sourceCode is empty (no regression).
-// ---------------------------------------------------------------------------
+// url fallback still works when sourceCode is empty (no regression).
+
 void testUrlFallback() {
   X3DExecutionContext ctx;
   Script script;
@@ -137,10 +109,9 @@ void testUrlFallback() {
         "T3: url inline scheme still decodes when sourceCode empty");
 }
 
-// ---------------------------------------------------------------------------
-// T4: initialize() seeds JS globals from author-field initialValue. An
+// initialize() seeds JS globals from author-field initialValue. An
 //     initializeOnly author field's boxed default is visible to the script.
-// ---------------------------------------------------------------------------
+
 void testInitialValueSeeding() {
   X3DExecutionContext ctx;
   Script script;
@@ -162,21 +133,20 @@ void testInitialValueSeeding() {
         "T4: initialize() saw the author field's boxed initialValue as a global");
 }
 
-// ---------------------------------------------------------------------------
-// T5: THE BEHAVIORAL PROOF — an author inputOnly event drives the handler, the
+// An author inputOnly event drives the handler, the
 //     handler writes an author outputOnly field, and that write fans out along
 //     a ROUTE to a real Transform's translation.
 //
 //     This is what the whole effort exists for: a file-authored Script (here
 //     constructed programmatically via the same seams a reader would use) whose
 //     author field, written by its own handler, drives the cascade.
-// ---------------------------------------------------------------------------
+
 void testAuthorOutputDrivesRoute() {
   X3DExecutionContext ctx;
 
   Script script;
   // directOutput so the handler's own outputOnly write is unconditionally fine
-  // (it writes its OWN field; directOutput not strictly required for self, but
+  // (it writes its own field; directOutput not strictly required for self, but
   // set TRUE to mirror a real interacting script).
   script.setDirectOutputUnchecked(true);
   script.setMustEvaluateUnchecked(true);  // eager: invoke on delivery
@@ -230,10 +200,9 @@ void testAuthorOutputDrivesRoute() {
   }
 }
 
-// ---------------------------------------------------------------------------
-// T6: an inputOutput author field round-trips — the handler reads its seeded
+// an inputOutput author field round-trips — the handler reads its seeded
 //     value, mutates it, and the mutation is read back into the store + emitted.
-// ---------------------------------------------------------------------------
+
 void testInputOutputAuthorField() {
   X3DExecutionContext ctx;
 
@@ -264,13 +233,12 @@ void testInputOutputAuthorField() {
         "T6: inputOutput author field seeded(10)+bump(5) -> 15 read back to store");
 }
 
-// ---------------------------------------------------------------------------
-// T7 (SCR-004): a script's prepareEvents() that writes an author outputOnly
+// a script's prepareEvents() that writes an author outputOnly
 //     field must have that write read back and emitted into the cascade — the
 //     §29.2.5 "as if a built-in sensor node" purpose. The Browser.print probe
 //     confirms prepareEvents actually ran (so a red is the missing readback,
 //     not a missing call).
-// ---------------------------------------------------------------------------
+
 void testPrepareEventsAuthorOutput() {
   X3DExecutionContext ctx;
 
@@ -306,11 +274,10 @@ void testPrepareEventsAuthorOutput() {
         "T7: prepareEvents() author output read back + drove ROUTE (SCR-004)");
 }
 
-// ---------------------------------------------------------------------------
-// T8 (SCR-006): SFMatrix author fields marshal both directions. A script that
+// SFMatrix author fields marshal both directions. A script that
 //     copies an inputOnly SFMatrix4f to an outputOnly SFMatrix4f must round-trip
-//     all 16 components; previously matrices fell through to JS undefined.
-// ---------------------------------------------------------------------------
+// all 16 components.
+
 void testMatrixFieldMarshalling() {
   X3DExecutionContext ctx;
 
@@ -352,11 +319,10 @@ void testMatrixFieldMarshalling() {
   check(ok, "scr006: SFMatrix4f round-trips through JS (1..16 preserved)");
 }
 
-// ---------------------------------------------------------------------------
-// T9 (SCR-003): a script's eventsProcessed() that writes an author outputOnly
+// a script's eventsProcessed() that writes an author outputOnly
 //     field must have that write read back + emitted (§29.2.4). mustEvaluate
 //     FALSE defers the input to the batch so eventsProcessed fires this tick.
-// ---------------------------------------------------------------------------
+
 void testEventsProcessedAuthorOutput() {
   X3DExecutionContext ctx;
 

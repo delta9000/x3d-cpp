@@ -1,4 +1,3 @@
-// GeoMetadata.cpp
 #include "x3d/nodes/GeoMetadata.hpp"
 
 namespace x3d::nodes {

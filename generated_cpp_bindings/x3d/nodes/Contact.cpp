@@ -1,4 +1,3 @@
-// Contact.cpp
 #include "x3d/nodes/Contact.hpp"
 
 namespace x3d::nodes {

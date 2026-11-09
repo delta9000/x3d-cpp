@@ -1,4 +1,3 @@
-// Text.cpp
 #include "x3d/nodes/Text.hpp"
 
 namespace x3d::nodes {

@@ -18,7 +18,6 @@ struct record {
   double time = 0;
   operation op = operation::idle;
   float first = 0, second = 0;
-  std::size_t line = 0;
 };
 
 // The file is read into a bounded buffer before parsing: even an enormous line
@@ -58,7 +57,6 @@ inline std::vector<record> read_workload(const std::string& path) {
     if (fields.eof())
       continue;
     record item;
-    item.line = line_number;
     std::string name, argument, extra;
     if (!(fields >> item.time >> name) || !std::isfinite(item.time) ||
         item.time < previous_time || item.time > 1'000'000)

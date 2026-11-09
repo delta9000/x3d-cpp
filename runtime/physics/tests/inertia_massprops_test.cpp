@@ -1,6 +1,4 @@
-// inertia_massprops_test.cpp — ungated tests for the §37 inertia/centerOfMass
-// path: the MassProperties seam struct (Task 1) and PhysicsSystem's non-default
-// detection (Task 2). No physics engine required.
+// §37 inertia and centerOfMass mapping without a physics engine.
 #include "PhysicsBackend.hpp"
 #include "PhysicsSystem.hpp"
 #include "X3DExecutionContext.hpp"
@@ -35,7 +33,7 @@ static void test_massprops_defaults() {
         "inertia tensor zero-initialises");
 }
 
-// A fake backend that records the MassProperties passed to the LAST addBody, so
+// A fake backend that records the MassProperties passed to the last addBody, so
 // we can assert PhysicsSystem's non-default detection without a physics engine.
 class RecordingBackend : public PhysicsBackend {
 public:

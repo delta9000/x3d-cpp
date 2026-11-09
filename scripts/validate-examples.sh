@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate the out-of-SDK renderer CONSUMERS that `mise run ci` does NOT build.
+# Validate the out-of-SDK renderer consumers that `mise run ci` does not build.
 #
 # `mise run ci` compiles the SDK + tests only. The two example renderers —
 # examples/cpu_raster/ (headless CPU raster) and examples/poc_renderer/ (OpenGL) —
@@ -7,7 +7,7 @@
 # an SDK-wide refactor (e.g. ADR-0039's x3d::core / x3d::nodes namespace move)
 # silently breaks them and nothing notices until someone runs an example by hand.
 #
-# This gate builds BOTH, runs their --headless probes, and exercises the real GL
+# This gate builds both, runs their --headless probes, and exercises the real GL
 # pipeline headlessly under Xvfb — requesting mesa software GL (llvmpipe) so the
 # run is reproducible on a GPU-less box — mirroring the sibling ../x3d-render
 # validation path (GLFW offscreen + glReadPixels). It captures and checks the
@@ -32,7 +32,7 @@ SVG=build-x3d2svg/examples/x3d2svg/x3d_x3d2svg
 
 echo "== build poc_renderer (X3D_CPP_BUILD_POC=ON; FetchContent GLFW) =="
 cmake -S . -B build-poc -G Ninja -DX3D_CPP_BUILD_POC=ON >/dev/null
-cmake --build build-poc --target x3d_poc_renderer
+cmake --build build-poc --target x3d_poc_renderer x3d_poc_input x3d_poc_draw_math
 POC=build-poc/examples/poc_renderer/x3d_poc_renderer
 
 echo "== cpu_raster --headless (no GL) =="
@@ -102,15 +102,12 @@ else
   echo "NOTE: the real GL pipeline was still exercised end-to-end on real hardware; what is NOT proven here is the GPU-less/software-Mesa reproducibility this gate also aims for."
 fi
 
-# ---- RND-1: GL MASK alpha-cutout regression -------------------------------
+# GL MASK alpha-cutout regression
 # A MASK panel textured with a sub-cutoff alpha (0.235 < alphaCutoff 0.5) and a
-# fully-opaque material (so it lives in the OPAQUE pass) must be removed ONLY by
+# fully-opaque material (so it lives in the OPAQUE pass) must be removed only by
 # the fragment shader's MASK discard -> the frame is ~100% Background. The opaque
 # control (same panel, no alphaMode) renders solid -> Background clearly < 100%.
-# This guards lit.frag's `uAlphaMode == Mask` discard: RND-1 gated the discard on
-# the wrong enum value, so cutouts never punched and the panel drew solid. Robust
-# to software-Mesa/llvmpipe shading noise -- the signal is "did a whole panel of
-# pixels appear or not", measured as background-dominance, not exact pixels.
+# Background dominance detects whole-panel discard despite Mesa shading noise.
 echo "== poc MASK alpha-cutout gate (RND-1) under Xvfb + mesa software GL =="
 MASK_DIR="$(mktemp -d)"
 poc_shot() { # $1 = out PPM, $2 = scene
@@ -120,7 +117,7 @@ poc_shot() { # $1 = out PPM, $2 = scene
 }
 poc_shot "$MASK_DIR/opaque.ppm" examples/poc_renderer/assets/alpha_mask_opaque.x3d
 poc_shot "$MASK_DIR/mask.ppm"   examples/poc_renderer/assets/alpha_mask_cutout.x3d
-# Positive control first: the panel MUST render, else an all-background mask frame
+# Positive control first: the panel must render, else an all-background mask frame
 # would pass for the wrong reason (empty scene rather than a working discard).
 python3 scripts/check_screenshot_bg.py "$MASK_DIR/opaque.ppm" \
   --bg 0,0,153 --tol 30 --max 0.85 --label rnd1-control
@@ -128,7 +125,7 @@ python3 scripts/check_screenshot_bg.py "$MASK_DIR/mask.ppm" \
   --bg 0,0,153 --tol 30 --min 0.99 --label rnd1-mask
 echo "OK: MASK cutout fully discarded; opaque control rendered (RND-1 guard)"
 
-# ---- SHAPE FillProperties GL pixel regression ------------------------------
+# shape FillProperties GL pixel regression
 # Exercise the actual PoC shaders through --screenshot/glReadPixels under the
 # same isolated Xvfb + Mesa setup as the other GL acceptance fixtures.
 echo "== poc FillProperties pixel gate under Xvfb (software GL requested) =="
@@ -137,40 +134,10 @@ xvfb-run -a env \
   LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe __GLX_VENDOR_LIBRARY_NAME=mesa \
   python3 scripts/check_poc_fill_properties.py "$POC"
 
-# ---- TEXTURING eye-space texgen GL pixel regression (issue #140) -----------
-echo "== poc eye-space TextureCoordinateGenerator gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texgen_gl_test.py "$POC"
-
-echo "== poc local/noise/refraction TextureCoordinateGenerator gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texgen_local_gl_test.py "$POC"
-
-# ---- LIGHTING shadow GL pixel regression (REQ-SHADOW) ----------------------
-echo "== poc light shadow gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/shadow_gl_test.py "$POC"
-
-# ---- CUBE MAP environment texture GL pixel regression (REQ-CUBE) -----------
-echo "== poc ComposedCubeMapTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/cube_map_gl_test.py "$POC"
-echo "== poc GeneratedCubeMapTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/generated_cube_map_gl_test.py "$POC"
-echo "== poc TextureProjector gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/texture_projector_gl_test.py "$POC"
-
-# ---- RENDERING ClipPlane GL pixel regression (REQ-CLIP) --------------------
-echo "== poc ClipPlane gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/clip_plane_gl_test.py "$POC"
-
-# ---- ENVIRONMENTAL EFFECTS LocalFog GL pixel regression (REQ-LOCALFOG) -----
-echo "== poc LocalFog gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/local_fog_gl_test.py "$POC"
-
-# ---- TEXTURING MultiTexture GL pixel regression (REQ-MULTITEXTURE) ---------
-echo "== poc MultiTexture gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/multitexture_gl_test.py "$POC"
-
-# ---- SHADERS scene-authored program GL pixel regression (REQ-SHADER) -------
-echo "== poc author-shader selection gate under Xvfb (software GL) =="
-python3 examples/poc_renderer/tests/author_shader_gl_test.py "$POC"
+echo "== registered PoC regressions (including software GL) =="
+# Serial: each GL test starts its own `xvfb-run -a`, and concurrent instances
+# race for the same display number.
+ctest --test-dir build-poc -R '^x3d_poc_' --output-on-failure --no-tests=error -j1
 
 echo "== build asset_import (cgltf default, no assimp) =="
 cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null

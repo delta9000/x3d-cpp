@@ -1,7 +1,7 @@
-// MockScriptEngine.hpp  (TEST-ONLY)
+// MockScriptEngine.hpp  (TEST-only)
 // A ScriptEngine that records every call and can replay scripted field writes /
 // route changes through the SaiContext — so the language-agnostic runtime
-// (SaiContext, and later ScriptSystem) is testable with ZERO JavaScript.
+// (SaiContext, and later ScriptSystem) is testable with zero JavaScript.
 //
 // It is deliberately dumb: it never parses `source`. Instead the test arms it
 // with reactions ("when invoke(eventName) fires, perform these SAI calls") and
@@ -22,7 +22,7 @@
 namespace x3d::runtime::test {
 
 /**
- * @brief Recording ScriptEngine for Track-A tests (no real language backend).
+ * @brief Recording ScriptEngine without a language interpreter.
  * @details Each loaded script is one slot keyed by its handle. The mock:
  *            - records load/initialize/prepareEvents/invoke/eventsProcessed/
  *              shutdown calls in declaration order (the `calls` log), and
@@ -84,7 +84,7 @@ public:
     calls.push_back({"eventsProcessed", handle, "", timestamp, ""});
   }
 
-  // ---- test arming API ------------------------------------------------------
+  // test arming API
 
   /// Register what to do when `eventName` is invoked (replaces any prior one).
   void on(const std::string &eventName, Reaction reaction) {

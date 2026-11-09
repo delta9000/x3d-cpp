@@ -1,4 +1,3 @@
-// X3DColorNode.cpp
 #include "x3d/nodes/X3DColorNode.hpp"
 
 namespace x3d::nodes {

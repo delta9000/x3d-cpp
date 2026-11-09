@@ -438,7 +438,7 @@ TEST_CASE("Interactive: LOOKAT animates toward the picked object") {
   for (int i = 0; i < 15; ++i) host.tick();
   CHECK(host.count("N.transitionComplete") == 1);
   const auto eye = host.eye(), f = host.forward();
-  // The view now centers the box: the box lies straight ahead.
+  // The view centers the box: the box lies straight ahead.
   const SFVec3f toBox{3 - eye.x, -eye.y, -eye.z};
   const float d = length(toBox);
   CHECK(near(f, {toBox.x / d, toBox.y / d, toBox.z / d}, 1e-2f));

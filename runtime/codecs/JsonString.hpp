@@ -27,8 +27,7 @@ inline std::string quote(const std::string &s) {
       break;
     default:
       if (static_cast<unsigned char>(c) < 0x20) {
-        // RFC 8259: control characters MUST be escaped; strict consumers
-        // (and X3DJSAIL's JSON path) reject raw bytes here (ENC-JSON-CTRL).
+        // RFC 8259 requires escaping control characters below U+0020.
         char buf[8];
         std::snprintf(buf, sizeof buf, "\\u%04x",
                       static_cast<unsigned>(static_cast<unsigned char>(c)));

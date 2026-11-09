@@ -1,5 +1,4 @@
 // tools/x3d-cli/stl_write_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // TDD: binary-STL writer round-trip — writeStlBinary → parseStlBinary.
 //
 // Gated on X3D_CPP_BUILD_EXT (needs StlReader.hpp from runtime/ext/codecs/).
@@ -11,7 +10,6 @@
 //   3. Two triangles → vertex_count=6, normals reconstructed and reasonable.
 //   4. Geometric normal auto-computation (no normals supplied) — correct direction.
 //   5. Supplied normals are carried through (averaged to facet normal, then stored).
-// ─────────────────────────────────────────────────────────────────────────────
 #include "stl_write.hpp"   // x3d::cli::writeStlBinary
 #include "StlReader.hpp"   // x3d::runtime::ext::parseStlBinary
 
@@ -25,10 +23,8 @@
 using namespace x3d::runtime::ext;
 using namespace x3d::runtime::extract; // PackedMesh, VertexAttrib, ComponentType
 
-// ---------------------------------------------------------------------------
 // Helper: extract all float values for a given attribute from a PackedMesh.
 // Returns a flat array [v0.x, v0.y, v0.z, v1.x, ...].
-// ---------------------------------------------------------------------------
 static std::vector<float> extractFloats(const PackedMesh &pm, VertexAttrib attr) {
     if (!pm.has(attr)) return {};
     const VertexBufferView &view = pm.attribute_views[static_cast<uint8_t>(attr)];
@@ -56,9 +52,7 @@ static bool near(float a, float b, float tol = 1e-5f) {
     return fabsf_val(a - b) <= tol;
 }
 
-// ---------------------------------------------------------------------------
 // Test 1: empty list → 84-byte buffer, triCount=0, readback gives empty mesh.
-// ---------------------------------------------------------------------------
 static void test_empty() {
     std::vector<SFVec3f> empty;
     std::string bytes = x3d::cli::writeStlBinary(empty);
@@ -80,9 +74,7 @@ static void test_empty() {
     std::cout << "ok:   test_empty\n";
 }
 
-// ---------------------------------------------------------------------------
 // Test 2: one triangle — vertices round-trip bit-exactly.
-// ---------------------------------------------------------------------------
 static void test_one_triangle_bit_exact() {
     // CCW triangle in XY plane.
     std::vector<SFVec3f> pos = {
@@ -109,9 +101,7 @@ static void test_one_triangle_bit_exact() {
     std::cout << "ok:   test_one_triangle_bit_exact\n";
 }
 
-// ---------------------------------------------------------------------------
 // Test 3: two triangles — vertex_count = 6.
-// ---------------------------------------------------------------------------
 static void test_two_triangles_vertex_count() {
     std::vector<SFVec3f> pos = {
         // tri 0 (XY plane, +Z normal)
@@ -130,10 +120,8 @@ static void test_two_triangles_vertex_count() {
     std::cout << "ok:   test_two_triangles_vertex_count\n";
 }
 
-// ---------------------------------------------------------------------------
 // Test 4: geometric normal auto-computation (no normals supplied).
 //   Triangle in XY plane (z=0), CCW → normal should be +Z = (0,0,1).
-// ---------------------------------------------------------------------------
 static void test_geometric_normal() {
     std::vector<SFVec3f> pos = {
         {0.0f, 0.0f, 0.0f},
@@ -155,9 +143,7 @@ static void test_geometric_normal() {
     std::cout << "ok:   test_geometric_normal\n";
 }
 
-// ---------------------------------------------------------------------------
 // Test 5: supplied normals → they appear (averaged) in the STL facet normal.
-// ---------------------------------------------------------------------------
 static void test_supplied_normals() {
     std::vector<SFVec3f> pos = {
         {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
@@ -181,9 +167,7 @@ static void test_supplied_normals() {
     std::cout << "ok:   test_supplied_normals\n";
 }
 
-// ---------------------------------------------------------------------------
 // Test 6: invalid size (not divisible by 3) → exception.
-// ---------------------------------------------------------------------------
 static void test_invalid_size() {
     std::vector<SFVec3f> bad = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
     bool threw = false;

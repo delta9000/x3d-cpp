@@ -1,4 +1,3 @@
-// NurbsPositionInterpolator.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,64 +24,31 @@ using namespace x3d::core;
  */
 class NurbsPositionInterpolator : public virtual X3DChildNode {
 public:
-  /**
-   * @brief Default constructor for NurbsPositionInterpolator
-   */
   NurbsPositionInterpolator() = default;
 
-  /**
-   * @brief Destructor for NurbsPositionInterpolator
-   */
   ~NurbsPositionInterpolator() = default;
 
-  /**
-   * @brief Get the default value for controlPoint
-   * @return SFNode The default value
-   */
   static SFNode getDefaultControlPoint() { return nullptr; }
 
-  /**
-   * @brief Get the default value for order
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultOrder() { return 3; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "NURBS"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of controlPoint. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details Single contained Coordinate or CoordinateDouble node that can
    * specify control points for NURBS geometry definitions.
-   * @return const SFNode& The current value of controlPoint.
    */
   const SFNode &getControlPoint() const { return _controlPoint; }
 
   /**
-   * @brief Acceptable node types for the controlPoint field.
    * @details Permitted X3D node types: Coordinate, CoordinateDouble
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableControlPointNodeTypes() {
     static const std::vector<std::string> types = {"Coordinate",
@@ -91,44 +57,39 @@ public:
   }
 
   /**
-   * @brief Sets the value of controlPoint. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Single contained Coordinate or CoordinateDouble node that can
    * specify control points for NURBS geometry definitions.
-   * @param value The new value for controlPoint.
    */
   void setControlPoint(const SFNode &value) { _controlPoint = value; }
 
   void setControlPoint(SFNode &&value) { _controlPoint = std::move(value); }
 
   /**
-   * @brief Gets the value of knot. AccessType: inputOutput
+   * MFDouble; access: inputOutput. Borrows the stored value.
    * @details knot vector, where size = number of control points + order of
    * curve.
-   * @return const MFDouble& The current value of knot.
    */
   const MFDouble &getKnot() const { return _knot; }
 
   /**
-   * @brief Sets the value of knot. AccessType: inputOutput
+   * Access: inputOutput.
    * @details knot vector, where size = number of control points + order of
    * curve.
-   * @param value The new value for knot.
    */
   void setKnot(const MFDouble &value) { _knot = value; }
 
   void setKnot(MFDouble &&value) { _knot = std::move(value); }
 
   /**
-   * @brief Gets the value of order. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details define order of surface by polynomials of degree = order-1.
-   * @return const SFInt32& The current value of order.
    */
   const SFInt32 &getOrder() const { return _order; }
 
   /**
-   * @brief Sets the value of order. AccessType: inputOutput
+   * Access: inputOutput.
    * @details define order of surface by polynomials of degree = order-1.
-   * @param value The new value for order.
    */
   void setOrder(const SFInt32 &value) {
 
@@ -138,24 +99,17 @@ public:
   }
 
   /**
-   * @brief Non-validating write of order (runtime/reader ingest path).
-   * @details Assigns without the range check setOrder() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setOrder() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setOrder() for range validation.
    */
   void setOrderUnchecked(const SFInt32 &value) { _order = value; }
 
   /**
-   * @brief Event handler invoked when an event is received on set_fraction.
-   * AccessType: inputOnly
+   * SFFloat; access: inputOnly.
    * @details setting fraction in range [0,1] selects input key for
    * corresponding keyValue output, computing a 3D position on the curve.
    *          Dispatches to the handler registered via
-   * setOnSet_fractionHandler(); a no-op if none is set. The event cascade
-   * reaches this through the node's reflected field table, so routing is
-   * node-agnostic.
-   * @param value The value of the received event.
+   * setOnSet_fractionHandler(); a no-op if none is set.
    */
   void onSet_fraction(const SFFloat &value) {
     if (_onSet_fractionHandler)
@@ -163,76 +117,54 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on set_fraction.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnSet_fractionHandler(std::function<void(const SFFloat &)> handler) {
     _onSet_fractionHandler = std::move(handler);
   }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * SFVec3f; access: outputOnly. Borrows the stored value.
    * @details Computationaly interpolated output value determined by current key
    * time and corresponding keyValue pair.
-   * @return const SFVec3f& The current value of value_changed.
    */
   const SFVec3f &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Computationaly interpolated output value determined by current key
-   * time and corresponding keyValue pair. outputOnly fields have no
-   * author-facing setter; a node's behavior or the runtime calls this to
-   * produce an output event. The event cascade reaches it through the reflected
-   * field table so producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * time and corresponding keyValue pair.
    */
   void emitValue_changed(const SFVec3f &value) { _value_changed = value; }
 
   /**
-   * @brief Gets the value of weight. AccessType: inputOutput
+   * MFDouble; access: inputOutput. Borrows the stored value.
    * @details Output values for linear interpolation, each corresponding to
    * knots.
-   * @return const MFDouble& The current value of weight.
    */
   const MFDouble &getWeight() const { return _weight; }
 
   /**
-   * @brief Sets the value of weight. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Output values for linear interpolation, each corresponding to
    * knots.
-   * @param value The new value for weight.
    */
   void setWeight(const MFDouble &value) { _weight = value; }
 
   void setWeight(MFDouble &&value) { _weight = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "NurbsPositionInterpolator").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -254,39 +186,18 @@ private:
       throw std::out_of_range("order below minimum of 2");
   }
 
-  /**
-   * @brief Member variable for controlPoint.
-   */
-
   SFNode _controlPoint{nullptr};
 
-  /**
-   * @brief Member variable for knot.
-   */
-
   MFDouble _knot{};
-
-  /**
-   * @brief Member variable for order.
-   */
 
   SFInt32 _order{3};
 
   /**
-   * @brief Registered event handler for set_fraction (inputOnly); empty until
-   * set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const SFFloat &)> _onSet_fractionHandler{};
 
-  /**
-   * @brief Member variable for value_changed.
-   */
-
   SFVec3f _value_changed{};
-
-  /**
-   * @brief Member variable for weight.
-   */
 
   MFDouble _weight{};
 };

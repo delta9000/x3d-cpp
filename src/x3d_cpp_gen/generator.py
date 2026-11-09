@@ -5,12 +5,9 @@ from typing import Dict
 from x3d_cpp_gen.parser import X3DNode
 from x3d_cpp_gen.backends.cpp_header import CppHeaderBackend, TEMPLATES_DIR
 
-# --- Re-exports: these responsibilities now live in dedicated layers, but the
-# historical generator.* import surface is preserved for the CLI and tests. ---
-from x3d_cpp_gen.emit.naming import pascal  # noqa: F401
 from x3d_cpp_gen.emit.naming import cpp_str as _cpp_str  # noqa: F401
 from x3d_cpp_gen.emit.defaults import (  # noqa: F401
-    compute_default_expr, tokenize_mfstring, cpp_string_literal,
+    tokenize_mfstring, cpp_string_literal,
 )
 
 # Mapping from X3D field types to C++ types
@@ -366,19 +363,17 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
                           output_dir: str, templates_dir=None,
                           clang_format: str = "clang-format",
-                          enum_defs=None, namespace: str = "") -> None:
+                          enum_defs=None) -> None:
     """Thin orchestrator: delegate per-node header emission to the backend.
 
-    All type decisions now live in emit.descriptors and the backend renders the
+    Type decisions live in emit.descriptors and the backend renders the
     thin template; this function just wires the backend up with the requested
     templates dir / clang-format / enum definitions and runs it.
 
-    ``namespace`` (default empty) optionally wraps each emitted class in a C++
-    namespace. Empty keeps output byte-identical to the 4.0 golden.
+    Node classes use the fixed x3d::nodes namespace.
     """
     backend = CppHeaderBackend(templates_dir=templates_dir,
-                               clang_format=clang_format, enum_defs=enum_defs,
-                               namespace=namespace)
+                               clang_format=clang_format, enum_defs=enum_defs)
     backend.emit(nodes, dependency_graph, output_dir)
 
 
@@ -396,7 +391,7 @@ def _assertable_default_fields(node, enum_defs=None):
     from x3d_cpp_gen.emit.descriptors import build_descriptors
     from x3d_cpp_gen.parser import get_own_fields
 
-    # Only the node's OWN fields get a getDefault<Name>()/get<Name>() emitted on
+    # Only the node's own fields get a getDefault<Name>()/get<Name>() emitted on
     # the class itself (inherited ones are reachable via base classes but the
     # static default lives on the declaring base). Asserting on own fields keeps
     # every emitted call resolvable on the concrete type.

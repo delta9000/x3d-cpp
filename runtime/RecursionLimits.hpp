@@ -1,24 +1,8 @@
-// RecursionLimits.hpp
-// One shared cap on recursion/nesting depth for the input-facing front-ends.
-//
-// SEC-1 / MEM-1: the recursive-descent readers (XmlLite, JsonLite, the
-// ClassicVRML reader) and the scene-graph walkers (SceneExtractor, PickSystem)
-// all descend an attacker-influenced tree. Without a ceiling, a few-thousand-
-// deep document or a USE-cyclic / pathologically-nested scene overruns the
-// native stack and SIGSEGVs with no diagnostic (a denial-of-service).
-//
-// Past this depth the readers throw std::runtime_error (joining their existing
-// soft-failure path) and the walkers stop descending. 1000 is far above any
-// legitimate authored nesting — real X3D scenes nest well under 100 levels —
-// so well-formed input never reaches it.
-//
-// The cap is a heuristic on *logical* nesting, not a stack-byte budget: a reader
-// may burn several native frames per logical level (the ClassicVRML reader nests
-// ~3: parseNode/parseNodeBody/applyNodeField), so the worst case is ~3000 frames
-// — comfortably within an 8 MB main-thread stack, but an embedder parsing on a
-// small (e.g. 512 KB) worker-thread stack should lower the cap accordingly.
-//
-// Header-only, dependencies limited to <cstddef> / <stdexcept> / <string>.
+// Shared limits for attacker-controlled nesting and scene-graph traversal.
+// Readers throw std::runtime_error past the nesting limit; walkers stop descent.
+// The depth cap measures logical nesting, not stack bytes. ClassicVRML parsing
+// uses roughly three native frames per level, so a 1000-level input may need
+// about 3000 frames. Hosts with small worker stacks should lower the cap.
 #ifndef X3D_RECURSION_LIMITS_HPP
 #define X3D_RECURSION_LIMITS_HPP
 
@@ -30,16 +14,9 @@ namespace x3d {
 
 inline constexpr std::size_t kMaxNestingDepth = 1000;
 
-// Ceiling on the number of bytes a single gzip stream may inflate to (SEC-5).
-// The front-end transparently inflates gzip-magic input (parseFile), but the
-// decompressed size is attacker-controlled: a tiny "decompression bomb" expands
-// to gigabytes, and the gzip ISIZE footer (a 32-bit hint) can be forged large to
-// drive a huge up-front allocation — either way an unbounded-memory DoS. inflate
-// caps both the initial reservation and the grow-and-retry loop at this limit and
-// throws past it. 256 MiB is far above any legitimate X3D payload (real scenes
-// inflate to at most tens of MB) yet bounds the pathological case to a finite
-// allocation; an embedder parsing on a tight memory budget can lower it via the
-// inflateGzip `maxOut` parameter.
+// Cap gzip output and initial reservation at 256 MiB to bound decompression
+// bombs and forged ISIZE allocation hints. Exceeding it throws. Hosts may lower
+// the limit through inflateGzip's maxOut parameter.
 inline constexpr std::size_t kMaxDecompressedBytes = 256u * 1024u * 1024u;
 
 // RAII recursion-depth counter shared by the parser front-ends. Construct one at
@@ -47,7 +24,7 @@ inline constexpr std::size_t kMaxDecompressedBytes = 256u * 1024u * 1024u;
 // throws std::runtime_error when entering a level past kMaxNestingDepth and
 // restores the count on return so sibling subtrees do not accumulate depth.
 //
-// The cap is checked BEFORE the increment on purpose: a guard whose constructor
+// The cap is checked before the increment on purpose: a guard whose constructor
 // throws is never fully constructed, so its destructor never runs — checking
 // first means the throwing guard leaves the counter untouched (incrementing
 // first would leak +1 per rejected parse, poisoning a reused reader instance).
@@ -64,17 +41,10 @@ struct NestingGuard {
   NestingGuard &operator=(const NestingGuard &) = delete;
 };
 
-// Ceiling on the number of node-VISITS a single scene-graph traversal may make
-// (#21). The MEM-1 depth/cycle guards make the extractor/pick/light walks
-// crash-proof, but an *acyclic* "doubling DAG" (G0->[G1,G1], G1->[G2,G2], ...)
-// fans out to 2^depth distinct paths while staying shallow and back-edge-free —
-// the per-path walk then explodes into a CPU (and, for the un-interned light/pick
-// walks, memory) DoS. This counts node-visits, NOT RenderItems; the extractor
-// shares ONE budget across light collection and the geometry walk, each of which
-// visits ~every node, so the effective per-node headroom is ~half the cap. The
-// default is still far above any legitimate scene's node count yet bounds the
-// pathological fan-out to a finite, fast walk; raise it for a genuinely huge
-// scene (and read budgetExceeded() to detect a truncated result).
+// Bound per-path visits even in shallow acyclic doubling DAGs, where depth
+// and cycle guards cannot prevent exponential work. Geometry and light walks
+// share this budget, so each node may spend two visits. budgetExceeded()
+// reports truncation. See ADR-0037.
 inline constexpr std::size_t kMaxGraphWalkVisits = 1'000'000;
 
 // Per-traversal node-visit budget for the per-path emitters (SceneExtractor::walk,

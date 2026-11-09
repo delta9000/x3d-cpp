@@ -1,4 +1,3 @@
-// ElevationGrid.cpp
 #include "x3d/nodes/ElevationGrid.hpp"
 
 namespace x3d::nodes {

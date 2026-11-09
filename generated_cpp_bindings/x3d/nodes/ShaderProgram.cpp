@@ -1,4 +1,3 @@
-// ShaderProgram.cpp
 #include "x3d/nodes/ShaderProgram.hpp"
 
 namespace x3d::nodes {

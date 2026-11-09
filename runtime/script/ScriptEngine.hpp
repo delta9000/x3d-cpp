@@ -1,13 +1,6 @@
-// ScriptEngine.hpp
-// The language-agnostic Script backend seam (ISO/IEC 19775-1 §29.1: browsers
-// are not required to support any specific language). A backend (ECMAScript via
-// Duktape, or any other) implements this interface; ScriptSystem drives it.
-//
-// LANGUAGE-AGNOSTIC CONTRACT (spec §4.2): this seam carries NO scripting-language
-// types. Every value crossing it is the runtime's own field representation
-// (std::any boxing the field's C++ type, tagged by X3DFieldType) — never a JS
-// object. Each backend privately marshals std::any <-> its own idiom. A Lua,
-// Java, or Python backend would map the same std::any field values to its world.
+// Language-independent script interface (ISO/IEC 19775-1 §29.1).
+// Values cross as std::any containing an X3D field type, tagged by X3DFieldType.
+// Language-specific types and marshalling remain private to each backend.
 #ifndef X3D_RUNTIME_SCRIPT_ENGINE_HPP
 #define X3D_RUNTIME_SCRIPT_ENGINE_HPP
 
@@ -35,7 +28,6 @@ class SaiContext;
  */
 using ScriptHandle = std::uint64_t;
 
-/** @brief The invalid / unloaded script handle. */
 inline constexpr ScriptHandle kInvalidScriptHandle = 0;
 
 /**
@@ -45,7 +37,7 @@ inline constexpr ScriptHandle kInvalidScriptHandle = 0;
  *          The lifecycle mirrors ISO 19775-1 §29.2:
  *            - load(): compile/parse the source for a Script node.
  *            - initialize(): run the script's initialize() before its first event.
- *            - prepareEvents(): once per timestamp, BEFORE any ROUTE processing.
+ *            - prepareEvents(): once per timestamp, before any ROUTE processing.
  *            - invoke(): deliver one inputOnly event to its handler.
  *            - eventsProcessed(): after a batch of received events.
  *            - shutdown(): on node removal or url change.
@@ -99,7 +91,7 @@ public:
    * @param source The decoded script body (inline ecmascript: text, or fetched
    *        external source) — already language-appropriate for this backend.
    * @param sai The in-process SAI surface the script calls back into. The engine
-   *        must NOT outlive `sai`; the runtime owns lifetime ordering.
+   *        must not outlive `sai`; the runtime owns lifetime ordering.
    * @return A non-zero handle on success, kInvalidScriptHandle on failure.
    */
   virtual ScriptHandle load(X3DNode &scriptNode, const std::string &source,
@@ -125,7 +117,7 @@ public:
    * @param eventName The author field name receiving the event (the handler the
    *        backend dispatches to; e.g. ECMAScript calls a function of this name).
    * @param value The event value, boxed in std::any (concrete C++ type per the
-   *        field's X3DFieldType). NEVER a scripting-language object.
+   *        field's X3DFieldType). never a scripting-language object.
    * @param type The field's type tag, so the backend can marshal `value`.
    * @param timestamp The event's timestamp; values the script emits in response
    *        carry this same timestamp (conceptually zero elapsed time).

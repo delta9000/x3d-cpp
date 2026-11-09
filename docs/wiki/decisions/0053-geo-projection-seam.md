@@ -11,6 +11,8 @@ related:
 
 # ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default
 
+Status: superseded by ADR-0058
+
 ## Status
 
 Accepted for the mathematical seam. The process-wide selection decision is

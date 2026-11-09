@@ -1,4 +1,3 @@
-// PointEmitter.cpp
 #include "x3d/nodes/PointEmitter.hpp"
 
 namespace x3d::nodes {

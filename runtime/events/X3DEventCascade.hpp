@@ -31,7 +31,7 @@ using namespace x3d::core;
  *          uniquely required ISO ordering of simultaneous events.
  *
  *          postEvent remains a legacy direct-seed API: every seed delivers.
- *          Unmigrated Systems using it for output are NOT output-capped. Routed
+ *          Unmigrated Systems using it for output are not output-capped. Routed
  *          non-inputOnly destinations retain their legacy per-field cap. This
  *          is intentionally not a claim of complete event-model conformance.
  *
@@ -55,7 +55,36 @@ public:
         Delivery{FieldAddress{node, field}, std::move(value), Origin::Seed});
   }
 
-  /// Queue a generated outputOnly value WITHOUT first mutating node storage.
+  struct RetainedInput {
+    FieldAddress target;
+    std::any value;
+  };
+
+  // Install a prevalidated retained batch before any observer or handler runs.
+  // Delivery below announces these occurrences without setting storage twice.
+  // Failure may leave partial state; callers must retire/fault that execution.
+  void stageRetained(const std::vector<RetainedInput> &batch) {
+    std::deque<Delivery> staged;
+    for (const auto &input : batch) {
+      const auto &a = input.target;
+      if (!a.node)
+        throw std::invalid_argument("null retained ingress node");
+      const auto &fields = a.node->fields();
+      const auto f =
+          std::find_if(fields.begin(), fields.end(),
+                       [&](const auto &f) { return f.x3dName == a.field; });
+      if (f == fields.end() || f->access != AccessType::InputOutput || !f->set)
+        throw std::invalid_argument(
+            "retained ingress requires inputOutput storage");
+      if (!acceptsInput(a, input.value))
+        continue;
+      f->set(*a.node, input.value);
+      staged.push_back({a, input.value, Origin::Staged});
+    }
+    pending_.insert(pending_.begin(), staged.begin(), staged.end());
+  }
+
+  /// Queue a generated outputOnly value without first mutating node storage.
   /// Validates the writable endpoint now; admission happens when drained. Only
   /// the first admitted value in this timestamp reaches the setter, observer,
   /// or ROUTEs. No synchronous emission or acceptance is implied by queueing.
@@ -82,7 +111,7 @@ public:
    * @details A "timestamp" is one logical instant of event processing, which may
    *          span several `process()` calls (the §4.4.8.3 step-4 re-evaluation
    *          loop alternates System updates with cascade drains). The per-field
-   *          cap (RTC-5) and per-edge guard must persist across those drains, so
+   *          cap  and per-edge guard must persist across those drains, so
    *          they are reset here — once per timestamp — not inside `process()`.
    *          `process(freshTimestamp=true)` (the default) calls this for the
    *          common standalone one-shot drain.
@@ -93,6 +122,7 @@ public:
   }
 
   void removeNodes(const std::unordered_set<const X3DNode *> &nodes) {
+    removed_.insert(nodes.begin(), nodes.end());
     pending_.erase(std::remove_if(pending_.begin(), pending_.end(), [&](const Delivery &d) {
       return nodes.count(d.target.node) != 0;
     }), pending_.end());
@@ -124,6 +154,7 @@ public:
     while (!pending_.empty()) {
       Delivery d = std::move(pending_.front());
       pending_.pop_front();
+      if (removed_.count(d.target.node)) continue;
       // An empty value is a re-read request (editChildren): deliver the
       // field's value as it stands now.
       if (!d.value.has_value() && d.target.node) {
@@ -132,17 +163,19 @@ public:
         if (!d.value.has_value()) continue;
       }
 
-      // Normalize field aliases before cap-check + delivery so that a SEED
+      // Normalize field aliases before cap-check + delivery so that a seed
       // posted as `set_translation` and a ROUTE to `translation` share the
       // same per-field entry. §4.4.2.2 alias resolution.
       FieldAddress norm{d.target.node,
                         resolveFieldAlias(d.target.node, d.target.field)};
 
-      if (d.origin != Origin::Output && !acceptsInput(norm, d.value)) continue;
+      if (d.origin != Origin::Output && d.origin != Origin::Staged &&
+          !acceptsInput(norm, d.value))
+        continue;
 
       const bool firstProduction = produced_.insert(norm).second;
 
-      // Admit the selected output BEFORE reflection mutates its backing field.
+      // Admit the selected output before reflection mutates its backing field.
       // A suppressed value must never leak into readback or observers. Keep
       // the legacy cap for routed value-bearing destinations, but an inputOnly
       // arrival is an occurrence, not production of an output field (§4.4.8.5).
@@ -152,15 +185,15 @@ public:
         continue;
       }
 
-      // Snapshot the sink list (copy) BEFORE delivering. Delivery can invoke a
-      // handler that mutates graph_ (e.g. ctx.addRoute/removeRoute, X3D
-      // §4.3.7); holding a reference into graph_ internals across that call
-      // would be iterator/reference-invalidation UB. Copying also gives the
-      // correct single-timestamp semantics: a route added mid-cascade is not
-      // delivered until the NEXT cascade.
+      // §4.3.7: snapshot sinks before callbacks can mutate the graph.
+      // Routes added during delivery take effect in the next cascade.
       const std::vector<FieldAddress> sinks = graph_.sinks(norm);
 
-      deliver(norm, d.value);
+      if (d.origin == Origin::Staged) {
+        if (observer_)
+          observer_(norm, d.value);
+      } else
+        deliver(norm, d.value);
       if (firstProduction) {
         ++newProductions; // only first-time productions count toward quiescence
       }
@@ -178,7 +211,9 @@ public:
   /// Register a callback invoked after each field is successfully delivered.
   /// Used by the runtime to feed the dirty-tracking layer; null by default.
   void setFieldObserver(std::function<void(const FieldAddress &)> obs) {
-    observer_ = std::move(obs);
+    observer_ = obs ? [obs = std::move(obs)](const FieldAddress &addr, std::any) {
+      obs(addr);
+    } : std::function<void(const FieldAddress &, std::any)>{};
   }
 
   void addInputFilter(std::function<bool(const FieldAddress &, const std::any &)> filter) {
@@ -206,7 +241,7 @@ public:
   }
 
 private:
-  enum class Origin { Seed, Output, Route };
+  enum class Origin { Seed, Output, Route, Staged };
 
   struct Delivery {
     FieldAddress target;
@@ -251,8 +286,11 @@ private:
     for (const auto &info : addr.node->fields()) {
       if (info.x3dName == addr.field) {
         if (info.set) {
+          std::any retained = info.get &&
+              (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+              ? info.get(*addr.node) : std::any{};
           info.set(*addr.node, value);
-          if (observer_) observer_(addr);
+          if (observer_) observer_(addr, std::move(retained));
         }
         return;
       }
@@ -264,8 +302,11 @@ private:
     for (FieldInfo &info : authorFields_->authorFields(*addr.node)) {
       if (info.x3dName == addr.field) {
         if (info.set) {
+          std::any retained = info.get &&
+              (info.type == X3DFieldType::SFNode || info.type == X3DFieldType::MFNode)
+              ? info.get(*addr.node) : std::any{};
           info.set(*addr.node, value);
-          if (observer_) observer_(addr);
+          if (observer_) observer_(addr, std::move(retained));
           if (info.access == AccessType::InputOnly ||
               info.access == AccessType::InputOutput)
             for (const auto &listener : authorInputListeners_)
@@ -290,7 +331,8 @@ private:
       if (info.x3dName != "children" || info.type != X3DFieldType::MFNode ||
           !info.get || !info.set)
         continue;
-      Nodes children = std::any_cast<Nodes>(info.get(*addr.node));
+      Nodes retained = std::any_cast<Nodes>(info.get(*addr.node));
+      Nodes children = retained;
       if (addr.field == "addChildren") {
         for (const auto &n : *delta)
           if (n && std::find(children.begin(), children.end(), n) == children.end())
@@ -303,6 +345,7 @@ private:
       // Apply now so a later add/remove in this cascade sees this result, then
       // queue a re-read of the final value for dirty tracking and fan-out.
       info.set(*addr.node, std::any(std::move(children)));
+      if (observer_) observer_(addr, std::any(std::move(retained)));
       pending_.push_back(
           Delivery{FieldAddress{addr.node, "children"}, std::any{}, Origin::Seed});
       return true;
@@ -317,8 +360,9 @@ private:
   const EventGraph &graph_;
   std::shared_ptr<DynamicFieldStore> authorFields_;
   std::deque<Delivery> pending_;
+  std::unordered_set<const X3DNode *> removed_;
   std::size_t processDepth_ = 0;  // nested drains share the active timestamp
-  std::function<void(const FieldAddress &)> observer_;
+  std::function<void(const FieldAddress &, std::any)> observer_;
   std::vector<std::function<bool(const FieldAddress &, const std::any &)>> inputFilters_;
   std::vector<AuthorInputListener> authorInputListeners_;
   // Per-timestamp guards (reset by beginTimestamp). They persist across the

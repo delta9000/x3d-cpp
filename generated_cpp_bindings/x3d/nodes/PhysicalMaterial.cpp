@@ -1,4 +1,3 @@
-// PhysicalMaterial.cpp
 #include "x3d/nodes/PhysicalMaterial.hpp"
 
 namespace x3d::nodes {

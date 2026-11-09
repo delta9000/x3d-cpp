@@ -8,10 +8,10 @@
 # keeps this hermetic: no cross-compiler and no second install tree needed.
 #
 # What it pins down:
-#   - the package must NOT be arch-independent (it ships compiled .so files), so
+#   - the package must not be arch-independent (it ships compiled .so files), so
 #     a consumer with a different pointer size must be UNSUITABLE;
 #   - at 0.x, SameMajorVersion would treat every future 0.y as compatible, so
-#     compatibility must be scoped to the MINOR.
+#     compatibility must be scoped to the minor.
 
 if(NOT DEFINED VERSION_FILE)
   message(FATAL_ERROR "check_version_file.cmake: -DVERSION_FILE=<path> is required")
@@ -25,7 +25,7 @@ endif()
 
 # The "matching" arch is whatever this build actually is -- do not hardcode 8.
 # A 32-bit build must still see its own pointer size accepted, and the mismatch
-# case must be the OTHER size, whichever that is.
+# case must be the other size, whichever that is.
 set(_match_void_p "${BUILD_SIZEOF_VOID_P}")
 if(_match_void_p EQUAL 8)
   set(_mismatch_void_p 4)
@@ -56,25 +56,20 @@ if(u)
   list(APPEND _failures "0.1.0 request on the build's own arch should NOT be UNSUITABLE")
 endif()
 
-# Case 2: a LATER minor -> NOT compatible.
-# Note this case does not discriminate between SameMajorVersion and
-# SameMinorVersion: every mode first rejects installed < requested, so it was
-# already green before the fix. Kept as a regression control, not as evidence.
+# Case 2: a later minor -> not compatible.
+# Both version modes reject requests newer than the installed version.
 _probe(c u "0.2.0" 0 2 "${_match_void_p}")
 if(c)
   list(APPEND _failures "0.2.0 request must NOT be compatible with installed 0.1.0")
 endif()
 
-# Case 3: an EARLIER minor -> NOT compatible. THIS is the SameMajorVersion bug.
-# installed 0.1.0 >= requested 0.0.9 and the majors match (both 0), so
-# SameMajorVersion calls it compatible -- at 0.x that makes every 0.y look
-# interchangeable. SameMinorVersion rejects it because the minors differ.
+# An earlier minor is incompatible before 1.0, even when the majors match.
 _probe(c u "0.0.9" 0 0 "${_match_void_p}")
 if(c)
   list(APPEND _failures "0.0.9 request must NOT be compatible with installed 0.1.0")
 endif()
 
-# Case 4: mismatched pointer size -> UNSUITABLE (this is the ARCH_INDEPENDENT bug).
+# Mismatched pointer sizes are unsuitable for compiled libraries.
 _probe(c u "0.1.0" 0 1 "${_mismatch_void_p}")
 if(NOT u)
   list(APPEND _failures

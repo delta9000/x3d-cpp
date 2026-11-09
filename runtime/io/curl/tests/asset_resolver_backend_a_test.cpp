@@ -1,10 +1,4 @@
-// runtime/io/curl/tests/asset_resolver_backend_a_test.cpp
-// U1 per-backend test: verify HttpResolver wiring + URL prefix check +
-// libcurl error path, plus the SEC-6 hardening (loopback blocked by default,
-// response-size cap, redirect to a non-http scheme rejected). The success path
-// is tested in U3 (swap-test) against an in-process HTTP server — here a small
-// in-process server drives only the security assertions, keeping the test
-// hermetic + offline.
+// HTTP resolver URL handling and resolved-address security boundaries.
 #include "HttpResolver.hpp"
 
 #include "AssetResolver.hpp"
@@ -262,7 +256,7 @@ int main() {
   assert(r("http://[64:ff9b::7f00:1]/", AssetKind::Texture).failed());
   assert(r("http://[::7f00:1]/", AssetKind::Texture).failed());
 
-  // ── SEC-6 hardening, against an in-process loopback server ───────────────
+  // hardening, against an in-process loopback server
   TestServer srv;
   const int port = srv.start();
   assert(port > 0);

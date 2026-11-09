@@ -4,8 +4,6 @@
 #include <array>
 #include <cmath>
 
-// ADR-0039: the value types (SFVec3f &c.) now live in x3d::core, not the global
-// namespace. This consumer uses them unqualified, so pull the namespace in.
 using namespace x3d::core;
 
 int glfwToX3DNavKey(int glfwKey) {
@@ -23,7 +21,6 @@ x3d::runtime::Ray pocUnproject(double cx, double cy, int w, int h,
                                const x3d::runtime::Mat4 &view,
                                const x3d::runtime::Mat4 &proj) {
   using x3d::runtime::Mat4;
-  // SFVec3f lives in x3d::core (ADR-0039), pulled in via the file-scope using above.
   // Pixel → NDC. glfw cursor origin is top-left, +y down; NDC +y is up.
   const float ndcX = 2.0f * static_cast<float>(cx) / static_cast<float>(w) - 1.0f;
   const float ndcY = 1.0f - 2.0f * static_cast<float>(cy) / static_cast<float>(h);
@@ -50,7 +47,7 @@ x3d::runtime::Ray pocUnproject(double cx, double cy, int w, int h,
   return x3d::runtime::Ray{nearP, dir};
 }
 
-// ---- InputBridge ----------------------------------------------------------
+// InputBridge
 
 InputBridge::InputBridge(x3d::runtime::X3DExecutionContext &ctx, GLFWwindow *win,
                          std::shared_ptr<x3d::runtime::NavigationSystem> nav)
@@ -103,7 +100,7 @@ void InputBridge::feedPointerRay(const x3d::runtime::Mat4 &view,
   glfwGetCursorPos(win_, &cx, &cy);
   // World ray for picking / pointing-device sensors.
   ctx_.setPointer(pocUnproject(cx, cy, w, h, view, proj));
-  // Camera-INDEPENDENT normalized cursor for navigation drag (x right, y up).
+  // Camera-independent normalized cursor for navigation drag (x right, y up).
   // NavigationSystem derives its EXAMINE/FLY drag from this, not the world ray —
   // feeding the ray there made a single click spin the camera (the ray moves as
   // the camera rotates, so the drag fed back on itself and scaled with scene size).

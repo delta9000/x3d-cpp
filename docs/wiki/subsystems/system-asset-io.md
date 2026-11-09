@@ -1,7 +1,7 @@
 ---
 title: Asset Resolver / IO Seam
-summary: The bytes path from a URL surfaced verbatim in `TextureRef` to the raw bytes a consumer decodes — one callback type, two invocation contracts, two proven-generic backends (libcurl HTTP + AWS S3 SDK). The seam that unblocks LoadSensor, http/urn EXTERNPROTO, Script external-URL, and autoRefresh.
-tags: [subsystem, seam, asset-resolver, io, libcurl, s3, genericity, proven]
+summary: AssetResolver carries URL bytes and status through a host callback, with local-file and libcurl HTTP/FTP implementations.
+tags: [subsystem, seam, asset-resolver, io, libcurl, file, ftp]
 updated: 2026-10-02
 related:
   - ../architecture.md
@@ -12,257 +12,67 @@ related:
   - ../subsystems/ext-firewall.md
 ---
 
-# Asset Resolver / IO Seam
+# Asset resolution
 
-The `AssetResolver` seam is the **bytes path** — the place where a CONSUMER turns a URL
-surfaced verbatim in `TextureRef` (or in an Inline / EXTERNPROTO / ExternalGeometry
-descriptor) into the raw bytes it then decodes. The SDK never does I/O; the embedder
-supplies a `std::function<AssetResult(url, AssetKind)>` callback and a CONSUMER calls
-it. **Two independent backends** (`HttpResolver` over libcurl, `S3Resolver` over the
-AWS C++ SDK) plus a CI-gated swap-test prove the seam is generic ([ADR-0023](../decisions/0023-assetresolver-second-backend-swap-test.md));
-the interface is frozen `[STABLE]` in [`include/x3d/sdk.hpp:50`](https://github.com/delta9000/x3d-cpp/blob/main/include/x3d/sdk.hpp).
+`AssetResolver` maps `(url, AssetKind)` to `AssetResult`: bytes and one of
+`Ready`, `Pending`, or `Failed`. Its definition is in
+`runtime/extract/AssetResolver.hpp`. The host owns loading policy.
 
-## Purpose
+`AssetResolverWithBase(url, kind, baseUrl)` is an optional contextual callback
+on `SessionOptions` (`assetResolverWithBase`), `attachLoadSensors`, and
+`LoadSensorSystem`. The URL stays as authored; `baseUrl` is the watched node's
+source base, or the configured base when the node has no recorded provenance.
+LoadSensor prefers this callback over the plain resolver, including for movie
+URLs it watches, and its Ready memo keys on base, URL, and asset kind. Hosts
+that fetch movie frames themselves can read `TextureRef::baseUrl`; the SDK has
+no movie fetch loop. The paired parse-time loaders keep passing
+source-relative resolved URLs to the plain callback. See
+[ADR-0063](../decisions/0063-resolver-base-urls.md).
 
-Answer one question per asset reference: "given a URL and an `AssetKind`, what are the
-raw bytes?" The seam is intentionally minimal — the callback signature is a single
-`std::function`, the result is `{ status, bytes }`, and the SDK threads nothing but
-bytes back to the consumer. **Decoding** (PNG / JPEG / etc.) is the consumer's job; the
-seam is purely about bytes-on-the-wire.
+## Invocation contracts
 
-## The seam (the only contract)
+Render-time callers can receive `Pending` and retry later. Synchronous
+parse-time callers require an immediate result: `Failed` tries the next URL,
+while `Pending` aborts the recursive load. Do not turn a pending result into
+permission to use another resolver.
 
-```cpp
-// runtime/extract/AssetResolver.hpp — header-only, std-only, no node/transform deps.
-namespace x3d::runtime::extract {
+`runtime/parse/AssetDocumentResolvers.hpp` composes paired Inline and
+EXTERNPROTO loaders. The pair preserves resolver policy and fetched-source
+bases through nested loading and declaration caching. See
+[recursive asset loader policy](parse-readers.md#recursive-asset-loader-policy).
 
-enum class AssetKind    { Texture, Movie, Inline, ExternProto, ExternalGeometry };
-enum class AssetStatus { Ready, Pending, Failed };
+## Scheme routing
 
-struct AssetResult {
-  AssetStatus status = AssetStatus::Failed;
-  std::vector<std::uint8_t> bytes;
-  static AssetResult makeReady(std::vector<std::uint8_t>);
-  static AssetResult makePending();
-  static AssetResult makeFailed();
-};
+`makeSchemeRouter` in `runtime/extract/SchemeRouter.hpp` dispatches by URL
+scheme. Unknown schemes use the configured fallback or fail. Register the
+schemes your application permits; routing does not add transport support.
 
-using AssetResolver =
-    std::function<AssetResult(const std::string &url, AssetKind kind)>;
+## File resolver
 
-}  // namespace x3d::runtime::extract
-```
+`runtime/io/file/FileResolver.hpp` confines reads to a configured root. It
+canonicalizes paths and checks containment, including symlink resolution.
+The default parse helpers also apply local-path confinement.
 
-### One type, two invocation contracts
+## HTTP and FTP
 
-The SAME `AssetResolver` signature serves two distinct call sites with DIFFERENT
-lifetimes — locked at B8 design, not papered over:
+Enable `X3D_CPP_BUILD_CURL` to build `x3d_curl`.
+`runtime/io/curl/HttpResolver.hpp` exposes `makeHttpResolver()` and
+`makeFtpResolver`. Both perform synchronous requests through libcurl.
 
-| Contract | Call site | AssetKind | `Pending` legal? | When called |
-|---|---|---|---|---|
-| **(A) Render-time** | Texture / Movie bytes in the consumer's render loop, AFTER extraction | `Texture`, `Movie`, `ExternalGeometry` | **Yes** — retry next frame, never blocks a frame | Per `TextureRef` with `Source::Url` |
-| **(B) Parse-time** | Inline / EXTERNPROTO at scene-build, BEFORE `buildSceneGraph` | `Inline`, `ExternProto` | **No** — must return `Ready`/`Failed` synchronously (Pending is incoherent: nodes must exist before extraction can walk them) | During `expandScene` / `expandInlines` |
+HTTP permits HTTP/HTTPS only, including redirects; FTP has a separate protocol
+allowlist. The adapters apply byte and time bounds, a redirect cap, and
+post-DNS address checks. With `allowPrivateNetworks=false`, environment proxies
+are disabled and connections to classified private or reserved addresses fail.
+Opting into private networks also permits environment proxies.
 
-A single embedder resolver can branch on `AssetKind` to honor both contracts; both
-backends (`HttpResolver`, `S3Resolver`) return `Failed` (never `Pending`) in v1 —
-deferred-bytes Pending is a documented follow-up.
+## Consumers and evidence
 
-## Routing — `makeSchemeRouter` (route by scheme, never by `Failed`)
+The CPU reference host composes file, HTTP, HTTPS, and FTP routes with the
+stb byte decoder. `runtime/io/tests/asset_resolver_swap_test.cpp` checks HTTP
+fixture bytes and missing assets. Despite its historical name, it is an HTTP
+contract test. `runtime/io/tests/file_resolver_test.cpp` checks confined files;
+`runtime/io/curl/tests/` checks HTTP address and transport policy.
 
-Every backend self-identifies by URL scheme (HttpResolver → `http(s)://`, S3Resolver
-→ `s3://`, a local-file resolver → scheme-less/relative) and returns `Failed` for
-everything else, so without a router "wrong backend" and "right backend, genuinely
-failed" are indistinguishable. `runtime/extract/SchemeRouter.hpp` (header-only,
-std-only, IO-free — a lexical prefix check, no socket/file) mirrors
-[`makeMultiFormatTextureResolver`](system-texture-decode.md) by dispatching **before**
-calling a backend:
-
-```cpp
-// keyed by scheme ("http", "https", "s3", "file", "urn", …; a trailing ':'/'://'
-// is tolerated, matching is case-insensitive per RFC 3986). `fallback` handles
-// scheme-less / relative urls and is optional.
-x3d::runtime::extract::AssetResolver makeSchemeRouter(
-    std::map<std::string, x3d::runtime::extract::AssetResolver> backends,
-    x3d::runtime::extract::AssetResolver fallback = nullptr);
-```
-
-A url whose scheme matches a registered backend is handed to that backend verbatim;
-an **unknown scheme yields `Failed` without calling anything** (the router never
-guesses, and the `fallback` is not consulted for a named-but-unregistered scheme). A
-scheme-less / relative url goes to `fallback` when supplied, else `Failed`. A Windows drive path (`C:\models\a.x3d`) is also treated as scheme-less — its one-letter "scheme" is a drive designator, so it takes `fallback` rather than routing to a non-existent backend. Additive
-only — the `[STABLE]` seam type is unchanged.
-
-## FTP and the CPU reference host
-
-The optional `x3d_curl` backend exposes `makeFtpResolver(HttpResolverOptions)` alongside `makeHttpResolver`. FTP has its own protocol allowlist; HTTP redirects cannot switch to FTP. Both adapters enforce byte/time limits and post-DNS private-address restrictions. The FTP tests run a local passive server with an explicit private-network opt-in; the executable retains the default public-network policy.
-
-With `X3D_CPP_BUILD_CPURASTER`, `X3D_CPP_BUILD_STB` and `X3D_CPP_BUILD_CURL` enabled, the CPU host registers file/http/https/ftp routes and sends fetched image bytes to the stb decoder. Local reads are confined to the scene directory. `mise run interchange` builds this configuration and runs its tests. FTP is required by Interchange Annex B.6 as well as Full; a disconnected core SDK does not independently satisfy the host protocol requirement.
-
-## Backends (both proven generic)
-
-Both backends implement the unchanged `AssetResolver` type behind their own CMake option
-(mirroring the `x3d_quickjs` / `x3d_physics_jolt` isolation discipline: option →
-find_package → an isolated STATIC lib whose single TU is the resolver, with the
-heavyweight SDK linked PRIVATE so its headers/flags never leak to consumers).
-
-### Backend A — libcurl HTTP (`x3d_curl`, `X3D_CPP_BUILD_CURL`)
-
-`runtime/io/curl/HttpResolver.{hpp,cpp}`:
-
-- **Transport**: synchronous `curl_easy_perform` per call.
-- **URL subset**: `http://` and `https://` only; returns `Failed` for `urn:`, `file:`,
-  missing scheme.
-- **Status mapping**: `CURLE_OK` + 2xx → `Ready(bytes)`; `CURLE_*` or non-2xx → `Failed`.
-- **SEC-6 hardening (on by default).** A url like `http://169.254.169.254/` cannot be
-  turned into an SSRF against internal services:
-  - **Protocol-restricted redirects**: `CURLOPT_PROTOCOLS_STR` /
-    `CURLOPT_REDIR_PROTOCOLS_STR = "http,https"` (bitmask `CURLOPT_PROTOCOLS` /
-    `CURLOPT_REDIR_PROTOCOLS` on libcurl < 7.85). A redirect to `file:`, `ftp:`, etc. is
-    refused.
-  - **Redirect cap**: `CURLOPT_MAXREDIRS = 5`.
-  - **Response-size cap**: the write callback aborts a body past `maxBytes`
-    (default 256 MiB) → `Failed`; `CURLOPT_MAXFILESIZE_LARGE` is set as a hint.
-  - **Resolved-address guard**: `CURLOPT_OPENSOCKETFUNCTION` inspects the *resolved*
-    sockaddr (post-DNS, per connection and per redirect hop) and refuses loopback
-    (127/8, ::1), link-local (169.254/16, fe80::/10), RFC1918 (10/8, 172.16/12,
-    192.168/16), CGNAT (100.64/10), unique-local (fc00::/7) and unspecified
-    (0.0.0.0, ::) addresses. IPv4 addresses embedded in IPv6 are classified too —
-    IPv4-mapped (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`) and NAT64
-    (`64:ff9b::/96`) forms all run the IPv4 classifier on the embedded address. A
-    hostname or redirect cannot smuggle a private address past it.
-  - **No environment proxy**: when `allowPrivateNetworks` is false, `CURLOPT_PROXY = ""`
-    disables the `http_proxy`/`https_proxy`/`all_proxy` environment proxies. Without
-    this, libcurl would connect to the *proxy*, so the resolved-address guard would
-    inspect the proxy rather than the target and a private target could still be
-    reached through it. Opting in (`allowPrivateNetworks = true`) re-enables them.
-- **Configuration**: `makeHttpResolver(HttpResolverOptions{})` — defaults are the
-  hardened ones above; `allowPrivateNetworks = true` widens for local dev/tests
-  (the swap-test opts in to reach its loopback fixture server). The no-argument
-  `makeHttpResolver()` is source-compatible and uses the defaults.
-- **Build option**: `-DX3D_CPP_BUILD_CURL=ON` (OFF default, `find_package(CURL REQUIRED)`).
-  Default build (option OFF) is byte-identical and behavior-unchanged.
-- **Per-backend test**: `x3d_assetresolver_backend_a` (URL prefix check + libcurl
-  error path against unreachable host + the SEC-6 loopback-block / size-cap /
-  non-http-redirect cases against an in-process loopback server). Success path is in
-  the swap-test.
-
-### Backend B — AWS C++ SDK S3 (`x3d_s3`, `X3D_CPP_BUILD_S3`)
-
-`runtime/io/s3/S3Resolver.{hpp,cpp}`:
-
-- **Transport**: `Aws::S3::S3Client::GetObject` per call.
-- **URL subset**: `s3://<bucket>/<key>[?...]` only; returns `Failed` otherwise. The
-  `endpoint` parameter (default `http://localhost:9000`) overrides the SDK's endpoint
-  resolver for S3-compatible fixtures (docker `adobe/s3mock` in CI).
-- **SDK init**: lazy `Aws::InitAPI` via `std::once_flag` on first call. Embedder does
-  not need to call `Aws::InitAPI` / `ShutdownAPI` explicitly (idempotent if they do).
-- **Build option**: `-DX3D_CPP_BUILD_S3=ON` (OFF default, `find_package(AWSSDK REQUIRED
-  COMPONENTS s3)`). Default build (option OFF) is byte-identical.
-- **Per-backend test**: `x3d_assetresolver_backend_b` (URL prefix check + `s3://`
-  parse + SDK init path against unreachable endpoint). Success path is in the swap-test.
-
-## Genericity proof — `x3d_assetresolver_swap`
-
-`runtime/io/tests/asset_resolver_swap_test.cpp` — a ctest binary that drives identical
-fixture bytes through Backend A (libcurl HTTP) and Backend B (AWS S3) and asserts:
-
-- **Byte equality**: `resultA.bytes == resultB.bytes` (size + content via `std::equal`)
-  for every fixture.
-- **Failure parity**: `resultA.failed() == resultB.failed()` and both have empty
-  `bytes` for missing keys.
-- **Hermetic**: in-process POSIX-socket HTTP server on 127.0.0.1 (no external HTTP
-  server needed); fixtures uploaded to the S3 fixture via the AWS SDK at swap-test setup.
-- **Skip-when-no-S3-endpoint**: when `$X3D_S3_ENDPOINT` is unset (no docker), the test
-  degrades to an HTTP-only parity check and emits a SKIP message — so local dev
-  without docker doesn't get a spurious failure.
-
-Gated in CI by the `assetresolver-swap` job in `.github/workflows/ci.yml` (flag-gated
-build + a pinned docker `adobe/s3mock:5.2.3` S3 fixture on port 9000 +
-`ctest -R 'x3d_assetresolver(_backend|_swap)'`). On every PR that touches the asset seam, a consumer of it, or the build; a future parity break
-fails the merge.
-
-## How it is used
-
-The seam is invoked from **two distinct call sites**:
-
-### Consumer-side (contract A — render-time)
-
-A consumer (PoC renderer, Godot embedder, CAVE master, …) holds the `AssetResolver`
-and calls it per `TextureRef::Source::Url`. The PoC's `examples/poc_renderer/main.cpp:394`
-shows the wiring (`makeLocalFileResolver` — the pre-AssetResolver-seam file-I/O
-implementation; the new libcurl / S3 backends drop in as direct replacements).
-
-### SDK-side (contract B — parse-time)
-
-`runtime/parse/X3DParse.hpp:141` `localFileProtoResolver` is the **separate parse-time
-PROTO seam** (`ProtoDeclarationResolver`, not `AssetResolver`) — file-only by default,
-delegating `http(s)://` and `urn:` to embedder override territory. The PRF-6 card
-(http/urn EXTERNPROTO) is the parse-time seam's genericity proof; it unblocks here
-because the bytes-fetching seam it sits on top of is now proven.
-
-`runtime/parse/AssetProtoResolver.hpp` bridges the two: `protoResolverFrom(AssetResolver,
-Encoding hint = Unknown)` returns a `ProtoDeclarationResolver` that, for each url in an
-EXTERNPROTO's url list (in declared order, `#ProtoName` fragments honored), fetches the
-document bytes through the AssetResolver, sniffs the encoding, parses with `parseDocument`,
-and returns the matching `ProtoDeclare`. Per contract (B) `Failed` skips to the next
-candidate while `Pending` is a hard error (returns null); it never throws. `urn:` is
-handed to the resolver like any other url, so it resolves only when the injected resolver
-(typically a `makeSchemeRouter` with a `"urn"` entry) owns that scheme — otherwise
-`Failed`/skip, matching the file-local default. An embedder that wires
-`makeSchemeRouter({{"http", makeHttpResolver()}, {"https", makeHttpResolver()}})` into
-`protoResolverFrom` gets http(s):// EXTERNPROTO with no new I/O in the SDK. See the
-[PROTO/EXTERNPROTO expansion](proto-expand.md) page for the parse-side detail.
-
-## What the seam unblocks
-
-The AssetResolver card ships four P1 dependency cards from "blocked" to "workable":
-
-- **NSN-*** — LoadSensor (NSN-1..9): now wireable as an active System observing per-tick
-  child URL-object load state.
-- **PRF-6** — http/urn EXTERNPROTO: parse-time `ProtoDeclarationResolver` becomes
-  writeable for `http://` / `urn:` URLs (its own swap-test is a separate card).
-- **CONF-CRITIC-2** — Script external-URL: scripts with `@url` can fetch external bytes.
-- **SCR-005** — Script autoRefresh / autoRefreshTimeLimit: periodic re-fetch becomes
-  possible.
-
-The AssetResolver card itself does **not** ship these — they become workable now that
-the IO seam is proven generic; each flips its own findings when its card ships.
-
-## Files and tests
-
-| File | Role |
-|---|---|
-| `runtime/extract/AssetResolver.hpp` | The seam type — header-only, std-only, golden-untouched |
-| `runtime/extract/SchemeRouter.hpp` | `makeSchemeRouter` — per-scheme dispatch, std-only/IO-free |
-| `runtime/parse/AssetProtoResolver.hpp` | `protoResolverFrom` — EXTERNPROTO over the AssetResolver seam |
-| `runtime/io/curl/HttpResolver.{hpp,cpp}` | Backend A — libcurl HTTP, isolated TU |
-| `runtime/io/curl/tests/asset_resolver_backend_a_test.cpp` | Per-backend test for A |
-| `runtime/io/s3/S3Resolver.{hpp,cpp}` | Backend B — AWS C++ SDK S3, isolated TU |
-| `runtime/io/s3/tests/asset_resolver_backend_b_test.cpp` | Per-backend test for B |
-| `runtime/io/tests/asset_resolver_swap_test.cpp` | The swap-test (the genericity proof) |
-| `runtime/io/tests/fixtures/{f1,f2,f3}.bin` | 100-byte fixture payloads |
-| `include/x3d/sdk.hpp:50` | `AssetResolver` re-export with `[STABLE]` marker |
-| `docs/wiki/decisions/0023-assetresolver-second-backend-swap-test.md` | The ADR |
-| `docs/superpowers/specs/2026-06-23-assetresolver-http-design.md` | The design spec |
-
-| ctest target | What it covers |
-|---|---|
-| `x3d_assetresolver_backend_a` | Backend A: URL prefix + libcurl error path |
-| `x3d_assetresolver_backend_b` | Backend B: URL prefix + `s3://` parse + SDK init |
-| `x3d_assetresolver_swap` | Genericity proof: byte-equality A==B over shared fixtures, failure-mode parity |
-| `x3d_extract_tests` (`scheme_router_test`) | `makeSchemeRouter`: dispatch table, case-insensitive scheme match, unknown-scheme/`fallback` behavior (fake resolvers) |
-| `x3d_parse_tests` (`asset_proto_resolver_test`) | `protoResolverFrom`: fetch+parse+fragment selection over a fake in-memory backend, Pending/Failed contract, router+urn |
-
-The `x3d_assetresolver_b8_test` test (predecessor) pins the seam's two-invocation-contract
-behavior independently of the new backends.
-
-## Related specs and ADRs
-
-- [ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test](../decisions/0023-assetresolver-second-backend-swap-test.md)
-  — the genericity proof.
-- [ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test](../decisions/0022-scriptengine-second-backend-swap-test.md)
-  — the pattern this row follows.
-- [Seam-Status Matrix](../seam-status.md) — the live tracker; AssetResolver/IO is GREEN.
-- [Extraction Pipeline](extract.md) — the consumer-side wiring for `TextureRef::Source::Url`.
-- [Ext firewall](ext-firewall.md) — `externalGeometryResolver` / `PackedMesh` lives here.
-- Spec: `docs/superpowers/specs/2026-06-23-assetresolver-http-design.md`.
+For conformance status, see the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml).
+The [decision record](../decisions/0023-assetresolver-second-backend-swap-test.md)
+contains the transport decision and its amendment.

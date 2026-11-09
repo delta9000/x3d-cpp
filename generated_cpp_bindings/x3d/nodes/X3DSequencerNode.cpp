@@ -1,4 +1,3 @@
-// X3DSequencerNode.cpp
 #include "x3d/nodes/X3DSequencerNode.hpp"
 
 namespace x3d::nodes {

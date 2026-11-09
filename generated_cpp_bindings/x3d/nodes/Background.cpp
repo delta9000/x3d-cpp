@@ -1,4 +1,3 @@
-// Background.cpp
 #include "x3d/nodes/Background.hpp"
 
 namespace x3d::nodes {

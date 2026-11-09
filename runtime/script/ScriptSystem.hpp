@@ -1,36 +1,12 @@
-// ScriptSystem.hpp
-// The System that makes x3d::nodes::Script nodes run: it owns each enrolled x3d::nodes::Script's
-// lifecycle (load / initialize / shutdown), holds its in-process SAI surface,
-// and threads its events through the X3DExecutionContext cascade in the exact
-// order ISO/IEC 19775-1 §29.2 mandates.
-//
-// PER-TICK ORDERING (all NORMATIVE, §29.2 + §4.4.8.3):
-//   STEP 1  prepareEvents()   — once per timestamp, BEFORE any ROUTE processing
-//                               (§29.2.5). ScriptSystem::update() runs this, so
-//                               registering the system FIRST puts it ahead of
-//                               other sensor systems and the cascade drain.
-//   STEP 3  invoke()          — each inputOnly author event delivered to the
-//                               script in timestamp order (§29.2.2). outputOnly
-//                               writes the script makes become cascade events
-//                               carrying the TRIGGERING event's timestamp.
-//   STEP 4  eventsProcessed() — after the batch, at most once per script per
-//                               cascade (§29.2.4); only for scripts that
-//                               received >=1 event this tick.
-//
-// The execution context calls runPrepareEvents() (via update) before the cascade
-// drain and runEventsProcessed() after it (X3DExecutionContext::addScriptSystem
-// wires the post-cascade phase). See X3DExecutionContext::tick().
-//
-// directOutput / mustEvaluate (§29.4.1) are honored: the SaiContext gates
-// cross-node writes on directOutput; mustEvaluate=TRUE delivers inputs eagerly,
-// FALSE may defer them to the batch flush (a permitted, spec-sanctioned delay).
-//
-// CODEGEN-FREE: this layer needs no generator change. inputOnly author-field
-// dispatch is driven through ScriptSystem::deliverInputEvent (the seam a x3d::nodes::Script
-// inputOnly handler / the cascade calls), which forwards to engine.invoke — it
-// does not require a per-field reflection thunk on the x3d::nodes::Script class. set_url is
-// delivered through ScriptSystem::setUrl (the inputOnly handler for url), so the
-// reload (shutdown + load + initialize) is observed without a codegen hook.
+// Owns Script lifecycle and event delivery under ISO/IEC 19775-1 §29.2.
+// prepareEvents runs once per timestamp before ROUTE processing (§29.2.5);
+// register this system before other sensors and the cascade drain.
+// inputOnly handlers run in timestamp order (§29.2.2), and their output events
+// carry the triggering event's timestamp. eventsProcessed runs after the batch,
+// once per cascade for scripts that received an event (§29.2.4, §4.4.8.3).
+// X3DExecutionContext wires prepareEvents before and eventsProcessed after the
+// cascade drain. SaiContext gates cross-node writes on directOutput (§29.4.1).
+// mustEvaluate=TRUE delivers eagerly; FALSE may defer delivery to batch flush.
 #ifndef X3D_RUNTIME_SCRIPT_SYSTEM_HPP
 #define X3D_RUNTIME_SCRIPT_SYSTEM_HPP
 
@@ -49,6 +25,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime {
@@ -72,8 +49,8 @@ public:
    * @param browserName Reported to scripts via SaiContext::getName().
    * @param browserVersion Reported via SaiContext::getVersion().
    * @param resolver The AssetResolver seam used to fetch a Script's external
-   *        `url` entries (CONF-CRITIC-2) and to re-fetch them on the
-   *        `autoRefresh` interval (SCR-005). Defaults to the IO-free null stub
+   *        `url` entries and to re-fetch them on the
+   *        `autoRefresh` interval. Defaults to the IO-free null stub
    *        (always Failed), so a default-configured ScriptSystem stays
    *        byte-identical and never does I/O. The SDK ships no concrete backend;
    *        an app injects one (e.g. the CLI wires io::file::makeFileResolver).
@@ -87,25 +64,29 @@ public:
                            : extract::makeNullAssetResolver()) {}
 
   /**
-   * @brief Teardown: shut down every still-loaded script (§29.2.3, SCR-002).
+   * @brief Teardown: shut down every still-loaded script (§29.2.3).
    * @details Destroying the ScriptSystem (e.g. with its execution context) is
    *          the "world unloaded/replaced" case where each x3d::nodes::Script's shutdown()
-   *          must run. Done before the engine member is destroyed. Node-level
-   *          deletion (dynamic SAI) remains deferred.
+   *          must run. Done before the engine member is destroyed.
    */
   ~ScriptSystem() {
+    retireCallbacksBeforeDestruction();
+    shutdown();
+  }
+
+  /// ISO/IEC 19775-1 §29.2.3: unload scripts while their context is alive.
+  void shutdown() {
     if (!engine_) return;
     for (auto &up : scripts_) {
       if (up && up->handle != kInvalidScriptHandle) {
-        engine_->shutdown(up->handle);
-        up->handle = kInvalidScriptHandle; // guard against double-shutdown
+        const auto handle = std::exchange(up->handle, kInvalidScriptHandle);
+        engine_->shutdown(handle);
       }
     }
+    scripts_.clear();
   }
 
-  // --------------------------------------------------------------------------
   // System interface.
-  // --------------------------------------------------------------------------
 
   /**
    * @brief Enroll a x3d::nodes::Script node; load + initialize it if load=TRUE.
@@ -141,13 +122,13 @@ public:
   }
 
   /**
-   * @brief STEP 1: prepareEvents for every loaded script (once per timestamp).
-   * @details Runs BEFORE the cascade drain (§29.2.5). Implemented as update() so
+   * @brief Run prepareEvents for every loaded script (once per timestamp).
+   * @details Runs before the cascade drain (§29.2.5). Implemented as update() so
    *          the context's per-tick System pass invokes it ahead of route
-   *          processing — register the ScriptSystem FIRST among systems.
+   *          processing — register the ScriptSystem first among systems.
    *          Before that, two URL-driven phases run once per tick: a retry of any
-   *          fetch that came back Pending (CONF-CRITIC-2), then the autoRefresh
-   *          interval check (SCR-005).
+   *          fetch that came back Pending, then the autoRefresh
+   *          interval check.
    */
   void update(double now, X3DExecutionContext &ctx) override {
     const std::uint64_t gen = ctx.tickGeneration();
@@ -159,16 +140,14 @@ public:
     runPrepareEvents(now, ctx);
   }
 
-  // --------------------------------------------------------------------------
   // Explicit phase hooks (the context calls these around the cascade drain).
-  // --------------------------------------------------------------------------
 
-  /** @brief STEP 1: §29.2.5 prepareEvents() for each loaded script. */
+  /** @brief §29.2.5 prepareEvents() for each loaded script. */
   void runPrepareEvents(double now, X3DExecutionContext & /*ctx*/) {
     // §29.2.5: prepareEvents() is called exactly once per timestamp, before any
     // ROUTE processing. The context re-invokes update() on every cascade
     // do-while iteration, so guard the phase to fire only on the first
-    // invocation for a given timestamp (SCR-001); otherwise prepareEvents (and
+    // invocation for a given timestamp; otherwise prepareEvents (and
     // the receivedEventThisTick reset below) would run N times per tick.
     if (havePrepared_ && now == preparedAt_) return;
     havePrepared_ = true;
@@ -182,11 +161,11 @@ public:
   }
 
   /**
-   * @brief STEP 4: flush any deferred inputs, then §29.2.4 eventsProcessed().
+   * @brief Flush any deferred inputs, then §29.2.4 eventsProcessed().
    * @details For mustEvaluate=FALSE scripts, inputs may have been deferred; flush
    *          them now (invoke in arrival order) so their outputs still enter this
    *          cascade. Then call eventsProcessed() at most once per script that
-   *          received >=1 event this cascade, with the timestamp of the LAST
+   *          received >=1 event this cascade, with the timestamp of the last
    *          event it processed (§29.2.4). Outputs are drained by the context.
    */
   void runEventsProcessed(X3DExecutionContext &ctx) {
@@ -208,9 +187,7 @@ public:
     ctx.process();  // drain any events eventsProcessed()/the flush produced
   }
 
-  // --------------------------------------------------------------------------
   // Event delivery seam (called from the cascade / a x3d::nodes::Script inputOnly handler).
-  // --------------------------------------------------------------------------
 
   /**
    * @brief Deliver one inputOnly author event to a x3d::nodes::Script (§29.2.2).
@@ -267,8 +244,8 @@ public:
    * @details §29.2.2/§29.2.3: changing url shuts the running script down then
    *          loads + initializes the new content. The url preference list is
    *          re-run from the top: inline entries decode, external entries go
-   *          through the AssetResolver seam (CONF-CRITIC-2), and the autoRefresh
-   *          window (SCR-005) restarts from the new load.
+   *          through the AssetResolver seam, and the autoRefresh
+   *          window restarts from the new load.
    */
   void setUrl(x3d::nodes::Script *script, const MFString &newUrl,
               X3DExecutionContext &ctx) {
@@ -339,7 +316,7 @@ public:
    * @details Returns the text after the first recognized inline scheme prefix,
    *          or empty if no entry in the preference list is an inline script.
    *          The url is a preference-ordered list (§29.2.8): the first inline
-   *          entry wins. External (non-inline) entries are NOT fetched here —
+   *          entry wins. External (non-inline) entries are not fetched here —
    *          that needs the AssetResolver seam and is done by resolveSource().
    */
   static std::string decodeInlineSource(const MFString &url) {
@@ -386,13 +363,12 @@ private:
     double lastEventTimestamp = 0.0;
     std::vector<DeferredEvent> deferred;
 
-    // ── External-url fetch state (CONF-CRITIC-2) ──────────────────────────
+    // External-url fetch state
     std::size_t urlCandidate = 0;  ///< next url entry to try (preference order)
     bool pendingFetch = false;     ///< last resolver call was Pending -> retry
-    std::size_t fetchAttempts = 0; ///< resolver calls made (diagnostic)
-    // ── autoRefresh state (SCR-005) ───────────────────────────────────────
+    // autoRefresh state
     /// Scene time the auto-refresh window opened (first load after attach or a
-    /// url change). `autoRefreshTimeLimit` is measured from here and it does NOT
+    /// url change). `autoRefreshTimeLimit` is measured from here and it does not
     /// move on a refresh — otherwise the window would never elapse.
     double refreshWindowStart = 0.0;
     bool windowStarted = false;    ///< refreshWindowStart is meaningful
@@ -412,8 +388,8 @@ private:
    *          entries (ecmascript:/javascript:/vrmlscript:) decode directly.
    *          External entries go through the AssetResolver seam, tried in order:
    *            - Ready   -> the fetched bytes are the source; stop;
-   *            - Pending -> remember the position and retry the SAME entry on a
-   *                         later tick (return nullopt for now);
+   *            - Pending -> remember the position and retry the same entry on a
+   *                         later tick (return nullopt);
    *            - Failed  -> advance to the next entry.
    *          Returns nullopt when there is no content yet (a pending fetch, or
    *          every entry exhausted) — the script stays inert. This is a
@@ -430,7 +406,6 @@ private:
         ++e.urlCandidate;
         continue;
       }
-      ++e.fetchAttempts;
       const extract::AssetResult r = resolver_(u, extract::AssetKind::Inline);
       if (r.ready()) {
         e.pendingFetch = false;
@@ -472,7 +447,7 @@ private:
 
   /**
    * @brief Arm (or clear) the `autoRefresh` interval for a loaded script.
-   * @details SCR-005 / §29.3.1: `autoRefresh` > 0 reloads the content every that
+   * @details §29.3.1: `autoRefresh` > 0 reloads the content every that
    *          many seconds; `autoRefreshTimeLimit` bounds how long refreshing
    *          continues (0 = no limit). Both are re-read live each tick, so an
    *          author change takes effect without a reload.
@@ -488,7 +463,7 @@ private:
   }
 
   /**
-   * @brief Retry any fetch that last came back Pending (CONF-CRITIC-2).
+   * @brief Retry any fetch that last came back Pending.
    * @details A Pending result is the resolver's "not ready yet — retry next
    *          frame" contract; a Pending fetch never blocks a frame. Retried here
    *          once per tick, at the same url candidate.
@@ -504,7 +479,7 @@ private:
   }
 
   /**
-   * @brief Run the autoRefresh interval for every script (SCR-005).
+   * @brief Run the autoRefresh interval for every script.
    * @details When `now` reaches the armed interval, the content is re-fetched and
    *          the script re-initialized: shutdown -> resolve+load -> initialize
    *          (§29.2.3, the same sequence as a url change). Refreshing stops once
@@ -559,7 +534,7 @@ private:
   std::string version_;
   extract::AssetResolver resolver_;
   std::vector<std::unique_ptr<Entry>> scripts_;
-  // §29.2.5 once-per-timestamp guard for the prepareEvents phase (SCR-001).
+  // §29.2.5 once-per-timestamp guard for the prepareEvents phase.
   bool havePrepared_ = false;
   double preparedAt_ = 0.0;
   // Once-per-tick guard for the URL phases (retry-pending + autoRefresh).

@@ -1,4 +1,3 @@
-// X3DTimeDependentNode.cpp
 #include "x3d/nodes/X3DTimeDependentNode.hpp"
 
 namespace x3d::nodes {

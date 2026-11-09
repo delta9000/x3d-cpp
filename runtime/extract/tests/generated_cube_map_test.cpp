@@ -1,8 +1,8 @@
-// generated_cube_map_test.cpp — REQ-CUBE, §34.4.2 GeneratedCubeMapTexture.
+// generated_cube_map_test.cpp — , §34.4.2 GeneratedCubeMapTexture.
 //
 // The extractor surfaces a generated cube (TextureRef::generatedCube: node,
 // update, size) for the consumer to render, and GeneratedCubeMapSystem resets
-// update NEXT_FRAME_ONLY to NONE at the start of the frame after the one that
+// update NEXT_FRAME_ONLY to none at the start of the frame after the one that
 // drew it, emitting update_changed. Live update edits reach the render feed.
 #include "RuntimeSession.hpp"
 #include "X3DParse.hpp"
@@ -58,7 +58,7 @@ TEST_CASE("GeneratedCubeMapTexture: descriptor and NEXT_FRAME_ONLY reset (REQ-CU
   s->delta();
   CHECK(cubeRef(*s)->generatedCube.update == "NONE");
 
-  // ALWAYS persists.
+  // always persists.
   auto *g = s->scene().resolve("G").get();
   s->context().postEvent(g, "update", std::any(Update::ALWAYS));
   s->tick(0.2);

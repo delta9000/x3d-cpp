@@ -1,8 +1,8 @@
 // path_confine_test.cpp
-// SEC-3 / SEC-4 regression for confineLocalIncludePath (PathConfine.hpp).
-//   SEC-3: a file-like Inline/EXTERNPROTO url that is absolute, or that escapes
+//  /  regression for confineLocalIncludePath (PathConfine.hpp).
+//   a file-like Inline/EXTERNPROTO url that is absolute, or that escapes
 //          the configured confinement root, is rejected (no arbitrary read).
-//   SEC-4: spelling variants of one file canonicalize to a single key, so the
+//   spelling variants of one file canonicalize to a single key, so the
 //          cycle guard cannot be aliased past.
 // The confinement root is configurable (ADR-0038): a tight root (the source
 // file's own dir) blocks `../` cross-directory refs; a broader root (a trusted
@@ -53,30 +53,24 @@ int main() {
   touch(root / "outside.x3d");
   const std::string base = (root / "Content" / "base").string();
   const std::string content = (root / "Content").string();
-
-  // ---- Tight root = the source dir (secure default) -----------------------
-  // SEC-3: includes within the source subtree resolve.
+  // includes within the source subtree resolve.
   check(confineLocalIncludePath("ok.x3d", base, base).has_value(),
         "tight root: sibling within source dir resolves");
   check(confineLocalIncludePath("sub/deep.x3d", base, base).has_value(),
         "tight root: subdirectory within source dir resolves");
-  // SEC-3: `../` cross-directory and absolute are rejected under a tight root.
+  // `../` cross-directory and absolute are rejected under a tight root.
   check(!confineLocalIncludePath("../Tools/proto.x3d", base, base).has_value(),
         "tight root: ../ cross-directory ref is blocked");
   check(!confineLocalIncludePath("/etc/passwd", base, base).has_value(),
         "tight root: absolute path is blocked");
-
-  // ---- Broader root = a trusted content tree ------------------------------
-  // SEC-3: `../` is admitted when it stays within the broader root...
+  // `../` is admitted when it stays within the broader root...
   check(confineLocalIncludePath("../Tools/proto.x3d", base, content).has_value(),
         "broad root: ../ within the content tree resolves");
-  // ...but absolute paths and escapes ABOVE the root are still rejected.
+  // ...but absolute paths and escapes above the root are still rejected.
   check(!confineLocalIncludePath("../../outside.x3d", base, content).has_value(),
         "broad root: escape above the content root is blocked");
   check(!confineLocalIncludePath("/etc/passwd", base, content).has_value(),
         "broad root: absolute path is still blocked");
-
-  // ---- SEC-4: spelling variants share a single canonical key --------------
   const auto a = confineLocalIncludePath("ok.x3d", base, base);
   const auto b = confineLocalIncludePath("./ok.x3d", base, base);
   const auto c = confineLocalIncludePath("sub/../ok.x3d", base, base);

@@ -1,4 +1,3 @@
-// Shape.cpp
 #include "x3d/nodes/Shape.hpp"
 
 namespace x3d::nodes {

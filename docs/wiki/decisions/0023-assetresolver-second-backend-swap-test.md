@@ -12,6 +12,8 @@ related:
 
 # ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Behavioral Swap-Test as the Genericity Proof
 
+Status: superseded by ADR-0023 amendment
+
 ## Status
 
 Accepted (proposed 2026-06-23; becomes Implemented after the swap-test job turns green).
@@ -114,3 +116,10 @@ Concretely, for the `AssetResolver` pilot:
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](0019-physics-seam.md) — the flag-gated
   isolated-backend precedent (Jolt) this build isolation mirrors.
 - Design spec: `docs/superpowers/specs/2026-06-23-assetresolver-http-design.md`.
+
+## Amendment (2026-11-05)
+
+Removed the S3 resolver, AWS SDK dependency, fixture helpers, build option,
+and service-backed CI job because no consumer selected this backend. The
+AssetResolver interface and file/HTTP/FTP implementations remain. The HTTP
+fixture and missing-asset cases remain in `x3d_assetresolver_swap`.

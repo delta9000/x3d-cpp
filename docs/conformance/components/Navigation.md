@@ -4,55 +4,64 @@ _Generated. Levels 1,2,3 · 7 nodes · profiles: Interchange, Interactive, Immer
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| Billboard | 2 | ✓ | — | — | EXTRACT-VISIBILITY-HINT-DELTA, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| Collision | 2 | ✓ | — | ? | COL-1, COL-2, COL-3, CONF-NAV-COLLISION, GRP-ADDCHILDREN, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
-| LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
-| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
-| OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, NAV-FLY-ROLL, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, EXTRACT-VISIBILITY-HINT-DELTA, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
-| ViewpointGroup | 3 | ✓ | — | — | ROUTE-IO-ALIAS | X3DChildNode |
+| Billboard | 2 | ✓ | — | — | EXTRACT-VISIBILITY-HINT-DELTA, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| Collision | 2 | ✓ | — | ? | COL-1, COL-2, COL-3, CONF-NAV-COLLISION, GRP-ADDCHILDREN, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DSensorNode |
+| LOD | 2 | ✓ | — | — | GRP-ADDCHILDREN, LOD-1, LOD-DELTA-1, META-EXTENDED-ATTRIBUTES-WRITE, NESTED-SENSOR-LOD-WORLD, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SENSOR-SWITCH | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
+| NavigationInfo | 1 | ✓ | — | ? | AUD-ENV-5, AUD-NAV-1, AUD-NAV-2, BIND-05, BIND-06, EXTRACT-VISIBILITY-HINT-DELTA, JSON-EMPTY-NUMERIC-MF, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode |
+| OrthoViewpoint | 3 | ✓ | — | ? | BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, FOV-TYPE, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, NAV-SMALL-ROTATION, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| Viewpoint | 1 | ✓ | — | ◑ | AUD-NAV-1, AUD-NAV-2, AUD-NET-3, BIND-01, BIND-02, BIND-04, BIND-05, BIND-06, BIND-07, BIND-08, BIND-09, BIND-UNBOUND-ORIGIN, EXTRACT-VISIBILITY-HINT-DELTA, META-EXTENDED-ATTRIBUTES-WRITE, NAV-FLY-ROLL, NAV-LOOKAT-SCALE, NAV-SMALL-ROTATION, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-UNIT, ROUTE-IO-ALIAS | X3DBindableNode, X3DChildNode, X3DViewpointNode |
+| ViewpointGroup | 3 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode |
 
 ## Findings
 
-- **BIND-01** [critical/CLOSED `e3235ee`] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
+- **BIND-UNBOUND-ORIGIN** [minor/DEFERRED] — §23.3.1, 23.4.7: With no bound Viewpoint the runtime viewer (camera and listener) sits at the world origin with identity orientation, not at the Viewpoint default position (0 0 10) a browser presents for a scene without one.
+  - Deliberate (ADR-0073): head tracking composes after the origin base; boundViewpoint() stays null and no node is created. Moving to (0 0 10) changed sound attenuation and GeoLOD fixtures that encode the origin contract, so it is deferred until those are migrated. Hosts that want spec framing bind an explicit Viewpoint or call setViewerWorldPose. Regression of the current behaviour: default_viewer_test.cpp.
+- **BIND-01** [critical/CLOSED] — §23.2.3: Navigation writes back into authored position/orientation — corrupts authored values, breaks retainUserOffsets and ROUTE/Script readers (CAVE-critical).
   - CONF-VIEWNAV — needs a user-offset-state design (authored pose vs accumulated offset) before fixing BIND-01..08 as one cluster.
-- **BIND-02** [critical/CLOSED `95d1107`] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.
+- **BIND-02** [critical/CLOSED] — §23.3.1: Viewpoint.navigationInfo field ignored — bound viewpoint never dispatches set_bind to its NavigationInfo.
   - CONF-VIEWNAV cluster.
 - **COL-1** [critical/CLOSED] — §23.4.2: Collision isActive/collideTime never fire — no avatar-volume collision detection.
   - NavigationSystem fires isActive TRUE + collideTime on the enclosing enabled Collision nodes when avatar contact begins (FLY/WALK moves blocked avatarSize[0] short of geometry), keeps it while resting against the geometry, and isActive FALSE when it ends (collision_test case 1).
-- **BIND-03** [major/CLOSED `e3235ee`] — §23.3.1: dynamic_cast<Viewpoint*> in NavigationSystem disables navigation for non-Viewpoint viewpoints.
+- **BIND-03** [major/CLOSED] — §23.3.1: dynamic_cast<Viewpoint*> in NavigationSystem disables navigation for non-Viewpoint viewpoints.
   - CONF-VIEWNAV cluster.
-- **BIND-04** [major/CLOSED `2af9570`] — §23.3.1: retainUserOffsets never tracked (follows from BIND-01).
+- **BIND-04** [major/CLOSED] — §23.3.1: retainUserOffsets never tracked (follows from BIND-01).
   - CONF-VIEWNAV cluster.
-- **BIND-05** [major/CLOSED `95d1107`] — §23.4.4: Viewpoint-bind transition (transitionType/Time, transitionComplete) only fired for LOOKAT, not on set_bind.
+- **BIND-05** [major/CLOSED] — §23.4.4: Viewpoint-bind transition (transitionType/Time, transitionComplete) only fired for LOOKAT, not on set_bind.
   - CONF-VIEWNAV cluster.
-- **BIND-06** [major/CLOSED `95d1107`] — §7.2.2: Deleted bound node doesn't behave as set_bind FALSE (raw ptrs, no removeNode/detach).
+- **BIND-06** [major/CLOSED] — §7.2.2: Deleted bound node doesn't behave as set_bind FALSE (raw ptrs, no removeNode/detach).
   - Shared with a System detach() hook; CONF-VIEWNAV cluster.
-- **BIND-07** [major/CLOSED `2af9570`] — §23.3.1: jump=FALSE not honored on bind.
+- **BIND-07** [major/CLOSED] — §23.3.1: jump=FALSE not honored on bind.
   - CONF-VIEWNAV cluster.
-- **BIND-08** [major/CLOSED `2af9570`] — §23.3.1: Per-viewpoint stored relative transform on push-down not captured/restored.
+- **BIND-08** [major/CLOSED] — §23.3.1: Per-viewpoint stored relative transform on push-down not captured/restored.
   - CONF-VIEWNAV cluster.
 - **CONF-NAV-COLLISION** [major/CLOSED] — §23.2.4, 23.3.2: WALK mode + Collision/CollisionSensor (avatar-volume collision) not implemented.
   - Closed for navigation: NavigationSystem implements WALK (horizontal motion, gravity, terrain following at avatarSize[1], step height avatarSize[2]) and collision-checks FLY/WALK moves via PickSystem::castCollidable (collision_test). The rigid-body CollisionSensor (§37) is a physics concern tracked under CONF-RBP*, not avatar collision.
-- **COL-2** [major/CLOSED `2b84a99`] — §23.4.2: Collision.proxy geometry must NOT be emitted as a visible render item (collision-only geometry).
+- **COL-2** [major/CLOSED] — §23.4.2: Collision.proxy geometry must NOT be emitted as a visible render item (collision-only geometry).
   - Extraction fix — skip the proxy field in SceneExtractor; independent of the collision subsystem.
 - **COL-3** [major/CLOSED] — §23.4.2: Collision.enabled=FALSE must propagate through the descendant subtree to gate collision (overriding nested enabled=TRUE).
   - PickSystem::castCollidable skips the whole subtree of a disabled Collision, nested enabled Collision nodes included (collision_test case 2).
 - **SENSOR-SWITCH** [major/CLOSED] — §22.4, 22.4.3: Environmental sensors in non-selected Switch children / inactive LOD levels are still ticked (active) instead of treated as removed from the transformation hierarchy.
-  - Implemented per ADR-0034. Each tick ViewDependentSystem::update computes active-path reachability from ctx.sceneRoots() (Switch descends only children[whichChoice]; LOD only the level the extractor would choose), and deactivates any attached sensor not reached (isActive=FALSE + exitTime once, then suppressed). A reselected branch re-evaluates and re-fires enter. Script and time-dependent nodes are not gated (per 10.4.3). No detach hook was needed; the gate lives in update().
+  - view_dependent_test.cpp: Sensors under unselected Switch and LOD branches remain inactive.
 - **AUD-NAV-1** [major/CLOSED] — §23.3.1: A Viewpoint's dedicated NavigationInfo is not unbound when the Viewpoint is unbound.
   - ViewpointBindSystem now sends set_bind FALSE to a Viewpoint's dedicated NavigationInfo when its parent is unbound. Covered by viewpoint_unbinds_its_navigation_info.
-- **LOD-1** [minor/CLOSED `2b84a99`] — §23.4.3: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
+- **PROTO-INSTANCE-IS-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8: All four writers retain IS mappings on nested prototype instances.
+- **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
+- **JSON-EMPTY-NUMERIC-MF** [major/FIXED] — §ISO/IEC 19775-1, 5.1; ISO/IEC 19776-1, 5.1.2: JSON writer retains empty numeric multi-fields that differ from their node defaults.
+- **NESTED-SENSOR-LOD-WORLD** [major/FIXED] — §ISO/IEC 19775-1 22.4.5, 23.4.3: A TransformSensor or LOD under a Transform now uses that Transform's world matrix; before, the first-path world lookup returned identity for non-Transform nodes, so a nested sensor box and LOD distance ignored every ancestor transform, and the sensor box also ignored its own frame's scale.
+  - TransformSystem::worldTransform falls back to the nearest Transform ancestor. Tests: view_dependent_test testTransformSensorBoxScalesWithParent and testLodUnderTranslatedTransform.
+- **LOD-1** [minor/CLOSED] — §23.4.3: When children.size() < range.size()+1, level_changed must report the index of the child actually rendered (clamp), not the raw range bin.
 - **LOD-DELTA-1** [minor/FIXED] — §23.4.3: LOD active-level changes were invisible to the incremental delta() channel — the rendered level is computed from the camera, not a settable field, so it never reaches classifyDirty. Incremental consumers (the OpenGL PoC) stayed on the stale level while full-snapshot consumers (cpuraster, which re-extracts every frame) swapped.
-  - ViewDependentSystem marks node-level selection changes. The previously deferred per-path residual is now covered by SceneExtractor: it records each LOD placement, including empty selected branches, checks its selection in its current world frame each delta, and replaces the baseline when a path changes. Billboard descendants recompute view-dependent per-path transforms without rebuilding meshes. Regression: scene_extractor_view_delta_test.cpp covers shared translated LODs, ancestor motion, empty branches, shared Billboards, tracked eye/up and no-motion stability (#136). The per-node level_changed event remains distinct from per-path rendering.
+  - scene_extractor_view_delta_test.cpp: LOD selection is evaluated per placement and Billboard motion preserves shared meshes.
 - **BIND-09** [minor/CLOSED] — §23.3.1: Pop (unbind/delete) does not apply the §23.3.1 r6.3 un-jump (next viewpoint keeps its stored relative transform); ViewpointBindSystem treats a pop like a fresh jump bind.
   - Needs push-vs-pop signaling from BindingSystem to distinguish rule 5.1 (reset) from 6.3 (restore stored offset). Per-node offset persists; only the reset-on-rebind path differs. CAVE doesn't exercise viewpoint stacks.
+- **NAV-SMALL-ROTATION** [minor/FIXED] — §ISO/IEC 19775-1 §23.2.3: Matrix-to-rotation conversion lost small camera rotations through an unnormalized quaternion.
+  - rotationFromMatrix normalizes the Shepperd quaternion; mat4_test.cpp checks transformed basis vectors within 1e-6 for signed small-angle sweeps and ordinary rotations.
 - **FOV-TYPE** [minor/CLOSED] — §23.4.5, 42.4.2: fieldOfView is the same 4-tuple but typed MFFloat (OrthoViewpoint) vs SFVec4f (TextureProjectorParallel); OrthoViewpoint arity/ordering unvalidated.
-  - Do NOT retype MFFloat->SFVec4f (breaks ClassicVRML brackets vs the sfvec4fValue grammar; Mantis 1398/1468). Policy (ADR-0030) - keep MFFloat storage; add size==4 normalization (FOV_TUPLE_ARITY warning) + min<max ordering check (FOV_EXTENT_ORDER) applied to BOTH nodes; add a non-breaking SFVec4f convenience accessor. Sites OrthoViewpoint.hpp:111/177, TextureProjectorParallel.hpp:77. Closed 2026-09-26: runtime/X3DRangeValidate.hpp emits FOV_TUPLE_ARITY and FOV_EXTENT_ORDER for both nodes and exposes orthoFieldOfView4; runtime/parse/tests/range_warnings_test.cpp covers arities 3/5 and ordering. 4.1 - validated; the 4.1 UOM KEEPS OrthoViewpoint.fieldOfView MFFloat (committee declined the retype for the same reason), so validate-don't-retype is correct.
+  - range_warnings_test.cpp: OrthoViewpoint retains MFFloat storage and validates four ordered extents.
 - **AUD-NAV-2** [minor/CLOSED] — §23.4.4: TELEPORT (and zero-duration) transitions never emit transitionComplete.
   - ViewpointBindSystem now emits transitionComplete for TELEPORT and zero-duration camera transitions. Covered by teleport_transition_signals_complete and zero_duration_transition_signals_complete.
 - **EXTRACT-VISIBILITY-HINT-DELTA** [minor/FIXED]: Optional RenderItem origin-distance visibility hints stayed stale after view, limit and placement changes.
-  - Issue #155: SceneExtractor now compares effective farDistance/visibilityLimit and current per-placement origins before consuming a delta. A changed live boolean uses the existing bounded remove-before-add replacement, so hosts honoring only advertised channels receive the descriptor; unchanged hints preserve incremental geometry/material/TRS behavior. Finite-to-unlimited clears true hints, empty/revived items read current inputs, and packed items use the same origin rule as AoS. Unlimited-to-unlimited ticks skip per-item checks; finite view/limit changes scan live origins, reusing static matrices and recomposing only dirty/Billboard paths. A crossing still costs a full bounded extraction. Tests: scene_extractor_visibility_delta_test.cpp has expected-value checks and a channel-respecting mirror versus fresh snapshots for precedence/fallback/bindings, eye/viewpoint motion, ancestor TRS, disabled limits, shared and empty placements, and packed stability. This is an optional SDK origin-distance hint, not bounds/frustum culling or complete visibility conformance.
+  - scene_extractor_visibility_delta_test.cpp: Changed per-placement visibility hints use remove-before-add replacement while unchanged hints preserve meshes.
 - **NAV-LOOKAT-SCALE** [low/CLOSED] — §23.4.4: LOOKAT framing distance mixes a world-space radius with a local-frame eye placement, so a non-uniformly-scaled ancestor Transform mis-sizes the framed object.
   - Pre-existing; compute the framing distance in the same (local) frame as the placement, or scale by the ancestor factor.
 - **NAV-FLY-ROLL** [low/CLOSED] — §23.4.4: FLY accumulates orientation incrementally (yaw-about-world-up + pitch-about-local-right), so a long mixed drag can introduce gradual horizon roll.

@@ -1,27 +1,4 @@
-// tools/x3d-cli/gate_baseurl_roundtrip_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
-// Regression for the cli-gate Inline/EXTERNPROTO baseUrl asymmetry (BUG-1).
-//
-// Background: the convert-roundtrip gate parses the source file with the file's
-// directory as baseUrl (parseFile derives it), so relative Inline/EXTERNPROTO
-// urls resolve and expand into rootNodes/children. The reparse of the serialized
-// text used an EMPTY baseUrl, so the same externals stayed as unexpanded stubs
-// (Inline node / scene-root ProtoInstance). The comparator then reported false
-// "not equivalent" verdicts:
-//   - Group vs Inline nodeTypeName mismatch
-//   - rootNodes count mismatch (scene-root EXTERNPROTO instances dropped)
-//   - nested children count mismatch
-//
-// The fix (cli_gate.cpp testConvert): reparse with the SAME baseUrl as the
-// source parse, so external expansion is symmetric on both sides.
-//
-// This test reproduces both shapes (a load=TRUE Inline + a scene-root
-// EXTERNPROTO instance) on disk and asserts that the gate's flow — parse(base)
-// -> serialize -> reparse(base) -> sceneEquivalent — holds for xml and json.
-// Without a baseUrl on the reparse, these assertions fail (the historical bug).
-//
-// Exit 0 on success; nonzero (with a message) on any failed assertion.
-// ─────────────────────────────────────────────────────────────────────────────
+// Reparsing converted Inline/EXTERNPROTO scenes preserves the source base URL.
 #include "scene_equiv.hpp"
 #include "x3d/sdk.hpp"
 #include "Encoding.hpp"
@@ -81,7 +58,6 @@ int main() {
                    ("x3d_gate_baseurl_" + std::to_string(stamp));
     fs::create_directories(dir);
 
-    // ── Fixture A: load=TRUE Inline pointing at a relative sibling. ──────────
     // The source parse expands the Inline's content into a synthetic Group;
     // the reparse must do the same (needs the baseUrl) for equivalence.
     writeFile(dir / "child.x3d", R"(<?xml version="1.0" encoding="UTF-8"?>
@@ -102,7 +78,6 @@ int main() {
 </X3D>
 )");
 
-    // ── Fixture B: a scene-root EXTERNPROTO instance + a sibling proto file. ──
     writeFile(dir / "proto_lib.x3d", R"(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
   <Scene>

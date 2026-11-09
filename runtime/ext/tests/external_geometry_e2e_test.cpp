@@ -1,20 +1,4 @@
-// external_geometry_e2e_test.cpp — Round 2 headline end-to-end lazy proof.
-//
-// Builds a Scene whose Shape.geometry is an ext ExternalGeometry node with
-// url='m.stl'. A stub byte-provider returns a known small binary STL for 'm.stl'
-// and counts calls. meshOptions.externalGeometryResolver is built via
-// ext::makeExternalGeometryResolver(stub). Running SceneExtractor materializes
-// the proxy lazily into a Packed RenderItem.
-//
-// Asserts:
-//   (1) PACKED: a RenderItem with geometry_ext.kind == Packed whose PackedMesh
-//       matches the STL (vertex_count == N*3; a known position reads back).
-//   (2) CACHE:  a second extract reuses the cached mesh — the stub byte-provider
-//       was called only ONCE.
-//   (3) PENDING/skip: an ExternalGeometry with an unresolvable url (stub returns
-//       empty) → NO Packed RenderItem emitted, no crash.
-//
-// Part of the runtime/ext/ quarantine (x3d_cpp_ext target, default OFF).
+// Lazy mesh materialization, caching, and Pending behavior.
 #include "ExternalGeometry.hpp"
 #include "ExternalGeometryResolver.hpp"
 
@@ -44,7 +28,7 @@ using namespace x3d::runtime::extract;
 using x3d::runtime::ext::ExternalGeometry;
 using x3d::runtime::ext::makeExternalGeometryResolver;
 
-// --- helpers ---------------------------------------------------------------
+// helpers
 static void setF(const std::shared_ptr<X3DNode>& n, const char* nm, std::any v) {
     for (auto& f : n->fields())
         if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
@@ -116,7 +100,7 @@ int main() {
     const std::vector<std::uint8_t> stlBytes = makeTwoTriangleStl();
     const std::uint32_t expectedVerts = 2u * 3u; // N*3
 
-    // === (1) PACKED + (2) CACHE =============================================
+    // (1) packed + (2) cache
     {
         int byteCalls = 0;
         AssetResolver stub = [&](const std::string& url, AssetKind kind)
@@ -156,7 +140,7 @@ int main() {
 
         assert(byteCalls == 1 && "first extract must fetch bytes exactly once");
 
-        // (2) CACHE — second extract must NOT re-fetch (cache hit).
+        // (2) cache — second extract must not re-fetch (cache hit).
         SceneExtractor ex2(ctx, scene, opts);
         auto snap2 = ex2.fullSnapshot();
         assert(snap2.added.size() == 1 && "second extract still emits the item");
@@ -164,7 +148,7 @@ int main() {
         assert(byteCalls == 1 && "second extract must reuse cache — no new fetch");
     }
 
-    // === (3) PENDING / skip ================================================
+    // (3) pending / skip
     {
         AssetResolver pendingStub = [&](const std::string& /*url*/, AssetKind)
             -> AssetResult {

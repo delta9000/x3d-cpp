@@ -1,5 +1,5 @@
 site_name: x3d-cpp Knowledge Wiki
-site_description: Canonical knowledge home for the x3d-cpp X3D domain runtime SDK.
+site_description: Architecture and reference for the x3d-cpp runtime SDK.
 site_author: Ben Sandbrook
 repo_url: https://github.com/delta9000/x3d-cpp
 docs_dir: docs/wiki
@@ -40,10 +40,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - Native Host Integration: guides/native-host.md
-  - Knowledge Map: knowledge-map.md
-  - Coverage Manifest: coverage.md
-  - Seam-Status Matrix: seam-status.md
+  - Native host integration: guides/native-host.md
+  - Knowledge map: knowledge-map.md
+  - Subsystem source map: coverage.md
+  - Seam matrix: seam-status.md
   - Subsystems:
       - Generator & Bindings:
           - Generator Pipeline: subsystems/generator.md
@@ -161,14 +161,27 @@ nav:
       - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
       - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
       - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
+      - "ADR-0063: Resolver base URLs": decisions/0063-resolver-base-urls.md
+      - "ADR-0064: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
+      - "ADR-0065: Absolute viewer world pose": decisions/0065-absolute-viewer-world-pose.md
+      - "ADR-0066: Native SAI presentation materials and frame deltas": decisions/0066-sai-presentation-materials-and-deltas.md
+      - "ADR-0067: Provider named-node discovery": decisions/0067-provider-named-node-discovery.md
+      - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
+      - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
+      - "ADR-0070: Deferred Inline loader ancestry": decisions/0070-deferred-inline-loader-ancestry.md
+      - "ADR-0071: Public node inspection": decisions/0071-public-node-inspection.md
+      - "ADR-0072: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
+      - "ADR-0073: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
+      - "ADR-0074: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
+      - "ADR-0075: Queued live SAI ROUTE addition": decisions/0075-sai-live-route-addition.md
   - Guides:
-      - Gate System: guides/gate-system.md
+      - Gate system: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
-      - RAGs (Spec Prose Search): guides/rags.md
-      - Conformance Campaign: guides/conformance-campaign.md
-      - X3D 4.0 Requirements Audit: guides/x3d4-requirements-audit.md
-      - Add a CLI Command: guides/add-a-cli-command.md
-      - Golden Regeneration: guides/golden-regeneration.md
+      - RAG tools: guides/rags.md
+      - Conformance audits: guides/conformance-campaign.md
+      - X3D 4.0 requirements audit: guides/x3d4-requirements-audit.md
+      - Add a CLI command: guides/add-a-cli-command.md
+      - Golden regeneration: guides/golden-regeneration.md
   - Conventions:
       - Overview: _conventions/CONVENTIONS.md
       - ADR Template: _conventions/adr-template.md

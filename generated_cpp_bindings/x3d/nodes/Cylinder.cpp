@@ -1,4 +1,3 @@
-// Cylinder.cpp
 #include "x3d/nodes/Cylinder.hpp"
 
 namespace x3d::nodes {

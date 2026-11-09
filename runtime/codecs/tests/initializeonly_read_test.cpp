@@ -66,13 +66,13 @@ TEST_CASE("initializeonly_read_test") {
   }
 
   // initializeOnly is writable at the data layer but keeps initializeOnly access
-  // (so it stays a NON-routable ROUTE sink — locked in by the bridge test).
+  // (so it stays a non-routable ROUTE sink — locked in by the bridge test).
   {
     auto sphere = createX3DNode("Sphere");
     const FieldInfo *radius = nullptr;
     for (const auto &f : sphere->fields())
       if (f.x3dName == "radius") radius = &f;
-    CHECK((radius && radius->isWritable()));                 // data-layer writable now
+    CHECK((radius && radius->isWritable()));                 // Writable through reflection.
     CHECK((radius->access == AccessType::InitializeOnly));    // access unchanged
   }
 

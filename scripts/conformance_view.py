@@ -30,7 +30,6 @@ from typing import Optional
 
 import yaml
 
-# --- behavioral abstract interfaces (the "behaves" axis applies to these) ---
 BEHAVIORAL_INTERFACES = {
     "X3DInterpolatorNode",
     "X3DTimeDependentNode",
@@ -47,7 +46,7 @@ BEHAVIORAL_INTERFACES = {
     "X3DTriggerNode",
 }
 
-# Abstract interfaces whose registered System attaches to EVERY implementer
+# Abstract interfaces whose registered System attaches to every implementer
 # (so a concrete dynamic_cast is never emitted per node). Keep this tiny and
 # justified — most systems cast to concrete types or instantiate System<Concrete>.
 WIRED_BY_ABSTRACT = {
@@ -86,9 +85,7 @@ class NodeFact:
     abstract: bool
 
 
-# ===========================================================================
 # Code-fact extractors (pure functions, fixture-tested)
-# ===========================================================================
 def parse_node_header(name: str, text: str) -> NodeFact:
     comp = re.search(r'componentName\(\)\s*\{\s*return\s*"([^"]+)"', text)
     lvl = re.search(r"componentLevel\(\)\s*\{\s*return\s*(\d+)", text)
@@ -116,7 +113,7 @@ def is_behavioral(ifaces) -> bool:
 def detect_system_targets(text: str, is_system_file: bool = False) -> set[str]:
     """Node types wired by a System.
 
-    Always: concrete `dynamic_cast<Concrete *>` targets + `System<Concrete>`
+    Always: concrete `dynamic_cast<[const] Concrete *>` targets + `System<Concrete>`
     template instantiations. In *System files only*, also `== "NodeName"` string
     compares (e.g. ViewDependentSystem wires via nodeTypeName() equality) — scoped
     to System files so codec/reader string compares don't masquerade as wiring.
@@ -126,7 +123,7 @@ def detect_system_targets(text: str, is_system_file: bool = False) -> set[str]:
     # `using namespace` is in scope. Tolerate an optional namespace prefix and
     # capture the final identifier.
     targets: set[str] = set()
-    for m in re.finditer(r"dynamic_cast<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)\s*\*>", text):
+    for m in re.finditer(r"dynamic_cast<\s*(?:const\s+)?(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)\s*(?:const\s*)?\*>", text):
         targets.add(m.group(1))
     for m in re.finditer(r"[A-Za-z0-9_]*System<\s*(?:[A-Za-z0-9_]+::)*([A-Za-z0-9_]+)", text):
         targets.add(m.group(1))
@@ -144,9 +141,7 @@ def parse_recognized_geometry(text: str) -> set[str]:
     return set(re.findall(r't ?== ?"([A-Za-z0-9]+)"', body))
 
 
-# ===========================================================================
 # Findings (judgments) — schema validation
-# ===========================================================================
 def validate_finding(f: dict) -> list[str]:
     errs = []
     for req in ("id", "summary"):
@@ -175,9 +170,7 @@ def load_findings(path: pathlib.Path) -> list[dict]:
     return data
 
 
-# ===========================================================================
 # Join / classification
-# ===========================================================================
 def classify_behaves(behavioral: bool, wired: bool, findings: list[dict]) -> str:
     if not behavioral:
         return "n/a"
@@ -224,9 +217,7 @@ def unresolved_findings(findings: list[dict], nodes: dict[str, NodeFact],
     return out
 
 
-# ===========================================================================
 # Model builder
-# ===========================================================================
 def _read(p: pathlib.Path) -> str:
     return p.read_text(errors="ignore")
 
@@ -268,7 +259,7 @@ def build_model(repo: pathlib.Path) -> dict:
         is_sys = "system" in hpp.name.lower()
         targets |= detect_system_targets(_read(hpp), is_system_file=is_sys)
     # Restrict to real node types (drops non-node string-compare noise from the
-    # System-file scan). NOTE: this is a heuristic — a behavioral node string-matched
+    # System-file scan). This is a heuristic — a behavioral node string-matched
     # in a System file for a non-wiring reason could read as wired; an open finding
     # corrects it to ◑, and wired_detected is emitted for audit.
     wired = {t for t in targets if t in registry}
@@ -382,7 +373,7 @@ def _finding_components(f: dict, nodes: dict[str, NodeFact], registry: dict) -> 
         nf = nodes.get(n)
         if nf and nf.component:
             comps.add(nf.component)
-    # Interface tag spreads to all implementers ONLY when no explicit nodes are
+    # Interface tag spreads to all implementers only when no explicit nodes are
     # given (mirrors findings_for); an explicit node list scopes the finding.
     if not f.get("nodes"):
         for iface in f.get("interfaces") or []:
@@ -392,9 +383,7 @@ def _finding_components(f: dict, nodes: dict[str, NodeFact], registry: dict) -> 
     return comps
 
 
-# ===========================================================================
 # Rendering (Markdown signaling layer)
-# ===========================================================================
 def _slug(comp: str) -> str:
     return comp
 
@@ -521,9 +510,7 @@ def _abbrev(p: str) -> str:
             "MedicalInterchange": "Med"}.get(p, p)
 
 
-# ===========================================================================
 # Output + CLI
-# ===========================================================================
 def write_outputs(repo: pathlib.Path, model: dict, out_dir: pathlib.Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "model.json").write_text(json.dumps(model, indent=2, sort_keys=True) + "\n")

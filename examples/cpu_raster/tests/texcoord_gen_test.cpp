@@ -1,7 +1,7 @@
-// texcoord_gen_test.cpp — TXF-2/TXF-4: §18.4.8 TextureCoordinateGenerator.
+// texcoord_gen_test.cpp — /§18.4.8 TextureCoordinateGenerator.
 //
 // The view-dependent modes (SPHERE / CAMERASPACENORMAL / CAMERASPACEPOSITION /
-// CAMERASPACEREFLECTIONVECTOR / COORD-EYE) are computed at render time from
+// CAMERASPACEREFLECTIONVECTOR / COORD-eye) are computed at render time from
 // eye-space state — the seam only carries the MODE. This test pins:
 //   (1) the exact per-mode UV formulas (hand-computed, non-circular), including
 //       the front-facing normal flip, via the shader's detail::texCoordGenUv; and
@@ -62,7 +62,7 @@ int main() {
   using Mode = ex::TexCoordGenMode;
   using x3d::cpuraster::detail::texCoordGenUv;
 
-  // ===== (1) Exact per-mode formulas =====================================
+  // (1) Exact per-mode formulas
   {
     // SPHERE: u = Nx/2+0.5, v = Ny/2+0.5 (N normalized camera-space normal).
     g::vec2 s = texCoordGenUv(Mode::Sphere, {0, 0, -3}, {0.6f, 0, 0.8f}, true);
@@ -82,7 +82,7 @@ int main() {
         texCoordGenUv(Mode::CameraSpacePosition, {0.8f, 0.5f, -3}, {0, 0, 1}, true);
     CHECK(feq(cp.x, 0.8f) && feq(cp.y, 0.5f));
 
-    // COORD-EYE aliases CAMERASPACEPOSITION, including signed/unbounded UVs.
+    // COORD-eye aliases CAMERASPACEPOSITION, including signed/unbounded UVs.
     // The position must not be normalized, biased, or changed by face/normal.
     for (bool front : {true, false}) {
       g::vec2 ce = texCoordGenUv(Mode::CoordEye, {0.8f, 0.2f, -3},
@@ -108,7 +108,7 @@ int main() {
     }
   }
 
-  // ===== (2) The shader samples WITH the generated UVs ===================
+  // (2) The shader samples WITH the generated UVs
   // Each case: a material whose base texture is the ramp, a distinguishing
   // eye-space fragment, and the expected sampled u (= the generated coordinate).
   struct Case {

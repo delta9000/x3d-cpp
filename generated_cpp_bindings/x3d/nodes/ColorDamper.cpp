@@ -1,4 +1,3 @@
-// ColorDamper.cpp
 #include "x3d/nodes/ColorDamper.hpp"
 
 namespace x3d::nodes {

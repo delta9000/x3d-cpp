@@ -1,4 +1,3 @@
-// pick_system_test.cpp
 #include "PickSystem.hpp"
 #include "TransformSystem.hpp"
 #include "BoundsSystem.hpp"
@@ -130,7 +129,7 @@ TEST_CASE("pick_system_test") {
   auto h2 = ps3.pickClosest(Ray{{0,0,10},{0,0,-1}}, bs3);
   CHECK((h2.hit && h2.node == nearShape.get() && feq(h2.point.z, 1)));
 
-  // ---- M2D-2 tests: analytic Cone/Cylinder narrow-phase -------------------
+  // tests: analytic Cone/Cylinder narrow-phase
 
   // Cone (default: bottomRadius=1, height=2): axis=Y, apex at (0,+1,0), base
   // circle radius 1 at y=-1. Ray along -z through x=0,y=0 hits the lateral
@@ -184,11 +183,11 @@ TEST_CASE("pick_system_test") {
     CHECK((hr_top.hit && feq(hr_top.point.y, 1.0f)));
   }
 
-  // ---- M2D-2 tests: strip/fan triangle extraction via buildLocalMesh --------
+  // tests: strip/fan triangle extraction via buildLocalMesh
 
   // TriangleStripSet: strip of 4 points P0,P1,P2,P3 in z=0 plane.
   // Produces 2 triangles. A ray hitting tri1 (P1,P3,P2 after winding flip) but
-  // not tri0 should still get a hit; a ray THROUGH the AABB that lands in the
+  // not tri0 should still get a hit; a ray through the AABB that lands in the
   // gap beyond the strip gets no hit.
   {
     // Strip in z=0 plane, a thin L-shape. Use the flat square strip:
@@ -238,7 +237,7 @@ TEST_CASE("pick_system_test") {
     CHECK((hr_if.hit && feq(hr_if.point.z, 0.0f)));
   }
 
-  // ---- M2.5 tests: PickResult carries path + surface normal + texcoord -----
+  // tests: PickResult carries path + surface normal + texcoord
 
   // (a) pickClosest returns the full root→hit path.
   // Transform > Group > Shape > Box. Path = [T, G, shape] (the geometry-bearing
@@ -259,14 +258,14 @@ TEST_CASE("pick_system_test") {
     CHECK((hr.path[0] == T.get() && hr.path[1] == G.get() && hr.path[2] == sh.get()));
   }
 
-  // (b) Known normal on a Box face: ray -z onto the +Z (FRONT) face → world
+  // (b) Known normal on a Box face: ray -z onto the +Z (front) face → world
   // normal (0,0,1). And a Sphere +Z front face → normal (0,0,1).
   {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{0,0,10},{0,0,-1}});
     CHECK((hr.hit));
     CHECK((feq(hr.normal.x,0) && feq(hr.normal.y,0) && feq(hr.normal.z,1)));
-    // Box FRONT face hit at center → texcoord (0.5, 0.5) (§13.3.1).
+    // Box front face hit at center → texcoord (0.5, 0.5) (§13.3.1).
     CHECK((feq(hr.texCoord.x,0.5f) && feq(hr.texCoord.y,0.5f)));
 
     auto sph = createX3DNode("Sphere"); setF(sph, "radius", std::any(2.0f));
@@ -277,13 +276,13 @@ TEST_CASE("pick_system_test") {
     CHECK((feq(hs.texCoord.x,0.5f) && feq(hs.texCoord.y,0.5f)));
   }
 
-  // (b2) Box +X (RIGHT) face: ray -x at x=10 → world normal (1,0,0).
+  // (b2) Box +X (right) face: ray -x at x=10 → world normal (1,0,0).
   {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{10,0,0},{-1,0,0}});
     CHECK((hr.hit));
     CHECK((feq(hr.normal.x,1) && feq(hr.normal.y,0) && feq(hr.normal.z,0)));
-    // RIGHT face center → (0.5,0.5).
+    // right face center → (0.5,0.5).
     CHECK((feq(hr.texCoord.x,0.5f) && feq(hr.texCoord.y,0.5f)));
   }
 
@@ -300,7 +299,7 @@ TEST_CASE("pick_system_test") {
     PickSystem psp; psp.build(sc);
     auto hr = psp.pickClosest(Ray{{0,0,10},{0,0,-1}}, bsp);
     CHECK((hr.hit));
-    // The local +X face now faces world +Z; the rotated outward normal is +Z.
+    // The local +X face faces world +Z; the rotated outward normal is +Z.
     CHECK((feq(hr.normal.x,0) && feq(hr.normal.y,0) && feq(hr.normal.z,1)));
   }
 
@@ -337,9 +336,9 @@ TEST_CASE("pick_system_test") {
     CHECK((feq(hr.texCoord.x,0.25f) && feq(hr.texCoord.y,0.75f)));
   }
 
-  // (d) Primitive face texcoord per §13: Box +X (RIGHT) face hit at a known
+  // (d) Primitive face texcoord per §13: Box +X (right) face hit at a known
   // off-center local point. Ray -x hitting at local (1, 0.5, -0.5):
-  // RIGHT: s = (-z/hz+1)/2 = (0.5+1)/2 = 0.75; t = (y/hy+1)/2 = (0.5+1)/2 = 0.75.
+  // right: s = (-z/hz+1)/2 = (0.5+1)/2 = 0.75; t = (y/hy+1)/2 = (0.5+1)/2 = 0.75.
   {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{10,0.5f,-0.5f},{-1,0,0}});

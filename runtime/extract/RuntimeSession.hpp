@@ -1,61 +1,29 @@
-// ─── runtime/extract/RuntimeSession.hpp ──────────────────────────────────────
-// RuntimeSession — the one-call path from a parsed document to a render feed.
-//
-// The low-level path is five steps whose LIFETIME rules are invisible in the
-// call itself, and one of which is silent to omit:
-//
-//   sdk::X3DExecutionContext ctx(doc.scene.authorFields);
-//   ctx.buildSceneGraph(doc.scene);         // transforms/bounds/bindings/pick
-//   ctx.buildFrom(doc.scene);               // resolve DEF-named ROUTEs
-//   x3d::runtime::attachStandardRuntime(doc.scene, ctx);  // §8/§19/§39/§30/§22/§23/§21/§9
-//   sdk::SceneExtractor ex(ctx, doc.scene); // scene passed a SECOND time
-//   // ...and doc + ctx must both outlive ex, which holds references to them.
-//
-// Nothing there is wrong, and an embedder that wants the pieces should keep
-// using them — they stay public. But it exposes initialisation phases the SDK
-// can just own, and it hands the caller three objects with an unwritten lifetime
-// contract between them. RuntimeSession owns all three in one place and cannot
-// outlive its own document.
+// Owns the document, execution context and extractor together so their borrowed
+// references remain valid for the session's lifetime.
 //
 //   auto session = sdk::RuntimeSession::create(sdk::parseFile("scene.x3dv"));
-//   sdk::RenderDelta f0 = session->fullSnapshot();     // upload f0.added
+// sdk::RenderDelta f0 = session->fullSnapshot();
 //   while (running) {
 //     session->tick(now);
-//     sdk::RenderDelta d = session->delta();           // apply d
+// sdk::RenderDelta d = session->delta();
 //   }
-//
-// WHAT THIS IS NOT: a policy layer. It adds no behaviour, no defaults you cannot
-// see, and no ordering the low-level path does not already have. Every piece
-// stays reachable — context(), extractor(), scene(), document() — so dropping to
-// the low-level API for one call never means abandoning the session.
-//
-// ON "ORDER MATTERS": it does not, and this type does not pretend otherwise.
-// buildSceneGraph() and buildFrom() write DISJOINT state (the former touches
-// transforms_/bounds_/bindings_/pick_, the latter only graph_), so they commute.
-// What actually bites is OMITTING one: skip buildSceneGraph and no Viewpoint
-// binds, so viewMatrix() silently returns identity; skip buildFrom and authored
-// ROUTEs never fire, so the scene renders but never animates. Both are silent.
-// The session's value is that neither is a step you can forget, not that it
-// sequences something delicate.
-// ─────────────────────────────────────────────────────────────────────────────
 #ifndef X3D_RUNTIME_SESSION_HPP
 #define X3D_RUNTIME_SESSION_HPP
 
-#include "AssetResolver.hpp"       // AssetResolver (LoadSensor byte oracle)
-#include "MeshBuilder.hpp"         // MeshBuildOptions
-#include "SceneExtractor.hpp"      // SceneExtractor, RenderDelta
-#include "TextureResolver.hpp"     // TextureResolver, makeNullTextureResolver
-#include "X3DDocument.hpp"         // X3DDocument
-#include "X3DExecutionContext.hpp" // X3DExecutionContext
-#include "X3DSceneBridge.hpp"      // BridgeResult (buildFrom's return type)
+#include "AssetResolver.hpp"
+#include "MeshBuilder.hpp"
+#include "SceneExtractor.hpp"
+#include "TextureResolver.hpp"
+#include "X3DDocument.hpp"
+#include "X3DExecutionContext.hpp"
+#include "X3DSceneBridge.hpp"
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace x3d::runtime {
 
-/// Everything RuntimeSession::create can be told, in one named bag. A struct
-/// rather than positional parameters so a call site reads as what it turns on.
 struct SessionOptions {
   /// One constructor-fixed backend for transforms, geometry, camera and events.
   /// Null selects the stable built-in backend once, before any scene attachment.
@@ -65,18 +33,13 @@ struct SessionOptions {
   /// §39 followers, §30 event utilities, §22/§23 LOD/Billboard/Proximity/
   /// Visibility, §21 key-device sensors, §9 LoadSensor, §23.3.1 viewpoint bind,
   /// §31 shader selection events (with meshOptions.shaders).
-  ///
-  /// Default ON, and this is NOT the session smuggling in policy: without these
-  /// the ROUTEs resolve but nothing drives them, so an authored scene loads,
-  /// renders one static frame and never animates — silently. That is the single
-  /// most forgettable step on the low-level path, which is the whole reason this
-  /// type exists. Turn it OFF to drive the graph entirely from your own Systems.
+  /// Enabled by default to drive authored behavior. Disable when the host
+  /// supplies its own systems.
   bool standardRuntime = true;
 
   /// Attach the pointer-driven systems (PointingSensorSystem + NavigationSystem)
-  /// in arbitration order. Default OFF: they are only meaningful once an embedder
-  /// feeds real pointer/key input, and a headless or offline consumer wants
-  /// neither. Access the NavigationSystem afterwards via navigation().
+  /// in arbitration order. Disabled by default; the embedder supplies pointer/key
+  /// input. Access the NavigationSystem afterwards via navigation().
   bool interactive = false;
 
   /// With `interactive`: receives each activated Anchor whose url is not an
@@ -96,19 +59,27 @@ struct SessionOptions {
   /// confined local-file resolver) to make watched children actually load.
   extract::AssetResolver assetResolver = nullptr;
 
-  /// Resolver and base URL used when an Inline receives load=TRUE after parse.
+  /// Enable deferred Inline loading and supply its fallback resolver. Nodes
+  /// fetched by the asset-loader factory retain their source policy/ancestry
+  /// and use that loader instead of this fallback when activated after parse.
   InlineResolver inlineResolver = {};
+  /// Fallback resolution directory for Inline, textures and watched assets.
   std::string baseUrl;
+
+  /// Optional contextual callbacks, preferred over their legacy counterparts.
+  /// URL stays authored; base is Scene::nodeBaseUrls, or baseUrl if absent.
+  extract::TextureResolverWithBase textureResolverWithBase;
+  extract::AssetResolverWithBase assetResolverWithBase; // LoadSensor byte path
+  /// Install pointing-device sensors without anchors or SDK navigation.
+  /// `interactive` already includes these sensors; setting both installs once.
+  bool pointingSensors = false;
 };
 
 class RuntimeSession {
 public:
   /// Take ownership of `doc`, wire the runtime, and return a ready session.
-  ///
-  /// Returned by unique_ptr, not by value, and deliberately: the extractor holds
-  /// REFERENCES to the context and scene that live inside this object, so a
-  /// RuntimeSession must not move once built. Pinning it on the heap makes that
-  /// structural instead of a comment nobody reads.
+  /// The extractor borrows the context and scene stored in this object, so the
+  /// session is heap-pinned and cannot move after construction.
   static std::unique_ptr<RuntimeSession> create(X3DDocument doc,
                                                 SessionOptions options = {}) {
     return std::unique_ptr<RuntimeSession>(
@@ -125,10 +96,23 @@ public:
   RuntimeSession(RuntimeSession &&) = delete;
   RuntimeSession &operator=(RuntimeSession &&) = delete;
 
-  // ── the per-frame loop ────────────────────────────────────────────────────
-
   /// Advance the behavior model to `now` (seconds, any monotonic clock).
-  void tick(double now) { ctx_.tick(now); }
+  /// Append deferred Inline diagnostics to document().inlineWarnings.
+  /// Hosts needing retained ingress or phase timings use the overloads below
+  /// rather than context().tick(), which does not drain those diagnostics.
+  void tick(double now) { tick(now, nullptr, {}); }
+  void tick(double now,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress) {
+    tick(now, nullptr, ingress);
+  }
+  void tick(double now, X3DExecutionContext::TickTimings *timings,
+            const std::vector<X3DExecutionContext::RetainedInput> &ingress = {}) {
+    ctx_.tick(now, timings, ingress);
+    auto &pending = doc_.scene.pendingInlineWarnings;
+    doc_.inlineWarnings.insert(doc_.inlineWarnings.end(), pending.begin(),
+                               pending.end());
+    pending.clear();
+  }
 
   /// Every item, all in `added` — the frame-0 upload. Also re-baselines the
   /// incremental channel, so a later delta() diffs against this walk.
@@ -138,8 +122,6 @@ public:
   /// fullSnapshot() returns the snapshot, and calling it twice without an
   /// intervening tick() returns an empty delta. See SceneExtractor::delta().
   extract::RenderDelta delta() { return extractor_.delta(); }
-
-  // ── the pieces, still yours ───────────────────────────────────────────────
 
   X3DExecutionContext &context() { return ctx_; }
   const X3DExecutionContext &context() const { return ctx_; }
@@ -163,18 +145,29 @@ public:
   /// for setForcedMode etc. Null otherwise.
   const std::shared_ptr<NavigationSystem> &navigation() const { return nav_; }
 
+  /// Enabled pointing sensors tied at the lowest scope of a current pick from
+  /// this session's context. Empty on a miss or when no sensor applies. Uses the
+  /// same resolver as press activation, without changing pointer/hover/grab state.
+  /// This geometric query works even when sensor systems are not installed; it
+  /// does not predict an existing grab or reserve a later press. Nodes are
+  /// borrowed from the scene; discard picks/results before removing their nodes.
+  std::vector<X3DNode *> pointingSensors(const PickResult &pick) const {
+    return PointingSensorSystem::resolve(pick);
+  }
+
 private:
   RuntimeSession(X3DDocument doc, SessionOptions options)
-      // Member ORDER is the contract: doc_ first (ctx_ and extractor_ both refer
+      // Member order is the contract: doc_ first (ctx_ and extractor_ both refer
       // into its scene), then ctx_, then extractor_ last (it captures both by
       // reference). Declaration order below fixes this; do not reorder.
       : doc_(std::move(doc)),
         ctx_(doc_.scene.authorFields, std::move(options.geoProjection)),
         extractor_(ctx_, doc_.scene, options.meshOptions,
-                   std::move(options.textureResolver)) {
+                   std::move(options.textureResolver),
+                   std::move(options.textureResolverWithBase), options.baseUrl) {
     ctx_.buildSceneGraph(doc_.scene);
     bridge_ = ctx_.buildFrom(doc_.scene);
-    // Systems are attached AFTER both builds and BEFORE any tick(), which is the
+    // Systems are attached after both builds and before any tick(), which is the
     // one ordering here that is real: attachStandardRuntime walks the scene the
     // buildSceneGraph pass just sanitized, and a System added after the first
     // tick() misses that tick's update.
@@ -184,16 +177,19 @@ private:
                             std::move(options.baseUrl),
                             // The extractor's copy selects the bound program;
                             // this one drives the matching §31 events.
-                            options.meshOptions.shaders);
+                            options.meshOptions.shaders,
+                            std::move(options.assetResolverWithBase));
     if (options.interactive)
       nav_ = attachInteractive(doc_.scene, ctx_, std::move(options.anchorHandler));
+    else if (options.pointingSensors)
+      attachPointingSensors(doc_.scene, ctx_);
   }
 
   X3DDocument doc_;
   X3DExecutionContext ctx_;
   BridgeResult bridge_;
   std::shared_ptr<NavigationSystem> nav_; // set iff options.interactive.
-  extract::SceneExtractor extractor_; // MUST stay last: refs ctx_ and doc_.scene.
+  extract::SceneExtractor extractor_; // Must stay last: borrows ctx_ and doc_.scene.
 };
 
 } // namespace x3d::runtime

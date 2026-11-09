@@ -4,12 +4,10 @@
 // resolving their load state through the injected extract::AssetResolver seam,
 // and emits isActive / isLoaded / loadTime / progress per the spec. Per-sensor
 // state lives here in a map, never on the node (the node model stays pure data).
-//
 // IO-free: the system is pure over the seam and ships no concrete backend. The
 // default resolver is the null stub (Failed); an app injects a real backend —
-// e.g. the CLI wires io::file::makeFileResolver (SEC-3-confined local files),
-// which stays out of the public SDK headers. Closes findings NSN-1..7, NSN-9.
-//
+// e.g. the CLI wires io::file::makeFileResolver (path-confined local files; ADR-0038),
+// which stays out of the public SDK headers.
 // Design: docs/superpowers/specs/2026-07-17-loadsensor-design.md.
 #ifndef X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 #define X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
@@ -23,11 +21,14 @@
 #include "x3d/nodes/LoadSensor.hpp"
 #include "x3d/nodes/X3DUrlObject.hpp"
 #include "x3d/nodes/X3DInterfaceRegistry.hpp"
+#include "x3d/nodes/Anchor.hpp"
+#include "x3d/nodes/Inline.hpp"
 
 #include <any>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -37,16 +38,16 @@ namespace x3d::runtime {
 using namespace x3d::core;
 
 namespace detail_loadsensor {
-// NSN-12: an Inline counts as loaded only once it and every nested sub-Inline
+// an Inline counts as loaded only once it and every nested sub-Inline
 // it asks to load have loaded. Parse-time expansion replaces each loaded Inline
-// with a Group, so an Inline node still present (load TRUE) in an expanded
+// with a Group, so an Inline node still present (load `TRUE`) in an expanded
 // child's content is a sub-Inline that failed to load.
 inline bool hasUnloadedInline(const X3DNode &n, std::size_t depth = 0) {
   if (depth >= kMaxNestingDepth) return false;
   bool found = false;
   forEachChildNode(n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
     if (found) return;
-    if (c->nodeTypeName() == "Inline") {
+    if (dynamic_cast<const x3d::nodes::Inline *>(c.get()) != nullptr) {
       auto *uo = dynamic_cast<const x3d::nodes::X3DUrlObject *>(c.get());
       if (!uo || uo->getLoad()) found = true;
       return;
@@ -98,9 +99,12 @@ using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode *child, const Scene 
 
 class LoadSensorSystem : public System {
 public:
-  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr)
+  explicit LoadSensorSystem(extract::AssetResolver resolver = nullptr,
+                            extract::AssetResolverWithBase resolverWithBase = {},
+                            std::string baseUrl = {})
       : resolver_(resolver ? std::move(resolver)
-                           : extract::makeNullAssetResolver()) {}
+                           : extract::makeNullAssetResolver()),
+        resolverWithBase_(std::move(resolverWithBase)), baseUrl_(std::move(baseUrl)) {}
 
   void setScene(const Scene *s) { scene_ = s; }
   void setChildLoadPolicy(ChildLoadPolicy p) { policy_ = std::move(p); }
@@ -131,16 +135,15 @@ private:
   struct ChildState {
     ChildStatus status = ChildStatus::NotStarted;
     std::size_t candidate = 0;       // next MFString index to try
-    MFString lastUrl;                // NSN-7 url snapshot
-    bool lastLoad = true;            // NSN-7 load snapshot
+    MFString lastUrl;
+    bool lastLoad = true;
     bool preseeded = false;          // parse-time expanded Inline (already Ready)
   };
   struct SensorState {
     std::unordered_map<X3DNode *, ChildState> children;
     bool active = false;
-    bool terminal = false;           // burst emitted; idle until an NSN-7 reset
+    bool terminal = false;           // burst emitted; idle until a watched-child reset
     bool everEvaluated = false;      // R7 first-evaluation
-    bool enabled = true;
     double activatedAt = 0.0;
     float lastProgress = -1.0f;
     std::uint64_t lastGen = 0;       // tick this sensor was last processed
@@ -162,6 +165,8 @@ private:
   }
 
   extract::AssetResolver resolver_;
+  extract::AssetResolverWithBase resolverWithBase_;
+  std::string baseUrl_;
   const Scene *scene_ = nullptr;
   ChildLoadPolicy policy_;
   std::function<void(X3DNode *, bool, double)> sensorHook_;
@@ -205,13 +210,16 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
     bool restartTimeout = false;
 
     // 2. Refresh the watch set from children (unique by pointer — R5 USE dedup),
-    //    seeding new entries and diffing url/load for NSN-7 resets.
+    //    seeding new entries and diffing url/load for watched-child resets.
     std::vector<X3DNode *> watched;
     std::unordered_set<X3DNode *> present;
+    // Owning handles for Scene::nodeBaseUrls lookups (keyed by ownership).
+    std::unordered_map<X3DNode *, std::shared_ptr<X3DNode>> owners;
     for (const auto &childAny : ls->getChildren()) {
       X3DNode *c = childAny.get();
       if (!c || present.count(c))
         continue;
+      if (resolverWithBase_ && scene_) owners.emplace(c, childAny);
 
       const bool pre = scene_ && scene_->expandedInlines.count(c) > 0;
       ChildLoadPlan plan;
@@ -231,11 +239,11 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       auto [it, inserted] = st.children.try_emplace(c, ChildState{});
       ChildState &cs = it->second;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool anchor = dynamic_cast<const x3d::nodes::Anchor *>(c) != nullptr;
       if (inserted) {
         cs.preseeded = pre;
         if (pre && detail_loadsensor::hasUnloadedInline(*c))
-          setChildStatus(cs, c, ls, ChildStatus::Failed); // NSN-12: nested failed
+          setChildStatus(cs, c, ls, ChildStatus::Failed); // nested failed
         else if (pre || plan.vacuousReady)
           setChildStatus(cs, c, ls, ChildStatus::Ready);
         if (!pre && uo) {
@@ -243,13 +251,13 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.lastLoad = anchor ? true : uo->getLoad();
         }
         // A newly watched child that still needs loading reopens a terminal
-        // sensor (membership growth is an NSN-7 reset) and restarts the window.
+        // sensor (membership growth is a watched-child reset) and restarts the window.
         if (cs.status != ChildStatus::Ready) {
           st.terminal = false;
           restartTimeout = true;
         }
       } else if (!pre && uo) {
-        // NSN-7 poll-and-diff on the inputOutput url/load fields.
+        // poll-and-diff on the inputOutput url/load fields.
         MFString curUrl = uo->getUrl();
         const bool curLoad = anchor ? true : uo->getLoad();
         if (curUrl != cs.lastUrl) {
@@ -278,7 +286,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         ++it;
     }
 
-    // 3. Terminal sensors idle until an NSN-7 reset above clears the flag.
+    // 3. Terminal sensors idle until a watched-child reset above clears the flag.
     if (st.terminal) {
       st.everEvaluated = true;
       continue;
@@ -291,10 +299,10 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
           cs.status == ChildStatus::Failed)
         continue;
       auto *uo = dynamic_cast<x3d::nodes::X3DUrlObject *>(c);
-      const bool anchor = c->nodeTypeName() == "Anchor";
+      const bool anchor = dynamic_cast<const x3d::nodes::Anchor *>(c) != nullptr;
       const bool load = uo && !anchor ? static_cast<bool>(uo->getLoad()) : true;
       if (!load) {
-        cs.status = ChildStatus::NotStarted; // load=FALSE holds the child idle
+        cs.status = ChildStatus::NotStarted; // load=`FALSE` holds the child idle
         continue;
       }
       MFString urls = uo ? uo->getUrl() : MFString{};
@@ -304,6 +312,15 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       }
       cs.status = ChildStatus::Loading;
       const extract::AssetKind kind = detail_loadsensor::kindForNode(c);
+      std::string base = baseUrl_;
+      if (resolverWithBase_ && scene_) {
+        // O(log n) ownership lookup, not a scan of every recorded node.
+        auto owner = owners.find(c);
+        if (owner != owners.end()) {
+          auto origin = scene_->nodeBaseUrls.find(std::weak_ptr<X3DNode>(owner->second));
+          if (origin != scene_->nodeBaseUrls.end()) base = origin->second;
+        }
+      }
       bool called = false;
       while (cs.candidate < urls.size()) {
         const std::string &u = urls[cs.candidate];
@@ -317,16 +334,20 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
             break;
           }
         }
-        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(u)) {
+        const std::string key = resolverWithBase_
+            ? std::to_string(static_cast<int>(kind)) + ":" +
+                  std::to_string(base.size()) + ":" + base + u : u;
+        if (detail_loadsensor::isEmbeddedScheme(u) || readyMemo_.count(key)) {
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }
         if (called)
           break; // ≤1 resolver call/tick: remaining candidates wait for next tick
-        const extract::AssetResult r = resolver_(u, kind);
+        const extract::AssetResult r = resolverWithBase_
+            ? resolverWithBase_(u, kind, base) : resolver_(u, kind);
         called = true;
         if (r.ready()) {
-          readyMemo_.insert(u);
+          readyMemo_.insert(key);
           setChildStatus(cs, c, ls, ChildStatus::Ready);
           break;
         }
@@ -340,7 +361,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         setChildStatus(cs, c, ls, ChildStatus::Failed); // all candidates failed
     }
 
-    // 5. A child (re)entering Loading via NSN-7 restarts the timeout window.
+    // 5. A child (re)entering Loading restarts the timeout window.
     if (restartTimeout)
       st.activatedAt = now;
 
@@ -377,7 +398,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
       st.lastProgress = 1.0f;
     };
     auto failureBurst = [&]() {
-      emit(ctx, ls, "isLoaded", SFBool{false}); // loadTime is NOT sent on failure
+      emit(ctx, ls, "isLoaded", SFBool{false}); // loadTime is not sent on failure
       if (st.active) {
         emit(ctx, ls, "isActive", SFBool{false});
         if (sensorHook_)
@@ -411,7 +432,7 @@ inline void LoadSensorSystem::update(double now, X3DExecutionContext &ctx) {
         st.lastProgress = progress;
       }
     }
-    // else: nothing loading, none failed, not all ready (e.g. load=FALSE
+    // else: nothing loading, none failed, not all ready (e.g. load=`FALSE`
     // children) — the sensor idles until a child begins loading.
 
     // 7. timeOut deadline: measured from activation, re-read live, 0 = forever.

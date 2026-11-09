@@ -1,4 +1,3 @@
-// ConeEmitter.cpp
 #include "x3d/nodes/ConeEmitter.hpp"
 
 namespace x3d::nodes {

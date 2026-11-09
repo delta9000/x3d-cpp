@@ -118,7 +118,7 @@ def test_missing_spec_returns_empty_dict(tmp_path):
     assert skipped == []
 
 
-# The three node categories now share one parse_node() path.
+# The three node categories share one parse_node() path.
 
 def test_parse_node_mixin_has_no_base():
     xml = (

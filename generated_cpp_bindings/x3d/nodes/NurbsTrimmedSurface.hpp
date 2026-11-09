@@ -1,4 +1,3 @@
-// NurbsTrimmedSurface.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -29,44 +28,20 @@ using namespace x3d::core;
  */
 class NurbsTrimmedSurface : public virtual X3DNurbsSurfaceGeometryNode {
 public:
-  /**
-   * @brief Default constructor for NurbsTrimmedSurface
-   */
   NurbsTrimmedSurface() = default;
 
-  /**
-   * @brief Destructor for NurbsTrimmedSurface
-   */
   ~NurbsTrimmedSurface() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "geometry"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "NURBS"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 4; }
 
   /**
-   * @brief Acceptable node types for the addTrimmingContour field.
    * @details Permitted X3D node types: Contour2D
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &
   acceptableAddTrimmingContourNodeTypes() {
@@ -75,14 +50,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * addTrimmingContour. AccessType: inputOnly
+   * MFNode; access: inputOnly.
    * @details
    *          Dispatches to the handler registered via
-   * setOnAddTrimmingContourHandler(); a no-op if none is set. The event cascade
-   * reaches this through the node's reflected field table, so routing is
-   * node-agnostic.
-   * @param value The value of the received event.
+   * setOnAddTrimmingContourHandler(); a no-op if none is set.
    */
   void onAddTrimmingContour(const MFNode &value) {
     if (_onAddTrimmingContourHandler)
@@ -90,10 +61,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * addTrimmingContour.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void
   setOnAddTrimmingContourHandler(std::function<void(const MFNode &)> handler) {
@@ -101,9 +69,7 @@ public:
   }
 
   /**
-   * @brief Acceptable node types for the removeTrimmingContour field.
    * @details Permitted X3D node types: Contour2D
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &
   acceptableRemoveTrimmingContourNodeTypes() {
@@ -112,14 +78,10 @@ public:
   }
 
   /**
-   * @brief Event handler invoked when an event is received on
-   * removeTrimmingContour. AccessType: inputOnly
+   * MFNode; access: inputOnly.
    * @details
    *          Dispatches to the handler registered via
-   * setOnRemoveTrimmingContourHandler(); a no-op if none is set. The event
-   * cascade reaches this through the node's reflected field table, so routing
-   * is node-agnostic.
-   * @param value The value of the received event.
+   * setOnRemoveTrimmingContourHandler(); a no-op if none is set.
    */
   void onRemoveTrimmingContour(const MFNode &value) {
     if (_onRemoveTrimmingContourHandler)
@@ -127,10 +89,7 @@ public:
   }
 
   /**
-   * @brief Register the handler invoked when an event arrives on
-   * removeTrimmingContour.
-   * @param handler Callback receiving the event value (replaces any prior
-   * handler).
+   * Replaces the prior event callback.
    */
   void setOnRemoveTrimmingContourHandler(
       std::function<void(const MFNode &)> handler) {
@@ -138,16 +97,13 @@ public:
   }
 
   /**
-   * @brief Gets the value of trimmingContour. AccessType: inputOutput
+   * MFNode; access: inputOutput. Borrows the stored value.
    * @details A set of Contour2D nodes are used as trimming loops.
-   * @return const MFNode& The current value of trimmingContour.
    */
   const MFNode &getTrimmingContour() const { return _trimmingContour; }
 
   /**
-   * @brief Acceptable node types for the trimmingContour field.
    * @details Permitted X3D node types: Contour2D
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableTrimmingContourNodeTypes() {
     static const std::vector<std::string> types = {"Contour2D"};
@@ -155,9 +111,8 @@ public:
   }
 
   /**
-   * @brief Sets the value of trimmingContour. AccessType: inputOutput
+   * Access: inputOutput.
    * @details A set of Contour2D nodes are used as trimming loops.
-   * @param value The new value for trimmingContour.
    */
   void setTrimmingContour(const MFNode &value) { _trimmingContour = value; }
 
@@ -166,51 +121,32 @@ public:
     _trimmingContour = std::move(value);
   }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "NurbsTrimmedSurface").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
   /**
-   * @brief Registered event handler for addTrimmingContour (inputOnly); empty
-   * until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const MFNode &)> _onAddTrimmingContourHandler{};
 
   /**
-   * @brief Registered event handler for removeTrimmingContour (inputOnly);
-   * empty until set.
+   * Empty callbacks leave input events unhandled.
    */
   std::function<void(const MFNode &)> _onRemoveTrimmingContourHandler{};
-
-  /**
-   * @brief Member variable for trimmingContour.
-   */
 
   MFNode _trimmingContour{};
 };

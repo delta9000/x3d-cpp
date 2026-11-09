@@ -1,4 +1,3 @@
-// CoordinateInterpolator2D.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,114 +26,64 @@ using namespace x3d::core;
  */
 class CoordinateInterpolator2D : public virtual X3DInterpolatorNode {
 public:
-  /**
-   * @brief Default constructor for CoordinateInterpolator2D
-   */
   CoordinateInterpolator2D() = default;
 
-  /**
-   * @brief Destructor for CoordinateInterpolator2D
-   */
   ~CoordinateInterpolator2D() = default;
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "children"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Interpolation"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of keyValue. AccessType: inputOutput
+   * MFVec2f; access: inputOutput. Borrows the stored value.
    * @details Output values for linear interpolation, each corresponding to an
    * input-fraction value in the key array.
-   * @return const MFVec2f& The current value of keyValue.
    */
   const MFVec2f &getKeyValue() const { return _keyValue; }
 
   /**
-   * @brief Sets the value of keyValue. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Output values for linear interpolation, each corresponding to an
    * input-fraction value in the key array.
-   * @param value The new value for keyValue.
    */
   void setKeyValue(const MFVec2f &value) { _keyValue = value; }
 
   void setKeyValue(MFVec2f &&value) { _keyValue = std::move(value); }
 
   /**
-   * @brief Gets the value of value_changed. AccessType: outputOnly
+   * MFVec2f; access: outputOnly. Borrows the stored value.
    * @details Linearly interpolated output value determined by current key time
    * and corresponding keyValue pair.
-   * @return const MFVec2f& The current value of value_changed.
    */
   const MFVec2f &getValue_changed() const { return _value_changed; }
 
   /**
-   * @brief Emit an output value on value_changed. AccessType: outputOnly
+   * Access: outputOnly. Runtime output write path.
    * @details Linearly interpolated output value determined by current key time
-   * and corresponding keyValue pair. outputOnly fields have no author-facing
-   * setter; a node's behavior or the runtime calls this to produce an output
-   * event. The event cascade reaches it through the reflected field table so
-   * producing outputs is node-agnostic.
-   * @param value The value to emit.
+   * and corresponding keyValue pair.
    */
   void emitValue_changed(const MFVec2f &value) { _value_changed = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "CoordinateInterpolator2D").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
 private:
-  /**
-   * @brief Member variable for keyValue.
-   */
-
   MFVec2f _keyValue{};
-
-  /**
-   * @brief Member variable for value_changed.
-   */
 
   MFVec2f _value_changed{};
 };

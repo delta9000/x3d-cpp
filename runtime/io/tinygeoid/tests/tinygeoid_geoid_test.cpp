@@ -1,5 +1,5 @@
 // tinygeoid_geoid_test.cpp — the tinygeoid geoid adapter for the built-in
-// GeoProjection backend (ADR-0053, GEO-GEOID-DEFAULT).
+// GeoProjection backend (ADR-0053).
 #include "GeoFrame.hpp"
 #include "TinygeoidGeoid.hpp"
 

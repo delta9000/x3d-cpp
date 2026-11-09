@@ -2,7 +2,6 @@
 // Non-linear interpolation math for the spline interpolator family (ISO/IEC
 // 19775-1 §19.2.4 Hermite spline, §19.4.13 Squad) and the §19.4.4 EaseInEaseOut
 // fraction modifier. Factored out of the Systems so the math is unit-testable.
-//
 // Spec-correctness notes:
 //   - hermiteSpline: the §19.2.4 algorithm v_s = S^T H C with the standard
 //     Hermite basis (h00,h01,h10,h11), per-segment outgoing/incoming tangents
@@ -32,7 +31,7 @@ namespace x3d::runtime {
 
 using namespace x3d::core;
 
-// --- value-type vector ops for the spline value types -----------------------
+// value-type vector ops for the spline value types
 inline float vadd(float a, float b) { return a + b; }
 inline float vsub(float a, float b) { return a - b; }
 inline float vscale(float a, float s) { return a * s; }
@@ -161,13 +160,7 @@ T hermiteSpline(const MFFloat &key, const std::vector<T> &keyValue,
               vadd(vscale(m0, h10), vscale(m1, h11)));
 }
 
-// --- Quaternion algebra for Squad ------------------------------------------
-inline Quat quatMul(const Quat &a, const Quat &b) {
-  return Quat{a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-              a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-              a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-              a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
-}
+// Quaternion algebra for Squad
 inline Quat quatConj(const Quat &q) { return Quat{-q.x, -q.y, -q.z, q.w}; } // unit inverse
 
 /** @brief log of a unit quaternion -> pure quaternion (w=0). */
@@ -220,7 +213,7 @@ inline SFRotation squadOrientation(const MFFloat &key,
   std::vector<Quat> q(N);
   for (std::size_t k = 0; k < N; ++k) q[k] = quatFromRotation(keyValue[k]);
 
-  // §19.2.3 makes TRUE discard authored velocity magnitudes and normalize
+  // §19.2.3 makes `TRUE` discard authored velocity magnitudes and normalize
   // tangents to the total key path length; in Squad's quaternion space that
   // path length and tangent are measured by the angular quaternion logarithms.
   double totalAngle = 0.0;
@@ -238,7 +231,7 @@ inline SFRotation squadOrientation(const MFFloat &key,
     Quat forward = quatLog(quatMul(quatConj(q[j]), q[j + 1]));
     // Shoemake's control is qi * exp(-1/4 (log(qi^-1 qprev)+log(qi^-1 qnext))).
     // Scale this angular tangent to the full path length, retaining the same
-    // control construction. FALSE above deliberately keeps the legacy bytes.
+    // control construction. `FALSE` above deliberately keeps the legacy bytes.
     const double magnitude = 0.5 * std::sqrt(
         (backward.x + forward.x) * (backward.x + forward.x) +
         (backward.y + forward.y) * (backward.y + forward.y) +

@@ -1,4 +1,3 @@
-// BoundedPhysicsModel.cpp
 #include "x3d/nodes/BoundedPhysicsModel.hpp"
 
 namespace x3d::nodes {

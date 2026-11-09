@@ -1,10 +1,5 @@
-// RecordingBackend.hpp
-// A test AudioBackend that records every seam op (createNode / connect /
-// setParam) into an inspectable list, for deterministic graph-construction
-// assertions. It does NO DSP — render() emits silence. It is the audio analog of
-// inspecting the recorded backend calls: it proves SoundSystem reads the §16
-// `children` graph into the correct nodes + connections + initial params, in a
-// deterministic op order, independent of any DSP correctness.
+// Records AudioBackend operations in receive order for graph assertions.
+// Rendering produces silence.
 #ifndef X3D_RUNTIME_RECORDING_BACKEND_HPP
 #define X3D_RUNTIME_RECORDING_BACKEND_HPP
 
@@ -23,18 +18,16 @@ namespace x3d::runtime {
  */
 class RecordingBackend : public AudioBackend {
 public:
-  /** @brief One recorded createNode call. */
   struct CreateOp {
     NodeHandle handle;
     NodeKind kind;
     NodeParams params;
   };
-  /** @brief One recorded connect call (src feeds INTO dst). */
+  /** @brief One recorded connect call (src feeds into dst). */
   struct ConnectOp {
     NodeHandle dst;
     NodeHandle src;
   };
-  /** @brief One recorded setParam call. */
   struct SetParamOp {
     NodeHandle node;
     Param param;

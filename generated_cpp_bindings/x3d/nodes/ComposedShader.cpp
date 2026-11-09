@@ -1,4 +1,3 @@
-// ComposedShader.cpp
 #include "x3d/nodes/ComposedShader.hpp"
 
 namespace x3d::nodes {

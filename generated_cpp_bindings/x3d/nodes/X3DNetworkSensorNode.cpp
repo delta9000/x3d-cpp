@@ -1,4 +1,3 @@
-// X3DNetworkSensorNode.cpp
 #include "x3d/nodes/X3DNetworkSensorNode.hpp"
 
 namespace x3d::nodes {

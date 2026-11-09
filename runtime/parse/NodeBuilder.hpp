@@ -1,32 +1,6 @@
-// NodeBuilder.hpp
-// Shared node-agnostic build steps for every encoding reader. This is the
-// reusable middle layer the four readers funnel through, so they differ only in
-// their syntax front-end (XML / ClassicVRML / VRML97 / JSON), not in how they
-// build the runtime model.
-//
-// These are exactly the operations XmlReader performs, lifted out of XmlReader
-// into free functions keyed on already-parsed name/value strings (so they are
-// encoding-independent):
-//   * beginNode(typeName)            — X3DNodeFactory::create; null => skip.
-//   * applyField(node, x3dName, wire)— find FieldInfo by x3dName; enum =>
-//                                      setEnumString, else parseValue + set;
-//                                      outputOnly/inputOnly value-writes are
-//                                      skipped (initializeOnly fields are
-//                                      writable via their reflection set
-//                                      thunk).
-//   * attachChild(parent, slot, child) — the containerField resolution chain
-//                                      from XmlReader::attachChild.
-//   * findNodeField / findField      — FieldInfo lookup helpers.
-//   * collectFieldValue(tok, type)   — gather the right run of VRML tokens for
-//                                      a field and join them into the wire
-//                                      string FieldValueIO::parseValue expects
-//                                      (the one piece XmlReader did not need,
-//                                      because XML delimits values by attribute
-//                                      quotes).
-//
-// Public declarations, namespace x3d::codec. Implementations are compiled in
-// x3d_cpp_runtime. Mirrors XmlReader's tolerance: unknown types/fields are
-// skipped, never throwing.
+// Shared reflection-based node construction and field application for encoding readers.
+// Unknown types and fields are skipped without throwing.
+
 #ifndef X3D_PARSE_NODE_BUILDER_HPP
 #define X3D_PARSE_NODE_BUILDER_HPP
 
@@ -51,30 +25,14 @@ class VrmlTokenizer;
 
 namespace x3d::codec::build {
 using namespace x3d::core;
-
-// ---------------------------------------------------------------------------
-// FieldInfo lookup helpers (lifted verbatim from XmlReader).
-// ---------------------------------------------------------------------------
-
 /// Find a field by its X3D name, or null if the node has no such field.
 const FieldInfo *findField(const FieldTable &table, std::string_view name);
 
-/// True if `name` names an SFNode/MFNode field on this node (so a reader can
-/// disambiguate `fieldName Type{…}` child syntax from a value field).
-bool isNodeField(const FieldTable &table, std::string_view name);
-
-// ---------------------------------------------------------------------------
 // Node construction.
-// ---------------------------------------------------------------------------
 
 /// Instantiate a node by type name. Returns null for an unknown type so the
 /// caller can skip it (consistent with XmlReader).
 std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName);
-
-// ---------------------------------------------------------------------------
-// Value-field application (lifted from XmlReader::applyAttribute).
-// ---------------------------------------------------------------------------
-
 /// Set one value field on a node from its wire string, via the FieldInfo
 /// thunks. Enum fields route through setEnumString; everything else through
 /// parseValue + set. Fields without a setter and unknown names are silently
@@ -83,11 +41,6 @@ std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName);
 /// DEF is handled here too (it is a normal SFString field on every node).
 bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
                 const std::string &wire);
-
-// ---------------------------------------------------------------------------
-// Child attachment (lifted verbatim from XmlReader::attachChild).
-// ---------------------------------------------------------------------------
-
 /// Attach a child node into the correct SF/MFNode field of `parent`.
 /// Resolution order (same as XmlReader):
 ///   1) the node field whose reflected containerField == `slot`;
@@ -110,38 +63,31 @@ void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
 std::vector<const FieldInfo *>
 orderedChildFields(const x3d::nodes::X3DNode &node,
                    const runtime::Scene *scene);
-
-// ---------------------------------------------------------------------------
 // DEF/USE.
-// ---------------------------------------------------------------------------
 
 /// Register a node under a DEF name so a later USE shares its identity. Must be
-/// called BEFORE recursing into the node's children, so a USE nested inside the
+/// called before recursing into the node's children, so a USE nested inside the
 /// subtree resolves to this same shared_ptr.
 void defineDef(runtime::Scene &scene, std::string_view def,
                const std::shared_ptr<x3d::nodes::X3DNode> &node);
 
-/// Resolve a USE name to the shared node previously registered under that DEF,
+/// Resolve a USE name to the shared node registered under that DEF,
 /// or null if unknown (tolerated; the caller skips).
 std::shared_ptr<x3d::nodes::X3DNode> resolveUse(runtime::Scene &scene,
                                                 std::string_view name);
-
-// ---------------------------------------------------------------------------
 // collectFieldValue: gather the right run of VRML tokens for a field.
-// ---------------------------------------------------------------------------
 
 /// How many whitespace-separated scalar components one SF value of `type` has.
 /// (SFString/enum are handled specially by the caller; MF* is bracketed.)
 int sfComponentCount(X3DFieldType type);
 
-/// How many whitespace-separated scalar components ONE element of an MF value
+/// How many whitespace-separated scalar components one element of an MF value
 /// of `type` has (e.g. MFVec3f -> 3, MFRotation -> 4, MFInt32 -> 1). Used to
 /// size a bracket-less single-element MF run.
 int mfElementComponents(X3DFieldType type);
 
-bool isMF(X3DFieldType type);
-
-bool isStringType(X3DFieldType type);
+/// Body of the first inline ecmascript/javascript/vrmlscript URL, or empty.
+std::string decodeInlineScriptSource(const std::vector<std::string> &url);
 
 /// Re-quote a string token for handing back into FieldValueIO::parseMFString,
 /// escaping embedded quote/backslash (the inverse of the tokenizer's unescape).
@@ -155,11 +101,11 @@ std::string requote(const std::string &s);
 ///   * SFString: one quoted string token (re-quoted for parseValue).
 ///   * MFString: a `[ "a" "b" ]` run (or a single bare string), each element
 ///     re-quoted and space-joined so quotes are preserved.
-///   * other MF*: a bracketed `[ … ]` run, OR a single bare SF-element run
+///   * other MF*: a bracketed `[ … ]` run, or a single bare SF-element run
 ///     (VRML permits `field 0 0 0` as a one-element MF) — every inner token
 ///     space-joined.
 ///
-/// Enum fields are NOT routed here; the caller reads one token and calls
+/// Enum fields are not routed here; the caller reads one token and calls
 /// setEnumString directly (per the spec).
 std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type);
 

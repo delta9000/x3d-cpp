@@ -1,4 +1,3 @@
-// NurbsSet.cpp
 #include "x3d/nodes/NurbsSet.hpp"
 
 namespace x3d::nodes {

@@ -1,4 +1,3 @@
-// MetadataDouble.cpp
 #include "x3d/nodes/MetadataDouble.hpp"
 
 namespace x3d::nodes {

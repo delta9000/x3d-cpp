@@ -214,7 +214,7 @@ static MFFloat makeRamp(std::size_t n) {
   return ramp;
 }
 
-// SND-4: a BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the
+// a BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the
 // same Buffer node an AudioClip decodes into; playback follows the
 // MediaTimeSystem lifecycle, loop repeats, gain scales.
 static void testBufferAudioSourceScene() {
@@ -292,7 +292,7 @@ static void testBufferAudioSourceScene() {
   }
 }
 
-// SND-4 as modeled: numberOfChannels > 1 is interleaved and averaged down to
+// as modeled: numberOfChannels > 1 is interleaved and averaged down to
 // the Buffer node's mono contract; bufferDuration limits the seconds used.
 static void testBufferAudioSourceChannelsAndDuration() {
   {
@@ -343,7 +343,7 @@ static void testBufferAudioSourceChannelsAndDuration() {
   }
 }
 
-// SND-4: the computed playback rate (playbackRate x detune in cents) is
+// the computed playback rate (playbackRate x detune in cents) is
 // captured at activation, exactly like AudioClip.pitch. No authored sampleRate
 // means the buffer's seconds are unknowable, so the node plays until stopTime
 // (the AudioClip unknown-duration precedent) and stays active across the test.
@@ -376,7 +376,6 @@ static void testBufferAudioSourceRateCapture() {
     if (p.param == Param::PlaybackRate) rate = p.value;
   CHECK(rate == 4.0f, "buffer source: playbackRate x detune is captured at activation");
 }
-
 
 // ADR-0051 detach: a MovieTexture whose audio is still pending (load FALSE)
 // is removed with its Inline and freed; later ticks must not touch it (the

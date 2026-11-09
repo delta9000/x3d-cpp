@@ -58,17 +58,32 @@ public:
   // Recompute dirtied subtrees bottom-up; mark each recomputed node DirtyBounds.
   void propagate(DirtyTracker &dirty, const TransformSystem &ts) {
     // Snapshot the changed nodes (markDirty during the walk would mutate the list).
-    std::vector<const X3DNode *> seed(dirty.changedNodes().begin(),
-                                      dirty.changedNodes().end());
+    // World-only changes leave local boxes and parent-local unions unchanged.
+    // Keep generic field seeds: FontStyle and geometry fields also affect bounds.
+    std::vector<const X3DNode *> seed;
+    for (const X3DNode *n : dirty.changedNodes()) {
+      const unsigned flags = dirty.flags(n);
+      if (flags & (DirtyChildren | DirtyBounds | DirtyField)) seed.push_back(n);
+      else if (flags & DirtyLocalTransform) {
+        // Its own local box is unchanged; only its contribution to parents moves.
+        auto it = parents_.find(n);
+        if (it != parents_.end()) seed.insert(seed.end(), it->second.begin(), it->second.end());
+      }
+    }
     // A node-reference write can destroy the old child before this pass. Compare
     // identities without dereferencing cached pointers; rebuild only on an actual
-    // edge change (including an expired old node at a reused address).
+    // edge change (including an expired old node at a reused address). Check
+    // every seed, not only DirtyChildren ones: a node-reference field set
+    // without a classified write (e.g. pickingGeometry) still frees the old child.
     bool topologyChanged = false;
     for (const X3DNode *n : seed) {
       auto it = lifetime_.find(n);
       if (it == lifetime_.end()) continue;
       auto live = it->second.lock();
-      if (!live || childrenChanged(*live)) { topologyChanged = true; break; }
+      if (!live || childrenChanged(*live)) {
+        topologyChanged = true;
+        break;
+      }
     }
     if (topologyChanged) {
       auto before = std::move(local_);
@@ -85,7 +100,7 @@ public:
       return;
     }
 
-    // Invalidate the complete ancestor closure BEFORE recomputing. A single
+    // Invalidate the complete ancestor closure before recomputing. A single
     // parent pointer misses USE placements; recursive recompute-up can process a
     // diamond's common ancestor before its second branch has refreshed. Memoized
     // post-order computation visits each affected node once, even on dense DAGs.
@@ -116,10 +131,6 @@ public:
   }
 
 private:
-  // Delegates to TransformSystem so all transform-bearing types stay in sync.
-  // Billboard is view-dependent (active Viewpoint) — deferred to M2c/M2d.
-  bool isTransform(const X3DNode *n) const { return TransformSystem::isTransform(n); }
-
   bool childrenChanged(const X3DNode &n) const {
     std::unordered_set<const X3DNode *> now;
     bool expired = false;
@@ -170,33 +181,25 @@ private:
     return true;
   }
 
-  // Compute a node's local AABB in its own frame (post-order build). EVERY node
+  // Compute a node's local AABB in its own frame (post-order build). Every node
   // gets a local_ entry — including geometry leaves (Box/IFS/...), reached as graph
   // children via the Shape's "geometry" SFNode field — so a later change to a leaf
   // is found by propagate. A node's bounds = its own geometry (non-empty only if it
-  // IS a geometry node) unioned with its children (child-Transform frames mapped in
+  // is a geometry node) unioned with its children (child-Transform frames mapped in
   // via their local matrix). An author bbox overrides (children still get computed
   // for their own entries, but are not unioned into this node).
   Aabb compute(const X3DNode *n, const TransformSystem &ts) {
-    // Memo: a node's local bounds are path-independent (its own frame; the parent
-    // applies the child Transform at the union site below), so a USE-shared node is
-    // computed ONCE, not once per root-to-node path. This is the load-bearing fix for
-    // the multiplicative recompute that hung on heavy USE/DEF scenes.
+    // Local bounds are path-independent; memoize shared nodes to avoid O(paths) work.
     if (auto it = local_.find(n); it != local_.end()) return it->second;
-    // Cycle guard (white/gray/black DFS): index() records EVERY parent edge, so a
-    // containment cycle (a node USE'ing its own DEF, e.g. <X DEF='a' USE='a'/>)
-    // puts a back-edge into children_. The post-order memo above only catches
-    // FINISHED nodes; an in-progress node on the cycle is not yet in local_, so
-    // without this guard compute() recurses the back-edge forever (stack overflow).
-    // On re-entry of an in-progress node, contribute nothing — the back-reference
-    // adds no geometry beyond what is already being unioned up the stack.
+    // The memo contains only completed nodes. An in-progress node marks a cycle;
+    // contribute no geometry on re-entry.
     if (!computing_.insert(n).second) return kCycleEmpty;
     Aabb childUnion;
     auto it = children_.find(n);
     if (it != children_.end())
       for (const X3DNode *c : it->second) {
         Aabb cb = compute(c, ts); // post-order: child entry set first
-        if (isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c, ts.geoProjection()));
+        if (TransformSystem::isTransform(c)) cb = cb.transformed(TransformSystem::localMatrix(c, ts.geoProjection()));
         childUnion.unionWith(cb);
       }
     Aabb a;

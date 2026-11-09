@@ -1,15 +1,4 @@
-// sound_waveshaper_test.cpp — the §16 WaveShaper node (Sound component, clause
-// 16.4.21): maps each input sample x in [-1,1] through the transfer curve with
-// linear interpolation (Web Audio semantics); out-of-range x clamps to the
-// curve endpoints; an empty curve and enabled=false pass the input through.
-//   (a) RECORDING tier: a WaveShaper{AudioDestination <- WaveShaper <-
-//       OscillatorSource} scene -> SoundSystem builds a NodeKind::WaveShaper
-//       node, wires it, and reads curve/gain/enabled; update() pushes them.
-//   (b) DSP tier (BuiltinDspBackend): identity curve [-1,1] leaves the signal
-//       unchanged; a hard-clip curve clamps; out-of-range input clamps to the
-//       end values; empty curve passes through; enabled=false passes through;
-//       gain multiplies the shaped signal; a single-value curve is constant.
-
+// §16.4.21 WaveShaper: interpolation, clamping, and disabled passthrough.
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -61,8 +50,8 @@ static std::vector<float> shape(const std::vector<float> &curve, float gain,
 
   NodeHandle hDest = dsp->createNode(NodeKind::Destination, {});
 
-  dsp->connect(hWs, hBuf);   // buffer feeds INTO the waveshaper
-  dsp->connect(hDest, hWs);  // waveshaper feeds INTO the destination
+  dsp->connect(hWs, hBuf);   // buffer feeds into the waveshaper
+  dsp->connect(hDest, hWs);  // waveshaper feeds into the destination
 
   std::vector<float> out;
   dsp->render(hDest, static_cast<int>(src.size()), kSR, out);
@@ -74,7 +63,7 @@ static bool near(float a, float b, float eps = 1e-6f) {
 }
 
 int main() {
-  // ── (a) RECORDING tier: SoundSystem builds + wires a WaveShaper node. ──────
+  // (a) recording tier: SoundSystem builds + wires a WaveShaper node.
   {
     auto osc = std::make_shared<OscillatorSource>();
     auto ws = std::make_shared<WaveShaper>();
@@ -122,7 +111,7 @@ int main() {
     std::fprintf(stderr, "[recording] WaveShaper built + wired, 3 nodes, 2 edges\n");
   }
 
-  // ── (b) DSP tier: identity curve [-1,1] leaves the signal unchanged. ───────
+  // (b) DSP tier: identity curve [-1,1] leaves the signal unchanged.
   {
     const std::vector<float> src = {0.0f, 0.25f, -0.25f, 0.5f,  -0.5f,
                                     0.9f, -0.9f, 1.0f,   -1.0f};
@@ -134,7 +123,7 @@ int main() {
     std::fprintf(stderr, "[dsp] identity curve: signal unchanged\n");
   }
 
-  // ── (c) DSP tier: a hard-clip curve clamps; in-band samples map linearly. ──
+  // (c) DSP tier: a hard-clip curve clamps; in-band samples map linearly.
   {
     const std::vector<float> clip = {-0.5f, -0.5f, 0.5f, 0.5f};
     const std::vector<float> out =
@@ -146,7 +135,7 @@ int main() {
     std::fprintf(stderr, "[dsp] hard-clip curve: clamps at the flat ends\n");
   }
 
-  // ── (d) DSP tier: input outside [-1,1] clamps to the end curve values. ─────
+  // (d) DSP tier: input outside [-1,1] clamps to the end curve values.
   {
     const std::vector<float> clip = {-0.5f, -0.5f, 0.5f, 0.5f};
     const std::vector<float> out = shape(clip, 1.0f, true, {1.5f, -1.5f, 2.0f});
@@ -156,7 +145,7 @@ int main() {
     std::fprintf(stderr, "[dsp] out-of-range input: clamps to end values\n");
   }
 
-  // ── (e) DSP tier: an empty curve passes the signal through. ────────────────
+  // (e) DSP tier: an empty curve passes the signal through.
   {
     const std::vector<float> src = {0.0f, 0.3f, -0.7f, 1.0f, -1.0f};
     const std::vector<float> out = shape({}, 1.0f, true, src);
@@ -167,7 +156,7 @@ int main() {
     std::fprintf(stderr, "[dsp] empty curve: pass-through\n");
   }
 
-  // ── (f) DSP tier: enabled=false passes the signal through. ─────────────────
+  // (f) DSP tier: enabled=false passes the signal through.
   {
     const std::vector<float> src = {0.0f, 0.3f, -0.7f, 0.8f};
     const std::vector<float> out =
@@ -179,7 +168,7 @@ int main() {
     std::fprintf(stderr, "[dsp] enabled=false: pass-through\n");
   }
 
-  // ── (g) DSP tier: the processing-node gain multiplies the shaped signal. ───
+  // (g) DSP tier: the processing-node gain multiplies the shaped signal.
   {
     const std::vector<float> src = {0.5f, -0.5f};
     const std::vector<float> out = shape({-1.0f, 1.0f}, 0.5f, true, src);
@@ -188,7 +177,7 @@ int main() {
     std::fprintf(stderr, "[dsp] gain=0.5 scales the shaped signal\n");
   }
 
-  // ── (h) DSP tier: a single-value curve holds every sample at that value. ───
+  // (h) DSP tier: a single-value curve holds every sample at that value.
   {
     const std::vector<float> out = shape({0.25f}, 1.0f, true, {0.0f, 0.7f, -0.9f});
     CHECK(near(out[0], 0.25f) && near(out[1], 0.25f) && near(out[2], 0.25f),

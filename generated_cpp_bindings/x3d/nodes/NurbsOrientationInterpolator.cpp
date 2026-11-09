@@ -1,4 +1,3 @@
-// NurbsOrientationInterpolator.cpp
 #include "x3d/nodes/NurbsOrientationInterpolator.hpp"
 
 namespace x3d::nodes {

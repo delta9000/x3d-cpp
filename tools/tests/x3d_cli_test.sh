@@ -1,28 +1,14 @@
 #!/usr/bin/env bash
 # tools/tests/x3d_cli_test.sh
-# ─────────────────────────────────────────────────────────────────────────────
-# CLI test for the 'x3d' binary (Task A: skeleton + convert subcommand).
+# CLI tests for the x3d binary.
 #
 # Positional args:
 #   $1  path to the x3d_cli binary (passed via CMake generator expression)
 #   $2  path to the in-repo fixture directory (tools/x3d-cli/fixtures/)
 #   $5  repo root (for the gallery/smoke scene asset-hygiene gate — see below)
 #
-# Tests:
-#   1. --help exits 0 and mentions 'convert'
-#   2. x3d convert --help exits 0
-#   3. Unknown subcommand exits 1
-#   4. Missing input exits non-zero
-#   5. Malformed/missing input file exits 2 without crashing
-#   6. XML → ClassicVRML succeeds; output non-empty; output reparses (exit 0)
-#   7. XML → JSON succeeds; output non-empty; output reparses (exit 0)
-#   8. ClassicVRML → XML succeeds; output non-empty; output reparses (exit 0)
-#   9. JSON → XML succeeds; output non-empty; output reparses (exit 0)
-#  10. Output to stdout (with -f xml) is non-empty
-#  11. No -o and no -f → exit 1 (usage error), not crash
-# ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
-# Note: NOT using 'set -e' because many sub-commands intentionally exit non-zero.
+# Omit 'set -e' because many subcommands intentionally exit non-zero.
 
 CLI="$1"
 FIXTURES="$2"
@@ -54,7 +40,6 @@ ec_of() {
     echo $?
 }
 
-# ── 1. Top-level --help ───────────────────────────────────────────────────────
 ec=$("$CLI" --help >/dev/null 2>&1; echo $?)
 check "--help exits 0" "$ec" "0"
 
@@ -66,15 +51,12 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 2. convert --help ─────────────────────────────────────────────────────────
 ec=$("$CLI" convert --help >/dev/null 2>&1; echo $?)
 check "convert --help exits 0" "$ec" "0"
 
-# ── 3. Unknown subcommand → exit 1 ───────────────────────────────────────────
 ec=$("$CLI" frobnicate >/dev/null 2>&1; echo $?)
 check "unknown subcommand exits 1" "$ec" "1"
 
-# ── 4. Missing input argument → exit non-zero ────────────────────────────────
 ec=$("$CLI" convert >/dev/null 2>&1; echo $?)
 if [[ "$ec" != "0" ]]; then
     echo "ok:   convert with no args exits non-zero ($ec)"
@@ -83,7 +65,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 5. Malformed / missing input file → exit 2, no crash ─────────────────────
 ec=$("$CLI" convert /nonexistent/does_not_exist.x3d -f xml >/dev/null 2>&1; echo $?)
 check "missing file exits 2" "$ec" "2"
 
@@ -97,7 +78,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── helper: convert, assert non-empty, then reparse ──────────────────────────
 try_convert() {
     local label="$1"
     local in_file="$2"
@@ -133,15 +113,12 @@ try_convert() {
     fi
 }
 
-# ── 6. XML → ClassicVRML ──────────────────────────────────────────────────────
 out_vrml="$TD/simple.x3dv"
 try_convert "xml-to-classicvrml" "$FIXTURE_XML" "$out_vrml"
 
-# ── 7. XML → JSON ─────────────────────────────────────────────────────────────
 out_json="$TD/simple.json"
 try_convert "xml-to-json" "$FIXTURE_XML" "$out_json"
 
-# ── 8. ClassicVRML → XML ──────────────────────────────────────────────────────
 if [[ -s "$out_vrml" ]]; then
     out_from_vrml="$TD/from_vrml.x3d"
     try_convert "classicvrml-to-xml" "$out_vrml" "$out_from_vrml"
@@ -149,7 +126,6 @@ else
     echo "SKIP: classicvrml-to-xml (no .x3dv from test 6)"
 fi
 
-# ── 9. JSON → XML ─────────────────────────────────────────────────────────────
 if [[ -s "$out_json" ]]; then
     out_from_json="$TD/from_json.x3d"
     try_convert "json-to-xml" "$out_json" "$out_from_json"
@@ -157,7 +133,6 @@ else
     echo "SKIP: json-to-xml (no .json from test 7)"
 fi
 
-# ── 10. stdout output with -f ────────────────────────────────────────────────
 stdout_out=$("$CLI" convert "$FIXTURE_XML" -f xml 2>/dev/null || true)
 if [[ -n "$stdout_out" ]]; then
     echo "ok:   stdout output with -f xml is non-empty"
@@ -166,28 +141,22 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 11. No -o and no -f → exit 1 ─────────────────────────────────────────────
 ec=$("$CLI" convert "$FIXTURE_XML" >/dev/null 2>&1; echo $?)
 check "no -o no -f exits 1" "$ec" "1"
 
-# ════════════════════════════════════════════════════════════════════════════
-# Task B: x3d validate subcommand
-# ════════════════════════════════════════════════════════════════════════════
+# x3d validate subcommand
 
 FIXTURE_CLEAN="$FIXTURES/validate-clean.x3d"
 FIXTURE_RANGE="$FIXTURES/validate-range-violation.x3d"
 FIXTURE_PROFILE="$FIXTURES/validate-profile-exceed.x3d"
 FIXTURE_SPECIAL_WARNINGS="$FIXTURES/validate-special-warnings.x3d"
 
-# ── 12. validate --help exits 0 ──────────────────────────────────────────────
 ec=$("$CLI" validate --help >/dev/null 2>&1; echo $?)
 check "validate --help exits 0" "$ec" "0"
 
-# ── 13. validate on clean scene → exit 0 ────────────────────────────────────
 ec=$("$CLI" validate "$FIXTURE_CLEAN" >/dev/null 2>&1; echo $?)
 check "validate clean scene exits 0" "$ec" "0"
 
-# ── 14. validate with range violation → exit 3, diagnostic in output ─────────
 out=$("$CLI" validate "$FIXTURE_RANGE" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_RANGE" >/dev/null 2>&1; echo $?)
 check "validate range-violation exits 3" "$ec" "3"
@@ -207,7 +176,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 15. validate profile exceed → exit 3, mentions TouchSensor + profile ─────
 out=$("$CLI" validate "$FIXTURE_PROFILE" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_PROFILE" >/dev/null 2>&1; echo $?)
 check "validate profile-exceed exits 3" "$ec" "3"
@@ -224,7 +192,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 16. validate --json produces parseable JSON with valid:false ──────────────
 json_out=$("$CLI" validate "$FIXTURE_RANGE" --json 2>&1 || true)
 if [[ "$json_out" == *'"valid"'* && "$json_out" == *'false'* ]]; then
     echo "ok:   validate --json output contains valid:false"
@@ -241,24 +208,19 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 17. validate missing file → exit 2 ───────────────────────────────────────
 ec=$("$CLI" validate /nonexistent/nope.x3d >/dev/null 2>&1; echo $?)
 check "validate missing file exits 2" "$ec" "2"
 
-# ── 18. validate with no args → exit 1 (usage error) ────────────────────────
 ec=$("$CLI" validate >/dev/null 2>&1; echo $?)
 check "validate no args exits 1" "$ec" "1"
 
-# ════════════════════════════════════════════════════════════════════════════
-# Task C: conformance checks (X3DJSAIL-equivalent semantic validation)
-# ════════════════════════════════════════════════════════════════════════════
+# conformance checks (X3DJSAIL-equivalent semantic validation)
 
 FIXTURE_DUP_META="$FIXTURES/validate-dup-meta.x3d"
 FIXTURE_UNUSED_PROTO="$FIXTURES/validate-unused-proto.x3d"
 FIXTURE_IFS_NO_CI="$FIXTURES/validate-ifs-no-coordindex.x3d"
 FIXTURE_ILS_NO_CI="$FIXTURES/validate-ils-no-coordindex.x3d"
 
-# ── 19. validate duplicate meta → exit 3, mentions 'dup-meta' ────────────────
 out=$("$CLI" validate "$FIXTURE_DUP_META" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_DUP_META" >/dev/null 2>&1; echo $?)
 check "validate dup-meta exits 3" "$ec" "3"
@@ -269,7 +231,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 20. validate unused ProtoDeclare → exit 3, mentions 'unused-proto' ────────
 out=$("$CLI" validate "$FIXTURE_UNUSED_PROTO" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_UNUSED_PROTO" >/dev/null 2>&1; echo $?)
 check "validate unused-proto exits 3" "$ec" "3"
@@ -321,7 +282,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 21. validate IFS coord without coordIndex → exit 3, mentions 'ifs-coord' ──
 out=$("$CLI" validate "$FIXTURE_IFS_NO_CI" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_IFS_NO_CI" >/dev/null 2>&1; echo $?)
 check "validate ifs-no-coordindex exits 3" "$ec" "3"
@@ -332,7 +292,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 22. validate ILS coord without coordIndex → exit 3, mentions 'ils-coord' ──
 out=$("$CLI" validate "$FIXTURE_ILS_NO_CI" 2>&1 || true)
 ec=$("$CLI" validate "$FIXTURE_ILS_NO_CI" >/dev/null 2>&1; echo $?)
 check "validate ils-no-coordindex exits 3" "$ec" "3"
@@ -343,29 +302,22 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 23. validate clean scene still exits 0 after conformance checks ───────────
 ec=$("$CLI" validate "$FIXTURE_CLEAN" >/dev/null 2>&1; echo $?)
 check "validate clean scene still exits 0 after conformance checks" "$ec" "0"
 
-# ════════════════════════════════════════════════════════════════════════════
-# Task C2: x3d extract subcommand
-# ════════════════════════════════════════════════════════════════════════════
+# x3d extract subcommand
 
 FIXTURE_SIMPLE="$FIXTURES/simple.x3d"
 
-# ── 24. extract --help exits 0 ────────────────────────────────────────────────
 ec=$("$CLI" extract --help >/dev/null 2>&1; echo $?)
 check "extract --help exits 0" "$ec" "0"
 
-# ── 25. extract with no args → exit 1 ────────────────────────────────────────
 ec=$("$CLI" extract >/dev/null 2>&1; echo $?)
 check "extract no args exits 1" "$ec" "1"
 
-# ── 26. extract missing file → exit 2 ────────────────────────────────────────
 ec=$("$CLI" extract /nonexistent/nope.x3d >/dev/null 2>&1; echo $?)
 check "extract missing file exits 2" "$ec" "2"
 
-# ── 27. extract malformed input → exit non-zero, no crash ────────────────────
 garbage="$TD/garbage_extract.x3d"
 printf '%s' 'NOT VALID X3D' > "$garbage"
 ec=$("$CLI" extract "$garbage" >/dev/null 2>&1; echo $?)
@@ -376,7 +328,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 28. extract simple.x3d → non-empty STL, 12 triangles (Box) ───────────────
 stl_out="$TD/simple_extract.stl"
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" -o "$stl_out" 2>/dev/null; echo $?)
 check "extract simple.x3d exits 0" "$ec" "0"
@@ -401,27 +352,20 @@ if [[ -s "$stl_out" ]]; then
     fi
 fi
 
-# ── 29. extract unknown option → exit 1 ──────────────────────────────────────
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" --unknown-flag >/dev/null 2>&1; echo $?)
 check "extract unknown option exits 1" "$ec" "1"
 
-# ════════════════════════════════════════════════════════════════════════════
-# Task C3: x3d canonicalize subcommand
-# ════════════════════════════════════════════════════════════════════════════
+# x3d canonicalize subcommand
 
-# ── 37. canonicalize --help exits 0 ──────────────────────────────────────────
 ec=$("$CLI" canonicalize --help >/dev/null 2>&1; echo $?)
 check "canonicalize --help exits 0" "$ec" "0"
 
-# ── 38. canonicalize with no args → exit 1 ───────────────────────────────────
 ec=$("$CLI" canonicalize >/dev/null 2>&1; echo $?)
 check "canonicalize no args exits 1" "$ec" "1"
 
-# ── 39. canonicalize missing file → exit 2 ───────────────────────────────────
 ec=$("$CLI" canonicalize /nonexistent/nope.x3d >/dev/null 2>&1; echo $?)
 check "canonicalize missing file exits 2" "$ec" "2"
 
-# ── 40. canonicalize malformed input → exit non-zero, no crash ───────────────
 garbage_canon="$TD/garbage_canon.x3d"
 printf '%s' 'NOT VALID X3D <<<' > "$garbage_canon"
 ec=$("$CLI" canonicalize "$garbage_canon" >/dev/null 2>&1; echo $?)
@@ -432,7 +376,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 41. canonicalize produces non-empty output ───────────────────────────────
 canon_out="$TD/simple_canon.x3d"
 ec=$("$CLI" canonicalize "$FIXTURE_SIMPLE" -o "$canon_out" 2>/dev/null; echo $?)
 check "canonicalize simple.x3d exits 0" "$ec" "0"
@@ -444,7 +387,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 42. canonicalize idempotence: canon(canon(x)) == canon(x) byte-for-byte ──
 canon2_out="$TD/simple_canon2.x3d"
 ec=$("$CLI" canonicalize "$canon_out" -o "$canon2_out" 2>/dev/null; echo $?)
 check "canonicalize re-canonicalize exits 0" "$ec" "0"
@@ -462,40 +404,31 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 43. canonicalize unknown option → exit 1 ─────────────────────────────────
 ec=$("$CLI" canonicalize "$FIXTURE_SIMPLE" --unknown-flag >/dev/null 2>&1; echo $?)
 check "canonicalize unknown option exits 1" "$ec" "1"
 
-# ════════════════════════════════════════════════════════════════════════════
 # sim: headless behavior simulation + field-change trace
-# ════════════════════════════════════════════════════════════════════════════
 
 FIXTURE_ANIM="$FIXTURES/sim-anim.x3d"
 FIXTURE_PROX="$FIXTURES/sim-proximity.x3d"
 
-# ── 44. sim --help exits 0 ───────────────────────────────────────────────────
 ec=$("$CLI" sim --help >/dev/null 2>&1; echo $?)
 check "sim --help exits 0" "$ec" "0"
 
-# ── 45. sim no args → exit 1 ─────────────────────────────────────────────────
 ec=$("$CLI" sim >/dev/null 2>&1; echo $?)
 check "sim no args exits 1" "$ec" "1"
 
-# ── 46. sim missing file → exit 2 ────────────────────────────────────────────
 ec=$("$CLI" sim /nonexistent/nope.x3d >/dev/null 2>&1; echo $?)
 check "sim missing file exits 2" "$ec" "2"
 
-# ── 47. sim malformed input → exit 2, no crash ───────────────────────────────
 garbage_sim="$TD/garbage_sim.x3d"
 printf '%s' 'NOT VALID X3D <<<' > "$garbage_sim"
 ec=$("$CLI" sim "$garbage_sim" >/dev/null 2>&1; echo $?)
 check "sim malformed exits 2" "$ec" "2"
 
-# ── 48. sim bad --move spec → exit 1 ─────────────────────────────────────────
 ec=$("$CLI" sim "$FIXTURE_ANIM" --move "garbage spec" >/dev/null 2>&1; echo $?)
 check "sim bad --move exits 1" "$ec" "1"
 
-# ── 49. sim anim broad trace → non-empty, shows animating translation ────────
 out=$("$CLI" sim "$FIXTURE_ANIM" --fps 4 --ticks 4 2>/dev/null || true)
 if [[ -n "$out" ]]; then
     echo "ok:   sim anim broad trace non-empty"
@@ -511,9 +444,8 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 50. sim --watch narrows the trace ────────────────────────────────────────
 watched=$("$CLI" sim "$FIXTURE_ANIM" --fps 4 --ticks 4 --watch Mover.translation 2>/dev/null || true)
-# Should mention Mover.translation but NOT the Clock.* fields.
+# Should mention Mover.translation but not the Clock.* fields.
 if [[ "$watched" == *"Mover.translation"* && "$watched" != *"Clock."* ]]; then
     echo "ok:   sim --watch narrows to Mover.translation only"
 else
@@ -521,7 +453,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 51. sim --json parses (starts with '[') ──────────────────────────────────
 json_sim=$("$CLI" sim "$FIXTURE_ANIM" --fps 4 --ticks 4 --json 2>/dev/null || true)
 trimmed="${json_sim#"${json_sim%%[![:space:]]*}"}"
 if [[ "$trimmed" == "["* && "$json_sim" == *'"tick"'* && "$json_sim" == *'"changes"'* ]]; then
@@ -531,7 +462,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 52. sim determinism: two runs byte-identical ─────────────────────────────
 r1="$TD/sim_r1.json"; r2="$TD/sim_r2.json"
 "$CLI" sim "$FIXTURE_ANIM" --fps 30 --ticks 30 --json >"$r1" 2>/dev/null || true
 "$CLI" sim "$FIXTURE_ANIM" --fps 30 --ticks 30 --json >"$r2" 2>/dev/null || true
@@ -542,7 +472,6 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 53. sim proximity --move fires enter/exit at the crossing ────────────────
 prox=$("$CLI" sim "$FIXTURE_PROX" --fps 10 --ticks 10 --move "-5 0 0 -> 5 0 0 over 1" 2>/dev/null || true)
 if [[ "$prox" == *"Region.enterTime"* && "$prox" == *"Region.exitTime"* ]]; then
     echo "ok:   sim proximity --move fires Region enter+exit"
@@ -552,7 +481,7 @@ else
 fi
 # Enter reported at tick 4; exit reported at tick 7. The box [-1,1] is crossed at
 # x=-1 (t=0.4, exactly tick 4) and x=+1 (t=0.6, tick 6 is on the boundary), so
-# ENV-08 reports exitTime=0.6 while the isActive=FALSE edge fires at tick 7.
+# The exit timestamp is 0.6; the inactive event is delivered at tick 7.
 if [[ "$prox" == *"tick 4"*"Region.enterTime"* ]]; then
     echo "ok:   sim proximity enterTime at tick 4"
 else
@@ -566,13 +495,10 @@ else
     failures=$(( failures + 1 ))
 fi
 
-# ── 54. sim tracer crash-safety: sim on a DEF-rich scene must exit 0 ────────
-# (guards the any_cast pointer-form fix in FieldTracer::buildNodeIndex; a
-# throwing cast would previously crash / exit non-zero here)
+# Pointer-form any_cast in FieldTracer::buildNodeIndex handles differing field types.
 ec=$("$CLI" sim "$FIXTURE_ANIM" --fps 4 --ticks 4 >/dev/null 2>&1; echo $?)
 check "sim tracer crash-safety (DEF-rich scene exits 0)" "$ec" "0"
 
-# ── 55. sim golden-trace regression (if goldens dir provided) ───────────────
 if [[ -n "$GOLDENS" && -f "$GOLDENS/sim-anim.trace.json" ]]; then
     got_anim=$("$CLI" sim "$FIXTURE_ANIM" --fps 4 --ticks 8 --watch Mover.translation --json 2>/dev/null || true)
     if [[ "$got_anim" == "$(cat "$GOLDENS/sim-anim.trace.json")" ]]; then
@@ -594,7 +520,7 @@ else
     echo "SKIP: sim golden-trace regression (no goldens dir)"
 fi
 
-# ── 56. sim §37 physics (only when x3d_cli was built with the Jolt backend) ──
+# sim §37 physics (only when x3d_cli was built with the Jolt backend)
 # A RigidBody falls under gravity; position_changed is routed to Faller.translation.
 # Asserts: (a) free-fall — at t=1.0s (fps 60) y ~= 10 - 1/2*9.8*1^2 = 5.1; (b)
 # determinism — two --json runs byte-identical; (c) golden-trace regression.
@@ -642,7 +568,7 @@ else
     echo "SKIP: sim §37 physics (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 57. sim §37 JOINTS (only when x3d_cli was built with the Jolt backend) ────
+# sim §37 JOINTS (only when x3d_cli was built with the Jolt backend)
 # A RigidBody ball-jointed to a fixed world anchor at the origin swings under
 # gravity; position_changed is routed to Bob.translation. Asserts: (a) the
 # pendulum swings (y drops well below 0) while the constraint holds the bob ~1
@@ -695,9 +621,9 @@ else
     echo "SKIP: sim §37 joints (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 58. sim §37 contact reporting (only when x3d_cli was built with the Jolt backend) ──
+# sim §37 contact reporting (only when x3d_cli was built with the Jolt backend)
 # A dynamic box falls onto a fixed floor; a CollisionSensor must go active when
-# the boxes collide (§37 CONF-RBP contact reporting).
+# the boxes collide (§37 contact reporting).
 FIXTURE_COLL="$FIXTURES/sim-collision.x3d"
 if [[ "$PHYSICS" == "1" && -f "$FIXTURE_COLL" ]]; then
     # (a) CollisionSensor.isActive must fire during 90 ticks (faller lands ~t=0.7s).
@@ -733,7 +659,7 @@ else
     echo "SKIP: sim §37 contact reporting (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 59. sim §37 inertia/COM: quadcopter rises + rolls (CONF-RBP-INERTIA) ──────
+# sim §37 inertia/COM: quadcopter rises + rolls
 # A RigidBody with constant lift (forces="0 10 0", net upward) and a constant
 # roll torque (torques="0.02 0 0") with a non-uniform authored inertia tensor
 # must rise under lift and rotate about x at a rate governed by that inertia.
@@ -772,7 +698,7 @@ else
     echo "SKIP: sim §37 inertia/COM quadcopter (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 60. sim §37 vehicle: RWD car drives forward under wheel torque + friction ──
+# sim §37 vehicle: RWD car drives forward under wheel torque + friction
 # A rear-wheel-drive chassis (4 cylinder wheels on SingleAxisHingeJoints, RW
 # torques="3 0 0") drives forward in +z under authored frictionCoefficients="1 1".
 # Asserts: (a) the car drives (z > 1.0 by tick 210); (b) determinism.
@@ -813,7 +739,7 @@ else
     echo "SKIP: sim §37 vehicle (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 61. sim §37 skid-steer pivot (yaws in place) ─────────────────────────────
+# sim §37 skid-steer pivot (yaws in place)
 # Left wheels driven forward, right wheels backward (opposing torques); opposing
 # tyre friction yaws the chassis. Asserts: (a) rotation angle grows (pivot spins);
 # (b) determinism; (c) golden-trace regression.
@@ -839,7 +765,7 @@ else
     echo "SKIP: sim §37 vehicle pivot (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 62. sim §37 incline climb (chassis y rises) ──────────────────────────────
+# sim §37 incline climb (chassis y rises)
 # All-wheel drive (torques=-6) carries the car up a ~7° tilted ground under
 # tyre friction. Asserts: (a) chassis y rises (> 2.0 by tick 210); (b) determinism;
 # (c) golden-trace regression.
@@ -867,7 +793,7 @@ else
     echo "SKIP: sim §37 vehicle ramp (x3d_cli built without the Jolt backend)"
 fi
 
-# ── 63. sim §39 Followers: PositionDamper eases toward destination ───────────
+# sim §39 Followers: PositionDamper eases toward destination
 # A PositionDamper with initialDestination="5 0 0" (differs from initialValue="0 0 0")
 # fires the §39 initial transition at load — Mover.translation eases 0→(5,0,0).
 # Asserts: (a) easing — x rises above 4.0 by tick 120; (b) determinism; (c) golden.
@@ -882,7 +808,6 @@ if [[ -f "$FIXTURE_DMP" ]]; then
     fi
 fi
 
-# ════════════════════════════════════════════════════════════════════════════
 # Gallery/smoke scene asset-hygiene gate. For every first-party showcase/smoke
 # scene committed under examples/cpu_raster/assets/ (the cpu_raster "gallery"
 # hero scenes, the lion_head demo model + its studio wrappers, and the flagship
@@ -900,7 +825,6 @@ fi
 #       adequate proxy for "has renderable geometry"; no separate flag is needed.
 #
 # Regression tests for both classes of bug (task: first-party asset hygiene).
-# ════════════════════════════════════════════════════════════════════════════
 
 if [[ -n "$REPO_ROOT" ]]; then
     GALLERY_SCENES=(
@@ -963,7 +887,6 @@ sed 's@<MultiTexture><PixelTexture image="1 1 3 0xffffff"/></MultiTexture>@<Movi
 ec=$("$CLI" validate "$TD/interchange-movie.x3d" >/dev/null 2>&1; echo $?)
 check "Interchange still excludes MovieTexture" "$ec" "3"
 
-# ── summary ───────────────────────────────────────────────────────────────────
 echo ""
 if [[ "$failures" -gt 0 ]]; then
     echo "x3d_cli_test: $failures failure(s)"

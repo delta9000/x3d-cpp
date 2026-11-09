@@ -1,19 +1,4 @@
-// external_geometry_roundtrip_test.cpp
-// Stage 2: EXTERNPROTO resolver + round-trip for ExternalGeometry.
-// Gated on X3D_CPP_BUILD_EXT; registered in CMakeLists.txt ext block.
-//
-// What this tests:
-//   1. Parse an X3D doc with <ExternProtoDeclare> + <ProtoInstance name="ExternalGeometry">
-//      supplying install() as the resolver. After parseDocument, the ProtoInstance
-//      should be expanded: an ExternalGeometry node in the graph with url=["chair.stl"].
-//   2. The expanded node has nodeTypeName()=="ExternalGeometry" and url=["chair.stl"]
-//      readable via the url field reflection.
-//   3. scene.expandedSources maps the primary node back to the ProtoInstance.
-//   4. Round-trip: re-serialize to XML and confirm the output contains
-//      <ExternProtoDeclare name='ExternalGeometry'> and
-//      <ProtoInstance name='ExternalGeometry'> with url fieldValue "chair.stl",
-//      NOT a raw <ExternalGeometry> element (the expandedSources redirect).
-
+// ExternalGeometry EXTERNPROTO expansion and round-trip serialization.
 #include "ExtResolver.hpp"        // x3d::runtime::ext::install()
 #include "ExternalGeometry.hpp"   // x3d::runtime::ext::ExternalGeometry
 
@@ -52,9 +37,8 @@ int main() {
     using namespace x3d::runtime::ext;
     using namespace x3d::codec;
 
-    // =========================================================================
-    // TEST 1: parse with install() resolver → ProtoInstance expands
-    // =========================================================================
+    // parse with install() resolver → ProtoInstance expands
+
     auto resolver = install();
     X3DDocument doc = parseDocument(kDoc, Encoding::XML, "", resolver);
 
@@ -69,9 +53,8 @@ int main() {
     // Scene root should have at least one node (Shape)
     assert(!doc.scene.rootNodes.empty() && "Expected at least one root node (Shape)");
 
-    // =========================================================================
-    // TEST 2: ExternalGeometry node in graph — find it in expandedSources
-    // =========================================================================
+    // ExternalGeometry node in graph — find it in expandedSources
+
     ExternalGeometry* eg_node = nullptr;
     for (const auto& kv : doc.scene.expandedSources) {
         X3DNode* primary = kv.first;
@@ -99,18 +82,16 @@ int main() {
     assert(eg_node->getUrl().size() == 1 && "url must have exactly one entry");
     assert(eg_node->getUrl()[0] == "chair.stl" && "url[0] must be 'chair.stl'");
 
-    // =========================================================================
-    // TEST 3: expandedSources maps the primary back to its ProtoInstance
-    // =========================================================================
+    // expandedSources maps the primary back to its ProtoInstance
+
     {
         auto it = doc.scene.expandedSources.find(eg_node);
         assert(it != doc.scene.expandedSources.end() && "expandedSources must map the EG node");
         assert(it->second.name == "ExternalGeometry" && "Instance name must be 'ExternalGeometry'");
     }
 
-    // =========================================================================
-    // TEST 4: round-trip via XmlWriter re-emits ProtoInstance, NOT raw node
-    // =========================================================================
+    // round-trip via XmlWriter re-emits ProtoInstance, not raw node
+
     {
         XmlWriter writer;
         std::string xml = writer.writeDocument(doc);
@@ -130,7 +111,7 @@ int main() {
                "Round-trip must re-emit <fieldValue name='url'>");
 
         // Raw ExternalGeometry opening tag would look like "<ExternalGeometry "
-        // "<ExternalGeometry/>" or "<ExternalGeometry\n". This should NOT appear
+        // "<ExternalGeometry/>" or "<ExternalGeometry\n". This should not appear
         // (expandedSources redirects to ProtoInstance).
         // Note: closing tags ("</ExternalGeometry>") start with "</" so
         // find("<ExternalGeometry") already excludes them. We additionally
@@ -157,12 +138,11 @@ int main() {
         }
     }
 
-    // =========================================================================
-    // TEST 5a: FIREWALL-DEGRADATION — parse the SAME doc WITHOUT install().
+    // firewall-degradation — parse the same doc without install().
     //   The ExternProto must stay unexpanded, an UnresolvedExtern warning must
     //   be recorded, and the round-trip must still emit <ExternProtoDeclare> +
     //   <ProtoInstance> (not a raw <ExternalGeometry> element).
-    // =========================================================================
+
     {
         // Parse with a no-op resolver (returns nullptr for everything) so the
         // URN is unresolvable — simulates the "no ext module installed" case.
@@ -189,7 +169,7 @@ int main() {
         assert(has_unresolved &&
                "Degradation (no install): must record UnresolvedExtern for 'ExternalGeometry'");
 
-        // Must NOT crash; round-trip must preserve ExternProtoDeclare + ProtoInstance.
+        // Must not crash; round-trip must preserve ExternProtoDeclare + ProtoInstance.
         XmlWriter writer2;
         std::string xml2 = writer2.writeDocument(doc2);
 
@@ -198,7 +178,7 @@ int main() {
         assert(xml2.find("ProtoInstance") != std::string::npos &&
                "Degradation round-trip must re-emit <ProtoInstance>");
 
-        // Must NOT emit a raw <ExternalGeometry> opening tag.
+        // Must not emit a raw <ExternalGeometry> opening tag.
         {
             bool raw2 = false;
             static constexpr std::string_view kTag2 = "<ExternalGeometry";
@@ -218,11 +198,10 @@ int main() {
         std::fprintf(stderr, "TEST 5a PASS: no-install path degraded gracefully (UnresolvedExtern + clean round-trip)\n");
     }
 
-    // =========================================================================
-    // TEST 5b: DELEGATION — install() resolver delegates non-matching URNs to base.
+    // delegation — install() resolver delegates non-matching URNs to base.
     //   Use a stub base resolver that records whether it was called, then confirm
     //   a non-ExternalGeometry URN reaches the stub.
-    // =========================================================================
+
     {
         bool stub_called = false;
         // Stub resolver: records invocations, never returns a real decl.
@@ -241,7 +220,7 @@ int main() {
         assert(stub_called && "Delegation: non-matching URN must reach the stub base resolver");
         assert(result == nullptr && "Delegation: stub returns nullptr for unknown URN");
 
-        // Call with our matching URN — must NOT reach the stub.
+        // Call with our matching URN — must not reach the stub.
         stub_called = false;
         std::vector<std::string> our_urls = {kExternalGeometryUrn};
         auto eg_decl = delegating_resolver(our_urls, "");

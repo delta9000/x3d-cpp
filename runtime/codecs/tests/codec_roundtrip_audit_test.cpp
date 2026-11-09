@@ -1,9 +1,9 @@
 // codec_roundtrip_audit_test.cpp
-// AUD-CODEC-ROUNDTRIP (Unit 17) — comprehensive codec round-trip verification.
+//  (Unit 17) — comprehensive codec round-trip verification.
 //
 // For every encoding with read+write symmetry:
 //   1. Parse fixture -> runtime model
-//   2. Serialize back to the SAME encoding
+//   2. Serialize back to the same encoding
 //   3. Re-parse
 //   4. Assert structural equivalence (node counts, DEFs, ROUTEs, Script sourceCode).
 //
@@ -224,10 +224,7 @@ int main(int argc, char **argv) {
   codec::ClassicVrmlReader cvReader;
   codec::VrmlWriter   vrmlWriter;
   codec::Vrml97Reader vrml97Reader;
-
-  // ========================================================================
   // XML round-trip (proto fixtures)
-  // ========================================================================
   {
     std::vector<std::string> fixtures = {
         g_protoDir + "/shapes.x3d",
@@ -247,10 +244,7 @@ int main(int argc, char **argv) {
       checkDefUseIdentity("XML-" + name, doc2.scene);
     }
   }
-
-  // ========================================================================
   // JSON round-trip
-  // ========================================================================
   {
     std::vector<std::string> fixtures = {
         g_jsonDir + "/HelloWorld.json",
@@ -270,10 +264,7 @@ int main(int argc, char **argv) {
       checkDefUseIdentity("JSON-" + name, doc2.scene);
     }
   }
-
-  // ========================================================================
   // ClassicVRML round-trip (.x3dv fixtures)
-  // ========================================================================
   {
     std::vector<std::string> fixtures = {
         g_x3dvDir + "/HelloWorld.x3dv",
@@ -296,10 +287,7 @@ int main(int argc, char **argv) {
       checkDefUseIdentity("X3DV-" + name, doc2.scene);
     }
   }
-
-  // ========================================================================
   // VRML97 -> ClassicVRML cross-format round-trip
-  // ========================================================================
   {
     std::vector<std::string> fixtures = {
         g_wrlDir + "/NewShape.wrl",
@@ -320,10 +308,7 @@ int main(int argc, char **argv) {
       checkDefUseIdentity("WRL->X3DV-" + name, doc2.scene);
     }
   }
-
-  // ========================================================================
   // Script sourceCode round-trip (XML path)
-  // ========================================================================
   {
     std::string text = readFile(g_x3dvDir + "/AddDynamicRoutes.x3dv");
     if (!text.empty()) {

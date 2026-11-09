@@ -1,16 +1,6 @@
-// JoltBackend.hpp
-// A PhysicsBackend implemented with Jolt Physics (https://github.com/jrouwe/
-// JoltPhysics). Behind X3D_CPP_BUILD_PHYSICS: this header is only included by
-// the gated backend TU + the gated physics tests; nothing in the core links it.
-//
-// The core seam (PhysicsBackend.hpp) names no Jolt type. This class is the one
-// place Jolt and the runtime meet: it maps ShapeDesc -> Jolt shapes and
-// SFVec3f/SFRotation <-> JPH::Vec3/Quat, and owns all Jolt global + per-world
-// state (Factory, type registration, temp allocator, job system, the broadphase
-// + collision-layer filter interfaces, and each JPH::PhysicsSystem). The Jolt
-// headers are NOT pulled in here (they are warning-noisy and we keep them in the
-// .cpp); a pImpl hides every JPH type so even this header stays Jolt-free at the
-// type level for its includers.
+// Jolt implementation of PhysicsBackend, enabled by X3D_CPP_BUILD_PHYSICS.
+// Keep Jolt headers in the implementation to isolate their types and warnings.
+// See docs/wiki/decisions/0019-physics-seam.md.
 #ifndef X3D_RUNTIME_PHYSICS_JOLT_BACKEND_HPP
 #define X3D_RUNTIME_PHYSICS_JOLT_BACKEND_HPP
 
@@ -34,7 +24,7 @@ public:
   /**
    * @brief Construct the backend.
    * @param workerThreads 0 (default) → a single-threaded, host-independent
-   *        DETERMINISTIC job system (the golden-trace contract: identical results
+   *        deterministic job system (the golden-trace contract: identical results
    *        regardless of CPU core count). A value > 0 uses a thread pool of that
    *        many workers — faster for large scenes, but determinism then holds only
    *        for a fixed thread count.

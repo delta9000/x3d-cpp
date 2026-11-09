@@ -1,4 +1,3 @@
-// Billboard.cpp
 #include "x3d/nodes/Billboard.hpp"
 
 namespace x3d::nodes {

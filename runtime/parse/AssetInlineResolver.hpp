@@ -20,7 +20,7 @@ inline runtime::InlineResolver inlineResolverFrom(
     ProtoDeclarationResolver protoPolicy) {
   if (!protoPolicy) protoPolicy = noopProtoResolver;
   return asset_document_detail::makeResolvers(
-      {std::move(resolver), hint, std::move(protoPolicy), {}}).inlineScene;
+      {std::move(resolver), hint, std::move(protoPolicy), {}, {}}).inlineScene;
 }
 
 } // namespace x3d::codec

@@ -3,7 +3,7 @@
 
 // Node-free NURBS evaluation: Cox-de Boor basis, rational (weighted) curves and
 // surfaces with analytic normals. Operates on plain arrays — no X3D-node or
-// MeshBuilder dependency. All formulas machine-verified against a CAS.
+// MeshBuilder dependency.
 #include "x3d/core/X3Dtypes.hpp"
 #include <algorithm>
 #include <vector>
@@ -14,17 +14,9 @@ namespace x3d::runtime::extract::nurbs {
 using x3d::core::SFVec3f;
 using x3d::core::SFVec2f;
 
-// How the (controlPoint, weight) pair is interpreted (NRB-4). X3D §27 is silent
-// on this and the two readings diverge for any non-unity weight:
-//   Premultiplied — controlPoint already holds the homogeneous xyz (w*P_euclidean);
-//     the evaluator uses it verbatim in the numerator. This is the DE FACTO X3D
-//     ecosystem convention: FreeWRL, view3dscene/Castle, InstantPlayer, White Dune
-//     and X3DOM all require it, and the X3D 4.0 keep-compat decision preserved it.
-//   Euclidean — controlPoint holds plain Euclidean coordinates; the evaluator
-//     multiplies by weight in the numerator (the literal textbook / spec-formula
-//     rational-B-spline form). Opt-in.
-// weight==1 (the default, common case) makes the two identical, so unit-weight
-// content — and every existing golden — is unaffected by the choice.
+// §27 control-point conventions differ for non-unit weights. Premultiplied mode
+// uses homogeneous xyz verbatim; Euclidean mode multiplies xyz by weight.
+// Unit-weight content is identical in both modes.
 enum class NurbsWeightMode { Premultiplied, Euclidean };
 
 struct CurveDef {
@@ -100,7 +92,7 @@ inline void basisFuns(int i, double u, int order, const std::vector<double>& kno
 }
 
 // Resolve weights + knots; apply closed/periodic wrap (X3D: wrap only when the
-// first and last control points DIFFER, else it is already a closed clamped loop).
+// first and last control points differ, else it is already a closed clamped loop).
 inline CurveDef prepareCurve(const CurveDef& in) {
   CurveDef c = in;
   int n = (int)c.cp.size();
@@ -118,7 +110,7 @@ inline CurveDef prepareCurve(const CurveDef& in) {
   return c;
 }
 
-// Basis funcs N[0..p] AND first derivatives dN[0..p] at span i (PT A2.3, d=1).
+// Basis funcs N[0..p] and first derivatives dN[0..p] at span i (PT A2.3, d=1).
 // Verified against symbolic D[BSplineBasis] to machine epsilon.
 inline void dersBasisFuns1(int i, double u, int order,
                            const std::vector<double>& knot, double* N, double* dN) {
@@ -197,7 +189,7 @@ inline SurfaceDef prepareSurface(const SurfaceDef& in) {
   SurfaceDef s = in;
   if ((int)s.w.size() != s.uDim * s.vDim) s.w.assign(s.uDim * s.vDim, 1.0);
 
-  // Periodic wrap only when the boundary control points DIFFER (mirrors the
+  // Periodic wrap only when the boundary control points differ (mirrors the
   // curve's `endsDiffer` guard). An author-supplied already-closed net (column 0
   // == last column, or row 0 == last row) is left as a clamped loop — wrapping it
   // would duplicate the coincident boundary into zero-area sliver triangles.
@@ -340,7 +332,6 @@ inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
   return out;
 }
 
-// ---------------------------------------------------------------------------
 // Swept / swung surfaces (§27.4.4/.5). Both drive a 2D cross-section/profile
 // control curve (X3DNurbsControlCurveNode) with a trajectory curve:
 //   swept — place the 2D cross-section in the frame perpendicular to the local
@@ -350,7 +341,6 @@ inline std::vector<SurfaceSample> tessellateSurface(const SurfaceDef& in,
 //     the profile (px,py) is revolved about the Z axis, the trajectory's 2D
 //     point supplying the radial direction (a line profile swung around a
 //     circle is a surface of revolution).
-// ---------------------------------------------------------------------------
 struct Curve2DDef {
   std::vector<SFVec2f> cp;
   std::vector<double>  w;

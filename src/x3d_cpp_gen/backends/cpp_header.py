@@ -1,7 +1,7 @@
 """C++ header backend: renders the thin class template from FieldDescriptors.
 
 This is where the per-node rendering loop and clang-format invocation live. The
-template no longer makes any type decisions; it only walks precomputed
+template walks precomputed
 :class:`~x3d_cpp_gen.emit.descriptors.FieldDescriptor` objects.
 """
 
@@ -41,13 +41,10 @@ class CppHeaderBackend:
     """Renders one ``<Node>.hpp`` per node using precomputed descriptors."""
 
     def __init__(self, templates_dir=None, clang_format: str = "clang-format",
-                 enum_defs=None, namespace: str = ""):
+                 enum_defs=None):
         self.templates_dir = str(templates_dir) if templates_dir else str(TEMPLATES_DIR)
         self.clang_format = clang_format
         self.enum_defs = enum_defs or {}
-        # Optional C++ namespace to wrap each emitted class in. Empty (default)
-        # means NO namespace, which keeps the 4.0 golden output byte-identical.
-        self.namespace = namespace or ""
         env = Environment(
             loader=FileSystemLoader(self.templates_dir),
             extensions=['jinja2.ext.loopcontrols'],
@@ -55,7 +52,6 @@ class CppHeaderBackend:
         from x3d_cpp_gen.emit.naming import cpp_str
         env.filters['pascal'] = pascal
         env.filters['cpp_str'] = cpp_str
-        self._env = env
         self._template = env.get_template('class_template.hpp.jinja')
         self._source_template = env.get_template('class_template.cpp.jinja')
 
@@ -103,13 +99,13 @@ class CppHeaderBackend:
         os.makedirs(nodes_dir, exist_ok=True)
         emitted_files: List[str] = []
 
-        # Map each class to the set of field names it DECLARES itself (own
+        # Map each class to the set of field names it declares itself (own
         # fields). A node only emits accessors for its own fields; inherited
         # ones come via C++ inheritance. This lets a reflection thunk base-qualify
         # an inherited accessor by the exact class that defines it, which both
         # disambiguates diamonds and is robust to the UOM's inheritedFrom (whose
         # value does not always name the declaring class).
-        # Key on each field's WIRE name (x3d_name), matching the descriptor's
+        # Key on each field's wire name (x3d_name), matching the descriptor's
         # x3d_name used by the reflection table. A sanitized field (wire "class"
         # -> ident "class_") would otherwise fail to match and be mis-detected as
         # a phantom inherited field and dropped.
@@ -134,8 +130,8 @@ class CppHeaderBackend:
             dependencies = resolve_inheritance_chain(
                 node.name, dependency_graph, set())
 
-            # X3DNode is the single reflection root: it DECLARES the virtual
-            # reflection API. Anything transitively deriving from it OVERRIDES the
+            # X3DNode is the single reflection root: it declares the virtual
+            # reflection API. Anything transitively deriving from it overrides the
             # API. The rootless mixin object-types neither declare nor override —
             # they stay plain interfaces (emit_reflection=False) so a concrete
             # node mixing one in alongside X3DNode has exactly one declarer.
@@ -156,7 +152,6 @@ class CppHeaderBackend:
                 specification_url=node.specification_url,
                 container_field=node.container_field,
                 component=node.component,
-                namespace=self.namespace,
             )
 
             output_file = os.path.join(nodes_dir, f"{node.name}.hpp")
@@ -172,7 +167,6 @@ class CppHeaderBackend:
                 is_root=is_root,
                 emit_reflection=emit_reflection,
                 is_abstract=node.is_abstract,
-                namespace=self.namespace,
             )
             source_file = os.path.join(nodes_dir, f"{node.name}.cpp")
             with open(source_file, 'w') as f:
@@ -222,19 +216,4 @@ class CppHeaderBackend:
                       f"(exit {result.returncode}); batch formatting did not "
                       f"complete successfully.\n"
                       f"{result.stderr}")
-        return clang_format
-        style_arg = (f"--style=file:{_STYLE_FILE}" if _STYLE_FILE.exists()
-                     else "--style=LLVM")
-        try:
-            result = subprocess.run([clang_format, style_arg, "-i", *output_files],
-                                   capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"WARNING: {clang_format} failed on {len(output_files)} files "
-                      f"(exit {result.returncode}); batch formatting did not "
-                      f"complete successfully.\n"
-                      f"{result.stderr}")
-        except FileNotFoundError:
-            print(f"WARNING: '{clang_format}' not found; skipping formatting. "
-                  f"Output will not match the clang-formatted golden baseline.")
-            return None  # stop retrying for remaining files
         return clang_format

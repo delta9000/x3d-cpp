@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # tools/x3d-cli/gen_golden.sh
-# ─────────────────────────────────────────────────────────────────────────────
 # Golden-gen: run X3DJSAIL -validate over a curated corpus subset and produce:
 #   tools/x3d-cli/goldens/subset.txt            — committed, relative paths
 #   tools/x3d-cli/goldens/validate-verdicts.tsv — committed, verdict fixture
@@ -20,7 +19,7 @@
 # the golden subset to .x3d files only.  Non-XML files are excluded so they
 # cannot pollute the agreement rate with false INVALID verdicts.
 #
-# X3DJSAIL exit codes are NOT reliable; we normalise via output text:
+# X3DJSAIL exit codes are not reliable; we normalise via output text:
 #   VALID   iff output contains "validate results: success"
 #   INVALID otherwise — capture the first actionable reason line:
 #            priority 1: WARNING_PROTOINSTANCE_NOT_FOUND / WARNING_MESSAGE line
@@ -33,7 +32,6 @@
 #   - .x3d files only (X3DJSAIL is XML-only)
 #   - stride 80 → ~200 files
 #   Sort → commit as subset.txt.
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,7 +45,6 @@ GOLDENS_DIR="$REPO_ROOT/tools/x3d-cli/goldens"
 SUBSET_TXT="$GOLDENS_DIR/subset.txt"
 VERDICTS_TSV="$GOLDENS_DIR/validate-verdicts.tsv"
 
-# ── pre-flight ────────────────────────────────────────────────────────────────
 if [[ ! -d "$CORPUS_ROOT" ]]; then
     echo "ERROR: corpus root not found: $CORPUS_ROOT" >&2
     exit 1
@@ -64,7 +61,6 @@ java -version >/dev/null 2>&1 || { echo "ERROR: java not found on PATH" >&2; exi
 
 mkdir -p "$GOLDENS_DIR"
 
-# ── subset selection ─────────────────────────────────────────────────────────
 echo "=== Selecting subset (XML .x3d files only) ==="
 CONTENT_ROOT="$CORPUS_ROOT/x3d-code/www.web3d.org/x3d/content/examples"
 
@@ -98,7 +94,6 @@ done < /tmp/x3d_subset_abs.txt | sort > "$SUBSET_TXT"
 
 echo "Written: $SUBSET_TXT"
 
-# ── run X3DJSAIL validate over each subset file ────────────────────────────
 echo "=== Running X3DJSAIL -validate (this may take a few minutes) ==="
 
 {

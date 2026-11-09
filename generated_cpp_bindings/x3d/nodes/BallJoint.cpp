@@ -1,4 +1,3 @@
-// BallJoint.cpp
 #include "x3d/nodes/BallJoint.hpp"
 
 namespace x3d::nodes {

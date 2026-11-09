@@ -1,4 +1,4 @@
-"""Headless GL regression for ComposedCubeMapTexture environment mapping (REQ-CUBE).
+"""Headless GL regression for ComposedCubeMapTexture environment mapping.
 
 §34.2.2: an environment texture is indexed by a direction, the (s, t, r)
 coordinate its TextureCoordinateGenerator produces, or with no generator the
@@ -17,7 +17,7 @@ match the composed cube. The cube is fixed to the geometry's local frame
 import math
 import pathlib
 import struct
-import subprocess
+from gl_test_helpers import render as render_gl, pixels as screenshot_pixels
 import sys
 import tempfile
 
@@ -87,15 +87,8 @@ def render(tmp, name, appearance, generator='', rotation='0 1 0 0'):
 <Transform rotation="{rotation}"><Shape><Appearance>{appearance}</Appearance>
 {sphere(generator)}</Shape></Transform>
 </Scene></X3D>''')
-    result = subprocess.run([
-        'xvfb-run', '-a', 'env', 'LIBGL_ALWAYS_SOFTWARE=1',
-        'GALLIUM_DRIVER=llvmpipe', '__GLX_VENDOR_LIBRARY_NAME=mesa',
-        str(renderer), '--screenshot', str(output), str(scene),
-    ], timeout=120, capture_output=True, text=True)
-    if result.returncode:
-        raise RuntimeError(result.stderr or result.stdout)
-    header, data = output.read_bytes().split(b'\n255\n', 1)
-    width, height = map(int, header.split()[1:3])
+    render_gl(renderer, scene, output)
+    width, height, data = screenshot_pixels(output)
 
     def pixel(x, y):
         """RGB where the sphere point (x, y, z) projects (PPM rows top-down)."""

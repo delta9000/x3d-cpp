@@ -1,4 +1,3 @@
-// TexCoordDamper2D.cpp
 #include "x3d/nodes/TexCoordDamper2D.hpp"
 
 namespace x3d::nodes {

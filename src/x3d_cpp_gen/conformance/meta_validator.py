@@ -28,7 +28,7 @@ def validate_manifest(m: Manifest) -> None:
             f"nodes (< floor {floor}) — likely a drifted/renamed UOM element"
         )
     # Shape: a meaningful fraction of nodes must carry a component, and every node
-    # must carry a fields dict. Absent component on ALL nodes => the componentInfo
+    # must carry a fields dict. Absent component on all nodes => the componentInfo
     # XPath drifted.
     with_component = sum(1 for n in m.nodes.values() if n.get("component"))
     if with_component == 0:

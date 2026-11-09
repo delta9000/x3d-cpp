@@ -1,4 +1,3 @@
-// FontStyle.cpp
 #include "x3d/nodes/FontStyle.hpp"
 
 namespace x3d::nodes {

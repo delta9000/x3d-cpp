@@ -104,7 +104,7 @@ ImportScene CgltfSource::load(const std::string& path) {
   ImportScene scene;
   std::unordered_map<const void*, int> imgCache;
 
-  // --- Materials ---
+  // Materials
   for (size_t i = 0; i < d->materials_count; ++i) {
     const cgltf_material& gm = d->materials[i];
     ImportMaterial m;
@@ -137,7 +137,7 @@ ImportScene CgltfSource::load(const std::string& path) {
     scene.materials.push_back(std::move(m));
   }
 
-  // --- Meshes (one ImportMesh per triangle primitive) ---
+  // Meshes (one ImportMesh per triangle primitive)
   std::unordered_map<const cgltf_mesh*, std::vector<int>> meshPrims;
   for (size_t i = 0; i < d->meshes_count; ++i) {
     const cgltf_mesh& gmesh = d->meshes[i];
@@ -183,7 +183,7 @@ ImportScene CgltfSource::load(const std::string& path) {
     }
   }
 
-  // --- Nodes (hierarchy + TRS), cameras, lights ---
+  // Nodes (hierarchy + TRS), cameras, lights
   std::unordered_map<const cgltf_node*, int> nodeIdx;
   for (size_t i = 0; i < d->nodes_count; ++i) nodeIdx[&d->nodes[i]] = static_cast<int>(i);
   for (size_t i = 0; i < d->nodes_count; ++i) {

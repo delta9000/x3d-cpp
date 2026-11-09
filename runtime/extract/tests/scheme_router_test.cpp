@@ -1,7 +1,7 @@
 // scheme_router_test.cpp — makeSchemeRouter dispatch table (fake resolvers).
 //
 // Pins the routing rule (mirrors makeMultiFormatTextureResolver): dispatch by
-// the URL's scheme BEFORE calling a backend, so each backend only sees urls it
+// the URL's scheme before calling a backend, so each backend only sees urls it
 // owns and Failed keeps meaning "real failure". Unknown scheme -> Failed
 // without calling anything; scheme-less / relative urls go to the optional
 // fallback, or Failed when none was supplied.

@@ -14,4 +14,4 @@ def test_factory_and_registry_namespaced(generated_tree):
     fac = (out / "x3d" / "nodes" / "X3DNodeFactory.hpp").read_text()
     assert "#pragma once" in fac
     assert "namespace x3d::nodes {" in fac
-    assert "class X3DNode;" in fac  # forward-decl now lives inside x3d::nodes
+    assert "class X3DNode;" in fac  # forward-decl lives inside x3d::nodes

@@ -10,6 +10,8 @@ related:
 
 # ADR-0042: Slim Authoring Target & Ingestion Pipeline
 
+Status: superseded by ADR-0042 amendment
+
 ## Status
 
 Accepted
@@ -63,3 +65,12 @@ We decided to partition the codebase to expose a slim, header-only target for au
 - `scripts/authoring-footprint.sh` — symbol scan and size gate script
 - `examples/asset_import/footprint/baseline.tsv` — committed size baseline
 - `examples/asset_import/CMakeLists.txt` — compile/link option flags for `x3d_authoring_smoke`
+
+## Amendment (2026-11-05)
+
+The footprint gate now blocks only on excluded subsystem symbols in the
+authoring consumer. The historical 18,418,227-byte executable `.text` baseline
+is removed: shared runtime libraries moved code outside that measurement, and
+the script fixed neither compiler nor optimization settings. The symbol scan
+and authoring linkage contract remain. There is no absolute size budget or
+`--write-baseline` workflow.

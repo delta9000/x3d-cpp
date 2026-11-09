@@ -1,19 +1,5 @@
-// MultiFormatTextureResolver.hpp — std-only composer over the TextureResolver
-// decode seam. namespace x3d::runtime::extract. Header-only, decoder-free, leaf.
-//
-// A single decoder backend rarely covers every format an embedder needs (stb is
-// broad; wuffs is memory-safe; a JPEG-heavy app might want libjpeg-turbo). So a
-// real TextureResolver is an ARRAY of per-format decoders behind one seam — the
-// decode analog of the fetch seam's file/http/s3 routes.
-//
-// THE RULE (ADR-0024 §7, mirroring AssetResolver): route by a cheap key BEFORE
-// calling a decoder, never use Failed to route. Fetch routes by URL scheme (a
-// lexical prefix); decode routes by SNIFFED MAGIC BYTES (the URL extension can
-// lie). Because dispatch picks the one correct decoder up front, each decoder
-// only ever sees input it owns, so Failed keeps meaning "real decode failure" —
-// no Unsupported/NotHandled status is needed and the frozen Ready/Pending/Failed
-// seam type is unchanged. This composer is that thin std-only array, not a
-// change to the seam.
+// Route by sniffed image format before decoding. Decode failure does not select
+// another backend. See ADR-0024 §7.
 #ifndef X3D_RUNTIME_EXTRACT_MULTI_FORMAT_TEXTURE_RESOLVER_HPP
 #define X3D_RUNTIME_EXTRACT_MULTI_FORMAT_TEXTURE_RESOLVER_HPP
 
@@ -28,13 +14,10 @@
 
 namespace x3d::runtime::extract {
 
-// ---------------------------------------------------------------------------
 // ImageFormat — the cheap routing key. One entry per decodable container, keyed
 // off a magic-byte (or, for TGA, a structural) signature.
-// ---------------------------------------------------------------------------
 enum class ImageFormat { Png, Jpeg, Gif, Bmp, Pnm, Tga };
 
-// ---------------------------------------------------------------------------
 // sniffImageFormat — classify a byte prefix by signature. Decidable before any
 // decoder is called. Returns nullopt for an unrecognizable blob.
 //
@@ -43,7 +26,6 @@ enum class ImageFormat { Png, Jpeg, Gif, Bmp, Pnm, Tga };
 // classified last and only by a conservative header plausibility check — the
 // same compromise stb_image and wuffs make. TGA is therefore the lowest-priority
 // route; a blob that matches a real magic is never mistaken for TGA.
-// ---------------------------------------------------------------------------
 inline std::optional<ImageFormat> sniffImageFormat(
     const std::vector<std::uint8_t>& b) {
   const std::size_t n = b.size();
@@ -89,15 +71,13 @@ inline std::optional<ImageFormat> sniffImageFormat(
   return std::nullopt;
 }
 
-// ---------------------------------------------------------------------------
 // makeMultiFormatTextureResolver — compose per-format decoders into one seam.
 //
 // Reads the prefix of the file at `url`, sniffs its format, and dispatches to
-// the ONE registered decoder for that format. Returns Failed when the file
+// the one registered decoder for that format. Returns Failed when the file
 // cannot be read, the format is unrecognized, or no decoder is registered for
 // the sniffed format. The chosen decoder is then handed the same `url` and only
 // ever sees input it owns, so its Failed remains unambiguous.
-// ---------------------------------------------------------------------------
 inline TextureResolver makeMultiFormatTextureResolver(
     std::map<ImageFormat, TextureResolver> decoders) {
   return [decoders = std::move(decoders)](

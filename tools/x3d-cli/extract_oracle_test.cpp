@@ -1,5 +1,4 @@
 // tools/x3d-cli/extract_oracle_test.cpp
-// ─────────────────────────────────────────────────────────────────────────────
 // Self-oracle round-trip test for x3d extract.
 //
 // Gated on X3D_CPP_BUILD_EXT (needs StlReader.hpp from runtime/ext/codecs/).
@@ -19,12 +18,12 @@
 // Fixtures:
 //   - simple.x3d   (Box 2×2×2) → 12 triangles (2 per face × 6 faces = 12).
 //   - validate-clean.x3d (Box 1×1×1) → 12 triangles.
-// ─────────────────────────────────────────────────────────────────────────────
 #include "stl_write.hpp"   // x3d::cli::writeStlBinary
 #include "StlReader.hpp"   // x3d::runtime::ext::parseStlBinary
 
 #include "x3d/sdk.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -36,9 +35,7 @@ namespace sdk = x3d::sdk;
 using namespace x3d::runtime::ext;
 using namespace x3d::runtime::extract;
 
-// ---------------------------------------------------------------------------
 // compute_aabb — min/max over a flat position list (groups of 3 floats/vertex).
-// ---------------------------------------------------------------------------
 struct AABB3 {
     float minX, minY, minZ, maxX, maxY, maxZ;
 };
@@ -54,9 +51,9 @@ static AABB3 compute_aabb(const std::vector<SFVec3f> &pts) {
     bb.minY = bb.maxY = pts[0].y;
     bb.minZ = bb.maxZ = pts[0].z;
     for (const auto &p : pts) {
-        if (p.x < bb.minX) bb.minX = p.x; if (p.x > bb.maxX) bb.maxX = p.x;
-        if (p.y < bb.minY) bb.minY = p.y; if (p.y > bb.maxY) bb.maxY = p.y;
-        if (p.z < bb.minZ) bb.minZ = p.z; if (p.z > bb.maxZ) bb.maxZ = p.z;
+        bb.minX = std::min(bb.minX, p.x); bb.maxX = std::max(bb.maxX, p.x);
+        bb.minY = std::min(bb.minY, p.y); bb.maxY = std::max(bb.maxY, p.y);
+        bb.minZ = std::min(bb.minZ, p.z); bb.maxZ = std::max(bb.maxZ, p.z);
     }
     return bb;
 }
@@ -87,10 +84,8 @@ static bool near(float a, float b, float tol = 1e-3f) {
     return d <= tol;
 }
 
-// ---------------------------------------------------------------------------
 // run_oracle — extract scene, write STL, read back, compare.
 // Returns true if all assertions hold.
-// ---------------------------------------------------------------------------
 static bool run_oracle(const std::string &path, const std::string &label,
                        std::size_t expected_tris) {
     std::cout << "--- " << label << " ---\n";
@@ -210,11 +205,9 @@ static bool run_oracle(const std::string &path, const std::string &label,
     return true;
 }
 
-// ---------------------------------------------------------------------------
 // main — run oracle on each fixture.
 // The fixture paths are passed as argv[1], argv[2], ...
 // If no paths are given, exit 0 (portable: no fixtures = no failure).
-// ---------------------------------------------------------------------------
 int main(int argc, char **argv) {
     if (argc < 2) {
         std::cout << "extract_oracle_test: no fixture paths supplied; SKIP\n";

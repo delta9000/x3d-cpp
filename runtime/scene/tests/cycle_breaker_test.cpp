@@ -52,8 +52,8 @@ TEST_CASE("cycle_breaker_test") {
     CHECK((kids(self).empty()));
   }
 
-  // 3) Legitimate DAG: a shared node reached by two DISTINCT non-ancestor paths
-  //    is NOT a cycle and must be preserved (USE-sharing).
+  // 3) Legitimate DAG: a shared node reached by two distinct non-ancestor paths
+  //    is not a cycle and must be preserved (USE-sharing).
   {
     auto root = createX3DNode("Group");
     auto p1 = createX3DNode("Group");

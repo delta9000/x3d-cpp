@@ -11,6 +11,8 @@ related:
 
 # ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point
 
+Status: superseded by ADR-0055
+
 ## Status
 
 Superseded by [ADR-0055](0055-hanim-skinning-descriptor.md) — 2026-09-27. Segment displacement is applied to the extracted mesh; `coord.point` is never modified and no `point_changed` is emitted. Originally proposed 2026-06-25 for conformance finding `HANIM-DISP`.

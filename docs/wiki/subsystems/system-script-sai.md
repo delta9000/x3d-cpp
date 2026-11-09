@@ -2,7 +2,7 @@
 title: Script / SAI Runtime
 summary: Script node runtime — ScriptEngine seam, SAI execution context, ECMAScript (Duktape) backend, and dynamic field marshalling.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
-updated: 2026-10-10
+updated: 2026-11-05
 related:
   - ../architecture.md
   - ../subsystems/routes.md
@@ -15,50 +15,20 @@ related:
 
 # Script / SAI Runtime
 
-!!! note "Not the experimental SAI semantic kernel"
-
-    This page describes the **in-process SAI** that `Script` nodes use, implemented by
-    `runtime/script/SaiContext.hpp`. It is a different thing from the experimental
-    modern-C++ SAI *semantic kernel*, which lives in the `x3d-sai` sister repository as
-    of 2026-07-19. See [ADR-0047](../decisions/0047-sai-sister-repo-split.md). The two
-    share a standard, not an implementation.
-
-    `SaiContext` is the legacy **Script-backend API**, not an adapter to
-    `x3d::sai::experimental`. Its `std::any` values and runtime node pointers
-    retain x3d-cpp's ownership, identity, event and lifetime rules. No conversion
-    to portable owning values or handles is implicit. The separate
-    [native provider](sai-provider.md) implements the portable service for a
-    bounded node slice; it does not adapt this Script API or expose Script nodes.
-    Merely linking both packages does not connect their scenes.
+`runtime/script/SaiContext.hpp` is the native Script-backend API. The
+[portable native provider](sai-provider.md) is separate and does not expose
+Script nodes. Linking the packages does not connect their scenes.
 
 ## Purpose
 
 The Script / SAI Runtime makes `Script` nodes execute. It owns the full ISO/IEC 19775-1 §29.2 lifecycle (load → initialize → prepareEvents → invoke → eventsProcessed → shutdown), enforces the `directOutput` and `mustEvaluate` field gates, and exposes the in-process Scene Access Interface (SAI) as the only sanctioned channel from script code back into the running scene. The subsystem is language-agnostic: the `ScriptEngine` abstract seam carries no scripting-language types, so a Lua, Python, or alternative ECMAScript backend could be substituted without touching the runtime.
 
-The primary Duktape `EcmaScriptBackend` (`x3d_ecmascript_backend`, vendored, MIT) builds under
-its own `X3D_CPP_BUILD_SCRIPT` option (**ON by default**), independent of
-`X3D_CPP_BUILD_TESTS` — it previously only existed inside the test build, so a
-`-DX3D_CPP_BUILD_TESTS=OFF` "production" configuration (the README's own primary build
-recipe) linked an `x3d` CLI that could never run `Script` nodes. `tools/x3d_cli.cpp`'s `sim`
-command reports which case it is in (`X3D_SIM_HAVE_SCRIPT`, driven off the actual link state,
-not the tests flag): "enrolled N Script node(s)" when linked, or the inert-script note when
-`X3D_CPP_BUILD_SCRIPT=OFF`.
-
-!!! note "Seam proven generic — second backend (QuickJS)"
-    A **second, independent `ScriptEngine` backend now exists**: `QuickJsBackend`
-    (`runtime/script/QuickJsBackend.{hpp,cpp}`, quickjs-ng v0.15.1) behind the
-    `X3D_CPP_BUILD_QUICKJS` build option, with **no core `#ifdef`**. It implements the
-    *unchanged* `ScriptEngine` interface alongside the Duktape `EcmaScriptBackend`. The
-    `x3d_quickjs_swap` test (`runtime/script/tests/quickjs_swap_test.cpp`) drives the same
-    fixtures through both backends and asserts **identical observable parity** (the field writes
-    and ROUTE-target values into the cascade), CI-gated. Because the interface carried two
-    backends with no signature change, the abstract `ScriptEngine` seam is **`[STABLE]`** in `include/x3d/sdk.hpp`.
-    Concrete context ownership and author-field APIs remain experimental and
-    changed with [ADR-0057](../decisions/0057-scene-owned-author-fields.md). See the
-    [Seam-Status Matrix](../seam-status.md) and
-    [ADR-0022](../decisions/0022-scriptengine-second-backend-swap-test.md). The `SCR-*`
-    conformance claims are backend-independent — the swap-test evidences they hold identically
-    under QuickJS.
+Duktape's `EcmaScriptBackend` builds with `X3D_CPP_BUILD_SCRIPT`, on by default
+and independent of the test build. Optional `QuickJsBackend` builds with
+`X3D_CPP_BUILD_QUICKJS`. Its comparison suite runs authored scripts through
+independent engines and compares resulting field and route values. Concrete
+ownership and author-field APIs follow
+[ADR-0057](../decisions/0057-scene-owned-author-fields.md).
 
 ## Ownership migration
 
@@ -75,7 +45,7 @@ This migration preserves programmatically registered node-valued fields during
 cloning. The XML reader reads SFNode/MFNode author-field defaults from child
 elements (USE included) and the XML writer re-emits a Script's node fields as
 children; the JSON and ClassicVRML readers still leave them empty
-(REQ-SHADER-3). It does not claim full author-field IS, Script-language or SAI
+. It does not claim full author-field IS, Script-language or SAI
 conformance.
 
 ## Key files
@@ -86,7 +56,7 @@ conformance.
 | `runtime/script/ScriptEngine.hpp` | Abstract backend seam: `load / initialize / prepareEvents / invoke / eventsProcessed / shutdown`; defines `ScriptHandle` (opaque `uint64_t`, 0 = invalid) |
 | `runtime/script/SaiContext.hpp` | In-process SAI surface bound to one Script node: field get/set, dynamic `addRoute`/`deleteRoute`, browser-info queries (`getName`, `getVersion`, `currentTime`, `currentFrameRate`, `print`); enforces the `directOutput` gate |
 | `runtime/script/EcmaScriptBackend.hpp` | `ScriptEngine` implementation using vendored Duktape 2.7.0; one `duk_context` per loaded script; `pushValue`/`toValue` static methods exposed for unit testing |
-| `runtime/script/EcmaScriptBackend.cpp` | Full marshalling (SF/MF types ↔ JS), Browser global object, `seedAuthorGlobals`/`readbackAuthorGlobals` for dynamic author-field integration |
+| `runtime/script/EcmaScriptBackend.cpp` | Full marshalling (SF/MF types ↔ JS), Browser global object, `seedAuthorGlobals`/`readbackAuthorGlobals()` for dynamic author-field integration |
 | `runtime/script/vendor/duktape/` | Vendored Duktape 2.7.0 (single-file C library) |
 | `runtime/script/tests/MockScriptEngine.hpp` | Recording `ScriptEngine` for language-free Track-A tests; arms reactions per event name; exposes a `calls` log |
 | `runtime/script/tests/` | All unit and integration tests for this subsystem |
@@ -95,13 +65,13 @@ conformance.
 
 ### Exposed interface
 
-**`ScriptSystem`** is registered with `X3DExecutionContext` via `addScriptSystem()`. Thereafter the context drives both phases each tick:
+`ScriptSystem` is registered with `X3DExecutionContext` via `addScriptSystem()`. Thereafter the context drives both phases each tick:
 
-- `ScriptSystem::update(now, ctx)` — called by the context's per-tick System pass; runs `prepareEvents` for every loaded script before any ROUTE processing (§29.2.5, SCR-001 once-per-timestamp guard).
+- `ScriptSystem::update(now, ctx)` — called by the context's per-tick System pass; runs `prepareEvents` for every loaded script before any ROUTE processing (§29.2.5,  once-per-timestamp guard).
 - `ScriptSystem::runEventsProcessed(ctx)` — called by the context after the cascade drain; flushes deferred (`mustEvaluate=FALSE`) inputs, then calls `eventsProcessed` at most once per script that received an event this cascade (§29.2.4).
 - `ScriptSystem::onAuthorInput(...)` — registered as a cascade author-input listener. A routed event on a Script `inputOnly` field calls `deliverInputEvent`, so the function of the same name runs (§29.2). A routed event on an `inputOutput` field refreshes the script's global via `ScriptEngine::updateField`. Embedders must not bridge author inputs to `deliverInputEvent` themselves, or each handler runs twice.
 
-**Script lifecycle entry points** (called by the cascade or the input seam):
+Script lifecycle entry points (called by the cascade or the input seam):
 
 ```cpp
 // Enroll a Script node; loads + initializes it if load=TRUE (§29.2.3).
@@ -118,7 +88,7 @@ void ScriptSystem::setUrl(Script *script,
     const MFString &newUrl, X3DExecutionContext &ctx);
 ```
 
-**Source resolution helpers** (static, usable without a system instance):
+Source resolution helpers (static, usable without a system instance):
 
 ```cpp
 // Returns the decoded body of the first inline ecmascript:/javascript:/vrmlscript: entry.
@@ -128,7 +98,7 @@ static std::string ScriptSystem::decodeInlineSource(const MFString &url);
 static std::string ScriptSystem::scriptSource(const Script &script);
 ```
 
-**`SaiContext`** is handed to each backend at `load()` time and is the only channel from script code into the scene:
+`SaiContext` is handed to each backend at `load()` time and is the only channel from script code into the scene:
 
 ```cpp
 // Read a field value (always permitted, §29.4.1).
@@ -157,7 +127,7 @@ double SaiContext::currentFrameRate() const;
 void   SaiContext::print(const std::string &message);
 ```
 
-**`ScriptEngine`** abstract interface (implement to add a new language backend):
+`ScriptEngine` abstract interface (implement to add a new language backend):
 
 ```cpp
 virtual ScriptHandle load(X3DNode &scriptNode, const std::string &source,
@@ -171,7 +141,7 @@ virtual void invoke(ScriptHandle handle, const std::string &eventName,
 virtual void eventsProcessed(ScriptHandle handle, double timestamp) = 0;
 ```
 
-**`EcmaScriptBackend`** additionally exposes two static marshalling methods (made public for unit testing):
+`EcmaScriptBackend` additionally exposes two static marshalling methods (made public for unit testing):
 
 ```cpp
 static void     EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &value, X3DFieldType type);
@@ -180,62 +150,38 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 ### Seam points
 
-- **`X3DExecutionContext::addScriptSystem()`** — registers the `ScriptSystem` as the post-cascade hook; the context drives `update()` (prepareEvents phase) and `runEventsProcessed()` around each cascade drain. `ScriptSystem` must be registered *first* among systems to guarantee §29.2.5 ordering.
+- `X3DExecutionContext::addScriptSystem()` — registers the `ScriptSystem` as the post-cascade hook; the context drives `update()` (prepareEvents phase) and `runEventsProcessed()` around each cascade drain. `ScriptSystem` must be registered *first* among systems to guarantee §29.2.5 ordering.
 
-- **`ScriptEngine` seam** — the only place Duktape API calls appear. All values crossing the seam are `std::any` boxed with the runtime's own field types and a `X3DFieldType` tag; no scripting-language objects cross this boundary.
+- `ScriptEngine` seam — the only place Duktape API calls appear. All values crossing the seam are `std::any` boxed with the runtime's own field types and a `X3DFieldType` tag; no scripting-language objects cross this boundary.
 
-- **`DynamicFieldStore` / `effectiveFields()`** — author `<field>` declarations captured by readers into `Scene::authorFields`, retained on declarations for PROTO templates (see [ADR-0014](../decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node, ctx.authorFields())` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out.
+- `DynamicFieldStore` / `effectiveFields()` — author `<field>` declarations captured by readers into `Scene::authorFields`, retained on declarations for PROTO templates (see [ADR-0014](../decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node, ctx.authorFields())` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out. Readback uses the active cascade timestamp through `SaiContext`.
 
-- **`Script.sourceCode`** — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the SCR-SAI-DYN S1 closure).
+- `Script.sourceCode` — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the  S1 closure).
 
-- **SFNode handles (`NodeHandleTable`)** — script code never holds a C++ pointer. Each backend interns a node into the per-script `SaiContext::nodeHandles()` table and hands the engine a small integer id. Duktape stores it under a hidden `\xff` symbol; QuickJS stores it in the opaque slot of a native `X3DNode` class. Scripts can neither read nor forge the id. Resolving an id yields the node's real owning `shared_ptr`, so an `SFNode` a script writes into a field shares ownership like DEF/USE, which matches the ECMAScript binding's node-reference semantics (ISO/IEC 19777-1). An id whose node the scene has dropped, or an unknown id, resolves to null. See [ADR-0048](../decisions/0048-script-node-handles.md).
+- SFNode handles (`NodeHandleTable`) — script code never holds a C++ pointer. Each backend interns a node into the per-script `SaiContext::nodeHandles()` table and hands the engine a small integer id. Duktape stores it under a hidden `\xff` symbol; QuickJS stores it in the opaque slot of a native `X3DNode` class. Scripts can neither read nor forge the id. Resolving an id yields the node's real owning `shared_ptr`, so an `SFNode` a script writes into a field shares ownership like DEF/USE, which matches the ECMAScript binding's node-reference semantics (ISO/IEC 19777-1). An id whose node the scene has dropped, or an unknown id, resolves to null. See [ADR-0048](../decisions/0048-script-node-handles.md).
 
-- **Deterministic clock** — in both backends a small JS shim installed once the global object exists redirects the JS `Date` (`Date.now()` and a zero-argument `new Date()`/`Date()`, in milliseconds = seconds × 1000) to the same injected `X3DExecutionContext` clock that `Browser.currentTime` reads, so a Script that reads `Date` stays reproducible under `x3d sim`'s deterministic clock while `Date` with explicit arguments, `Date.parse`/`Date.UTC` and the prototype methods are untouched.
+- Deterministic clock — in both backends a small JS shim installed once the global object exists redirects the JS `Date()` (`Date.now()` and a zero-argument `new Date()`/`Date()`, in milliseconds = seconds × 1000) to the same injected `X3DExecutionContext` clock that `Browser.currentTime` reads, so a Script that reads `Date()` stays reproducible under `x3d sim`'s deterministic clock while `Date()` with explicit arguments, `Date.parse`/`Date.UTC` and the prototype methods are untouched.
 
-- **Engine error containment** — every call into Duktape runs under `duk_safe_call` (Duktape is compiled as C++ with `DUK_USE_CPP_EXCEPTIONS`), so a script error raised while values are marshalled cannot abort the host. That covers a throwing getter, `toJSON`, Proxy trap or global accessor. A throw during readback drops that field's event for that callback, and the error is logged. QuickJS readback likewise drops the field on any pending exception instead of emitting a half-read value. See [ADR-0048](../decisions/0048-script-node-handles.md).
+- Engine error containment — every call into Duktape runs under `duk_safe_call` (Duktape is compiled as C++ with `DUK_USE_CPP_EXCEPTIONS`), so a script error raised while values are marshalled cannot abort the host. That covers a throwing getter, `toJSON`, Proxy trap or global accessor. A throw during readback drops that field's event for that callback, and the error is logged. QuickJS readback likewise drops the field on any pending exception instead of emitting a half-read value. See [ADR-0048](../decisions/0048-script-node-handles.md).
 
-- **Call budget** — `ScriptEngine::setCallBudget()` (default 2 s, zero disables) bounds each entry into script code: load, initialize, one invoke, prepareEvents, eventsProcessed, shutdown. A call that runs past it is interrupted (Duktape exec-timeout check; QuickJS interrupt handler), logged as a script error, and the script stays loaded. A load whose top level times out fails. `ScriptEngine::setMemoryLimit()` (default 256 MiB, zero disables) caps script heaps: per script in Duktape (a counting allocator), across all scripts in QuickJS (its shared runtime). An allocation past the cap fails and becomes a contained out-of-memory error. See [ADR-0048](../decisions/0048-script-node-handles.md).
+- Call budget — `ScriptEngine::setCallBudget()` (default 2 s, zero disables) bounds each entry into script code: load, initialize, one invoke, prepareEvents, eventsProcessed, shutdown. A call that runs past it is interrupted (Duktape exec-timeout check; QuickJS interrupt handler), logged as a script error, and the script stays loaded. A load whose top level times out fails. `ScriptEngine::setMemoryLimit()` (default 256 MiB, zero disables) caps script heaps: per script in Duktape (a counting allocator), across all scripts in QuickJS (its shared runtime). An allocation past the cap fails and becomes a contained out-of-memory error. See [ADR-0048](../decisions/0048-script-node-handles.md).
 
-- **`directOutput` gate & write semantics** — `SaiContext::setField()` on a node other than the owning Script, and both `addRoute`/`deleteRoute`, throw `std::logic_error` when `Script.getDirectOutput()` is `false` (the safest conformant response to the spec's "result is UNDEFINED" clause, §29.4.1). A permitted SELF-write is posted as a cascade event (fans out via ROUTEs, §29.2.4); a permitted CROSS-node write is a direct value mutation via the reflection setter — no event is generated and no ROUTE fans out from the written field (SAI 19775-2 §4.5.2 / [ADR-0029](../decisions/0029-directoutput-non-routable.md)), though the target still generates its own output events per the field's access type. `SaiContext::setField` falls back to the dynamic-field store for an author-declared target (absent from the static reflection table).
+- `directOutput` gate & write semantics — `SaiContext::setField()` on a node other than the owning Script, and both `addRoute`/`deleteRoute`, throw `std::logic_error` when `Script.getDirectOutput()` is `false` (the safest conformant response to the spec's "result is UNDEFINED" clause, §29.4.1). A permitted SELF-write is posted as a cascade event (fans out via ROUTEs, §29.2.4); a permitted CROSS-node write is a direct value mutation via the reflection setter — no event is generated and no ROUTE fans out from the written field (SAI 19775-2 §4.5.2 / [ADR-0029](../decisions/0029-directoutput-non-routable.md)), though the target still generates its own output events per the field's access type. `SaiContext::setField()` falls back to the dynamic-field store for an author-declared target (absent from the static reflection table).
 
-- **External url fetch (`AssetResolver` seam)** — a Script whose `url` list carries external (non-`ecmascript:`/`javascript:`/`vrmlscript:`) entries is fetched through the injectable `extract::AssetResolver` given to `ScriptSystem`: entries are tried in preference order, `Ready` bytes become the source, `Pending` defers to a later tick (the contract's retry), and `Failed` advances. The default resolver is the IO-free null stub, so a default-configured system never does I/O. The CLI (`tools/x3d-cli/sim_runtime.hpp`) injects `io::file::makeFileResolver()`. (CONF-CRITIC-2)
+- External url fetch (`AssetResolver` seam) — a Script whose `url` list carries external (non-`ecmascript:`/`javascript:`/`vrmlscript:`) entries is fetched through the injectable `extract::AssetResolver` given to `ScriptSystem`: entries are tried in preference order, `Ready` bytes become the source, `Pending` defers to a later tick (the contract's retry), and `Failed` advances. The default resolver is the IO-free null stub, so a default-configured system never does I/O. The CLI (`tools/x3d-cli/sim_runtime.hpp`) injects `io::file::makeFileResolver()`.
 
-- **`autoRefresh` / `autoRefreshTimeLimit`** — a loaded Script with `autoRefresh > 0` re-fetches and re-initializes on that interval (shutdown → resolve+load → initialize, §29.2.3), stopping once `autoRefreshTimeLimit` (measured from the load that opened the refresh window; 0 = no limit) has elapsed. (SCR-005)
+- `autoRefresh` / `autoRefreshTimeLimit` — a loaded Script with `autoRefresh > 0` re-fetches and re-initializes on that interval (shutdown → resolve+load → initialize, §29.2.3), stopping once `autoRefreshTimeLimit` (measured from the load that opened the refresh window; 0 = no limit) has elapsed.
 
-- **Script output re-emit** — an explicit same-value assignment to a Script `outputOnly` global still generates an event (§29.2.4 / ISO 19777-1); the no-op diff suppression in both backends' `readbackAuthorGlobals` applies to `inputOutput` only (there the global is an echo of the stored value). (SCRIPT-OUTPUTONLY-REEMIT)
+- Script output re-emit — an explicit same-value assignment to a Script `outputOnly` global still generates an event (§29.2.4 / ISO 19777-1); the no-op diff suppression in both backends' `readbackAuthorGlobals()` applies to `inputOutput` only (there the global is an echo of the stored value). (SCRIPT-OUTPUTONLY-REEMIT)
 
-- **`mustEvaluate` flag** — `ScriptSystem::deliverInputEvent()` invokes the engine immediately when `true` (§29.4.1 eager path) or queues a `DeferredEvent` when `false` (flushed at `runEventsProcessed` time, a permitted delay).
+- `mustEvaluate` flag — `ScriptSystem::deliverInputEvent()` invokes the engine immediately when `true` (§29.4.1 eager path) or queues a `DeferredEvent` when `false` (flushed at `runEventsProcessed()` time, a permitted delay).
 
-## How it is tested
+## Related
 
-**Track-A (no JavaScript, uses `MockScriptEngine`):**
+- [ADR-0013: ECMAScript Engine Choice for Script/SAI](../decisions/0013-js-engine-choice.md)
+- [ADR-0022: Second ScriptEngine Backend (QuickJS) + Behavioral Swap-Test](../decisions/0022-scriptengine-second-backend-swap-test.md)
+- [Seam-Status Matrix](../seam-status.md)
+- [ADR-0014: Dynamic Field Foundation for Script Author Fields](../decisions/0014-dynamic-field-foundation.md)
+- [Routes subsystem](../subsystems/routes.md)
 
-- `ctest --preset dev -R x3d_sai_context` (`runtime/script/tests/sai_context_test.cpp`) — field get/set round-trip via reflection; `directOutput` write-gate (cross-node rejected/allowed); DO-CASCADE — a cross-node write mutates the target but fans out NO ROUTE, while a self-write to an `outputOnly` field still fans out; `addRoute`/`deleteRoute` gate and live-route effect; browser-info surface; full seam call-log ordering via the mock.
-- `ctest --preset dev -R x3d_script_system` (`runtime/script/tests/script_system_test.cpp`) — `initialize()` before first event; `load=FALSE` defers load; `prepareEvents` once per timestamp; inputOnly → `invoke` with triggering timestamp; outputOnly write → cascade; `eventsProcessed` once per batch, only for receivers; `set_url` shutdown → reload → reinitialize order; `directOutput` gate end-to-end; `mustEvaluate` eager vs. deferred paths; SCR-002 teardown shutdown; CONF-CRITIC-2 external-url fetch (Ready loads, Pending retries next tick, Failed advances in preference order, null default stays IO-free); SCR-005 `autoRefresh` reload + `autoRefreshTimeLimit` stop. A routed event on a Script `inputOnly` field invokes its handler through the cascade listener (SCRIPT-EVENTIN).
-
-**Track-B (real Duktape backend):**
-
-- `ctest --preset dev -R x3d_ecmascript_backend` (`runtime/script/tests/ecmascript_backend_test.cpp`) — inline source decode; load/initialize/invoke/eventsProcessed/prepareEvents/shutdown lifecycle; syntax-error → `kInvalidScriptHandle`; multiple independent `duk_context` instances; field marshalling round-trips for all SF/MF scalar and structured types (T12); handler receives `(value, timestamp)` (T13); `Browser` global (`getName`/`getVersion`/`currentTime`/`print`) backed by `SaiContext` (T14); end-to-end `Browser.addRoute` with `SFNode` marshalling and live route propagation (T15); forged/cloned node handles resolve to nothing (T15b); script `SFNode` outputs share real ownership, and a handle to a destroyed node is `INVALID_NODE` (T15c); `Browser.addRoute` rejects unknown fields, wrong direction and type mismatch, and accepts `set_`/`_changed` aliases (T15d); hostile author-field values (throwing getter, `toJSON`, global or handler accessor, Proxy MF array) neither crash the host nor emit a half-read value, and the script keeps working (T15f); an infinite loop, a catch-and-continue loop, unbounded recursion and a top-level loop are all contained (call budget / engine recursion limit), and the script keeps working (T15g); an allocate-forever handler is stopped by the memory limit and the script keeps working (T15h); `directOutput=FALSE` — `Browser.addRoute` throws into JS, no route added (T16). T15i: `updateField` reaches the script global, is not echoed back, and a throwing setter is contained (same in the QuickJS suite). T18: a same-value `outputOnly` re-assignment still generates an event (SCRIPT-OUTPUTONLY-REEMIT).
-- `ctest --preset dev -R x3d_ecmascript_corpus_smoke` (`runtime/script/tests/ecmascript_corpus_smoke_test.cpp`) — corpus smoke over the X3D conformance archive (script nodes parsed without crash).
-
-**Track-C (second backend — QuickJS, built only with `-DX3D_CPP_BUILD_QUICKJS=ON`):**
-
-- `ctest -R x3d_quickjs_backend` (`runtime/script/tests/quickjs_backend_test.cpp`) — the QuickJS backend's own lifecycle + marshalling + Browser + handler-dispatch tests (mirrors the Duktape T1–T16 surface, including T15b–d, T15f–h).
-- `ctest -R x3d_quickjs_swap` (`runtime/script/tests/quickjs_swap_test.cpp`) — **the genericity proof**: drives identical fixtures through both the Duktape and QuickJS backends and asserts identical observable behavior (cascade field writes + ROUTE-target values). Gated in CI by the `QuickJS seam swap-test` job.
-
-**Integration (file-authored Script un-tabling, SCR-SAI-DYN S1):**
-
-- `ctest --preset dev -R x3d_script_author_runtime` (`runtime/script/tests/script_author_runtime_test.cpp`) — end-to-end: author fields via `DynamicFieldStore` + `Script.sourceCode` → `ScriptSystem` → `EcmaScriptBackend` → author outputOnly write fans out via ROUTE to a real target node.
-- `ctest --preset dev -R x3d_script_corpus_e2e` (`runtime/script/tests/script_corpus_e2e_test.cpp`) — real-reader paths (XML, ClassicVRML) over `AuthorScriptExample.x3d`/`.x3dv` + the real Savage `CanopyExample.x3d`; previously-inert scripts now dispatch their handlers.
-- `ctest --preset dev -R x3d_codecs_tests` (doctest case: `script_cdata_audit_test`) — CDATA capture audit over the corpus.
-
-## Related specs and ADRs
-
-- [ADR-0013: ECMAScript Engine Choice for Script/SAI](../decisions/0013-js-engine-choice.md) — rationale for Duktape as the shipped backend and quickjs-ng as the migration target.
-- [ADR-0022: Second ScriptEngine Backend (QuickJS) + Behavioral Swap-Test](../decisions/0022-scriptengine-second-backend-swap-test.md) — the genericity proof: a second independent backend + a CI-gated swap-test freezes the seam `[STABLE]`; the pattern for every seam card.
-- [Seam-Status Matrix](../seam-status.md) — the live tracker; ScriptEngine is the first GREEN row.
-- [ADR-0014: Dynamic Field Foundation for Script Author Fields](../decisions/0014-dynamic-field-foundation.md) — the `DynamicFieldStore` + `effectiveFields()` design that underpins author-field dispatch and readback.
-- [Routes subsystem](../subsystems/routes.md) — the route graph and field-address model that `SaiContext::addRoute`/`deleteRoute` and `setField` post events into.
-- Spec: `docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md` — the dated design spec for this subsystem (lifecycle ordering, mustEvaluate, directOutput gate, §29.2 mapping).
-- Spec: `docs/superpowers/specs/2026-06-17-script-cdata-untabling-design.md` — the S1 un-tabling design: `Script.sourceCode`, `seedAuthorGlobals`/`readbackAuthorGlobals`, reader CDATA capture.
 - ISO/IEC 19775-1 §29 (Script component) and §4.4.8.3 (event-processing model) — normative per-tick ordering; §29.4.1 (SAI surface + `directOutput`/`mustEvaluate` gates); ISO/IEC 19777-1 (ECMAScript language binding, field-to-JS type mapping).

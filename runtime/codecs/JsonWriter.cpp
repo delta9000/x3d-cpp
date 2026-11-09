@@ -80,9 +80,7 @@ void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
     first = false;
   }
   if (!head.units.empty()) {
-    // ENC-JSON-UNIT: mirror the meta array — JsonReader already reads this
-    // shape back ("@category"/"@name"/"@conversionFactor"); without it every
-    // UNIT declaration silently vanished on the JSON hop.
+    // Preserve unit declarations using the JSON head unit-array shape.
     if (!first)
       os << ",";
     os << "\n";
@@ -109,8 +107,16 @@ void JsonWriter::writeHead(std::ostringstream &os, const runtime::Head &head,
     for (std::size_t i = 0; i < head.meta.size(); ++i) {
       pad(os, depth + 1);
       os << "{ \"@name\": " << jstr(head.meta[i].name)
-         << ", \"@content\": " << jstr(head.meta[i].content) << " }"
-         << (i + 1 < head.meta.size() ? "," : "") << "\n";
+         << ", \"@content\": " << jstr(head.meta[i].content);
+      if (!head.meta[i].dir.empty())
+        os << ", \"@dir\": " << jstr(head.meta[i].dir);
+      if (!head.meta[i].lang.empty())
+        os << ", \"@lang\": " << jstr(head.meta[i].lang);
+      if (!head.meta[i].scheme.empty())
+        os << ", \"@scheme\": " << jstr(head.meta[i].scheme);
+      if (!head.meta[i].httpEquiv.empty())
+        os << ", \"@http-equiv\": " << jstr(head.meta[i].httpEquiv);
+      os << " }" << (i + 1 < head.meta.size() ? "," : "") << "\n";
     }
     pad(os, depth);
     os << "]";
@@ -211,23 +217,6 @@ void JsonWriter::writeSceneStatements(std::ostringstream &os,
   }
 }
 
-const runtime::ProtoField *
-JsonWriter::interfaceField(const runtime::ProtoInstance &src,
-                           const std::string &name) {
-  auto scan = [&](const std::vector<runtime::ProtoField> &iface)
-      -> const runtime::ProtoField * {
-    for (const runtime::ProtoField &f : iface)
-      if (f.name == name)
-        return &f;
-    return nullptr;
-  };
-  if (src.declaration)
-    return scan(src.declaration->interface);
-  if (src.externDeclaration)
-    return scan(src.externDeclaration->interface);
-  return nullptr;
-}
-
 void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
                                         const runtime::ProtoInstance &src,
                                         int depth) {
@@ -264,7 +253,7 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
     } else if (fv.value.has_value()) {
       // Scalar-valued: emit as { "@name": <name>, "@value": <formatted> }
       // or just { "@name": <name> } if the type is unknown.
-      const runtime::ProtoField *pf = interfaceField(src, fv.name);
+      const runtime::ProtoField *pf = src.interfaceField(fv.name);
       if (pf) {
         std::string valStr = formatValue(pf->type, fv.value);
         fvElements.push_back("{ \"@name\": " + jstr(fv.name) +
@@ -272,6 +261,9 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
       } else {
         fvElements.push_back("{ \"@name\": " + jstr(fv.name) + " }");
       }
+    } else {
+      fvElements.push_back("{ \"@name\": " + jstr(fv.name) +
+                           ", \"-children\": [] }");
     }
   }
 
@@ -287,6 +279,18 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
     members.push_back(std::move(fvArr));
   }
 
+  if (!src.isConnections.empty()) {
+    std::string is = "\"IS\": { \"connect\": [";
+    for (std::size_t i = 0; i < src.isConnections.size(); ++i) {
+      const auto &c = src.isConnections[i];
+      if (i) is += ",";
+      is += " { \"@nodeField\": " + jstr(c.nodeField) +
+            ", \"@protoField\": " + jstr(c.protoField) + " }";
+    }
+    is += " ] }";
+    members.push_back(std::move(is));
+  }
+
   for (std::size_t i = 0; i < members.size(); ++i) {
     pad(os, depth + 1);
     os << members[i] << (i + 1 < members.size() ? "," : "") << "\n";
@@ -295,8 +299,7 @@ void JsonWriter::writeJsonProtoInstance(std::ostringstream &os,
   os << "} }";
 }
 
-std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f,
-                                       [[maybe_unused]] int depth) {
+std::string JsonWriter::jsonProtoField(const runtime::ProtoField &f) {
   std::ostringstream os;
   os << "{ \"@name\": " << jstr(f.name)
      << ", \"@type\": " << jstr(fieldTypeName(f.type))
@@ -363,7 +366,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
     os << "\"field\": [\n";
     for (std::size_t i = 0; i < d.interface.size(); ++i) {
       pad(os, depth + 3);
-      os << bodyWriter.jsonProtoField(d.interface[i], depth + 3);
+      os << bodyWriter.jsonProtoField(d.interface[i]);
       if (i + 1 < d.interface.size())
         os << ",";
       os << "\n";
@@ -374,7 +377,7 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
     os << "}";
   }
 
-  // ProtoBody — use a FRESH writer so body DEF/USE is isolated.
+  // ProtoBody — use a fresh writer so body DEF/USE is isolated.
   os << ",\n";
   pad(os, depth + 1);
   os << "\"ProtoBody\": {\n";
@@ -382,10 +385,10 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   os << "\"-children\": [\n";
 
   bool firstBody = true;
-  // PRF-1: hand the body's IS list to the body writer so writeNode attaches an
+  // hand the body's IS list to the body writer so writeNode attaches an
   // "IS" member at every depth during the recursive descent.
-  // PRF-3: thread the nested-instance list so writeNode injects each Case-A
-  // instance INSIDE its parent body node's child slot (not as a sibling).
+  // thread the nested-instance list so writeNode injects each Case-A
+  // instance inside its parent body node's child slot (not as a sibling).
   for (const auto &entry : d.body.orderedStatements()) {
     if (!firstBody)
       os << ",\n";
@@ -475,7 +478,7 @@ void JsonWriter::writeJsonExternProtoDeclare(
     os << "\"field\": [\n";
     for (std::size_t i = 0; i < d.interface.size(); ++i) {
       pad(os, depth + 2);
-      os << jsonProtoField(d.interface[i], depth + 2);
+      os << jsonProtoField(d.interface[i]);
       if (i + 1 < d.interface.size())
         os << ",";
       os << "\n";
@@ -492,7 +495,7 @@ void JsonWriter::writeJsonExternProtoDeclare(
 void JsonWriter::writeNode(std::ostringstream &os,
                            const std::shared_ptr<X3DNode> &node, int depth) {
   // Inline round-trip: if this node is the synthetic Group of an expanded
-  // <Inline>, re-emit the original Inline node and do NOT descend into the
+  // <Inline>, re-emit the original Inline node and do not descend into the
   // Group's child content (which the reader will re-fetch on load).
   if (scene_) {
     auto il = scene_->expandedInlines.find(node.get());
@@ -540,10 +543,10 @@ void JsonWriter::writeNode(std::ostringstream &os,
       members.push_back(std::string("\"@DEF\": ") + jstr(def));
       seen_.insert(node.get());
     }
-    // SCR-SAI-DYN (S1): a Script re-emits its inline source as "#sourceText"
+    // a Script re-emits its inline source as "#sourceText"
     // (handled below), so suppress the plain "@sourceCode" value member to
     // avoid double-encoding the same body.
-    const bool isScript = node->nodeTypeName() == "Script";
+    const bool isScript = dynamic_cast<const x3d::nodes::Script *>(node.get()) != nullptr;
     // Value attributes (defaults elided against a fresh factory instance).
     X3DNode *defaults = defaultFor(node->nodeTypeName());
     for (const FieldInfo &f : node->fields()) {
@@ -556,7 +559,7 @@ void JsonWriter::writeNode(std::ostringstream &os,
       std::string val = jsonValue(*node, f);
       if (val.empty())
         continue;
-      if (defaults && val == jsonValueOf(*defaults, f))
+      if (defaults && val == jsonValue(*defaults, f))
         continue; // equals the type default -> omit
       members.push_back("\"@" + f.x3dName + "\": " + val);
     }
@@ -628,25 +631,22 @@ void JsonWriter::writeNode(std::ostringstream &os,
         if (!child.empty()) members.push_back(child);
       }
     }
-    // SCR-SAI-DYN (S1): re-emit a Script's author <field> declarations (from
-    // the dynamic-field side-table) as a "field" array member, and its inline
-    // source as a "#sourceText" array member, so a JSON round-trip preserves
-    // both. Other nodes carry no author fields, so this is a no-op for them.
+    // Author fields use declarations (ISO/IEC 19775-1, 29.4.1 and Clause 31).
+    std::string fieldsMember = jsonAuthorFields(*node);
+    if (!fieldsMember.empty())
+      members.push_back(std::move(fieldsMember));
     if (isScript) {
-      std::string fieldsMember = jsonScriptFields(*node);
-      if (!fieldsMember.empty())
-        members.push_back(std::move(fieldsMember));
       std::string sourceMember = jsonScriptSource(*node);
       if (!sourceMember.empty())
         members.push_back(std::move(sourceMember));
     }
-    // PRF-1: re-emit IS connections bound to THIS node (at any depth) as an
+    // re-emit IS connections bound to this node (at any depth) as an
     // "IS":{"connect":[{"@nodeField","@protoField"}]} member, matching the
     // shape JsonReader::collectJsonIsConnections parses.
     std::string is = jsonIsBlock(node);
     if (!is.empty())
       members.push_back(std::move(is));
-    // PRF-3: inject Case-A nested ProtoInstances whose parent is THIS node,
+    // inject Case-A nested ProtoInstances whose parent is this node,
     // grouped by parentField, as "-<slot>": [ <instance> ] members — mirroring
     // XmlWriter pushing them onto the parent element's children so the reader
     // recovers parent == this node (not Case B). depth+1 keeps the instance
@@ -656,8 +656,8 @@ void JsonWriter::writeNode(std::ostringstream &os,
         members.push_back(std::move(m));
 
     // Scene-level nested ProtoInstances: any un-expanded ProtoInstance in
-    // scene.protoInstances whose parent is THIS node. These are NOT in the
-    // node graph (expansion failed) and NOT scene-root (parent is live), so
+    // scene.protoInstances whose parent is this node. These are not in the
+    // node graph (expansion failed) and not scene-root (parent is live), so
     // without this injection they are lost. Emit grouped by parentField slot
     // (mirroring jsonNestedFor) so the reader recovers parent == this node.
     if (scene_) {
@@ -780,10 +780,6 @@ JsonWriter::jsonSceneNestedFor(const std::shared_ptr<X3DNode> &node,
   return out;
 }
 
-std::string JsonWriter::jsonValueOf(const X3DNode &node, const FieldInfo &f) {
-  return jsonValue(node, f);
-}
-
 std::string JsonWriter::jsonValue(const X3DNode &node, const FieldInfo &f) {
   if (f.isEnum()) {
     if (!f.getEnumString)
@@ -825,7 +821,7 @@ std::string JsonWriter::jsonValue(const X3DNode &node, const FieldInfo &f) {
     // space-separated wire string, then re-emit as a JSON number array.
     std::string wire = formatValue(f.type, v);
     if (wire.empty())
-      return "";
+      return std::string(fieldTypeName(f.type)).starts_with("MF") ? "[]" : "";
     auto toks = tokenize(wire);
     std::string out = "[";
     for (std::size_t i = 0; i < toks.size(); ++i)
@@ -866,7 +862,7 @@ std::string JsonWriter::jsonNodeField(const std::shared_ptr<X3DNode> &node,
   return os.str();
 }
 
-std::string JsonWriter::jsonScriptFields(const X3DNode &node) {
+std::string JsonWriter::jsonAuthorFields(const X3DNode &node) {
   std::vector<FieldInfo> author =
       authorFields_ ? authorFields_->authorFields(node) : std::vector<FieldInfo>{};
   if (author.empty())
@@ -883,7 +879,22 @@ std::string JsonWriter::jsonScriptFields(const X3DNode &node) {
          f.access == AccessType::InputOutput) &&
         f.get) {
       std::any v = f.get(node);
-      if (v.has_value()) {
+      if (f.isNode()) {
+        MFNode nodes;
+        if (auto *n = std::any_cast<SFNode>(&v); n && *n) nodes.push_back(*n);
+        if (auto *m = std::any_cast<MFNode>(&v)) nodes = *m;
+        out += ", \"-children\": [";
+        bool first = true;
+        for (const auto &n : nodes) {
+          if (!n) continue;
+          if (!first) out += ",";
+          first = false;
+          std::ostringstream child;
+          writeNode(child, n, 0);
+          out += child.str();
+        }
+        out += "]";
+      } else if (v.has_value()) {
         std::string wire = formatValue(f.type, v);
         out += ", \"@value\": " + jstr(wire);
       }

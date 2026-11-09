@@ -1,37 +1,11 @@
-// QuickJsBackend.cpp
-// The single TU where quickjs-ng (https://github.com/quickjs-ng/quickjs) meets
-// the ScriptEngine seam. This is the ONLY place a quickjs.h type appears; the
-// header (QuickJsBackend.hpp) is QuickJS-free via the Impl pImpl, mirroring the
-// JoltBackend isolation rule so consumers of x3d_quickjs never inherit QuickJS's
-// headers or flags.
+// QuickJS-ng ScriptEngine implementation; see ADR-0022.
+// Engine types and headers stay private to this translation unit.
 //
-// U2 SCOPE: FULL PARITY with the Duktape EcmaScriptBackend —
-//   - pushValue(std::any, X3DFieldType) -> JSValue and the inverse
-//     toValue(JSValue, X3DFieldType) -> std::any for every SF/MF type
-//     (Bool/Int32/Float/Double/Time/String, Vec2/3/4 f+d, Color, ColorRGBA,
-//     Rotation, Node; all MF* as JS arrays; SFMatrix3/4 f+d as flat row-major
-//     arrays; SFImage/MFImage as the ISO 19777-1 {x,y,comp,array} shape),
-//     matching the JS SHAPE Duktape exposes case-for-case;
-//   - the Browser global (getName/getVersion/currentTime/currentFrameRate/
-//     addRoute/deleteRoute/print) backed by the SaiContext;
-//   - author-field seeding + readback (initialValue -> JS globals at init, and
-//     outputOnly/inputOutput writes read back into the store + emitted as
-//     cascade events), mirroring EcmaScriptBackend's mechanism via SaiContext;
-//   - invoke() marshals `value` via pushValue and calls handler(value,timestamp).
-//
-// REFCOUNT DISCIPLINE (the top bug risk, design §Risks 1): every JSValue that
-// JS_Eval / JS_Get* / JS_Call / JS_New* hands back is OWNED and must be
-// JS_FreeValue'd. To make that mechanical we wrap owned values in a small RAII
-// guard (JsValue below) so no path leaks or double-frees. JS_Free'ing the
-// special tags (UNDEFINED/NULL/EXCEPTION/bool/int) is a documented no-op, so the
-// guard is safe to apply uniformly. The key QuickJS idioms vs Duktape:
-//   - JS_SetPropertyStr / JS_SetPropertyUint32 CONSUME the value ref passed in
-//     (do NOT wrap a value you hand to them in a JsValue — ownership transfers).
-//   - JS_GetPropertyStr / JS_GetPropertyUint32 / JS_Call RETURN owned refs.
-//   - JS_NewString COPIES its input, so a std::any temporary holding the source
-//     string must stay alive until the call returns (carried as the U1 review
-//     note (a)).
-
+// JS_Eval, JS_Get*, JS_Call, and JS_New* return owned JSValues. JsValue frees
+// those references on scope exit; freeing special tags is a documented no-op.
+// JS_SetPropertyStr and JS_SetPropertyUint32 consume their value reference:
+// do not also wrap that reference in JsValue.
+// JS_NewString copies its input, so source storage must survive until it returns.
 #include "QuickJsBackend.hpp"
 
 #include "DeterministicDate.hpp" // Date.now()/new Date() -> injected clock
@@ -42,6 +16,7 @@
 
 #include "quickjs.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -57,11 +32,9 @@ using namespace x3d::core;
 
 namespace {
 
-// ---------------------------------------------------------------------------
-// RAII guard for an OWNED JSValue. Frees on scope exit against the context it
-// was created in. Move-only (transfers ownership); release() hands the raw
-// value out without freeing (for the rare case ownership must pass on).
-// ---------------------------------------------------------------------------
+// RAII guard for an owned JSValue. Frees on scope exit against the context it
+// was created in. Move-only (transfers ownership).
+
 class JsValue {
 public:
   JsValue(JSContext *ctx, JSValue v) : ctx_(ctx), v_(v) {}
@@ -86,13 +59,6 @@ public:
   JsValue &operator=(const JsValue &) = delete;
 
   const JSValue &get() const { return v_; }
-  // Hand the raw value out WITHOUT freeing (ownership passes to the caller).
-  JSValue release() {
-    JSValue out = v_;
-    ctx_ = nullptr;
-    v_ = JS_UNDEFINED;
-    return out;
-  }
   bool isException() const { return JS_IsException(v_); }
   bool isUndefined() const { return JS_IsUndefined(v_); }
 
@@ -111,10 +77,8 @@ void logException(JSContext *ctx, const char *where) {
   if (str) JS_FreeCString(ctx, str);
 }
 
-// ---------------------------------------------------------------------------
 // Scalar reader helpers (the JS_To* family returns -1 on a failed coercion;
 // we treat that as the zero value, matching Duktape's lenient duk_to_*).
-// ---------------------------------------------------------------------------
 
 double toNumber(JSContext *ctx, JSValueConst v) {
   double d = 0.0;
@@ -145,14 +109,12 @@ double getNumberProp(JSContext *ctx, JSValueConst obj, const char *name) {
   return toNumber(ctx, p.get());
 }
 
-// ---------------------------------------------------------------------------
 // SFNode <-> JS opaque handle. A non-null node becomes an instance of the
 // native X3DNode class whose opaque slot carries its NodeHandleTable id; a null
 // node becomes JS null. The opaque slot is invisible to script code and
 // JS_GetOpaque checks the class, so a script can neither read nor forge a
 // handle. The id resolves through this script's table to the node's owning
 // shared_ptr (null once the node is gone) — see NodeHandleTable.hpp.
-// ---------------------------------------------------------------------------
 
 // One JSContext backs exactly one loaded script, so the SaiContext is threaded
 // to every native callback via JS_SetContextOpaque(ctx, sai) (the QuickJS
@@ -187,11 +149,9 @@ SFNode extractNode(JSContext *ctx, JSValueConst v) {
   return sai->nodeHandles().resolve(static_cast<NodeHandleTable::Id>(bits));
 }
 
-// ---------------------------------------------------------------------------
-// Structured-SF pushers — each returns a fresh OWNED JS object whose named
+// Structured-SF pushers — each returns a fresh owned JS object whose named
 // numeric fields mirror the Duktape shape exactly (SFVec3f -> {x,y,z};
 // SFColor -> {r,g,b}; SFRotation -> {x,y,z,angle}; etc).
-// ---------------------------------------------------------------------------
 
 void setNum(JSContext *ctx, JSValue obj, const char *name, double v) {
   JS_SetPropertyStr(ctx, obj, name, JS_NewFloat64(ctx, v));  // consumes ref
@@ -234,9 +194,7 @@ JSValue pushSFRotation(JSContext *c, const SFRotation &v) {
   setNum(c, o, "z", v.z); setNum(c, o, "angle", v.angle); return o;
 }
 
-// ---------------------------------------------------------------------------
 // Structured-SF poppers — read named numeric fields back off a JS object.
-// ---------------------------------------------------------------------------
 
 SFVec2f toSFVec2f(JSContext *c, JSValueConst i) {
   return {(float)getNumberProp(c, i, "x"), (float)getNumberProp(c, i, "y")};
@@ -273,11 +231,9 @@ SFRotation toSFRotation(JSContext *c, JSValueConst i) {
           (float)getNumberProp(c, i, "z"), (float)getNumberProp(c, i, "angle")};
 }
 
-// ---------------------------------------------------------------------------
 // Generic MF push/pop via element functors. JS_NewArray + JS_SetPropertyUint32
 // (which consumes the element ref) for push; length + JS_GetPropertyUint32
 // (owned ref, freed per element) for pop.
-// ---------------------------------------------------------------------------
 
 template <typename Vec, typename PushElem>
 JSValue pushMF(JSContext *c, const Vec &v, PushElem pushElem) {
@@ -358,9 +314,12 @@ JSValue pushSFImage(JSContext *c, const SFImage &img) {
 SFImage toSFImage(JSContext *c, JSValueConst obj) {
   SFImage img{0, 0, 0, {}};
   if (!JS_IsObject(obj)) return img;
-  img.width = static_cast<int>(getNumberProp(c, obj, "x"));
-  img.height = static_cast<int>(getNumberProp(c, obj, "y"));
-  img.numComponents = static_cast<int>(getNumberProp(c, obj, "comp"));
+  // Script values are untrusted: a negative, NaN or huge dimension would wrap
+  // the unsigned pixel count, and comp outside [0,4] would over-shift.
+  const auto dim = [](double v) { return v > 0 && v < 2147483647.0 ? static_cast<int>(v) : 0; };
+  img.width = dim(getNumberProp(c, obj, "x"));
+  img.height = dim(getNumberProp(c, obj, "y"));
+  img.numComponents = std::min(dim(getNumberProp(c, obj, "comp")), 4);
   const int nc = img.numComponents;
   const std::size_t pixels = static_cast<std::size_t>(img.width) *
                              static_cast<std::size_t>(img.height);
@@ -384,15 +343,14 @@ SFImage toSFImage(JSContext *c, JSValueConst obj) {
   return img;
 }
 
-// ---------------------------------------------------------------------------
-// pushValue: std::any -> JS, by X3DFieldType. Returns an OWNED JSValue (the
+// pushValue: std::any -> JS, by X3DFieldType. Returns an owned JSValue (the
 // caller wraps it or hands it where QuickJS takes ownership). Mirrors the
 // Duktape EcmaScriptBackend::pushValue case-for-case.
-// ---------------------------------------------------------------------------
+
 JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
   const bool has = v.has_value();
   switch (type) {
-    // --- scalars ---
+    // scalars
     case X3DFieldType::SFBool:
       return JS_NewBool(ctx, has && std::any_cast<SFBool>(v));
     case X3DFieldType::SFInt32:
@@ -406,12 +364,12 @@ JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
     case X3DFieldType::SFTime:
       return JS_NewFloat64(ctx, has ? std::any_cast<SFTime>(v) : 0.0);
     case X3DFieldType::SFString: {
-      // U1 review note (a): keep the std::any temporary alive until
+      // Keep the std::any temporary alive until
       // JS_NewString has copied the bytes.
       SFString s = has ? std::any_cast<SFString>(v) : SFString{};
       return JS_NewStringLen(ctx, s.c_str(), s.size());
     }
-    // --- structured SF ---
+    // structured SF
     case X3DFieldType::SFVec2f:
       return pushSFVec2f(ctx, has ? std::any_cast<SFVec2f>(v) : SFVec2f{});
     case X3DFieldType::SFVec2d:
@@ -434,7 +392,7 @@ JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
                             has ? std::any_cast<SFRotation>(v) : SFRotation{});
     case X3DFieldType::SFNode:
       return pushNode(ctx, has ? std::any_cast<SFNode>(v) : SFNode{});
-    // --- MF ---
+    // MF
     case X3DFieldType::MFBool: {
       MFBool d = has ? std::any_cast<MFBool>(v) : MFBool{};
       return pushMF(ctx, d, [](JSContext *c, bool b) { return JS_NewBool(c, b); });
@@ -505,7 +463,7 @@ JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
       MFNode d = has ? std::any_cast<MFNode>(v) : MFNode{};
       return pushMF(ctx, d, pushNode);
     }
-    // --- matrices: flat row-major arrays ---
+    // matrices: flat row-major arrays
     case X3DFieldType::SFMatrix3f:
       return pushSFMatrix<SFMatrix3f, 3>(
           ctx, has ? std::any_cast<SFMatrix3f>(v) : SFMatrix3f{});
@@ -518,14 +476,14 @@ JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
     case X3DFieldType::SFMatrix4d:
       return pushSFMatrix<SFMatrix4d, 4>(
           ctx, has ? std::any_cast<SFMatrix4d>(v) : SFMatrix4d{});
-    // --- images ---
+    // images
     case X3DFieldType::SFImage:
       return pushSFImage(ctx, has ? std::any_cast<SFImage>(v) : SFImage{});
     case X3DFieldType::MFImage: {
       MFImage d = has ? std::any_cast<MFImage>(v) : MFImage{};
       return pushMF(ctx, d, pushSFImage);
     }
-    // --- MF matrices: arrays of flat row-major matrices ---
+    // MF matrices: arrays of flat row-major matrices
     case X3DFieldType::MFMatrix3f: {
       MFMatrix3f d = has ? std::any_cast<MFMatrix3f>(v) : MFMatrix3f{};
       return pushMF(ctx, d, [](JSContext *c, const SFMatrix3f &m) {
@@ -551,15 +509,14 @@ JSValue pushValue(JSContext *ctx, const std::any &v, X3DFieldType type) {
       });
     }
     default:
-      // Unsupported/exotic type (enums): JS undefined (mirrors Duktape).
+      // Unsupported/exotic type (enums): JS undefined.
       return JS_UNDEFINED;
   }
 }
 
-// ---------------------------------------------------------------------------
 // toValue: JS -> std::any, by X3DFieldType. Mirrors the Duktape
 // EcmaScriptBackend::toValue case-for-case.
-// ---------------------------------------------------------------------------
+
 std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
   switch (type) {
     case X3DFieldType::SFBool:
@@ -666,9 +623,7 @@ std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
 
 } // namespace
 
-// ===========================================================================
 // Impl — all QuickJS state lives here (keeps the header QuickJS-free).
-// ===========================================================================
 
 struct QuickJsBackend::Impl {
   // One loaded script's per-context state (the Duktape Entry model).
@@ -723,20 +678,20 @@ struct QuickJsBackend::Impl {
     return (it != entries.end()) ? &it->second : nullptr;
   }
 
-  // Look up a global by name; returns an OWNED JsValue (UNDEFINED if absent).
+  // Look up a global by name; returns an owned JsValue (UNDEFINED if absent).
   JsValue getGlobal(JSContext *ctx, const char *name) {
     JsValue global(ctx, JS_GetGlobalObject(ctx));
     return JsValue(ctx, JS_GetPropertyStr(ctx, global.get(), name));
   }
 
-  // Set a global by name to `value` (CONSUMES the value ref).
+  // Set a global by name to `value` (consumes the value ref).
   void setGlobal(JSContext *ctx, const char *name, JSValue value) {
     JsValue global(ctx, JS_GetGlobalObject(ctx));
     JS_SetPropertyStr(ctx, global.get(), name, value);  // consumes value
   }
 
   // Call a global function `name` with `argc` already-built args. The args are
-  // BORROWED (the caller still owns/frees them). No-op if the global is missing
+  // borrowed (the caller still owns/frees them). No-op if the global is missing
   // or not callable. Logs+clears any exception.
   void callGlobal(JSContext *ctx, const char *name, int argc, JSValueConst *argv) {
     JsValue fn = getGlobal(ctx, name);
@@ -749,14 +704,11 @@ struct QuickJsBackend::Impl {
     callGlobal(ctx, name, 0, nullptr);
   }
 
-  // -------------------------------------------------------------------------
-  // Author-field seeding / readback (mirrors EcmaScriptBackend §3.5).
-  // -------------------------------------------------------------------------
+  // Author-field seeding and readback.
 
   // boxed initialValue -> JS global, per readable author field
   // (initializeOnly/inputOutput). Lets the script read its authored defaults.
   void seedAuthorGlobals(Entry &e) {
-    if (!e.node || !e.ctx) return;
     JSContext *ctx = e.ctx;
     for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable() || !info.get) continue;
@@ -779,8 +731,7 @@ struct QuickJsBackend::Impl {
 
   // JS global -> store + cascade event, per readable author field
   // (outputOnly/inputOutput) the script wrote. Suppresses no-op re-emits.
-  void readbackAuthorGlobals(Entry &e, double timestamp) {
-    if (!e.node || !e.ctx || !e.sai) return;
+  void readbackAuthorGlobals(Entry &e) {
     JSContext *ctx = e.ctx;
     for (const FieldInfo &info : e.sai->context().authorFields().authorFields(*e.node)) {
       if (!info.isReadable()) continue;
@@ -796,11 +747,11 @@ struct QuickJsBackend::Impl {
         continue;
       }
       if (g.isUndefined()) continue;  // not defined / never assigned
-      // Suppress a no-op re-emit ONLY for inputOutput: there the JS global is an
+      // Suppress a no-op re-emit only for inputOutput: there the JS global is an
       // echo of the value the field already holds. outputOnly is the script's own
       // output channel — an explicit assignment generates an event regardless of
       // value (§29.2.4 / ISO 19777-1), so it is never diffed away
-      // (SCRIPT-OUTPUTONLY-REEMIT).
+      //.
       std::any prev = e.sai->context().authorFields().getValue(*e.node, info.x3dName);
       if (info.access == AccessType::InputOutput && prev.has_value()) {
         JsValue prevJs(ctx, pushValue(ctx, prev, info.type));
@@ -818,15 +769,12 @@ struct QuickJsBackend::Impl {
       }
       if (!value.has_value()) continue;
       e.sai->context().authorFields().setValue(*e.node, info.x3dName, value);
-      (void)timestamp;
       e.sai->setField(e.node, info.x3dName, value);
     }
   }
 };
 
-// ===========================================================================
 // Browser global — native callbacks bound to the script's SaiContext (saiOf).
-// ===========================================================================
 
 namespace {
 
@@ -988,16 +936,12 @@ private:
 };
 } // namespace
 
-// ===========================================================================
 // Construction / destruction.
-// ===========================================================================
 
 QuickJsBackend::QuickJsBackend() : impl_(std::make_unique<Impl>()) {}
 QuickJsBackend::~QuickJsBackend() = default;
 
-// ===========================================================================
 // load(): create a JSContext, install Browser, eval the source, mint a handle.
-// ===========================================================================
 
 ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
                                   const std::string &source, SaiContext &sai) {
@@ -1029,25 +973,17 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
   return handle;
 }
 
-// ===========================================================================
-// initialize(): seed author globals, call initialize(), read author outputs.
-// ===========================================================================
-
 void QuickJsBackend::initialize(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
   ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
-  // Seed initializeOnly/inputOutput author defaults BEFORE initialize() runs.
+  // Seed initializeOnly/inputOutput author defaults before initialize() runs.
   impl_->seedAuthorGlobals(*e);
   impl_->callGlobalNoArgs(e->ctx, "initialize");
   // initialize() may write outputOnly/inputOutput author fields (§29.2.3) —
   // read them back (timestamp 0 = scene start).
-  impl_->readbackAuthorGlobals(*e, 0.0);
+  impl_->readbackAuthorGlobals(*e);
 }
-
-// ===========================================================================
-// shutdown(): call shutdown() if defined, then free the context.
-// ===========================================================================
 
 void QuickJsBackend::shutdown(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
@@ -1058,10 +994,6 @@ void QuickJsBackend::shutdown(ScriptHandle handle) {
   impl_->entries.erase(handle);
 }
 
-// ===========================================================================
-// prepareEvents(): call prepareEvents(now), then read author outputs.
-// ===========================================================================
-
 void QuickJsBackend::prepareEvents(ScriptHandle handle, double now) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
@@ -1070,12 +1002,8 @@ void QuickJsBackend::prepareEvents(ScriptHandle handle, double now) {
   JSValueConst argv[1] = {arg.get()};
   impl_->callGlobal(e->ctx, "prepareEvents", 1, argv);
   // §29.2.5: prepareEvents may generate events — read author outputs back.
-  impl_->readbackAuthorGlobals(*e, now);
+  impl_->readbackAuthorGlobals(*e);
 }
-
-// ===========================================================================
-// invoke(): dispatch one inputOnly event — call handler(value, timestamp).
-// ===========================================================================
 
 void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
                             const std::any &value, X3DFieldType type,
@@ -1090,32 +1018,26 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
   impl_->callGlobal(ctx, eventName.c_str(), 2, argv);
   // §3.5: read any author outputOnly/inputOutput field the handler wrote and
   // emit it into the cascade carrying the triggering timestamp.
-  impl_->readbackAuthorGlobals(*e, timestamp);
+  impl_->readbackAuthorGlobals(*e);
 }
 
-// ===========================================================================
-// eventsProcessed(): call eventsProcessed(), then read author outputs.
-// ===========================================================================
-
-void QuickJsBackend::eventsProcessed(ScriptHandle handle, double timestamp) {
+void QuickJsBackend::eventsProcessed(ScriptHandle handle, double /*timestamp*/) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
   ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events from eventsProcessed() enter the cascade with the timestamp
   // of the last event processed — read author outputs back.
-  impl_->readbackAuthorGlobals(*e, timestamp);
+  impl_->readbackAuthorGlobals(*e);
 }
 
-// ===========================================================================
 // updateField(): an inputOutput author field was written from outside the
 // script -- refresh its JS global (ScriptEngine::updateField).
-// ===========================================================================
 
 void QuickJsBackend::updateField(ScriptHandle handle, const std::string &name,
                                  const std::any &value, X3DFieldType type) {
   Impl::Entry *e = impl_->entryFor(handle);
-  if (!e || !e->ctx || !value.has_value()) return;
+  if (!e || !value.has_value()) return;
   ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
   impl_->setGlobal(e->ctx, name.c_str(), pushValue(e->ctx, value, type));
   // The script may have made this global a throwing setter.

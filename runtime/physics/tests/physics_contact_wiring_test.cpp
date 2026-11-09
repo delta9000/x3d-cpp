@@ -1,5 +1,5 @@
 // physics_contact_wiring_test.cpp — ungated integration test for PhysicsSystem's
-// contact path, using a FAKE PhysicsBackend that scripts one contact. Proves:
+// contact path, using a fake PhysicsBackend that scripts one contact. Proves:
 // attach enrols a CollisionSensor; update drains the backend, resolves body
 // handles to the scene's RigidBody/CollidableShape nodes, and the reporter emits
 // CollisionSensor.contacts over the cascade. No physics engine required.

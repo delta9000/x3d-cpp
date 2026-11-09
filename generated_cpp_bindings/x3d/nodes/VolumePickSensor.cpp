@@ -1,4 +1,3 @@
-// VolumePickSensor.cpp
 #include "x3d/nodes/VolumePickSensor.hpp"
 
 namespace x3d::nodes {

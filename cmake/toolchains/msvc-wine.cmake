@@ -1,16 +1,6 @@
-# Real MSVC (cl.exe) under wine, via msvc-wine — the AUTHORITATIVE local Windows
-# build, unlike the faster clang-cl loop (clang-cl defines __clang__, so it is
-# blind to MSVC-only #ifdef branches; that is how the tinfl.h C1017 slipped past
-# it). Slower (each cl invocation spawns wine) but catches what real cl catches —
-# ideal as a precommit MSVC check. Set MSVC_WINE_BIN, or default to ~/my-msvc.
-#
-# One-time setup (needs wine + msitools):
-#   git clone https://github.com/mstorsjo/msvc-wine
-#   ./msvc-wine/vsdownload.py --accept-license --dest ~/my-msvc
-#   ./msvc-wine/install.sh ~/my-msvc
-#
-# The cl/link/lib/rc/mt wrappers each source msvcenv.sh, so INCLUDE/LIB/WINEPATH
-# are set per invocation — no need to source it here.
+# Real MSVC under Wine. Unlike clang-cl, cl.exe exercises MSVC-only preprocessor
+# branches. Set MSVC_WINE_BIN or use ~/my-msvc, provisioned with msvc-wine.
+# Wrapper scripts set INCLUDE/LIB/WINEPATH for each invocation.
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR AMD64)
 set(CMAKE_CROSSCOMPILING ON)

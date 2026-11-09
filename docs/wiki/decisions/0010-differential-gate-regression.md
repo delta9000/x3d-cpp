@@ -11,6 +11,8 @@ related:
 
 # ADR-0010: Differential CLI Gate as Baseline Regression
 
+Status: superseded by ADR-0010 amendment
+
 ## Status
 
 Accepted — 2026-06-20
@@ -70,3 +72,14 @@ Baselines are refreshed explicitly, not automatically: `mise run cli-gate-baseli
 - [Architecture](../architecture.md)
 - Design spec: `docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md` — the "Phase B — gates" section; the "captured-golden differential gate" rationale; the convert-differential pivot off X3DJSAIL's converter onto its `-validate` (XSLT quirk)
 - Committed baseline artifacts: `tools/x3d-cli/goldens/cli-gate-baseline.tsv`, `tools/x3d-cli/goldens/canon-gate-baseline.tsv`, `tools/x3d-cli/goldens/validate-check-categories.md`, `tools/x3d-cli/goldens/divergence-report.md`
+
+## Amendment (2026-11-05)
+
+Removed the per-file Tier 1 baseline rows and duplicate regression bookkeeping.
+No consumer needs those rows: idempotence already fails unconditionally on any
+failure. The baseline now stores only Tier 2 results. Tier 3 remains informative,
+and a run with no executed checks still fails.
+
+Tier 1-only runs do not require a differential baseline. When Tier 2 checks run,
+a missing or empty baseline still fails. Baseline writing refuses to erase
+existing Tier 2 rows when no Tier 2 checks execute.

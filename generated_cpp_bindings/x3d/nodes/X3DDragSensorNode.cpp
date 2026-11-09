@@ -1,4 +1,3 @@
-// X3DDragSensorNode.cpp
 #include "x3d/nodes/X3DDragSensorNode.hpp"
 
 namespace x3d::nodes {

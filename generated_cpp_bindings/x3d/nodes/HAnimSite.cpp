@@ -1,4 +1,3 @@
-// HAnimSite.cpp
 #include "x3d/nodes/HAnimSite.hpp"
 
 namespace x3d::nodes {

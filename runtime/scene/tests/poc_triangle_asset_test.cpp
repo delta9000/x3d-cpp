@@ -1,16 +1,5 @@
-// poc_triangle_asset_test.cpp — M2.5 T10 (FIRST LIGHT) build-side acceptance.
-//
-// Parses the SHIPPED hand-written first-light asset (examples/poc_renderer/
-// assets/triangle.x3d) through the real parse front door (x3d::codec::parseFile)
-// and runs the T7a minimal SceneExtractor over it. Asserts the asset parses and
-// yields >= 1 RenderItem whose mesh has exactly 3 vertices — i.e. the single
-// IndexedFaceSet triangle survives parse -> bridge -> MeshBuilder -> extractor.
-//
-// This is the headless, NO-GL half of the T10 acceptance: it proves the asset is
-// drawable independent of the user's on-screen visual verify. It deliberately
-// uses the same asset the PoC binary loads by default, so the test and the GUI
-// agree on what "first light" draws. The asset path is injected at compile time
-// (X3D_POC_TRIANGLE_ASSET) so the test has no working-directory dependency.
+// The shipped triangle asset must parse and produce a drawable triangle.
+// X3D_POC_TRIANGLE_ASSET supplies its path independently of the working directory.
 #include "SceneExtractor.hpp"
 
 #include "X3DDocument.hpp"

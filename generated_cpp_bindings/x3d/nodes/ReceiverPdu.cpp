@@ -1,4 +1,3 @@
-// ReceiverPdu.cpp
 #include "x3d/nodes/ReceiverPdu.hpp"
 
 namespace x3d::nodes {

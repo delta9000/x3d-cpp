@@ -1,4 +1,3 @@
-// TriangleSet.cpp
 #include "x3d/nodes/TriangleSet.hpp"
 
 namespace x3d::nodes {

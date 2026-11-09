@@ -1,4 +1,3 @@
-// X3DEnvironmentalSensorNode.cpp
 #include "x3d/nodes/X3DEnvironmentalSensorNode.hpp"
 
 namespace x3d::nodes {

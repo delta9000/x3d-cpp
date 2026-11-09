@@ -1,4 +1,3 @@
-// X3DTextureProjectorNode.cpp
 #include "x3d/nodes/X3DTextureProjectorNode.hpp"
 
 namespace x3d::nodes {

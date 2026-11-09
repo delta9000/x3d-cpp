@@ -1,5 +1,5 @@
 // inline_routes_test.cpp
-// Task 4: Internal route hoisting registered by the scene-bridge.
+// Internal route hoisting registered by the scene-bridge.
 // Parses animated_parent.x3d (which Inlines animated_child.x3d), asserts
 // resolvedInlineRoutes has 2 pre-resolved routes, then builds the bridge
 // and asserts those routes are registered on the execution context.

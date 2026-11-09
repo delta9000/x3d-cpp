@@ -18,11 +18,6 @@ const FieldInfo *findField(const FieldTable &table, std::string_view name) {
   return nullptr;
 }
 
-bool isNodeField(const FieldTable &table, std::string_view name) {
-  const FieldInfo *f = findField(table, name);
-  return f && f->isNode();
-}
-
 std::shared_ptr<x3d::nodes::X3DNode> beginNode(std::string_view typeName) {
   return x3d::nodes::X3DNodeFactory::create(std::string(typeName));
 }
@@ -35,13 +30,13 @@ bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
   if (f->isEnum()) {
     if (!f->isWritable() || !f->setEnumString) return false;
     const std::string token = stripEnumQuotes(wire);
-    f->setEnumString(node, token); // AUD-D
+    f->setEnumString(node, token);
     // Generated enum setters silently reject unknown tokens. A read-back
     // checks that an equal-to-default authored token was actually accepted.
     return f->getEnumString && f->getEnumString(node) == token;
   }
   if (!f->isWritable())
-    return false; // outputOnly/inputOnly: skip (initializeOnly now writable)
+    return false; // Skip outputOnly/inputOnly; initializeOnly has a reflection setter.
   std::any v = parseValue(f->type, wire);
   if (!v.has_value()) return false;
   f->set(node, v);
@@ -175,37 +170,16 @@ int mfElementComponents(X3DFieldType type) {
   }
 }
 
-bool isMF(X3DFieldType type) {
-  switch (type) {
-  case X3DFieldType::MFBool:
-  case X3DFieldType::MFColor:
-  case X3DFieldType::MFColorRGBA:
-  case X3DFieldType::MFDouble:
-  case X3DFieldType::MFFloat:
-  case X3DFieldType::MFImage:
-  case X3DFieldType::MFInt32:
-  case X3DFieldType::MFMatrix3d:
-  case X3DFieldType::MFMatrix3f:
-  case X3DFieldType::MFMatrix4d:
-  case X3DFieldType::MFMatrix4f:
-  case X3DFieldType::MFRotation:
-  case X3DFieldType::MFString:
-  case X3DFieldType::MFTime:
-  case X3DFieldType::MFVec2d:
-  case X3DFieldType::MFVec2f:
-  case X3DFieldType::MFVec3d:
-  case X3DFieldType::MFVec3f:
-  case X3DFieldType::MFVec4d:
-  case X3DFieldType::MFVec4f:
-  case X3DFieldType::MFEnum:
-    return true;
-  default:
-    return false;
+std::string decodeInlineScriptSource(const std::vector<std::string> &url) {
+  static const char *kSchemes[] = {"ecmascript:", "javascript:", "vrmlscript:"};
+  for (const std::string &entry : url) {
+    for (const char *scheme : kSchemes) {
+      const std::size_t n = std::char_traits<char>::length(scheme);
+      if (entry.size() >= n && entry.compare(0, n, scheme) == 0)
+        return entry.substr(n);
+    }
   }
-}
-
-bool isStringType(X3DFieldType type) {
-  return type == X3DFieldType::SFString || type == X3DFieldType::MFString;
+  return {};
 }
 
 std::string requote(const std::string &s) {
@@ -220,14 +194,11 @@ std::string requote(const std::string &s) {
 }
 
 std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
-  // ----- SFString -----
   // parseValue(SFString) takes the raw (unquoted) string verbatim, so we hand
   // back the token's already-unescaped contents — no surrounding quotes. (Only
   // MFString needs per-element quotes preserved, handled below.)
   if (type == X3DFieldType::SFString)
     return tok.next().text;
-
-  // ----- MF (any) -----
   if (isMF(type)) {
     std::string out;
     bool stringMF = (type == X3DFieldType::MFString);
@@ -254,6 +225,8 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
       appendTok(tok.next());
       return out;
     }
+    if (type == X3DFieldType::MFImage)
+      return collectFieldValue(tok, X3DFieldType::SFImage);
     int n = mfElementComponents(type);
     for (int i = 0; i < n && !tok.atEnd() && !tok.peek().isPunct('}') &&
                     !tok.peek().isPunct(']');
@@ -261,11 +234,7 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
       appendTok(tok.next());
     return out;
   }
-
-  // ----- SFImage -----
-  // Wire form: `width height numComponents` then width*height pixel words
-  // (ENC-VRML-SFIMAGE: a fixed component count of 1 consumed only `width`,
-  // destroying every inline PixelTexture on the ClassicVRML hop).
+  // SFImage has a width/height/component header followed by width*height pixel words.
   if (type == X3DFieldType::SFImage) {
     std::string out;
     long w = 0, h = 0;
@@ -274,9 +243,9 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
          ++i) {
       const std::string t = tok.next().text;
       if (i == 0)
-        w = std::strtol(t.c_str(), nullptr, 0);
+        w = std::any_cast<SFInt32>(parseValue(X3DFieldType::SFInt32, t));
       else if (i == 1)
-        h = std::strtol(t.c_str(), nullptr, 0);
+        h = std::any_cast<SFInt32>(parseValue(X3DFieldType::SFInt32, t));
       if (!out.empty())
         out += ' ';
       out += t;
@@ -295,8 +264,6 @@ std::string collectFieldValue(VrmlTokenizer &tok, X3DFieldType type) {
     }
     return out;
   }
-
-  // ----- SF scalar / struct -----
   std::string out;
   int n = sfComponentCount(type);
   for (int i = 0; i < n && !tok.atEnd() && !tok.peek().isPunct('}') &&

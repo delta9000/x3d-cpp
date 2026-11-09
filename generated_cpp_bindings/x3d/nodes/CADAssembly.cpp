@@ -1,4 +1,3 @@
-// CADAssembly.cpp
 #include "x3d/nodes/CADAssembly.hpp"
 
 namespace x3d::nodes {

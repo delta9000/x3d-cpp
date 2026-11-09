@@ -1,35 +1,6 @@
-// ClassicVrmlReader.hpp
-// Node-agnostic ClassicVRML (.x3dv) reader (ISO/IEC 19776-2). The text-encoding
-// sibling of codecs/XmlReader and the inverse of codecs/VrmlWriter: it turns an
-// X3D ClassicVRML document string into the runtime document model
-// (x3d::runtime::X3DDocument).
-//
-// Like every other codec it contains ZERO per-node code: node creation goes
-// through X3DNodeFactory (via build::beginNode), all field population through
-// the reflection FieldTable (via build::applyField / collectFieldValue), and
-// all wire-value interpretation through FieldValueIO::parseValue. The one
-// divergence from XmlReader is token re-join: a field's value is a run of lexer
-// tokens, not a single attribute string, so the value tokens are gathered by
-// build::collectFieldValue before being handed to parseValue.
-//
-// Strategy (recursive descent over VrmlTokenizer with one-token lookahead):
-//   * Header line `#X3D V<major>.<minor> <enc>` -> doc.version (encoding is
-//     informational). A `#VRML V2.0` header is accepted best-effort.
-//   * Header statements PROFILE / COMPONENT / UNIT / META populate doc + Head.
-//   * Scene body: DEF/USE/<TypeName> nodes, ROUTE, PROTO/EXTERNPROTO,
-//     IMPORT/EXPORT.
-//   * Node body: a leading token that names a field on this node => field
-//     statement (SFNode / MFNode / enum / value via reflection); an `IS` /
-//     access-type interface declaration is captured/consumed; ROUTE/PROTO
-//     recurse in proto-local scope.
-//
-// Tolerance matches XmlReader: unknown node types / unknown field names are
-// skipped gracefully (balanced block / value consumed), never thrown. Genuinely
-// unrecoverable malformation (unbalanced braces/brackets, unterminated string,
-// IS outside a proto) throws std::runtime_error with line:col.
-//
-// Public declaration, namespace x3d::codec. The implementation is compiled in
-// x3d_cpp_runtime.
+// ClassicVRML reader (ISO/IEC 19776-2). Unknown node and field names are skipped.
+// Unrecoverable syntax errors throw std::runtime_error with line and column.
+
 #ifndef X3D_PARSE_CLASSIC_VRML_READER_HPP
 #define X3D_PARSE_CLASSIC_VRML_READER_HPP
 
@@ -48,7 +19,6 @@
 namespace x3d::codec {
 using namespace x3d::core;
 
-/// Reads X3D ClassicVRML (.x3dv) into the runtime document model.
 class ClassicVrmlReader : public X3DReader {
 public:
   Encoding encoding() const override;
@@ -59,26 +29,17 @@ public:
   runtime::X3DDocument readDocument(const std::string &text) override;
 
 protected:
-  // -------------------------------------------------------------------------
-  // Dialect hooks. The base reader (ClassicVRML) is the identity dialect: node
-  // and field names pass through unchanged, no warnings are collected, and any
-  // header line is accepted. A subclass (Vrml97Reader) overrides these to add a
-  // VRML97->X3D rename table, header validation, and a warnings() sink — so the
-  // tokenizer/parser below are written ONCE and shared between encodings.
-  // -------------------------------------------------------------------------
-
-  /// Map a node type token to its X3D type name. Base: identity.
-  virtual std::string mapNodeName(const std::string &token) const;
+  // Dialect hooks: the base passes names through and discards warnings.
 
   /// Map a field-name token (on a node of `nodeType`) to its X3D field name.
   /// Base: identity.
   virtual std::string mapFieldName(const std::string & /*nodeType*/,
                                    const std::string &token) const;
 
-  /// React to the raw first line. Base: accept anything (the version was
+  /// React to the tokenized first line. Base: accept anything (the version was
   /// already read by parseHeaderLine). A subclass may throw on an unsupported
   /// header or set document defaults.
-  virtual void onHeaderLine(std::string_view /*src*/,
+  virtual void onHeaderLine(const std::vector<std::string> & /*parts*/,
                             runtime::X3DDocument & /*doc*/);
 
   /// Non-fatal diagnostic sink. Base: discard (ClassicVRML is tolerant-silent,
@@ -89,40 +50,28 @@ protected:
   static std::string_view firstLine(std::string_view src);
 
 private:
-  std::size_t depth_ = 0; // SEC-1: node nesting depth (DoS guard).
+  std::size_t depth_ = 0; // node nesting depth (DoS guard).
   bool capturingProtoFieldValue_ = false;
 
   // Reader-recovery diagnostics accumulated during the current readDocument()
   // call, moved into X3DDocument.readerWarnings on return.
   std::vector<runtime::ReaderWarning> readerWarnings_;
-
-  // -------------------------------------------------------------------------
-  // Header line.
-  // -------------------------------------------------------------------------
-  static void parseHeaderLine(std::string_view src, runtime::X3DDocument &doc);
-
-  // -------------------------------------------------------------------------
-  // Header statements.
-  // -------------------------------------------------------------------------
+  static std::vector<std::string> splitOnSpace(std::string_view line);
+  static void parseHeaderLine(const std::vector<std::string> &parts,
+                               runtime::X3DDocument &doc);
   static void parseHeaderStatements(VrmlTokenizer &tok,
                                     runtime::X3DDocument &doc);
-
-  // -------------------------------------------------------------------------
   // Scene body: a sequence of top-level statements until EOF (or, inside a
   // proto body, until the closing '}').
-  // -------------------------------------------------------------------------
   // `currentProtoBody` is non-null only while parsing the body of a PROTO
   // declaration; it lets a `field IS protoField` statement deep in the body
-  // record an IsConnection on the enclosing ProtoBody (Task 8). Root-level
+  // record an IsConnection on the enclosing ProtoBody. Root-level
   // statements at scene scope leave it null.
   void parseSceneBody(VrmlTokenizer &tok, runtime::Scene &scene, bool inProto,
                       runtime::ProtoBody *currentProtoBody = nullptr);
-
-  // -------------------------------------------------------------------------
   // Node production:
   //   node := "USE" Name
   //         | ["DEF" Name] TypeName "{" body "}"
-  // -------------------------------------------------------------------------
   // `currentProtoBody` (non-null inside a PROTO body) threads through to the IS
   // site in parseNodeBody so `field IS protoField` records an IsConnection.
   // `parentNode` / `parentField` describe where a detected ProtoInstance sits
@@ -139,14 +88,7 @@ private:
   // sourceCode is already set (an explicit `sourceCode` field wins).
   static void mirrorScriptSource(X3DNode &node);
 
-  // The first `ecmascript:`/`javascript:`/`vrmlscript:` entry's body (text
-  // after the scheme prefix), or empty if none. Mirrors ScriptSystem's
-  // decodeInlineSource so the captured sourceCode matches the runtime decode.
-  static std::string decodeInlineScriptSource(const MFString &url);
-
-  // -------------------------------------------------------------------------
   // Node body: field / nested-node / interface-decl / IS / route statements.
-  // -------------------------------------------------------------------------
   // `currentProtoBody` is non-null when this body sits inside a PROTO body: a
   // `field IS protoField` statement then records an IsConnection on it bound to
   // `nodeShared` (the shared_ptr of the node whose body this is). `nodeShared`
@@ -168,13 +110,8 @@ private:
   // Enum field: one token via setEnumString. A bracketed MFEnum run is joined.
   static bool applyEnumField(VrmlTokenizer &tok, X3DNode &node,
                              const FieldInfo &f);
-
-  // -------------------------------------------------------------------------
   // ROUTE statement: ROUTE Name1.field1 TO Name2.field2
-  // -------------------------------------------------------------------------
   void parseRoute(VrmlTokenizer &tok, runtime::Scene &scene);
-
-  // -------------------------------------------------------------------------
   // IMPORT / EXPORT. Two corpus shapes are accepted for each:
   //   * Single-line dot form (ISO/IEC 19776-2):
   //       IMPORT inlineDEF.importedDEF [AS localName]
@@ -186,7 +123,6 @@ private:
   // The block reader is deliberately tolerant: it populates whatever recognized
   // keys appear and never throws over an unexpected one. Both shapes record one
   // structural runtime::Import / runtime::Export so the document round-trips.
-  // -------------------------------------------------------------------------
   void parseImport(VrmlTokenizer &tok, runtime::Scene &scene);
 
   void parseExport(VrmlTokenizer &tok, runtime::Scene &scene);
@@ -216,12 +152,9 @@ private:
     }
     expectPunct(tok, '}', "IMPORT/EXPORT block close");
   }
-
-  // -------------------------------------------------------------------------
   // PROTO / EXTERNPROTO declarations (structural; no expansion).
   //   PROTO Name "[" interface "]" "{" body "}"
   //   EXTERNPROTO Name "[" interface "]" urlList
-  // -------------------------------------------------------------------------
   std::shared_ptr<runtime::ProtoDeclaration>
   parseProto(VrmlTokenizer &tok, runtime::Scene &scene);
 
@@ -237,26 +170,22 @@ private:
   // Proto instance: `TypeName { (fieldName fieldValue)* }` recorded as data.
   void parseProtoInstance(VrmlTokenizer &tok, runtime::Scene &scene,
                           const std::string &def, const std::string &typeName);
-
-  // -------------------------------------------------------------------------
   // Inline interface declaration inside a node body (Script user fields, etc.):
   //   accessType FieldType fieldName [ IS protoField | defaultValue ]
-  // On a Script node (Task B) the declaration is captured into the S1
+  // On Script and programmable-shader nodes (ISO/IEC 19776-2 A.3), the
+  // declaration is captured into the
   // DynamicFieldStore as an AuthorFieldDecl so it becomes visible to the
   // runtime (ROUTE endpoint resolution, SAI get/set). The access keyword maps
-  // per accessTypeFromString (field->initializeOnly, exposedField->inputOutput,
+  // per accessTypeFromName (field->initializeOnly, exposedField->inputOutput,
   // eventIn->inputOnly, eventOut->outputOnly); the boxed default seeds the
-  // value store (empty for input/outputOnly). On a non-Script node (e.g. a
-  // proto-body field that is not bound via IS) the model has no slot for it, so
-  // it is consumed (and any default value / IS mapping skipped) as before —
-  // matching the "carry structure, skip what the model can't hold" tolerance of
-  // the codecs.
-  // -------------------------------------------------------------------------
+  // value store (empty for input/outputOnly). Declaration IS mappings are
+  // recorded on the enclosing ProtoBody (ISO/IEC 19776-2 A.3).
   void consumeInterfaceDeclaration(VrmlTokenizer &tok,
-                                   [[maybe_unused]] runtime::Scene &scene,
-                                   const std::shared_ptr<X3DNode> &nodeShared);
+                                   runtime::Scene &scene,
+                                   const std::shared_ptr<X3DNode> &nodeShared,
+                                   runtime::ProtoBody *currentProtoBody);
 
-  // Register one author field declaration on `node` in the S1 store. Empty
+  // Register one author field declaration on `node` in the author-field store. Empty
   // initialValue for input/outputOnly (they carry no persistent value) is the
   // store's own contract; we pass through whatever the caller boxed.
   static void captureAuthorField(runtime::Scene &scene,
@@ -264,10 +193,7 @@ private:
                                  const std::string &name,
                                  X3DFieldType type, AccessType access,
                                  std::any initialValue);
-
-  // -------------------------------------------------------------------------
   // Node-list recovery helpers.
-  // -------------------------------------------------------------------------
 
   // True when the upcoming tokens begin a node value rather than a scalar:
   //   DEF / USE / NULL / `[`  -> always a node value, or
@@ -297,10 +223,7 @@ private:
       VrmlTokenizer &tok, runtime::Scene &scene,
       runtime::ProtoBody *body = nullptr,
       const std::shared_ptr<X3DNode> &parent = nullptr);
-
-  // -------------------------------------------------------------------------
   // Skipping helpers.
-  // -------------------------------------------------------------------------
 
   // Consume a balanced `{ ... }` block (the lexer already split punctuation).
   // Used to skip the body of an unknown node type.
@@ -313,30 +236,19 @@ private:
   // Skip the remainder of a `{ ... }` block whose opening '{' was already
   // consumed by the caller.
   void skipRestOfBraceBlock(VrmlTokenizer &tok);
-
-  // -------------------------------------------------------------------------
   // Proto defaults use the declaration scope; Script defaults use a temporary
   // scope. Neither shares the enclosing document's DEF table.
-  // -------------------------------------------------------------------------
   void captureNodeDefault(VrmlTokenizer &tok, runtime::ProtoField &field,
                           runtime::Scene *scope = nullptr,
                           runtime::ProtoBody *body = nullptr);
 
   void captureInstanceNodeValue(VrmlTokenizer &tok, runtime::Scene &scene,
                                 runtime::ProtoFieldValue &fv, X3DFieldType ty);
-
-  // -------------------------------------------------------------------------
   // Small token utilities + error formatting.
-  // -------------------------------------------------------------------------
   static std::runtime_error error(const VrmlToken &t, const std::string &msg);
 
-  // Consume a bare word/number token; throw if the next token is punctuation,
-  // EOF, or a string.
+  // Consume a word, number, or string token; reject punctuation and EOF.
   static std::string expectWord(VrmlTokenizer &tok, const std::string &what);
-
-  // Consume a quoted-string token (its unescaped contents). Tolerates a bare
-  // word too (some generators omit quotes), but flags pure punctuation/EOF.
-  static std::string expectString(VrmlTokenizer &tok, const std::string &what);
 
   static void expectPunct(VrmlTokenizer &tok, char c, const std::string &what);
 
@@ -346,17 +258,9 @@ private:
 
   static bool isAccessTypeWord(const std::string &w);
 
-  // Map an accessType token (incl. VRML97 aliases) to AccessType.
-  static AccessType accessTypeFromString(const std::string &w);
-
-  // Map a field-type token (e.g. "SFVec3f", "MFNode") to X3DFieldType.
-  static X3DFieldType fieldTypeFromString(const std::string &w);
-
   static std::shared_ptr<runtime::ExternProtoDeclaration>
   findExternProto(const runtime::Scene &scene, const std::string &name);
 
-  static const runtime::ProtoField *
-  findProtoField(const runtime::ProtoInstance &inst, const std::string &name);
 };
 
 } // namespace x3d::codec

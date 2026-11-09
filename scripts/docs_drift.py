@@ -60,7 +60,6 @@ _HEADING = re.compile(r"^(#{1,4}) +(.*)$")
 _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
-# ---------------------------------------------------------------- git helpers
 def _git(*args):
     r = subprocess.run(["git", "-C", str(REPO), *args],
                        capture_output=True, text=True)
@@ -152,7 +151,6 @@ def changed_symbols(rev, path, lines, untracked):
             if any(s.start_line <= ln <= s.end_line for ln in lines)]
 
 
-# ---------------------------------------------------------------- markdown chunking
 def md_sections(text):
     """Split markdown into (heading, start_line, body) on H1-H4 boundaries.
     Frontmatter / preamble before the first heading is dropped (the H1 repeats
@@ -181,7 +179,6 @@ def _doc_files():
     return out
 
 
-# ---------------------------------------------------------------- embeddings
 def embed(texts, role):
     """Batched Qwen embeddings (1024-d). role=query adds the instruct prefix."""
     if role == "query":
@@ -201,7 +198,6 @@ def _point_id(path, start):
     return int(hashlib.sha1(key).hexdigest()[:15], 16)
 
 
-# ---------------------------------------------------------------- ingest
 def ingest():
     _curl("DELETE", f"{QDRANT}/collections/{DOCS_COLLECTION}")
     _curl("PUT", f"{QDRANT}/collections/{DOCS_COLLECTION}",
@@ -226,7 +222,6 @@ def ingest():
     print(f"DONE: {total} sections -> {QDRANT}/collections/{DOCS_COLLECTION}")
 
 
-# ---------------------------------------------------------------- suggest
 def _semantic(query_text, k):
     v = embed([query_text], "query")[0]
     r = _curl("POST", f"{QDRANT}/collections/{DOCS_COLLECTION}/points/search",

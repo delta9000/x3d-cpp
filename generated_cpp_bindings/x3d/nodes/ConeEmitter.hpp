@@ -1,4 +1,3 @@
-// ConeEmitter.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -25,71 +24,35 @@ using namespace x3d::core;
  */
 class ConeEmitter : public virtual X3DParticleEmitterNode {
 public:
-  /**
-   * @brief Default constructor for ConeEmitter
-   */
   ConeEmitter() = default;
 
-  /**
-   * @brief Destructor for ConeEmitter
-   */
   ~ConeEmitter() = default;
 
-  /**
-   * @brief Get the default value for angle
-   * @return SFFloat The default value
-   */
   static SFFloat getDefaultAngle() { return 0.7854; }
 
-  /**
-   * @brief Get the default value for direction
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultDirection() { return SFVec3f{0, 1, 0}; }
 
-  /**
-   * @brief Get the default value for position
-   * @return SFVec3f The default value
-   */
   static SFVec3f getDefaultPosition() { return SFVec3f{0, 0, 0}; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "emitter"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "ParticleSystems"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of angle. AccessType: inputOutput
+   * SFFloat; access: inputOutput. Borrows the stored value.
    * @details Cone boundary for random distribution of particles about initial
    * direction.
-   * @return const SFFloat& The current value of angle.
    */
   const SFFloat &getAngle() const { return _angle; }
 
   /**
-   * @brief Sets the value of angle. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Cone boundary for random distribution of particles about initial
    * direction.
-   * @param value The new value for angle.
    */
   void setAngle(const SFFloat &value) {
 
@@ -99,25 +62,20 @@ public:
   }
 
   /**
-   * @brief Non-validating write of angle (runtime/reader ingest path).
-   * @details Assigns without the range check setAngle() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setAngle() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setAngle() for range validation.
    */
   void setAngleUnchecked(const SFFloat &value) { _angle = value; }
 
   /**
-   * @brief Gets the value of direction. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Initial direction from which particles emanate.
-   * @return const SFVec3f& The current value of direction.
    */
   const SFVec3f &getDirection() const { return _direction; }
 
   /**
-   * @brief Sets the value of direction. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Initial direction from which particles emanate.
-   * @param value The new value for direction.
    */
   void setDirection(const SFVec3f &value) {
 
@@ -134,55 +92,37 @@ public:
   }
 
   /**
-   * @brief Non-validating write of direction (runtime/reader ingest path).
-   * @details Assigns without the range check setDirection() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setDirection() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setDirection() for range validation.
    */
   void setDirectionUnchecked(const SFVec3f &value) { _direction = value; }
 
   /**
-   * @brief Gets the value of position. AccessType: inputOutput
+   * SFVec3f; access: inputOutput. Borrows the stored value.
    * @details Point from which particles emanate.
-   * @return const SFVec3f& The current value of position.
    */
   const SFVec3f &getPosition() const { return _position; }
 
   /**
-   * @brief Sets the value of position. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Point from which particles emanate.
-   * @param value The new value for position.
    */
   void setPosition(const SFVec3f &value) { _position = value; }
 
   void setPosition(SFVec3f &&value) { _position = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "ConeEmitter").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -233,21 +173,9 @@ private:
       throw std::out_of_range("direction.z above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for angle.
-   */
-
   SFFloat _angle{0.7854};
 
-  /**
-   * @brief Member variable for direction.
-   */
-
   SFVec3f _direction{SFVec3f{0, 1, 0}};
-
-  /**
-   * @brief Member variable for position.
-   */
 
   SFVec3f _position{SFVec3f{0, 0, 0}};
 };

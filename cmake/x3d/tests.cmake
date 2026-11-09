@@ -1,22 +1,24 @@
 # cmake/x3d/tests.cmake — behavior and compile-contract test suites (X3D_CPP_BUILD_TESTS).
-# Included in order from the top-level CMakeLists.txt (include(), so it shares
-# the top-level scope and CMAKE_CURRENT_SOURCE_DIR is the repository root).
 
 if(X3D_CPP_BUILD_TESTS)
     enable_testing()
 
+    add_executable(x3d_structural_lifetime
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/events_misc_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/runtime_callback_retirement_test.cpp")
+    target_link_libraries(x3d_structural_lifetime PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_structural_lifetime
+        COMMAND x3d_structural_lifetime
+            "--test-case=structural*,Runtime retirement: context shuts down*,Runtime retirement: script shutdown*")
+
     add_executable(x3d_hanim_skin_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim/tests/hanim_skin_test.cpp")
-    x3d_set_target_purpose(x3d_hanim_skin_tests behavior)
     target_link_libraries(x3d_hanim_skin_tests PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_hanim_skin_tests COMMAND x3d_hanim_skin_tests)
 
-    # PhysicsSystem solver-tuning seam (CONF-RBP-SOLVER). Engine-agnostic: the
-    # core PhysicsSystem.hpp is Jolt-free, so this runs with X3D_CPP_BUILD_PHYSICS
-    # OFF (a recording fake backend observes what crosses the seam).
+    # A recording backend checks solver settings without requiring Jolt.
     add_executable(x3d_physics_solver_settings_test
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_solver_settings_test.cpp")
-    x3d_set_target_purpose(x3d_physics_solver_settings_test behavior)
     target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp)
     target_include_directories(x3d_physics_solver_settings_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
@@ -143,14 +145,12 @@ if(X3D_CPP_BUILD_TESTS)
 
         add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL
             ${X3D_CPP_HEADER_ISOLATION_SOURCES})
-        x3d_set_target_purpose(x3d_header_isolation compile-contract)
         target_link_libraries(x3d_header_isolation PRIVATE x3d_cpp::headers)
         add_test(NAME x3d_header_isolation
             COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
                     --target x3d_header_isolation --config "$<CONFIG>")
     endif()
 
-    # AUD-RTC: comprehensive codec round-trip audit via fixture files (Unit 17).
     add_executable(x3d_codec_roundtrip_audit
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/codec_roundtrip_audit_test.cpp")
     target_link_libraries(x3d_codec_roundtrip_audit PRIVATE x3d_cpp::x3d_cpp)
@@ -160,13 +160,6 @@ if(X3D_CPP_BUILD_TESTS)
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/json"
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv"
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/wrl")
-
-    # ------------------------------------------------------------------------
-    # S1 dynamic-field foundation (file-authored Script un-tabling, Phase 0).
-    # ------------------------------------------------------------------------
-    # Phase-0 unit test: AuthorFieldDecl/DynamicFieldStore round-trip,
-    # effectiveFields() concatenation, and an author-field ROUTE wiring +
-    # delivering end-to-end through X3DSceneBridge.
 
     # Script / shader author-field capture, one test per reader. Reader tests
     # take their source-tree fixture dir as argv[1]; the end-to-end runtime test
@@ -199,7 +192,7 @@ if(X3D_CPP_BUILD_TESTS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
 
     # §37 contact reporting: ContactReporter translates resolved collisions into
-    # CollisionSensor.contacts/intersections/isActive events (CONF-RBP). Ungated —
+    # CollisionSensor.contacts/intersections/isActive events. Ungated —
     # the reporter is engine-free; only the Jolt drain path needs the physics flag.
     add_executable(x3d_contact_reporter
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/contact_reporter_test.cpp")
@@ -236,13 +229,7 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_contact_response COMMAND x3d_contact_response)
 
-    #     - scene_bridge_test: the Scene -> EventGraph bridge. Validates ROUTE
-    #       resolution (DEF names -> FieldAddress) and rejection of unknown-field
-    #       / wrong-direction / type-mismatch routes (dangling DEFs skipped), then
-    #       parses a .x3dv document with ROUTEs, bridges it via buildFrom, attaches
-    #       the reference behaviors to the DEF-resolved nodes, and ticks the clock
-    #       end-to-end. The .x3dv fixtures dir is passed as argv[1] so the test
-    #       runs from any working directory.
+    # Pass the fixture directory so the test runs from any working directory.
     add_executable(x3d_event_scene_bridge
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/scene_bridge_test.cpp")
     target_link_libraries(x3d_event_scene_bridge PRIVATE x3d_cpp::x3d_cpp)
@@ -250,57 +237,24 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_event_scene_bridge
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv")
 
-    #     - sai_context_test: M4 Track-A unit. The language-agnostic Script
-    #       runtime foundation (runtime/script/): the ScriptEngine seam +
-    #       in-process SaiContext + a recording MockScriptEngine backend — NO
-    #       JavaScript. Asserts field get/set round-trips, the directOutput
-    #       write-gate (cross-node write rejected when FALSE, allowed via the
-    #       cascade when TRUE), addRoute/deleteRoute gating + effect in the
-    #       graph, browser-info getters, and seam-call lifecycle ordering.
     add_executable(x3d_sai_context
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/sai_context_test.cpp")
     target_link_libraries(x3d_sai_context PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sai_context COMMAND x3d_sai_context)
 
-    #     - script_system_test: M4 Track-A unit. ScriptSystem — the System that
-    #       wires Script lifecycle (load/initialize/shutdown) + event delivery
-    #       (inputOnly -> engine.invoke, prepareEvents/eventsProcessed phasing,
-    #       outputOnly -> cascade) into the tick/cascade, mock-tested (NO JS).
-    #       Asserts the §29.2 ordering: initialize before first event;
-    #       prepareEvents before routes; outputOnly at the triggering timestamp;
-    #       eventsProcessed once per batch; set_url reload; directOutput gate;
-    #       mustEvaluate eager-vs-lazy delivery.
+    # §29.2 Script lifecycle and event ordering, exercised with a mock engine.
     add_executable(x3d_script_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_system_test.cpp")
     target_link_libraries(x3d_script_system PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_script_system COMMAND x3d_script_system)
 
-    # ---------------------------------------------------------------------------
-    # M4 Track-B: Duktape ECMAScript backend tests. The backend itself
-    # (x3d_duktape / x3d_ecmascript_backend) is defined above, independent of
-    # X3D_CPP_BUILD_TESTS, behind X3D_CPP_BUILD_SCRIPT (ON by default) — see
-    # that option's block. These test executables still need the test build
-    # AND the backend target to exist, hence the nested TARGET guard: a
-    # -DX3D_CPP_BUILD_SCRIPT=OFF -DX3D_CPP_BUILD_TESTS=ON configuration builds
-    # everything else but skips these.
-    # ---------------------------------------------------------------------------
     if(TARGET x3d_ecmascript_backend)
-        #     - ecmascript_backend_test: M4 Track-B unit. Proves the full backend:
-        #       field marshalling std::any<->JS (all core SF/MF types), the Browser
-        #       global object (getName/getVersion/currentTime/addRoute/print backed
-        #       by SaiContext), handler dispatch with (value, timestamp), an
-        #       end-to-end ROUTE wired by the script via Browser.addRoute, and the
-        #       directOutput gate throwing into JS.
         add_executable(x3d_ecmascript_backend_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_backend_test.cpp")
         target_link_libraries(x3d_ecmascript_backend_test PRIVATE
             x3d_ecmascript_backend)
         add_test(NAME x3d_ecmascript_backend COMMAND x3d_ecmascript_backend_test)
 
-        #     - ecmascript_corpus_smoke_test: M4 Track-B corpus smoke. Drives
-        #       parse -> expand -> attach ScriptSystem(EcmaScriptBackend) -> tick on
-        #       an authored known scene (deterministic Browser.print) and a few real
-        #       Script-bearing .x3d from testdata (no-crash robustness).
         add_executable(x3d_ecmascript_corpus_smoke_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_corpus_smoke_test.cpp")
         target_link_libraries(x3d_ecmascript_corpus_smoke_test PRIVATE
@@ -308,20 +262,13 @@ if(X3D_CPP_BUILD_TESTS)
         add_test(NAME x3d_ecmascript_corpus_smoke
             COMMAND x3d_ecmascript_corpus_smoke_test)
 
-        #   D. Runtime wiring: source-from-sourceCode, author-event dispatch,
-        #      author-field marshalling + an end-to-end "author field drives a
-        #      ROUTE" test, through the real EcmaScript backend.
         add_executable(x3d_script_author_runtime
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_author_runtime_test.cpp")
         target_link_libraries(x3d_script_author_runtime PRIVATE
             x3d_ecmascript_backend)
         add_test(NAME x3d_script_author_runtime COMMAND x3d_script_author_runtime)
 
-        #   Phase-2 CORPUS END-TO-END proof: a FILE-AUTHORED Script that v1 shipped
-        #   INERT now actually executes through the real reader -> expand -> attach ->
-        #   tick path (XML: the Savage CanopyExample.x3d; ClassicVRML: an authored
-        #   .x3dv fixture). Closes SCR-SAI-DYN (S1) behaviorally. The data dir arg
-        #   locates the .x3dv fixture; the .x3d is the absolute corpus path.
+        # The data argument locates the ClassicVRML fixture; XML uses a corpus path.
         add_executable(x3d_script_corpus_e2e
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_corpus_e2e_test.cpp")
         target_link_libraries(x3d_script_corpus_e2e PRIVATE
@@ -331,14 +278,7 @@ if(X3D_CPP_BUILD_TESTS)
                     "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
     endif()
 
-    # (4) Parse front-end integration test (WS-A), built and RUN (not just
-    #     compiled): encoding sniffing (extension + content + override + gzip),
-    #     the shared VrmlTokenizer, NodeBuilder::collectFieldValue value
-    #     round-trips, and the XmlReaderAdapter / parseDocument front door
-    #     reproducing the raw XmlReader.
-    #     Fix 1 (parser-gap plan) adds testGzipInflate(): the data dir is passed
-    #     as argv[1] so parseFile() can round-trip the committed gzip fixtures
-    #     (runtime/parse/tests/data/gzip/) against their uncompressed siblings.
+    # The data directory locates committed gzip fixtures and their plain siblings.
     add_executable(x3d_parse_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_test.cpp")
     target_link_libraries(x3d_parse_reader PRIVATE x3d_cpp::x3d_cpp)
@@ -346,12 +286,6 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_parse_reader
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
 
-    # (10) ClassicVRML (.x3dv) reader test (WS-B), built and RUN. Parses the four
-    #      corpus .x3dv fixtures (copied into runtime/parse/tests/data/x3dv/) plus
-    #      hand-authored grammar snippets into a Scene and asserts node types,
-    #      field values, DEF/USE shared identity, ROUTEs, header statements, MF
-    #      re-join, and PROTO/EXTERNPROTO/instance/IS capture. The fixtures dir is
-    #      passed as argv[1] so the test runs from any working directory.
     add_executable(x3d_classic_vrml_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/classic_vrml_reader_test.cpp")
     target_link_libraries(x3d_classic_vrml_reader PRIVATE x3d_cpp::x3d_cpp)
@@ -359,11 +293,6 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_classic_vrml_reader
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv")
 
-    # Front-door PROTO expansion (Task 10): parseDocument/parseFile drive
-    # expandScene with the default local-file resolver. Asserts local-PROTO
-    # in-memory expansion, sibling-file EXTERNPROTO resolution (baseUrl derived
-    # from the file path), and termination of a mutually-referential EXTERN
-    # cycle. The fixtures dir is passed as argv[1] so it runs from any cwd.
     add_executable(x3d_proto_front_door
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_front_door_test.cpp")
     target_link_libraries(x3d_proto_front_door PRIVATE x3d_cpp::x3d_cpp)
@@ -371,9 +300,6 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_proto_front_door
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto")
 
-    # AUD-PROTO-EXP regression: PROTO expansion + IS routing + depth guard +
-    # redirect-validation. The fixtures dir is passed as argv[1] so the test
-    # runs from any cwd (default: runtime/parse/tests/data/proto).
     add_executable(x3d_proto_expand_audit
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_expand_audit_test.cpp")
     target_link_libraries(x3d_proto_expand_audit PRIVATE x3d_cpp::x3d_cpp)
@@ -381,8 +307,8 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_proto_expand_audit
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto")
 
-    # Task 3 (Inline round-trip): writer redirect — re-emit <Inline url=.../>
-    # via expandedInlines and do NOT serialize the synthetic Group's child content.
+    # Re-emit <Inline url=.../>
+    # via expandedInlines and do not serialize the synthetic Group's child content.
     add_executable(x3d_inline_roundtrip
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_roundtrip_test.cpp")
     target_link_libraries(x3d_inline_roundtrip PRIVATE x3d_cpp::sdk)
@@ -390,7 +316,7 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_inline_roundtrip
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
 
-    # Task 4 (Inline route hoisting): resolvedInlineRoutes populated by
+    # resolvedInlineRoutes is populated by
     # expandInlines and registered on the execution context by the scene-bridge,
     # so self-animating inlined assets tick.
     add_executable(x3d_inline_routes
@@ -407,21 +333,29 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_inline_cycle
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
 
-    # SEC-5: inflateGzip caps decompressed output (gzip decompression-bomb DoS).
+    # inflateGzip bounds decompressed output to prevent decompression-bomb DoS.
     add_executable(x3d_inflate_bomb
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inflate_bomb_test.cpp")
     target_link_libraries(x3d_inflate_bomb PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_inflate_bomb COMMAND x3d_inflate_bomb)
 
-    # SEC-3/SEC-4: confineLocalIncludePath rejects path-traversal/absolute reads
-    # and de-aliases the cycle-guard key.
+    # Reject traversal and absolute paths; canonicalize cycle keys (ADR-0038).
     add_executable(x3d_path_confine
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/path_confine_test.cpp")
     target_link_libraries(x3d_path_confine PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_path_confine COMMAND x3d_path_confine)
 
+    # SEC-3 regression at the default resolver call sites: localFileInlineResolver
+    # must confine Inline urls exactly like localFileProtoResolver (../ escapes
+    # and absolute urls are not read), must not over-block in-root siblings, and
+    # the a->b->a cycle must still terminate on the canonical keys.
+    add_executable(x3d_inline_confine
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_confine_test.cpp")
+    target_link_libraries(x3d_inline_confine PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_inline_confine COMMAND x3d_inline_confine)
+
     # Regression: expandInlines walk must not stack-overflow on containment cycles
-    # (USE-shared or self-referential nodes). Guard mirrors sibling system walkers.
+    # (USE-shared or self-referential nodes).
     add_executable(x3d_inline_containment_cycle
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_containment_cycle_test.cpp")
     target_link_libraries(x3d_inline_containment_cycle PRIVATE x3d_cpp::sdk)
@@ -429,16 +363,6 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_inline_containment_cycle
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
 
-    # (10b) VRML97 (.wrl) reader test (WS-C), built and RUN. Parses the five text
-    #       corpus .wrl fixtures (copied into runtime/parse/tests/data/wrl/) plus
-    #       hand-authored snippets into a Scene and asserts the VRML97 dialect:
-    #       node/field reflection resolution, the dialect rename-table tripwire
-    #       (every mapped X3D target must resolve, catching generated-binding
-    #       drift), TRUE/FALSE + access-keyword aliases, LOD.level/Switch.choice
-    #       -> children, PROTO/Script carry-through, DEF/USE + ROUTE recovery,
-    #       VRML 1.0 rejection, the unknown-node/field warning path, and the
-    #       parseDocument front-door VRML97 dispatch. The fixtures dir is passed
-    #       as argv[1] so the test runs from any working directory.
     add_executable(x3d_vrml97_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/vrml97_reader_test.cpp")
     target_link_libraries(x3d_vrml97_reader PRIVATE x3d_cpp::x3d_cpp)
@@ -446,15 +370,6 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_vrml97_reader
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/wrl")
 
-    # (11) X3D-JSON (.json) reader test (WS-D), built and RUN. Parses the corpus-
-    #      derived .json fixtures (runtime/parse/tests/data/json/, produced from
-    #      corpus X3D via the XML/ClassicVRML readers + JsonWriter) plus hand-
-    #      authored snippets into a Scene and asserts profile/version, head
-    #      metadata, node types + field values, DEF/USE shared identity, ROUTE/
-    #      IMPORT/EXPORT recovery, the JsonWriter->JsonReader->JsonWriter byte-
-    #      stable round-trip (read/write symmetry), and parseDocument front-door
-    #      JSON dispatch. The fixtures dir is passed as argv[1] so the test runs
-    #      from any working directory.
     add_executable(x3d_json_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/json_reader_test.cpp")
     target_link_libraries(x3d_json_reader PRIVATE x3d_cpp::x3d_cpp)
@@ -462,13 +377,15 @@ if(X3D_CPP_BUILD_TESTS)
         COMMAND x3d_json_reader
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/json")
 
-    # T-SDK: the façade surface test. Drives load -> context -> extract -> tick
-    # using ONLY x3d::sdk::* names through the single "x3d/sdk.hpp" include, so a
-    # dropped/renamed re-export fails to compile here.
+    # Link only the SDK façade to check its self-contained public surface.
     add_executable(x3d_sdk_facade
         "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_facade_test.cpp")
     target_link_libraries(x3d_sdk_facade PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_sdk_facade COMMAND x3d_sdk_facade)
+    add_executable(x3d_sdk_node_inspection
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/sdk_node_inspection_test.cpp")
+    target_link_libraries(x3d_sdk_node_inspection PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_sdk_node_inspection COMMAND x3d_sdk_node_inspection)
     add_executable(x3d_authoring_link_contract
         "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/authoring.cpp")
     target_link_libraries(x3d_authoring_link_contract PRIVATE
@@ -480,16 +397,9 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_native_host_contract PRIVATE x3d_cpp::sdk)
     add_test(NAME x3d_native_host_contract COMMAND x3d_native_host_contract)
 
-    # Installed-package embed smoke: install THIS build, then configure/build/run
-    # examples/embed_minimal against it via find_package(x3d_cpp), so a broken
-    # export or a missing installed header fails CI on the actual embedder path.
-    # The parent generator is forwarded so the downstream configure matches it.
-    #
-    # Skipped under X3D_CPP_SAN: the sanitizer build instruments the installed
-    # archive globally (add_compile/link_options -fsanitize), but the downstream
-    # example builds plain — linking it against the instrumented archive fails
-    # with undefined __asan_*/__ubsan_* symbols. Install wiring is orthogonal to
-    # sanitizers, so the dev/CI fast gate already proves it.
+    # Install and build a separate consumer to check exports and shipped headers.
+    # Skip under sanitizers: the plain consumer cannot link instrumented libraries
+    # without the matching ASan/UBSan runtime flags.
     if(NOT X3D_CPP_SAN)
         add_test(NAME x3d_install_embed_smoke
             COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/verify_install_embed.sh"
@@ -498,11 +408,7 @@ if(X3D_CPP_BUILD_TESTS)
                     "${CMAKE_GENERATOR}")
     endif()
 
-    # Contract: the generated package version file must reject a mismatched
-    # pointer size (the package ships compiled .so files, so it is NOT
-    # arch-independent) and must not treat a different MINOR as compatible (at
-    # 0.x, SameMajorVersion would green-light every future 0.y). Drives the
-    # generated file directly, so it needs no cross-compiler.
+    # Check minor-version and pointer-size compatibility without a cross-compiler.
     add_test(NAME x3d_package_version_contract
         COMMAND "${CMAKE_COMMAND}"
                 "-DVERSION_FILE=${CMAKE_CURRENT_BINARY_DIR}/x3d_cppConfigVersion.cmake"
@@ -512,7 +418,7 @@ if(X3D_CPP_BUILD_TESTS)
     # Contract: adding x3d_cpp with add_subdirectory() must not mutate cache or
     # global state that reaches the consumer. Configure-only.
     #
-    # -G is REQUIRED: without it the nested configure picks CMake's default
+    # -G is required: without it the nested configure picks CMake's default
     # (often Unix Makefiles), where the JOB_POOLS property is ignored -- the
     # fixture would then never exercise the global-pool bug and would pass for
     # the wrong reason.
@@ -531,12 +437,7 @@ if(X3D_CPP_BUILD_TESTS)
                 "-DCCACHE_PROGRAM=/bin/echo"
                 "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 
-    # T-SOUND: the §16 Sound seam (runtime/sound/). The AudioBackend seam +
-    # SoundSystem are CORE, header-only, DSP-free (mirrors PhysicsBackend +
-    # PhysicsSystem). Unlike physics, the default DSP backend has NO external
-    # dependency (pure math), so it is always built — no flag gate. The test
-    # drives the §16 children-graph in two tiers (recording graph + real DSP
-    # samples) plus param-animation + determinism.
+    # §16 sound graph wiring and DSP samples run without an external backend.
     add_executable(x3d_sound_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_system_test.cpp")
@@ -567,14 +468,14 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wav")
     add_test(NAME x3d_sound_immersive COMMAND x3d_sound_immersive)
 
-    # §16.4.9 DynamicsCompressor (SND-5): SoundSystem graph wiring (recording
+    # §16.4.9 DynamicsCompressor: SoundSystem graph wiring (recording
     # tier) + feed-forward compressor DSP on the built-in backend (DSP tier).
     add_executable(x3d_sound_dynamics
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_dynamics_compressor_test.cpp")
     target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_dynamics COMMAND x3d_sound_dynamics)
-    # SND-9: PeriodicWave custom oscillator waveform (§16.4.18) — backend
+    # PeriodicWave custom oscillator waveform (§16.4.18) — backend
     # synthesis, SoundSystem registration, and the 4.0 parse-path evidence.
     add_executable(x3d_sound_periodicwave
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
@@ -582,5 +483,4 @@ if(X3D_CPP_BUILD_TESTS)
     target_link_libraries(x3d_sound_periodicwave PRIVATE x3d_cpp::x3d_cpp)
     add_test(NAME x3d_sound_periodicwave COMMAND x3d_sound_periodicwave)
 
-    # Author-shader binding plan (vocabulary + introspection).
 endif()

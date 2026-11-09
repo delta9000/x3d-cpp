@@ -1,4 +1,3 @@
-// MultiTextureTransform.cpp
 #include "x3d/nodes/MultiTextureTransform.hpp"
 
 namespace x3d::nodes {

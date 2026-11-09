@@ -1,6 +1,6 @@
-// assimp_source.cpp — assimp ImportSource backend. Compiled ONLY when
+// assimp_source.cpp — assimp ImportSource backend. Compiled only when
 // -DX3D_CPP_BUILD_ASSIMP=ON (gated in the subdir CMakeLists). Converts the
-// assimp aiScene into the ImportScene IR (Task 3) that emit() consumes.
+// assimp aiScene into the ImportScene IR that emit() consumes.
 //
 // assimp lives behind the ImportSource seam: emit/texture-pipeline/CLI never
 // include assimp headers; only this TU does. The IR is the stable boundary,
@@ -27,7 +27,7 @@ namespace x3d::asset_import {
 namespace {
 
 // assimp's aiMatrix4x4 is ROW-MAJOR (a1..a4 = row 0). Our IR Mat4 is
-// COLUMN-MAJOR (m[0..3] = column 0). Transpose on copy.
+// column-major (m[0..3] = column 0). Transpose on copy.
 Mat4 toColumnMajor(const aiMatrix4x4& t) {
   Mat4 m;
   // aiMatrix4x4 layout: a1 a2 a3 a4 | b1 b2 b3 b4 | c1 c2 c3 c4 | d1 d2 d3 d4
@@ -280,9 +280,7 @@ ImportScene AssimpSource::load(const std::string& path) {
       const auto* bytes = reinterpret_cast<const std::uint8_t*>(t->pcData);
       et.bytes.assign(bytes, bytes + t->mWidth);
     } else {
-      // Uncompressed texels (rare for model files); leave bytes empty — the
-      // texture pipeline will re-encode from RGBA. (Handled in Task 9's
-      // re-encode path; for now mark as needing decode.)
+      // Uncompressed texels have no encoded payload; leave bytes empty.
       et.hintExt = "bin";
     }
     out.embedded.push_back(std::move(et));

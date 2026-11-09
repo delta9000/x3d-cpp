@@ -1,55 +1,16 @@
-// SoundSystem.hpp
-// The System that reads the X3D §16 Sound audio graph and drives an (abstract)
-// AudioBackend. It walks each AudioDestination, recurses its `children` graph
-// bottom-up, creates one backend node per §16 node (OscillatorSource /
-// BiquadFilter / Gain / AudioDestination), connects each child -> its parent
-// (matching §16 `children` = inputs feeding INTO the parent), and remembers the
-// §16-node <-> NodeHandle map. update(now) re-reads each mapped node's (possibly
-// route-animated) scalar fields and pushes them via setParam — param animation
-// rides the existing event cascade inbound (an author routes an interpolator
-// into Gain.gain; the cascade writes the field; SoundSystem reads it each tick),
-// exactly like PhysicsSystem reads node state. No new event mechanism.
+// Reads the ISO/IEC 19775-1 §16 audio graph and drives AudioBackend.
+// A node's `children` are its inputs: sources are created before their parents,
+// then connected child -> parent. update() reads animated fields into setParam.
+// DSP implementation and engine types remain private to the backend.
 //
-// ENGINE-AGNOSTIC: this layer names NO DSP-engine type and contains NO DSP. It
-// depends only on the abstract AudioBackend seam (constructed with a shared_ptr;
-// inert when none, exactly like PhysicsSystem/ScriptSystem without a backend) and
-// the generated §16 nodes. A seam-purity check greps this header for DSP leakage
-// (oscillator math / biquad / coeff / phase / DFT / Goertzel / filter state):
-// there is none.
-//
-// §16 MODEL (grounded in the ISO prose): the audio graph wires via `children`,
-// NOT routes. A processing/destination node's `children` (MFNode) are its INPUTS
-// — the sources feeding INTO it. The graph flows children -> parent up to the
-// AudioDestination output. So attach() walks the AudioDestination and recurses
-// `children`, building the backend graph BOTTOM-UP: create sources first, then
-// processing, connecting each child -> its parent.
-//
-// MAPPING (per the design):
-//   AudioDestination   -> createNode(Destination, {maxChannelCount})
-//   OscillatorSource   -> createNode(Oscillator,  {frequency, detune, gain})
-//   BiquadFilter       -> createNode(Biquad, {frequency, q, detune, gain, type})
-//   Gain               -> createNode(Gain, {gain})
-//   Delay              -> createNode(Delay, {delayTime, maxDelayTime, enabled})
-//   DynamicsCompressor -> createNode(Compressor, {threshold, knee, ratio,
-//                          attack, release, gain, enabled})
-//   WaveShaper         -> createNode(WaveShaper, {curve, gain, enabled})
-//   for each child c of node n: connect(handle[n], handle[c])  (c feeds INTO n)
-//   update(now): for each mapped node read its animatable fields -> setParam.
-//
-// CLASSIC Sound (§16.4.17, the Immersive profile): each Sound node gets its own
-// Destination fed by an Ellipsoid Panner, fed by its `source`. The listener is
-// the viewer: each tick the camera pose, and the Sound's world location and
-// direction, cross as positions (ellipsoid sizes in the Sound's frame are
-// scaled to world). AudioClip sources are fetched through the AssetResolver
-// seam, decoded by the injected AudioDecoder, and created as Buffer nodes —
-// their PCM crosses once (ADR-0050); a Pending fetch is retried each tick.
-// Their playback state follows the AudioClip time lifecycle (isActive /
-// isPaused, MediaTimeSystem) and pitch.
-// A BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the same
-// Buffer node (SND-4): mono after averaging any extra channels, loop honored by
-// the time lifecycle, playbackRate x detune captured at activation.
-// A MovieTexture source uses a separately injected movie-audio decoder and
-// the same Buffer path; MediaTimeSystem supplies its lifecycle and speed.
+// Classic Sound (§16.4.17) uses a Destination <- ellipsoid Panner <- source
+// graph. Camera pose, source pose, and world-scaled ellipsoid sizes cross as
+// positions. AudioClip bytes are resolved and decoded into mono PCM once at
+// Buffer creation; Pending fetches retry each tick. See ADR-0050.
+// Playback follows the AudioClip lifecycle and pitch through MediaTimeSystem.
+// BufferAudioSource (§16.4.5) averages extra channels to mono, honors looping,
+// and captures playbackRate x detune at activation. MovieTexture uses an
+// injected movie-audio decoder and the same Buffer lifecycle path.
 #ifndef X3D_RUNTIME_SOUND_SYSTEM_HPP
 #define X3D_RUNTIME_SOUND_SYSTEM_HPP
 
@@ -104,15 +65,13 @@ public:
   explicit SoundSystem(std::shared_ptr<AudioBackend> backend)
       : backend_(std::move(backend)) {}
 
-  // --------------------------------------------------------------------------
   // System interface.
-  // --------------------------------------------------------------------------
 
   /**
    * @brief Enroll one AudioDestination (or SpatialSound): build its whole
    *        `children` graph.
    * @details A no-op for any other node type, and inert without a backend.
-   *          Recurses the AudioDestination's `children` BOTTOM-UP, creating a
+   *          Recurses the AudioDestination's `children` bottom-up, creating a
    *          backend node per §16 node and connecting each child -> its parent.
    *          Records the destination handle so update()/render() can address it.
    *          SpatialSound nodes are treated as stereo destinations: an
@@ -201,7 +160,7 @@ public:
    * @brief Register the scene's ListenerPointSource so SoundSystem can resolve
    *        listener position + orientation when building SpatialSound nodes.
    * @details Call this before attach() if the scene has a ListenerPointSource.
-   *          SoundSystem does NOT take ownership — the listener's lifetime must
+   *          SoundSystem does not take ownership — the listener's lifetime must
    *          exceed the SoundSystem's.
    */
   void setListener(x3d::nodes::ListenerPointSource *listener) { listener_ = listener; }
@@ -209,7 +168,7 @@ public:
   /**
    * @brief Register the PeriodicWave (§16.4.18) that shapes one
    *        OscillatorSource; call again with null to unregister.
-   * @details The X3D 4.0 object model gives OscillatorSource NO periodicWave
+   * @details The X3D 4.0 object model gives OscillatorSource no periodicWave
    *          field (added in 4.1), so a parsed scene's authored link cannot be
    *          read back at runtime — an embedder bridges that gap by passing
    *          the wave node here before attach(). The four standard types map
@@ -279,17 +238,15 @@ public:
     backend_->render(destinations_[destIndex], frames, sampleRate, out);
   }
 
-  /** @brief Number of §16 nodes mapped into the backend (for tests). */
   std::size_t nodeCount() const { return map_.size(); }
 
-  /** @brief Number of AudioDestinations enrolled (for tests). */
   std::size_t destinationCount() const { return destinations_.size(); }
 
 private:
   /**
    * @brief Create the backend node for one §16 node, recurse its children, and
    *        connect this node -> its parent.
-   * @return The created handle (or kInvalidNodeHandle if the node is not a v1
+   * @return The created handle (or kInvalidNodeHandle if the node is not a supported
    *         §16 node — it is skipped, its subtree not built).
    */
   NodeHandle buildChild(X3DNode *node, NodeHandle parent) {
@@ -339,7 +296,7 @@ private:
       p.enabled = cmp->getEnabled();
       handle = backend_->createNode(NodeKind::Compressor, p);
     } else if (auto *ws = dynamic_cast<x3d::nodes::WaveShaper *>(node)) {
-      // The transfer curve crosses ONCE, like a Buffer's samples. oversample
+      // The transfer curve crosses once, like a Buffer's samples. oversample
       // is not carried — backends render NONE semantics (2x/4x deferred).
       NodeParams p;
       p.curve = ws->getCurve();
@@ -358,7 +315,7 @@ private:
       if (load == ClipLoad::Pending) pendingMovies_.push_back({movie, parent});
       if (load != ClipLoad::Ready) return kInvalidNodeHandle;
     } else if (auto *bas = dynamic_cast<x3d::nodes::BufferAudioSource *>(node)) {
-      // BufferAudioSource (§16.4.5, SND-4): the authored `buffer` MFFloat IS
+      // BufferAudioSource (§16.4.5): the authored `buffer` MFFloat is
       // PCM — feed the same Buffer node an AudioClip decodes into.
       fallbackRate_[bas] = bufferAudioRate(bas);
       NodeParams bp;
@@ -369,23 +326,22 @@ private:
     } else if (auto *ss = dynamic_cast<SpatialSound *>(node)) {
       // SpatialSound as an audio-graph child (§16 allows nesting): insert a
       // Panner carrying the resolved positions. The SpatialSound's own
-      // children (audio sources) feed into the Panner. POSITIONS cross the
+      // children (audio sources) feed into the Panner. positions cross the
       // seam; no gain is computed here (seam-purity contract).
       NodeParams pp = buildPannerParams(ss, listener_);
       handle = backend_->createNode(NodeKind::Panner, pp);
     } else {
-      // Not a v1 §16 node (e.g. Convolver/Analyser/StreamAudioSource — deferred).
-      // Skip its subtree; a real backend would extend the kind set here.
+      // Unsupported audio nodes and their subtrees are skipped.
       return kInvalidNodeHandle;
     }
     if (handle == kInvalidNodeHandle) return kInvalidNodeHandle;
 
     map_.emplace(node, handle);
-    // Recurse children FIRST so the whole subtree exists, then wire this node
-    // INTO its parent — the graph is built bottom-up, children before parents.
+    // Recurse children first so the whole subtree exists, then wire this node
+    // into its parent — the graph is built bottom-up, children before parents.
     for (const auto &child : childrenOf(node))
       buildChild(child.get(), handle);
-    backend_->connect(parent, handle);  // this node feeds INTO its parent
+    backend_->connect(parent, handle);  // this node feeds into its parent
     return handle;
   }
 
@@ -414,7 +370,7 @@ private:
     }
   }
 
-  /** @brief A §16 node's `children` (its INPUTS), empty for an OscillatorSource. */
+  /** @brief A §16 node's `children` (its inputs), empty for an OscillatorSource. */
   static MFNode childrenOf(X3DNode *node) {
     if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) return biq->getChildren();
     if (auto *gain = dynamic_cast<x3d::nodes::Gain *>(node)) return gain->getChildren();
@@ -541,13 +497,13 @@ private:
 
   /**
    * @brief Build a NodeParams for a Panner from a SpatialSound + optional
-   *        ListenerPointSource. POSITIONS only — no precomputed gain/pan
+   *        ListenerPointSource. positions only — no precomputed gain/pan
    *        coefficient (seam-purity contract).
    * @details This is SDK-side plumbing: read the X3D SFRotation axis-angle from
    *          the listener, apply it to the default forward (0,0,-1) and up
    *          (0,1,0) vectors, and write the resulting unit vectors into the
    *          NodeParams. All spatial DSP (distance model, azimuth, pan law)
-   *          is performed INSIDE the backend from these positions.
+   *          is performed inside the backend from these positions.
    */
   static NodeParams buildPannerParams(x3d::nodes::SpatialSound *ss,
                                       x3d::nodes::ListenerPointSource *listener) {
@@ -576,7 +532,7 @@ private:
       // X3D spec: "orientation is rotation relative to default -Z axis direction".
       // Default forward = (0, 0, -1), default up = (0, 1, 0).
       // Apply the axis-angle rotation to derive the actual forward/up vectors.
-      // This is pure plumbing — NOT spatial DSP.
+      // This is pure plumbing — not spatial DSP.
       SFRotation ori = listener->getOrientation();
       double ax = static_cast<double>(ori.x);
       double ay = static_cast<double>(ori.y);
@@ -621,7 +577,7 @@ private:
     return p;
   }
 
-  // ── classic Sound + AudioClip plumbing (positions and bytes only) ────────
+  // classic Sound + AudioClip plumbing (positions and bytes only)
   struct SoundEntry {
     x3d::nodes::Sound *node;
     NodeHandle panner;
@@ -681,7 +637,7 @@ private:
       if (r.pending()) { pending = true; break; }
       if (!r.ready()) continue;
       DecodedAudio audio = decoder_(r.bytes);
-      if (!audio.ok || audio.samples.empty()) continue;
+      if (!audio.ok || audio.samples.empty() || audio.sampleRate <= 0.0f) continue;
       NodeParams bp;
       bp.samples = std::move(audio.samples);
       bp.sampleRate = audio.sampleRate;
@@ -809,7 +765,7 @@ private:
   std::shared_ptr<AudioBackend> backend_;
   // §16 node -> backend handle. unordered_map iteration order is unspecified, so
   // update() must stay order-independent (setParam is idempotent per node — it
-  // is). Graph CONSTRUCTION order (attach) is deterministic: it follows the
+  // is). Graph construction order (attach) is deterministic: it follows the
   // children recursion, not this map.
   std::unordered_map<X3DNode *, NodeHandle> map_;
   std::unordered_map<X3DNode *, NodeHandle> rootDest_;

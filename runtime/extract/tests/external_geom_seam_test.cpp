@@ -1,5 +1,5 @@
-// external_geom_seam_test.cpp — Phase 1: proves the externalGeometryResolver seam
-// end-to-end WITHOUT any ext module. A NurbsPatchSurface (recognized==false)
+// external_geom_seam_test.cpp — proves the externalGeometryResolver seam
+// end-to-end without any ext module. A NurbsPatchSurface (recognized==false)
 // triggers the resolver; a non-empty PackedMesh causes emitPacked(); the
 // RenderItem's geometry_ext.kind == Packed.
 #include "GeoFrame.hpp"
@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <map>
 #include <vector>
 
 using namespace x3d::core;
@@ -65,7 +66,7 @@ TEST_CASE("external_geom_seam_test") {
     CHECK((!rec && mesh.indices.empty())); // still unrecognized
   }
 
-  // === 1) Resolver NOT installed → NurbsPatchSurface still skipped (no change) =
+  // 1) Resolver not installed → NurbsPatchSurface still skipped (no change) =
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
@@ -82,7 +83,7 @@ TEST_CASE("external_geom_seam_test") {
     CHECK((snap.added.empty())); // no resolver → still skipped
   }
 
-  // === 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
+  // 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
@@ -115,7 +116,7 @@ TEST_CASE("external_geom_seam_test") {
     }
   }
 
-  // === 3) Resolver returning empty PackedMesh → Pending → NOT emitted ==========
+  // 3) Resolver returning empty PackedMesh → Pending → not emitted
   {
     auto root = createX3DNode("Group");
     auto nurbs = createX3DNode("NurbsTrimmedSurface");
@@ -139,4 +140,75 @@ TEST_CASE("external_geom_seam_test") {
   }
 
   return;
+}
+
+TEST_CASE("delta oracle: packed geometry field edits refresh payload and membership") {
+  auto geom = createX3DNode("NurbsTrimmedSurface"), shape = createX3DNode("Shape");
+  setF(geom, "uTessellation", SFInt32{1}); setF(shape, "geometry", geom);
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  bool pending = false;
+  SUBCASE("ready baseline") {}
+  SUBCASE("pending baseline") { pending = true; }
+  int calls = 0;
+  MeshBuildOptions options;
+  options.externalGeometryResolver = [&](const X3DNode *n, AssetResolver) {
+    ++calls;
+    if (pending) return PackedMesh{};
+    auto mesh = makeTrianglePacked();
+    float x = float(geombounds::getField<int>(*n, "uTessellation", 0));
+    std::memcpy(mesh.attribute_data[0].data(), &x, sizeof x);
+    return mesh;
+  };
+  SceneExtractor ex(ctx, scene, options);
+  auto initial = ex.fullSnapshot();
+  CHECK(initial.added.size() == (pending ? 0 : 1));
+  std::map<RenderItemId, RenderItem> mirror;
+  for (auto id : initial.added) mirror[id] = ex.item(id);
+  for (int edit : {2, 3, 4}) {
+    pending = edit == 3;
+    ctx.postEvent(geom.get(), "uTessellation", SFInt32{edit}); ctx.tick(1);
+    const int before = calls;
+    auto d = ex.delta();
+    CHECK(calls == before + 1);
+    for (auto id : d.removed) mirror.erase(id);
+    for (const auto *ids : {&d.added, &d.updatedGeometry})
+      for (auto id : *ids) mirror[id] = ex.item(id);
+    SceneExtractor oracle(ctx, scene, options);
+    auto full = oracle.fullSnapshot();
+    REQUIRE(mirror.size() == full.added.size());
+    if (!pending) {
+      REQUIRE(mirror.size() == 1);
+      CHECK(mirror.begin()->second.geometry_ext.packed.attribute_data ==
+            oracle.item(full.added[0]).geometry_ext.packed.attribute_data);
+    }
+  }
+}
+
+TEST_CASE("delta oracle: pending packed completion retries without a field edit") {
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("NurbsTrimmedSurface"));
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  bool ready = false;
+  int calls = 0;
+  MeshBuildOptions options;
+  options.externalGeometryResolver = [&](const X3DNode *, AssetResolver) {
+    ++calls;
+    return ready ? makeTrianglePacked() : PackedMesh{};
+  };
+  SceneExtractor ex(ctx, scene, options);
+  CHECK(ex.fullSnapshot().added.empty());
+  ready = true; ctx.tick(1);
+  auto d = ex.delta();
+  REQUIRE(d.added.size() == 1);
+  const auto payload = ex.item(d.added[0]).geometry_ext.packed.attribute_data;
+  CHECK(calls == 2);
+  ctx.tick(2);
+  CHECK(ex.delta().updatedGeometry.empty());
+  CHECK(calls == 2);
+  SceneExtractor oracle(ctx, scene, options);
+  auto full = oracle.fullSnapshot();
+  REQUIRE(full.added.size() == 1);
+  CHECK(payload == oracle.item(full.added[0]).geometry_ext.packed.attribute_data);
 }

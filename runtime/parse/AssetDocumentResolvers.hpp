@@ -4,11 +4,14 @@
 
 #include "X3DParse.hpp"
 #include "../extract/AssetResolver.hpp"
+#include "x3d/nodes/Inline.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <exception>
+#include <functional>
 #include <memory>
+#include <type_traits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +24,11 @@ struct AssetDocumentResolvers {
   ProtoDeclarationResolver proto;
   runtime::InlineResolver inlineScene;
 };
+
+/// Wraps the asset-backed PROTO callback at every document boundary. The
+/// supplied base is synchronous; decorators must not retain it after a call.
+using ProtoResolverDecorator =
+    std::function<ProtoDeclarationResolver(ProtoDeclarationResolver)>;
 
 namespace asset_document_detail {
 
@@ -130,6 +138,7 @@ struct Policy {
   // Empty means use the corresponding asset-backed loader, never a file loader.
   ProtoDeclarationResolver protoOverride;
   runtime::InlineResolver inlineOverride;
+  ProtoResolverDecorator decorateProto;
 };
 
 struct Context {
@@ -157,7 +166,7 @@ resolveInline(Context &, const std::vector<std::string> &, const std::string &);
 // refer to this invocation's context; no shared ownership cycle or hidden
 // thread-local/global loader policy is needed.
 inline AssetDocumentResolvers nestedResolvers(Context &context) {
-  return {
+  AssetDocumentResolvers result{
       context.policy.protoOverride ? context.policy.protoOverride
           : ProtoDeclarationResolver{[&context](const auto &urls, const auto &base) {
               return resolveProto(context, urls, base);
@@ -166,6 +175,25 @@ inline AssetDocumentResolvers nestedResolvers(Context &context) {
           : runtime::InlineResolver{[&context](const auto &urls, const auto &base) {
               return resolveInline(context, urls, base);
             }}};
+  if (context.policy.decorateProto)
+    result.proto = context.policy.decorateProto(std::move(result.proto));
+  return result;
+}
+
+inline AssetDocumentResolvers makeResolvers(Policy policy,
+                                           std::vector<std::string> active = {});
+
+// A fetched document has no host-facing lifetime of its own. Forward all its
+// warning channels as source-qualified prose on the enclosing load channel.
+template <class Emit>
+void sourceWarnings(const runtime::X3DDocument &doc, const std::string &url,
+                    Emit emit) {
+  for (const auto &warning : doc.readerWarnings) emit(url + ": " + warning.detail);
+  for (const auto &warning : doc.rangeWarnings) emit(url + ": " + warning.message());
+  for (const auto &warning : doc.protoWarnings)
+    emit(url + ": " + warning.instanceName + ": " + warning.detail);
+  for (const auto &warning : doc.inlineWarnings)
+    emit(url + ": " + warning.inlineDEF + ": " + warning.detail);
 }
 
 template <typename Result, typename Select>
@@ -173,6 +201,7 @@ std::shared_ptr<Result> resolveDocument(Context &context,
     const std::vector<std::string> &urls, const std::string &baseDir,
     runtime::extract::AssetKind kind, Select select) {
   if (context.pending || context.active.size() >= kMaxNestingDepth) return nullptr;
+  std::string cycleUrl;
   for (const auto &raw : urls) {
     const auto hash = raw.find('#');
     const std::string fragment = hash == std::string::npos ? "" : raw.substr(hash + 1);
@@ -180,7 +209,10 @@ std::shared_ptr<Result> resolveDocument(Context &context,
     if (candidate.empty()) continue;
     const std::string url = resolveUrl(candidate, baseDir);
     if (std::find(context.active.begin(), context.active.end(), url) !=
-        context.active.end()) continue;
+        context.active.end()) {
+      cycleUrl = url;
+      continue;
+    }
     ActiveGuard guard(context.active, url);
     try {
       const auto result = context.policy.assets(url, kind);
@@ -197,12 +229,36 @@ std::shared_ptr<Result> resolveDocument(Context &context,
       auto doc = parseDocument(body, enc, documentBaseDir(url),
                                nested.proto, nested.inlineScene);
       if (context.pending) return nullptr;
-      if (auto selected = select(std::move(doc), fragment)) return selected;
+      // EXTERNPROTO: only the selected declaration carries the document's
+      // warnings (attached after selection below); its siblings are unused.
+      std::vector<runtime::ProtoWarning> protoSource;
+      sourceWarnings(doc, url, [&](const std::string &detail) {
+        if (kind == runtime::extract::AssetKind::Inline)
+          doc.scene.pendingInlineWarnings.push_back(
+              {runtime::InlineWarning::Kind::SourceWarning, "", detail});
+        else
+          protoSource.push_back(
+              {runtime::ProtoWarning::Kind::SourceWarning, "", detail});
+      });
+      const auto deferred = context.policy.inlineOverride
+          ? context.policy.inlineOverride
+          : makeResolvers(context.policy, context.active).inlineScene;
+      for (const auto &[node, base] : doc.scene.nodeBaseUrls)
+        if (auto owned = node.lock(); owned && dynamic_cast<const x3d::nodes::Inline *>(owned.get()) != nullptr)
+          doc.scene.deferredInlineResolvers.try_emplace(node, deferred);
+      if (auto selected = select(std::move(doc), fragment)) {
+        if constexpr (std::is_same_v<Result, runtime::ProtoDeclaration>)
+          selected->sourceWarnings.insert(selected->sourceWarnings.end(),
+                                          protoSource.begin(), protoSource.end());
+        return selected;
+      }
     } catch (const std::exception &) {
       // Missing/unparseable candidates and backend failures remain lenient.
       if (context.pending) return nullptr;
     }
   }
+  if (!cycleUrl.empty() && kind == runtime::extract::AssetKind::Inline)
+    throw runtime::InlineCycleError("Inline cycle rejected: " + cycleUrl);
   return nullptr;
 }
 
@@ -229,15 +285,16 @@ resolveInline(Context &context, const std::vector<std::string> &urls,
       });
 }
 
-inline AssetDocumentResolvers makeResolvers(Policy policy) {
+inline AssetDocumentResolvers makeResolvers(Policy policy,
+                                           std::vector<std::string> active) {
   if (!policy.assets) policy.assets = runtime::extract::makeNullAssetResolver();
   return {
-      [policy](const auto &urls, const auto &base) {
-        Context context{policy, {}, false};
-        return resolveProto(context, urls, base);
+      [policy, active](const auto &urls, const auto &base) {
+        Context context{policy, active, false};
+        return nestedResolvers(context).proto(urls, base);
       },
-      [policy](const auto &urls, const auto &base) {
-        Context context{policy, {}, false};
+      [policy, active](const auto &urls, const auto &base) {
+        Context context{policy, active, false};
         return resolveInline(context, urls, base);
       }};
 }
@@ -249,8 +306,16 @@ inline AssetDocumentResolvers makeResolvers(Policy policy) {
 /// Failed candidates are skipped; Pending stops the entire recursive load.
 /// The policy is used for every nested Inline/EXTERNPROTO, with no I/O fallback.
 inline AssetDocumentResolvers assetResolversFrom(
+    runtime::extract::AssetResolver resolver, Encoding hint,
+    ProtoResolverDecorator decorateProto) {
+  return asset_document_detail::makeResolvers(
+      {std::move(resolver), hint, {}, {}, std::move(decorateProto)});
+}
+
+/// Existing callers need no decorator.
+inline AssetDocumentResolvers assetResolversFrom(
     runtime::extract::AssetResolver resolver, Encoding hint = Encoding::Unknown) {
-  return asset_document_detail::makeResolvers({std::move(resolver), hint, {}, {}});
+  return assetResolversFrom(std::move(resolver), hint, {});
 }
 
 } // namespace x3d::codec

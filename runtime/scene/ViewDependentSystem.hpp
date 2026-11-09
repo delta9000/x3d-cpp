@@ -1,4 +1,4 @@
-// ViewDependentSystem.hpp — M2e: viewer-dependent scene-graph evaluation.
+// ViewDependentSystem.hpp — viewer-dependent scene-graph evaluation.
 // Run each tick() from the bound Viewpoint. Owns LOD level_changed tracking and
 // ProximitySensor/VisibilitySensor enter/exit. Render-time selection (LOD child,
 // Billboard rotation) lives in the per-path walk of SceneExtractor/PickSystem and
@@ -15,6 +15,12 @@
 #include "RecursionLimits.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
+#include "x3d/nodes/GeoLOD.hpp"
+#include "x3d/nodes/GeoProximitySensor.hpp"
+#include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/ProximitySensor.hpp"
+#include "x3d/nodes/TransformSensor.hpp"
+#include "x3d/nodes/VisibilitySensor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -74,7 +80,7 @@ public:
   // Consumer-supplied exact view volume (frustum). VisibilitySensor tests the
   // sensor box against the six planes of the bound viewpoint's frustum; the
   // consumer supplies the camera aspect ratio (default 1.0) so a wide-aspect
-  // periphery is not reported invisible (ENV-05). Renderers set this each frame
+  // periphery is not reported invisible . Renderers set this each frame
   // from their camera.
   struct ViewVolume { bool valid=false; float aspect=1.0f; };
   void setViewVolume(const ViewVolume &vv) { viewVolume_ = vv; }
@@ -83,7 +89,7 @@ public:
     (void)now;
     const SFVec3f eye = ctx.cameraWorldPosition();
     for (auto &[node, last] : lodLevel_) {
-      if (node->nodeTypeName() == "GeoLOD") {
+      if (dynamic_cast<const x3d::nodes::GeoLOD *>(node) != nullptr) {
         // URL-backed GeoLODs are driven by InlineRuntimeSystem, which waits for
         // the requested tile set before changing the displayed level.
         if (!geombounds::getField<MFString>(*node, "rootUrl", {}).empty() ||
@@ -105,14 +111,14 @@ public:
         continue;
       }
       // Per-node convenience level via primary-path world transform (documented
-      // per-node-event / per-path-render split, M2C-1). worldTransform(node) is
+      // per-node-event / per-path-render split). worldTransform(node) is
       // the first-path world matrix; identity if unknown.
       const Mat4 w = ctx.worldTransform(node);
       const SFVec3f center = geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
       const SFVec3f eyeLocal = w.inverse().transformPoint(eye);
       const float d = viewdep::len(viewdep::sub(eyeLocal, center));
       int lvl = lodSelectLevel(*node, d);
-      // LOD-1 §23.4.3: when there are fewer children than range bins, the last
+      // §23.4.3: when there are fewer children than range bins, the last
       // child is used for all further ranges; level_changed reports the index of
       // the child actually rendered (matches the extractor's render-time clamp).
       const std::size_t childCount = lodChildCount(*node);
@@ -128,7 +134,8 @@ public:
         if (levelHook_) levelHook_(node, lvl);
       }
     }
-    // ENV-06/SENSOR-SWITCH (ADR-0034): a sensor reachable only through a
+    if (sensorActive_.empty()) { budgetExceeded_ = false; return; }
+    // ADR-0034: a sensor reachable only through a
     // non-selected Switch child or inactive LOD level is treated as removed from
     // the transformation hierarchy. Compute the active set once (roots -> active
     // children only) and deactivate any attached sensor not in it; re-enabling a
@@ -139,7 +146,7 @@ public:
     if (gate) {
       bool structureDirty = false;
       for (const X3DNode *changed : ctx.dirtyTracker().changedNodes())
-        if (ctx.dirtyTracker().flags(changed) & DirtyChildren) { structureDirty = true; break; }
+        if (ctx.dirtyTracker().flags(changed) & (DirtyChildren | DirtyActiveChild)) { structureDirty = true; break; }
       if (!sensorBelowValid_ || cachedCtx_ != &ctx ||
           cachedTransformRevision_ != ctx.transformRevision() || structureDirty)
         rebuildSensorBelow(ctx);
@@ -152,10 +159,10 @@ public:
         deactivateIfActive(node, active, now, ctx);
         continue;
       }
-      if (node->nodeTypeName() == "ProximitySensor" ||
-          node->nodeTypeName() == "GeoProximitySensor") updateProximity(node, active, now, ctx);
-      else if (node->nodeTypeName() == "VisibilitySensor") updateVisibility(node, active, now, ctx);
-      else if (node->nodeTypeName() == "TransformSensor") updateTransform(node, active, now, ctx);
+      if (dynamic_cast<const x3d::nodes::ProximitySensor *>(node) != nullptr ||
+          dynamic_cast<const x3d::nodes::GeoProximitySensor *>(node) != nullptr) updateProximity(node, active, now, ctx);
+      else if (dynamic_cast<const x3d::nodes::VisibilitySensor *>(node) != nullptr) updateVisibility(node, active, now, ctx);
+      else if (dynamic_cast<const x3d::nodes::TransformSensor *>(node) != nullptr) updateTransform(node, active, now, ctx);
     }
   }
 
@@ -174,10 +181,8 @@ private:
       const X3DNode *n = pending.back(); pending.pop_back();
       if (!n || !seen.insert(n).second) continue;
       forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
-        if (c) {
-          parents[c.get()].push_back(n);
-          pending.push_back(c.get());
-        }
+        parents[c.get()].push_back(n);
+        pending.push_back(c.get());
       });
     }
     pending.clear();
@@ -200,7 +205,7 @@ private:
                           X3DExecutionContext &ctx, bool exitTime = true) {
     if (!last) return;
     last = false;
-    motion_.erase(node); // ENV-08: stale viewer motion; next enter reports its own tick
+    motion_.erase(node); // stale viewer motion; next enter reports its own tick
     ctx.postEvent(node, "isActive", std::any(false));
     if (exitTime) ctx.postEvent(node, "exitTime", std::any(static_cast<SFTime>(now)));
     if (sensorHook_) sensorHook_(node, false, now);
@@ -217,7 +222,7 @@ private:
     return kNone;
   }
 
-  // ENV-06/SENSOR-SWITCH: collect every node on an ACTIVE transformation path
+  // collect every node on an active transformation path
   // from the scene roots, mirroring the extractor's render-time cull — a Switch
   // descends only children[whichChoice], a LOD only the level the extractor would
   // choose (camera distance in the LOD's local frame). Union over DEF/USE.
@@ -268,7 +273,7 @@ private:
     seen.erase(n);
   }
 
-  // ENV-08: fraction (0..1) along the straight world-space segment p0->p1 at
+  // Fraction (0..1) along the straight world-space segment p0->p1 at
   // which the viewer crosses into (entering) or out of (exiting) the sensor box
   // [center ± size/2] in the sensor's local frame. Falls back to 0 (=> edge at
   // `now`) when the segment misses the box (teleport) or is degenerate.
@@ -302,7 +307,7 @@ private:
     return (t < 0.0f) ? 0.0f : (t > 1.0f ? 1.0f : t);
   }
 
-  // ENV-05/ENV-09 (§22.4.3): visible iff the sensor's box — center/size transformed
+  // (§22.4.3): visible iff the sensor's box — center/size transformed
   // to world by `w` (its full world matrix, so ancestor scale counts) — is not
   // entirely outside any of the six view-frustum planes built from the bound
   // viewpoint's fieldOfView (the smaller of the horizontal/vertical angles,
@@ -372,19 +377,12 @@ private:
     if (len(xAxis) < 1e-9f) xAxis = cross(SFVec3f{0, 1, 0}, zAxis);
     xAxis = norm(xAxis);
     const SFVec3f yAxis = cross(zAxis, xAxis);
-    // Rotation-matrix (columns xAxis,yAxis,zAxis) -> axis-angle.
-    const float trace = xAxis.x + yAxis.y + zAxis.z;
-    const float cosT = std::max(-1.0f, std::min(1.0f, (trace - 1.0f) * 0.5f));
-    const float angle = std::acos(cosT);
-    if (angle < 1e-6f) return SFRotation{0, 0, 1, 0};
-    SFVec3f ax{yAxis.z - zAxis.y, zAxis.x - xAxis.z, xAxis.y - yAxis.x};
-    if (len(ax) < 1e-9f) return SFRotation{0, 1, 0, angle};
-    ax = norm(ax);
-    return SFRotation{ax.x, ax.y, ax.z, angle};
-  }
-
-  static SFVec3f viewMatrixForward(X3DExecutionContext &ctx) {
-    return ctx.viewMatrix().inverse().transformDirection(SFVec3f{0, 0, -1});
+    Mat4 m = Mat4::identity();
+    m.m[0] = xAxis.x; m.m[1] = xAxis.y; m.m[2] = xAxis.z;
+    m.m[4] = yAxis.x; m.m[5] = yAxis.y; m.m[6] = yAxis.z;
+    m.m[8] = zAxis.x; m.m[9] = zAxis.y; m.m[10] = zAxis.z;
+    const SFRotation rotation = rotationFromMatrix(m);
+    return rotation.angle < 1e-6f ? SFRotation{0, 0, 1, 0} : rotation;
   }
 
   void updateProximity(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
@@ -393,7 +391,7 @@ private:
       return;
     }
     const SFVec3f eyeWorld = ctx.cameraWorldPosition();
-    const bool geographic = node->nodeTypeName() == "GeoProximitySensor";
+    const bool geographic = dynamic_cast<const x3d::nodes::GeoProximitySensor *>(node) != nullptr;
     Mat4 tangent = Mat4::identity();
     if (geographic) {
       // §25.3.8: the sensor box is tangent to the ellipsoid at geoCenter.
@@ -428,10 +426,11 @@ private:
     const SFVec3f eyeLocal = inv.transformPoint(eyeWorld);
     if (inside || last) {
       // §22.4.1: pose outputs include the exit instant.
-      const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(viewMatrixForward(ctx)));
+      const SFVec3f fwdWorld = ctx.viewMatrix().inverse().transformDirection(SFVec3f{0, 0, -1});
+      const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(fwdWorld));
       const SFVec3f upLocal = viewdep::norm(inv.transformDirection(ctx.cameraWorldUp()));
       const SFRotation ori = lookAtRotation(fwdLocal, upLocal);
-      // ENV-04: emit only when the viewer pose actually changes, not every tick.
+      // Emit only when the viewer pose actually changes, not every tick.
       if (!pst.has || !vecEq(eyeLocal, pst.pos)) {
         ctx.postEvent(node, "position_changed", std::any(eyeLocal));
         if (geographic) {
@@ -456,7 +455,7 @@ private:
       if (std::find(types.begin(), types.end(), "LOOKAT") != types.end()) {
         X3DNode *vp = ctx.boundViewpoint();
         SFVec3f cor{0, 0, 0};
-        if (vp && vp->nodeTypeName() == "GeoViewpoint")
+        if (vp && dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr)
           geo::toWorld(*vp, geo::fieldOf<SFVec3d>(*vp, "centerOfRotation", {0, 0, 0}), cor, ctx.geoProjection());
         else if (vp)
           cor = geombounds::getField<SFVec3f>(*vp, "centerOfRotation", {0, 0, 0});
@@ -469,7 +468,7 @@ private:
       } else pst.corHas = false;
       pst.world = w;
     }
-    // ENV-08 (§22.4.1): report the boundary-crossing time of the viewer's
+    // (§22.4.1): report the boundary-crossing time of the viewer's
     // straight-line motion between the two ticks, not merely the tick `now`.
     auto &ms = motion_[node];
     if (inside != last) {
@@ -489,8 +488,8 @@ private:
 
   // §22.4.3 VisibilitySensor: visible iff the size-box (in the sensor's frame)
   // may intersect the viewing volume, tested against the six view-frustum planes
-  // of the bound viewpoint (ENV-05) with the box transformed to world by its full
-  // world matrix so ancestor scale counts (ENV-09). ENV-08: enter/exitTime use
+  // of the bound viewpoint with the box transformed to world by its full
+  // world matrix so ancestor scale counts . enter/exitTime use
   // the tick `now` — a visibility region has no single geometric boundary the
   // viewer crosses, unlike ProximitySensor's box.
   void updateVisibility(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
@@ -520,7 +519,7 @@ private:
   // orientation_changed relative to center in the sensor's local frame.
   void updateTransform(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {
     if (!geombounds::getField<bool>(*node, "enabled", true)) {
-      deactivateIfActive(node, last, now, ctx); // ENV-07: disable deactivates
+      deactivateIfActive(node, last, now, ctx); // disable deactivates
       return;
     }
     SFNode target = geombounds::getField<SFNode>(*node, "targetObject", nullptr);
@@ -536,7 +535,7 @@ private:
     }
     const Mat4 sw = ctx.worldTransform(node);
     const Mat4 swInv = sw.inverse();
-    // worldTransformAny walks UP via TransformSystem's parent index, so a target
+    // worldTransformAny walks up via TransformSystem's parent index, so a target
     // shared between targetObject (non-Transform path) and a Transform ancestor
     // (Transform-children path) still resolves through the Transform ancestor.
     const Mat4 tw = ctx.worldTransformAny(target.get());
@@ -547,8 +546,16 @@ private:
     const SFVec3f th{(tb.max.x - tb.min.x) * 0.5f,
                      (tb.max.y - tb.min.y) * 0.5f,
                      (tb.max.z - tb.min.z) * 0.5f};
-    const SFVec3f sc = sw.transformPoint(center);
-    const SFVec3f sh{size.x * 0.5f, size.y * 0.5f, size.z * 0.5f};
+    // The sensor box is in the sensor's local frame; take its world AABB the
+    // same way as the target's, so a scaled or rotated parent moves its bounds.
+    Aabb sl;
+    sl.expand({center.x - size.x * 0.5f, center.y - size.y * 0.5f, center.z - size.z * 0.5f});
+    sl.expand({center.x + size.x * 0.5f, center.y + size.y * 0.5f, center.z + size.z * 0.5f});
+    const Aabb sb = sl.transformed(sw);
+    const SFVec3f sc{(sb.min.x + sb.max.x) * 0.5f, (sb.min.y + sb.max.y) * 0.5f,
+                     (sb.min.z + sb.max.z) * 0.5f};
+    const SFVec3f sh{(sb.max.x - sb.min.x) * 0.5f, (sb.max.y - sb.min.y) * 0.5f,
+                     (sb.max.z - sb.min.z) * 0.5f};
     // Overlap test (AABB-vs-AABB in world): active iff the target's box
     // intersects the sensor's box (§22.4.2 "enters ... a region in space").
     const bool inside =
@@ -561,7 +568,7 @@ private:
       const SFVec3f posLocal{tcl.x - center.x, tcl.y - center.y, tcl.z - center.z};
       // Orientation: target world transform expressed in sensor's local frame.
       Mat4 rel = swInv * tw;
-      // Change-gate: emit only when pose actually changes (ENV-04 mirror).
+      // Change-gate: emit only when pose actually changes.
       auto &st = trSensorState_[node];
       // The relative basis can contain scale and shear from either hierarchy.
       // A degenerate basis has no defined orientation, so preserve the last
@@ -584,7 +591,7 @@ private:
     }
   }
 
-  // ENV-04/ENV-03: last emitted ProximitySensor pose and centerOfRotation.
+  // Last emitted ProximitySensor pose and centerOfRotation.
   struct ProxState {
     bool has = false; SFVec3f pos{}; SFRotation ori{};
     bool corHas = false; SFVec3f cor{};
@@ -592,11 +599,11 @@ private:
     std::size_t pathIndex = 0;
   };
 
-  // ENV-08: previous tick's viewer world position + time, for interpolating the
+  // Previous tick's viewer world position + time, for interpolating the
   // boundary-crossing enter/exit time.
   struct MotionState { bool has = false; SFVec3f eyeWorld{}; double t = 0.0; };
 
-  // ENV-01: last emitted TransformSensor pose, for change-gating.
+  // Last emitted TransformSensor pose, for change-gating.
   struct TransformSensorState { bool has = false; SFVec3f pos{}; SFRotation ori{}; };
 
   ViewVolume viewVolume_{};

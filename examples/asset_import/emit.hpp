@@ -4,7 +4,6 @@
 #include "texture_pipeline.hpp"  // TexturePlan + urlForRef
 #include "x3d/authoring.hpp"
 namespace x3d::asset_import {
-// Options controlling emit().
 struct EmitOptions {
   bool includeTextures = true;
   // Optional texture plan from planTextures(): when set, each material's
@@ -12,7 +11,6 @@ struct EmitOptions {
   // material's texture-slot setters. nullptr => no texture wiring.
   const TexturePlan* textures = nullptr;
 };
-// Converts an ImportScene (Task 3 IR) into an x3d::runtime::X3DDocument.
 // Recursively walks the ImportNode hierarchy from ImportScene::rootNode,
 // emitting nested Transforms (translation/rotation/scale decomposed from
 // each node's localTransform) whose children are that node's mesh

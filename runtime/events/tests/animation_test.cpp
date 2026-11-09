@@ -3,21 +3,19 @@
 // End-to-end proof that the event foundation drives a real X3D animation:
 // a clock tick drives a TimeSensor, whose fraction_changed ROUTEs to a
 // PositionInterpolator, whose value_changed ROUTEs to a Transform's translation.
-// This exercises every layer: clock -> active-node update -> outputOnly emit ->
+// This exercises every layer: clock -> system update -> outputOnly emit ->
 // cascade -> inputOnly handler -> outputOnly emit -> cascade -> inputOutput sink.
-//
 // Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
-#include "TimeSensorBehavior.hpp"
+#include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
 
 #include "x3d/nodes/PositionInterpolator.hpp"
 #include "x3d/nodes/TimeSensor.hpp"
 #include "x3d/nodes/Transform.hpp"
 
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -27,17 +25,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
@@ -63,26 +50,21 @@ void test_animation_chain() {
   X3DExecutionContext ctx;
   ctx.addRoute({ts.get(), "fraction_changed"}, {interp.get(), "set_fraction"});
   ctx.addRoute({interp.get(), "value_changed"}, {target.get(), "translation"});
-  // The deprecation shim wraps an ActiveNode in a one-node System; new code
-  // should implement System directly. Tracked for migration.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  ctx.addActiveNode(std::make_shared<TimeSensorBehavior>(ts.get()));
-#pragma GCC diagnostic pop
+  auto timeSys = std::make_shared<TimeSensorSystem>();
+  timeSys->attach(ts.get(), ctx);
+  ctx.addSystem(timeSys);
   InterpolatorSystem<PositionInterpolator, SFVec3f> interpSys(
       [](const SFVec3f &a, const SFVec3f &b, float t) { return lerpVec3(a, b, t); });
   interpSys.attach(interp.get(), ctx);
 
   ctx.tick(0.5);
-  check(veq(tr(target), 5, 0, 0), "tick(0.5) animates translation to (5,0,0)");
+  CHECK_MESSAGE((veq(tr(target), 5, 0, 0)), ("tick(0.5) animates translation to (5,0,0)"));
 
   ctx.tick(0.25);
-  check(veq(tr(target), 2.5f, 0, 0),
-        "tick(0.25) animates translation to (2.5,0,0)");
+  CHECK_MESSAGE((veq(tr(target), 2.5f, 0, 0)), ("tick(0.25) animates translation to (2.5,0,0)"));
 
   ctx.tick(1.0);
-  check(veq(tr(target), 10, 0, 0),
-        "tick(1.0) animates translation to (10,0,0) (clamped end)");
+  CHECK_MESSAGE((veq(tr(target), 10, 0, 0)), ("tick(1.0) animates translation to (10,0,0) (clamped end)"));
 }
 
 } // namespace
@@ -90,10 +72,5 @@ void test_animation_chain() {
 TEST_CASE("animation_test") {
   test_animation_chain();
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    CHECK(false); return;
-  }
-  std::cout << "all animation tests passed\n";
   return;
 }

@@ -1,4 +1,3 @@
-// Viewport.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -30,61 +29,33 @@ using namespace x3d::core;
  */
 class Viewport : public virtual X3DViewportNode {
 public:
-  /**
-   * @brief Default constructor for Viewport
-   */
   Viewport() = default;
 
-  /**
-   * @brief Destructor for Viewport
-   */
   ~Viewport() = default;
 
-  /**
-   * @brief Get the default value for clipBoundary
-   * @return MFFloat The default value
-   */
   static MFFloat getDefaultClipBoundary() {
     return std::vector<float>{0, 1, 0, 1};
   }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "viewport"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "Layering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 1; }
 
   /**
-   * @brief Gets the value of clipBoundary. AccessType: inputOutput
+   * MFFloat; access: inputOutput. Borrows the stored value.
    * @details clipBoundary is specified in fractions of the normal render
    * surface in the sequence left/right/bottom/top.
-   * @return const MFFloat& The current value of clipBoundary.
    */
   const MFFloat &getClipBoundary() const { return _clipBoundary; }
 
   /**
-   * @brief Sets the value of clipBoundary. AccessType: inputOutput
+   * Access: inputOutput.
    * @details clipBoundary is specified in fractions of the normal render
    * surface in the sequence left/right/bottom/top.
-   * @param value The new value for clipBoundary.
    */
   void setClipBoundary(const MFFloat &value) {
 
@@ -101,39 +72,23 @@ public:
   }
 
   /**
-   * @brief Non-validating write of clipBoundary (runtime/reader ingest path).
-   * @details Assigns without the range check setClipBoundary() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setClipBoundary() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setClipBoundary() for range validation.
    */
   void setClipBoundaryUnchecked(const MFFloat &value) { _clipBoundary = value; }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "Viewport").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -159,10 +114,6 @@ private:
         throw std::out_of_range("clipBoundary above maximum of 1");
     }
   }
-
-  /**
-   * @brief Member variable for clipBoundary.
-   */
 
   MFFloat _clipBoundary{std::vector<float>{0, 1, 0, 1}};
 };

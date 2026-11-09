@@ -19,11 +19,11 @@ The Interpolator System animates scene-graph field values by responding to `set_
 
 | File | Role |
 |---|---|
-| `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion SLERP (`Quat`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
-| `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatMul`, `quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
+| `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion multiplication and SLERP (`Quat`, `quatMul`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
+| `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
 | `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). On attach they initialize output readback from the first authored keyValue without sending an event; their `set_fraction` handlers post later `value_changed` events through the cascade. |
 | `runtime/events/SplineInterpolatorSystem.hpp` | Three concrete `System` subclasses for the non-linear family: `SplineInterpolatorSystem<NodeT,ValueT>` (Hermite spline), `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` (emits `modifiedFraction_changed`). |
-| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `registerInterpolatorSystems(ctx)` add-registers them. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
+| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
 | `runtime/events/NurbsInterpolatorSystem.hpp` | Three §27 systems reuse `runtime/extract/NurbsEval.hpp` for curve positions, tangent orientations, and surface positions/normals. |
 
 ## Interfaces and seams
@@ -104,62 +104,36 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 ### Seam points
 
-- **`set_fraction` handler registration** — `attach(node, ctx)` installs a `setOnSet_fractionHandler` lambda on the matched node. The lambda reads the node's `key`/`keyValue` fields, calls the math function, then calls `ctx.postOutputEvent(node, "value_changed", std::any(...))`. The [Event Cascade subsystem](event-cascade.md) delivers that event downstream through any ROUTEs.
+- `set_fraction` handler registration — `attach(node, ctx)` installs a `setOnSet_fractionHandler` lambda on the matched node. The lambda reads the node's `key`/`keyValue` fields, calls the math function, then calls `ctx.postOutputEvent(node, "value_changed", std::any(...))`. The [Event Cascade subsystem](event-cascade.md) delivers that event downstream through any ROUTEs.
 
-- **`X3DExecutionContext` event queue** — the subsystem uses `X3DExecutionContext::postEvent` for external inputs and `postOutputEvent` for generated outputOnly values. The cascade admits the output before changing source storage, notifying observers or routing it; all input occurrences remain separate. These are declared in `runtime/events/X3DExecutionContext.hpp`.
+- `X3DExecutionContext` event queue — the subsystem uses `X3DExecutionContext::postEvent` for external inputs and `postOutputEvent` for generated outputOnly values. The cascade admits the output before changing source storage, notifying observers or routing it; all input occurrences remain separate. These are declared in `runtime/events/X3DExecutionContext.hpp`.
 
-- **[TimeSensor System](system-time.md) as upstream source** — in production, a TimeSensor emits `fraction_changed` (an `SFFloat`), which is ROUTEd to an interpolator's `set_fraction`. The Interpolator System does not depend on TimeSensor directly; the ROUTE graph wires them.
+- [TimeSensor System](system-time.md) as upstream source — in production, a TimeSensor emits `fraction_changed` (an `SFFloat`), which is ROUTEd to an interpolator's `set_fraction`. The Interpolator System does not depend on TimeSensor directly; the ROUTE graph wires them.
 
-- **`attachInterpolators` scene-walk** — `InterpolatorRegistration.hpp` provides `makeInterpolatorSystems()`. The production caller `attachInterpolators` in `runtime/events/X3DSceneBridge.hpp` offers every node in the scene to every system's `attach`; each system filters by `dynamic_cast<NodeT*>`, so the walk is safe to offer all nodes.
+- `attachInterpolators` scene-walk — `InterpolatorRegistration.hpp` provides `makeInterpolatorSystems()`. The production caller `attachInterpolators` in `runtime/events/X3DSceneBridge.hpp` offers every node in the scene to every system's `attach`; each system filters by `dynamic_cast<NodeT*>`, so the walk is safe to offer all nodes.
 
 ### Spec-conformance annotations
 
-- **INTERP-02** (§19.3.1): an interpolator with an empty `key` field must emit no `value_changed` event. All systems carry a live empty-key guard (`if (interp->getKey().empty()) return;`) checked at event time, so a later non-empty `key` re-enables emission without re-attaching.
-- **AUD-INTERP-1** (§19.3.1): before a `set_fraction` input, output readback is the first authored keyValue (or first multi-value row). Linear, spline, and Squad attachment initialize that stored readback directly and emit no ROUTE event.
+- Empty keys (§19.3.1): an interpolator with an empty `key` field must emit no `value_changed` event. All systems carry a live empty-key guard (`if (interp->getKey().empty()) return;`) checked at event time, so a later non-empty `key` re-enables emission without re-attaching.
+- Initial readback (§19.3.1): before a `set_fraction` input, output readback is the first authored keyValue (or first multi-value row). Linear, spline, and Squad attachment initialize that stored readback directly and emit no ROUTE event.
 
-- **INTERP-01** (§19.2.4, §19.4.10-13): the Hermite Spline, Squad, and EaseInEaseOut nodes previously had no System; `set_fraction` fired a no-op generated default. `SplineInterpolatorSystem`, `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` close this gap.
+- `SplineInterpolatorSystem`, `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` handle spline, Squad, and fraction-easing nodes (§19.2.4, §19.4.10–13).
 
-- **PIV-1**: `registerInterpolatorSystems` (add-only) was never wired to attach nodes; `attachInterpolators` (scene-walk + add) is the correct production call.
+- ColorInterpolator interpolates in HSV, not RGB, lerping hue along the shorter arc (Foley & van Dam conversion). `lerpColorHsv` in `Interpolation.hpp`.
 
-- **ColorInterpolator** interpolates in HSV, not RGB, lerping hue along the shorter arc (Foley & van Dam conversion). `lerpColorHsv` in `Interpolation.hpp`.
+- OrientationInterpolator uses quaternion SLERP choosing the shorter path (negate quaternion when dot product < 0); falls back to NLERP when sin(ω) ≈ 0. Implemented as `slerpRotation` in `Interpolation.hpp`.
 
-- **OrientationInterpolator** uses quaternion SLERP choosing the shorter path (negate quaternion when dot product < 0); falls back to NLERP when sin(ω) ≈ 0. Implemented as `slerpRotation` in `Interpolation.hpp`.
+- NormalInterpolator uses spherical SLERP (`slerpNormal`), renormalizing the result.
 
-- **NormalInterpolator** uses spherical SLERP (`slerpNormal`), renormalizing the result.
+- Hermite spline (`SplineInterpolation.hpp`): implements the §19.2.4 algorithm — Hermite basis (h00, h01, h10, h11), per-segment F+/F- non-uniform-interval tangent scaling, optional author `keyVelocity` (size 2 = endpoints only, size N = per-key), `normalizeVelocity` chord-length scaling, closed-loop key/value wrap, and open-curve zero-tangent endpoint overrides.
 
-- **Hermite spline** (`SplineInterpolation.hpp`): implements the §19.2.4 algorithm — Hermite basis (h00, h01, h10, h11), per-segment F+/F- non-uniform-interval tangent scaling, optional author `keyVelocity` (size 2 = endpoints only, size N = per-key), `normalizeVelocity` chord-length scaling, closed-loop key/value wrap, and open-curve zero-tangent endpoint overrides.
+- SquadOrientationInterpolator: Shoemake Squad in quaternion space (§19.4.13). When `normalizeVelocity` is TRUE, its quaternion-space angular tangents are scaled to the total key-path length as specified by §19.2.3; the FALSE path preserves the existing Squad calculation. N=2 reduces to plain SLERP.
 
-- **SquadOrientationInterpolator**: Shoemake Squad in quaternion space (§19.4.13). When `normalizeVelocity` is TRUE, its quaternion-space angular tangents are scaled to the total key-path length as specified by §19.2.3; the FALSE path preserves the existing Squad calculation. N=2 reduces to plain SLERP.
+- NURBS interpolators (§27.4.6, §27.4.8, §27.4.10): `NurbsInterpolatorSystem.hpp` reads their coordinate-node control points and reuses the evaluator in `runtime/extract/NurbsEval.hpp`. Curve fractions map to the normalized knot domain; surface `SFVec2f` fractions select normalized u/v parameters. Invalid or degenerate definitions emit no output. Orientation maps local +Z to the increasing-parameter curve tangent.
 
-- **NURBS interpolators** (§27.4.6, §27.4.8, §27.4.10): `NurbsInterpolatorSystem.hpp` reads their coordinate-node control points and reuses the evaluator in `runtime/extract/NurbsEval.hpp`. Curve fractions map to the normalized knot domain; surface `SFVec2f` fractions select normalized u/v parameters. Invalid or degenerate definitions emit no output. Orientation maps local +Z to the increasing-parameter curve tangent.
+- EaseInEaseOut (§19.4.4): the ten-step algorithm; the eased local fraction is remapped to the global key domain so the output is directly usable as a downstream interpolator's `set_fraction`.
 
-- **EaseInEaseOut** (§19.4.4): the ten-step algorithm; the eased local fraction is remapped to the global key domain so the output is directly usable as a downstream interpolator's `set_fraction`.
+## Related
 
-## How it is tested
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_test`) — per-type linear interpolator cascade tests (`runtime/events/tests/interpolator_test.cpp`). Covers all eight linear types: Scalar, Position, Position2D, Color (HSV midpoint), Orientation (SLERP angle), Coordinate (multi-point), CoordinateInterpolator2D, and Normal (unit-sphere SLERP). Each drives fractions at 0, 0.5, 1, and one off-key value; a final scene test fans one fraction to three interpolators simultaneously.
-
-- `ctest --preset dev -R x3d_events_tests` (doctest case: `interpolator_conformance_test`) — behavioral conformance tests (`runtime/events/tests/interpolator_conformance_test.cpp`). Closes INTERP-02 (empty-key guard: sentinel value held after `set_fraction`; re-enabled after non-empty key assigned), INTERP-01 (Hermite scalar 2-key and 3-key exact values; author `keyVelocity` endpoint form; SplinePositionInterpolator component values; Squad N=2 reduces to SLERP; EaseInEaseOut three piecewise regions; S>1 rescaling path), and PIV-1 (`attachInterpolators` wires ScalarInterpolator and SplinePositionInterpolator via scene-walk, no manual per-node attach). All expected values are hand-computed from the normative §19.2.4 Hermite basis and §19.4.4 algorithm.
-- NRB-2 coverage in the same test: degree-1 curve interpolation, rational quarter-circle position and tangent rotation, bilinear patch position/normal, and degenerate curve input.
-- `interpolator_initial_value_readback` checks scalar, multi-value, and spline readback after attachment and before any input event.
-
-- `interpolator_output_admission_test.cpp` covers all nine Spline/Squad/Ease,
-  NURBS and GeoPosition types and their eleven output fields through ordinary
-  registration. It covers equal/distinct input
-  occurrences, source/observer/ROUTE agreement, silent initialization,
-  next-tick progress, existing rejection paths and paired-output reentrancy.
-  First-admitted is the native selection policy; the standard does not prescribe
-  a unique ordering among simultaneous events. The broader event-model limits,
-  including repeated numeric host times, are listed in [Event Cascade](event-cascade.md).
-
-## Related specs and ADRs
-
-- Spec: ISO/IEC 19775-1 §19 (Interpolation component) — normative source for `locateKeySpan`, Hermite basis, ColorInterpolator HSV, OrientationInterpolator SLERP, Squad, and EaseInEaseOut algorithms.
-- Conformance view: `docs/conformance/components/Interpolation.md` — INTERP-01, INTERP-02, PIV-1 finding records (all CLOSED at commit `07c31ca`).
-- Conformance findings source of truth: `docs/conformance/findings.yaml`.
-- [Event Cascade subsystem](event-cascade.md) — delivers `value_changed` events posted by the interpolator handlers.
-- [TimeSensor System](system-time.md) — produces `fraction_changed` that ROUTEs into `set_fraction`.
-
-The Interchange capacity regression `Interchange capacity: 1000 keys with 15000
-coordinates per key` in `interpolator_conformance_test.cpp` drives a fraction
-through the event cascade and checks the emitted coordinate array at both ends.
+- [Event Cascade subsystem](event-cascade.md)
+- [TimeSensor System](system-time.md)

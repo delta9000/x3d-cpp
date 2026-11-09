@@ -2,7 +2,7 @@
 // Namespace: x3d::runtime::ext. Header-only; no core deps beyond PackedMesh/Aabb.
 //
 // One-way dep: ext→core (includes PackedMesh, Aabb from runtime/extract/).
-// Core MUST NEVER include this header. Part of the runtime/ext/ quarantine
+// Core must never include this header. Part of the runtime/ext/ quarantine
 // (x3d_cpp_ext target, default OFF, gated by X3D_CPP_BUILD_EXT).
 //
 // Binary STL format (all little-endian):
@@ -23,11 +23,7 @@
 //
 // Detection note: binary STLs may begin with "solid", identical to ASCII prefix.
 // Prefer size-based detection (len == 84 + N*50) over keyword sniffing when
-// distinguishing binary from ASCII. ASCII STL is deferred (see TODO below).
-//
-// TODO ASCII STL: add parseStlAscii(const char* text, std::size_t len) for the
-//   ASCII variant ("solid name\n  facet normal … \n  outer loop\n …"); needs a
-//   simple line-scanner. Not priority — binary is the common path for DCC tools.
+// distinguishing binary from ASCII. ASCII STL is unsupported.
 #ifndef X3D_RUNTIME_EXT_CODECS_STL_READER_HPP
 #define X3D_RUNTIME_EXT_CODECS_STL_READER_HPP
 
@@ -39,10 +35,9 @@
 
 namespace x3d::runtime::ext {
 
-// ---------------------------------------------------------------------------
 // parseStlBinary — core implementation.
 // Returns an empty PackedMesh on malformed/truncated input (never throws).
-// ---------------------------------------------------------------------------
+
 inline x3d::runtime::extract::PackedMesh
 parseStlBinary(const std::uint8_t* data, std::size_t len) noexcept {
     using namespace x3d::runtime::extract;
@@ -67,11 +62,10 @@ parseStlBinary(const std::uint8_t* data, std::size_t len) noexcept {
 
     const uint32_t vertex_count = N * 3u;
 
-    // -------------------------------------------------------------------------
     // Allocate attribute byte buffers.
     //   Position: vertex_count × 3 floats
     //   Normal:   vertex_count × 3 floats
-    // -------------------------------------------------------------------------
+
     const std::size_t float3_bytes = static_cast<std::size_t>(vertex_count) * 3u * sizeof(float);
 
     std::vector<uint8_t> pos_bytes(float3_bytes);
@@ -113,9 +107,8 @@ parseStlBinary(const std::uint8_t* data, std::size_t len) noexcept {
         }
     }
 
-    // -------------------------------------------------------------------------
     // Populate the PackedMesh.
-    // -------------------------------------------------------------------------
+
     PackedMesh mesh;
     mesh.vertex_count = vertex_count;
     mesh.index_count  = 0;          // non-indexed
@@ -151,9 +144,8 @@ parseStlBinary(const std::uint8_t* data, std::size_t len) noexcept {
     return mesh;
 }
 
-// ---------------------------------------------------------------------------
 // Convenience overload: accepts an owned byte vector (common in tests / loaders).
-// ---------------------------------------------------------------------------
+
 inline x3d::runtime::extract::PackedMesh
 parseStlBinary(const std::vector<std::uint8_t>& data) noexcept {
     return parseStlBinary(data.data(), data.size());

@@ -1,4 +1,3 @@
-// CartoonVolumeStyle.hpp
 #pragma once
 
 #include "x3d/core/X3DReflection.hpp"
@@ -27,81 +26,41 @@ using namespace x3d::core;
  */
 class CartoonVolumeStyle : public virtual X3DComposableVolumeRenderStyleNode {
 public:
-  /**
-   * @brief Default constructor for CartoonVolumeStyle
-   */
   CartoonVolumeStyle() = default;
 
-  /**
-   * @brief Destructor for CartoonVolumeStyle
-   */
   ~CartoonVolumeStyle() = default;
 
-  /**
-   * @brief Get the default value for colorSteps
-   * @return SFInt32 The default value
-   */
   static SFInt32 getDefaultColorSteps() { return 4; }
 
-  /**
-   * @brief Get the default value for orthogonalColor
-   * @return SFColorRGBA The default value
-   */
   static SFColorRGBA getDefaultOrthogonalColor() {
     return SFColorRGBA{1, 1, 1, 1};
   }
 
-  /**
-   * @brief Get the default value for parallelColor
-   * @return SFColorRGBA The default value
-   */
   static SFColorRGBA getDefaultParallelColor() {
     return SFColorRGBA{0, 0, 0, 1};
   }
 
-  /**
-   * @brief Get the default value for surfaceNormals
-   * @return SFNode The default value
-   */
   static SFNode getDefaultSurfaceNormals() { return nullptr; }
 
-  /**
-   * @brief Get the container field type for this node
-   * @return std::string The container field type
-   */
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
-  /**
-   * @brief Get the default container field value
-   * @return std::string The default container field value
-   */
   static std::string getDefaultContainerField() { return "renderStyle"; }
 
-  /**
-   * @brief Get the X3D component this node belongs to
-   * @return std::string The component name
-   */
   static std::string componentName() { return "VolumeRendering"; }
 
-  /**
-   * @brief Get the X3D component support level for this node
-   * @return int The component level
-   */
   static int componentLevel() { return 3; }
 
   /**
-   * @brief Gets the value of colorSteps. AccessType: inputOutput
+   * SFInt32; access: inputOutput. Borrows the stored value.
    * @details Number of distinct colors taken from interpolated colors and used
    * to render the object.
-   * @return const SFInt32& The current value of colorSteps.
    */
   const SFInt32 &getColorSteps() const { return _colorSteps; }
 
   /**
-   * @brief Sets the value of colorSteps. AccessType: inputOutput
+   * Access: inputOutput.
    * @details Number of distinct colors taken from interpolated colors and used
    * to render the object.
-   * @param value The new value for colorSteps.
    */
   void setColorSteps(const SFInt32 &value) {
 
@@ -111,27 +70,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of colorSteps (runtime/reader ingest path).
-   * @details Assigns without the range check setColorSteps() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setColorSteps() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setColorSteps() for range validation.
    */
   void setColorStepsUnchecked(const SFInt32 &value) { _colorSteps = value; }
 
   /**
-   * @brief Gets the value of orthogonalColor. AccessType: inputOutput
+   * SFColorRGBA; access: inputOutput. Borrows the stored value.
    * @details orthogonalColor is used for surface normals that are orthogonal
    * (perpendicular) to viewer's current location.
-   * @return const SFColorRGBA& The current value of orthogonalColor.
    */
   const SFColorRGBA &getOrthogonalColor() const { return _orthogonalColor; }
 
   /**
-   * @brief Sets the value of orthogonalColor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details orthogonalColor is used for surface normals that are orthogonal
    * (perpendicular) to viewer's current location.
-   * @param value The new value for orthogonalColor.
    */
   void setOrthogonalColor(const SFColorRGBA &value) {
 
@@ -148,30 +102,24 @@ public:
   }
 
   /**
-   * @brief Non-validating write of orthogonalColor (runtime/reader ingest
-   * path).
-   * @details Assigns without the range check setOrthogonalColor() enforces, so
-   * a permissive reader keeps an out-of-range authored value rather than reject
-   * the whole document. setOrthogonalColor() stays the enforcement point for
-   * programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setOrthogonalColor() for range validation.
    */
   void setOrthogonalColorUnchecked(const SFColorRGBA &value) {
     _orthogonalColor = value;
   }
 
   /**
-   * @brief Gets the value of parallelColor. AccessType: inputOutput
+   * SFColorRGBA; access: inputOutput. Borrows the stored value.
    * @details parallelColor is used for surface normals that are orthogonal to
    * viewer's current location.
-   * @return const SFColorRGBA& The current value of parallelColor.
    */
   const SFColorRGBA &getParallelColor() const { return _parallelColor; }
 
   /**
-   * @brief Sets the value of parallelColor. AccessType: inputOutput
+   * Access: inputOutput.
    * @details parallelColor is used for surface normals that are orthogonal to
    * viewer's current location.
-   * @param value The new value for parallelColor.
    */
   void setParallelColor(const SFColorRGBA &value) {
 
@@ -188,28 +136,22 @@ public:
   }
 
   /**
-   * @brief Non-validating write of parallelColor (runtime/reader ingest path).
-   * @details Assigns without the range check setParallelColor() enforces, so a
-   *          permissive reader keeps an out-of-range authored value rather than
-   *          reject the whole document. setParallelColor() stays the
-   *          enforcement point for programmatic callers.
+   * Preserves out-of-range authored values during reader ingest.
+   * Programmatic callers use setParallelColor() for range validation.
    */
   void setParallelColorUnchecked(const SFColorRGBA &value) {
     _parallelColor = value;
   }
 
   /**
-   * @brief Gets the value of surfaceNormals. AccessType: inputOutput
+   * SFNode; access: inputOutput. Borrows the stored value.
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @return const SFNode& The current value of surfaceNormals.
    */
   const SFNode &getSurfaceNormals() const { return _surfaceNormals; }
 
   /**
-   * @brief Acceptable node types for the surfaceNormals field.
    * @details Permitted X3D node types: X3DTexture3DNode
-   * @return const std::vector<std::string>& The accepted node type names.
    */
   static const std::vector<std::string> &acceptableSurfaceNormalsNodeTypes() {
     static const std::vector<std::string> types = {"X3DTexture3DNode"};
@@ -217,40 +159,26 @@ public:
   }
 
   /**
-   * @brief Sets the value of surfaceNormals. AccessType: inputOutput
+   * Access: inputOutput.
    * @details The surfaceNormals field contains a 3D texture with at least three
    * component values.
-   * @param value The new value for surfaceNormals.
    */
   void setSurfaceNormals(const SFNode &value) { _surfaceNormals = value; }
 
   void setSurfaceNormals(SFNode &&value) { _surfaceNormals = std::move(value); }
 
-  /**
-   * @brief The X3D type name of this node (e.g. "CartoonVolumeStyle").
-   */
   std::string nodeTypeName() const override;
 
   /**
-   * @brief This node's default containerField: the parent field it attaches
-   *        to when an X3D-XML element gives no explicit containerField. Virtual
-   *        so codecs can resolve it polymorphically through an X3DNode base
-   *        pointer (the static getDefaultContainerField() is not reachable that
-   *        way). Mirrors getDefaultContainerField().
+   * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
 
   /**
-   * @brief Reflected field table for this node (own + inherited fields).
-   * @details Built once (function-local static) from this node's descriptors.
-   *          Each FieldInfo carries type-erased get/set thunks bound to this
-   *          node's strongly-typed accessors so codecs need no per-node code.
+   * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
 
-  /**
-   * @brief Visitor double-dispatch entry point.
-   */
   void accept(NodeVisitor &visitor) const override;
 
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
@@ -338,27 +266,11 @@ private:
       throw std::out_of_range("parallelColor.a above maximum of 1");
   }
 
-  /**
-   * @brief Member variable for colorSteps.
-   */
-
   SFInt32 _colorSteps{4};
-
-  /**
-   * @brief Member variable for orthogonalColor.
-   */
 
   SFColorRGBA _orthogonalColor{SFColorRGBA{1, 1, 1, 1}};
 
-  /**
-   * @brief Member variable for parallelColor.
-   */
-
   SFColorRGBA _parallelColor{SFColorRGBA{0, 0, 0, 1}};
-
-  /**
-   * @brief Member variable for surfaceNormals.
-   */
 
   SFNode _surfaceNormals{nullptr};
 };
