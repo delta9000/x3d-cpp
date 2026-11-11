@@ -335,8 +335,9 @@ int cmdValidate(const std::vector<std::string> &args) {
         "    2. Proto/Inline warnings — unresolved EXTERNPROTO, missing declarations,\n"
         "       unresolved Inline urls, a PROTO/EXTERNPROTO that reuses a built-in\n"
         "       node name, etc.\n"
-        "    3. Reader-recovery warnings — an unknown/misspelled node element that\n"
-        "       was discarded, or an unknown `profile=` token coerced to Interchange.\n"
+        "    3. Reader-recovery warnings — an unknown/misspelled node element (kept\n"
+        "       as opaque content by the XML reader, discarded by the others), or an\n"
+        "       unknown `profile=` token coerced to Interchange.\n"
         "    4. Profile-fit — the minimal X3D profile the scene requires; flags nodes\n"
         "       that exceed a declared profile.\n"
         "    5. Duplicate <meta> — same (name, content) pair appears more than once.\n"
@@ -395,6 +396,7 @@ int cmdValidate(const std::vector<std::string> &args) {
 
     std::vector<json_out::Diag> diags;
     x3d::cli_detail::collectDiagnostics(doc, diags);
+    x3d::cli_detail::checkRoutes(doc, diags);
 
     // Profile-fit
     profile_fit::ComponentUsage usage = profile_fit::sceneComponentUsage(doc.scene);

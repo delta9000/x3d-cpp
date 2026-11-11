@@ -44,6 +44,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_corpus_audit
         x3d_corpus_audit_selftest
         x3d_sim_behavior_test
+        x3d_validate_checks_test
         x3d_scene_equiv_test
         x3d_gate_baseurl_roundtrip_test
         x3d_canonicalize_unit_test
@@ -117,6 +118,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_corpus_tools_cli_test
         x3d_cli_test
         x3d_sim_behavior_test
+        x3d_validate_checks_test
         x3d_scene_equiv_test
         x3d_gate_baseurl_roundtrip_test
         x3d_canonicalize_unit_test

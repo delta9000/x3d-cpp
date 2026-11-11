@@ -897,6 +897,232 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     ctx.authorFields().erase(script);
   }
 
+  // Field-type objects (ISO/IEC 19777-1 clause 7): constructors, methods and
+  // index access, on values the script builds and on values it receives.
+  {
+    Fixture fix;
+    auto out = [&](const char *name, X3DFieldType t) {
+      fix.ctx.authorFields().addAuthorField(
+          fix.script, AuthorFieldDecl{name, t, AccessType::OutputOnly, {}});
+    };
+    out("sum", X3DFieldType::SFVec3f);
+    out("crossed", X3DFieldType::SFVec3f);
+    out("len", X3DFieldType::SFFloat);
+    out("indexed", X3DFieldType::SFFloat);
+    out("text", X3DFieldType::SFString);
+    out("turned", X3DFieldType::SFVec3f);
+    out("fromTo", X3DFieldType::SFRotation);
+    out("composed", X3DFieldType::SFVec3f);
+    out("half", X3DFieldType::SFRotation);
+    out("hsv", X3DFieldType::SFColor);
+    out("points", X3DFieldType::MFVec3f);
+    out("names", X3DFieldType::MFString);
+    out("v2", X3DFieldType::SFVec2f);
+    out("rgba", X3DFieldType::SFColorRGBA);
+    out("received", X3DFieldType::SFVec3f);
+    out("receivedIsVec", X3DFieldType::SFBool);
+    ScriptHandle h = backend.load(fix.script, R"JS(
+      function initialize() {
+        var a = new SFVec3f(1, 2, 3), b = new SFVec3f(4, 5, 6);
+        sum = a.add(b).subtract(new SFVec3f(1, 1, 1)).multiply(2).divide(4);
+        crossed = new SFVec3f(1, 0, 0).cross(new SFVec3f(0, 1, 0));
+        len = new SFVec3f(3, 4, 0).length() + new SFVec3f(0, 0, 9).normalize().z;
+        a[1] = 20;
+        indexed = a[0] + a[1] + a[2] + a.dot(new SFVec3f(1, 0, 0));
+        text = String(new SFVec3f(1, 2.5, -3)) + '|' +
+               new SFRotation(0, 1, 0, 0.5).toString() + '|' + new SFColor(1, 0, 0);
+        var quarter = new SFRotation(0, 0, 1, Math.PI / 2);
+        turned = quarter.multVec(new SFVec3f(1, 0, 0));
+        fromTo = new SFRotation(new SFVec3f(1, 0, 0), new SFVec3f(0, 0, -1));
+        // a.multiply(b): a first, then b. X to Y (about Z), then Y to Z (about X).
+        composed = quarter.multiply(new SFRotation(1, 0, 0, Math.PI / 2))
+                       .multVec(new SFVec3f(1, 0, 0));
+        half = new SFRotation(0, 1, 0, 0).slerp(new SFRotation(0, 1, 0, 1), 0.5)
+                   .multiply(new SFRotation(new SFVec3f(0, 1, 0), 0.25).inverse());
+        var c = new SFColor();
+        c.setHSV(120, 1, 0.5);
+        var back = c.getHSV();
+        hsv = new SFColor(c.r + back[0] / 1200, c.g, c.b);
+        points = new MFVec3f(new SFVec3f(1, 2, 3), new SFVec3f(4, 5, 6));
+        points[2] = new SFVec3f(7, 8, 9);
+        names = new MFString('a', 'b');
+        v2 = new SFVec2f(1, 2).add(new SFVec2f(3, 4)).negate();
+        rgba = new SFColorRGBA(0.1, 0.2, 0.3, 0.4);
+      }
+      function set_in(value, ts) {
+        receivedIsVec = typeof value.add === 'function' && value[2] === value.z;
+        received = value.add(new SFVec3f(1, 1, 1));
+      }
+    )JS", fix.sai);
+    check(h != kInvalidScriptHandle, "field types: script using constructors loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      auto &store = fix.ctx.authorFields();
+      auto vec = [&](const char *n) {
+        std::any v = store.getValue(fix.script, n);
+        return v.has_value() ? std::any_cast<SFVec3f>(v) : SFVec3f{-99, -99, -99};
+      };
+      auto rot = [&](const char *n) {
+        std::any v = store.getValue(fix.script, n);
+        return v.has_value() ? std::any_cast<SFRotation>(v) : SFRotation{0, 0, 0, -99};
+      };
+      auto flt = [&](const char *n) {
+        std::any v = store.getValue(fix.script, n);
+        return v.has_value() ? std::any_cast<SFFloat>(v) : -99.0f;
+      };
+      SFVec3f s3 = vec("sum");
+      check(nearly(s3.x, 2) && nearly(s3.y, 3) && nearly(s3.z, 4),
+            "field types: SFVec3f add/subtract/multiply/divide");
+      SFVec3f cr = vec("crossed");
+      check(nearly(cr.x, 0) && nearly(cr.y, 0) && nearly(cr.z, 1),
+            "field types: SFVec3f cross");
+      check(nearly(flt("len"), 6), "field types: SFVec3f length/normalize");
+      check(nearly(flt("indexed"), 25), "field types: index read/write and dot");
+      std::any txt = store.getValue(fix.script, "text");
+      check(txt.has_value() &&
+                std::any_cast<SFString>(txt) == "1 2.5 -3|0 1 0 0.5|1 0 0",
+            "field types: toString");
+      SFVec3f tu = vec("turned");
+      check(nearly(tu.x, 0) && nearly(tu.y, 1) && nearly(tu.z, 0),
+            "field types: SFRotation multVec");
+      SFRotation ft = rot("fromTo");
+      check(nearly(ft.x, 0) && nearly(ft.y, 1) && nearly(ft.z, 0) &&
+                nearly(ft.angle, M_PI / 2),
+            "field types: SFRotation(from, to)");
+      SFVec3f co = vec("composed");
+      check(nearly(co.x, 0) && nearly(co.y, 0) && nearly(co.z, 1),
+            "field types: SFRotation multiply applies this first");
+      SFRotation hf = rot("half");
+      check(nearly(std::fabs(hf.y), 1) && nearly(hf.angle * hf.y, 0.25),
+            "field types: SFRotation slerp, axis constructor, inverse");
+      std::any hv = store.getValue(fix.script, "hsv");
+      check(hv.has_value() && nearly(std::any_cast<SFColor>(hv).r, 0.1) &&
+                nearly(std::any_cast<SFColor>(hv).g, 0.5) &&
+                nearly(std::any_cast<SFColor>(hv).b, 0),
+            "field types: SFColor setHSV/getHSV");
+      std::any pts = store.getValue(fix.script, "points");
+      check(pts.has_value() && std::any_cast<MFVec3f>(pts).size() == 3 &&
+                nearly(std::any_cast<MFVec3f>(pts)[2].y, 8),
+            "field types: MFVec3f constructor and index growth");
+      std::any nm = store.getValue(fix.script, "names");
+      check(nm.has_value() && std::any_cast<MFString>(nm).size() == 2 &&
+                std::any_cast<MFString>(nm)[1] == "b",
+            "field types: MFString constructor");
+      std::any v2 = store.getValue(fix.script, "v2");
+      check(v2.has_value() && nearly(std::any_cast<SFVec2f>(v2).x, -4) &&
+                nearly(std::any_cast<SFVec2f>(v2).y, -6),
+            "field types: SFVec2f");
+      std::any ca = store.getValue(fix.script, "rgba");
+      check(ca.has_value() && nearly(std::any_cast<SFColorRGBA>(ca).a, 0.4),
+            "field types: SFColorRGBA");
+
+      backend.invoke(h, "set_in", std::any(SFVec3f{1, 2, 3}),
+                     X3DFieldType::SFVec3f, 0.0);
+      std::any isVec = store.getValue(fix.script, "receivedIsVec");
+      check(isVec.has_value() && std::any_cast<bool>(isVec),
+            "field types: a received SFVec3f has methods and index access");
+      SFVec3f rc = vec("received");
+      check(nearly(rc.x, 2) && nearly(rc.y, 3) && nearly(rc.z, 4),
+            "field types: methods on a received value");
+      backend.shutdown(h);
+    }
+    fix.ctx.authorFields().erase(fix.script);
+  }
+
+  // A script that replaces a field-type global cannot change the prototype
+  // given to values the runtime pushes.
+  {
+    Fixture fix;
+    fix.ctx.authorFields().addAuthorField(
+        fix.script, AuthorFieldDecl{"ok", X3DFieldType::SFBool,
+                                    AccessType::OutputOnly, {}});
+    ScriptHandle h = backend.load(fix.script,
+        "SFVec3f = function () {};\n"
+        "function set_in(value, ts) { ok = typeof value.cross === 'function'; }",
+        fix.sai);
+    check(h != kInvalidScriptHandle, "field types: overriding a global loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      backend.invoke(h, "set_in", std::any(SFVec3f{1, 2, 3}),
+                     X3DFieldType::SFVec3f, 0.0);
+      std::any ok = fix.ctx.authorFields().getValue(fix.script, "ok");
+      check(ok.has_value() && std::any_cast<bool>(ok),
+            "field types: pushed values keep the built-in prototype");
+      backend.shutdown(h);
+    }
+    fix.ctx.authorFields().erase(fix.script);
+  }
+
+  // SFNode field access: a node handle exposes the node's fields as
+  // properties, under the directOutput gate.
+  {
+    auto run = [&](bool directOutput) {
+      Fixture fix;
+      fix.script.setDirectOutputUnchecked(directOutput);
+      auto target = std::make_shared<Transform>();
+      target->setTranslation(SFVec3f{1, 2, 3});
+      auto &store = fix.ctx.authorFields();
+      store.addAuthorField(fix.script, AuthorFieldDecl{
+          "target", X3DFieldType::SFNode, AccessType::InitializeOnly,
+          std::any(SFNode(target))});
+      auto out = [&](const char *name, X3DFieldType t) {
+        store.addAuthorField(
+            fix.script, AuthorFieldDecl{name, t, AccessType::OutputOnly, {}});
+      };
+      out("readBack", X3DFieldType::SFVec3f);
+      out("unknownIsUndefined", X3DFieldType::SFBool);
+      out("writeError", X3DFieldType::SFString);
+      out("badFieldThrew", X3DFieldType::SFBool);
+      ScriptHandle h = backend.load(fix.script, R"JS(
+        function initialize() {
+          readBack = target.translation.add(new SFVec3f(1, 1, 1));
+          unknownIsUndefined = target.noSuchField === undefined;
+          writeError = '';
+          try {
+            target.translation = new SFVec3f(7, 8, 9);
+            target.set_scale = new SFVec3f(2, 2, 2);
+          } catch (e) { writeError = String(e); }
+          badFieldThrew = false;
+          try { target.noSuchField = 1; } catch (e) { badFieldThrew = true; }
+        }
+      )JS", fix.sai);
+      const std::string tag =
+          directOutput ? "node fields (directOutput): " : "node fields (gated): ";
+      check(h != kInvalidScriptHandle, tag + "script loads");
+      if (h == kInvalidScriptHandle) return;
+      backend.initialize(h);
+      std::any rb = store.getValue(fix.script, "readBack");
+      check(rb.has_value() && nearly(std::any_cast<SFVec3f>(rb).x, 2) &&
+                nearly(std::any_cast<SFVec3f>(rb).z, 4),
+            tag + "node.translation reads the field, with methods");
+      std::any un = store.getValue(fix.script, "unknownIsUndefined");
+      check(un.has_value() && std::any_cast<bool>(un),
+            tag + "an unknown property reads as undefined");
+      std::any bad = store.getValue(fix.script, "badFieldThrew");
+      check(bad.has_value() && std::any_cast<bool>(bad),
+            tag + "writing an unknown field throws");
+      std::any we = store.getValue(fix.script, "writeError");
+      const std::string err = we.has_value() ? std::any_cast<SFString>(we) : "?";
+      if (directOutput) {
+        check(err.empty(), tag + "writes succeed");
+        check(nearly(target->getTranslation().x, 7) &&
+                  nearly(target->getTranslation().z, 9),
+              tag + "node.translation = v writes the field");
+        check(nearly(target->getScale().x, 2),
+              tag + "the set_ alias writes the inputOutput field");
+      } else {
+        check(err.find("directOutput") != std::string::npos,
+              tag + "a cross-node write throws");
+        check(nearly(target->getTranslation().x, 1),
+              tag + "the gated write changed nothing");
+      }
+      backend.shutdown(h);
+      store.erase(fix.script);
+    };
+    run(true);
+    run(false);
+  }
+
 }
 
 } // namespace script_backend_tests

@@ -199,8 +199,11 @@
         "PROTO-SHADOW",
         "PROTO-WRITE-DEF-SCOPE",
         "READ-NUMERIC-LEXEMES",
+        "READ-UNKNOWN-NODE-PASSTHROUGH",
         "REQ-UNIT",
         "ROUTE-IO-ALIAS",
+        "VALIDATE-ROUTES",
+        "VALIDATE-VALUE-SYNTAX",
         "XML-ATTRIBUTE-WHITESPACE",
         "XML-WRITER-ATTRIBUTE-WHITESPACE"
       ],
@@ -414,7 +417,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19776-1 4.3; XML 1.0 3.3.3",
+          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19776-1 4.3; XML 1.0 3.3.3; ISO/IEC 19776-1 4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -424,6 +427,7 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
+            "READ-UNKNOWN-NODE-PASSTHROUGH",
             "ROUTE-IO-ALIAS",
             "XML-ATTRIBUTE-WHITESPACE",
             "XML-WRITER-ATTRIBUTE-WHITESPACE"
@@ -2682,7 +2686,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5; ISO/IEC 19775-1 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2693,7 +2697,9 @@
             "PROTO-INSTANCE-IS-WRITE",
             "READ-NUMERIC-LEXEMES",
             "REQ-UNIT",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "VALIDATE-ROUTES",
+            "VALIDATE-VALUE-SYNTAX"
           ],
           "geometry": false,
           "interfaces": [
@@ -5202,7 +5208,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 27.4",
+          "clause": "4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 27.4; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5211,7 +5217,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "VALIDATE-VALUE-SYNTAX"
           ],
           "geometry": false,
           "interfaces": [
@@ -5948,13 +5955,16 @@
         "SCR-005",
         "SCR-006",
         "SCR-007",
+        "SCRIPT-BROWSER-SERVICES",
         "SCRIPT-EVENTIN",
+        "SCRIPT-FIELD-TYPE-OBJECTS",
         "SCRIPT-HOSTILE-VALUE-ABORT",
         "SCRIPT-NODE-DEFAULT-CODECS",
         "SCRIPT-NODE-DEFAULT-CODECS-READ",
         "SCRIPT-OUTPUTONLY-REEMIT",
         "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
+        "SCRIPT-SFNODE-FIELD-ACCESS",
         "SCRIPT-SFNODE-REFERENCE",
         "SCRIPT-UNBOUNDED-MEMORY"
       ],
@@ -5966,7 +5976,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; 29.2.4; ISO/IEC 19777-1 clause 7 (field objects); 29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3; 29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5995,13 +6005,16 @@
             "SCR-005",
             "SCR-006",
             "SCR-007",
+            "SCRIPT-BROWSER-SERVICES",
             "SCRIPT-EVENTIN",
+            "SCRIPT-FIELD-TYPE-OBJECTS",
             "SCRIPT-HOSTILE-VALUE-ABORT",
             "SCRIPT-NODE-DEFAULT-CODECS",
             "SCRIPT-NODE-DEFAULT-CODECS-READ",
             "SCRIPT-OUTPUTONLY-REEMIT",
             "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
+            "SCRIPT-SFNODE-FIELD-ACCESS",
             "SCRIPT-SFNODE-REFERENCE",
             "SCRIPT-UNBOUNDED-MEMORY"
           ],
@@ -7954,7 +7967,7 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; 8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; 8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -7979,7 +7992,8 @@
             "TDN-6",
             "TDN-7",
             "TDN-8",
-            "TIME-ORIGIN-1"
+            "TIME-ORIGIN-1",
+            "VALIDATE-ROUTES"
           ],
           "geometry": false,
           "interfaces": [
@@ -12895,6 +12909,86 @@
       "severity": "major",
       "status": "fixed",
       "summary": "PixelTexture3D decoding sizes its buffer from the voxel tokens present instead of the header; a four-number image claiming 10^15 voxels threw std::bad_alloc."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5",
+      "component": "Core",
+      "id": "VALIDATE-VALUE-SYNTAX",
+      "nodes": [
+        "Transform",
+        "Coordinate"
+      ],
+      "note": "parseValue stays lenient, but every reader now checks the authored text with checkValueSyntax (FieldValueIO) and records a ReaderWarning{Kind::Value} on the document; `x3d validate` reports it under the `value` category. Covered: node fields in all four readers and ProtoInstance fieldValues. Not covered: PROTO interface default values, SFImage/MFImage, strings and enums. The cli-gate verdict excludes `value` until its X3DJSAIL baseline is refreshed. Tests: x3d_parse_tests value_syntax_test.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Malformed authored values were coerced without a trace. An unparsable number token read as 0, a short SF tuple was padded with 0 and a trailing partial MF tuple was dropped, and `x3d validate` reported the file valid."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 4.4.8.2",
+      "component": "Core",
+      "id": "VALIDATE-ROUTES",
+      "nodes": [
+        "TimeSensor",
+        "Transform"
+      ],
+      "note": "cmdValidate now runs checkRoutes (tools/x3d-cli/validate.hpp): unresolved DEF endpoints (IMPORTed names exempt) plus every rejection from the runtime bridge, reported as `route` errors. Not part of the cli-gate verdict. Test: x3d_validate_checks_test.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "`x3d validate` did not check ROUTEs. A ROUTE naming an undefined DEF, an unknown field, the wrong access type or a mismatched field type passed as valid, and the runtime dropped it silently."
+    },
+    {
+      "clause": "ISO/IEC 19776-1 4.3",
+      "component": "Core",
+      "id": "READ-UNKNOWN-NODE-PASSTHROUGH",
+      "nodes": [
+        "WorldInfo"
+      ],
+      "note": "Fixed for XML only. XmlReader keeps the element as runtime::UnknownNode (raw attributes, character data, child nodes; Scene::opaqueChildren when the parent has no field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers discard unknown nodes; the ClassicVRML and JSON writers emit only the type name and DEF; PROTO expansion drops an unknown node in a body; `<field>`, `<IS>` and PROTO statements inside an unknown element are discarded. The node is never interpreted: no runtime behaviour, no extraction. Test: x3d_parse_tests unknown_node_passthrough_test.",
+      "severity": "major",
+      "status": "open",
+      "summary": "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
+    },
+    {
+      "clause": "29.2.4; ISO/IEC 19777-1 clause 7 (field objects)",
+      "id": "SCRIPT-FIELD-TYPE-OBJECTS",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "runtime/script/FieldTypesPrelude.hpp (ES5.1, evaluated by both backends at load) defines SFVec2f/2d/3f/3d/4f/4d, SFColor, SFColorRGBA, SFRotation, SFImage and all MF* constructors with the binding's methods and index accessors; MF values are JS arrays. Pushed values adopt the same prototypes from a table scripts cannot replace. SFRotation.multiply applies the receiver first (Open Inventor / X_ITE convention; the standard's text is ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay flat arrays), SFNode/MFNode construction from a string. Tests: ecmascript/quickjs backend \"field types\" cases.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "The ECMAScript binding had no field-type objects: `new SFVec3f(1, 2, 3)` raised a ReferenceError, and a received vector had no methods or index access, so typical authored scripts failed at their first line."
+    },
+    {
+      "clause": "29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3",
+      "id": "SCRIPT-BROWSER-SERVICES",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "Needs a parse-and-attach path through SaiContext under the directOutput gate. Planned with the SAI convergence work.",
+      "severity": "major",
+      "status": "open",
+      "summary": "The script `Browser` object offers only getName, getVersion, print/println, addRoute, deleteRoute, currentTime and currentFrameRate. createX3DFromString, createVrmlFromString, createX3DFromURL, loadURL, replaceWorld, currentScene, createNode and the property forms (name, version, currentSpeed) are missing, so a script that builds scene content fails with 'not callable'."
+    },
+    {
+      "clause": "29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)",
+      "id": "SCRIPT-SFNODE-FIELD-ACCESS",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "Node handles expose fields as properties in both backends (Duktape Proxy, QuickJS exotic hooks), routed through SaiContext::getField/setField, so the directOutput gate and ADR-0029 write semantics apply. set_/_changed aliases accepted. Unknown names read as undefined; writes to unknown or non-input fields throw. Not covered: the SFNode methods (getNodeName, getNodeType, getFieldDefinitions, toVRMLString, toXMLString). Tests: ecmascript/quickjs backend \"node fields\" cases.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A script's SFNode was an opaque handle with no properties, so a directOutput script could not read or write another node's fields from ECMAScript at all; only Browser.addRoute could use the handle."
     }
   ],
   "meta": {
@@ -13083,14 +13177,14 @@
     ]
   },
   "summary": {
-    "closed_count": 316,
+    "closed_count": 320,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 348,
+    "finding_count": 354,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 14,
+      "major": 16,
       "minor": 16
     }
   },

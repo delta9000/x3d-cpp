@@ -61,11 +61,12 @@ void testLenientUnknownNodeAllEncodings() {
       threw = true;
     }
     CHECK_MESSAGE((!threw), "lenient: XML unknown node does not throw");
-    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1),
-          "lenient: XML unknown node skipped, Shape root kept");
-    CHECK_MESSAGE((!doc.scene.rootNodes.empty() &&
-              static_cast<bool>(as<Shape>(doc.scene.rootNodes[0]))),
-          "lenient: XML surviving root is the Shape");
+    // The XML reader keeps the unknown element as an opaque node.
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2),
+          "lenient: XML unknown node kept opaque, Shape root kept");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2 &&
+              static_cast<bool>(as<Shape>(doc.scene.rootNodes[1]))),
+          "lenient: XML second root is the Shape");
   }
 
   // ClassicVRML — tolerant-silent, no warning channel.

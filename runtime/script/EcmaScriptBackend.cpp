@@ -1,6 +1,7 @@
 // Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
+#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -26,6 +27,8 @@ namespace {
 // symbol: ECMAScript code can neither read, enumerate nor create it.
 constexpr const char *kNodeIdKey = "\xff" "x3dNodeId";  // SFNode handle id
 constexpr const char *kStashSaiKey = "sai";  // global-stash slot: SaiContext*
+// global-stash slot: field-type name -> prototype (FieldTypesPrelude.hpp)
+constexpr const char *kStashProtosKey = "fieldProtos";
 
 // SFNode <-> JS opaque handle object.
 // A non-null node becomes a JS object carrying its NodeHandleTable id in a
@@ -63,6 +66,14 @@ private:
   SaiContext *prev_;
 };
 
+// Proxy traps giving a node handle its fields as properties (defined below).
+duk_ret_t node_get(duk_context *ctx);
+duk_ret_t node_set(duk_context *ctx);
+constexpr const char *kStashNodeHandlerKey = "nodeHandler";
+
+// The handle is a Proxy over an object holding the hidden id. Duktape passes
+// hidden-symbol keys straight to the target, so the id stays unreachable from
+// script and extractNode reads it through the Proxy unchanged.
 void pushNode(duk_context *ctx, const SFNode &node) {
   SaiContext *sai = stashedSai(ctx);
   if (!node || !sai) {
@@ -72,6 +83,20 @@ void pushNode(duk_context *ctx, const SFNode &node) {
   duk_push_object(ctx);
   duk_push_uint(ctx, sai->nodeHandles().intern(node));
   duk_put_prop_string(ctx, -2, kNodeIdKey);
+  // One shared handler per context, kept in the global stash.
+  duk_push_global_stash(ctx);
+  if (!duk_get_prop_string(ctx, -1, kStashNodeHandlerKey)) {
+    duk_pop(ctx);
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, node_get, 3);
+    duk_put_prop_string(ctx, -2, "get");
+    duk_push_c_function(ctx, node_set, 4);
+    duk_put_prop_string(ctx, -2, "set");
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, kStashNodeHandlerKey);
+  }
+  duk_remove(ctx, -2);   // drop the stash: [target handler]
+  duk_push_proxy(ctx, 0);
 }
 
 // Resolve the JS node-handle object (or null) at index idx.
@@ -232,41 +257,69 @@ double getNumberProp(duk_context *ctx, duk_idx_t objIdx, const char *name) {
   return v;
 }
 
+// Give the object on top of the stack the prototype of field type `type`
+// (methods and index accessors from FieldTypesPrelude.hpp). The table lives in
+// the global stash, so a script that overwrites the global constructor cannot
+// change what pushed values get. A no-op when the prelude is not installed.
+void adopt(duk_context *c, const char *type) {
+  duk_push_global_stash(c);
+  duk_get_prop_string(c, -1, kStashProtosKey);
+  if (duk_is_object(c, -1)) {
+    duk_get_prop_string(c, -1, type);
+    if (duk_is_object(c, -1)) {
+      duk_set_prototype(c, -4);
+      duk_pop_2(c);
+      return;
+    }
+    duk_pop(c);
+  }
+  duk_pop_2(c);
+}
+
 // Single-SF pushers (used directly and as MF element pushers).
 
 void pushSFVec2f(duk_context *c, const SFVec2f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
+  adopt(c, "SFVec2f");
 }
 void pushSFVec2d(duk_context *c, const SFVec2d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
+  adopt(c, "SFVec2d");
 }
 void pushSFVec3f(duk_context *c, const SFVec3f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z);
+  adopt(c, "SFVec3f");
 }
 void pushSFVec3d(duk_context *c, const SFVec3d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z);
+  adopt(c, "SFVec3d");
 }
 void pushSFVec4f(duk_context *c, const SFVec4f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "w", v.w);
+  adopt(c, "SFVec4f");
 }
 void pushSFVec4d(duk_context *c, const SFVec4d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "w", v.w);
+  adopt(c, "SFVec4d");
 }
 void pushSFColor(duk_context *c, const SFColor &v) {
   duk_push_object(c); putNumberProp(c, "r", v.r); putNumberProp(c, "g", v.g);
   putNumberProp(c, "b", v.b);
+  adopt(c, "SFColor");
 }
 void pushSFColorRGBA(duk_context *c, const SFColorRGBA &v) {
   duk_push_object(c); putNumberProp(c, "r", v.r); putNumberProp(c, "g", v.g);
   putNumberProp(c, "b", v.b); putNumberProp(c, "a", v.a);
+  adopt(c, "SFColorRGBA");
 }
 void pushSFRotation(duk_context *c, const SFRotation &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "angle", v.angle);
+  adopt(c, "SFRotation");
 }
 
 // Single-SF poppers.
@@ -384,6 +437,7 @@ void pushSFImage(duk_context *c, const SFImage &img) {
     duk_put_prop_index(c, -2, (duk_uarridx_t)p);
   }
   duk_put_prop_string(c, -2, "array");
+  adopt(c, "SFImage");
 }
 SFImage toSFImage(duk_context *c, duk_idx_t idx) {
   SFImage img{0, 0, 0, {}};
@@ -754,6 +808,81 @@ duk_ret_t browser_getCurrentFrameRate(duk_context *ctx) {
   return 1;
 }
 
+} // namespace
+
+// SFNode field access (ISO/IEC 19777-1: an SFNode's properties are the node's
+// fields). `node.translation` reads through SaiContext::getField; an
+// assignment goes through SaiContext::setField, so the directOutput gate and
+// the self-write/cross-write rules are the ones documented there. Unknown
+// names read as undefined; a write to an unknown or non-input field throws.
+namespace {
+
+duk_ret_t node_get(duk_context *ctx) {
+  if (!duk_is_string(ctx, 1) || duk_is_symbol(ctx, 1)) return 0;
+  SaiContext *sai = stashedSai(ctx);
+  if (!sai) return 0;
+  const std::string name = duk_get_string(ctx, 1);
+  std::any value;
+  X3DFieldType type{};
+  bool found = false;
+  {
+    SFNode node = extractNode(ctx, 0);
+    if (node) {
+      try {
+        if (auto info = sai->fieldInfo(*node, name); info && info->get) {
+          value = info->get(*node);
+          type = info->type;
+          found = true;
+        }
+      } catch (const std::exception &) {
+        found = false;  // retired context: reads as undefined
+      }
+    }
+  }
+  if (!found) return 0;
+  EcmaScriptBackend::pushValue(ctx, value, type);
+  return 1;
+}
+
+duk_ret_t node_set(duk_context *ctx) {
+  SaiContext *sai = stashedSai(ctx);
+  char err[256] = {0};
+  if (!sai || !duk_is_string(ctx, 1) || duk_is_symbol(ctx, 1)) {
+    std::snprintf(err, sizeof err, "not a field");
+  } else {
+    const std::string name = duk_get_string(ctx, 1);
+    std::optional<FieldInfo> info;
+    SFNode node = extractNode(ctx, 0);
+    try {
+      if (node) info = sai->fieldInfo(*node, name);
+    } catch (const std::exception &) {
+    }
+    if (!node) {
+      std::snprintf(err, sizeof err, "INVALID_NODE (disposed node)");
+    } else if (!info) {
+      std::snprintf(err, sizeof err, "INVALID_FIELD '%s' on %s", name.c_str(),
+                    node->nodeTypeName().c_str());
+    } else if (info->access != AccessType::InputOnly &&
+               info->access != AccessType::InputOutput) {
+      std::snprintf(err, sizeof err, "field '%s' is not writable at run time",
+                    name.c_str());
+    } else {
+      // toValue may run script (getters), which may throw; nothing owning is
+      // live across it except `node`/`info`, released by C++ unwinding.
+      std::any value = EcmaScriptBackend::toValue(ctx, 2, info->type);
+      try {
+        sai->setField(node.get(), info->x3dName, std::move(value));
+      } catch (const std::exception &e) {
+        std::snprintf(err, sizeof err, "%s", e.what());
+        if (!err[0]) std::snprintf(err, sizeof err, "failed");
+      }
+    }
+  }
+  if (err[0]) return duk_error(ctx, DUK_ERR_TYPE_ERROR, "SFNode: %s", err);
+  duk_push_true(ctx);
+  return 1;
+}
+
 // Browser.addRoute / deleteRoute (fromNode, fromField, toNode, toField).
 //
 // Errors raised here unwind as C++ exceptions (DUK_USE_CPP_EXCEPTIONS), so
@@ -852,6 +981,7 @@ void EcmaScriptBackend::installBrowser(duk_context *ctx, Entry *entry) {
   defineBrowserMethod(ctx, "getName", browser_getName, 0, sai);
   defineBrowserMethod(ctx, "getVersion", browser_getVersion, 0, sai);
   defineBrowserMethod(ctx, "print", browser_print, 1, sai);
+  defineBrowserMethod(ctx, "println", browser_print, 1, sai);
   defineBrowserMethod(ctx, "addRoute", browser_addRoute, 4, sai);
   defineBrowserMethod(ctx, "deleteRoute", browser_deleteRoute, 4, sai);
 
@@ -899,6 +1029,12 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       duk_put_prop_string(c, -2, kStashSaiKey);
       duk_pop(c);
       installBrowser(c, &entry);
+      // Field-type constructors and prototypes (19777-1 clause 7).
+      duk_eval_string(c, kFieldTypesPrelude);
+      duk_push_global_stash(c);
+      duk_insert(c, -2);
+      duk_put_prop_string(c, -2, kStashProtosKey);
+      duk_pop(c);
     });
 
     // Evaluate the source to define global functions. The top-level source runs

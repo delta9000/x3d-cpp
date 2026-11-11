@@ -121,6 +121,33 @@ XmlGraphBuilder::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     return writeProtoInstanceElement(inst, containerOverride);
   }
 
+  // An opaque unknown node re-emits exactly what the reader kept: authored
+  // attributes in order, its own containerField, character data and children.
+  if (auto unknown = std::dynamic_pointer_cast<runtime::UnknownNode>(node)) {
+    auto el = std::make_unique<xml::Element>();
+    el->name = unknown->typeName;
+    const std::string def = node->getDEF();
+    if (seen_.count(node.get())) {
+      el->setAttr("USE", def);
+      if (!containerOverride.empty())
+        el->setAttr("containerField", containerOverride);
+      return el;
+    }
+    if (!def.empty()) {
+      el->setAttr("DEF", def);
+      seen_.insert(node.get());
+    }
+    for (const auto &a : unknown->attributes)
+      el->setAttr(a.first, a.second);
+    if (!unknown->containerField.empty())
+      el->setAttr("containerField", unknown->containerField);
+    el->text = unknown->text;
+    for (const auto &c : unknown->children)
+      if (auto child = writeNodeElement(c.node, c.containerField))
+        el->children.push_back(std::move(child));
+    return el;
+  }
+
   const std::string typeName = node->nodeTypeName();
   auto el = std::make_unique<xml::Element>();
   el->name = typeName;
@@ -221,6 +248,15 @@ XmlGraphBuilder::writeNodeElement(const std::shared_ptr<X3DNode> &node,
     for (const FieldInfo *cf :
          x3d::codec::build::orderedChildFields(*node, scene_))
       writeNodeField(*el, node, *cf);
+  }
+
+  // Unknown-type children this node has no field for, kept by the reader.
+  if (scene_) {
+    auto oc = scene_->opaqueChildren.find(node.get());
+    if (oc != scene_->opaqueChildren.end())
+      for (const auto &c : oc->second)
+        if (auto child = writeNodeElement(c, ""))
+          el->children.push_back(std::move(child));
   }
 
   // Scene-level nested ProtoInstances: any un-expanded ProtoInstance whose

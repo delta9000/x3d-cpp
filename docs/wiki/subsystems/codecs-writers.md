@@ -111,6 +111,8 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 2. DEF/USE deduplication. Node identity (raw pointer) is tracked in an `unordered_set<const X3DNode *>`. The first emission of a shared node writes a `DEF`; all subsequent references emit a `USE` reference with no fields or children.
 3. PROTO / Inline round-trip redirect. Before emitting a node the writer checks `scene.expandedSources` (for expanded `ProtoInstance`s) and `scene.expandedInlines` (for expanded `Inline` nodes). If a match is found, the original captured source structure is re-emitted instead of the expansion, so the written output can be re-parsed to re-expand rather than serializing the expanded tree.
 
+Unknown nodes. `XmlGraphBuilder` re-emits a `runtime::UnknownNode` exactly as the XML reader kept it: authored attributes in order, its own `containerField`, character data and children, plus any entries in `Scene::opaqueChildren` for the parent. XML to XML conversion of a file with X3D 4.1 or extension nodes is therefore lossless and stable. The ClassicVRML and JSON writers have no schema for those attributes; they write only the type name and DEF (READ-UNKNOWN-NODE-PASSTHROUGH).
+
 The three ordinary writers emit the document's `profile` from `X3DDocument::profileToken()` (`runtime/X3DDocument.hpp`): the authored spelling when a reader preserved one, else the canonical name for the resolved `Profile`. An unknown/misspelled `profile=` token therefore round-trips unchanged instead of being silently rewritten to `Interchange` (DIAG-PROFILE-COERCE); the reader still resolves it to `Interchange` for profile-fit.
 
 The two XML writers use `XmlGraphBuilder` for scene traversal, Inline and

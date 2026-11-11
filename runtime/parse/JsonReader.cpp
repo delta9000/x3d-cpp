@@ -619,8 +619,11 @@ void JsonReader::readJsonProtoInstance(const json::Value &obj,
       }
       if (pv.nodeValue.empty()) {
         if (const json::Value *v = fv.member("@value")) {
-          if (decl)
-            pv.value = parseValue(decl->type, v->isString() ? v->str : jsonToWire(*v, decl->type));
+          if (decl) {
+            const std::string wire = v->isString() ? v->str : jsonToWire(*v, decl->type);
+            noteValueSyntax(inst.name, pv.name, decl->type, wire);
+            pv.value = parseValue(decl->type, wire);
+          }
           else if (v->isString())
             pv.value = v->str;
         }

@@ -151,6 +151,46 @@ inline void checkIndexedGeometryCoordIndex(const sdk::X3DDocument &doc,
 }
 
 // Collect parser diagnostics and semantic conformance checks in report order.
+// Check: ROUTE endpoints. A ROUTE naming a DEF that does not exist is skipped
+// silently by the runtime bridge; one with an unknown field, wrong access type
+// or mismatched field types is rejected. Both are errors in the document.
+// IMPORTed names may legitimately stay unresolved until their Inline loads.
+inline void checkRoutes(sdk::X3DDocument &doc, std::vector<Diag> &diags) {
+    using x3d::runtime::Route;
+    using x3d::runtime::RouteError;
+    auto &scene = doc.scene;
+    std::unordered_set<std::string> imported;
+    for (const auto &im : scene.imports)
+        imported.insert(im.as.empty() ? im.importedDEF : im.as);
+    auto label = [](const Route &r) {
+        return "ROUTE " + r.fromNode + "." + r.fromField + " TO " + r.toNode +
+               "." + r.toField;
+    };
+    scene.resolveRoutes();
+    for (const auto &r : scene.routes) {
+        if (r.binding != Route::Binding::DefNames) continue;
+        if (r.from.expired() && !imported.count(r.fromNode))
+            diags.push_back({"route", "error",
+                             label(r) + ": no node is DEF'd as '" + r.fromNode + "'"});
+        if (r.to.expired() && !imported.count(r.toNode))
+            diags.push_back({"route", "error",
+                             label(r) + ": no node is DEF'd as '" + r.toNode + "'"});
+    }
+    sdk::X3DExecutionContext ctx(scene.authorFields);
+    const auto result = x3d::runtime::buildRoutes(scene, ctx);
+    for (const auto &e : result.rejected) {
+        std::string where;
+        if (e.scope == RouteError::Scope::Scene && e.index < scene.routes.size())
+            where = label(scene.routes[e.index]);
+        else
+            where = std::string(e.scope == RouteError::Scope::ProtoBody
+                                    ? "PROTO body ROUTE #"
+                                    : "Inline ROUTE #") +
+                    std::to_string(e.index);
+        diags.push_back({"route", "error", where + ": " + e.reason});
+    }
+}
+
 inline void collectDiagnostics(const sdk::X3DDocument &doc, std::vector<Diag> &diags) {
     // 1. Range diagnostics.
     for (const auto &w : doc.rangeWarnings) {
@@ -171,9 +211,10 @@ inline void collectDiagnostics(const sdk::X3DDocument &doc, std::vector<Diag> &d
 
     // 3b. Reader-recovery diagnostics (unknown node element, coerced profile).
     for (const auto &w : doc.readerWarnings) {
-        const char *cat =
-            (w.kind == x3d::runtime::ReaderWarning::Kind::UnknownNode) ? "node"
-                                                                       : "profile";
+        using Kind = x3d::runtime::ReaderWarning::Kind;
+        const char *cat = w.kind == Kind::UnknownNode ? "node"
+                          : w.kind == Kind::Value     ? "value"
+                                                      : "profile";
         diags.push_back({cat, "warning", w.detail});
     }
 

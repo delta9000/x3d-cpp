@@ -120,6 +120,12 @@ public:
     order.push_back(field);
   }
 
+  // Unknown-type child nodes the parent has no field for (an X3D 4.1 <Tangent>
+  // under a 4.0 IndexedFaceSet): kept here, per parent, so the XML writers can
+  // re-emit them. See runtime::UnknownNode.
+  std::unordered_map<const X3DNode *, std::vector<std::shared_ptr<X3DNode>>>
+      opaqueChildren;
+
   // IMPORT / EXPORT statements.
   std::vector<Import> imports;
   std::vector<Export> exports;

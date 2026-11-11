@@ -8,6 +8,34 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Scripts can read and write node fields (SCRIPT-SFNODE-FIELD-ACCESS).** An
+  SFNode in a script exposes the node's fields as properties:
+  `target.translation.add(v)`, `target.translation = v`, `target.set_scale = v`.
+  Writes to another node go through the existing `directOutput` gate and throw
+  when it is `FALSE`. Works on Duktape (Proxy) and QuickJS (exotic class hooks).
+- **ECMAScript field-type objects (SCRIPT-FIELD-TYPE-OBJECTS).** Scripts can now
+  use the ISO/IEC 19777-1 constructors and methods: `new SFVec3f(1, 2, 3)`,
+  `a.add(b).cross(c)`, `v[0]`, `new SFRotation(from, to).multVec(v)`,
+  `color.setHSV(...)`, `new MFVec3f(...)`. Values a script receives carry the
+  same methods. Implemented once in `runtime/script/FieldTypesPrelude.hpp` for
+  both Duktape and QuickJS. `Browser.println` is an alias of `print`. Matrix
+  methods, string-constructed `SFNode` and the scene-building `Browser`
+  services are still missing (SCRIPT-BROWSER-SERVICES).
+- **Unknown nodes survive XML conversion (READ-UNKNOWN-NODE-PASSTHROUGH).** The
+  XML reader keeps an element of unknown type (an X3D 4.1 node, an extension, a
+  misspelling) as an opaque `runtime::UnknownNode` instead of discarding it, and
+  the XML and canonical XML writers re-emit it unchanged, children and DEF/USE
+  included. The runtime and extractor ignore it. ClassicVRML and JSON still
+  drop unknown nodes on read and write only the type name and DEF. Test:
+  `unknown_node_passthrough_test`.
+- **`x3d validate` checks values and ROUTEs (VALIDATE-VALUE-SYNTAX,
+  VALIDATE-ROUTES).** Readers record a `ReaderWarning{Kind::Value}` when they
+  coerce a malformed authored value: an unparsable number, a wrong SF tuple
+  arity, or a trailing partial MF tuple. `x3d validate` reports these as `value`
+  warnings. It also reports ROUTEs to an undefined DEF, and ROUTEs the runtime
+  bridge rejects, as `route` errors. The new `checkValueSyntax` helper in
+  `FieldValueIO.hpp` is usable on its own. Tests: `value_syntax_test`,
+  `x3d_validate_checks_test`.
 - **SAI SDK folded back in (`sai/`, ADR-0076).** The portable SAI provider
   contract, reference backend, kernel extensions, generator, register and docs
   moved here from the `x3d-sai` repository with their history. `sai/` stays a

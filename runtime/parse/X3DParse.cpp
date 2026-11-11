@@ -1,6 +1,7 @@
 #include "X3DParse.hpp"
 
 #include "ClassicVrmlReader.hpp"
+#include "FieldValueIO.hpp"
 #include "Inflate.hpp"
 #include "JsonReader.hpp"
 #include "PathConfine.hpp"
@@ -294,7 +295,14 @@ parseDocument(const std::string &text, Encoding hint,
   if (!reader)
     throw std::runtime_error(
         "parseDocument: could not determine X3D encoding from content");
-  runtime::X3DDocument doc = reader->readDocument(body);
+  std::vector<ValueDiagnostic> valueDiagnostics;
+  runtime::X3DDocument doc = [&] {
+    ValueDiagnosticScope valueScope(valueDiagnostics);
+    return reader->readDocument(body);
+  }();
+  for (const auto &d : valueDiagnostics)
+    doc.readerWarnings.push_back(
+        {runtime::ReaderWarning::Kind::Value, d.message()});
   validateUnits(doc);
   snapshotSourceProvenance(doc, baseUrl);
   // ADR-0033: drop any PROTO/EXTERNPROTO that reuses a built-in node name (the

@@ -9,6 +9,7 @@
 #include "QuickJsBackend.hpp"
 
 #include "DeterministicDate.hpp" // Date.now()/new Date() -> injected clock
+#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
 #include "DynamicField.hpp" // author-field store (mirrors EcmaScriptBackend §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -157,41 +158,61 @@ void setNum(JSContext *ctx, JSValue obj, const char *name, double v) {
   JS_SetPropertyStr(ctx, obj, name, JS_NewFloat64(ctx, v));  // consumes ref
 }
 
+// Global slot holding field-type name -> prototype (FieldTypesPrelude.hpp).
+// Defined read-only and non-configurable, so a script cannot swap the table.
+constexpr const char *kFieldProtosKey = "\x01x3dFieldProtos";
+
+// Give `o` the prototype of field type `type` (methods and index accessors)
+// and return it. A no-op when the prelude is not installed.
+JSValue adopt(JSContext *c, JSValue o, const char *type) {
+  if (!JS_IsObject(o)) return o;
+  JSValue global = JS_GetGlobalObject(c);
+  JSValue protos = JS_GetPropertyStr(c, global, kFieldProtosKey);
+  if (JS_IsObject(protos)) {
+    JSValue proto = JS_GetPropertyStr(c, protos, type);
+    if (JS_IsObject(proto)) JS_SetPrototype(c, o, proto);
+    JS_FreeValue(c, proto);
+  }
+  JS_FreeValue(c, protos);
+  JS_FreeValue(c, global);
+  return o;
+}
+
 JSValue pushSFVec2f(JSContext *c, const SFVec2f &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  return o;
+  return adopt(c, o, "SFVec2f");
 }
 JSValue pushSFVec2d(JSContext *c, const SFVec2d &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  return o;
+  return adopt(c, o, "SFVec2d");
 }
 JSValue pushSFVec3f(JSContext *c, const SFVec3f &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  setNum(c, o, "z", v.z); return o;
+  setNum(c, o, "z", v.z); return adopt(c, o, "SFVec3f");
 }
 JSValue pushSFVec3d(JSContext *c, const SFVec3d &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  setNum(c, o, "z", v.z); return o;
+  setNum(c, o, "z", v.z); return adopt(c, o, "SFVec3d");
 }
 JSValue pushSFVec4f(JSContext *c, const SFVec4f &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  setNum(c, o, "z", v.z); setNum(c, o, "w", v.w); return o;
+  setNum(c, o, "z", v.z); setNum(c, o, "w", v.w); return adopt(c, o, "SFVec4f");
 }
 JSValue pushSFVec4d(JSContext *c, const SFVec4d &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  setNum(c, o, "z", v.z); setNum(c, o, "w", v.w); return o;
+  setNum(c, o, "z", v.z); setNum(c, o, "w", v.w); return adopt(c, o, "SFVec4d");
 }
 JSValue pushSFColor(JSContext *c, const SFColor &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "r", v.r); setNum(c, o, "g", v.g);
-  setNum(c, o, "b", v.b); return o;
+  setNum(c, o, "b", v.b); return adopt(c, o, "SFColor");
 }
 JSValue pushSFColorRGBA(JSContext *c, const SFColorRGBA &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "r", v.r); setNum(c, o, "g", v.g);
-  setNum(c, o, "b", v.b); setNum(c, o, "a", v.a); return o;
+  setNum(c, o, "b", v.b); setNum(c, o, "a", v.a); return adopt(c, o, "SFColorRGBA");
 }
 JSValue pushSFRotation(JSContext *c, const SFRotation &v) {
   JSValue o = JS_NewObject(c); setNum(c, o, "x", v.x); setNum(c, o, "y", v.y);
-  setNum(c, o, "z", v.z); setNum(c, o, "angle", v.angle); return o;
+  setNum(c, o, "z", v.z); setNum(c, o, "angle", v.angle); return adopt(c, o, "SFRotation");
 }
 
 // Structured-SF poppers — read named numeric fields back off a JS object.
@@ -309,7 +330,7 @@ JSValue pushSFImage(JSContext *c, const SFImage &img) {
                          JS_NewFloat64(c, static_cast<double>(packed)));
   }
   JS_SetPropertyStr(c, obj, "array", arr);  // consumes arr
-  return obj;
+  return adopt(c, obj, "SFImage");
 }
 SFImage toSFImage(JSContext *c, JSValueConst obj) {
   SFImage img{0, 0, 0, {}};
@@ -625,6 +646,11 @@ std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
 
 // Impl — all QuickJS state lives here (keeps the header QuickJS-free).
 
+namespace {
+// Property hooks of the X3DNode handle class (defined with the Browser code).
+JSClassExoticMethods *nodeExoticMethods();
+} // namespace
+
 struct QuickJsBackend::Impl {
   // One loaded script's per-context state (the Duktape Entry model).
   struct Entry {
@@ -660,6 +686,7 @@ struct QuickJsBackend::Impl {
     JS_NewClassID(rt, &nodeClass);
     JSClassDef def{};
     def.class_name = "X3DNode";
+    def.exotic = nodeExoticMethods();
     JS_NewClass(rt, nodeClass, &def);
     JS_SetRuntimeOpaque(rt, reinterpret_cast<void *>(
                                 static_cast<uintptr_t>(nodeClass)));
@@ -833,6 +860,78 @@ JSValue browser_addRoute(JSContext *ctx, JSValueConst, int argc,
   return result;
 }
 
+// SFNode field access (ISO/IEC 19777-1: an SFNode's properties are the node's
+// fields), as exotic property hooks on the native X3DNode class. Same rules as
+// the Duktape Proxy traps: reads go through SaiContext::getField, writes
+// through SaiContext::setField (directOutput gate); unknown names read as
+// undefined, a write to an unknown or non-input field throws.
+JSValue node_get_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
+                          JSValueConst /*receiver*/) {
+  SaiContext *sai = saiOf(ctx);
+  SFNode node = extractNode(ctx, obj);
+  if (!sai || !node) return JS_UNDEFINED;
+  const char *name = JS_AtomToCString(ctx, atom);
+  if (!name) return JS_UNDEFINED;
+  JSValue out = JS_UNDEFINED;
+  try {
+    if (auto info = sai->fieldInfo(*node, name); info && info->get)
+      out = pushValue(ctx, info->get(*node), info->type);
+  } catch (const std::exception &) {
+    out = JS_UNDEFINED;  // retired context: reads as undefined
+  }
+  JS_FreeCString(ctx, name);
+  return out;
+}
+
+int node_set_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
+                      JSValueConst value, JSValueConst /*receiver*/,
+                      int /*flags*/) {
+  SaiContext *sai = saiOf(ctx);
+  SFNode node = extractNode(ctx, obj);
+  if (!sai || !node) {
+    JS_ThrowTypeError(ctx, "SFNode: INVALID_NODE (disposed node)");
+    return -1;
+  }
+  const char *name = JS_AtomToCString(ctx, atom);
+  if (!name) return -1;
+  int rc = 1;
+  try {
+    auto info = sai->fieldInfo(*node, name);
+    if (!info) {
+      JS_ThrowTypeError(ctx, "SFNode: INVALID_FIELD '%s' on %s", name,
+                        node->nodeTypeName().c_str());
+      rc = -1;
+    } else if (info->access != AccessType::InputOnly &&
+               info->access != AccessType::InputOutput) {
+      JS_ThrowTypeError(ctx, "SFNode: field '%s' is not writable at run time",
+                        name);
+      rc = -1;
+    } else {
+      std::any boxed = toValue(ctx, value, info->type);
+      if (JS_HasException(ctx)) {
+        rc = -1;
+      } else {
+        sai->setField(node.get(), info->x3dName, std::move(boxed));
+      }
+    }
+  } catch (const std::exception &e) {
+    JS_ThrowTypeError(ctx, "SFNode: %s", e.what());
+    rc = -1;
+  }
+  JS_FreeCString(ctx, name);
+  return rc;
+}
+
+JSClassExoticMethods *nodeExoticMethods() {
+  static JSClassExoticMethods m = [] {
+    JSClassExoticMethods e{};
+    e.get_property = node_get_property;
+    e.set_property = node_set_property;
+    return e;
+  }();
+  return &m;
+}
+
 JSValue browser_deleteRoute(JSContext *ctx, JSValueConst, int argc,
                             JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
@@ -906,10 +1005,25 @@ void installBrowser(JSContext *ctx) {
   defineBrowserMethod(ctx, browser, "getName", browser_getName, 0);
   defineBrowserMethod(ctx, browser, "getVersion", browser_getVersion, 0);
   defineBrowserMethod(ctx, browser, "print", browser_print, 1);
+  defineBrowserMethod(ctx, browser, "println", browser_print, 1);
   defineBrowserMethod(ctx, browser, "addRoute", browser_addRoute, 4);
   defineBrowserMethod(ctx, browser, "deleteRoute", browser_deleteRoute, 4);
 
   JS_SetPropertyStr(ctx, global.get(), "Browser", browser);  // consumes browser
+}
+
+// Field-type constructors and prototypes (19777-1 clause 7). Returns false if
+// the prelude itself failed (out of memory under a tight cap).
+bool installFieldTypes(JSContext *ctx) {
+  JSValue protos = JS_Eval(ctx, kFieldTypesPrelude, std::strlen(kFieldTypesPrelude),
+                           "<field-types>", JS_EVAL_TYPE_GLOBAL);
+  if (JS_IsException(protos)) {
+    logException(ctx, "field types");
+    return false;
+  }
+  JsValue global(ctx, JS_GetGlobalObject(ctx));
+  JS_DefinePropertyValueStr(ctx, global.get(), kFieldProtosKey, protos, 0);
+  return true;
 }
 
 } // namespace
@@ -958,6 +1072,10 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
   JS_SetContextOpaque(ctx, &sai);
   installBrowser(ctx);
   installDeterministicDate(ctx);
+  if (!installFieldTypes(ctx)) {
+    JS_FreeContext(ctx);
+    return kInvalidScriptHandle;
+  }
 
   // Evaluate the source to define global functions (initialize/handlers/...).
   JsValue result(ctx, JS_Eval(ctx, source.c_str(), source.size(),
