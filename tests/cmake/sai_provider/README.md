@@ -1,16 +1,16 @@
 # Unified native/reference SAI provider proof
 
-The optional companion in `adapters/sai_provider` implements the shared final
+The native provider in `adapters/sai_provider` implements the shared final
 `provider::service` through one owned native backend. The same scene/context/
 node/field handles work during generic setup and after runtime activation.
 This is bounded experimental evidence, not complete ISO SAI conformance.
 
-Requirements: C++20, CMake 3.24+, Ninja and the independent x3d-sai source tree.
-No repository is fetched and ordinary x3d-cpp builds gain no SAI dependency.
+Requirements: C++20, CMake 3.24+ and Ninja. The SAI source defaults to `sai/`.
+Nothing is fetched, and ordinary x3d-cpp builds gain no SAI dependency.
 
 ```sh
-bash scripts/verify_sai_provider.sh /path/to/x3d-sai /empty/work/directory
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_provider.sh /path/to/x3d-sai /another/empty/directory
+bash scripts/verify_sai_provider.sh sai /empty/work/directory
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_provider.sh sai /another/empty/directory
 ```
 
 Each shared/static run builds source consumers, installs both projects and the

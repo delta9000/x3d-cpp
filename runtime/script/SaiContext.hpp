@@ -6,11 +6,11 @@
 //
 // Every value crossing this surface is the runtime's own
 // std::any field representation, never a scripting-language object.
-// This is x3d-cpp's legacy Script-backend API, not an implementation of, or
-// adapter to, the independent x3d-sai experimental semantic kernel. Its node
-// pointers, field values, lifetime and event rules belong to this runtime.
-// A future kernel adapter must explicitly translate those contracts; including
-// both libraries does not connect their scenes or establish SAI conformance.
+// This is the runtime's Script-backend API. It is separate from the SAI SDK's
+// portable provider contract (sai/, served natively by adapters/sai_provider):
+// its node pointers, field values, lifetime and event rules belong to this
+// runtime and are not portable provider handles. Including both libraries does
+// not connect a Script's context to a provider service.
 //
 // directOutput / addRoute / deleteRoute gates (spec-checked, §29.2.6 + §29.4.1):
 //   - getField(node, name)        : always permitted (read access is unconditional).

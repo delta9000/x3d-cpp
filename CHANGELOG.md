@@ -36,12 +36,15 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   bridge rejects, as `route` errors. The new `checkValueSyntax` helper in
   `FieldValueIO.hpp` is usable on its own. Tests: `value_syntax_test`,
   `x3d_validate_checks_test`.
-- **Pinned x3d-sai and an adapter CI gate.** `adapters/sai_provider/x3d-sai.rev`
-  records the x3d-sai commit the native provider builds against.
-  `scripts/verify_sai_provider.sh` refuses checkouts that lack it
-  (`X3D_SAI_ALLOW_UNPINNED=1` overrides), and the new `sai-adapter` CI job runs
-  the provider proof against the pin. Changes under `adapters/` now classify as
-  `cpp`. The job needs the `X3D_SAI_READ_TOKEN` repository secret.
+- **SAI SDK folded back in (`sai/`, ADR-0076).** The portable SAI provider
+  contract, reference backend, kernel extensions, generator, register and docs
+  moved here from the `x3d-sai` repository with their history. `sai/` stays a
+  separate CMake project and uv package; the runtime build does not add it.
+  New `mise run sai-*` tasks (`sai-ci` is part of `ci`, `sai-provider` of
+  `ci-all`), and CI jobs `sai` and `sai-adapter` build the SDK and the native
+  provider against it on every C++ or SAI change. `verify_sai_provider.sh` and
+  `verify_sai_coexistence.sh` default their SAI source to `sai/`.
+
 - **Authored fog depths (`FogCoordinate`, §24.4.3, REQ-LOCALFOG).**
   `MeshData::fogDepths` carries a geometry's `fogCoord` depth for every emitted
   vertex (composed, line and point sets and `ElevationGrid`; a short list

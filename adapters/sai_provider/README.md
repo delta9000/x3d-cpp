@@ -1,20 +1,20 @@
-# Experimental native SAI provider
+# Native SAI provider
 
-This optional package implements the portable SAI provider service over native
-x3d-cpp state. See the [provider reference](../../docs/wiki/subsystems/sai-provider.md)
+This optional package implements the SAI SDK's portable provider service
+([`sai/`](../../sai/README.md)) over native x3d-cpp state. See the [provider reference](../../docs/wiki/subsystems/sai-provider.md)
 for ownership, activation, and the supported node subset.
 
 ## Build and use
 
-Use the current x3d-sai provider contract with targets `x3d::sai` and
-`x3d::sai_reference_provider`. Older checkouts exposing only `x3d::sai_metadata`
-or separate offline/hosted frontends are incompatible. Keep both repository
-revisions with your build; this experimental source contract has no stable ABI.
+It builds against the SAI SDK in `sai/` (targets `x3d::sai` and
+`x3d::sai_reference_provider`). The contract lives in the `experimental`
+namespace and has no stable ABI, so build the SDK, runtime and adapter from the
+same x3d-cpp revision.
 
 From the x3d-cpp root, build each package into one prefix with the same compiler:
 
 ```sh
-sai_source=/path/to/x3d-sai
+sai_source="$PWD/sai"
 sai_prefix="$PWD/install-sai"
 cmake -S "$sai_source" -B build/sai-package -G Ninja \
   -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX="$sai_prefix"
@@ -41,9 +41,9 @@ target_link_libraries(my_host PRIVATE x3d_cpp::sai_provider)
 Include `<x3d/sai_provider.hpp>` and call `native::make_service()`; ordinary work
 then uses `provider::service`. The [host example](../../examples/sai_host/README.md)
 shows a complete run and an alternative source build using explicit paths to
-both checkouts. It also demonstrates the optional native presentation feed.
+the runtime and `sai/`. It also demonstrates the optional native presentation feed.
 For backend-independent lifecycle rules, use the SAI
-[portable contract](https://github.com/delta9000/x3d-sai/blob/main/docs/portable-contract.md).
+[portable contract](../../sai/docs/portable-contract.md).
 
 ## Adopt a host session
 
@@ -99,10 +99,8 @@ activation and is not a view of the live session. Applications read live fields
 and observe notifications through the portable service. The immutable
 `render_feed` supplies native world transforms and mesh placements.
 
-Run `mise run sai-provider /path/to/x3d-sai /empty/work/directory` from the
-x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`). The checkout
-must contain the x3d-sai commit pinned in [`x3d-sai.rev`](x3d-sai.rev); CI runs
-the same check against that pin.
+Run `mise run sai-provider` (or `mise run sai-provider sai /empty/work/directory`)
+from the x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`).
 Set X3D_CPP_SHARED_NODES=ON or OFF for shared/static native node packages.
 The harness checks common authoring/live conformance, native storage/containment
 and runtime evidence, cross-backend report parity, reference-free native link

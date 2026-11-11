@@ -1,11 +1,12 @@
 """Runtime reflection parity: shipped C++ FieldInfo tables vs. a fresh UOM parse.
 
-Historically this equivalence was checked at RUNTIME in the (now-split-out)
-SAI kernel's test suite: it called `X3DNodeFactory::create(name)->fields()`
-and compared the live-reflected FieldTable against a generated
+Historically this equivalence was checked at RUNTIME in the SAI kernel's
+test suite: it called `X3DNodeFactory::create(name)->fields()` and compared
+the live-reflected FieldTable against a generated
 `X3DSemanticMetadataRegistry` catalog, field-by-field (x3dName / type /
-access, in declaration order). That registry has moved to the sister repo
-and is not coming back to x3d-cpp.
+access, in declaration order). That registry belongs to the SAI SDK (sai/,
+ADR-0076), whose generator and test build are deliberately separate from the
+runtime's, so the runtime-side check lives here.
 
 This test re-establishes the check from what x3d-cpp still owns:
 

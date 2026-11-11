@@ -237,12 +237,12 @@ echo "wrote docs/videos/demos/kelp_flythrough.webm + docs/images/gallery/anim-ke
 """
 
 [tasks.ci]
-description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, the opt-in ext build, corpus regressions, and authoring symbols."
-depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "build-ext", "cli-gate-regression", "authoring-footprint"]
+description = "Run Python tests (including golden drift), conformance and doc-command checks, C++ contracts, the opt-in ext build, corpus regressions, authoring symbols, and the SAI SDK gates."
+depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "build-ext", "cli-gate-regression", "authoring-footprint", "sai-ci"]
 
 [tasks.ci-all]
-description = "Run ci plus the sanitizer suite and CPU/OpenGL example gates."
-depends = ["ci", "build-san", "validate-examples"]
+description = "Run ci plus the sanitizer suite, CPU/OpenGL example gates, and the native SAI provider proof."
+depends = ["ci", "build-san", "validate-examples", "sai-provider"]
 
 [tasks.doc-ctest-gate]
 description = "Doc ctest-command gate: every `ctest -R x3d_*` in docs/wiki must match a real add_test(NAME …) target (doctest case names are not ctest targets)."
@@ -261,12 +261,88 @@ description = "SAI service register gate: validate docs/conformance/sai-services
 run = "uv run python scripts/check_sai_services.py"
 
 [tasks.sai-coexistence]
-description = "Check independent source + relocated SAI/runtime consumers; pass the x3d-sai checkout and optional empty work directory."
+description = "Check source + relocated runtime/SAI SDK consumers in every header and link order. Optional args: SAI source (default sai/) and an empty work directory."
 run = "bash scripts/verify_sai_coexistence.sh"
 
 [tasks.sai-provider]
-description = "Check native/reference provider behavior and relocated host; pass the x3d-sai checkout and optional empty work directory."
+description = "Check native/reference provider parity, relocated packages and the ordinary host. Optional args: SAI source (default sai/) and an empty work directory."
 run = "bash scripts/verify_sai_provider.sh"
+
+# --- SAI SDK (sai/) ---------------------------------------------------------
+# sai/ is its own CMake project and uv package (x3d-sai-gen). These tasks run
+# inside it; its build tree defaults to sai/build.
+
+[tasks.sai-build]
+description = "Configure and build the SAI SDK (sai/): frontend, reference backend, kernel extensions and tests."
+dir = "{{config_root}}/sai"
+run = 'cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build "${X3D_SAI_BUILD_DIR:-build}" --parallel 3'
+
+[tasks.sai-ctest]
+description = "Run the SAI SDK's CTest suite (after sai-build), rejecting doctest filters that select no cases."
+dir = "{{config_root}}/sai"
+run = 'uv run python scripts/check_ctest_selection.py "${X3D_SAI_BUILD_DIR:-build}" && ctest --test-dir "${X3D_SAI_BUILD_DIR:-build}" --output-on-failure'
+
+[tasks.sai-hello]
+description = "Build and run the ordinary SAI provider example (sai/examples/provider_scene.cpp)."
+dir = "{{config_root}}/sai"
+run = """
+cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build "${X3D_SAI_BUILD_DIR:-build}" --target x3d_sai_provider_scene --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+"${X3D_SAI_BUILD_DIR:-build}/x3d_sai_provider_scene"
+"""
+
+[tasks.sai-baseline]
+description = "Regenerate sai/docs/conformance/SAI-BASELINE.md from the SAI service and invariant YAML registers."
+dir = "{{config_root}}/sai"
+run = "uv run python scripts/sai_conformance.py generate"
+
+[tasks.sai-conformance-gate]
+description = "Validate the SAI SDK's service and invariant registers, their cross-links, and generated baseline drift."
+dir = "{{config_root}}/sai"
+run = "uv run python scripts/check_sai_services.py"
+
+[tasks.sai-invariants]
+description = "Validate the SAI semantic invariant registry, service cross-links, and generated coverage view."
+dir = "{{config_root}}/sai"
+run = "uv run python scripts/check_sai_invariants.py"
+
+[tasks.sai-conformance]
+description = "Opt-in convergence report: lists every registered SAI service and falsification test that is not yet complete; exits non-zero until all are."
+dir = "{{config_root}}/sai"
+run = "uv run python scripts/check_sai_services.py --strict"
+
+[tasks.sai-gen]
+description = "Regenerate the SAI bindings and semantic catalog (sai/generated_cpp_bindings) from the SAI SDK's vendored UOM."
+dir = "{{config_root}}/sai"
+run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings"
+
+[tasks.sai-gen-determinism]
+description = "Fail if the SAI generated bindings drift from the SAI generator, without rewriting files."
+dir = "{{config_root}}/sai"
+run = "uv run python -m x3d_sai_gen.cli --check"
+
+[tasks.sai-uom-pin]
+description = "Fail if the SAI SDK's vendored UOM drifted from its recorded SHA-256."
+dir = "{{config_root}}/sai"
+run = "uv run python -m x3d_sai_gen.cli --check-uom-only"
+
+[tasks.sai-pytest]
+description = "Run the SAI generator and register test suite (sai/tests/*.py)."
+dir = "{{config_root}}/sai"
+run = "uv run pytest tests/ -q"
+
+[tasks.sai-ci]
+description = "SAI SDK blocking gates: UOM pin, generator determinism, registers, generator pytest, C++ build and ctest."
+# Sequential on purpose: these steps share sai/.venv and one build directory.
+run = """
+mise run sai-uom-pin
+mise run sai-gen-determinism
+mise run sai-conformance-gate
+mise run sai-invariants
+mise run sai-pytest
+mise run sai-build
+mise run sai-ctest
+"""
 
 [tasks.corpus-fetch]
 description = "Fetch the X3D test corpus (curated subset + Inline/EXTERNPROTO deps) from web3d.org into .x3d-corpus/ (or $X3D_CORPUS_DIR). ~9MB, seconds. Makes the corpus gates runnable."

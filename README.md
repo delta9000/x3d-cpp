@@ -129,6 +129,13 @@ mise run cpuraster
 build-cpuraster/examples/cpu_raster/x3d_cpu_raster scene.x3d -o scene.png
 ```
 
+### 4. Drive a scene through the SAI
+
+[`sai/`](sai/README.md) is a portable C++20 Scene Access Interface: one
+`provider::service` contract with a reference backend, and a
+[native backend](adapters/sai_provider/README.md) that runs this runtime. Try
+it with `mise run sai-hello`, or see the [headless SAI host](examples/sai_host/).
+
 ## Generating the C++ bindings
 
 Bindings are committed; consumers do not need the generator. To regenerate:

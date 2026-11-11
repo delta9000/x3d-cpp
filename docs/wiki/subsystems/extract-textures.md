@@ -115,7 +115,7 @@ Texture projectors (§42,). `SceneExtractor::projectors()` returns one world-res
 
 MultiTexture stage combining (§18.4.3,). `MaterialSystem::appendSlot` retains stage controls and channel identity. The CPU combines every Table 18.3 mode, including BLEND*, DOTPRODUCT3 and MODULATEALPHA/MODULATEINV operations, with separate RGB/alpha mode tokens. `source` replaces Arg2 with DIFFUSE, SPECULAR or FACTOR, and `function` transforms the operation result. Each stage and each ordinary material texture slot samples its own mapped/generated coordinates and derivatives. Unlit Appearance textures are consumed through the Emissive slot. The OpenGL PoC runs the same combiner in GLSL (`examples/poc_renderer/shaders/multitexture.glsl`) for up to eight stages over UV sets 0-7, with a coordinate mapping (UV set or generator) per stage and per material slot in `shaders/texgen.glsl`. It drops to four stages when the context has fewer than 20 fragment texture image units, and binds one cube map per material. `multitexture_gl_test.py` covers it.
 
-The published table is inconsistent for REPLACE and SELECTARG2. The CPU takes REPLACE as the stage texture (Arg1) and SELECTARG2 as the previous result (Arg2), following their described operation meanings. The reference-host tests use hand-computed expected values for these choices.
+Table 18.3's entries for REPLACE and SELECTARG2 can be read two ways. The CPU takes REPLACE as the stage texture (Arg1) and SELECTARG2 as the previous result (Arg2), following their described operation meanings. The reference-host tests use hand-computed expected values for these choices.
 
 Lights
 

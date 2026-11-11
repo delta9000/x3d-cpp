@@ -3,8 +3,8 @@ project(x3d_cpp_sai VERSION 0.1.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# Explicit opt-in companion package. Ordinary x3d-cpp builds do not include it,
-# find x3d-sai, fetch another repository, or acquire a new dependency.
+# Explicit opt-in package. Ordinary x3d-cpp builds do not include it or the SAI
+# SDK (sai/), and nothing is fetched.
 if(NOT TARGET x3d_cpp::x3d_cpp)
     find_package(x3d_cpp CONFIG REQUIRED)
 endif()

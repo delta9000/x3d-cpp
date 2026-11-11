@@ -1,28 +1,18 @@
 #!/usr/bin/env bash
-# Bounded independent-provider proof, not complete ISO SAI conformance.
-# Normal builds never fetch or depend on the independent x3d-sai repository.
+# Native provider proof against the SAI SDK: reference/native parity, source
+# build, relocated install and the ordinary host consumer. This is bounded
+# provider evidence, not complete ISO SAI conformance. The SAI source defaults
+# to this checkout's sai/ directory.
 set -euo pipefail
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <provider-enabled-x3d-sai-source> [empty-work-dir]" >&2
+if [ "$#" -gt 2 ]; then
+  echo "usage: $0 [sai-source (default: sai/)] [empty-work-dir]" >&2
   exit 2
 fi
 cpp="$(cd "$(dirname "$0")/.." && pwd)"
-sai="$(cd "$1" && pwd)"
+sai="$(cd "${1:-$cpp/sai}" && pwd)"
 if [ ! -f "$sai/include/x3d/sai/experimental/provider.hpp" ]; then
-  echo "x3d-sai checkout does not contain the provider contract" >&2
+  echo "SAI source does not contain the provider contract: $sai" >&2
   exit 2
-fi
-# adapters/sai_provider/x3d-sai.rev names the oldest x3d-sai commit the adapter
-# builds against. A git checkout must contain it; X3D_SAI_ALLOW_UNPINNED=1 skips
-# the check for deliberate experiments against another revision.
-pin="$(tr -d '[:space:]' < "$cpp/adapters/sai_provider/x3d-sai.rev")"
-if [ "${X3D_SAI_ALLOW_UNPINNED:-0}" != 1 ] && git -C "$sai" rev-parse --git-dir >/dev/null 2>&1; then
-  if ! git -C "$sai" merge-base --is-ancestor "$pin" HEAD 2>/dev/null; then
-    echo "x3d-sai checkout ($(git -C "$sai" rev-parse --short HEAD)) does not contain the pinned revision $pin" >&2
-    echo "check out $pin or newer, or set X3D_SAI_ALLOW_UNPINNED=1" >&2
-    exit 2
-  fi
-  echo "x3d-sai $(git -C "$sai" rev-parse --short HEAD) contains pin ${pin:0:12}"
 fi
 if [ "$#" -eq 2 ]; then
   mkdir -p "$2"
@@ -34,7 +24,7 @@ if [ "$#" -eq 2 ]; then
 else
   work="$(mktemp -d "${TMPDIR:-/tmp}/x3d-sai-provider.XXXXXX")"
 fi
-echo "Independent provider proof: $work"
+echo "SAI provider proof: $work"
 jobs="${CMAKE_BUILD_PARALLEL_LEVEL:-2}"
 shared="${X3D_CPP_SHARED_NODES:-ON}"
 source="$work/source-build"
@@ -52,11 +42,11 @@ check_native_link() {
   command="$(ninja -C "$build" -t commands "$target" | tail -1)"
   printf '%s\n' "$command" > "$build/${target}-link-command.txt"
   if [[ "$command" != *"-o $target"* ]]; then
-    echo "could not identify the independent native executable's link command" >&2
+    echo "could not identify the native executable's link command" >&2
     exit 1
   fi
   if grep -E 'sai_experimental|sai_reference|sai_metadata' "$build/${target}-link-command.txt"; then
-    echo "independent native provider links the SAI reference implementation" >&2
+    echo "native provider links the SAI reference implementation" >&2
     exit 1
   fi
 }

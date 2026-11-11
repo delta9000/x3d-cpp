@@ -24,7 +24,7 @@ cover their fixtures, not every X3D obligation. Conformance status belongs in
 | GeoProjection | Frozen mathematical interface; context-owned | Built-in ellipsoid conversion; optional PROJ | `x3d_geometry_scene` (`geo_projection_test.cpp`), `x3d_proj_geo_swap` |
 | MovieDecoder | Stable callback | Optional pl_mpeg MPEG-1 | `x3d_movie_tests` |
 | RenderDelta | Experimental in-process feed | CPU, OpenGL, SVG, and native-host examples | `x3d_native_host_contract` and example suites |
-| Portable SAI provider | Experimental source-level contract | Native provider; x3d-sai reference bindings | `sai_provider_reference`, `sai_provider_native_runtime`, `sai_provider_presentation`, `sai_provider_adopt_session` |
+| Portable SAI provider | Experimental source-level contract | Native provider; SAI SDK reference backend (`sai/`) | `sai_provider_reference`, `sai_provider_native_runtime`, `sai_provider_presentation`, `sai_provider_adopt_session` |
 
 ## ScriptEngine
 
@@ -104,9 +104,10 @@ differs. See [ADR-0069](decisions/0069-selection-deltas-and-cheap-ticks.md).
 
 ## Portable SAI provider
 
-The native provider is checked against the x3d-sai reference provider
-(`sai_provider_reference`) and runs the shared x3d-sai named-node discovery
-checks (`sai_provider_native_runtime`). It also supplies presentation
+The native provider is checked against the [SAI SDK](subsystems/sai-sdk.md)'s
+reference provider (`sai_provider_reference`) and runs the SDK's shared
+named-node discovery checks (`sai_provider_native_runtime`). CI runs these on
+every C++ or SAI change (the `sai-adapter` job). It also supplies presentation
 materials and placement-keyed frame deltas (`sai_provider_presentation`),
 adoption of a prepared, unticked `RuntimeSession` (`sai_provider_adopt_session`),
 and queued live ROUTE addition. The provider defines no stable binary ABI. See
