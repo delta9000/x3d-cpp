@@ -11,8 +11,8 @@ import pytest
 from x3d_sai_gen.emit.sai_bindings import gen_sai_node_binding
 from x3d_sai_gen.emit.semantic_fields import resolved_node_fields
 from x3d_sai_gen.emit.semantic_metadata import gen_semantic_metadata_source
-from x3d_sai_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
-from x3d_sai_gen.parser import (
+from x3d_cpp_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
+from x3d_cpp_gen.parser import (
     build_dependency_graph,
     parse_x3d_model,
 )
@@ -20,7 +20,7 @@ from x3d_sai_gen.parser import (
 
 @pytest.fixture(scope="module")
 def model():
-    spec = files("x3d_sai_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
+    spec = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
     nodes, skipped = parse_x3d_model(str(spec), FIELD_TYPE_MAPPING, XS_TYPES)
     assert not skipped
     return nodes, build_dependency_graph(nodes)

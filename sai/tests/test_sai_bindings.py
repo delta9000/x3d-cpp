@@ -5,9 +5,9 @@ from importlib.resources import files
 
 import pytest
 
-from x3d_sai_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
-from x3d_sai_gen.model.types import X3DType
-from x3d_sai_gen.parser import (
+from x3d_cpp_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
+from x3d_cpp_gen.model.types import X3DType
+from x3d_cpp_gen.parser import (
     build_dependency_graph,
     parse_enum_definitions,
     parse_x3d_model,
@@ -20,7 +20,7 @@ from x3d_sai_gen.emit.sai_bindings import (
 )
 
 
-SPEC = files("x3d_sai_gen").joinpath(
+SPEC = files("x3d_cpp_gen").joinpath(
     "data", "X3dUnifiedObjectModel-4.0.xml"
 )
 

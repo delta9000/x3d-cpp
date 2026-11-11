@@ -16,6 +16,9 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   `ci-all`), and CI jobs `sai` and `sai-adapter` build the SDK and the native
   provider against it on every C++ or SAI change. `verify_sai_provider.sh` and
   `verify_sai_coexistence.sh` default their SAI source to `sai/`.
+  The SAI generator (`x3d-sai-gen`) now imports the UOM parser, type model and
+  field descriptors from `x3d-cpp-gen` instead of carrying a fork of them, and
+  reads the runtime generator's vendored UOM. Its generated files are unchanged.
 
 - **Authored fog depths (`FogCoordinate`, §24.4.3, REQ-LOCALFOG).**
   `MeshData::fogDepths` carries a geometry's `fogCoord` depth for every emitted

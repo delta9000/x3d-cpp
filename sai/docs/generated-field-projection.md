@@ -63,7 +63,7 @@ The following are known gaps, not properties established by catalog parity:
   no inferred overlay or new completeness claim is introduced here.
 
 Source evidence is the vendored
-[`X3dUnifiedObjectModel-4.0.xml`](../src/x3d_sai_gen/data/X3dUnifiedObjectModel-4.0.xml),
+[`X3dUnifiedObjectModel-4.0.xml`](../../src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml),
 especially X3DNode's descriptions of DEF/USE/IS/class/id/style and the separate
 FontStyle/ScreenFontStyle style declarations. The projection policy is in
 [`semantic_fields.py`](../src/x3d_sai_gen/emit/semantic_fields.py); the remaining

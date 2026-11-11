@@ -20,6 +20,8 @@ class X3DField:
     description: Optional[str] = None
     min_inclusive: Optional[str] = None
     max_inclusive: Optional[str] = None
+    min_exclusive: Optional[str] = None
+    max_exclusive: Optional[str] = None
     base_type: Optional[str] = None
     acceptable_node_types: Optional[List[str]] = None
     inherited_from: Optional[str] = None
@@ -87,6 +89,8 @@ def _parse_fields(node_element, field_type_mapping: dict, xs_types: dict,
             description=field.get('description', ''),
             min_inclusive=field.get('minInclusive'),
             max_inclusive=field.get('maxInclusive'),
+            min_exclusive=field.get('minExclusive'),
+            max_exclusive=field.get('maxExclusive'),
             base_type=field.get('baseType'),
             acceptable_node_types=field.get('acceptableNodeTypes').split('|')
                 if field.get('acceptableNodeTypes') else None,

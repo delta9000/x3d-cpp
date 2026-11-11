@@ -5,6 +5,8 @@ description = "Generator for the experimental C++ X3D SAI semantic kernel"
 requires-python = ">=3.11"
 authors = [{ name = "Ben Sandbrook", email = "sandbrookvt@gmail.com" }]
 dependencies = [
+    # The shared UOM front end (parser, type model, descriptors) and vendored UOM.
+    "x3d-cpp-gen",
     "lxml>=5.0",
     "pyyaml>=6.0",
 ]
@@ -21,6 +23,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/x3d_sai_gen"]
+
+[tool.uv.sources]
+x3d-cpp-gen = { path = "..", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -312,7 +312,7 @@ dir = "{{config_root}}/sai"
 run = "uv run python scripts/check_sai_services.py --strict"
 
 [tasks.sai-gen]
-description = "Regenerate the SAI bindings and semantic catalog (sai/generated_cpp_bindings) from the SAI SDK's vendored UOM."
+description = "Regenerate the SAI bindings and semantic catalog (sai/generated_cpp_bindings) from the vendored UOM."
 dir = "{{config_root}}/sai"
 run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings"
 
@@ -322,7 +322,7 @@ dir = "{{config_root}}/sai"
 run = "uv run python -m x3d_sai_gen.cli --check"
 
 [tasks.sai-uom-pin]
-description = "Fail if the SAI SDK's vendored UOM drifted from its recorded SHA-256."
+description = "Fail if the vendored UOM drifted from the SAI SDK's recorded SHA-256."
 dir = "{{config_root}}/sai"
 run = "uv run python -m x3d_sai_gen.cli --check-uom-only"
 

@@ -10,57 +10,9 @@ from x3d_cpp_gen.emit.defaults import (  # noqa: F401
     tokenize_mfstring, cpp_string_literal,
 )
 
-# Mapping from X3D field types to C++ types
-FIELD_TYPE_MAPPING = {
-    # Single-value types
-    "SFBool": "bool",
-    "SFColor": "SFColor",
-    "SFColorRGBA": "SFColorRGBA",
-    "SFDouble": "double",
-    "SFFloat": "float",
-    "SFImage": "SFImage",
-    "SFInt32": "int",
-    "SFMatrix3d": "SFMatrix3d",
-    "SFMatrix3f": "SFMatrix3f",
-    "SFMatrix4d": "SFMatrix4d",
-    "SFMatrix4f": "SFMatrix4f",
-    "SFNode": "std::shared_ptr<X3DNode>",
-    "SFRotation": "SFRotation",
-    "SFString": "std::string",
-    "SFTime": "double",
-    "SFVec2d": "SFVec2d",
-    "SFVec2f": "SFVec2f",
-    "SFVec3d": "SFVec3d",
-    "SFVec3f": "SFVec3f",
-    "SFVec4d": "SFVec4d",
-    "SFVec4f": "SFVec4f",
-    # Multi-value types
-    "MFBool": "std::vector<bool>",
-    "MFColor": "std::vector<SFColor>",
-    "MFColorRGBA": "std::vector<SFColorRGBA>",
-    "MFDouble": "std::vector<double>",
-    "MFFloat": "std::vector<float>",
-    "MFImage": "std::vector<SFImage>",
-    "MFInt32": "std::vector<int>",
-    "MFMatrix3d": "std::vector<SFMatrix3d>",
-    "MFMatrix3f": "std::vector<SFMatrix3f>",
-    "MFMatrix4d": "std::vector<SFMatrix4d>",
-    "MFMatrix4f": "std::vector<SFMatrix4f>",
-    "MFNode": "std::vector<std::shared_ptr<X3DNode>>",
-    "MFRotation": "std::vector<SFRotation>",
-    "MFString": "std::vector<std::string>",
-    "MFTime": "std::vector<double>",
-    "MFVec2d": "std::vector<SFVec2d>",
-    "MFVec2f": "std::vector<SFVec2f>",
-    "MFVec3d": "std::vector<SFVec3d>",
-    "MFVec3f": "std::vector<SFVec3f>",
-    "MFVec4d": "std::vector<SFVec4d>",
-    "MFVec4f": "std::vector<SFVec4f>",
-}
+# Mapping from X3D field types to C++ types (shared with the SAI generator).
+from x3d_cpp_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES  # noqa: F401
 
-XS_TYPES = {
-    "xs:NMTOKEN": ("xs_nmtoken","std::string"),
-}
 
 # Special structs to generate
 SPECIAL_STRUCTS = [
@@ -375,7 +327,6 @@ def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
     backend = CppHeaderBackend(templates_dir=templates_dir,
                                clang_format=clang_format, enum_defs=enum_defs)
     backend.emit(nodes, dependency_graph, output_dir)
-
 
 
 def _assertable_default_fields(node, enum_defs=None):

@@ -4,8 +4,8 @@ The parser preserves the UOM's encoding and host/document attributes. This
 module is the narrower runtime boundary; see docs/generated-field-projection.md.
 """
 
-from x3d_sai_gen.emit.descriptors import build_reflection_descriptors
-from x3d_sai_gen.parser import get_own_fields
+from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors
+from x3d_cpp_gen.parser import get_own_fields
 
 
 def wire_name(field):

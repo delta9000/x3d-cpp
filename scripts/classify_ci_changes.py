@@ -48,8 +48,14 @@ SAI_PATTERNS = (
     r"^examples/sai_host/",
     r"^tests/cmake/sai_(?:provider|coexistence)/",
     r"^scripts/verify_sai_(?:provider|coexistence)\.sh$",
-    # sai/'s generator reads this UOM through a symlink.
+    # sai/'s generator imports the runtime generator's UOM front end
+    # (parser, type model, descriptors) and reads its vendored UOM.
+    r"^src/x3d_cpp_gen/(?:__init__|parser|fieldtypes)\.py$",
+    r"^src/x3d_cpp_gen/model/",
+    r"^src/x3d_cpp_gen/emit/(?:__init__|descriptors|defaults|naming|registry)\.py$",
     r"^src/x3d_cpp_gen/data/X3dUnifiedObjectModel-",
+    # sai/uv.lock records x3d-cpp-gen's dependencies.
+    r"^pyproject\.toml$",
 )
 
 TOOLING_PATTERNS = (

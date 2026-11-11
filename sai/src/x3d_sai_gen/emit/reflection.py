@@ -4,7 +4,7 @@ These tags are implementation details, not x3d-cpp runtime reflection types.
 The SAI catalog needs no runtime nodes, callbacks, field tables, or visitors.
 """
 
-from x3d_sai_gen.model.types import X3DType, TypeRegistry
+from x3d_cpp_gen.model.types import X3DType, TypeRegistry
 
 
 def gen_reflection_header() -> str:

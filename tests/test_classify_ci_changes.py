@@ -39,6 +39,8 @@ def enabled_classes(paths: list[str]) -> set[str]:
         (["examples/sai_host/main.cpp"], {"cpp", "sai"}),
         (["scripts/verify_sai_provider.sh"], {"sai"}),
         (["src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml"], {"generator", "sai"}),
+        (["src/x3d_cpp_gen/parser.py"], {"generator", "sai"}),
+        (["src/x3d_cpp_gen/emit/factory.py"], {"generator"}),
         ([], set(CLASSES)),
         (["unexpected/new-area/file.xyz"], set(CLASSES)),
     ],
