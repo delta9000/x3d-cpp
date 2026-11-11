@@ -95,7 +95,8 @@ struct InlineWarning {
 
 /// Non-fatal reader diagnostic, collected into X3DDocument.readerWarnings.
 /// Emitted when a reader recovers from authored input that is not legal X3D
-/// (an unknown node element is discarded, a profile token is coerced), so the
+/// (an unknown node element is kept opaque or discarded, a profile token is
+/// coerced), so the
 /// recovery stays visible to `x3d validate` instead of being silent.
 struct ReaderWarning {
   // Value: a malformed authored value the lenient reader coerced (bad number
@@ -362,6 +363,40 @@ public:
   std::string nodeTypeName() const override { return "ProtoInstance"; }
   std::string defaultContainerField() const override {
     return instance.containerField;
+  }
+};
+
+// A node element whose type is not in the generated node model (an X3D 4.1
+// node read by the 4.0 bindings, a vendor extension, a misspelling). The XML
+// reader keeps it as an opaque record instead of discarding it, so the XML
+// writers can re-emit it unchanged. It has no reflected fields: the runtime,
+// the extractor and the PROTO cloner do not see its attributes or children.
+class UnknownNode final : public X3DNode {
+public:
+  struct Child {
+    std::string containerField; // authored containerField, empty if absent
+    std::shared_ptr<X3DNode> node;
+  };
+
+  std::string typeName;
+  std::string containerField; // authored containerField, empty if absent
+  // Authored attributes in source order, as wire text. DEF, USE and
+  // containerField are held separately.
+  std::vector<std::pair<std::string, std::string>> attributes;
+  std::string text; // character data (CDATA body), if any
+  std::vector<Child> children;
+
+  explicit UnknownNode(std::string type) : typeName(std::move(type)) {}
+
+  std::string nodeTypeName() const override { return typeName; }
+  std::string defaultContainerField() const override {
+    return containerField.empty() ? std::string("children") : containerField;
+  }
+  // No reflected fields, so generic walkers and the ClassicVRML and JSON
+  // writers see only the type name and DEF.
+  const FieldTable &fields() const override {
+    static const FieldTable empty;
+    return empty;
   }
 };
 

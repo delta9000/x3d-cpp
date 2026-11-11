@@ -44,6 +44,10 @@ categories:
 | `proto`, `inline`, `node`, `profile` | warning or error | Expansion, reader-recovery and profile-fit diagnostics. |
 | `dup-meta`, `unused-proto`, `ifs-coord-index`, `ils-coord-index` | warning | Checks shared with the X3DJSAIL differential gate. |
 
+A `node` warning for an unknown element means the XML reader kept it as opaque
+content: `convert` and `canonicalize` to XML re-emit it unchanged, while
+ClassicVRML and JSON output keep only its type name and DEF.
+
 The differential gate leaves `value` and `route` out of its verdict until its
 X3DJSAIL baseline is refreshed against them.
 

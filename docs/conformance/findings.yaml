@@ -3147,3 +3147,21 @@
     endpoints (IMPORTed names exempt) plus every rejection from the runtime
     bridge, reported as `route` errors. Not part of the cli-gate verdict. Test:
     x3d_validate_checks_test.
+
+- id: READ-UNKNOWN-NODE-PASSTHROUGH
+  nodes: [WorldInfo]
+  component: Core
+  clause: "ISO/IEC 19776-1 4.3"
+  severity: major
+  status: open
+  summary: "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
+  note: >-
+    Fixed for XML only. XmlReader keeps the element as runtime::UnknownNode (raw attributes,
+    character data, child nodes; Scene::opaqueChildren when the parent has no
+    field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical
+    XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers
+    discard unknown nodes; the ClassicVRML and JSON writers emit only the type
+    name and DEF; PROTO expansion drops an unknown node in a body; `<field>`,
+    `<IS>` and PROTO statements inside an unknown element are discarded. The
+    node is never interpreted: no runtime behaviour, no extraction. Test:
+    x3d_parse_tests unknown_node_passthrough_test.

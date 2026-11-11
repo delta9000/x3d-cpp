@@ -36,7 +36,8 @@ The [CI workflow](.github/workflows/ci.yml) defines compiler and platform checks
 The CMake package requires C++20 and CMake 3.21 or later.
 
 Readers accept X3D 3.0–4.1 version declarations; the generated node model is 4.0.
-Loading a newer version declaration does not add its node types. See the
+Loading a newer version declaration does not add its node types. The XML reader
+keeps unknown elements as opaque content, so XML to XML conversion preserves them. See the
 [parse readers](docs/wiki/subsystems/parse-readers.md) for version handling.
 
 ## Build and install

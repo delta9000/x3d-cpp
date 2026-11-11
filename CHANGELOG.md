@@ -8,6 +8,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Unknown nodes survive XML conversion (READ-UNKNOWN-NODE-PASSTHROUGH).** The
+  XML reader keeps an element of unknown type (an X3D 4.1 node, an extension, a
+  misspelling) as an opaque `runtime::UnknownNode` instead of discarding it, and
+  the XML and canonical XML writers re-emit it unchanged, children and DEF/USE
+  included. The runtime and extractor ignore it. ClassicVRML and JSON still
+  drop unknown nodes on read and write only the type name and DEF. Test:
+  `unknown_node_passthrough_test`.
 - **`x3d validate` checks values and ROUTEs (VALIDATE-VALUE-SYNTAX,
   VALIDATE-ROUTES).** Readers record a `ReaderWarning{Kind::Value}` when they
   coerce a malformed authored value: an unparsable number, a wrong SF tuple

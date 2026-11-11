@@ -160,15 +160,8 @@ private:
     }
 
     auto node = X3DNodeFactory::create(el.name);
-    if (!node) {
-      // Unknown/misspelled node element: the lenient reader discards it. Keep
-      // the recovery visible  rather than silently deleting
-      // authored content.
-      readerWarnings_.push_back(
-          {runtime::ReaderWarning::Kind::UnknownNode,
-           "unknown node element <" + el.name + "> discarded"});
-      return nullptr; // unknown node type: skip
-    }
+    if (!node)
+      return readUnknownNode(el, scene, currentProtoBody);
 
     const FieldTable &table = node->fields();
 
@@ -295,11 +288,76 @@ private:
       // routes to its correct slot rather than the parent's first node field.
       const std::string slot =
           childEl->attrOr("containerField", child->defaultContainerField());
+      // An opaque unknown node goes into the named slot or `children` when
+      // the parent has one. Otherwise it is parked in scene.opaqueChildren:
+      // attachChild would fall back to the parent's first node field and
+      // could displace a real child.
+      if (dynamic_cast<const runtime::UnknownNode *>(child.get()) &&
+          !hasNodeSlot(table, slot)) {
+        scene.opaqueChildren[node.get()].push_back(child);
+        continue;
+      }
       attachChild(*node, table, slot, childEl->name, child, &scene);
       if (currentProtoBody)
         currentProtoBody->recordChildNode(node, slot, child);
     }
 
+    return node;
+  }
+
+  static bool hasNodeSlot(const FieldTable &table, const std::string &slot) {
+    for (const FieldInfo &f : table)
+      if (f.isNode() && f.isWritable() &&
+          (f.containerField == slot || f.x3dName == slot))
+        return true;
+    return false;
+  }
+
+  /// Keep an element of unknown type as an opaque UnknownNode: raw attributes,
+  /// character data and child nodes, so the XML writers re-emit it unchanged.
+  /// Child node elements are read normally, so DEFs inside stay resolvable.
+  std::shared_ptr<X3DNode> readUnknownNode(const xml::Element &el,
+                                           runtime::Scene &scene,
+                                           runtime::ProtoBody *currentProtoBody) {
+    auto node = std::make_shared<runtime::UnknownNode>(el.name);
+    readerWarnings_.push_back(
+        {runtime::ReaderWarning::Kind::UnknownNode,
+         "unknown node element <" + el.name +
+             "> kept as opaque content (not interpreted; only the XML writers "
+             "re-emit its attributes and children)"});
+    for (const auto &a : el.attributes) {
+      if (a.first == "DEF")
+        node->setDEF(a.second);
+      else if (a.first == "containerField")
+        node->containerField = a.second;
+      else
+        node->attributes.push_back(a);
+    }
+    node->text = el.text;
+    if (!node->getDEF().empty())
+      scene.define(node->getDEF(), node);
+    for (const auto &childEl : el.children) {
+      if (childEl->name == "ROUTE") {
+        auto &routes = currentProtoBody ? currentProtoBody->routes : scene.routes;
+        routes.emplace_back(childEl->attrOr("fromNode", ""), childEl->attrOr("fromField", ""),
+                            childEl->attrOr("toNode", ""), childEl->attrOr("toField", ""));
+        continue;
+      }
+      // Statements that need a typed parent cannot hang off an opaque node.
+      if (childEl->name == "field" || childEl->name == "IS" ||
+          childEl->name == "ProtoInstance" || childEl->name == "ProtoDeclare" ||
+          childEl->name == "ExternProtoDeclare") {
+        readerWarnings_.push_back(
+            {runtime::ReaderWarning::Kind::UnknownNode,
+             "<" + childEl->name + "> inside unknown node element <" + el.name +
+                 "> discarded"});
+        continue;
+      }
+      auto child = readNode(*childEl, scene, currentProtoBody);
+      if (!child)
+        continue;
+      node->children.push_back({childEl->attrOr("containerField", ""), child});
+    }
     return node;
   }
   // Script author-field capture .

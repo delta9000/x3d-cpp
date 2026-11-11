@@ -199,6 +199,7 @@
         "PROTO-SHADOW",
         "PROTO-WRITE-DEF-SCOPE",
         "READ-NUMERIC-LEXEMES",
+        "READ-UNKNOWN-NODE-PASSTHROUGH",
         "REQ-UNIT",
         "ROUTE-IO-ALIAS",
         "VALIDATE-ROUTES",
@@ -416,7 +417,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19776-1 4.3; XML 1.0 3.3.3",
+          "clause": "ISO/IEC 19776-1 4.3.1; XML 1.0 2.11, 3.3.3; ISO 19776-3 (head/unit); 19775-1 7.2.5 UNIT; 4.4.2.2, 4.4.8.2; ISO 19776-1; 19775-1 7; 7.2.5.3 (profile); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19776-1 4.3; XML 1.0 3.3.3; ISO/IEC 19776-1 4.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -426,6 +427,7 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
+            "READ-UNKNOWN-NODE-PASSTHROUGH",
             "ROUTE-IO-ALIAS",
             "XML-ATTRIBUTE-WHITESPACE",
             "XML-WRITER-ATTRIBUTE-WHITESPACE"
@@ -12927,6 +12929,18 @@
       "severity": "major",
       "status": "fixed",
       "summary": "`x3d validate` did not check ROUTEs. A ROUTE naming an undefined DEF, an unknown field, the wrong access type or a mismatched field type passed as valid, and the runtime dropped it silently."
+    },
+    {
+      "clause": "ISO/IEC 19776-1 4.3",
+      "component": "Core",
+      "id": "READ-UNKNOWN-NODE-PASSTHROUGH",
+      "nodes": [
+        "WorldInfo"
+      ],
+      "note": "Fixed for XML only. XmlReader keeps the element as runtime::UnknownNode (raw attributes, character data, child nodes; Scene::opaqueChildren when the parent has no field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers discard unknown nodes; the ClassicVRML and JSON writers emit only the type name and DEF; PROTO expansion drops an unknown node in a body; `<field>`, `<IS>` and PROTO statements inside an unknown element are discarded. The node is never interpreted: no runtime behaviour, no extraction. Test: x3d_parse_tests unknown_node_passthrough_test.",
+      "severity": "major",
+      "status": "open",
+      "summary": "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
     }
   ],
   "meta": {
@@ -13118,11 +13132,11 @@
     "closed_count": 318,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 350,
+    "finding_count": 351,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 14,
+      "major": 15,
       "minor": 16
     }
   },
