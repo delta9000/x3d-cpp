@@ -646,6 +646,11 @@ std::any toValue(JSContext *ctx, JSValueConst i, X3DFieldType type) {
 
 // Impl — all QuickJS state lives here (keeps the header QuickJS-free).
 
+namespace {
+// Property hooks of the X3DNode handle class (defined with the Browser code).
+JSClassExoticMethods *nodeExoticMethods();
+} // namespace
+
 struct QuickJsBackend::Impl {
   // One loaded script's per-context state (the Duktape Entry model).
   struct Entry {
@@ -681,6 +686,7 @@ struct QuickJsBackend::Impl {
     JS_NewClassID(rt, &nodeClass);
     JSClassDef def{};
     def.class_name = "X3DNode";
+    def.exotic = nodeExoticMethods();
     JS_NewClass(rt, nodeClass, &def);
     JS_SetRuntimeOpaque(rt, reinterpret_cast<void *>(
                                 static_cast<uintptr_t>(nodeClass)));
@@ -852,6 +858,78 @@ JSValue browser_addRoute(JSContext *ctx, JSValueConst, int argc,
   if (fromField) JS_FreeCString(ctx, fromField);
   if (toField) JS_FreeCString(ctx, toField);
   return result;
+}
+
+// SFNode field access (ISO/IEC 19777-1: an SFNode's properties are the node's
+// fields), as exotic property hooks on the native X3DNode class. Same rules as
+// the Duktape Proxy traps: reads go through SaiContext::getField, writes
+// through SaiContext::setField (directOutput gate); unknown names read as
+// undefined, a write to an unknown or non-input field throws.
+JSValue node_get_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
+                          JSValueConst /*receiver*/) {
+  SaiContext *sai = saiOf(ctx);
+  SFNode node = extractNode(ctx, obj);
+  if (!sai || !node) return JS_UNDEFINED;
+  const char *name = JS_AtomToCString(ctx, atom);
+  if (!name) return JS_UNDEFINED;
+  JSValue out = JS_UNDEFINED;
+  try {
+    if (auto info = sai->fieldInfo(*node, name); info && info->get)
+      out = pushValue(ctx, info->get(*node), info->type);
+  } catch (const std::exception &) {
+    out = JS_UNDEFINED;  // retired context: reads as undefined
+  }
+  JS_FreeCString(ctx, name);
+  return out;
+}
+
+int node_set_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
+                      JSValueConst value, JSValueConst /*receiver*/,
+                      int /*flags*/) {
+  SaiContext *sai = saiOf(ctx);
+  SFNode node = extractNode(ctx, obj);
+  if (!sai || !node) {
+    JS_ThrowTypeError(ctx, "SFNode: INVALID_NODE (disposed node)");
+    return -1;
+  }
+  const char *name = JS_AtomToCString(ctx, atom);
+  if (!name) return -1;
+  int rc = 1;
+  try {
+    auto info = sai->fieldInfo(*node, name);
+    if (!info) {
+      JS_ThrowTypeError(ctx, "SFNode: INVALID_FIELD '%s' on %s", name,
+                        node->nodeTypeName().c_str());
+      rc = -1;
+    } else if (info->access != AccessType::InputOnly &&
+               info->access != AccessType::InputOutput) {
+      JS_ThrowTypeError(ctx, "SFNode: field '%s' is not writable at run time",
+                        name);
+      rc = -1;
+    } else {
+      std::any boxed = toValue(ctx, value, info->type);
+      if (JS_HasException(ctx)) {
+        rc = -1;
+      } else {
+        sai->setField(node.get(), info->x3dName, std::move(boxed));
+      }
+    }
+  } catch (const std::exception &e) {
+    JS_ThrowTypeError(ctx, "SFNode: %s", e.what());
+    rc = -1;
+  }
+  JS_FreeCString(ctx, name);
+  return rc;
+}
+
+JSClassExoticMethods *nodeExoticMethods() {
+  static JSClassExoticMethods m = [] {
+    JSClassExoticMethods e{};
+    e.get_property = node_get_property;
+    e.set_property = node_set_property;
+    return e;
+  }();
+  return &m;
 }
 
 JSValue browser_deleteRoute(JSContext *ctx, JSValueConst, int argc,

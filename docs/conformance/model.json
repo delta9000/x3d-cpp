@@ -5964,6 +5964,7 @@
         "SCRIPT-OUTPUTONLY-REEMIT",
         "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
+        "SCRIPT-SFNODE-FIELD-ACCESS",
         "SCRIPT-SFNODE-REFERENCE",
         "SCRIPT-UNBOUNDED-MEMORY"
       ],
@@ -5975,7 +5976,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; 29.2.4; ISO/IEC 19777-1 clause 7 (field objects); 29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3",
+          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; 29.2.4; ISO/IEC 19777-1 clause 7 (field objects); 29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3; 29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6013,6 +6014,7 @@
             "SCRIPT-OUTPUTONLY-REEMIT",
             "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
+            "SCRIPT-SFNODE-FIELD-ACCESS",
             "SCRIPT-SFNODE-REFERENCE",
             "SCRIPT-UNBOUNDED-MEMORY"
           ],
@@ -12973,6 +12975,20 @@
       "severity": "major",
       "status": "open",
       "summary": "The script `Browser` object offers only getName, getVersion, print/println, addRoute, deleteRoute, currentTime and currentFrameRate. createX3DFromString, createVrmlFromString, createX3DFromURL, loadURL, replaceWorld, currentScene, createNode and the property forms (name, version, currentSpeed) are missing, so a script that builds scene content fails with 'not callable'."
+    },
+    {
+      "clause": "29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)",
+      "id": "SCRIPT-SFNODE-FIELD-ACCESS",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "Node handles expose fields as properties in both backends (Duktape Proxy, QuickJS exotic hooks), routed through SaiContext::getField/setField, so the directOutput gate and ADR-0029 write semantics apply. set_/_changed aliases accepted. Unknown names read as undefined; writes to unknown or non-input fields throw. Not covered: the SFNode methods (getNodeName, getNodeType, getFieldDefinitions, toVRMLString, toXMLString). Tests: ecmascript/quickjs backend \"node fields\" cases.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A script's SFNode was an opaque handle with no properties, so a directOutput script could not read or write another node's fields from ECMAScript at all; only Browser.addRoute could use the handle."
     }
   ],
   "meta": {
@@ -13161,10 +13177,10 @@
     ]
   },
   "summary": {
-    "closed_count": 319,
+    "closed_count": 320,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 353,
+    "finding_count": 354,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

@@ -135,6 +135,19 @@ public:
     (void)ctx_.writeField(node, fieldName, std::move(value));
   }
 
+  /**
+   * @brief Descriptor of `fieldName` on `node`, static or author-declared.
+   * @details Accepts the `set_xxx` / `xxx_changed` aliases of an inputOutput
+   *          field (§4.4.2.2); the returned descriptor carries the canonical
+   *          name. nullopt if the node has no such field. Backends use this to
+   *          marshal a script's `node.field` read or write by field type.
+   */
+  std::optional<FieldInfo> fieldInfo(const X3DNode &node,
+                                     const std::string &fieldName) const {
+    requireActive();
+    return findField(node, resolveFieldAlias(&node, fieldName));
+  }
+
   // Routing (§29.4.1: dynamic route add/remove only when directOutput==TRUE).
 
   /**

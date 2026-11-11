@@ -1053,6 +1053,76 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     fix.ctx.authorFields().erase(fix.script);
   }
 
+  // SFNode field access: a node handle exposes the node's fields as
+  // properties, under the directOutput gate.
+  {
+    auto run = [&](bool directOutput) {
+      Fixture fix;
+      fix.script.setDirectOutputUnchecked(directOutput);
+      auto target = std::make_shared<Transform>();
+      target->setTranslation(SFVec3f{1, 2, 3});
+      auto &store = fix.ctx.authorFields();
+      store.addAuthorField(fix.script, AuthorFieldDecl{
+          "target", X3DFieldType::SFNode, AccessType::InitializeOnly,
+          std::any(SFNode(target))});
+      auto out = [&](const char *name, X3DFieldType t) {
+        store.addAuthorField(
+            fix.script, AuthorFieldDecl{name, t, AccessType::OutputOnly, {}});
+      };
+      out("readBack", X3DFieldType::SFVec3f);
+      out("unknownIsUndefined", X3DFieldType::SFBool);
+      out("writeError", X3DFieldType::SFString);
+      out("badFieldThrew", X3DFieldType::SFBool);
+      ScriptHandle h = backend.load(fix.script, R"JS(
+        function initialize() {
+          readBack = target.translation.add(new SFVec3f(1, 1, 1));
+          unknownIsUndefined = target.noSuchField === undefined;
+          writeError = '';
+          try {
+            target.translation = new SFVec3f(7, 8, 9);
+            target.set_scale = new SFVec3f(2, 2, 2);
+          } catch (e) { writeError = String(e); }
+          badFieldThrew = false;
+          try { target.noSuchField = 1; } catch (e) { badFieldThrew = true; }
+        }
+      )JS", fix.sai);
+      const std::string tag =
+          directOutput ? "node fields (directOutput): " : "node fields (gated): ";
+      check(h != kInvalidScriptHandle, tag + "script loads");
+      if (h == kInvalidScriptHandle) return;
+      backend.initialize(h);
+      std::any rb = store.getValue(fix.script, "readBack");
+      check(rb.has_value() && nearly(std::any_cast<SFVec3f>(rb).x, 2) &&
+                nearly(std::any_cast<SFVec3f>(rb).z, 4),
+            tag + "node.translation reads the field, with methods");
+      std::any un = store.getValue(fix.script, "unknownIsUndefined");
+      check(un.has_value() && std::any_cast<bool>(un),
+            tag + "an unknown property reads as undefined");
+      std::any bad = store.getValue(fix.script, "badFieldThrew");
+      check(bad.has_value() && std::any_cast<bool>(bad),
+            tag + "writing an unknown field throws");
+      std::any we = store.getValue(fix.script, "writeError");
+      const std::string err = we.has_value() ? std::any_cast<SFString>(we) : "?";
+      if (directOutput) {
+        check(err.empty(), tag + "writes succeed");
+        check(nearly(target->getTranslation().x, 7) &&
+                  nearly(target->getTranslation().z, 9),
+              tag + "node.translation = v writes the field");
+        check(nearly(target->getScale().x, 2),
+              tag + "the set_ alias writes the inputOutput field");
+      } else {
+        check(err.find("directOutput") != std::string::npos,
+              tag + "a cross-node write throws");
+        check(nearly(target->getTranslation().x, 1),
+              tag + "the gated write changed nothing");
+      }
+      backend.shutdown(h);
+      store.erase(fix.script);
+    };
+    run(true);
+    run(false);
+  }
+
 }
 
 } // namespace script_backend_tests

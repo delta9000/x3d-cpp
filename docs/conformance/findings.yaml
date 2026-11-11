@@ -3194,3 +3194,19 @@
   note: >-
     Needs a parse-and-attach path through SaiContext under the directOutput
     gate. Planned with the SAI convergence work.
+
+- id: SCRIPT-SFNODE-FIELD-ACCESS
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)"
+  severity: major
+  status: fixed
+  summary: "A script's SFNode was an opaque handle with no properties, so a directOutput script could not read or write another node's fields from ECMAScript at all; only Browser.addRoute could use the handle."
+  note: >-
+    Node handles expose fields as properties in both backends (Duktape Proxy,
+    QuickJS exotic hooks), routed through SaiContext::getField/setField, so the
+    directOutput gate and ADR-0029 write semantics apply. set_/_changed aliases
+    accepted. Unknown names read as undefined; writes to unknown or non-input
+    fields throw. Not covered: the SFNode methods (getNodeName, getNodeType,
+    getFieldDefinitions, toVRMLString, toXMLString). Tests: ecmascript/quickjs
+    backend "node fields" cases.

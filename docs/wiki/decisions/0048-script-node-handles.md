@@ -137,6 +137,17 @@ Script source comes from the document, so this is the same exposure as above.
   a runaway loop (see "Call budget"). Native stack depth is bounded by each
   engine's own recursion limits (T15g).
 
+## Amendment (2026-11-11): field access on handles
+
+A handle now exposes the node's fields as properties (`node.translation`,
+`node.set_scale = v`), as ISO/IEC 19777-1 specifies for SFNode. The id scheme
+above is unchanged. In Duktape the handle is a Proxy whose target carries the
+hidden id; hidden-symbol keys bypass Proxy traps, so the id stays unreachable
+and `extractNode` reads it through the Proxy. In QuickJS the `X3DNode` class
+gains exotic `get_property`/`set_property` hooks. Both route through
+`SaiContext::getField`/`setField`, so the `directOutput` gate still decides
+every cross-node write.
+
 ## Related
 
 - [Script / SAI Runtime subsystem](../subsystems/system-script-sai.md)

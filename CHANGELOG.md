@@ -8,6 +8,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Scripts can read and write node fields (SCRIPT-SFNODE-FIELD-ACCESS).** An
+  SFNode in a script exposes the node's fields as properties:
+  `target.translation.add(v)`, `target.translation = v`, `target.set_scale = v`.
+  Writes to another node go through the existing `directOutput` gate and throw
+  when it is `FALSE`. Works on Duktape (Proxy) and QuickJS (exotic class hooks).
 - **ECMAScript field-type objects (SCRIPT-FIELD-TYPE-OBJECTS).** Scripts can now
   use the ISO/IEC 19777-1 constructors and methods: `new SFVec3f(1, 2, 3)`,
   `a.add(b).cross(c)`, `v[0]`, `new SFRotation(from, to).multVec(v)`,

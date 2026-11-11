@@ -66,6 +66,14 @@ private:
   SaiContext *prev_;
 };
 
+// Proxy traps giving a node handle its fields as properties (defined below).
+duk_ret_t node_get(duk_context *ctx);
+duk_ret_t node_set(duk_context *ctx);
+constexpr const char *kStashNodeHandlerKey = "nodeHandler";
+
+// The handle is a Proxy over an object holding the hidden id. Duktape passes
+// hidden-symbol keys straight to the target, so the id stays unreachable from
+// script and extractNode reads it through the Proxy unchanged.
 void pushNode(duk_context *ctx, const SFNode &node) {
   SaiContext *sai = stashedSai(ctx);
   if (!node || !sai) {
@@ -75,6 +83,20 @@ void pushNode(duk_context *ctx, const SFNode &node) {
   duk_push_object(ctx);
   duk_push_uint(ctx, sai->nodeHandles().intern(node));
   duk_put_prop_string(ctx, -2, kNodeIdKey);
+  // One shared handler per context, kept in the global stash.
+  duk_push_global_stash(ctx);
+  if (!duk_get_prop_string(ctx, -1, kStashNodeHandlerKey)) {
+    duk_pop(ctx);
+    duk_push_object(ctx);
+    duk_push_c_function(ctx, node_get, 3);
+    duk_put_prop_string(ctx, -2, "get");
+    duk_push_c_function(ctx, node_set, 4);
+    duk_put_prop_string(ctx, -2, "set");
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -3, kStashNodeHandlerKey);
+  }
+  duk_remove(ctx, -2);   // drop the stash: [target handler]
+  duk_push_proxy(ctx, 0);
 }
 
 // Resolve the JS node-handle object (or null) at index idx.
@@ -783,6 +805,81 @@ duk_ret_t browser_getCurrentTime(duk_context *ctx) {
 duk_ret_t browser_getCurrentFrameRate(duk_context *ctx) {
   SaiContext *sai = saiOf(ctx);
   duk_push_number(ctx, sai ? sai->currentFrameRate() : 0.0);
+  return 1;
+}
+
+} // namespace
+
+// SFNode field access (ISO/IEC 19777-1: an SFNode's properties are the node's
+// fields). `node.translation` reads through SaiContext::getField; an
+// assignment goes through SaiContext::setField, so the directOutput gate and
+// the self-write/cross-write rules are the ones documented there. Unknown
+// names read as undefined; a write to an unknown or non-input field throws.
+namespace {
+
+duk_ret_t node_get(duk_context *ctx) {
+  if (!duk_is_string(ctx, 1) || duk_is_symbol(ctx, 1)) return 0;
+  SaiContext *sai = stashedSai(ctx);
+  if (!sai) return 0;
+  const std::string name = duk_get_string(ctx, 1);
+  std::any value;
+  X3DFieldType type{};
+  bool found = false;
+  {
+    SFNode node = extractNode(ctx, 0);
+    if (node) {
+      try {
+        if (auto info = sai->fieldInfo(*node, name); info && info->get) {
+          value = info->get(*node);
+          type = info->type;
+          found = true;
+        }
+      } catch (const std::exception &) {
+        found = false;  // retired context: reads as undefined
+      }
+    }
+  }
+  if (!found) return 0;
+  EcmaScriptBackend::pushValue(ctx, value, type);
+  return 1;
+}
+
+duk_ret_t node_set(duk_context *ctx) {
+  SaiContext *sai = stashedSai(ctx);
+  char err[256] = {0};
+  if (!sai || !duk_is_string(ctx, 1) || duk_is_symbol(ctx, 1)) {
+    std::snprintf(err, sizeof err, "not a field");
+  } else {
+    const std::string name = duk_get_string(ctx, 1);
+    std::optional<FieldInfo> info;
+    SFNode node = extractNode(ctx, 0);
+    try {
+      if (node) info = sai->fieldInfo(*node, name);
+    } catch (const std::exception &) {
+    }
+    if (!node) {
+      std::snprintf(err, sizeof err, "INVALID_NODE (disposed node)");
+    } else if (!info) {
+      std::snprintf(err, sizeof err, "INVALID_FIELD '%s' on %s", name.c_str(),
+                    node->nodeTypeName().c_str());
+    } else if (info->access != AccessType::InputOnly &&
+               info->access != AccessType::InputOutput) {
+      std::snprintf(err, sizeof err, "field '%s' is not writable at run time",
+                    name.c_str());
+    } else {
+      // toValue may run script (getters), which may throw; nothing owning is
+      // live across it except `node`/`info`, released by C++ unwinding.
+      std::any value = EcmaScriptBackend::toValue(ctx, 2, info->type);
+      try {
+        sai->setField(node.get(), info->x3dName, std::move(value));
+      } catch (const std::exception &e) {
+        std::snprintf(err, sizeof err, "%s", e.what());
+        if (!err[0]) std::snprintf(err, sizeof err, "failed");
+      }
+    }
+  }
+  if (err[0]) return duk_error(ctx, DUK_ERR_TYPE_ERROR, "SFNode: %s", err);
+  duk_push_true(ctx);
   return 1;
 }
 
