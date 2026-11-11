@@ -48,6 +48,8 @@ SAI_PATTERNS = (
     r"^examples/sai_host/",
     r"^tests/cmake/sai_(?:provider|coexistence)/",
     r"^scripts/verify_sai_(?:provider|coexistence)\.sh$",
+    # sai/'s generator reads this UOM through a symlink.
+    r"^src/x3d_cpp_gen/data/X3dUnifiedObjectModel-",
 )
 
 TOOLING_PATTERNS = (

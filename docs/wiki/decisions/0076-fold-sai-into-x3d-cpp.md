@@ -46,6 +46,9 @@ The SAI SDK moves back into this repository as `sai/`, with its full history (a
   runtime. The runtime build does not add it. `adapters/sai_provider` stays the only
   bridge, and the composition rules from ADR-0047's 2026-10-07 update (header paths,
   link orders, relocated prefixes) still hold.
+- Both generators read one vendored UOM file. `sai/src/x3d_sai_gen/data/X3dUnifiedObjectModel-4.0.xml`
+  is a symlink to `src/x3d_cpp_gen/data/`; the copies were byte-identical (SHA-256 `0f1d9ede…`), and
+  `mise run sai-uom-pin` still checks the SAI side's recorded hash. Built wheels contain the real file.
 - The two generators stay separate for now. Reconciling them is optional follow-up work,
   not part of this move.
 - The two service registers stay separate: `sai/docs/conformance/` for the SDK, and

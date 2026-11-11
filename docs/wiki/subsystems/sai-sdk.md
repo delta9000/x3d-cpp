@@ -40,7 +40,7 @@ made, not defects. See the SDK README's
 |---|---|
 | `sai/include/x3d/sai/experimental/` | Public headers: `provider.hpp` (contract), `reference_provider.hpp`, `types.hpp`, `schema.hpp`, and reference-only `kernel.hpp`, `session.hpp`, `browser_services.hpp`, `matrix.hpp`, `image.hpp`, `user_data.hpp` |
 | `sai/src/` | Frontend (`provider.cpp`), reference backend, kernel, session and browser services |
-| `sai/src/x3d_sai_gen/` | Python generator (uv package `x3d-sai-gen`) reading its own SHA-pinned UOM 4.0 |
+| `sai/src/x3d_sai_gen/` | Python generator (uv package `x3d-sai-gen`) reading the repo's UOM 4.0 (a symlink to `src/x3d_cpp_gen/data/`), SHA-pinned in `UOM-4.0.sha256` |
 | `sai/generated_cpp_bindings/` | Generated field keys, typed bindings and the semantic metadata catalog |
 | `sai/tests/` | doctest suites registered as CTests, generator pytest |
 | `sai/docs/` | Contract, runtime, kernel guide and topic pages; `docs/conformance/` holds the register |

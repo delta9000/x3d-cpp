@@ -119,8 +119,8 @@ vendors, under sai/third_party/:
                    (installed with the SDK; see sai/third_party/tl/COPYING)
   doctest          sai/third_party/doctest/   MIT  (test-only; v2.4.11)
 
-and its own SHA-pinned copy of the X3D Unified Object Model at
-sai/src/x3d_sai_gen/data/X3dUnifiedObjectModel-4.0.xml (Web3D Consortium; see
-section 1). The native provider depends on the SAI SDK and inherits these.
+and reads the same X3D Unified Object Model as the runtime generator
+(sai/src/x3d_sai_gen/data/X3dUnifiedObjectModel-4.0.xml is a symlink to
+src/x3d_cpp_gen/data/; Web3D Consortium, see section 1). The native provider depends on the SAI SDK and inherits these.
 Retain sai/LICENSE, sai/NOTICE and the tl-expected license when distributing
 either package. The ordinary x3d-cpp runtime build does not include them.
