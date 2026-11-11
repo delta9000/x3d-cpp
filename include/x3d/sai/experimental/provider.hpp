@@ -39,6 +39,11 @@ private:
 using scene = handle<object_kind::scene>;
 using context = handle<object_kind::context>;
 using node = handle<object_kind::node>;
+struct named_node {
+  std::string name;
+  node target;
+  friend bool operator==(const named_node &, const named_node &) = default;
+};
 // Only disengaged optionals mean X3D NULL. An engaged empty/disposed/expired
 // node remains an invalid reference; it never silently becomes NULL.
 using node_value = std::optional<node>;
@@ -129,11 +134,13 @@ private:
 };
 // Per-service admission budget, including held work; zero admits no work.
 // Payload accounting includes each public write object, canonical field bytes,
-// and logical dynamic payload bytes. It excludes allocator overhead, backend
-// state, callback captures and consumer-retained receipts.
+// and logical dynamic payload bytes. Route requests account one admitted_route
+// object and both canonical field names. It excludes allocator overhead,
+// backend state, callback captures and consumer-retained receipts.
 // Notifications separately account each stored notification object, canonical
 // field bytes and logical dynamic value bytes. Detached dispatch deliveries are
-// no longer queued. Counts are bounds on retained work, not total process memory.
+// no longer queued. Counts are bounds on retained work, not total process
+// memory.
 struct resource_limits {
   std::size_t pending_requests = 1024;
   std::size_t payload_bytes = 16 * 1024 * 1024;
@@ -174,9 +181,18 @@ private:
   friend class service;
 };
 enum class service_id {
-  scene_authoring, host_turns, notifications, node_values, indexed_writes,
-  user_data, reference_snapshots, reference_transactions, reference_checkpoints,
-  scene_units, scene_metadata
+  scene_authoring,
+  host_turns,
+  notifications,
+  node_values,
+  indexed_writes,
+  user_data,
+  reference_snapshots,
+  reference_transactions,
+  reference_checkpoints,
+  scene_units,
+  scene_metadata,
+  live_routes
 };
 struct service_capability {
   service_id id;
@@ -213,7 +229,11 @@ class backend {
 public:
   using backend_value = experimental::value;
   struct address { std::uint64_t scene, context, node; std::string field; };
+  struct name_binding { std::string name; std::uint64_t node; };
   struct admitted_write { address target; backend_value value; };
+  struct admitted_route {
+    address from, to;
+  };
   struct backend_failure { sai_error error; failure_effect effects; };
   using backend_result = tl::expected<void, backend_failure>;
   virtual ~backend() = default;
@@ -232,11 +252,23 @@ protected:
   virtual result<void> do_define_name(const address &, std::string_view) = 0;
   virtual result<std::vector<std::uint64_t>> do_roots(std::uint64_t scene) const = 0;
   virtual result<std::uint64_t> do_named(std::uint64_t scene, std::string_view) const = 0;
+  // Optional discovery; default fails closed for existing backend subclasses.
+  virtual result<std::vector<name_binding>> do_named_nodes(std::uint64_t scene) const;
   virtual result<std::string> do_type_name(const address &) const = 0;
   virtual result<std::vector<field_info>> do_fields(const address &) const = 0;
   virtual result<backend_value> do_read(const address &) const = 0;
   virtual result<void> do_author(const address &, const backend_value &) = 0;
   virtual result<void> do_add_route(const address &, const address &) = 0;
+  // Optional live topology extension. Called at pump before do_turn; default
+  // refuses without effects. Partial installation must report honest effects.
+  // An exact duplicate of an installed route (same source node/field and sink
+  // node/field) is redundant (ISO 19775-1 4.4.8.2): return success, no effect.
+  virtual backend_result do_add_live_route(const address &, const address &);
+  // Optional admission pre-check for enqueue_route, after the portable checks.
+  // Refuse backend-specific restrictions (for example native kinds that share
+  // a portable kind) here so they fail at enqueue, not at pump. The default
+  // admits; do_add_live_route still checks again at installation.
+  virtual result<void> do_check_live_route(const address &, const address &) const;
   virtual result<void> do_validate_configuration(std::uint64_t scene,
       const std::vector<admitted_write> &) const = 0;
   virtual result<void> do_activate(std::uint64_t scene) = 0;
@@ -246,9 +278,15 @@ protected:
   void record_event(const address &where, backend_value value) {
     if (events_) events_(where, std::move(value));
   }
+  // True when a live observer of the pumping activation watches this exact
+  // field. A backend may skip reading and recording unobserved writes.
+  bool observed(const address &where) const {
+    return !observing_ || observing_(where);
+  }
   static unexpected error(error_code, std::string_view operation, std::string_view message);
 private:
   std::function<void(const address &, backend_value)> events_;
+  std::function<bool(const address &)> observing_;
   friend class service;
 };
 
@@ -284,6 +322,12 @@ public:
   result<context> root_context(const scene &) const;
   result<std::vector<node>> roots(const context &) const;
   result<node> named(const context &, std::string_view) const;
+  // Owning snapshots in ascending name order, including detached named nodes.
+  // Discovery is allowed in setup, active and faulted scenes.
+  result<std::vector<named_node>> named_nodes(const context &) const;
+  // Names in the node's lexical context; empty for an unnamed node. The current
+  // setup contract permits at most one canonical DEF name per node.
+  result<std::vector<std::string>> names(const node &) const;
   result<std::string> type_name(const node &) const;
   result<std::vector<field_info>> fields(const node &) const;
   result<field> get_field(const node &, std::string_view) const;
@@ -336,6 +380,10 @@ public:
   // coupled candidate before backend entry. This is explicit proposal policy.
   // Resource limits count calls and owning payload bytes, including held work.
   result<ticket> enqueue(const client &, std::vector<write>);
+  // Optional FIFO request. A released update gate installs all its routes
+  // before evaluating its retained writes and ordered input occurrences.
+  result<ticket> enqueue_route(const client &, const field &from,
+                               const field &to);
   template <class Owner, class T>
   result<ticket> enqueue(const client &c, const node &n,
                          const field_key<Owner, T> &key, semantic_value_t<T> v) {
@@ -380,6 +428,7 @@ private:
   struct impl;
   static unexpected error(error_code, std::string_view, std::string_view);
   static void record_event(const std::weak_ptr<impl> &, const address &, backend_value);
+  static bool observing(const std::weak_ptr<impl> &, const address &);
   result<backend_value> import_value(const field &, const payload &) const;
   result<payload> export_value(const address &, const backend_value &) const;
   result<std::vector<admitted_write>> prepare(const std::vector<queued_write> &) const;

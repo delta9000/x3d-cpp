@@ -16,6 +16,69 @@ those references. Only `nullopt` is NULL. Empty, disposed, foreign or expired
 engaged wrappers do not grant node authority. Raw numeric node IDs are an internal
 backend representation, not an application authoring capability.
 
+## Queued live ROUTE addition
+
+`service_id::live_routes` is an optional version-1 capability. With it,
+`enqueue_route(client, from, to)` returns an owning ticket using the same FIFO,
+update gate, cancellation, budgets, and retirement rules as field writes. The
+existing `add_route(context, from, to)` remains setup-only. Backends without the
+capability reject admission with `unsupported_operation`; the new backend
+virtual also defaults to unsupported without effects, so existing subclasses
+remain source compatible. Rebuild frontend and backend together; the added
+virtual has no stable binary ABI promise.
+
+Admission validates the client and canonical fields, service/scene authority,
+lexical context, exact portable kind, and ROUTE direction. Sources must be
+outputOnly or inputOutput; destinations must be inputOnly or inputOutput.
+Unsupported field services are refused. Admission then calls the optional
+`backend::do_check_live_route(from, to)`, which defaults to admit. A backend
+uses it for restrictions the portable descriptors cannot express. For example,
+the native companion's SFEnum and SFString fields share portable `sf_string`,
+but a ROUTE between them is refused at enqueue. Installation at pump may still
+refuse, for example when the graph changed after admission. Those refusals
+appear in the turn report and receipt rather than the enqueue result.
+
+An exact duplicate ROUTE (same source node and field, same sink node and field)
+is redundant and succeeds without effect (ISO 19775-1 4.4.8.2). When a gate is
+released, the frontend keeps only the first copy of each route held in it, and
+the duplicate's ticket shares the submission outcome. Deduplicating at release
+rather than at enqueue keeps cancellation of a held copy exact.
+`do_add_live_route` must return success without effect when the route is
+already installed. Setup-time `add_route` still refuses duplicates.
+
+A route request consumes one ordinary FIFO submission when no update gate is
+open. It installs before that turn's backend evaluation. Earlier submissions
+run without the route, and installation does not replay previous outputs. An
+empty write vector still performs the route turn's ordinary backend tick.
+Within a released update gate, all route requests install in their relative
+order before evaluating all retained writes and input occurrences in that
+submission, even if a write was enqueued before a route. Every receipt in that
+gate shares its submission and outcome. Cancelling any one cancels the whole
+submission, as with grouped field writes.
+
+Admission counts each route call against `pending_requests` and accounts one
+`backend::admitted_route` object plus both canonical field-name byte counts
+against `payload_bytes`. It excludes allocator overhead and backend topology
+storage. Held calls retain that accounting until processing or cancellation.
+
+The backend implements `do_add_live_route(from, to)` and returns an explicit
+failure effect. A refusal before effects leaves the activation active. If any
+route in a submission was installed and a later installation or evaluation
+fails, the frontend reports `partial_or_unknown`, faults the activation, and
+cancels its later requests. No rollback of earlier installed routes is implied.
+Application callbacks remain deferred through explicit notification dispatch.
+`backend::observed(address)` tells a backend whether a live observer watches a
+field, so it can skip reading and recording writes that nobody observes.
+
+The reference provider uses its existing scene-edit transaction to install the
+route. The native companion updates executable state and the retained native
+document, while refusing nested contexts and PROTO interface redirection. Route
+removal remains outside this capability. The own-suite `sai_provider_contract`
+cases cover FIFO ordering, gates, cancellation, authority/kind/direction,
+budgets, defaults, partial installation, redundant duplicates, and admission
+pre-checks. `sai_provider_reference` checks actual next-turn delivery and
+duplicate no-ops alone and in a gate.
+
 ## Ownership and operation matrix
 
 `scene`, lexical `context`, `node` and canonical `field` handles carry provider
@@ -26,8 +89,9 @@ an old handle. Consumer-held identity tokens retain no backend scene storage.
 | Operations | Allowed state / outcome | Classification |
 | --- | --- | --- |
 | create scene/node, name, root, author, add route | Setup only; exact kind/access/authority checks | Bounded portable setup contract |
-| roots, named lookup, type/field discovery, readable field values | Setup, active or faulted; inputOnly read denied | SAI-derived service semantics |
+| roots, named lookup/enumeration, reverse names, type/field discovery, readable field values | Setup, active or faulted; inputOnly read denied | SAI-derived service semantics |
 | activate | Ends setup for the scene's owned nodes; failure can leave it faulted | Explicit binding lifecycle policy |
+| enqueue_route | Active, optional `live_routes`; installs at its FIFO turn | Portable optional capability |
 | connect, begin/end, enqueue | Active activation; per-client gate and owning requests | SAI-derived buffering plus explicit receipt policy |
 | pump | Active only, finite nondecreasing host time; no hidden scheduler | Host extension |
 | observe/drain | Deferred owning notifications; cancellation and callback affinity explicit | SAI-derived observation plus C++ scheduling policy |
@@ -48,6 +112,34 @@ only weak frontend state. Teardown revokes authority before releasing applicatio
 captures. Application callbacks and capture destructors may reenter or destroy
 the service; dispatch pins detached state and does not resume through a destroyed
 owner. Native-only extraction/inspection remains a clearly separate extension.
+
+## Named-node discovery
+
+`named_nodes(context)` returns an owning vector of `named_node { name, target }`
+entries in ascending, case-sensitive name order. It includes every name in that
+lexical context, including named nodes detached from roots; unnamed nodes do not
+appear. `named(context, entry.name)` resolves to `entry.target`. The current
+provider contract has one root lexical context per scene; discovery does not
+flatten future nested contexts or enumerate IMPORT aliases.
+
+`names(node)` returns an owning vector of names bound to that node in its lexical
+context, in the same order. An unnamed node succeeds with an empty vector. The
+current setup contract still permits only one canonical DEF name per node;
+this query does not introduce alias authoring or rename operations.
+
+Both queries follow the discovery authority and owner-thread rules and work in
+setup, active, and faulted states. Disposed, foreign, and retired handles fail
+as they do for `named` and `type_name`. Returned strings and vectors survive
+later edits, retirement, and service destruction; retained node handles do not
+retain backend storage or authority after retirement.
+
+Backends implement `do_named_nodes(scene)` using their existing name bindings.
+The frontend sorts, rejects null identities, invalid names, and duplicate names
+with `invalid_descriptor`, and wraps IDs in provider-owned handles. Reverse
+lookup filters that same enumeration; it keeps no second name table. The default
+virtual returns `unsupported_operation`, preserving source compatibility for
+existing backend subclasses. As with other virtual additions, rebuild backend
+and frontend together; this experimental interface has no stable binary ABI.
 
 ## Scene units and metadata
 

@@ -523,3 +523,308 @@ TEST_CASE("scene information remains inspectable after a fault without permittin
   REQUIRE_FALSE(stale);
   CHECK(stale.error().code == s::error_code::stale_handle);
 }
+
+TEST_CASE("named-node discovery defaults fail closed and rejects malformed bindings") {
+  world legacy;
+  CHECK(legacy.service->named_nodes(legacy.context).error().code == s::error_code::unsupported_operation);
+  CHECK(legacy.service->names(legacy.node).error().code == s::error_code::unsupported_operation);
+  struct discovery_probe : probe {
+    std::vector<name_binding> bindings;
+    s::result<std::vector<name_binding>> do_named_nodes(std::uint64_t) const override {
+      return bindings;
+    }
+  };
+  auto implementation = std::make_unique<discovery_probe>();
+  auto &backend = *implementation;
+  p::service service(std::move(implementation));
+  const auto scene = service.create_scene().value();
+  const auto context = service.root_context(scene).value();
+  const auto node = service.create_node(context, "Transform").value();
+  backend.bindings = {{"Zulu", 1}, {"Alpha", 1}};
+  CHECK(service.names(node).value() == std::vector<std::string>{"Alpha", "Zulu"});
+  backend.bindings = {{"Duplicate", 1}, {"Duplicate", 2}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"Null", 0}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"bad name", 1}};
+  CHECK(service.named_nodes(context).error().code == s::error_code::invalid_descriptor);
+  backend.bindings = {{"Named", 1}};
+  REQUIRE(service.define_name(node, "Named"));
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  backend.partial = true;
+  REQUIRE(service.enqueue(client, {{service.get_field(node, "x").value(), 1.f}}));
+  REQUIRE(service.pump(active, {0}));
+  REQUIRE(service.state(scene).value() == p::activation_state::faulted);
+  CHECK(service.named_nodes(context).value() == std::vector<p::named_node>{{"Named", node}});
+  CHECK(service.names(node).value() == std::vector<std::string>{"Named"});
+}
+
+namespace {
+struct route_probe : probe {
+  std::vector<admitted_route> installed;
+  std::vector<std::size_t> routes_at_turn;
+  bool implement = true;
+  p::capabilities supported() const override {
+    auto caps = probe::supported();
+    caps.services.push_back({p::service_id::live_routes});
+    return caps;
+  }
+  std::string refuse_sink;    // installation refuses routes into this field
+  std::string reject_source;  // admission pre-check refuses this source field
+  std::size_t calls = 0;
+  backend_result do_add_live_route(const address &from,
+                                   const address &to) override {
+    ++calls;
+    if (!implement)
+      return p::backend::do_add_live_route(from, to);
+    if (to.field == refuse_sink)
+      return tl::unexpected{backend_failure{
+          error(s::error_code::invalid_route, "probe.live_route", "refused")
+              .value(),
+          p::failure_effect::none}};
+    const auto same = [](const address &a, const address &b) {
+      return a.scene == b.scene && a.context == b.context &&
+             a.node == b.node && a.field == b.field;
+    };
+    // Contract: an exact duplicate of an installed route is a no-op success.
+    for (const auto &r : installed)
+      if (same(r.from, from) && same(r.to, to))
+        return {};
+    installed.push_back({from, to});
+    return {};
+  }
+  s::result<void> do_check_live_route(const address &from,
+                                      const address &to) const override {
+    if (from.field == reject_source)
+      return error(s::error_code::invalid_route, "probe.check_route",
+                   "backend kind differs");
+    return p::backend::do_check_live_route(from, to);
+  }
+  backend_result do_turn(std::uint64_t scene, s::event_time time,
+                         const std::vector<admitted_write> &writes) override {
+    routes_at_turn.push_back(installed.size());
+    return probe::do_turn(scene, time, writes);
+  }
+};
+} // namespace
+TEST_CASE("optional queued ROUTEs share FIFO tickets gates and cancellation") {
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto context = service.root_context(scene).value();
+  const auto node = service.create_node(context, "Transform").value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  auto before = service.enqueue(client, {{x, 1.f}}).value();
+  auto route = service.enqueue_route(client, x, limit).value();
+  auto after = service.enqueue(client, {{x, 2.f}}).value();
+  REQUIRE(native.installed.empty());
+  REQUIRE(service.pump(active, {0}));
+  CHECK(before.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0});
+  REQUIRE(service.pump(active, {1}));
+  CHECK(route.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0, 1});
+  REQUIRE(service.pump(active, {2}));
+  CHECK(after.status()->state == p::request_state::processed);
+  CHECK(native.routes_at_turn == std::vector<std::size_t>{0, 1, 1});
+  REQUIRE(service.begin_update(client));
+  auto held_write = service.enqueue(client, {{x, 2.f}}).value();
+  auto held_route = service.enqueue_route(client, limit, x).value();
+  CHECK(held_route.status()->state == p::request_state::accepted);
+  REQUIRE(service.end_update(client));
+  CHECK(held_route.status()->submission == held_write.status()->submission);
+  REQUIRE(service.pump(active, {3}));
+  CHECK(native.routes_at_turn.back() == 2);
+  CHECK(held_route.status()->state == p::request_state::processed);
+  auto cancelled = service.enqueue_route(client, x, limit).value();
+  REQUIRE(service.cancel(client, cancelled));
+  CHECK(cancelled.status()->state == p::request_state::cancelled);
+  REQUIRE(service.pump(active, {4}));
+  CHECK(native.installed.size() == 2);
+  REQUIRE(service.begin_update(client));
+  auto cancelled_route = service.enqueue_route(client, x, limit).value();
+  auto cancelled_write = service.enqueue(client, {{x, 1.f}}).value();
+  REQUIRE(service.end_update(client));
+  REQUIRE(service.cancel(client, cancelled_route));
+  CHECK(cancelled_write.status()->state == p::request_state::cancelled);
+  REQUIRE(service.pump(active, {5}));
+  CHECK(native.installed.size() == 2);
+  CHECK(std::get<float>(service.read(x).value()) == 2.f);
+  const auto input = service.get_field(node, "input").value();
+  const auto vector = service.get_field(node, "translation").value();
+  CHECK(service.enqueue_route(client, input, x).error().code ==
+        s::error_code::invalid_route);
+  CHECK(service.enqueue_route(client, x, vector).error().code ==
+        s::error_code::invalid_route);
+  const auto other_scene = service.create_scene().value();
+  const auto other_context = service.root_context(other_scene).value();
+  const auto other_node =
+      service.create_node(other_context, "Transform").value();
+  CHECK(
+      service
+          .enqueue_route(client, x, service.get_field(other_node, "x").value())
+          .error()
+          .code == s::error_code::invalid_context);
+  world foreign;
+  CHECK(service.enqueue_route(client, x, foreign.field("x")).error().code ==
+        s::error_code::invalid_context);
+  auto disposed = x;
+  disposed.dispose();
+  CHECK(service.enqueue_route(client, disposed, limit).error().code ==
+        s::error_code::disposed);
+}
+TEST_CASE("live ROUTE defaults fail closed and route requests obey budgets") {
+  world legacy;
+  const auto active = legacy.service->activate(legacy.scene).value();
+  const auto client = legacy.service->connect(active).value();
+  CHECK(legacy.service
+            ->enqueue_route(client, legacy.field("x"), legacy.field("limit"))
+            .error()
+            .code == s::error_code::unsupported_operation);
+  auto engine = std::make_unique<route_probe>();
+  engine->implement = false;
+  p::service service(std::move(engine), p::resource_limits{1, 4096});
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto a = service.activate(scene).value();
+  const auto c = service.connect(a).value();
+  auto route = service.enqueue_route(c, x, limit).value();
+  CHECK(service.enqueue(c, {{x, 1.f}}).error().code ==
+        s::error_code::resource_limit);
+  const auto report = service.pump(a, {0}).value();
+  REQUIRE(report.error);
+  CHECK(report.error->code == s::error_code::unsupported_operation);
+  CHECK(report.effects == p::failure_effect::none);
+  CHECK(report.state == p::activation_state::active);
+  CHECK(route.status()->state == p::request_state::failed);
+  REQUIRE(service.enqueue(c, {{x, 1.f}}));
+  REQUIRE(service.pump(a, {1}));
+  p::service no_bytes(std::make_unique<route_probe>(),
+                      p::resource_limits{1, 0});
+  const auto empty = no_bytes.create_scene().value();
+  const auto n =
+      no_bytes.create_node(no_bytes.root_context(empty).value(), "Transform")
+          .value();
+  const auto ca = no_bytes.connect(no_bytes.activate(empty).value()).value();
+  CHECK(no_bytes
+            .enqueue_route(ca, no_bytes.get_field(n, "x").value(),
+                           no_bytes.get_field(n, "limit").value())
+            .error()
+            .code == s::error_code::resource_limit);
+}
+TEST_CASE(
+    "a later ROUTE failure cannot claim an earlier installation rolled back") {
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  native.refuse_sink = "x";
+  REQUIRE(service.begin_update(client));
+  auto first = service.enqueue_route(client, x, limit).value();
+  auto refused = service.enqueue_route(client, limit, x).value();
+  REQUIRE(service.end_update(client));
+  auto later = service.enqueue(client, {{x, 1.f}}).value();
+  const auto report = service.pump(active, {0}).value();
+  CHECK(report.state == p::activation_state::faulted);
+  CHECK(report.effects == p::failure_effect::partial_or_unknown);
+  CHECK(native.installed.size() == 1);
+  CHECK(native.turns == 0);
+  CHECK(first.status()->state == p::request_state::failed);
+  CHECK(refused.status()->effects == p::failure_effect::partial_or_unknown);
+  CHECK(later.status()->state == p::request_state::cancelled);
+}
+TEST_CASE("an exact duplicate ROUTE is a successful no-op") {
+  // ISO 19775-1 4.4.8.2: redundant routes are ignored.
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  // Within one gate, the second copy never reaches the backend.
+  REQUIRE(service.begin_update(client));
+  auto first = service.enqueue_route(client, x, limit).value();
+  auto duplicate = service.enqueue_route(client, x, limit).value();
+  auto write = service.enqueue(client, {{x, 1.f}}).value();
+  REQUIRE(service.end_update(client));
+  auto report = service.pump(active, {0}).value();
+  CHECK(!report.error);
+  CHECK(report.state == p::activation_state::active);
+  CHECK(native.calls == 1);
+  CHECK(native.installed.size() == 1);
+  CHECK(native.turns == 1);
+  CHECK(first.status()->state == p::request_state::processed);
+  CHECK(duplicate.status()->state == p::request_state::processed);
+  CHECK(write.status()->state == p::request_state::processed);
+  CHECK(duplicate.status()->submission == first.status()->submission);
+  // Against an installed route, the backend reports success without effect.
+  auto again = service.enqueue_route(client, x, limit).value();
+  report = service.pump(active, {1}).value();
+  CHECK(!report.error);
+  CHECK(report.state == p::activation_state::active);
+  CHECK(again.status()->state == p::request_state::processed);
+  CHECK(native.installed.size() == 1);
+  // Both together in one gate: neither faults the activation.
+  REQUIRE(service.begin_update(client));
+  auto installed_copy = service.enqueue_route(client, x, limit).value();
+  auto fresh = service.enqueue_route(client, limit, x).value();
+  auto fresh_copy = service.enqueue_route(client, limit, x).value();
+  REQUIRE(service.end_update(client));
+  report = service.pump(active, {2}).value();
+  CHECK(!report.error);
+  CHECK(report.state == p::activation_state::active);
+  CHECK(fresh_copy.status()->state == p::request_state::processed);
+  CHECK(native.installed.size() == 2);
+  // Cancelling the held first copy before release keeps the later copy.
+  REQUIRE(service.begin_update(client));
+  auto cancelled = service.enqueue_route(client, x, x).value();
+  auto kept = service.enqueue_route(client, x, x).value();
+  REQUIRE(service.cancel(client, cancelled));
+  REQUIRE(service.end_update(client));
+  REQUIRE(service.pump(active, {3}));
+  CHECK(cancelled.status()->state == p::request_state::cancelled);
+  CHECK(kept.status()->state == p::request_state::processed);
+  CHECK(native.installed.size() == 3);
+}
+TEST_CASE("a backend ROUTE pre-check refuses at enqueue, not at pump") {
+  auto engine = std::make_unique<route_probe>();
+  auto &native = *engine;
+  native.reject_source = "limit";
+  p::service service(std::move(engine));
+  const auto scene = service.create_scene().value();
+  const auto node =
+      service.create_node(service.root_context(scene).value(), "Transform")
+          .value();
+  const auto x = service.get_field(node, "x").value();
+  const auto limit = service.get_field(node, "limit").value();
+  const auto active = service.activate(scene).value();
+  const auto client = service.connect(active).value();
+  const auto refused = service.enqueue_route(client, limit, x);
+  REQUIRE(!refused);
+  CHECK(refused.error().code == s::error_code::invalid_route);
+  CHECK(native.calls == 0);
+  REQUIRE(service.enqueue_route(client, x, limit));
+  REQUIRE(service.pump(active, {0}));
+  CHECK(native.installed.size() == 1);
+}

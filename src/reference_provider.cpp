@@ -70,7 +70,8 @@ public:
                        {provider::service_id::indexed_writes},
                        {provider::service_id::user_data},
                        {provider::service_id::scene_units},
-                       {provider::service_id::scene_metadata}};
+                       {provider::service_id::scene_metadata},
+                       {provider::service_id::live_routes}};
     for (const auto &type : registry_.node_types()) {
       if (type.abstract) continue;
       result.nodes.push_back({type.name, type.component,
@@ -237,6 +238,16 @@ private:
     return found->id().value;
   }
 
+  result<std::vector<name_binding>> do_named_nodes(std::uint64_t id) const override {
+    auto stored = storage(id);
+    if (!stored) return failure(stored.error());
+    std::vector<name_binding> result;
+    const auto snapshot = (*stored)->scene.snapshot();
+    for (const auto &binding : snapshot.names())
+      result.push_back({binding.name, binding.node.value});
+    return result;
+  }
+
   result<std::string> do_type_name(const address &target) const override {
     auto owner = lookup_node(target);
     if (!owner) return failure(owner.error());
@@ -292,6 +303,24 @@ private:
     auto edit = storage(source.scene).value()->scene.edit();
     if (auto added = edit.add_route(*from, *to); !added) return added;
     if (auto committed = edit.commit(); !committed) return failure(committed.error());
+    return {};
+  }
+
+  backend_result do_add_live_route(const address &from,
+                                   const address &to) override {
+    // ISO 19775-1 4.4.8.2: a redundant ROUTE is ignored, not an error.
+    if (auto source = lookup(from), sink = lookup(to); source && sink) {
+      const route existing{source->node(), source->name(), sink->node(),
+                           sink->name()};
+      const auto snapshot = storage(from.scene).value()->scene.snapshot();
+      const auto &routes = snapshot.routes();
+      if (std::find(routes.begin(), routes.end(), existing) != routes.end())
+        return {};
+    }
+    auto added = do_add_route(from, to);
+    if (!added)
+      return tl::unexpected{
+          backend_failure{added.error(), provider::failure_effect::none}};
     return {};
   }
 

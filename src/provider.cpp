@@ -153,6 +153,7 @@ struct service::impl {
     std::size_t bytes = 0;
     request_queue *queue = nullptr;
     request_queue::iterator position;
+    std::vector<backend::admitted_route> routes;
   };
   struct scene_state {
     std::shared_ptr<const void> identity = std::make_shared<const int>(0);
@@ -252,6 +253,8 @@ service::service(std::unique_ptr<backend> implementation, resource_limits limits
       const address &where, backend_value value) {
     record_event(weak, where, std::move(value));
   };
+  p_->implementation->observing_ = [weak = std::weak_ptr<impl>{p_}](
+      const address &where) { return observing(weak, where); };
 }
 service::~service() {
   if (p_ && !p_->closed) {
@@ -265,6 +268,17 @@ unexpected backend::error(error_code code, std::string_view op, std::string_view
 unexpected service::error(error_code code, std::string_view op, std::string_view message) {
   sai_error e; e.code = code; e.operation = op; e.message = message; return failure(std::move(e));
 }
+backend::backend_result backend::do_add_live_route(const address &,
+                                                   const address &) {
+  return tl::make_unexpected(backend_failure{
+      error(error_code::unsupported_operation, "provider.enqueue_route",
+            "backend does not implement live ROUTE addition")
+          .value(),
+      failure_effect::none});
+}
+result<void> backend::do_check_live_route(const address &, const address &) const {
+  return {};
+}
 result<std::vector<unit_declaration>> backend::do_units(std::uint64_t) const {
   return error(error_code::unsupported_operation, "provider.units", "backend does not provide scene units");
 }
@@ -277,6 +291,9 @@ result<std::vector<metadata_entry>> backend::do_metadata(std::uint64_t) const {
 result<void> backend::do_set_metadata(std::uint64_t, std::string_view,
                                       const std::optional<std::string> &) {
   return error(error_code::unsupported_operation, "provider.set_metadata", "backend does not provide scene metadata");
+}
+result<std::vector<backend::name_binding>> backend::do_named_nodes(std::uint64_t) const {
+  return error(error_code::unsupported_operation, "provider.named_nodes", "backend does not provide named-node enumeration");
 }
 result<void> service::check() const {
   if (p_->owner != thread_identity())
@@ -632,6 +649,30 @@ result<node> service::named(const context &c, std::string_view name) const {
   if (!*id) return error(error_code::invalid_descriptor, "provider.named", "backend returned a null named identity");
   return make<object_kind::node>(c.scene_, c.context_, *id);
 }
+result<std::vector<named_node>> service::named_nodes(const context &c) const {
+  if (auto ok = validate(c); !ok) return failure(ok.error());
+  auto bindings = p_->implementation->do_named_nodes(c.scene_);
+  if (!bindings) return failure(bindings.error());
+  std::sort(bindings->begin(), bindings->end(),
+            [](const auto &a, const auto &b) { return a.name < b.name; });
+  std::vector<named_node> result;
+  for (const auto &binding : *bindings) {
+    if (!binding.node || !valid_name(binding.name) ||
+        (!result.empty() && result.back().name == binding.name))
+      return error(error_code::invalid_descriptor, "provider.named_nodes", "backend returned an invalid or duplicate name binding");
+    result.push_back({binding.name, make<object_kind::node>(c.scene_, c.context_, binding.node)});
+  }
+  return result;
+}
+result<std::vector<std::string>> service::names(const node &n) const {
+  if (auto ok = validate(n); !ok) return failure(ok.error());
+  auto bindings = named_nodes(make<object_kind::context>(n.scene_, n.context_));
+  if (!bindings) return failure(bindings.error());
+  std::vector<std::string> result;
+  for (const auto &binding : *bindings)
+    if (binding.target == n) result.push_back(binding.name);
+  return result;
+}
 result<std::string> service::type_name(const node &n) const {
   if (auto ok = validate(n); !ok) return failure(ok.error());
   return p_->implementation->do_type_name(where(n));
@@ -817,10 +858,23 @@ result<void> service::end_update(const client &c) {
   // Assemble before changing live ownership. All per-call receipts move into
   // one FIFO submission and receive its shared processing/cancellation result.
   std::vector<queued_write> writes;
+  std::vector<backend::admitted_route> routes;
   std::vector<std::shared_ptr<ticket::receipt>> receipts;
   std::size_t bytes = 0;
+  // An exact duplicate ROUTE held in the same gate is redundant (ISO 19775-1
+  // 4.4.8.2): its ticket shares the submission, but only the first copy reaches
+  // installation. Deduplicating at release keeps held cancellation exact.
+  const auto same = [](const address &a, const address &b) {
+    return a.scene == b.scene && a.context == b.context && a.node == b.node &&
+           a.field == b.field;
+  };
   for (const auto &r : client.accepted) {
     writes.insert(writes.end(), r.writes.begin(), r.writes.end());
+    for (const auto &route : r.routes)
+      if (std::none_of(routes.begin(), routes.end(), [&](const auto &q) {
+            return same(q.from, route.from) && same(q.to, route.to);
+          }))
+        routes.push_back(route);
     receipts.insert(receipts.end(), r.receipts.begin(), r.receipts.end());
     bytes += r.bytes;
   }
@@ -849,7 +903,12 @@ result<void> service::end_update(const client &c) {
     return valid;
   }
   auto &submitted = p_->scenes.at(c.activation_.scene_.scene_).submitted;
-  submitted.push_back({std::move(receipts), std::move(writes), bytes, &submitted, {}});
+  submitted.push_back({std::move(receipts),
+                       std::move(writes),
+                       bytes,
+                       &submitted,
+                       {},
+                       std::move(routes)});
   auto &released = submitted.back();
   released.position = std::prev(submitted.end());
   for (auto &receipt : released.receipts) {
@@ -914,13 +973,77 @@ result<ticket> service::enqueue(const client &c, std::vector<write> writes) {
   receipt.status.submission = owner.holding ? 0 : receipt.id;
   auto &queue = owner.holding ? owner.accepted : p_->scenes.at(c.activation_.scene_.scene_).submitted;
   const auto bytes = available - budget.remaining();
-  queue.push_back({{result.receipt_}, std::move(admitted), bytes, &queue, {}});
+  queue.push_back(
+      {{result.receipt_}, std::move(admitted), bytes, &queue, {}, {}});
   auto &r = queue.back();
   r.position = std::prev(queue.end());
   receipt.pending = &r;
   ++p_->next_request;
   ++p_->pending_requests;
   p_->pending_bytes += bytes; // Proven <= limits.payload_bytes by byte_budget.
+  return result;
+}
+result<ticket> service::enqueue_route(const client &c, const field &from,
+                                      const field &to) {
+  if (auto ok = validate(c); !ok)
+    return failure(ok.error());
+  if (auto ok = validate(from); !ok)
+    return failure(ok.error());
+  if (auto ok = validate(to); !ok)
+    return failure(ok.error());
+  const auto scene = c.activation_.scene_.scene_;
+  if (from.node_.scene_ != scene || to.node_.scene_ != scene ||
+      from.node_.context_ != to.node_.context_)
+    return error(error_code::invalid_context, "provider.enqueue_route",
+                 "ROUTE crosses lexical context");
+  if (p_->scenes.at(scene).state != activation_state::active)
+    return error(error_code::access_denied, "provider.enqueue_route",
+                 "activation is faulted");
+  if (!p_->facts.supports(service_id::live_routes))
+    return error(error_code::unsupported_operation, "provider.enqueue_route",
+                 "backend does not provide live ROUTE addition");
+  const bool output = from.info_.access == access_type::output_only ||
+                      from.info_.access == access_type::input_output;
+  const bool input = to.info_.access == access_type::input_only ||
+                     to.info_.access == access_type::input_output;
+  if (!output || !input || from.info_.kind != to.info_.kind)
+    return error(error_code::invalid_route, "provider.enqueue_route",
+                 "ROUTE access or exact kind is incompatible");
+  if (!from.info_.supported || !to.info_.supported)
+    return error(error_code::unsupported_field_type, "provider.enqueue_route",
+                 "unsupported ROUTE field service");
+  if (auto ok = p_->implementation->do_check_live_route(where(from), where(to)); !ok)
+    return failure(ok.error());
+  if (p_->pending_requests >= p_->limits.pending_requests ||
+      p_->next_request == std::numeric_limits<std::uint64_t>::max())
+    return error(error_code::resource_limit, "provider.enqueue_route",
+                 "request admission capacity exhausted");
+  const auto available = p_->limits.payload_bytes - p_->pending_bytes;
+  detail::byte_budget budget(available);
+  if (!budget.add(sizeof(backend::admitted_route)) ||
+      !budget.add(from.info_.name.size()) || !budget.add(to.info_.name.size()))
+    return error(error_code::resource_limit, "provider.enqueue_route",
+                 "payload admission capacity exhausted");
+  auto &owner = p_->clients.at(c.id_);
+  ticket result;
+  result.receipt_ = std::make_shared<ticket::receipt>();
+  auto &receipt = *result.receipt_;
+  receipt.authority = p_->authority;
+  receipt.id = p_->next_request;
+  receipt.client = c.id_;
+  receipt.status.state =
+      owner.holding ? request_state::accepted : request_state::submitted;
+  receipt.status.submission = owner.holding ? 0 : receipt.id;
+  auto &queue = owner.holding ? owner.accepted : p_->scenes.at(scene).submitted;
+  const auto bytes = available - budget.remaining();
+  queue.push_back(
+      {{result.receipt_}, {}, bytes, &queue, {}, {{where(from), where(to)}}});
+  auto &request = queue.back();
+  request.position = std::prev(queue.end());
+  receipt.pending = &request;
+  ++p_->next_request;
+  ++p_->pending_requests;
+  p_->pending_bytes += bytes;
   return result;
 }
 result<void> service::cancel(const client &c, const ticket &t) {
@@ -976,16 +1099,32 @@ result<turn_report> service::pump(const activation &a, event_time time) {
   const auto notices_before = p_->notices.size();
   backend_result done;
   bool entered_turn = false;
+  bool installed_route = false;
   try {
     const std::vector<queued_write> empty;
     auto writes = prepare(request ? request->writes : empty);
     if (!writes) done = tl::make_unexpected(backend_failure{writes.error(), failure_effect::none});
     else if (auto valid = p_->implementation->do_validate_configuration(sid, *writes); !valid)
       done = tl::make_unexpected(backend_failure{valid.error(), failure_effect::none});
-    else { entered_turn = true; done = p_->implementation->do_turn(sid, time, *writes); }
+    else {
+      if (request)
+        for (const auto &route : request->routes) {
+          entered_turn = true;
+          done = p_->implementation->do_add_live_route(route.from, route.to);
+          if (!done)
+            break;
+          installed_route = true;
+        }
+      if (done) {
+        entered_turn = true;
+        done = p_->implementation->do_turn(sid, time, *writes);
+      }
+    }
   }
   catch (const std::exception &e) { done = tl::make_unexpected(backend_failure{error(error_code::callback_failed, "provider.pump", e.what()).value(), entered_turn ? failure_effect::partial_or_unknown : failure_effect::none}); }
   catch (...) { done = tl::make_unexpected(backend_failure{error(error_code::callback_failed, "provider.pump", "backend threw").value(), entered_turn ? failure_effect::partial_or_unknown : failure_effect::none}); }
+  if (!done && installed_route)
+    done.error().effects = failure_effect::partial_or_unknown;
   if (done && p_->capture_error)
     done = tl::make_unexpected(backend_failure{*p_->capture_error, failure_effect::partial_or_unknown});
   p_->pumping = false; p_->pumping_scene = 0;
@@ -1019,6 +1158,18 @@ result<subscription> service::observe(const activation &a, const field &f, std::
   auto o = std::make_shared<impl::observer>(); o->world = a; o->source = f;
   o->live = std::make_shared<std::atomic_bool>(true); o->callback = std::make_shared<const std::function<void(const notification &)>>(std::move(callback));
   p_->observers.push_back(o); return subscription{o->live};
+}
+bool service::observing(const std::weak_ptr<impl> &weak, const address &addr) {
+  const auto state = weak.lock();
+  if (!state || state->closed) return false;
+  const auto scene = state->scenes.find(addr.scene);
+  if (scene == state->scenes.end()) return false;
+  return std::any_of(state->observers.begin(), state->observers.end(), [&](const auto &o) {
+    if (!*o->live || o->world.epoch_ != scene->second.epoch) return false;
+    const auto source = where(o->source);
+    return source.scene == addr.scene && source.context == addr.context &&
+           source.node == addr.node && source.field == addr.field;
+  });
 }
 void service::record_event(const std::weak_ptr<impl> &weak, const address &addr, backend_value raw) {
   const auto state = weak.lock();

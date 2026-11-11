@@ -29,6 +29,70 @@ struct provider_fixture_report {
   std::vector<p::request_state> requests;
   friend bool operator==(const provider_fixture_report &, const provider_fixture_report &) = default;
 };
+// Run against both bundled backends so name discovery cannot depend on native
+// storage or reference snapshot APIs at the application boundary.
+inline void check_provider_named_nodes(const provider_factory &factory) {
+  const auto require = [](bool ok, const char *why) {
+    if (!ok) throw std::runtime_error(why);
+  };
+  const auto rejected = [&](const auto &result, error_code code) {
+    require(!result && result.error().code == code, "named-node authority/error mismatch");
+  };
+  auto service = factory().value();
+  const auto scene = service->create_scene().value();
+  const auto context = service->root_context(scene).value();
+  require(service->named_nodes(context).value().empty(), "empty name table");
+  const auto z = service->create_node(context, "Transform").value();
+  const auto a = service->create_node(context, "Transform").value();
+  const auto unnamed = service->create_node(context, "Transform").value();
+  require(service->names(unnamed).value().empty(), "unnamed node has no names");
+  require(bool(service->define_name(z, "Zulu")), "name detached node");
+  const auto retained = service->named_nodes(context).value();
+  require(bool(service->define_name(a, "Alpha")), "name second node");
+  require(bool(service->append_root(context, a)), "append named root");
+  rejected(service->define_name(unnamed, "Alpha"), error_code::duplicate_name);
+  rejected(service->define_name(z, "Alias"), error_code::duplicate_name);
+  const std::vector<p::named_node> expected{{"Alpha", a}, {"Zulu", z}};
+  require(service->named_nodes(context).value() == expected,
+          "sorted enumeration includes detached nodes and excludes unnamed nodes");
+  require(service->names(z).value() == std::vector<std::string>{"Zulu"}, "reverse name");
+  for (const auto &entry : expected)
+    require(service->named(context, entry.name).value() == entry.target, "lookup identity round trip");
+  const auto other_scene = service->create_scene().value();
+  const auto other_context = service->root_context(other_scene).value();
+  const auto other_node = service->create_node(other_context, "Transform").value();
+  require(bool(service->define_name(other_node, "Alpha")), "scene-local duplicate name");
+  require(service->named_nodes(other_context).value() ==
+              std::vector<p::named_node>{{"Alpha", other_node}}, "scene isolation");
+  auto foreign = factory().value();
+  rejected(foreign->named_nodes(context), error_code::invalid_context);
+  rejected(foreign->names(z), error_code::invalid_context);
+  auto disposed_context = context;
+  disposed_context.dispose();
+  auto disposed_node = z;
+  disposed_node.dispose();
+  rejected(service->named_nodes(disposed_context), error_code::disposed);
+  rejected(service->names(disposed_node), error_code::disposed);
+  rejected(service->named_nodes(p::context{}), error_code::stale_handle);
+  rejected(service->names(p::node{}), error_code::stale_handle);
+  bool wrong_context = false, wrong_node = false;
+  std::thread worker([&] {
+    const auto entries = service->named_nodes(context);
+    const auto names = service->names(z);
+    wrong_context = !entries && entries.error().code == error_code::wrong_thread;
+    wrong_node = !names && names.error().code == error_code::wrong_thread;
+  });
+  worker.join();
+  require(wrong_context && wrong_node, "discovery requires owner thread");
+  require(bool(service->activate(scene)), "activate named scene");
+  require(service->named_nodes(context).value() == expected, "names survive activation");
+  require(service->names(z).value() == std::vector<std::string>{"Zulu"}, "live reverse name");
+  require(bool(service->retire(scene)), "retire named scene");
+  rejected(service->named_nodes(context), error_code::stale_handle);
+  rejected(service->names(z), error_code::stale_handle);
+  service.reset();
+  require(retained == std::vector<p::named_node>{{"Zulu", z}}, "owning enumeration snapshot survives edits and teardown");
+}
 namespace detail {
 struct provider_fixture_keys {
   static constexpr std::string_view x3d_name = "Transform";
