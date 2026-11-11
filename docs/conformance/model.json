@@ -5955,7 +5955,9 @@
         "SCR-005",
         "SCR-006",
         "SCR-007",
+        "SCRIPT-BROWSER-SERVICES",
         "SCRIPT-EVENTIN",
+        "SCRIPT-FIELD-TYPE-OBJECTS",
         "SCRIPT-HOSTILE-VALUE-ABORT",
         "SCRIPT-NODE-DEFAULT-CODECS",
         "SCRIPT-NODE-DEFAULT-CODECS-READ",
@@ -5973,7 +5975,7 @@
         {
           "behaves": "partial",
           "behavioral": true,
-          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; ISO/IEC 19775-1 \u00a729.2.3; ISO/IEC 19775-1 \u00a729.2.6, \u00a731.2.4; 29.2.5; 29.2.3; 29.2.4; 29.3.1; 29.2.2, 19777-1; 29.2.6, 4.4.8.3; ISO 19776-1 (CDATA); 19775-1 29; 29.2; 4.4.8.3; 29.2.4 (ECMAScript binding 19777-1); 4.4.2.2, 4.4.8.2; ISO/IEC 19775-2 (SAI addRoute: INVALID_NODE / INVALID_FIELD); 19775-1 4.4.2.2, 4.3.7; 29.2.4 (ECMAScript binding 19777-1: SFNode is a node reference); 31.2.2; 31.2.4; F.5 Table F.3 (Script); 29.2.8; 29.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; 4.4.4; 9.2; 29.2 (native ownership and host integration); ISO/IEC 19776-5 5.1.3, 5.2, 5.6, 5.15, Annex A; ISO/IEC 19776-2 A.3; ISO/IEC 19776-2 5.1.2, 5.7; ISO/IEC 19776-2 5.13, A.3; ISO/IEC 19776-5 5.13, Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19775-1, 29.4.1; ISO/IEC 19776-1, 4.3.7; ISO/IEC 19776-2, A.3; ISO/IEC 19775-1, 5.3.7, 5.3.9-5.3.12; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; 29.2.4; ISO/IEC 19777-1 clause 7 (field objects); 29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -6002,7 +6004,9 @@
             "SCR-005",
             "SCR-006",
             "SCR-007",
+            "SCRIPT-BROWSER-SERVICES",
             "SCRIPT-EVENTIN",
+            "SCRIPT-FIELD-TYPE-OBJECTS",
             "SCRIPT-HOSTILE-VALUE-ABORT",
             "SCRIPT-NODE-DEFAULT-CODECS",
             "SCRIPT-NODE-DEFAULT-CODECS-READ",
@@ -12941,6 +12945,34 @@
       "severity": "major",
       "status": "open",
       "summary": "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
+    },
+    {
+      "clause": "29.2.4; ISO/IEC 19777-1 clause 7 (field objects)",
+      "id": "SCRIPT-FIELD-TYPE-OBJECTS",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "runtime/script/FieldTypesPrelude.hpp (ES5.1, evaluated by both backends at load) defines SFVec2f/2d/3f/3d/4f/4d, SFColor, SFColorRGBA, SFRotation, SFImage and all MF* constructors with the binding's methods and index accessors; MF values are JS arrays. Pushed values adopt the same prototypes from a table scripts cannot replace. SFRotation.multiply applies the receiver first (Open Inventor / X_ITE convention; the standard's text is ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay flat arrays), SFNode/MFNode construction from a string. Tests: ecmascript/quickjs backend \"field types\" cases.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "The ECMAScript binding had no field-type objects: `new SFVec3f(1, 2, 3)` raised a ReferenceError, and a received vector had no methods or index access, so typical authored scripts failed at their first line."
+    },
+    {
+      "clause": "29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3",
+      "id": "SCRIPT-BROWSER-SERVICES",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "Needs a parse-and-attach path through SaiContext under the directOutput gate. Planned with the SAI convergence work.",
+      "severity": "major",
+      "status": "open",
+      "summary": "The script `Browser` object offers only getName, getVersion, print/println, addRoute, deleteRoute, currentTime and currentFrameRate. createX3DFromString, createVrmlFromString, createX3DFromURL, loadURL, replaceWorld, currentScene, createNode and the property forms (name, version, currentSpeed) are missing, so a script that builds scene content fails with 'not callable'."
     }
   ],
   "meta": {
@@ -13129,14 +13161,14 @@
     ]
   },
   "summary": {
-    "closed_count": 318,
+    "closed_count": 319,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 351,
+    "finding_count": 353,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 15,
+      "major": 16,
       "minor": 16
     }
   },

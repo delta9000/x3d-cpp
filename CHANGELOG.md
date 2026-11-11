@@ -8,6 +8,14 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **ECMAScript field-type objects (SCRIPT-FIELD-TYPE-OBJECTS).** Scripts can now
+  use the ISO/IEC 19777-1 constructors and methods: `new SFVec3f(1, 2, 3)`,
+  `a.add(b).cross(c)`, `v[0]`, `new SFRotation(from, to).multVec(v)`,
+  `color.setHSV(...)`, `new MFVec3f(...)`. Values a script receives carry the
+  same methods. Implemented once in `runtime/script/FieldTypesPrelude.hpp` for
+  both Duktape and QuickJS. `Browser.println` is an alias of `print`. Matrix
+  methods, string-constructed `SFNode` and the scene-building `Browser`
+  services are still missing (SCRIPT-BROWSER-SERVICES).
 - **Unknown nodes survive XML conversion (READ-UNKNOWN-NODE-PASSTHROUGH).** The
   XML reader keeps an element of unknown type (an X3D 4.1 node, an extension, a
   misspelling) as an opaque `runtime::UnknownNode` instead of discarding it, and

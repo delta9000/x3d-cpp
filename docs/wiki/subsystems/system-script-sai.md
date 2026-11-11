@@ -54,9 +54,10 @@ conformance.
 |---|---|
 | `runtime/script/ScriptSystem.hpp` | `System` subclass that drives one language backend; owns per-script `Entry` state (SAI surface, load handle, deferred-event queue, tick flags); wires `prepareEvents` and `eventsProcessed` phases around the cascade drain |
 | `runtime/script/ScriptEngine.hpp` | Abstract backend seam: `load / initialize / prepareEvents / invoke / eventsProcessed / shutdown`; defines `ScriptHandle` (opaque `uint64_t`, 0 = invalid) |
-| `runtime/script/SaiContext.hpp` | In-process SAI surface bound to one Script node: field get/set, dynamic `addRoute`/`deleteRoute`, browser-info queries (`getName`, `getVersion`, `currentTime`, `currentFrameRate`, `print`); enforces the `directOutput` gate |
+| `runtime/script/SaiContext.hpp` | In-process SAI surface bound to one Script node: field get/set, dynamic `addRoute`/`deleteRoute`, browser-info queries (`getName`, `getVersion`, `currentTime`, `currentFrameRate`, `print`; scripts also see `Browser.println` as an alias of `print`); enforces the `directOutput` gate |
 | `runtime/script/EcmaScriptBackend.hpp` | `ScriptEngine` implementation using vendored Duktape 2.7.0; one `duk_context` per loaded script; `pushValue`/`toValue` static methods exposed for unit testing |
 | `runtime/script/EcmaScriptBackend.cpp` | Full marshalling (SF/MF types ↔ JS), Browser global object, `seedAuthorGlobals`/`readbackAuthorGlobals()` for dynamic author-field integration |
+| `runtime/script/FieldTypesPrelude.hpp` | ES5.1 source both backends evaluate at load: the ISO/IEC 19777-1 field-type constructors (`SFVec3f`, `SFRotation`, `MFString`, ...) and their prototypes |
 | `runtime/script/vendor/duktape/` | Vendored Duktape 2.7.0 (single-file C library) |
 | `runtime/script/tests/MockScriptEngine.hpp` | Recording `ScriptEngine` for language-free Track-A tests; arms reactions per event name; exposes a `calls` log |
 | `runtime/script/tests/` | All unit and integration tests for this subsystem |
@@ -159,6 +160,15 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 - `Script.sourceCode` — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the  S1 closure).
 
 - SFNode handles (`NodeHandleTable`) — script code never holds a C++ pointer. Each backend interns a node into the per-script `SaiContext::nodeHandles()` table and hands the engine a small integer id. Duktape stores it under a hidden `\xff` symbol; QuickJS stores it in the opaque slot of a native `X3DNode` class. Scripts can neither read nor forge the id. Resolving an id yields the node's real owning `shared_ptr`, so an `SFNode` a script writes into a field shares ownership like DEF/USE, which matches the ECMAScript binding's node-reference semantics (ISO/IEC 19777-1). An id whose node the scene has dropped, or an unknown id, resolves to null. See [ADR-0048](../decisions/0048-script-node-handles.md).
+
+- Field-type objects (`FieldTypesPrelude.hpp`) — a structured SF value is a JS object with own numeric properties (`x/y/z`, `r/g/b`, `x/y/z/angle`); that shape is what crosses the seam, and an object literal such as `{x: 1, y: 2, z: 3}` is still accepted. The prelude adds what ISO/IEC 19777-1 clause 7 scripts expect on top of it:
+    - Constructors: `SFVec2f/2d/3f/3d/4f/4d`, `SFColor`, `SFColorRGBA`, `SFRotation` (four numbers, axis plus angle, or from and to vectors), `SFImage`, and every `MF*` name. MF values are plain JS arrays, so `new MFVec3f(a, b)` returns an `Array`.
+    - Vector methods: `add`, `subtract`, `multiply`, `divide`, `negate`, `dot`, `length`, `normalize`, `toString`, plus `cross` on the 3-component types.
+    - `SFColor`/`SFColorRGBA`: `setHSV`, `getHSV`, `toString`.
+    - `SFRotation`: `getAxis`, `setAxis`, `inverse`, `multiply`, `multVec`, `slerp`, `toString`. `a.multiply(b)` applies `a` first and then `b`, the Open Inventor convention X_ITE also uses; the standard's wording does not fix the order.
+    - Index access (`v[0]`, `c[2]`, `r[3]`) reads and writes the named component.
+
+    Values the runtime pushes into a script (handler arguments, seeded author fields) get the same prototype. Each backend keeps its own name-to-prototype table (Duktape: the global stash; QuickJS: a read-only, non-configurable global), so a script that overwrites `SFVec3f` does not change what pushed values receive. Not provided: `SFNode`/`MFNode` construction from a string, `SFMatrix3f/4f` methods (matrices stay flat row-major arrays), `VrmlMatrix`, and the `Browser` services beyond the list above (`createX3DFromString`, `createVrmlFromString`, `loadURL`, `replaceWorld`, `currentScene`). See SCRIPT-FIELD-TYPE-OBJECTS and SCRIPT-BROWSER-SERVICES.
 
 - Deterministic clock — in both backends a small JS shim installed once the global object exists redirects the JS `Date()` (`Date.now()` and a zero-argument `new Date()`/`Date()`, in milliseconds = seconds × 1000) to the same injected `X3DExecutionContext` clock that `Browser.currentTime` reads, so a Script that reads `Date()` stays reproducible under `x3d sim`'s deterministic clock while `Date()` with explicit arguments, `Date.parse`/`Date.UTC` and the prototype methods are untouched.
 

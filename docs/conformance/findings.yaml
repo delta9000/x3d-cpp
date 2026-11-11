@@ -3165,3 +3165,32 @@
     `<IS>` and PROTO statements inside an unknown element are discarded. The
     node is never interpreted: no runtime behaviour, no extraction. Test:
     x3d_parse_tests unknown_node_passthrough_test.
+
+- id: SCRIPT-FIELD-TYPE-OBJECTS
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4; ISO/IEC 19777-1 clause 7 (field objects)"
+  severity: major
+  status: fixed
+  summary: "The ECMAScript binding had no field-type objects: `new SFVec3f(1, 2, 3)` raised a ReferenceError, and a received vector had no methods or index access, so typical authored scripts failed at their first line."
+  note: >-
+    runtime/script/FieldTypesPrelude.hpp (ES5.1, evaluated by both backends at
+    load) defines SFVec2f/2d/3f/3d/4f/4d, SFColor, SFColorRGBA, SFRotation,
+    SFImage and all MF* constructors with the binding's methods and index
+    accessors; MF values are JS arrays. Pushed values adopt the same prototypes
+    from a table scripts cannot replace. SFRotation.multiply applies the
+    receiver first (Open Inventor / X_ITE convention; the standard's text is
+    ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay
+    flat arrays), SFNode/MFNode construction from a string. Tests:
+    ecmascript/quickjs backend "field types" cases.
+
+- id: SCRIPT-BROWSER-SERVICES
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4; ISO/IEC 19777-1 clause 6 (Browser object); ISO/IEC 19775-2 6.3"
+  severity: major
+  status: open
+  summary: "The script `Browser` object offers only getName, getVersion, print/println, addRoute, deleteRoute, currentTime and currentFrameRate. createX3DFromString, createVrmlFromString, createX3DFromURL, loadURL, replaceWorld, currentScene, createNode and the property forms (name, version, currentSpeed) are missing, so a script that builds scene content fails with 'not callable'."
+  note: >-
+    Needs a parse-and-attach path through SaiContext under the directOutput
+    gate. Planned with the SAI convergence work.

@@ -1,6 +1,7 @@
 // Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
+#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -26,6 +27,8 @@ namespace {
 // symbol: ECMAScript code can neither read, enumerate nor create it.
 constexpr const char *kNodeIdKey = "\xff" "x3dNodeId";  // SFNode handle id
 constexpr const char *kStashSaiKey = "sai";  // global-stash slot: SaiContext*
+// global-stash slot: field-type name -> prototype (FieldTypesPrelude.hpp)
+constexpr const char *kStashProtosKey = "fieldProtos";
 
 // SFNode <-> JS opaque handle object.
 // A non-null node becomes a JS object carrying its NodeHandleTable id in a
@@ -232,41 +235,69 @@ double getNumberProp(duk_context *ctx, duk_idx_t objIdx, const char *name) {
   return v;
 }
 
+// Give the object on top of the stack the prototype of field type `type`
+// (methods and index accessors from FieldTypesPrelude.hpp). The table lives in
+// the global stash, so a script that overwrites the global constructor cannot
+// change what pushed values get. A no-op when the prelude is not installed.
+void adopt(duk_context *c, const char *type) {
+  duk_push_global_stash(c);
+  duk_get_prop_string(c, -1, kStashProtosKey);
+  if (duk_is_object(c, -1)) {
+    duk_get_prop_string(c, -1, type);
+    if (duk_is_object(c, -1)) {
+      duk_set_prototype(c, -4);
+      duk_pop_2(c);
+      return;
+    }
+    duk_pop(c);
+  }
+  duk_pop_2(c);
+}
+
 // Single-SF pushers (used directly and as MF element pushers).
 
 void pushSFVec2f(duk_context *c, const SFVec2f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
+  adopt(c, "SFVec2f");
 }
 void pushSFVec2d(duk_context *c, const SFVec2d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
+  adopt(c, "SFVec2d");
 }
 void pushSFVec3f(duk_context *c, const SFVec3f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z);
+  adopt(c, "SFVec3f");
 }
 void pushSFVec3d(duk_context *c, const SFVec3d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z);
+  adopt(c, "SFVec3d");
 }
 void pushSFVec4f(duk_context *c, const SFVec4f &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "w", v.w);
+  adopt(c, "SFVec4f");
 }
 void pushSFVec4d(duk_context *c, const SFVec4d &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "w", v.w);
+  adopt(c, "SFVec4d");
 }
 void pushSFColor(duk_context *c, const SFColor &v) {
   duk_push_object(c); putNumberProp(c, "r", v.r); putNumberProp(c, "g", v.g);
   putNumberProp(c, "b", v.b);
+  adopt(c, "SFColor");
 }
 void pushSFColorRGBA(duk_context *c, const SFColorRGBA &v) {
   duk_push_object(c); putNumberProp(c, "r", v.r); putNumberProp(c, "g", v.g);
   putNumberProp(c, "b", v.b); putNumberProp(c, "a", v.a);
+  adopt(c, "SFColorRGBA");
 }
 void pushSFRotation(duk_context *c, const SFRotation &v) {
   duk_push_object(c); putNumberProp(c, "x", v.x); putNumberProp(c, "y", v.y);
   putNumberProp(c, "z", v.z); putNumberProp(c, "angle", v.angle);
+  adopt(c, "SFRotation");
 }
 
 // Single-SF poppers.
@@ -384,6 +415,7 @@ void pushSFImage(duk_context *c, const SFImage &img) {
     duk_put_prop_index(c, -2, (duk_uarridx_t)p);
   }
   duk_put_prop_string(c, -2, "array");
+  adopt(c, "SFImage");
 }
 SFImage toSFImage(duk_context *c, duk_idx_t idx) {
   SFImage img{0, 0, 0, {}};
@@ -852,6 +884,7 @@ void EcmaScriptBackend::installBrowser(duk_context *ctx, Entry *entry) {
   defineBrowserMethod(ctx, "getName", browser_getName, 0, sai);
   defineBrowserMethod(ctx, "getVersion", browser_getVersion, 0, sai);
   defineBrowserMethod(ctx, "print", browser_print, 1, sai);
+  defineBrowserMethod(ctx, "println", browser_print, 1, sai);
   defineBrowserMethod(ctx, "addRoute", browser_addRoute, 4, sai);
   defineBrowserMethod(ctx, "deleteRoute", browser_deleteRoute, 4, sai);
 
@@ -899,6 +932,12 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       duk_put_prop_string(c, -2, kStashSaiKey);
       duk_pop(c);
       installBrowser(c, &entry);
+      // Field-type constructors and prototypes (19777-1 clause 7).
+      duk_eval_string(c, kFieldTypesPrelude);
+      duk_push_global_stash(c);
+      duk_insert(c, -2);
+      duk_put_prop_string(c, -2, kStashProtosKey);
+      duk_pop(c);
     });
 
     // Evaluate the source to define global functions. The top-level source runs
