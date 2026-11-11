@@ -80,7 +80,7 @@ services:
   - <<: *command
     id: SVC-SCENE-CREATE-FROM-STRING
     clause: ISO/IEC 19775-2:2015, 6.3.16 createX3DFromString
-    public_symbol: x3d::codec::parseDocument
+    public_symbol: x3d::codec::makeStringSceneFactory
     support: partial
     tests: [x3d_parse_tests]
     preserves: [INV-ID-2, INV-EDIT-3, INV-VAL-1, INV-VAL-2, INV-RT-2]

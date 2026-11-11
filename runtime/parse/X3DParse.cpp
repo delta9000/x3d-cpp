@@ -448,4 +448,43 @@ runtime::X3DDocument parseFile(const std::string &path,
   return parseDocument(bytes, enc, base);
 }
 
+std::function<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>(const std::string &)>
+makeStringSceneFactory() {
+  return [](const std::string &text) {
+    const auto first = text.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos)
+      throw std::runtime_error("createX3DFromString: empty text");
+    std::string source = text;
+    Encoding encoding = Encoding::Unknown;
+    if (text[first] == '<') {
+      encoding = Encoding::XML;
+      if (text.find("<X3D") == std::string::npos)
+        source = "<X3D profile='Full' version='4.0'><Scene>" + text +
+                 "</Scene></X3D>";
+    } else if (text[first] == '{') {
+      encoding = Encoding::JSON;
+    } else if (text[first] != '#') {
+      encoding = Encoding::ClassicVRML;
+      source = "#X3D V4.0 utf8\nPROFILE Full\n" + text;
+    }
+    // No file access from script-supplied text: both resolvers decline.
+    const ProtoDeclarationResolver noProtos =
+        [](const std::vector<std::string> &, const std::string &) {
+          return ProtoDeclarationResolver::result_type{};
+        };
+    const runtime::InlineResolver noInlines =
+        [](const std::vector<std::string> &, const std::string &) {
+          return runtime::InlineResolver::result_type{};
+        };
+    runtime::X3DDocument doc =
+        parseDocument(source, encoding, "", noProtos, noInlines);
+    std::vector<std::shared_ptr<x3d::nodes::X3DNode>> roots;
+    for (const auto &node : doc.scene.rootNodes)
+      if (node) roots.push_back(node);
+    if (roots.empty())
+      throw std::runtime_error("createX3DFromString: the text contains no nodes");
+    return roots;
+  };
+}
+
 } // namespace x3d::codec

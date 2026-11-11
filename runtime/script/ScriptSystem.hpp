@@ -64,6 +64,17 @@ public:
                            : extract::makeNullAssetResolver()) {}
 
   /**
+   * @brief Supply the parser behind Browser.createX3DFromString /
+   *        createVrmlFromString for every script, enrolled now or later.
+   * @details Without one those calls throw in script code. A host that links
+   *          the parser passes codec::makeStringSceneFactory() (X3DParse.hpp).
+   */
+  void setSceneFactory(SaiContext::SceneFactory factory) {
+    sceneFactory_ = std::move(factory);
+    for (auto &entry : scripts_) entry->sai.setSceneFactory(sceneFactory_);
+  }
+
+  /**
    * @brief Teardown: shut down every still-loaded script (§29.2.3).
    * @details Destroying the ScriptSystem (e.g. with its execution context) is
    *          the "world unloaded/replaced" case where each x3d::nodes::Script's shutdown()
@@ -102,6 +113,7 @@ public:
     Entry *e = entryFor(script);
     if (!e) {
       scripts_.push_back(std::make_unique<Entry>(ctx, *script, name_, version_));
+      scripts_.back()->sai.setSceneFactory(sceneFactory_);
       e = scripts_.back().get();
     }
     if (script->getLoad()) {
@@ -533,6 +545,7 @@ private:
   std::string name_;
   std::string version_;
   extract::AssetResolver resolver_;
+  SaiContext::SceneFactory sceneFactory_;
   std::vector<std::unique_ptr<Entry>> scripts_;
   // §29.2.5 once-per-timestamp guard for the prepareEvents phase.
   bool havePrepared_ = false;

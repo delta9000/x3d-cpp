@@ -8,6 +8,14 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Scripts can create scene content (SCRIPT-BROWSER-SERVICES, partial).**
+  `Browser.createX3DFromString` and `Browser.createVrmlFromString` parse a
+  document or fragment and return the new nodes, which a `directOutput` script
+  can insert with `group.children = nodes`. The parser reaches the script layer
+  through a new seam, `ScriptSystem::setSceneFactory`, filled by
+  `codec::makeStringSceneFactory()`; `x3d sim` wires it. ROUTEs and Script
+  author fields inside the created text are not carried over, and no url in it
+  is fetched. Node handles now have a string form.
 - **Scripts can read and write node fields (SCRIPT-SFNODE-FIELD-ACCESS).** An
   SFNode in a script exposes the node's fields as properties:
   `target.translation.add(v)`, `target.translation = v`, `target.set_scale = v`.

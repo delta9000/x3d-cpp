@@ -13,6 +13,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 namespace script_backend_tests {
@@ -1121,6 +1122,97 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     };
     run(true);
     run(false);
+  }
+
+  // Browser.createX3DFromString / createVrmlFromString: the host's scene
+  // factory builds the nodes; the script inserts them through a node field.
+  {
+    Fixture fix;
+    fix.script.setDirectOutputUnchecked(true);
+    std::string seenText;
+    fix.sai.setSceneFactory([&](const std::string &text) {
+      seenText = text;
+      if (text == "bad") throw std::runtime_error("parse error");
+      auto made = std::make_shared<Transform>();
+      made->setTranslation(SFVec3f{4, 5, 6});
+      return MFNode{made};
+    });
+    auto group = std::make_shared<Transform>();
+    auto &store = fix.ctx.authorFields();
+    store.addAuthorField(fix.script, AuthorFieldDecl{
+        "group", X3DFieldType::SFNode, AccessType::InitializeOnly,
+        std::any(SFNode(group))});
+    auto out = [&](const char *name, X3DFieldType t) {
+      store.addAuthorField(
+          fix.script, AuthorFieldDecl{name, t, AccessType::OutputOnly, {}});
+    };
+    out("count", X3DFieldType::SFInt32);
+    out("sameViaRootNodes", X3DFieldType::SFBool);
+    out("madeX", X3DFieldType::SFFloat);
+    out("badThrew", X3DFieldType::SFBool);
+    out("json", X3DFieldType::SFString);
+    ScriptHandle h = backend.load(fix.script, R"JS(
+      function initialize() {
+        var scene = Browser.createX3DFromString('<Transform/>');
+        count = scene.length;
+        sameViaRootNodes = scene.rootNodes.length === 1 &&
+                           scene.rootNodes[0].translation.x === scene[0].translation.x;
+        madeX = scene[0].translation.x;
+        json = '' + scene[0] + JSON.stringify(scene);
+        group.children = scene.rootNodes;
+        badThrew = false;
+        try { Browser.createVrmlFromString('bad'); } catch (e) { badThrew = true; }
+      }
+    )JS", fix.sai);
+    check(h != kInvalidScriptHandle, "create: script loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      std::any c = store.getValue(fix.script, "count");
+      check(c.has_value() && std::any_cast<SFInt32>(c) == 1,
+            "create: createX3DFromString returns the created nodes");
+      std::any same = store.getValue(fix.script, "sameViaRootNodes");
+      check(same.has_value() && std::any_cast<bool>(same),
+            "create: the result is also reachable as .rootNodes");
+      std::any mx = store.getValue(fix.script, "madeX");
+      check(mx.has_value() && nearly(std::any_cast<SFFloat>(mx), 4),
+            "create: a created node's fields are readable");
+      check(group->getChildren().size() == 1 &&
+                nearly(std::dynamic_pointer_cast<Transform>(group->getChildren()[0])
+                           ? std::dynamic_pointer_cast<Transform>(
+                                 group->getChildren()[0])->getTranslation().y
+                           : 0, 5),
+            "create: the script inserted the created node into the scene");
+      std::any js = store.getValue(fix.script, "json");
+      check(js.has_value() &&
+                std::any_cast<SFString>(js) == "[SFNode Transform][{}]",
+            "create: a node has a string form and the result stringifies");
+      std::any bad = store.getValue(fix.script, "badThrew");
+      check(bad.has_value() && std::any_cast<bool>(bad) && seenText == "bad",
+            "create: a factory error becomes a catchable script error");
+      backend.shutdown(h);
+    }
+    store.erase(fix.script);
+  }
+
+  // With no scene factory the call throws instead of returning nothing.
+  {
+    Fixture fix;
+    fix.ctx.authorFields().addAuthorField(
+        fix.script, AuthorFieldDecl{"threw", X3DFieldType::SFBool,
+                                    AccessType::OutputOnly, {}});
+    ScriptHandle h = backend.load(fix.script,
+        "function initialize() { threw = false;"
+        " try { Browser.createX3DFromString('<Group/>'); } catch (e) { threw = true; } }",
+        fix.sai);
+    check(h != kInvalidScriptHandle, "create: no-factory script loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      std::any t = fix.ctx.authorFields().getValue(fix.script, "threw");
+      check(t.has_value() && std::any_cast<bool>(t),
+            "create: without a scene factory the call throws");
+      backend.shutdown(h);
+    }
+    fix.ctx.authorFields().erase(fix.script);
   }
 
 }
