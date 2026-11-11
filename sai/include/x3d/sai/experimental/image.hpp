@@ -82,8 +82,8 @@ inline result<std::vector<std::uint32_t>> image_pixels(const image &source) {
 
 // C++ 7.7.6 setSubImage: copy without resizing or pixel-format conversion.
 // Signed offsets clip against both source and destination bounds. Negative
-// extents are rejected; zero extents are a no-op. These edge choices are the
-// modern proposal's explicit safety policy where the source is underspecified.
+// extents are rejected; zero extents are a no-op. The published text leaves
+// these edge cases open; this is the SDK's explicit safety policy for them.
 // Returning a new owning value also makes self-copy/overlap deterministic.
 inline result<image> with_sub_image(const image &destination,
                                     const image &source,

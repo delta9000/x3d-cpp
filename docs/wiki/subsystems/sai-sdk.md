@@ -25,6 +25,15 @@ notification rules, and the same oracle (`testing/provider_fixture.hpp`) runs
 against both. The SDK was developed in a separate `x3d-sai` repository from
 2026-07-19 and folded back on 2026-11-11 ([ADR-0076](../decisions/0076-fold-sai-into-x3d-cpp.md)).
 
+The SDK is a C++20-idiomatic take on the abstract SAI services (ISO/IEC
+19775-2), offered for review alongside the published C++ binding (ISO/IEC
+19777-4), which keeps the interface shape it shares with the Java binding. It is
+not source-compatible with 19777-4; the register cites the ISO clause for each
+service so the two can be compared. Points where the SDK reads the published
+text differently are recorded as choices and as feedback for the binding's
+editors, not as defects. See the SDK README's
+[relationship to the ISO C++ binding](https://github.com/delta9000/x3d-cpp/blob/main/sai/README.md#relationship-to-the-iso-c-binding).
+
 ## Layout
 
 | Path | Role |

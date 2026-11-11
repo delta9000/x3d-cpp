@@ -11,8 +11,8 @@
 
 namespace x3d::sai::experimental {
 
-// Owning modern replacements for the published binding's inconsistent
-// string/primitive property-array spellings. Mutating a returned map never
+// One owning map form for the browser properties that the published binding
+// describes as both string arrays and primitive property arrays. Mutating a returned map never
 // changes the browser. Strings and property names preserve exact case.
 using browser_property_value =
     std::variant<bool, std::int32_t, float, std::string>;

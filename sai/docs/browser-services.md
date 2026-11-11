@@ -2,9 +2,9 @@
 
 ## Source and scope
 
-This is a modern owning API for a bounded set of browser services. It does not
-reproduce the published C++ binding's contradictory string-array/property
-representations, and it does not add a renderer, navigation engine, codec,
+This is a modern owning API for a bounded set of browser services. Where the
+published C++ binding describes browser properties both as string arrays and as
+primitive property arrays, this SDK uses one owning map (see below). It does not add a renderer, navigation engine, codec,
 transport, browser-reference disposal, internal Script phases or profile
 conformance.
 

@@ -13,9 +13,29 @@ x3d-cpp `RuntimeSession`. They share handles, values, errors, gates, receipts
 and event-delivery rules, and the same behavioural oracle checks both. Each
 backend advertises the node types and services it supports, so check
 `service.supported()` rather than assuming the whole ISO SAI. The namespace is
-`experimental` because the API can still change between 0.x releases; it is a
-modern C++ design, not a source-compatible copy of every published C++ binding
-interface, and it makes no binary ABI promise.
+`experimental` because the API can still change between 0.x releases, and it
+makes no binary ABI promise.
+
+## Relationship to the ISO C++ binding
+
+[ISO/IEC 19777-4](https://www.iso.org/standard/83753.html) is the published C++
+language binding for the SAI. Its interfaces keep the shape shared with the
+other SAI language bindings, notably Java (ISO/IEC 19777-2): accessor pairs
+such as `getUserData`/`setUserData`, an `X3DField` class hierarchy, and a
+`CObject` user-data type. That parallel structure is a deliberate choice: it
+lets one abstract service description map the same way into every language.
+
+This SDK explores a different trade-off. It maps the same abstract services
+(ISO/IEC 19775-2) onto idiomatic C++20: owning values, `result<T>` errors,
+distinct strong types, and handles whose authority the provider checks. It is
+offered as a design for review and comparison alongside the standard, not as a
+replacement for it, so it is not source-compatible with 19777-4. The
+[service register](docs/conformance/SAI-BASELINE.md) cites the ISO clause behind
+each service so the two can be compared directly.
+
+Where a topic page notes that our reading of the published text differs, or
+that the text leaves a policy open, that is a record of the choice we made and
+a point worth raising with the binding's editors, not a defect claim.
 
 ## Build and consume
 

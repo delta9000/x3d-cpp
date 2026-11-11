@@ -24,7 +24,8 @@ The sources used are:
 - [Architecture, 5.3.8–5.3.11](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html#SFMatrix3dAndMFMatrix3d):
   row-major SFMatrix field values and identity defaults
 
-Important differences remain visible instead of being silently resolved:
+Where this SDK's choices differ from the sources, they are listed here rather
+than silently resolved:
 
 1. Abstract 6.12.1 describes service matrices as column-major; the architectural
    SFMatrix fields are row-major. This SDK extends the existing row-major
@@ -36,9 +37,9 @@ Important differences remain visible instead of being silently resolved:
    to column-vector action requires a mathematical transpose, not merely a
    storage conversion.
 3. The published C++ text declares `set(int row, int column)` without a value
-   and lists `Matrix3` results for Matrix4 algebra and vector operations. This
-   SDK defines explicit component values and mathematically appropriate
-   result types rather than reproducing those inconsistent signatures.
+   and lists `Matrix3` results for some Matrix4 algebra and vector operations,
+   which reads like an editorial slip worth reporting. This SDK takes a value
+   argument and returns the matching matrix or vector type.
 4. Abstract inverse, transpose, and matrix multiplication operate in place;
    these modern helpers return new owning values. No partial mutation occurs on
    failure. Both binary32 and binary64 values are supported; binary32 results
