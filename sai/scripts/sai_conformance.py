@@ -4,7 +4,7 @@
 The registers deliberately distinguish three claims:
 
 * an ISO service exists and has defined observable semantics;
-* x3d-sai exposes some, all, or none of that service today;
+* the SAI SDK exposes some, all, or none of that service today;
 * executable tests falsify the semantic claim.
 
 Normal validation is a consistency/drift gate. ``--strict`` is the opt-in

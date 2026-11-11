@@ -22,7 +22,7 @@ The designated published C++ copy's
 also bounds individual axis components to [-1, 1]. Neither source specifies this
 floating-point tolerance or requires rejection instead of normalization. The
 eight-epsilon acceptance window and rejection policy are explicit choices of
-this modern proposal, not additional ISO requirements or a complete conformance
+this SDK, not additional ISO requirements or a complete conformance
 claim. Zero axes are invalid even when the angle is zero.
 
 The angle is independent of axis normalization. This change introduces no

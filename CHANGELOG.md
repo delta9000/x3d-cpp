@@ -8,6 +8,15 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **SAI SDK folded back in (`sai/`, ADR-0076).** The portable SAI provider
+  contract, reference backend, kernel extensions, generator, register and docs
+  moved here from the `x3d-sai` repository with their history. `sai/` stays a
+  separate CMake project and uv package; the runtime build does not add it.
+  New `mise run sai-*` tasks (`sai-ci` is part of `ci`, `sai-provider` of
+  `ci-all`), and CI jobs `sai` and `sai-adapter` build the SDK and the native
+  provider against it on every C++ or SAI change. `verify_sai_provider.sh` and
+  `verify_sai_coexistence.sh` default their SAI source to `sai/`.
+
 - **Authored fog depths (`FogCoordinate`, §24.4.3, REQ-LOCALFOG).**
   `MeshData::fogDepths` carries a geometry's `fogCoord` depth for every emitted
   vertex (composed, line and point sets and `ElevationGrid`; a short list

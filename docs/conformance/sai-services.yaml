@@ -1,10 +1,11 @@
-# x3d-cpp's side of the SAI service register.
+# The runtime's side of the SAI service register: services implemented by
+# x3d::runtime::SaiContext and x3d::codec, whose `tests:` entries name runtime
+# CTests / doctest cases.
 #
-# Split out 2026-07-19 when the experimental SAI semantic kernel moved to the
-# x3d-sai sister repository (see ADR-0047). The sister repo's sai-services.yaml
-# was a cross-implementation register: of its 65 services, the 29 below are
-# implemented by x3d-cpp (x3d::runtime::SaiContext, x3d::codec) rather than by
-# the kernel, and their `tests:` entries name x3d-cpp CTests / doctest cases.
+# Split out 2026-07-19 when the SAI SDK moved to a separate repository
+# (ADR-0047). That SDK is now back in-tree under sai/ (ADR-0076) with its own
+# register at sai/docs/conformance/sai-services.yaml. The two registers stay
+# separate because each one's evidence names resolve against its own build.
 #
 # schema_version 1. Top level: `schema_version`, a `defaults:` block holding the
 # YAML merge anchors rows refer to via `<<: *anchor`, and `services:` (the rows).

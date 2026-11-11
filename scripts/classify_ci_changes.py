@@ -8,7 +8,7 @@ import re
 import sys
 from collections.abc import Iterable
 
-CLASSES = ("audio", "quickjs", "assets", "fontmetrics", "cpp", "generator", "docs")
+CLASSES = ("audio", "quickjs", "assets", "fontmetrics", "cpp", "generator", "docs", "sai")
 
 BUILD_SENSITIVE_PATTERNS = (
     r"^CMakeLists\.txt$",
@@ -38,6 +38,17 @@ GENERATOR_PATTERNS = (
 )
 
 DOCS_PATTERNS = (r"^docs/", r"\.md$", r"^mkdocs\.yml$")
+
+# The SAI SDK (sai/) and the native provider that implements its contract.
+# Runtime changes reach the provider through CPP_PATTERNS; the sai-adapter job
+# runs on either class.
+SAI_PATTERNS = (
+    r"^sai/",
+    r"^adapters/sai_provider/",
+    r"^examples/sai_host/",
+    r"^tests/cmake/sai_(?:provider|coexistence)/",
+    r"^scripts/verify_sai_(?:provider|coexistence)\.sh$",
+)
 
 TOOLING_PATTERNS = (
     r"^scripts/.*\.(?:py|sh)$",
@@ -96,6 +107,7 @@ def classify(paths: Iterable[str]) -> dict[str, bool]:
         if _matches(path, BUILD_SENSITIVE_PATTERNS):
             recognized = True
             result["cpp"] = True
+            result["sai"] = True
             for seam in SEAM_PATTERNS:
                 result[seam] = True
 
@@ -110,6 +122,10 @@ def classify(paths: Iterable[str]) -> dict[str, bool]:
         if _matches(path, DOCS_PATTERNS):
             recognized = True
             result["docs"] = True
+
+        if _matches(path, SAI_PATTERNS):
+            recognized = True
+            result["sai"] = True
 
         if _matches(path, TOOLING_PATTERNS):
             recognized = True

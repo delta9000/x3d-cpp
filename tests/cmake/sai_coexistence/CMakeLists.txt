@@ -9,9 +9,9 @@ if(SAI_COEXISTENCE_INSTALLED)
 else()
     get_filename_component(_default_cpp_root "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
     set(X3D_CPP_SOURCE_DIR "${_default_cpp_root}" CACHE PATH "x3d-cpp source checkout")
-    set(X3D_SAI_SOURCE_DIR "" CACHE PATH "Independent x3d-sai source checkout")
+    set(X3D_SAI_SOURCE_DIR "" CACHE PATH "SAI SDK source directory (x3d-cpp/sai)")
     if(NOT EXISTS "${X3D_SAI_SOURCE_DIR}/CMakeLists.txt")
-        message(FATAL_ERROR "Set X3D_SAI_SOURCE_DIR to the independent x3d-sai checkout")
+        message(FATAL_ERROR "Set X3D_SAI_SOURCE_DIR to the SAI SDK source (x3d-cpp/sai)")
     endif()
     # This consumer owns its test graph; neither package gains a dependency on
     # the other. Avoid optional backends and unrelated examples in this check.

@@ -4,7 +4,7 @@ project(x3d_sai_cpu_host LANGUAGES CXX C)
 # Installed consumption is the default. Source builds are deliberately explicit
 # so a copied/relocated example never reaches into an adjacent checkout.
 set(X3D_CPP_SOURCE_DIR "" CACHE PATH "Optional x3d-cpp source checkout")
-set(X3D_SAI_SOURCE_DIR "" CACHE PATH "Optional x3d-sai source checkout")
+set(X3D_SAI_SOURCE_DIR "" CACHE PATH "Optional SAI SDK source directory (x3d-cpp/sai)")
 if(X3D_CPP_SOURCE_DIR OR X3D_SAI_SOURCE_DIR)
   if(NOT EXISTS "${X3D_CPP_SOURCE_DIR}/CMakeLists.txt" OR
      NOT EXISTS "${X3D_SAI_SOURCE_DIR}/CMakeLists.txt")

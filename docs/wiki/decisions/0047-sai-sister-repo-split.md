@@ -1,6 +1,7 @@
 # ADR-0047: Split the experimental SAI semantic kernel into a sister repository
 
-- Status: Accepted
+- Status: Superseded by [ADR-0076](0076-fold-sai-into-x3d-cpp.md) (2026-11-11). The SDK is
+  back in-tree under `sai/`; the composition boundary in the 2026-10-07 update still holds.
 - Date: 2026-07-19
 
 ## Context
@@ -121,7 +122,7 @@ safe to include and link in one process. The runtime owns `x3d::core` and
 types or publish headers under the runtime's `x3d/core` and `x3d/nodes` paths.
 The kernel's public experimental API belongs under `x3d/sai/experimental`.
 
-`runtime/script/SaiContext.hpp` remains the legacy Script-backend API. It is not
+`runtime/script/SaiContext.hpp` remains the Script-backend API. It is not
 the kernel's browser and does not adapt kernel handles, owning field values,
 errors, routes or events to runtime objects. A real adapter is separate work and
 must explicitly cover ownership/lifetime, identity, field conversion, access

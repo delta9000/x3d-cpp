@@ -7,28 +7,29 @@ and [the consolidated contract](portable-contract.md) for current targets and sc
 
 # Experimental C++ SAI semantic kernel
 
-## About this repository
+## Where this lives
 
-Split out of [x3d-cpp](https://github.com/delta9000/x3d-cpp) on 2026-07-19, where it
-lived on the unmerged `sai/semantic-kernel` branch. The pre-split branch head is
-preserved there as the tag `archive/sai-semantic-kernel`.
+This SDK is the `sai/` directory of [x3d-cpp](../../README.md). It was developed
+in a separate `x3d-sai` repository from 2026-07-19 until it was folded back on
+2026-11-11 ([ADR-0076](../../docs/wiki/decisions/0076-fold-sai-into-x3d-cpp.md)).
+The pre-split branch head is preserved as the tag `archive/sai-semantic-kernel`.
 
-This repository has no build-time, link-time, or Python dependency on x3d-cpp. Its
-generator reads a vendored, SHA-pinned copy of the Web3D Consortium's X3D Unified
-Object Model directly, so both projects are independent consumers of the same
-upstream specification.
+The SAI SDK still has no build-time, link-time, or Python dependency on the
+x3d-cpp runtime. Its generator reads a vendored, SHA-pinned copy of the Web3D
+Consortium's X3D Unified Object Model directly, so the runtime generator and
+the SAI generator are independent consumers of the same upstream specification.
 
-The optional x3d-cpp companion implements the [portable provider
-contract](portable-contract.md), sharing setup and live operations with the
-reference backend. The kernel extensions described here remain separate from
-that bounded contract. The strict convergence gate, `mise run sai-conformance`,
-checks the service and evidence inventory; it is expected to fail while the
-register remains incomplete. A green gate alone would not prove backend
+The [native provider](../../adapters/sai_provider/) implements the [portable
+provider contract](portable-contract.md) over a real x3d-cpp `RuntimeSession`,
+sharing setup and live operations with the reference backend. The kernel
+extensions described here remain separate from that contract. The opt-in
+convergence report, `mise run sai-conformance`, lists the registered services
+and evidence still to finish. A green report alone would not prove backend
 substitutability or ISO conformance.
 
 Commit history before the seed commits of 2026-07-19 is provenance, not a buildable
-sequence. Those commits predate this repository's build system, so `git bisect` does
-not work back across the import boundary.
+sequence. Those commits predate this SDK's build system, so `git bisect` does
+not work back across that import boundary.
 
 ## Using the C++ SDK
 
@@ -62,14 +63,14 @@ Both SDK archives use position-independent code, so shared libraries and
 renderer plugins can link the same targets. `x3d::sai` supplies the compiled
 provider-neutral frontend and generated field keys without linking the kernel.
 `x3d::sai_provider` is an alias of that target. Applications select the reference
-backend by linking `x3d::sai_reference_provider`, or use the separately installed
-native companion. See the [provider contract](portable-contract.md) for the
+backend by linking `x3d::sai_reference_provider`, or use the native provider
+(`x3d_cpp::sai_provider`). See the [provider contract](portable-contract.md) for the
 shared setup and live operations, supported subset, and limitations.
 
 Embedding the checkout uses the same targets:
 
 ```cmake
-add_subdirectory(path/to/x3d-sai)
+add_subdirectory(path/to/x3d-cpp/sai sai)
 target_link_libraries(world_editor PRIVATE x3d::sai_reference_metadata)
 ```
 
@@ -81,7 +82,7 @@ package version request must match exactly. Packaging follows CMake's
 
 ## Public contract and implementation boundary
 
-The [portable-contract proposal](portable-contract.md) separates candidate
+The [portable contract](portable-contract.md) separates
 application vocabulary from reference-kernel extensions and implementation
 policy. Public headers live under `include/x3d/sai/` and
 `generated_cpp_bindings/public/x3d/sai/`. Generated catalog implementation
@@ -97,14 +98,15 @@ atomic edits, retained revisions, deterministic event traces, and checkpoint
 publication policies apply to that kernel. The kernel runtime examples exercise
 different hosts of the same reference implementation; independent-provider
 evidence is bounded by the [portable contract](portable-contract.md). x3d-cpp's
-legacy Script `SaiContext` is not an adapter for this SDK.
+Script-node `SaiContext` is a separate in-process API for Script backends; it
+does not expose these handles.
 
-## The proposal
+## Design
 
-This repository is a compiling proposal for the irreducible semantics of a
-modern C++ X3D SAI. It is deliberately firewalled in
-`x3d::sai::experimental`: the library uses the C++ standard runtime and platform
-thread support, and does not modify or depend on x3d-cpp's runtime. Its C++20
+The kernel captures the irreducible semantics of a modern C++ X3D SAI. It is
+deliberately firewalled in `x3d::sai::experimental`: the library uses the C++
+standard runtime and platform thread support, and does not modify or depend on
+x3d-cpp's runtime. Its C++20
 `result<T>` is a public alias to the pinned, single-header `tl::expected` 1.3.1
 (CC0-1.0), providing `and_then`, `transform`, `transform_error`, and `or_else`
 without a configure-time dependency or a homegrown expected implementation.
@@ -136,7 +138,7 @@ some flags. String values are retained exactly as supplied.
 Catalog provenance carries the X3D specification version, a deterministic
 SHA-256 fingerprint of the resolved semantic model, and the generator version.
 
-The proposal makes these design choices executable:
+The kernel makes these design choices executable:
 
 - `node_id` is semantic identity; an `occurrence` is an ordered containment
   edge with its own parent, field, index, and path.
@@ -372,11 +374,12 @@ Views carry inspection data, not mutation authority. Release them when finished:
 a view retains its entire source revision. Use `read(field, value_space::authored)`
 when a converted owning value is needed. Editing still copies the scene state.
 
-`mise run gen-determinism` generates into a temporary directory and compares
+`mise run sai-gen-determinism` generates into a temporary directory and compares
 both contents and file inventory. It never rewrites the current bindings and
 works while source and generated changes are uncommitted. Set `TMPDIR` to select
 the scratch location. `X3D_SAI_BUILD_DIR` selects the CMake/CTest directory
-for both `mise run build` and `mise run ci`; its default is `build`. Builds use
+for both `mise run sai-build` and `mise run sai-ci`; its default is `build`
+(that is, `sai/build`). Builds use
 three parallel jobs so the test and generated-catalog translation units do not
 consume unbounded memory.
 
@@ -659,13 +662,13 @@ edition; `cpp_binding.audit_status` remains `incomplete`. See the
 [standards and evidence boundary](portable-contract.md#standards-and-evidence)
 for what the current checks establish.
 
-Run `mise run sai-conformance-gate` and `mise run sai-invariants` in this
-repository to check the service register, invariant links, CTest names, and
-generated `docs/conformance/SAI-BASELINE.md`. These checks also run in
-`mise run ci`. After editing either YAML register, run `mise run sai-baseline`
+Run `mise run sai-conformance-gate` and `mise run sai-invariants` from the
+x3d-cpp checkout to check the service register, invariant links, CTest names, and
+generated `sai/docs/conformance/SAI-BASELINE.md`. These checks also run in
+`mise run sai-ci`, which `mise run ci` includes. After editing either YAML register, run `mise run sai-baseline`
 and commit the generated baseline with the register change. Run
-`mise run sai-conformance` separately to see the remaining full SAI gaps; it
-is expected to fail while services are partial or planned.
+`mise run sai-conformance` separately for the list of services and tests
+still to finish; it exits non-zero until none remain.
 The normal checks validate register consistency and drift. They do not require
 every ISO service or C++ binding obligation to be mapped; the baseline lists
 those gaps, and the strict gate requires complete coverage.

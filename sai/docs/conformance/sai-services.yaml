@@ -4,7 +4,7 @@
 #
 # support:
 #   implemented  complete portable SAI behavior with executable coverage
-#   partial      useful x3d-sai behavior exists, but its surface or semantics
+#   partial      useful SAI SDK behavior exists, but its surface or semantics
 #                do not yet satisfy the complete abstract service
 #   planned      no suitable public semantic service yet
 #   unsupported  intentionally unavailable (must carry a reason in `errors`)

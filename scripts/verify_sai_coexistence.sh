@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Opt-in source + relocated installed-package composition check. Requires a
-# separate x3d-sai checkout; normal x3d-cpp builds never fetch or depend on it.
+# Source + relocated installed-package composition check for the runtime and
+# the SAI SDK. The SAI source defaults to this checkout's sai/ directory; the
+# ordinary x3d-cpp build never adds sai/ to its own targets.
 set -euo pipefail
 
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <x3d-sai-source> [empty-work-dir]" >&2
+if [ "$#" -gt 2 ]; then
+  echo "usage: $0 [sai-source (default: sai/)] [empty-work-dir]" >&2
   exit 2
 fi
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-sai_root="$(cd "$1" && pwd)"
+sai_root="$(cd "${1:-$repo_root/sai}" && pwd)"
 if [ ! -f "$sai_root/CMakeLists.txt" ]; then
-  echo "missing x3d-sai CMakeLists.txt: $sai_root" >&2
+  echo "missing SAI SDK CMakeLists.txt: $sai_root" >&2
   exit 2
 fi
 if [ "$#" -eq 2 ]; then

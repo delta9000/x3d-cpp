@@ -1,6 +1,6 @@
 # Node and field user data
 
-## Published source and proposal boundary
+## Published source and SDK boundary
 
 The designated published C++ binding's
 [§4.3.3.1, Data storage](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/concepts.html#DataStorage)
@@ -16,7 +16,7 @@ This implementation addresses `SVC-NODE-USER-DATA-READ/WRITE` and
 `SVC-FIELD-USER-DATA-READ/WRITE` in the experimental kernel. It does not claim that
 the node methods below are spellings published in Annex A. The owning C++ types,
 error vocabulary, immediate-update policy and conservative reclamation policy
-below are explicit proposal choices, not normative C++ signatures or a claim of
+below are explicit SDK choices, not normative C++ signatures or a claim of
 complete binding/provider conformance. The designated source does not settle
 these modern ownership, concurrency or buffering details.
 
@@ -31,10 +31,10 @@ result<void> set_user_data(user_data_value data) const;
 
 `typed_node<Tag>` and `field<T>` forward the same operations. Dedicated
 `imported_node`/`dynamic_imported_field` views remain outside this projection.
-The independent Transform provider now carries equivalent owning node/field
-associations through its separate authority-bearing handles; see the
-[provider contract](provider-pilot.md). This is not completion of all SDK
-reference families. Associations are independent of field access type: input-only, output-only, initialize-only and
+The provider contract carries equivalent owning node/field associations through
+its separate authority-bearing handles; see the
+[provider contract](portable-contract.md). Other SDK reference families do not
+carry them yet. Associations are independent of field access type: input-only, output-only, initialize-only and
 inputOutput fields can all carry application data.
 
 ```cpp

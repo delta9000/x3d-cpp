@@ -115,7 +115,7 @@ field, frame rate from event timestamps, or per-layer navigation behavior.
 
 The host reports average navigation speed for the active layer in the bound
 viewpoint's base speed units and frame display rate in frames per second.
-Finite nonnegative values are the proposal's input policy; invalid samples
+Finite nonnegative values are the SDK's input policy; invalid samples
 return `invalid_value` without replacing the last valid sample. The pair is
 published atomically; separate scalar queries remain separate reads and can
 observe different publications under concurrent updates.
@@ -174,7 +174,7 @@ Unknown names return `invalid_name`, wrong variant alternatives return
 `type_mismatch`, and strings outside the corresponding choices return
 `invalid_value`. The implementation does not coerce integer booleans, normalize
 case, trim strings, accept vendor options, or conflate `AntiAliased` with
-`Antialiased`. These structured-error choices are proposal policy; abstract
+`Antialiased`. These structured-error choices are SDK policy; abstract
 §6.3.26 does not prescribe this complete validation error vocabulary.
 
 A valid request with no installed host handler returns a successful `false`,

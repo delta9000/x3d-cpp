@@ -27,7 +27,7 @@ The sources used are:
 Important differences remain visible instead of being silently resolved:
 
 1. Abstract 6.12.1 describes service matrices as column-major; the architectural
-   SFMatrix fields are row-major. This proposal extends the existing row-major
+   SFMatrix fields are row-major. This SDK extends the existing row-major
    owning field values and provides explicit column-major import/export. It
    does not claim its in-memory layout is the abstract service's layout.
 2. Storage order and vector orientation are separate choices. `elements[r*N+c]`
@@ -37,7 +37,7 @@ Important differences remain visible instead of being silently resolved:
    storage conversion.
 3. The published C++ text declares `set(int row, int column)` without a value
    and lists `Matrix3` results for Matrix4 algebra and vector operations. This
-   proposal defines explicit component values and mathematically appropriate
+   SDK defines explicit component values and mathematically appropriate
    result types rather than reproducing those inconsistent signatures.
 4. Abstract inverse, transpose, and matrix multiplication operate in place;
    these modern helpers return new owning values. No partial mutation occurs on
@@ -123,7 +123,7 @@ storage order.
 
 The source service tables list no errors and do not prescribe a numerical
 algorithm, singularity tolerance, or special-value handling. The following are
-safety choices of this proposal, not added ISO requirements:
+safety choices of this SDK, not added ISO requirements:
 
 - Every helper requires all input components to be finite, including component
   reads and exports. A replacement component must also be finite. Raw matrix
@@ -198,5 +198,5 @@ c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude -Ithird_party \
 /tmp/sai-matrix-operations-test
 ```
 
-These tests establish this finite algebra subset and proposal policy, not the
+These tests establish this finite algebra subset and SDK policy, not the
 still-open transform services or a complete browser/provider implementation.

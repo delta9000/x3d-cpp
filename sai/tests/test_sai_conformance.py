@@ -353,8 +353,10 @@ def test_repository_health_does_not_claim_semantic_completion():
 def test_ci_requires_register_health_without_claiming_full_conformance():
     import tomllib
 
-    tasks = tomllib.loads((REPO / "mise.toml").read_text())["tasks"]
-    steps = tasks["ci"]["run"].splitlines()
+    # The SAI tasks live in the enclosing x3d-cpp checkout's mise.toml.
+    tasks = tomllib.loads((REPO.parent / "mise.toml").read_text())["tasks"]
+    steps = tasks["sai-ci"]["run"].splitlines()
+    assert "sai-ci" in tasks["ci"]["depends"]
     assert "mise run sai-conformance-gate" in steps
     assert "mise run sai-invariants" in steps
     assert "mise run sai-conformance" not in steps

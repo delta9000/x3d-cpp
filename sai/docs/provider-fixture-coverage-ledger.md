@@ -4,7 +4,7 @@ This ledger tracks the migration from the frozen offline and hosted pilot proofs
 to the single `experimental::provider` contract. It is an assertion/category
 ledger, not an assertion-count equivalence claim or a claim of full ISO SAI
 conformance. The same `testing/provider_fixture.hpp` is compiled against the
-reference and independent native backend.
+reference and native backends.
 
 ## Entry points and ownership
 
@@ -99,11 +99,10 @@ fixture do not pull in the reference kernel.
 
 ## Backend-owned and focused evidence
 
-* Native direct-authority/read-repair/runtime evidence is explicitly mapped in
-  the x3d-cpp repository's `adapters/sai_provider/tests/coverage-ledger.md`:
-  five direct-native authoring proofs (including the 4,096-node detached graph),
-  six former runtime cases, and new SFNode/unnamed-ROUTE/occurrence evidence
-  remain in `tests/cmake/sai_provider/native.cpp` and
+* Native direct-authority/read-repair/runtime evidence stays with the native
+  provider: five direct-native authoring proofs (including the 4,096-node
+  detached graph), six former runtime cases, and SFNode/unnamed-ROUTE/occurrence
+  evidence are in `tests/cmake/sai_provider/native.cpp` and
   `adapters/sai_provider/tests/native_runtime_test.cpp`
 * Reference callback failure/reentrancy and narrow kernel input occurrence tests
   remain backend-owned; common portable tests do not assert kernel revisions or

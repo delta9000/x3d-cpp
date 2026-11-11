@@ -2,7 +2,7 @@
 
 The reference `external_session` supplies size, indexed reads, indexed writes,
 append, insertion, removal, and clear for all 21 MF kinds. These are modern C++
-proposal names and owning result types, not the published Part 4 class ABI.
+SDK names and owning result types, not the published Part 4 class ABI.
 
 Sources:
 

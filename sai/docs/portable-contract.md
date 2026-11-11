@@ -203,7 +203,7 @@ and [6.3.19](https://www.web3d.org/documents/specifications/19775-2/V3.3/Part02/
 - Coupled constraints are checked on the final released candidate and immediately
   before execution. A held gate may repair intermediate coupled inconsistency
 
-The mixed whole-inputOnly/indexed-MF rule is an explicit proposal decision. The
+The mixed whole-inputOnly/indexed-MF rule is an explicit SDK decision. The
 published [4.3.5.5.3 indexed aggregation rule](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/concepts.html#Set1ValueExternalInteractions)
 does not fully settle mixed whole-value occurrences. It must not be presented
 as an unambiguous inherited requirement. Browser/load/topology/dispose ordering
