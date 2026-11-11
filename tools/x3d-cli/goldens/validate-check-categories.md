@@ -10,6 +10,10 @@ tracked per category rather than by the headline agreement percentage alone.
   with `mise run cli-gate-baseline`.
 - **Baseline floor:** `cli-gate-baseline.tsv` — currently **40/200 agree** (20%),
   i.e. 160 disagreements. Every PASS row is locked by `mise run cli-gate-regression`.
+- **Adjusted agreement:** `divergence-report.md` also reports agreement over the
+  files where both validators rendered a comparable verdict, excluding the two
+  oracle-behavior categories (`jsail-error`, `jsail-crash`) — currently **40/48**
+  (83%). The floor and the regression gate still use the raw number.
 - **Per-file findings:** `validate-verdicts.tsv` (X3DJSAIL's verdicts) and
   `divergence-report.md` (full per-file disagreement list).
 
@@ -21,11 +25,12 @@ Category names below are the exact strings from `classifyDisagreement()` in
 | Count | Category | Direction | Dominant pattern | Disposition |
 |---|---|---|---|---|
 | 114 | `jsail-error` | JSAIL `INVALID` / us `VALID` | `ERROR_NODE_NOT_FOUND`: X3D has no `<head>`/`<meta>` | **SKIPPED** — JSAIL best-practice, not required by the X3D spec |
-| 43 | `invalid-only-jsail` | JSAIL `INVALID` / us `VALID` | `InvalidFieldValueException`: `containerField='rootNode'` on 3.x nodes | **SKIPPED** — pre-4.0 pattern, valid in 3.x |
+| 38 | `jsail-crash` | JSAIL `INVALID` / us `VALID` | `Exception in thread "main"`: `containerField='rootNode'` aborts the JSAIL CLI | **SKIPPED** — no verdict was produced; pre-4.0 pattern, valid in 3.x |
+| 5 | `invalid-only-jsail` | JSAIL `INVALID` / us `VALID` | `InvalidFieldException`: coord without `coordIndex` on pre-4.0 files | **SKIPPED** — our `coord-index` check is scoped to X3D 4.0+ |
 | 2 | `inline-warn-us` | us `INVALID` / JSAIL `VALID` | `inline:` unresolvable `Inline`/`ImageTexture` `url` | **KNOWN** — our stricter reference check; JSAIL does not chase inlines |
-| 1 | `range-only-us` | us `INVALID` / JSAIL `VALID` | `range:` field-bound violation | **BEING RETIRED** — see note below |
+| 1 | `proto-warn-us` | us `INVALID` / JSAIL `VALID` | `proto:` EXTERNPROTO shadows a built-in node type | **OPEN** — not yet triaged |
 
-These four sum to the 160 disagreements behind the `40/200` floor. Track progress by
+These five sum to the 160 disagreements behind the `40/200` floor. Track progress by
 moving a file **out** of a category (into agreement), and record the count change here.
 
 ### `jsail-error` (114 files) — SKIPPED
@@ -38,13 +43,20 @@ unacceptable noise. Skipped. (This is the former `jsail-no-head-meta` bucket; th
 count moved from 118 to 114 because the live gate scores the 200-file subset, not all
 204 verdict rows.)
 
-### `invalid-only-jsail` (43 files) — SKIPPED
+### `jsail-crash` (38 files) — SKIPPED
 
-Dominated by X3DJSAIL rejecting `containerField='rootNode'` on child nodes of
-`GeoLOD`, which was valid in X3D 3.x (where `rootNode` was a declared field slot in
-the XML encoding). Our parser tolerates this correctly; the JSAIL error is a
-backward-compatibility regression in the validator, not a spec violation by the files.
-The remainder are field-level rejections we intentionally do not mirror — e.g.
+The X3DJSAIL CLI dies with an uncaught `InvalidFieldValueException` on
+`containerField='rootNode'` on child nodes of `GeoLOD`, which was valid in X3D 3.x
+(where `rootNode` was a declared field slot in the XML encoding). The golden capture
+recorded the abort as `INVALID`, but JSAIL produced no verdict. Our parser tolerates
+the pattern correctly; this is a backward-compatibility regression in the validator,
+not a spec violation by the files. The classifier keys on `Exception in thread` in the
+golden note. Skipped. (These files were counted under `invalid-only-jsail` until the
+classifier split them out.)
+
+### `invalid-only-jsail` (5 files) — SKIPPED
+
+Field-level rejections we intentionally do not mirror — mostly
 `IndexedFaceSet`/`IndexedLineSet` coord-without-`coordIndex` on **pre-4.0** files,
 which our `coord-index` check scopes to X3D 4.0+ (empty `coordIndex` means "no faces"
 in 3.x). Skipped.
@@ -57,14 +69,18 @@ does not follow inline references during `-validate`, so it reports `VALID`.
 - `TopEdge.x3d` — `inline: ../../X3dForWebAuthors/Chapter03Grouping/CoordinateAxes.x3d`
 - `TinkercadX3dExtrudedTextCreationGLTF.x3d` — `inline: TinkercadX3dExtrudedTextCreation.glb`
 
-### `range-only-us` (1 file) — being retired
+### `proto-warn-us` (1 file) — OPEN
 
-`ConformanceNist/.../DirectionalLight/test_intensitysim.x3d` — a float32 boundary
-value (`1.570796`, the UOM truncation of π/2) landed epsilon above a double-precision
-bound literal and was falsely flagged. ADR-0003's 2026-07-18 refinement makes bound
-comparisons evaluate in the field's own float32 precision, which resolves this false
-flag. The category drops to `0` (and agreement rises to `41/200`) once the baseline is
-regenerated (`mise run cli-gate-baseline`, requires the corpus). See
+`Geometry2dComponentExternProtos.x3d` — we report `proto: Arc2D: EXTERNPROTO 'Arc2D'
+shadows a built-in node type; declaration ignored`; X3DJSAIL reports `VALID`. Not yet
+triaged.
+
+### `range-only-us` — retired
+
+`ConformanceNist/.../DirectionalLight/test_intensitysim.x3d` was falsely flagged when a
+float32 boundary value (`1.570796`, the UOM truncation of π/2) landed epsilon above a
+double-precision bound literal. ADR-0003's 2026-07-18 refinement compares bounds in the
+field's own float32 precision, and the live gate no longer emits this category. See
 `docs/wiki/decisions/0003-throw-on-range.md`.
 
 ## Improvements Landed (former disagreements now AGREE)
