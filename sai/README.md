@@ -28,14 +28,14 @@ lets one abstract service description map the same way into every language.
 This SDK explores a different trade-off. It maps the same abstract services
 (ISO/IEC 19775-2) onto idiomatic C++20: owning values, `result<T>` errors,
 distinct strong types, and handles whose authority the provider checks. It is
-offered as a design for review and comparison alongside the standard, not as a
-replacement for it, so it is not source-compatible with 19777-4. The
+simply another way of doing it, shared to help the X3D ecosystem. It doesn't
+replace the standard and isn't source-compatible with 19777-4. The
 [service register](docs/conformance/SAI-BASELINE.md) cites the ISO clause behind
-each service so the two can be compared directly.
+each service, so anyone can compare the two.
 
 Where a topic page notes that our reading of the published text differs, or
-that the text leaves a policy open, that is a record of the choice we made and
-a point worth raising with the binding's editors, not a defect claim.
+that the text leaves a policy open, it records the choice this SDK made. It is
+not a defect claim.
 
 ## Build and consume
 

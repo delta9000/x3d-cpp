@@ -37,9 +37,9 @@ than silently resolved:
    to column-vector action requires a mathematical transpose, not merely a
    storage conversion.
 3. The published C++ text declares `set(int row, int column)` without a value
-   and lists `Matrix3` results for some Matrix4 algebra and vector operations,
-   which reads like an editorial slip worth reporting. This SDK takes a value
-   argument and returns the matching matrix or vector type.
+   and lists `Matrix3` results for some Matrix4 algebra and vector operations.
+   This SDK takes a value argument and returns the matching matrix or vector
+   type.
 4. Abstract inverse, transpose, and matrix multiplication operate in place;
    these modern helpers return new owning values. No partial mutation occurs on
    failure. Both binary32 and binary64 values are supported; binary32 results
