@@ -1,0 +1,68 @@
+[tools]
+python = "3.12"
+
+[tasks.build]
+description = "Configure and build the experimental SAI kernel."
+run = 'cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build "${X3D_SAI_BUILD_DIR:-build}" --parallel 3'
+
+[tasks.ctest]
+description = "Run the SAI falsification suite."
+run = 'python scripts/check_ctest_selection.py "${X3D_SAI_BUILD_DIR:-build}" && ctest --test-dir "${X3D_SAI_BUILD_DIR:-build}" --output-on-failure'
+
+[tasks.hello]
+description = "Build and run an ordinary provider application."
+run = """
+cmake -S . -B "${X3D_SAI_BUILD_DIR:-build}" -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build "${X3D_SAI_BUILD_DIR:-build}" --target x3d_sai_provider_scene --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"
+"${X3D_SAI_BUILD_DIR:-build}/x3d_sai_provider_scene"
+"""
+
+[tasks.sai-baseline]
+description = "Regenerate the SAI service/invariant baseline from the editable YAML registers."
+run = "uv run python scripts/sai_conformance.py generate"
+
+[tasks.sai-conformance-gate]
+description = "Validate the SAI service and invariant registers, their cross-links, and generated baseline drift (runs in CI)."
+run = "uv run python scripts/check_sai_services.py"
+
+[tasks.sai-invariants]
+description = "Validate the semantic invariant registry, service cross-links, and generated coverage view."
+run = "uv run python scripts/check_sai_invariants.py"
+
+[tasks.sai-conformance]
+description = "Opt-in convergence gate: require every registered SAI service and falsification test to be complete. Expected to fail until the SAI is complete."
+run = "uv run python scripts/check_sai_services.py --strict"
+
+[tasks.gen]
+description = "Regenerate the SAI bindings and semantic catalog from the vendored UOM."
+run = "uv run python -m x3d_sai_gen.cli --out-dir generated_cpp_bindings"
+
+[tasks.gen-determinism]
+description = "Fail if generated bindings drift from the generator, without rewriting files."
+run = "uv run python -m x3d_sai_gen.cli --check"
+
+[tasks.uom-pin]
+description = "Fail if the vendored UOM drifted from its recorded SHA-256."
+run = "uv run python -m x3d_sai_gen.cli --check-uom-only"
+
+[tasks.pytest]
+description = "Run the generator test suite."
+run = "uv run pytest tests/ -v"
+
+[tasks.ci]
+description = "Blocking gate set: UOM pin, generator determinism, register health, python tests, C++ build and ctest."
+# Sequential on purpose: these steps share one uv virtualenv and one build
+# directory, so mise's parallel `depends` races them.
+run = """
+mise run uom-pin
+mise run gen-determinism
+mise run sai-conformance-gate
+mise run sai-invariants
+mise run pytest
+mise run build
+mise run ctest
+"""
+
+# Register health is blocking; full semantic convergence is intentionally not.
+# `mise run sai-conformance` remains opt-in and fails while services, invariant
+# evidence, or the independent C++ binding audit are incomplete.

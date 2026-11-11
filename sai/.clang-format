@@ -1,0 +1,19 @@
+# The generated C++ tree is a BYTE-EXACT golden artifact (ADR-0005), so its
+# formatting is part of the contract. This file pins the style explicitly rather
+# than relying on clang-format's built-in default, which is version-dependent.
+#
+# It is deliberately equal to the LLVM default: that is what produced the
+# committed golden, so pinning it costs zero drift. Changing anything here
+# reformats all of generated_cpp_bindings/ and requires a regenerate + commit.
+#
+# The formatter is pinned to an EXACT version (clang-format 22.1.8) in
+# mise.toml [tools] and asserted by scripts/check_golden.sh; see
+# tests/test_formatter_pin.py.
+#
+# NOTE: the emitter passes this file via --style=file:<abs path> rather than
+# letting clang-format search upward. The golden gate regenerates into a temp dir
+# outside the repo, where an upward search finds nothing and silently falls back
+# to the built-in default -- which would format the temp tree differently from
+# the committed one and fail the gate forever.
+---
+BasedOnStyle: LLVM
