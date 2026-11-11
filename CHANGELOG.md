@@ -8,6 +8,14 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **`x3d validate` checks values and ROUTEs (VALIDATE-VALUE-SYNTAX,
+  VALIDATE-ROUTES).** Readers record a `ReaderWarning{Kind::Value}` when they
+  coerce a malformed authored value: an unparsable number, a wrong SF tuple
+  arity, or a trailing partial MF tuple. `x3d validate` reports these as `value`
+  warnings. It also reports ROUTEs to an undefined DEF, and ROUTEs the runtime
+  bridge rejects, as `route` errors. The new `checkValueSyntax` helper in
+  `FieldValueIO.hpp` is usable on its own. Tests: `value_syntax_test`,
+  `x3d_validate_checks_test`.
 - **Pinned x3d-sai and an adapter CI gate.** `adapters/sai_provider/x3d-sai.rev`
   records the x3d-sai commit the native provider builds against.
   `scripts/verify_sai_provider.sh` refuses checkouts that lack it

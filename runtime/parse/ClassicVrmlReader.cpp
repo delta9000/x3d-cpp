@@ -801,6 +801,7 @@ void ClassicVrmlReader::parseProtoInstance(VrmlTokenizer &tok,
     } else if (decl && decl->type != X3DFieldType::SFEnum &&
                decl->type != X3DFieldType::MFEnum) {
       std::string wire = build::collectFieldValue(tok, decl->type);
+      noteValueSyntax(inst.name, fname, decl->type, wire);
       fv.value = parseValue(decl->type, wire);
     } else if (nextIsNodeValue(tok)) {
       // Unknown (or enum) declaration but the value is plainly a node

@@ -395,6 +395,7 @@ int cmdValidate(const std::vector<std::string> &args) {
 
     std::vector<json_out::Diag> diags;
     x3d::cli_detail::collectDiagnostics(doc, diags);
+    x3d::cli_detail::checkRoutes(doc, diags);
 
     // Profile-fit
     profile_fit::ComponentUsage usage = profile_fit::sceneComponentUsage(doc.scene);

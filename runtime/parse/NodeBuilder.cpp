@@ -37,6 +37,7 @@ bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
   }
   if (!f->isWritable())
     return false; // Skip outputOnly/inputOnly; initializeOnly has a reflection setter.
+  noteValueSyntax(node.nodeTypeName(), f->x3dName, f->type, wire);
   std::any v = parseValue(f->type, wire);
   if (!v.has_value()) return false;
   f->set(node, v);

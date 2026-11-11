@@ -8,6 +8,7 @@
 #include "x3d/core/X3Dtypes.hpp"
 
 #include <any>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -121,6 +122,43 @@ std::string formatValue(X3DFieldType type, const std::any &v);
 //   elsewhere (nodes/enums) or unsupported here.
 
 std::any parseValue(X3DFieldType type, const std::string &s);
+
+// checkValueSyntax: report why `s` is not a well-formed value of `type`, or
+//   nullopt when it is. Checks numeric/boolean token syntax and tuple arity
+//   (an SFVec3f needs exactly 3 numbers; an MFVec3f a multiple of 3). Strings,
+//   enums, nodes and images are not checked. parseValue stays lenient: it pads
+//   short tuples with 0, reads an unparsable number as 0 and drops a trailing
+//   partial MF tuple.
+std::optional<std::string> checkValueSyntax(X3DFieldType type,
+                                            const std::string &s);
+
+// One malformed authored value seen while a ValueDiagnosticScope was active.
+struct ValueDiagnostic {
+  std::string node;    // node type name, or the PROTO name
+  std::string field;   // X3D field name
+  std::string value;   // the authored text (truncated to 64 characters)
+  std::string problem; // checkValueSyntax's explanation
+  std::string message() const;
+};
+
+// While a scope is alive on this thread, readers that label a field with
+// ValueFieldContext record each malformed value into `sink`. Scopes nest; an
+// inner scope (a nested Inline or EXTERNPROTO parse) shadows the outer one.
+class ValueDiagnosticScope {
+public:
+  explicit ValueDiagnosticScope(std::vector<ValueDiagnostic> &sink);
+  ~ValueDiagnosticScope();
+  ValueDiagnosticScope(const ValueDiagnosticScope &) = delete;
+  ValueDiagnosticScope &operator=(const ValueDiagnosticScope &) = delete;
+
+private:
+  std::vector<ValueDiagnostic> *previous_;
+};
+
+// Check `wire` for `node.field` and record a diagnostic into the active scope.
+// No-op (and no parsing cost) when no scope is active.
+void noteValueSyntax(const std::string &node, const std::string &field,
+                     X3DFieldType type, const std::string &wire);
 
 } // namespace x3d::codec
 

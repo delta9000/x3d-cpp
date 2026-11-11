@@ -599,8 +599,10 @@ private:
           // box the value with the interface field's type; otherwise store the
           // raw string (boxed as SFString). A later re-typing pass can refine
           // this once declarations are fully resolved.
-          if (decl)
+          if (decl) {
+            noteValueSyntax(inst.name, fv.name, decl->type, *v);
             fv.value = parseValue(decl->type, *v);
+          }
           else
             fv.value = std::any(*v);
         }
@@ -642,6 +644,7 @@ private:
     }
     if (!f.isWritable())
       return false; // read-only (outputOnly): skip
+    noteValueSyntax(node.nodeTypeName(), f.x3dName, f.type, val);
     std::any v = parseValue(f.type, val);
     if (!v.has_value()) return false;
     f.set(node, v);

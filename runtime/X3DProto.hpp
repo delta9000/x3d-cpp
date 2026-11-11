@@ -98,7 +98,9 @@ struct InlineWarning {
 /// (an unknown node element is discarded, a profile token is coerced), so the
 /// recovery stays visible to `x3d validate` instead of being silent.
 struct ReaderWarning {
-  enum class Kind { UnknownNode, ProfileCoerced };
+  // Value: a malformed authored value the lenient reader coerced (bad number
+  // token, wrong tuple arity, trailing partial MF tuple); see checkValueSyntax.
+  enum class Kind { UnknownNode, ProfileCoerced, Value };
   Kind kind;
   std::string detail;
 };

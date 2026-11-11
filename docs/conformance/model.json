@@ -201,6 +201,8 @@
         "READ-NUMERIC-LEXEMES",
         "REQ-UNIT",
         "ROUTE-IO-ALIAS",
+        "VALIDATE-ROUTES",
+        "VALIDATE-VALUE-SYNTAX",
         "XML-ATTRIBUTE-WHITESPACE",
         "XML-WRITER-ATTRIBUTE-WHITESPACE"
       ],
@@ -2682,7 +2684,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5; ISO/IEC 19775-1 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2693,7 +2695,9 @@
             "PROTO-INSTANCE-IS-WRITE",
             "READ-NUMERIC-LEXEMES",
             "REQ-UNIT",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "VALIDATE-ROUTES",
+            "VALIDATE-VALUE-SYNTAX"
           ],
           "geometry": false,
           "interfaces": [
@@ -5202,7 +5206,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 27.4",
+          "clause": "4.4.2.2, 4.4.8.2; ISO 19776-1 (containerField); ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 27.4; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -5211,7 +5215,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "VALIDATE-VALUE-SYNTAX"
           ],
           "geometry": false,
           "interfaces": [
@@ -7954,7 +7959,7 @@
         {
           "behaves": "unverified",
           "behavioral": true,
-          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; 8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "ISO/IEC 19775-1 \u00a74.4.3, \u00a710.2.1; 8.2.4.4; 8.2.4.3; 8.2.4.3, 8.4.1; 8.4.1; 8.4.1, 8.2.4.4; 8.2.1; ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 4.4.2.2, 4.4.8.2; 8.2.2, 8.2.4.4; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -7979,7 +7984,8 @@
             "TDN-6",
             "TDN-7",
             "TDN-8",
-            "TIME-ORIGIN-1"
+            "TIME-ORIGIN-1",
+            "VALIDATE-ROUTES"
           ],
           "geometry": false,
           "interfaces": [
@@ -12895,6 +12901,32 @@
       "severity": "major",
       "status": "fixed",
       "summary": "PixelTexture3D decoding sizes its buffer from the voxel tokens present instead of the header; a four-number image claiming 10^15 voxels threw std::bad_alloc."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5",
+      "component": "Core",
+      "id": "VALIDATE-VALUE-SYNTAX",
+      "nodes": [
+        "Transform",
+        "Coordinate"
+      ],
+      "note": "parseValue stays lenient, but every reader now checks the authored text with checkValueSyntax (FieldValueIO) and records a ReaderWarning{Kind::Value} on the document; `x3d validate` reports it under the `value` category. Covered: node fields in all four readers and ProtoInstance fieldValues. Not covered: PROTO interface default values, SFImage/MFImage, strings and enums. The cli-gate verdict excludes `value` until its X3DJSAIL baseline is refreshed. Tests: x3d_parse_tests value_syntax_test.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "Malformed authored values were coerced without a trace. An unparsable number token read as 0, a short SF tuple was padded with 0 and a trailing partial MF tuple was dropped, and `x3d validate` reported the file valid."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 4.4.8.2",
+      "component": "Core",
+      "id": "VALIDATE-ROUTES",
+      "nodes": [
+        "TimeSensor",
+        "Transform"
+      ],
+      "note": "cmdValidate now runs checkRoutes (tools/x3d-cli/validate.hpp): unresolved DEF endpoints (IMPORTed names exempt) plus every rejection from the runtime bridge, reported as `route` errors. Not part of the cli-gate verdict. Test: x3d_validate_checks_test.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "`x3d validate` did not check ROUTEs. A ROUTE naming an undefined DEF, an unknown field, the wrong access type or a mismatched field type passed as valid, and the runtime dropped it silently."
     }
   ],
   "meta": {
@@ -13083,10 +13115,10 @@
     ]
   },
   "summary": {
-    "closed_count": 316,
+    "closed_count": 318,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 348,
+    "finding_count": 350,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

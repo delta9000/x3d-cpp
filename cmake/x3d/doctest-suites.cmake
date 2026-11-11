@@ -110,6 +110,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/lenient_read_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/encoding_lex_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/range_warnings_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/value_syntax_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/range_validate_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"

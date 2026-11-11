@@ -2,7 +2,7 @@
 title: CLI Suite
 summary: The x3d CLI — convert, validate, extract, canonicalize, and sim commands; the first SDK consumer.
 tags: [subsystem, cli, convert, validate, extract, canonicalize, sim]
-updated: 2026-07-16
+updated: 2026-11-11
 related:
   - ../architecture.md
   - ../guides/gate-system.md
@@ -21,7 +21,7 @@ The top-level CMake build produces `build/x3d`.
 | Command | Behavior |
 |---|---|
 | `x3d convert input -o output -f xml\|vrml\|json` | Parse a document and serialize it in the selected encoding |
-| `x3d validate input --json` | Report range, expansion, reader, and profile-fit diagnostics |
+| `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, and profile-fit diagnostics |
 | `x3d extract input -o output.stl` | Export extracted triangle geometry as binary STL |
 | `x3d canonicalize input -o output.x3d` | Write canonical XML |
 | `x3d sim input --ticks 120` | Tick the behavior runtime and trace changed fields |
@@ -30,6 +30,22 @@ The top-level CMake build produces `build/x3d`.
 providing a separate VRML97 writer. Extraction uses the geometry supported by
 [MeshBuilder](extract.md); line and point items do not become STL triangles.
 Canonical output is described in [canonical XML](canonical-xml.md).
+
+## Validation
+
+`x3d validate` exits 0 when it finds nothing and 3 otherwise. Its diagnostic
+categories:
+
+| Category | Severity | Source |
+|---|---|---|
+| `value` | warning | A malformed authored value the lenient reader coerced: an unparsable number, the wrong SF tuple arity, or a trailing partial MF tuple (`checkValueSyntax`). |
+| `route` | error | A ROUTE whose endpoint DEF does not exist (IMPORTed names exempt), or that the runtime bridge rejects for an unknown field, access type or field-type mismatch (`checkRoutes`). |
+| `range` | warning | An out-of-range value (`collectRangeWarnings`). |
+| `proto`, `inline`, `node`, `profile` | warning or error | Expansion, reader-recovery and profile-fit diagnostics. |
+| `dup-meta`, `unused-proto`, `ifs-coord-index`, `ils-coord-index` | warning | Checks shared with the X3DJSAIL differential gate. |
+
+The differential gate leaves `value` and `route` out of its verdict until its
+X3DJSAIL baseline is refreshed against them.
 
 ## Simulation
 

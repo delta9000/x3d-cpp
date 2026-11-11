@@ -63,6 +63,16 @@ if(X3D_CPP_BUILD_TESTS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures")
 endif()
 
+# `x3d validate` document checks (ROUTE endpoints and bridge rejections).
+if(X3D_CPP_BUILD_TESTS)
+    add_executable(x3d_validate_checks_test
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/validate_checks_test.cpp")
+    target_include_directories(x3d_validate_checks_test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
+    target_link_libraries(x3d_validate_checks_test PRIVATE x3d_cpp::sdk)
+    add_test(NAME x3d_validate_checks_test COMMAND x3d_validate_checks_test)
+endif()
+
 # Compare observable Script traces under the same tick schedule (ADR-0022).
 if(TARGET x3d_quickjs AND TARGET x3d_ecmascript_backend AND X3D_CPP_BUILD_TESTS)
     add_executable(x3d_quickjs_swap

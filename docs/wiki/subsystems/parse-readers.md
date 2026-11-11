@@ -2,7 +2,7 @@
 title: Parse Readers
 summary: Parse frontend — XML, VRML97, Classic VRML, and JSON readers; node builder; encoding sniffing; version-inference ladder.
 tags: [subsystem, parse, readers, xml, vrml, json, version-inference]
-updated: 2026-06-20
+updated: 2026-11-11
 related:
   - ../architecture.md
   - proto-expand.md
@@ -232,7 +232,7 @@ accepted; trailing garbage or another JSON value throws. The regression case
 
 - Node factory — all readers instantiate nodes via `X3DNodeFactory::create(typeName)`, which is the same factory used everywhere else in the runtime. Unknown type names return null; the element is skipped, and the reader records a `ReaderWarning{Kind::UnknownNode}` in `X3DDocument.readerWarnings` so `x3d validate` reports it instead of silently deleting author content (DIAG-UNKNOWN-NODE). In XML, a `<ROUTE>` nested among a node's children is not a node: it is added to the enclosing scene's (or PROTO body's) routes, and a nested `<IS>` is skipped there because the IS pass reads it.
 
-- Reader-recovery diagnostics — `X3DDocument.readerWarnings` (`runtime/X3DProto.hpp`) is the structured channel for lenient-read recoveries that are not legal X3D: an unknown/misspelled node element (`UnknownNode`) and an unknown `profile=` token coerced to `Interchange` (`ProfileCoerced`, DIAG-PROFILE-COERCE). Every reader (`XmlReader`, `ClassicVrmlReader`/`Vrml97Reader`, `JsonReader`) fills it; `cmdValidate` and the cli-gate validate path surface each as a `node`/`profile` diagnostic. It parallels `rangeWarnings`/`protoWarnings`/`inlineWarnings`.
+- Reader-recovery diagnostics — `X3DDocument.readerWarnings` (`runtime/X3DProto.hpp`) is the structured channel for lenient-read recoveries that are not legal X3D: an unknown/misspelled node element (`UnknownNode`) and an unknown `profile=` token coerced to `Interchange` (`ProfileCoerced`, DIAG-PROFILE-COERCE). Every reader (`XmlReader`, `ClassicVrmlReader`/`Vrml97Reader`, `JsonReader`) fills it; `cmdValidate` and the cli-gate validate path surface each as a `node`/`profile` diagnostic. It parallels `rangeWarnings`/`protoWarnings`/`inlineWarnings`. A third kind, `Value`, records an authored value that `parseValue` coerced: an unparsable number token (read as 0), a short SF tuple (padded with 0), or a trailing partial MF tuple (dropped). Readers call `noteValueSyntax` for node fields and ProtoInstance fieldValues; `parseDocument` collects them through a thread-local `ValueDiagnosticScope` (`runtime/codecs/FieldValueIO.hpp`) and appends them after the read (VALIDATE-VALUE-SYNTAX).
 
 - Profile token preservation — `X3DDocument::setProfileToken` records the authored `profile=` spelling verbatim in `profileRaw` (exposed via `profileToken()`), resolves it to a `Profile` for profile-fit, and diagnoses a non-canonical token. The XML/JSON/VRML writers emit `profileToken()`, so a round-trip never rewrites the declared conformance class (DIAG-PROFILE-COERCE).
 

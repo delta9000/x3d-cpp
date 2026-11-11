@@ -3118,3 +3118,32 @@
   status: fixed
   summary: PixelTexture3D decoding sizes its buffer from the voxel tokens present instead of the header; a four-number image claiming 10^15 voxels threw std::bad_alloc.
   note: "Test: texture_extract_test (header claiming 10^15 voxels with no data)."
+
+- id: VALIDATE-VALUE-SYNTAX
+  nodes: [Transform, Coordinate]
+  component: Core
+  clause: "ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5"
+  severity: major
+  status: fixed
+  summary: Malformed authored values were coerced without a trace. An unparsable number token read as 0, a short SF tuple was padded with 0 and a trailing partial MF tuple was dropped, and `x3d validate` reported the file valid.
+  note: >-
+    parseValue stays lenient, but every reader now checks the authored text with
+    checkValueSyntax (FieldValueIO) and records a ReaderWarning{Kind::Value} on
+    the document; `x3d validate` reports it under the `value` category. Covered:
+    node fields in all four readers and ProtoInstance fieldValues. Not covered:
+    PROTO interface default values, SFImage/MFImage, strings and enums. The
+    cli-gate verdict excludes `value` until its X3DJSAIL baseline is refreshed.
+    Tests: x3d_parse_tests value_syntax_test.
+
+- id: VALIDATE-ROUTES
+  nodes: [TimeSensor, Transform]
+  component: Core
+  clause: "ISO/IEC 19775-1 4.4.8.2"
+  severity: major
+  status: fixed
+  summary: "`x3d validate` did not check ROUTEs. A ROUTE naming an undefined DEF, an unknown field, the wrong access type or a mismatched field type passed as valid, and the runtime dropped it silently."
+  note: >-
+    cmdValidate now runs checkRoutes (tools/x3d-cli/validate.hpp): unresolved DEF
+    endpoints (IMPORTed names exempt) plus every rejection from the runtime
+    bridge, reported as `route` errors. Not part of the cli-gate verdict. Test:
+    x3d_validate_checks_test.
