@@ -117,7 +117,8 @@ vendors, under sai/third_party/:
 
   tl::expected     sai/third_party/tl/        CC0-1.0 (v1.3.1)
                    (installed with the SDK; see sai/third_party/tl/COPYING)
-  doctest          sai/third_party/doctest/   MIT  (test-only; v2.4.11)
+  doctest          sai/third_party/doctest/   MIT  (test-only; v2.4.11; symlinks to
+                   runtime/test_support/, the copy the runtime tests use)
 
 and reads the same X3D Unified Object Model as the runtime generator
 (sai/src/x3d_sai_gen/data/X3dUnifiedObjectModel-4.0.xml is a symlink to

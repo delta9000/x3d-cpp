@@ -7,7 +7,8 @@ This product includes third-party components:
   tl::expected  third_party/tl/         CC0-1.0 (v1.3.1)
                 (C++20 expected/monadic compatibility for the experimental SAI;
                  see third_party/tl/COPYING)
-  doctest       third_party/doctest/    MIT  (test-only; v2.4.11)
+  doctest       third_party/doctest/    MIT  (test-only; v2.4.11; symlinked to
+                                        ../runtime/test_support/)
 
 The X3D Unified Object Model (X3dUnifiedObjectModel-4.0.xml) is published by the
 Web3D Consortium at https://www.web3d.org/specifications/ and is vendored under
