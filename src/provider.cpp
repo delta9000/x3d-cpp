@@ -253,6 +253,8 @@ service::service(std::unique_ptr<backend> implementation, resource_limits limits
       const address &where, backend_value value) {
     record_event(weak, where, std::move(value));
   };
+  p_->implementation->observing_ = [weak = std::weak_ptr<impl>{p_}](
+      const address &where) { return observing(weak, where); };
 }
 service::~service() {
   if (p_ && !p_->closed) {
@@ -273,6 +275,9 @@ backend::backend_result backend::do_add_live_route(const address &,
             "backend does not implement live ROUTE addition")
           .value(),
       failure_effect::none});
+}
+result<void> backend::do_check_live_route(const address &, const address &) const {
+  return {};
 }
 result<std::vector<unit_declaration>> backend::do_units(std::uint64_t) const {
   return error(error_code::unsupported_operation, "provider.units", "backend does not provide scene units");
@@ -856,9 +861,20 @@ result<void> service::end_update(const client &c) {
   std::vector<backend::admitted_route> routes;
   std::vector<std::shared_ptr<ticket::receipt>> receipts;
   std::size_t bytes = 0;
+  // An exact duplicate ROUTE held in the same gate is redundant (ISO 19775-1
+  // 4.4.8.2): its ticket shares the submission, but only the first copy reaches
+  // installation. Deduplicating at release keeps held cancellation exact.
+  const auto same = [](const address &a, const address &b) {
+    return a.scene == b.scene && a.context == b.context && a.node == b.node &&
+           a.field == b.field;
+  };
   for (const auto &r : client.accepted) {
     writes.insert(writes.end(), r.writes.begin(), r.writes.end());
-    routes.insert(routes.end(), r.routes.begin(), r.routes.end());
+    for (const auto &route : r.routes)
+      if (std::none_of(routes.begin(), routes.end(), [&](const auto &q) {
+            return same(q.from, route.from) && same(q.to, route.to);
+          }))
+        routes.push_back(route);
     receipts.insert(receipts.end(), r.receipts.begin(), r.receipts.end());
     bytes += r.bytes;
   }
@@ -996,6 +1012,8 @@ result<ticket> service::enqueue_route(const client &c, const field &from,
   if (!from.info_.supported || !to.info_.supported)
     return error(error_code::unsupported_field_type, "provider.enqueue_route",
                  "unsupported ROUTE field service");
+  if (auto ok = p_->implementation->do_check_live_route(where(from), where(to)); !ok)
+    return failure(ok.error());
   if (p_->pending_requests >= p_->limits.pending_requests ||
       p_->next_request == std::numeric_limits<std::uint64_t>::max())
     return error(error_code::resource_limit, "provider.enqueue_route",
@@ -1140,6 +1158,18 @@ result<subscription> service::observe(const activation &a, const field &f, std::
   auto o = std::make_shared<impl::observer>(); o->world = a; o->source = f;
   o->live = std::make_shared<std::atomic_bool>(true); o->callback = std::make_shared<const std::function<void(const notification &)>>(std::move(callback));
   p_->observers.push_back(o); return subscription{o->live};
+}
+bool service::observing(const std::weak_ptr<impl> &weak, const address &addr) {
+  const auto state = weak.lock();
+  if (!state || state->closed) return false;
+  const auto scene = state->scenes.find(addr.scene);
+  if (scene == state->scenes.end()) return false;
+  return std::any_of(state->observers.begin(), state->observers.end(), [&](const auto &o) {
+    if (!*o->live || o->world.epoch_ != scene->second.epoch) return false;
+    const auto source = where(o->source);
+    return source.scene == addr.scene && source.context == addr.context &&
+           source.node == addr.node && source.field == addr.field;
+  });
 }
 void service::record_event(const std::weak_ptr<impl> &weak, const address &addr, backend_value raw) {
   const auto state = weak.lock();

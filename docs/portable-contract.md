@@ -30,9 +30,21 @@ virtual has no stable binary ABI promise.
 Admission validates the client and canonical fields, service/scene authority,
 lexical context, exact portable kind, and ROUTE direction. Sources must be
 outputOnly or inputOutput; destinations must be inputOnly or inputOutput.
-Unsupported field services are refused. Backend-specific restrictions and
-existing duplicate routes are checked during installation at pump. Refusals
-then appear in the turn report and receipt, rather than the enqueue result.
+Unsupported field services are refused. Admission then calls the optional
+`backend::do_check_live_route(from, to)`, which defaults to admit. A backend
+uses it for restrictions the portable descriptors cannot express. For example,
+the native companion's SFEnum and SFString fields share portable `sf_string`,
+but a ROUTE between them is refused at enqueue. Installation at pump may still
+refuse, for example when the graph changed after admission. Those refusals
+appear in the turn report and receipt rather than the enqueue result.
+
+An exact duplicate ROUTE (same source node and field, same sink node and field)
+is redundant and succeeds without effect (ISO 19775-1 4.4.8.2). When a gate is
+released, the frontend keeps only the first copy of each route held in it, and
+the duplicate's ticket shares the submission outcome. Deduplicating at release
+rather than at enqueue keeps cancellation of a held copy exact.
+`do_add_live_route` must return success without effect when the route is
+already installed. Setup-time `add_route` still refuses duplicates.
 
 A route request consumes one ordinary FIFO submission when no update gate is
 open. It installs before that turn's backend evaluation. Earlier submissions
@@ -55,14 +67,17 @@ route in a submission was installed and a later installation or evaluation
 fails, the frontend reports `partial_or_unknown`, faults the activation, and
 cancels its later requests. No rollback of earlier installed routes is implied.
 Application callbacks remain deferred through explicit notification dispatch.
+`backend::observed(address)` tells a backend whether a live observer watches a
+field, so it can skip reading and recording writes that nobody observes.
 
 The reference provider uses its existing scene-edit transaction to install the
 route. The native companion updates executable state and the retained native
 document, while refusing nested contexts and PROTO interface redirection. Route
 removal remains outside this capability. The own-suite `sai_provider_contract`
 cases cover FIFO ordering, gates, cancellation, authority/kind/direction,
-budgets, defaults, and partial installation. `sai_provider_reference` checks
-actual next-turn delivery. These additions have not been built or run here.
+budgets, defaults, partial installation, redundant duplicates, and admission
+pre-checks. `sai_provider_reference` checks actual next-turn delivery and
+duplicate no-ops alone and in a gate.
 
 ## Ownership and operation matrix
 
