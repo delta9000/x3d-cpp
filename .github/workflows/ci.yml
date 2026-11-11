@@ -132,6 +132,65 @@ jobs:
       - name: Test ext suite
         run: ctest --preset ext -j "$(nproc)"
 
+  # Builds adapters/sai_provider against the x3d-sai revision pinned in
+  # adapters/sai_provider/x3d-sai.rev and runs the relocated-package proof
+  # (scripts/verify_sai_provider.sh). x3d-sai is private, so checkout needs the
+  # X3D_SAI_READ_TOKEN secret (read-only contents access to delta9000/x3d-sai).
+  # Without it the job fails on main and skips with a warning on pull requests
+  # (fork PRs never receive secrets).
+  sai-adapter:
+    name: SAI provider adapter vs pinned x3d-sai
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      X3D_SAI_READ_TOKEN: ${{ secrets.X3D_SAI_READ_TOKEN }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Read the x3d-sai pin and check token availability
+        id: pin
+        run: |
+          set -euo pipefail
+          echo "rev=$(tr -d '[:space:]' < adapters/sai_provider/x3d-sai.rev)" >> "$GITHUB_OUTPUT"
+          if [ -n "${X3D_SAI_READ_TOKEN}" ]; then
+            echo "token=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::warning::X3D_SAI_READ_TOKEN is unavailable; the SAI adapter was not built for this pull request."
+            echo "token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::X3D_SAI_READ_TOKEN is not configured; the SAI adapter gate cannot run."
+            exit 1
+          fi
+      - name: Check out pinned x3d-sai
+        if: steps.pin.outputs.token == 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          repository: delta9000/x3d-sai
+          ref: ${{ steps.pin.outputs.rev }}
+          token: ${{ secrets.X3D_SAI_READ_TOKEN }}
+          path: .x3d-sai
+          fetch-depth: 0
+      - name: Install compiler + cmake + ninja + ccache
+        if: steps.pin.outputs.token == 'true'
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        if: steps.pin.outputs.token == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-sai-adapter-${{ github.sha }}
+          restore-keys: ccache-sai-adapter-
+      - name: Bound ccache storage
+        if: steps.pin.outputs.token == 'true'
+        run: ccache --max-size=500M
+      - name: Adapter proof (source build, relocated install, host consumer)
+        if: steps.pin.outputs.token == 'true'
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: bash scripts/verify_sai_provider.sh .x3d-sai "$RUNNER_TEMP/sai-provider"
+
   # The san preset instruments executed behavior tests in a separate build tree.
   cpp-san:
     name: C++ sanitizer gate (ASan + UBSan)

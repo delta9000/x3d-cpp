@@ -2,7 +2,7 @@
 title: Native SAI provider
 summary: Compose the portable SAI service with owned native scene state and an explicit host loop.
 tags: [subsystem, sai, provider, ownership]
-updated: 2026-10-18
+updated: 2026-11-11
 related:
   - system-script-sai.md
   - execution-context.md
@@ -250,8 +250,18 @@ mise run sai-coexistence /path/to/x3d-sai
 mise run sai-provider /path/to/x3d-sai
 ```
 
-These opt-in checks fetch nothing. They exercise source consumers, move an
+These checks fetch nothing. They exercise source consumers, move an
 installed prefix, and rebuild consumers with package registries disabled.
+
+`adapters/sai_provider/x3d-sai.rev` pins the oldest x3d-sai commit the adapter
+builds against. `scripts/verify_sai_provider.sh` refuses a git checkout that
+does not contain it; set `X3D_SAI_ALLOW_UNPINNED=1` to try another revision on
+purpose. The `sai-adapter` CI job checks out that pin and runs the provider
+check on every C++ change. x3d-sai is private, so the job needs the
+`X3D_SAI_READ_TOKEN` repository secret: a token with read-only contents access
+to `delta9000/x3d-sai`. Without it the job fails on `main` and skips with a
+warning on pull requests. Bump the pin in the same change that starts using a
+newer x3d-sai API.
 `X3D_CPP_SHARED_NODES=OFF` selects static native nodes. The provider check also
 compares reference/native behavior and runs the ordinary host. Builds and logs
 remain in the printed work directory. Record both repository revisions with a

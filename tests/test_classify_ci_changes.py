@@ -23,6 +23,9 @@ def enabled_classes(paths: list[str]) -> set[str]:
             ],
             {"generator", "cpp"},
         ),
+        (["adapters/sai_provider/src/sai_provider.cpp"], {"cpp"}),
+        (["adapters/sai_provider/x3d-sai.rev"], {"cpp"}),
+        (["scripts/verify_sai_provider.sh"], {"cpp"}),
         (["scripts/code_rag.py"], set()),
         (["docs/wiki/index.md"], {"docs"}),
         (

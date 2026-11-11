@@ -28,7 +28,8 @@ CPP_PATTERNS = (
     r"^tools/",
     r"^tests/cmake/",
     r"^tests/.*\.(?:c|cc|cpp|cxx|h|hh|hpp)$",
-    r"^scripts/(?:authoring-footprint|validate-examples|verify_install_embed)\.sh$",
+    r"^scripts/(?:authoring-footprint|validate-examples|verify_install_embed|verify_sai_provider)\.sh$",
+    r"^adapters/",
 )
 
 GENERATOR_PATTERNS = (

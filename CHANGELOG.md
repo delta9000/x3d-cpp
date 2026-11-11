@@ -8,6 +8,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Pinned x3d-sai and an adapter CI gate.** `adapters/sai_provider/x3d-sai.rev`
+  records the x3d-sai commit the native provider builds against.
+  `scripts/verify_sai_provider.sh` refuses checkouts that lack it
+  (`X3D_SAI_ALLOW_UNPINNED=1` overrides), and the new `sai-adapter` CI job runs
+  the provider proof against the pin. Changes under `adapters/` now classify as
+  `cpp`. The job needs the `X3D_SAI_READ_TOKEN` repository secret.
 - **Authored fog depths (`FogCoordinate`, §24.4.3, REQ-LOCALFOG).**
   `MeshData::fogDepths` carries a geometry's `fogCoord` depth for every emitted
   vertex (composed, line and point sets and `ElevationGrid`; a short list

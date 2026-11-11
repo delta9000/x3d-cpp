@@ -100,7 +100,9 @@ and observe notifications through the portable service. The immutable
 `render_feed` supplies native world transforms and mesh placements.
 
 Run `mise run sai-provider /path/to/x3d-sai /empty/work/directory` from the
-x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`).
+x3d-cpp root (the task invokes `scripts/verify_sai_provider.sh`). The checkout
+must contain the x3d-sai commit pinned in [`x3d-sai.rev`](x3d-sai.rev); CI runs
+the same check against that pin.
 Set X3D_CPP_SHARED_NODES=ON or OFF for shared/static native node packages.
 The harness checks common authoring/live conformance, native storage/containment
 and runtime evidence, cross-backend report parity, reference-free native link

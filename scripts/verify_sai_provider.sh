@@ -12,6 +12,18 @@ if [ ! -f "$sai/include/x3d/sai/experimental/provider.hpp" ]; then
   echo "x3d-sai checkout does not contain the provider contract" >&2
   exit 2
 fi
+# adapters/sai_provider/x3d-sai.rev names the oldest x3d-sai commit the adapter
+# builds against. A git checkout must contain it; X3D_SAI_ALLOW_UNPINNED=1 skips
+# the check for deliberate experiments against another revision.
+pin="$(tr -d '[:space:]' < "$cpp/adapters/sai_provider/x3d-sai.rev")"
+if [ "${X3D_SAI_ALLOW_UNPINNED:-0}" != 1 ] && git -C "$sai" rev-parse --git-dir >/dev/null 2>&1; then
+  if ! git -C "$sai" merge-base --is-ancestor "$pin" HEAD 2>/dev/null; then
+    echo "x3d-sai checkout ($(git -C "$sai" rev-parse --short HEAD)) does not contain the pinned revision $pin" >&2
+    echo "check out $pin or newer, or set X3D_SAI_ALLOW_UNPINNED=1" >&2
+    exit 2
+  fi
+  echo "x3d-sai $(git -C "$sai" rev-parse --short HEAD) contains pin ${pin:0:12}"
+fi
 if [ "$#" -eq 2 ]; then
   mkdir -p "$2"
   work="$(cd "$2" && pwd)"

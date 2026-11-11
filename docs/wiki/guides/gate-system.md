@@ -2,7 +2,7 @@
 title: Gate system
 summary: What the verification gates check and where their definitions live.
 tags: [guide, gates]
-updated: 2026-11-05
+updated: 2026-11-11
 related: []
 ---
 
@@ -51,6 +51,14 @@ After reviewing an intentional divergence, `mise run cli-gate-baseline`
 refreshes the two baseline TSVs under `tools/x3d-cli/goldens/`. Review those
 diffs before accepting them. An incomplete tier-2 run cannot overwrite an
 existing tier-2 baseline with empty results.
+
+## SAI provider adapter
+
+The `sai-adapter` CI job builds `adapters/sai_provider` against the x3d-sai
+commit in `adapters/sai_provider/x3d-sai.rev` and runs
+`scripts/verify_sai_provider.sh`. It runs on every change classed `cpp`,
+`adapters/` included. It needs the `X3D_SAI_READ_TOKEN` secret, because x3d-sai
+is private. See [Native SAI provider](../subsystems/sai-provider.md).
 
 ## Documentation
 
