@@ -37,9 +37,10 @@ loaders, fonts, and enabled components.
 | Complete host | Required resources, languages, graphics, audio, and interaction working together. |
 
 SAI (19775-2), language bindings (19777), and encodings (19776) need separate,
-versioned requirements lists. Native SAI integration is described by
-[ADR-0047](../decisions/0047-sai-sister-repo-split.md) and the
-[provider subsystem](../subsystems/sai-provider.md).
+versioned requirements lists. The SAI SDK is described by
+[its subsystem page](../subsystems/sai-sdk.md) and
+[ADR-0076](../decisions/0076-fold-sai-into-x3d-cpp.md), and native SAI
+integration by the [provider subsystem](../subsystems/sai-provider.md).
 
 ## Baseline coverage and source reconciliation
 

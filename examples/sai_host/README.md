@@ -23,7 +23,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 For an explicit source build, pass both `-DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp`
-and `-DX3D_SAI_SOURCE_DIR=/path/to/x3d-sai` instead of `CMAKE_PREFIX_PATH`.
+and `-DX3D_SAI_SOURCE_DIR=/path/to/x3d-cpp/sai` instead of `CMAKE_PREFIX_PATH`.
 No reference-provider target or testing header is used.
 
 ## What the run checks

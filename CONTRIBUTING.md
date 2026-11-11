@@ -26,18 +26,18 @@ mise run docs-drift working  # which docs your change may have staled
 ```
 
 When changing generated header ownership, exported include paths or the SAI
-boundary, also run the opt-in cross-repository consumer check with a separate
-`x3d-sai` checkout:
+boundary, also run the runtime/SAI SDK consumer check against `sai/`:
 
 ```bash
-bash scripts/verify_sai_coexistence.sh ../x3d-sai
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh ../x3d-sai
+bash scripts/verify_sai_coexistence.sh
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh
 ```
 
 It checks all header/link orders from source and from a relocated common install
 prefix. See the [consumer test contract](tests/cmake/sai_coexistence/README.md).
-It is deliberately separate from the standalone gate: a normal x3d-cpp build
-does not fetch or require x3d-sai.
+It is deliberately separate from the runtime build: a normal x3d-cpp build
+does not add `sai/`. The SAI SDK's own gates are `mise run sai-ci` (part of
+`mise run ci`) and `mise run sai-provider` (part of `mise run ci-all`).
 
 `mise run docs-drift` needs `X3D_QDRANT_URL` set; without it, it falls back to
 `localhost:6333` and fails.

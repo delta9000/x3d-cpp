@@ -25,8 +25,17 @@ contact reporting shipped; Followers shipped with no page). When you change `run
    - root `NOTICE` if you added a third-party dependency or backend
 3. If symbols moved: `mise run code-ingest` / `mise run docs-ingest`.
 
-`docs/superpowers/` and `docs/plans/` are a frozen archive of old specs and plans. Cite them,
-don't edit them, don't add to them.
+`docs/superpowers/`, `docs/plans/` and `sai/docs/plans/` are a frozen archive of old specs and
+plans. Cite them, don't edit them, don't add to them.
+
+## SAI SDK (`sai/`)
+
+`sai/` is the SAI SDK (folded back from the old `x3d-sai` repo, ADR-0076). It stays its own
+CMake project and uv package: the runtime build never adds it, and `adapters/sai_provider` is
+the only bridge. Its gates are `mise run sai-ci` (part of `ci`) and `mise run sai-provider`
+(part of `ci-all`). Its service register is `sai/docs/conformance/`; regenerate the baseline
+with `mise run sai-baseline`. `docs/conformance/sai-services.yaml` is the runtime's separate
+Script-SAI register.
 
 ## Verify before claiming "shipped / covered"
 

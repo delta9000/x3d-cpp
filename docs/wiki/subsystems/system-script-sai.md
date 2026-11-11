@@ -10,6 +10,7 @@ related:
   - ../decisions/0013-js-engine-choice.md
   - ../decisions/0014-dynamic-field-foundation.md
   - ../decisions/0022-scriptengine-second-backend-swap-test.md
+  - sai-sdk.md
   - ../decisions/0047-sai-sister-repo-split.md
 ---
 

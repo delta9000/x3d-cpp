@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """SAI service register validator.
 
-`docs/conformance/sai-services.yaml` is x3d-cpp's side of the SAI service
-register split out in ADR-0047: the services implemented by x3d-cpp
+`docs/conformance/sai-services.yaml` is the runtime's side of the SAI service
+register (ADR-0047, ADR-0076): the services implemented by the runtime
 (`x3d::runtime::SaiContext`, `x3d::codec`), each citing the CTest / doctest
-case that exercises it. This gate loads the register, checks its schema
+case that exercises it. The SAI SDK's register is checked separately by
+`sai/scripts/check_sai_services.py` (`mise run sai-conformance-gate`). This gate loads the register, checks its schema
 (required keys, allowed `kind`/`support` values, unique ids, the `defaults:`
 anchors exactly matching the merge keys rows use), and checks that every
 `tests:` name it cites actually exists in the C++ test sources — an

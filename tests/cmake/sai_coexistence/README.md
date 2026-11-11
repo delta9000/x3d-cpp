@@ -1,18 +1,18 @@
-# Independent SAI / runtime consumer contract
+# SAI SDK / runtime consumer contract
 
-This opt-in integration check requires two independent checkouts. It adds no
-dependency to either production package and downloads nothing. Use an x3d-sai
-revision whose generated metadata is private under `x3d_sai/detail`, with its
-own namespace; older revisions exporting `x3d/core` or `x3d/nodes` intentionally
-fail the boundary check.
+This integration check builds the runtime and the SAI SDK (`sai/`) as two
+separate packages and links them into one process. It adds no dependency to
+either production package and downloads nothing. The SDK's generated metadata
+must stay private under `x3d_sai/detail` with its own namespace; a revision
+exporting `x3d/core` or `x3d/nodes` fails the boundary check.
 
 Requirements: CMake 3.24+, a C++20 compiler, and Ninja (or set `CMAKE_GENERATOR`).
 From the x3d-cpp root:
 
 ```bash
-bash scripts/verify_sai_coexistence.sh /path/to/x3d-sai
+bash scripts/verify_sai_coexistence.sh            # SAI source defaults to sai/
 # Also exercise static runtime symbols, rather than only shared libraries:
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh /path/to/x3d-sai
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh
 ```
 
 The optional second argument is an **empty** work directory; otherwise a new
@@ -48,12 +48,11 @@ backend execution and presentation are covered by the separate
 
 ## Direct CMake use
 
-The source consumer can also be used by an integration CI job that already has
-authorized checkouts of both private repositories:
+The source consumer can also be configured directly:
 
 ```bash
 cmake -S tests/cmake/sai_coexistence -B build/coexistence -G Ninja \
-  -DX3D_SAI_SOURCE_DIR=/path/to/x3d-sai
+  -DX3D_SAI_SOURCE_DIR="$PWD/sai"
 cmake --build build/coexistence --target sai_coexistence_all --parallel 2
 ctest --test-dir build/coexistence --output-on-failure -R '^sai_coexistence_'
 ```

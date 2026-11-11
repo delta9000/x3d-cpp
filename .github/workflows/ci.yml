@@ -29,6 +29,7 @@ jobs:
       cpp: ${{ steps.f.outputs.cpp }}
       generator: ${{ steps.f.outputs.generator }}
       docs: ${{ steps.f.outputs.docs }}
+      sai: ${{ steps.f.outputs.sai }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
@@ -131,6 +132,86 @@ jobs:
         run: cmake --build --preset ext --target x3d_ext_tests
       - name: Test ext suite
         run: ctest --preset ext -j "$(nproc)"
+
+  # The SAI SDK in sai/ is its own CMake project and uv package; mirrors
+  # `mise run sai-ci` (UOM pin, generator determinism, SAI registers, generator
+  # pytest, C++ build + ctest).
+  sai:
+    name: SAI SDK (sai/) registers + build + ctest
+    needs: changes
+    if: needs.changes.outputs.sai == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: sai
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+        with:
+          version: "0.10.4"   # keep in sync with mise.toml [tools]
+          enable-cache: true
+          cache-dependency-glob: sai/uv.lock
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++
+      - name: ccache cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-sai-${{ github.sha }}
+          restore-keys: ccache-sai-
+      - name: Bound ccache storage
+        run: ccache --max-size=300M
+      - name: Sync generator environment
+        run: uv sync --locked
+      - name: UOM pin + generator determinism
+        run: |
+          uv run python -m x3d_sai_gen.cli --check-uom-only
+          uv run python -m x3d_sai_gen.cli --check
+      - name: SAI service + invariant registers
+        run: |
+          uv run python scripts/check_sai_services.py
+          uv run python scripts/check_sai_invariants.py
+      - name: Generator pytest
+        run: uv run pytest tests/ -q
+      - name: Build
+        env:
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build --parallel "$(nproc)"
+      - name: CTest
+        run: |
+          python3 scripts/check_ctest_selection.py build
+          ctest --test-dir build --output-on-failure -j "$(nproc)"
+
+  # Native provider (adapters/sai_provider) against the in-tree SAI SDK: source
+  # build, relocated install and the ordinary host consumer. Mirrors
+  # `mise run sai-provider`.
+  sai-adapter:
+    name: SAI native provider + relocated packages
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true' || needs.changes.outputs.sai == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Install compiler + cmake + ninja + ccache
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold
+      - name: ccache cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-sai-adapter-${{ github.sha }}
+          restore-keys: ccache-sai-adapter-
+      - name: Bound ccache storage
+        run: ccache --max-size=500M
+      - name: Provider proof (source build, relocated install, host consumer)
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: bash scripts/verify_sai_provider.sh sai "$RUNNER_TEMP/sai-provider"
 
   # The san preset instruments executed behavior tests in a separate build tree.
   cpp-san:

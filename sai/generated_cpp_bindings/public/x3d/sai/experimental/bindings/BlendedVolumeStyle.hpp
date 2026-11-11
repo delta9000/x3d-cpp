@@ -1,0 +1,55 @@
+#pragma once
+
+// Auto-generated experimental SAI schema binding.
+#include "x3d/sai/experimental/X3DSAIBindings.hpp"
+#include "x3d/sai/experimental/schema.hpp"
+
+namespace x3d::sai::experimental::bindings {
+
+struct BlendedVolumeStyle {
+  static constexpr std::string_view x3d_name = "BlendedVolumeStyle";
+  static constexpr std::string_view schema_fingerprint = model_fingerprint;
+  inline static constexpr field_key<BlendedVolumeStyle, bool> enabled{
+      "enabled", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle,
+                                    ::x3d::sai::experimental::node_id>
+      metadata{"metadata", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle,
+                                    ::x3d::sai::experimental::node_id>
+      renderStyle{"renderStyle", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle,
+                                    ::x3d::sai::experimental::node_id>
+      voxels{"voxels", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle, float> weightConstant1{
+      "weightConstant1", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle, float> weightConstant2{
+      "weightConstant2", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle, std::string>
+      weightFunction1{"weightFunction1", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle, std::string>
+      weightFunction2{"weightFunction2", access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle,
+                                    ::x3d::sai::experimental::node_id>
+      weightTransferFunction1{"weightTransferFunction1",
+                              access_type::input_output};
+  inline static constexpr field_key<BlendedVolumeStyle,
+                                    ::x3d::sai::experimental::node_id>
+      weightTransferFunction2{"weightTransferFunction2",
+                              access_type::input_output};
+  inline static constexpr std::array<field_key_descriptor, 10> field_keys{{
+      {enabled.name(), enabled.kind, enabled.access()},
+      {metadata.name(), metadata.kind, metadata.access()},
+      {renderStyle.name(), renderStyle.kind, renderStyle.access()},
+      {voxels.name(), voxels.kind, voxels.access()},
+      {weightConstant1.name(), weightConstant1.kind, weightConstant1.access()},
+      {weightConstant2.name(), weightConstant2.kind, weightConstant2.access()},
+      {weightFunction1.name(), weightFunction1.kind, weightFunction1.access()},
+      {weightFunction2.name(), weightFunction2.kind, weightFunction2.access()},
+      {weightTransferFunction1.name(), weightTransferFunction1.kind,
+       weightTransferFunction1.access()},
+      {weightTransferFunction2.name(), weightTransferFunction2.kind,
+       weightTransferFunction2.access()},
+  }};
+};
+
+} // namespace x3d::sai::experimental::bindings

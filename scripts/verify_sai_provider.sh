@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# Bounded independent-provider proof, not complete ISO SAI conformance.
-# Normal builds never fetch or depend on the independent x3d-sai repository.
+# Native provider proof against the SAI SDK: reference/native parity, source
+# build, relocated install and the ordinary host consumer. This is bounded
+# provider evidence, not complete ISO SAI conformance. The SAI source defaults
+# to this checkout's sai/ directory.
 set -euo pipefail
-if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <provider-enabled-x3d-sai-source> [empty-work-dir]" >&2
+if [ "$#" -gt 2 ]; then
+  echo "usage: $0 [sai-source (default: sai/)] [empty-work-dir]" >&2
   exit 2
 fi
 cpp="$(cd "$(dirname "$0")/.." && pwd)"
-sai="$(cd "$1" && pwd)"
+sai="$(cd "${1:-$cpp/sai}" && pwd)"
 if [ ! -f "$sai/include/x3d/sai/experimental/provider.hpp" ]; then
-  echo "x3d-sai checkout does not contain the provider contract" >&2
+  echo "SAI source does not contain the provider contract: $sai" >&2
   exit 2
 fi
 if [ "$#" -eq 2 ]; then
@@ -22,7 +24,7 @@ if [ "$#" -eq 2 ]; then
 else
   work="$(mktemp -d "${TMPDIR:-/tmp}/x3d-sai-provider.XXXXXX")"
 fi
-echo "Independent provider proof: $work"
+echo "SAI provider proof: $work"
 jobs="${CMAKE_BUILD_PARALLEL_LEVEL:-2}"
 shared="${X3D_CPP_SHARED_NODES:-ON}"
 source="$work/source-build"
@@ -40,11 +42,11 @@ check_native_link() {
   command="$(ninja -C "$build" -t commands "$target" | tail -1)"
   printf '%s\n' "$command" > "$build/${target}-link-command.txt"
   if [[ "$command" != *"-o $target"* ]]; then
-    echo "could not identify the independent native executable's link command" >&2
+    echo "could not identify the native executable's link command" >&2
     exit 1
   fi
   if grep -E 'sai_experimental|sai_reference|sai_metadata' "$build/${target}-link-command.txt"; then
-    echo "independent native provider links the SAI reference implementation" >&2
+    echo "native provider links the SAI reference implementation" >&2
     exit 1
   fi
 }

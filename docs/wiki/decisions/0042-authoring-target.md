@@ -42,7 +42,7 @@ We decided to partition the codebase to expose a slim, header-only target for au
    A command-line tool `x3d_asset_import` was created in `examples/asset_import/main.cpp` to tie the components together (backend loading → texture planning → scene graph emission → profile fitting → self-validation → serialization). For verification purposes, it implements a `--verify` flag which *does* use the full SDK parser (`x3d::codec::parseFile`) to round-trip and verify the generated X3D files. This dependency is quarantined solely in the tool's CLI wrapper (`main.cpp`), keeping the underlying `emit` library completely free of parser dependencies.
 
 4. **Divergence from ISO/IEC 19777-4**:
-   Rather than implementing the full, verbose ISO/IEC 19777-4 C++ binding style (which relies on heavyweight IDL abstractions and interfaces), we opted for a direct, performance-optimized, and type-safe modern C++20 object model. This is wrapped with naming guardrails that retain clean, self-documenting APIs (like `std::shared_ptr` node references, raw vectors for arrays, and fluent setter chaining).
+   The authoring target does not implement the ISO/IEC 19777-4 C++ binding, whose interface-based style keeps it parallel with the other SAI language bindings. For an offline authoring library we opted for a direct, type-safe C++20 object model instead. This is wrapped with naming guardrails that retain clean, self-documenting APIs (like `std::shared_ptr` node references, raw vectors for arrays, and fluent setter chaining).
 
 ## Consequences
 
@@ -50,11 +50,11 @@ We decided to partition the codebase to expose a slim, header-only target for au
 - **Ultra-slim Authoring Binary**: Consumers who only need to build and export X3D files (e.g. offline converters or CAD exporters) pay no penalty for execution, scripting, sound, or physics systems.
 - **Architecturally Enforced Separation**: The footprint gate catches any developer error that transitively couples parsing/runtime components back into the authoring target.
 - **Improved Compilation Speed**: Linking only `x3d_cpp::authoring` avoids compiling or linking large parts of the execution runtime.
-- **Direct & Clean API**: The C++20 object model is highly readable and integrates naturally with standard STL types, making it much easier to write scene exporters than the ISO/IEC 19777-4 equivalent.
+- **Direct API**: The C++20 object model integrates naturally with standard library types, which suits scene exporters that never need a running browser.
 
 ### Trade-offs / costs:
 - **Verification Quarantine**: The `--verify` round-trip re-parse functionality in the CLI tool requires linking `x3d_cpp::sdk` (the parser), meaning the CLI binary itself does not have a minimal footprint. This is acceptable since the CLI is an integration keystone and not the slim library itself.
-- **Divergence from Standards**: Developers familiar with the ISO/IEC 19777-4 C++ standard bindings will need to learn our simplified C++20 model, though the mapping remains intuitive.
+- **Divergence from Standards**: Developers familiar with the ISO/IEC 19777-4 C++ binding will need to learn this C++20 model; node and field names follow the X3D specification.
 - **Baseline Maintenance**: Refactoring core node classes or reflection can cause legitimate growth in the `.text` size. The baseline must be updated manually with `scripts/authoring-footprint.sh --write-baseline` when this happens.
 
 ## Related

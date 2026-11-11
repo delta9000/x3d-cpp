@@ -1,0 +1,1374 @@
+#ifndef X3D_SAI_EXPERIMENTAL_KERNEL_HPP
+#define X3D_SAI_EXPERIMENTAL_KERNEL_HPP
+
+#include "browser_services.hpp"
+#include "schema.hpp"
+#include "user_data.hpp"
+
+#include <any>
+#include <concepts>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <typeinfo>
+#include <utility>
+#include <vector>
+
+namespace x3d::sai::experimental {
+
+namespace detail {
+struct browser_control;
+struct context_control;
+struct scene_edit_control;
+struct scene_state;
+struct runtime_step_control;
+
+// Copyable callables keep the std::function path; own move-only captures here.
+template <class Callback, class Result, class... Args>
+concept owned_callback =
+    (!std::is_copy_constructible_v<std::decay_t<Callback>>) &&
+    std::constructible_from<std::decay_t<Callback>, Callback &&> &&
+    std::is_invocable_r_v<Result, std::decay_t<Callback> &, Args...>;
+
+template <class Signature, class Callback>
+std::function<Signature> own_callback(Callback &&callback) {
+  auto owned = std::make_shared<std::decay_t<Callback>>(
+      std::forward<Callback>(callback));
+  return [owned = std::move(owned)](auto &&...args) -> decltype(auto) {
+    return std::invoke(*owned, std::forward<decltype(args)>(args)...);
+  };
+}
+
+// Checkpoints erase a shared const payload, so the host state may be move-only.
+template <class State>
+result<std::shared_ptr<const State>> runtime_state_as(const std::any &stored,
+                                                     std::string operation) {
+  if (!stored.has_value())
+    return std::shared_ptr<const State>{};
+  if (const auto *state = std::any_cast<std::shared_ptr<const State>>(&stored))
+    return *state;
+  sai_error error;
+  error.code = error_code::type_mismatch;
+  error.operation = std::move(operation);
+  error.message = "runtime checkpoint does not contain the requested state type";
+  return failure(std::move(error));
+}
+} // namespace detail
+
+class execution_context;
+class dynamic_field;
+
+class load_ticket {
+public:
+  std::uint64_t request_id() const noexcept { return request_id_; }
+  std::uint64_t world_epoch() const noexcept { return world_epoch_; }
+
+private:
+  load_ticket(std::weak_ptr<detail::browser_control> browser,
+              std::uint64_t request_id, std::uint64_t world_epoch)
+      : browser_(std::move(browser)), request_id_(request_id),
+        world_epoch_(world_epoch) {}
+
+  std::weak_ptr<detail::browser_control> browser_;
+  std::uint64_t request_id_ = 0;
+  std::uint64_t world_epoch_ = 0;
+  friend class browser;
+};
+
+struct capability_set {
+  bool authoring = true;
+  bool inspection = true;
+  bool live = false;
+  bool async_loading = false;
+  bool rendering = false;
+};
+
+class node {
+public:
+  // An empty handle represents X3D NULL; it carries no context authority.
+  node() noexcept = default;
+  bool is_null() const noexcept { return id_.value == 0; }
+  node_id id() const noexcept { return id_; }
+  generation_id generation() const noexcept { return generation_; }
+  bool disposed() const noexcept { return disposed_; }
+  void dispose() noexcept {
+    context_.reset();
+    disposed_ = true;
+  }
+
+  // Live services inspect the currently published scene, unlike an immutable
+  // snapshot or a staged edit. They reject disposed, expired and retired
+  // references. Unpublished/removed nodes are absent from that live scene.
+  // Identity/diagnostic accessors and idempotent local dispose() above are
+  // C++ extensions, not the published binding's post-disposal node methods.
+  result<std::string> get_type_name() const;
+  result<std::vector<field_descriptor>> get_field_definitions() const;
+  // inputOutput set_/_changed aliases resolve to one canonical field identity.
+  result<dynamic_field> get_field(const std::string &name) const;
+  result<bool> is_realized() const;
+  // Context-identity metadata: immediate, shared by aliases, and independent
+  // of scene values, edit/event buffering, revisions and wrapper disposal.
+  result<user_data_value> user_data() const;
+  result<void> set_user_data(user_data_value data) const;
+
+private:
+  node(std::weak_ptr<detail::context_control> context, generation_id generation,
+       node_id id)
+      : context_(std::move(context)), generation_(generation), id_(id) {}
+
+  std::weak_ptr<detail::context_control> context_;
+  generation_id generation_ = 0;
+  node_id id_;
+  bool disposed_ = false;
+  friend class scene_edit;
+  friend class dynamic_multi_field_edit;
+  friend class scene_snapshot;
+  friend class event_batch;
+  template <class> friend class typed_node;
+};
+
+class declaration {
+public:
+  declaration_id id() const noexcept { return id_; }
+  generation_id generation() const noexcept { return generation_; }
+
+private:
+  declaration(std::weak_ptr<detail::context_control> context,
+              generation_id generation, declaration_id id)
+      : context_(std::move(context)), generation_(generation), id_(id) {}
+
+  std::weak_ptr<detail::context_control> context_;
+  generation_id generation_ = 0;
+  declaration_id id_;
+  friend class scene_edit;
+  friend class scene_snapshot;
+};
+
+struct semantic_node_id {
+  generation_id generation = 0;
+  node_id local;
+  friend bool operator==(semantic_node_id, semantic_node_id) = default;
+};
+
+class imported_node {
+public:
+  semantic_node_id identity() const noexcept {
+    return semantic_node_id{source_generation_, id_};
+  }
+  generation_id importer_generation() const noexcept {
+    return importer_generation_;
+  }
+  revision_id source_revision() const noexcept { return source_revision_; }
+  const std::string &local_name() const noexcept { return local_name_; }
+
+private:
+  imported_node(std::weak_ptr<detail::context_control> importer,
+                generation_id importer_generation,
+                std::weak_ptr<detail::context_control> source,
+                generation_id source_generation, revision_id source_revision,
+                node_id id, std::string local_name)
+      : importer_(std::move(importer)),
+        importer_generation_(importer_generation), source_(std::move(source)),
+        source_generation_(source_generation),
+        source_revision_(source_revision), id_(id),
+        local_name_(std::move(local_name)) {}
+
+  std::weak_ptr<detail::context_control> importer_;
+  generation_id importer_generation_ = 0;
+  std::weak_ptr<detail::context_control> source_;
+  generation_id source_generation_ = 0;
+  revision_id source_revision_ = 0;
+  node_id id_;
+  std::string local_name_;
+  friend class scene_snapshot;
+};
+
+template <class T> class imported_field;
+
+class dynamic_imported_field {
+public:
+  semantic_node_id node() const noexcept {
+    return semantic_node_id{source_generation_, node_};
+  }
+  const std::string &name() const noexcept { return name_; }
+  value_kind kind() const noexcept { return kind_; }
+  access_type access() const noexcept { return access_; }
+  revision_id source_revision() const noexcept { return source_revision_; }
+
+  template <class T> result<imported_field<T>> as() const;
+
+private:
+  dynamic_imported_field(std::weak_ptr<detail::context_control> importer,
+                         generation_id importer_generation,
+                         std::weak_ptr<detail::context_control> source,
+                         generation_id source_generation,
+                         revision_id source_revision, node_id node,
+                         std::string name, value_kind kind, access_type access)
+      : importer_(std::move(importer)),
+        importer_generation_(importer_generation), source_(std::move(source)),
+        source_generation_(source_generation),
+        source_revision_(source_revision), node_(node), name_(std::move(name)),
+        kind_(kind), access_(access) {}
+
+  std::weak_ptr<detail::context_control> importer_;
+  generation_id importer_generation_ = 0;
+  std::weak_ptr<detail::context_control> source_;
+  generation_id source_generation_ = 0;
+  revision_id source_revision_ = 0;
+  node_id node_;
+  std::string name_;
+  value_kind kind_ = value_kind::sf_string;
+  access_type access_ = access_type::input_output;
+  friend class scene_snapshot;
+  template <class T> friend class imported_field;
+};
+
+template <class T> class imported_field {
+public:
+  semantic_node_id node() const noexcept { return dynamic_.node(); }
+  const std::string &name() const noexcept { return dynamic_.name(); }
+
+private:
+  explicit imported_field(dynamic_imported_field dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_imported_field dynamic_;
+  friend class dynamic_imported_field;
+  friend class scene_snapshot;
+};
+
+template <class T>
+result<imported_field<T>> dynamic_imported_field::as() const {
+  if (kind_ == value_traits<T>::kind)
+    return imported_field<T>{*this};
+  sai_error error;
+  error.code = error_code::type_mismatch;
+  error.operation = "dynamic_imported_field.as";
+  error.message = "requested typed view does not match the field descriptor";
+  error.generation = source_generation_;
+  error.node = node_;
+  error.field = name_;
+  return failure(std::move(error));
+}
+
+template <class T> class field;
+
+class dynamic_field {
+public:
+  node_id node() const noexcept { return node_; }
+  const std::string &name() const noexcept { return name_; }
+  value_kind kind() const noexcept { return kind_; }
+  access_type access() const noexcept { return access_; }
+  bool disposed() const noexcept { return disposed_; }
+  // Revoke only this client wrapper. Existing copies and the containing node
+  // remain usable; this immediate extension is not buffered SAI disposal.
+  void dispose() noexcept {
+    context_.reset();
+    disposed_ = true;
+  }
+  // Live metadata query; raw identity/descriptor accessors above are diagnostic
+  // extensions that remain available after local disposal.
+  result<field_descriptor> get_definition() const;
+  result<user_data_value> user_data() const;
+  result<void> set_user_data(user_data_value data) const;
+
+  template <class T> result<field<T>> as() const;
+
+private:
+  dynamic_field(std::weak_ptr<detail::context_control> context,
+                generation_id generation, node_id node, std::string name,
+                value_kind kind, access_type access)
+      : context_(std::move(context)), generation_(generation), node_(node),
+        name_(std::move(name)), kind_(kind), access_(access) {}
+
+  std::weak_ptr<detail::context_control> context_;
+  generation_id generation_ = 0;
+  node_id node_;
+  std::string name_;
+  value_kind kind_ = value_kind::sf_string;
+  access_type access_ = access_type::input_output;
+  bool disposed_ = false;
+  friend class node;
+  friend class scene_edit;
+  friend class dynamic_multi_field_edit;
+  friend class scene_snapshot;
+  friend class event_batch;
+  friend class execution_context;
+  template <class T> friend class field;
+  template <class> friend class typed_node;
+};
+
+template <class T> class field {
+public:
+  node_id node() const noexcept { return dynamic_.node(); }
+  const std::string &name() const noexcept { return dynamic_.name(); }
+  const dynamic_field &dynamic() const noexcept { return dynamic_; }
+  bool disposed() const noexcept { return dynamic_.disposed(); }
+  void dispose() noexcept { dynamic_.dispose(); }
+  result<field_descriptor> get_definition() const {
+    return dynamic_.get_definition();
+  }
+  result<user_data_value> user_data() const { return dynamic_.user_data(); }
+  result<void> set_user_data(user_data_value data) const {
+    return dynamic_.set_user_data(std::move(data));
+  }
+
+private:
+  explicit field(dynamic_field dynamic) : dynamic_(std::move(dynamic)) {}
+  dynamic_field dynamic_;
+  friend class dynamic_field;
+  friend class scene_edit;
+  friend class scene_snapshot;
+  friend class event_batch;
+  template <class Tag> friend class typed_node;
+};
+
+template <class Tag> class typed_node {
+public:
+  node_id id() const noexcept { return dynamic_.id(); }
+  const node &dynamic() const noexcept { return dynamic_; }
+  bool disposed() const noexcept { return dynamic_.disposed(); }
+  void dispose() noexcept { dynamic_.dispose(); }
+  result<std::string> get_type_name() const { return dynamic_.get_type_name(); }
+  result<std::vector<field_descriptor>> get_field_definitions() const {
+    return dynamic_.get_field_definitions();
+  }
+  result<dynamic_field> get_field(const std::string &name) const {
+    return dynamic_.get_field(name);
+  }
+  template <class T>
+  result<experimental::field<T>> get_field(const field_key<Tag, T> &key) const {
+    auto dynamic = dynamic_.get_field(std::string{key.name_});
+    if (!dynamic)
+      return failure(dynamic.error());
+    return dynamic->template as<T>();
+  }
+  result<bool> is_realized() const { return dynamic_.is_realized(); }
+  result<user_data_value> user_data() const { return dynamic_.user_data(); }
+  result<void> set_user_data(user_data_value data) const {
+    return dynamic_.set_user_data(std::move(data));
+  }
+
+  // Unchecked generated-key projection for authoring; use get_field() for a
+  // result-returning service against the live, currently published node.
+  template <class T>
+  experimental::field<T> field(const field_key<Tag, T> &key) const {
+    return experimental::field<T>{dynamic_field{
+        dynamic_.context_, dynamic_.generation_, dynamic_.id_,
+        std::string{key.name_}, value_traits<T>::kind, key.access_}};
+  }
+
+private:
+  explicit typed_node(node dynamic) : dynamic_(std::move(dynamic)) {}
+
+  node dynamic_;
+  friend class scene_edit;
+  friend class scene_snapshot;
+};
+
+template <class T> result<field<T>> dynamic_field::as() const {
+  if (disposed_) {
+    sai_error error;
+    error.code = error_code::disposed;
+    error.operation = "dynamic_field.as";
+    error.message = "field reference has been disposed";
+    error.generation = generation_;
+    error.node = node_;
+    error.field = name_;
+    return failure(std::move(error));
+  }
+  if (kind_ == value_traits<T>::kind)
+    return field<T>{*this};
+  sai_error error;
+  error.code = error_code::type_mismatch;
+  error.operation = "dynamic_field.as";
+  error.message = "requested typed view does not match the field descriptor";
+  error.generation = generation_;
+  error.node = node_;
+  error.field = name_;
+  return failure(std::move(error));
+}
+
+struct occurrence {
+  node_id node;
+  std::optional<std::size_t> parent_occurrence;
+  std::string container_field;
+  std::size_t index = 0;
+  std::vector<std::size_t> path;
+};
+
+enum class metadata_change_kind { updated };
+
+struct metadata_change {
+  metadata_change_kind kind = metadata_change_kind::updated;
+  std::string key;
+  std::optional<std::string> before;
+  std::optional<std::string> after;
+};
+
+enum class change_kind {
+  node_created,
+  node_removed,
+  unit_declared,
+  field_changed,
+  multi_element_set,
+  multi_inserted,
+  multi_erased,
+  multi_cleared,
+  multi_replaced,
+  root_inserted,
+  root_removed,
+  name_defined,
+  name_removed,
+  export_added,
+  export_removed,
+  import_added,
+  import_removed,
+  route_added,
+  route_removed,
+  node_realized,
+};
+
+struct graph_change {
+  change_kind kind = change_kind::field_changed;
+  node_id node;
+  std::string field;
+  value before;
+  value after;
+  std::size_t index = 0;
+};
+
+enum class declaration_change_kind { added, renamed, updated, removed };
+
+struct declaration_change {
+  declaration_change_kind kind = declaration_change_kind::updated;
+  declaration_id declaration;
+  std::optional<declaration_descriptor> before;
+  std::optional<declaration_descriptor> after;
+};
+
+enum class runtime_change_kind { checkpoint };
+
+class runtime_state_change {
+public:
+  runtime_change_kind kind = runtime_change_kind::checkpoint;
+  template <class State> result<std::shared_ptr<const State>> before() const {
+    return detail::runtime_state_as<State>(before_, "runtime_state_change.before");
+  }
+  template <class State> result<std::shared_ptr<const State>> after() const {
+    return detail::runtime_state_as<State>(after_, "runtime_state_change.after");
+  }
+
+private:
+  runtime_state_change(std::any before, std::any after)
+      : before_(std::move(before)), after_(std::move(after)) {}
+  std::any before_;
+  std::any after_;
+  friend class event_batch;
+};
+
+using semantic_change =
+    std::variant<graph_change, declaration_change, runtime_state_change,
+                 metadata_change>;
+using semantic_change_kind =
+    std::variant<change_kind, declaration_change_kind, runtime_change_kind,
+                 metadata_change_kind>;
+
+inline semantic_change_kind
+change_kind_of(const semantic_change &candidate) noexcept {
+  return std::visit(
+      [](const auto &change) -> semantic_change_kind { return change.kind; },
+      candidate);
+}
+
+inline graph_change *node_change(semantic_change &candidate) noexcept {
+  return std::get_if<graph_change>(&candidate);
+}
+
+inline const graph_change *
+node_change(const semantic_change &candidate) noexcept {
+  return std::get_if<graph_change>(&candidate);
+}
+
+inline declaration_change *
+declaration_change_of(semantic_change &candidate) noexcept {
+  return std::get_if<declaration_change>(&candidate);
+}
+
+inline const declaration_change *
+declaration_change_of(const semantic_change &candidate) noexcept {
+  return std::get_if<declaration_change>(&candidate);
+}
+
+struct change_set {
+  revision_id before_revision = 0;
+  revision_id after_revision = 0;
+  std::vector<semantic_change> changes;
+};
+
+enum class event_origin { external, route, runtime };
+
+struct event_delivery {
+  event_time time;
+  node_id target;
+  std::string field;
+  value payload;
+  std::optional<std::size_t> cause;
+  std::optional<std::size_t> route_index;
+  event_origin origin = event_origin::external;
+  bool ignored = false;
+};
+
+enum class event_issue_code { nonportable_fan_in };
+
+struct event_issue {
+  event_issue_code code = event_issue_code::nonportable_fan_in;
+  node_id target;
+  std::string field;
+  std::vector<std::size_t> delivery_indices;
+};
+
+struct event_result {
+  event_time time;
+  revision_id before_revision = 0;
+  revision_id after_revision = 0;
+  std::vector<event_delivery> deliveries;
+  std::optional<change_set> state_changes;
+  std::vector<event_issue> portability_issues;
+};
+
+struct route {
+  node_id source;
+  std::string source_field;
+  node_id sink;
+  std::string sink_field;
+  friend bool operator==(const route &, const route &) = default;
+};
+
+struct name_binding {
+  std::string name;
+  node_id node;
+  friend bool operator==(const name_binding &, const name_binding &) = default;
+};
+
+struct export_binding {
+  std::string name;
+  node_id node;
+  friend bool operator==(const export_binding &,
+                         const export_binding &) = default;
+};
+
+struct import_binding {
+  std::string local_name;
+  generation_id source_generation = 0;
+  std::string exported_name;
+  semantic_node_id target;
+  friend bool operator==(const import_binding &,
+                         const import_binding &) = default;
+};
+
+class subscription {
+public:
+  subscription() = default;
+  subscription(subscription &&other) noexcept;
+  subscription &operator=(subscription &&other) noexcept;
+  ~subscription();
+  subscription(const subscription &) = delete;
+  subscription &operator=(const subscription &) = delete;
+
+  bool active() const noexcept;
+  // Suppresses callbacks not yet acquired by drain(). An already acquired
+  // callback may finish after cancellation; this call never waits for it.
+  // Callback captures are destroyed outside context and browser locks.
+  void cancel() noexcept;
+
+private:
+  subscription(std::weak_ptr<detail::context_control> context,
+               std::uint64_t observer_id)
+      : context_(std::move(context)), observer_id_(observer_id) {}
+
+  std::weak_ptr<detail::context_control> context_;
+  std::uint64_t observer_id_ = 0;
+  friend class execution_context;
+};
+
+struct dispatch_report {
+  std::size_t delivered = 0;
+  std::vector<sai_error> errors;
+  bool already_draining = false;
+};
+
+class dynamic_multi_field_edit {
+public:
+  result<std::size_t> size() const;
+  result<value> at(std::size_t index) const;
+  result<node> node_at(std::size_t index) const;
+  result<void> set(std::size_t index, value element);
+  result<void> set(std::size_t index, const node &element);
+  result<void> insert(std::size_t index, value element);
+  result<void> insert(std::size_t index, const node &element);
+  result<void> erase(std::size_t index);
+  result<void> append(value element);
+  result<void> append(const node &element);
+  result<void> clear();
+  result<void> replace(value sequence);
+  result<void> replace(std::span<const node> sequence);
+
+private:
+  dynamic_multi_field_edit(std::weak_ptr<detail::scene_edit_control> edit,
+                           dynamic_field target)
+      : edit_(std::move(edit)), target_(std::move(target)) {}
+
+  std::weak_ptr<detail::scene_edit_control> edit_;
+  dynamic_field target_;
+  friend class scene_edit;
+};
+
+namespace detail {
+template <class Sequence> struct multi_sequence_traits;
+template <class Element, class Allocator>
+struct multi_sequence_traits<std::vector<Element, Allocator>> {
+  using element_type = Element;
+};
+template <> struct multi_sequence_traits<bool_list> {
+  using element_type = bool;
+};
+} // namespace detail
+
+template <class Sequence>
+concept multi_field_sequence = requires {
+  typename detail::multi_sequence_traits<Sequence>::element_type;
+  value_traits<Sequence>::kind;
+};
+
+template <multi_field_sequence Sequence> class multi_field_edit {
+public:
+  using element_type =
+      typename detail::multi_sequence_traits<Sequence>::element_type;
+
+  result<std::size_t> size() const { return dynamic_.size(); }
+  result<element_type> at(std::size_t index) const {
+    auto element = dynamic_.at(index);
+    if (!element)
+      return failure(element.error());
+    return std::get<element_type>(std::move(element).value());
+  }
+  result<void> set(std::size_t index, element_type element) {
+    return dynamic_.set(index, value{std::move(element)});
+  }
+  result<void> insert(std::size_t index, element_type element) {
+    return dynamic_.insert(index, value{std::move(element)});
+  }
+  result<void> erase(std::size_t index) { return dynamic_.erase(index); }
+  result<void> append(element_type element) {
+    return dynamic_.append(value{std::move(element)});
+  }
+  result<void> clear() { return dynamic_.clear(); }
+  result<void> replace(Sequence sequence) {
+    return dynamic_.replace(value{std::move(sequence)});
+  }
+
+private:
+  explicit multi_field_edit(dynamic_multi_field_edit dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_multi_field_edit dynamic_;
+  friend class scene_edit;
+};
+
+template <> class multi_field_edit<node_list> {
+public:
+  result<std::size_t> size() const { return dynamic_.size(); }
+  result<node> at(std::size_t index) const { return dynamic_.node_at(index); }
+  result<void> set(std::size_t index, const node &element) {
+    return dynamic_.set(index, element);
+  }
+  result<void> insert(std::size_t index, const node &element) {
+    return dynamic_.insert(index, element);
+  }
+  result<void> erase(std::size_t index) { return dynamic_.erase(index); }
+  result<void> append(const node &element) { return dynamic_.append(element); }
+  result<void> clear() { return dynamic_.clear(); }
+  result<void> replace(std::span<const node> sequence) {
+    return dynamic_.replace(sequence);
+  }
+
+private:
+  explicit multi_field_edit(dynamic_multi_field_edit dynamic)
+      : dynamic_(std::move(dynamic)) {}
+  dynamic_multi_field_edit dynamic_;
+  friend class scene_edit;
+};
+
+class scene_edit {
+public:
+  scene_edit(scene_edit &&) noexcept;
+  scene_edit &operator=(scene_edit &&) noexcept;
+  ~scene_edit();
+  scene_edit(const scene_edit &) = delete;
+  scene_edit &operator=(const scene_edit &) = delete;
+
+  result<node> create_node(const std::string &type_name);
+  result<void> remove_node(const node &target);
+  result<void> realize(const node &target);
+  template <class Tag> result<void> realize(const typed_node<Tag> &target) {
+    return realize(target.dynamic());
+  }
+  template <class Tag> result<typed_node<Tag>> create() {
+    if constexpr (requires { std::string_view{Tag::schema_fingerprint}; }) {
+      auto verified = require_schema_fingerprint(Tag::schema_fingerprint);
+      if (!verified)
+        return failure(verified.error());
+    }
+    return create_node(std::string{Tag::x3d_name}).transform([](node created) {
+      return typed_node<Tag>{std::move(created)};
+    });
+  }
+  result<void> append_root(const node &child);
+  template <class Tag> result<void> append_root(const typed_node<Tag> &child) {
+    return append_root(child.dynamic());
+  }
+  result<void> remove_root(std::size_t index);
+  result<void> append(const node &parent, const std::string &field,
+                      const node &child);
+  result<void> declare_unit(unit_declaration declaration);
+  // Scene META statements: an empty string is a value; nullopt removes the key.
+  result<void> set_metadata(std::string key, std::optional<std::string> data);
+  result<dynamic_field> field(const node &owner, const std::string &name) const;
+  result<bool> writable(const dynamic_field &target, write_intent intent) const;
+  template <class T>
+  result<bool> writable(const experimental::field<T> &target,
+                        write_intent intent) const {
+    return writable(target.dynamic(), intent);
+  }
+  result<dynamic_multi_field_edit> multi(const dynamic_field &target);
+  template <multi_field_sequence Sequence>
+  result<multi_field_edit<Sequence>>
+  multi(const experimental::field<Sequence> &target) {
+    auto dynamic = multi(target.dynamic_);
+    if (!dynamic)
+      return failure(dynamic.error());
+    return multi_field_edit<Sequence>{std::move(dynamic).value()};
+  }
+  result<void> set(const dynamic_field &target, value new_value);
+  // Reference-only construction initialization of a non-node outputOnly field.
+  // This stores a derived initial value without an event, ROUTE or clock tick.
+  // Requires construction_edit() and an unrealized target; ordinary set() and
+  // all active-scene authoring retain their normal outputOnly access denial.
+  result<void> initialize_output(const dynamic_field &target, value initial_value);
+  result<void> set(const dynamic_field &target, value new_value,
+                   value_space space);
+  result<void> set(const dynamic_field &target, const node &new_value);
+  result<void> set(const dynamic_field &target, std::nullopt_t);
+  result<void> set(const dynamic_field &target,
+                   std::span<const node> new_value);
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> set(const experimental::field<T> &target, T new_value) {
+    return set(target.dynamic_, value{std::move(new_value)});
+  }
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> set(const experimental::field<T> &target, T new_value,
+                   value_space space) {
+    return set(target.dynamic_, value{std::move(new_value)}, space);
+  }
+  result<void> set(const experimental::field<node_id> &target,
+                   const node &new_value) {
+    return set(target.dynamic_, new_value);
+  }
+  result<void> set(const experimental::field<node_id> &target, std::nullopt_t) {
+    return set(target.dynamic_, std::nullopt);
+  }
+  template <class Tag>
+  result<void> set(const experimental::field<node_id> &target,
+                   const typed_node<Tag> &new_value) {
+    return set(target.dynamic_, new_value.dynamic());
+  }
+  result<void> set(const experimental::field<node_list> &target,
+                   std::span<const node> new_value) {
+    return set(target.dynamic_, new_value);
+  }
+  template <std::ranges::input_range Range>
+    requires requires(std::ranges::range_reference_t<Range> item) {
+      { item.dynamic() } -> std::same_as<const node &>;
+    }
+  result<void> set(const experimental::field<node_list> &target,
+                   const Range &new_value) {
+    std::vector<node> dynamic_nodes;
+    if constexpr (std::ranges::sized_range<Range>)
+      dynamic_nodes.reserve(std::ranges::size(new_value));
+    for (const auto &typed : new_value)
+      dynamic_nodes.push_back(typed.dynamic());
+    return set(target.dynamic_, std::span<const node>{dynamic_nodes});
+  }
+  result<void> define_name(const std::string &name, const node &target);
+  result<void> undefine_name(const std::string &name);
+  result<void> export_node(const std::string &name, const node &target);
+  result<void> remove_export(const export_binding &target);
+  result<void> import_node(const std::string &local_name,
+                           const execution_context &source,
+                           const std::string &exported_name);
+  result<void> remove_import(const import_binding &target);
+  result<void> add_route(const dynamic_field &source,
+                         const dynamic_field &sink);
+  template <class T>
+  result<void> add_route(const experimental::field<T> &source,
+                         const experimental::field<T> &sink) {
+    return add_route(source.dynamic(), sink.dynamic());
+  }
+  result<void> remove_route(const route &target);
+  result<declaration>
+  add_local_declaration(local_declaration_descriptor descriptor);
+  result<declaration>
+  add_local_declaration(local_declaration_descriptor descriptor,
+                        std::span<const node> body_roots);
+  result<declaration>
+  add_external_declaration(external_declaration_descriptor descriptor);
+  result<void> rename_declaration(const declaration &target,
+                                  std::string new_name);
+  result<void> update_declaration(const declaration &target,
+                                  declaration_payload replacement);
+  result<void> resolve_external_declaration(const declaration &external,
+                                            const declaration &local);
+  result<void> set_declaration_default(const declaration &target,
+                                       std::string_view field_name,
+                                       const std::optional<node> &value);
+  result<void>
+  set_declaration_default(const declaration &target,
+                          std::string_view field_name,
+                          std::span<const std::optional<node>> values);
+  result<void> remove_declaration(const declaration &target);
+  // Preflight the same admission checks as commit without consuming or
+  // modifying this edit. Success reserves nothing; commit rechecks admission.
+  result<void> validate() const;
+  result<change_set> commit();
+
+private:
+  void stage_declaration_update(declaration_id id,
+                                declaration_payload replacement);
+  result<void> claim_declaration_nodes(declaration_id owner,
+                                       std::span<const node_id> roots,
+                                       const char *operation);
+  result<void> set_declaration_default_ids(const declaration &target,
+                                           std::string_view field_name,
+                                           value authored);
+  result<void> require_schema_fingerprint(std::string_view expected);
+  result<void> set_value(const dynamic_field &target, value new_value,
+                         bool node_authority_checked,
+                         value_space space = value_space::canonical,
+                         bool output_initialization = false);
+  explicit scene_edit(
+      std::shared_ptr<detail::scene_edit_control> implementation);
+  std::shared_ptr<detail::scene_edit_control> impl_;
+  friend class execution_context;
+};
+
+class scene_snapshot {
+public:
+  revision_id revision() const noexcept;
+  template <class State> result<std::shared_ptr<const State>> runtime_state() const {
+    return detail::runtime_state_as<State>(runtime_state_storage(),
+                                          "scene_snapshot.runtime_state");
+  }
+  const std::vector<unit_declaration> &units() const noexcept;
+  // Ordered enumeration borrows this snapshot's storage.
+  const std::vector<metadata_entry> &metadata() const noexcept;
+  // A keyed lookup owns its optional string and can outlive this snapshot.
+  std::optional<std::string> metadata(std::string_view key) const;
+  const std::vector<node_id> &roots() const noexcept;
+  std::vector<occurrence> occurrences() const;
+  result<node> lookup(node_id id) const;
+  // Specialize an inspected node without weakening context or schema checks.
+  template <class Tag> result<typed_node<Tag>> as(const node &owner) const {
+    std::optional<std::string_view> fingerprint;
+    if constexpr (requires { std::string_view{Tag::schema_fingerprint}; })
+      fingerprint = Tag::schema_fingerprint;
+    auto checked = require_node_type(owner, Tag::x3d_name, fingerprint);
+    if (!checked)
+      return failure(checked.error());
+    return typed_node<Tag>{owner};
+  }
+  const std::vector<declaration_id> &declarations() const noexcept;
+  result<declaration> declaration_at(declaration_id id) const;
+  result<declaration> declaration_named(std::string_view name) const;
+  result<bool> is_realized(const node &owner) const;
+  template <class Tag>
+  result<bool> is_realized(const typed_node<Tag> &owner) const {
+    return is_realized(owner.dynamic());
+  }
+  // Owning descriptions of the configured built-in vocabulary.
+  std::vector<node_type_descriptor> node_types() const;
+  result<node_type_descriptor> describe(const node &owner) const;
+  result<node_type_descriptor> describe(const imported_node &owner) const;
+  result<declaration_descriptor> describe(const declaration &owner) const;
+  result<dynamic_field> field(const node &owner, const std::string &name) const;
+  result<dynamic_imported_field> field(const imported_node &owner,
+                                       const std::string &name) const;
+  result<bool> readable(const dynamic_field &source) const;
+  template <class T>
+  result<bool> readable(const experimental::field<T> &source) const {
+    return readable(source.dynamic());
+  }
+  // Canonical immutable storage, pinned independently of this snapshot.
+  result<std::shared_ptr<const value>>
+  read_view(const dynamic_field &source) const;
+  result<std::shared_ptr<const value>>
+  read_view(const dynamic_imported_field &source) const;
+  template <class T>
+  result<std::shared_ptr<const T>>
+  read_view(const experimental::field<T> &source) const {
+    auto dynamic = read_view(source.dynamic_);
+    if (!dynamic)
+      return failure(dynamic.error());
+    if (const auto *typed = std::get_if<T>(dynamic->get()))
+      return std::shared_ptr<const T>{*dynamic, typed};
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_view_typed");
+  }
+  template <class T>
+  result<std::shared_ptr<const T>>
+  read_view(const experimental::imported_field<T> &source) const {
+    auto dynamic = read_view(source.dynamic_);
+    if (!dynamic)
+      return failure(dynamic.error());
+    if (const auto *typed = std::get_if<T>(dynamic->get()))
+      return std::shared_ptr<const T>{*dynamic, typed};
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_view_imported_typed");
+  }
+  result<value> read(const dynamic_field &source) const;
+  result<node> read_node(const dynamic_field &source) const;
+  result<std::vector<node>> read_nodes(const dynamic_field &source) const;
+  result<node> read_node(const experimental::field<node_id> &source) const {
+    return read_node(source.dynamic());
+  }
+  result<std::vector<node>>
+  read_nodes(const experimental::field<node_list> &source) const {
+    return read_nodes(source.dynamic());
+  }
+  result<value> read(const dynamic_field &source, value_space space) const;
+  result<value> read(const dynamic_imported_field &source) const;
+  result<value> read(const dynamic_imported_field &source,
+                     value_space space) const;
+  template <class T>
+  result<T> read(const experimental::field<T> &source) const {
+    auto dynamic = read(source.dynamic_);
+    if (!dynamic)
+      return failure(dynamic.error());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_, "scene_snapshot.read_typed");
+  }
+  template <class T>
+  result<T> read(const experimental::field<T> &source,
+                 value_space space) const {
+    auto dynamic = read(source.dynamic_, space);
+    if (!dynamic)
+      return failure(dynamic.error());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_, "scene_snapshot.read_typed");
+  }
+  template <class T>
+  result<T> read(const experimental::imported_field<T> &source) const {
+    auto dynamic = read(source.dynamic_);
+    if (!dynamic)
+      return failure(dynamic.error());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_imported_typed");
+  }
+  template <class T>
+  result<T> read(const experimental::imported_field<T> &source,
+                 value_space space) const {
+    auto dynamic = read(source.dynamic_, space);
+    if (!dynamic)
+      return failure(dynamic.error());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return typed_read_mismatch(source.dynamic_,
+                               "scene_snapshot.read_imported_typed");
+  }
+  result<node> named(const std::string &name) const;
+  const std::vector<name_binding> &names() const noexcept;
+  result<node> exported(const std::string &name) const;
+  const std::vector<export_binding> &exports() const noexcept;
+  result<imported_node> imported(const std::string &local_name) const;
+  const std::vector<import_binding> &imports() const noexcept;
+  const std::vector<route> &routes() const noexcept;
+
+private:
+  static result<std::shared_ptr<const value>>
+  read_storage(const std::shared_ptr<detail::context_control> &context,
+               const std::shared_ptr<const detail::scene_state> &state,
+               const dynamic_field &source, const char *operation);
+  result<std::shared_ptr<const value>>
+  read_storage(const dynamic_field &source, const char *operation) const;
+  result<std::shared_ptr<const value>>
+  read_storage(const dynamic_imported_field &source,
+               const char *operation) const;
+  result<void>
+  require_node_type(const node &owner, std::string_view type_name,
+                    std::optional<std::string_view> schema_fingerprint) const;
+  static unexpected typed_read_mismatch(const dynamic_field &source,
+                                        std::string operation) {
+    sai_error error;
+    error.code = error_code::type_mismatch;
+    error.operation = std::move(operation);
+    error.message = "typed field representation does not match its handle";
+    error.generation = source.generation_;
+    error.node = source.node_;
+    error.field = source.name_;
+    return failure(std::move(error));
+  }
+  static unexpected typed_read_mismatch(const dynamic_imported_field &source,
+                                        std::string operation) {
+    sai_error error;
+    error.code = error_code::type_mismatch;
+    error.operation = std::move(operation);
+    error.message =
+        "typed imported field representation does not match its handle";
+    error.generation = source.source_generation_;
+    error.node = source.node_;
+    error.field = source.name_;
+    return failure(std::move(error));
+  }
+  const std::any &runtime_state_storage() const noexcept;
+  scene_snapshot(std::shared_ptr<detail::context_control> context,
+                 std::shared_ptr<const detail::scene_state> state);
+
+  std::shared_ptr<detail::context_control> context_;
+  std::shared_ptr<const detail::scene_state> state_;
+  std::vector<std::shared_ptr<detail::context_control>> import_contexts_;
+  std::vector<std::shared_ptr<const detail::scene_state>> import_states_;
+  friend class execution_context;
+  friend class runtime_step;
+  friend class event_batch;
+};
+
+// A host receives authority only for the duration of a processor callback.
+// Copies keep the input facts alive, but cannot read or emit after it returns.
+class runtime_step {
+public:
+  event_time time() const noexcept;
+  const event_delivery *input() const noexcept;
+  result<value> read(const dynamic_field &source,
+                     value_space space = value_space::canonical) const;
+  template <class T>
+  result<T> read(const experimental::field<T> &source,
+                 value_space space = value_space::canonical) const {
+    auto dynamic = read(source.dynamic(), space);
+    if (!dynamic)
+      return failure(dynamic.error());
+    auto payload = std::move(dynamic).value();
+    if (auto *typed = std::get_if<T>(&payload))
+      return std::move(*typed);
+    return scene_snapshot::typed_read_mismatch(source.dynamic(),
+                                               "runtime_step.read");
+  }
+  result<void> emit(const dynamic_field &target, value payload,
+                    value_space space = value_space::canonical);
+  result<void> emit(const dynamic_field &target, const node &payload);
+  result<void> emit(const dynamic_field &target, std::span<const node> payload);
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> emit(const experimental::field<T> &target, T payload,
+                    value_space space = value_space::canonical) {
+    return emit(target.dynamic(), value{std::move(payload)}, space);
+  }
+  result<void> emit(const experimental::field<node_id> &target,
+                    const node &payload) {
+    return emit(target.dynamic(), payload);
+  }
+  result<void> emit(const experimental::field<node_list> &target,
+                    std::span<const node> payload) {
+    return emit(target.dynamic(), payload);
+  }
+  result<void> ignore_input();
+
+private:
+  explicit runtime_step(std::shared_ptr<detail::runtime_step_control> control)
+      : control_(std::move(control)) {}
+  std::shared_ptr<detail::runtime_step_control> control_;
+  friend class event_batch;
+};
+
+using runtime_processor = std::function<result<void>(runtime_step &)>;
+
+// Adapter members are the complete host protocol; inheritance is unnecessary.
+template <class Adapter>
+concept runtime_frame_adapter =
+    std::move_constructible<Adapter> &&
+    requires(Adapter &adapter, runtime_step &step) {
+      { adapter.process(step) } -> std::same_as<result<void>>;
+      typename decltype(adapter.finish())::value_type;
+      { adapter.finish() } -> std::same_as<
+          result<typename decltype(adapter.finish())::value_type>>;
+    } &&
+    std::move_constructible<typename decltype(std::declval<Adapter &>().finish())::value_type>;
+
+// A private working frame becomes an immutable checkpoint only after the
+// entire cascade succeeds. Destroying an unfinished frame aborts its resources.
+class runtime_frame {
+public:
+  template <runtime_frame_adapter Adapter>
+  explicit runtime_frame(Adapter adapter)
+      : implementation_(std::make_unique<model<Adapter>>(std::move(adapter))) {}
+  runtime_frame(runtime_frame &&) noexcept = default;
+  runtime_frame &operator=(runtime_frame &&) noexcept = default;
+  runtime_frame(const runtime_frame &) = delete;
+  runtime_frame &operator=(const runtime_frame &) = delete;
+
+private:
+  struct interface {
+    virtual ~interface() = default;
+    virtual result<void> process(runtime_step &) = 0;
+    virtual result<std::any> finish() = 0;
+  };
+  template <class Adapter> struct model final : interface {
+    explicit model(Adapter adapter) : adapter_(std::move(adapter)) {}
+    result<void> process(runtime_step &step) override {
+      return adapter_.process(step);
+    }
+    result<std::any> finish() override {
+      auto finished = adapter_.finish();
+      if (!finished)
+        return failure(finished.error());
+      using state_type = typename decltype(finished)::value_type;
+      return std::any{std::make_shared<const state_type>(std::move(*finished))};
+    }
+    Adapter adapter_;
+  };
+  struct functional_model final : interface {
+    explicit functional_model(std::shared_ptr<const runtime_processor> processor)
+        : processor_(std::move(processor)) {}
+    result<void> process(runtime_step &step) override {
+      return (*processor_)(step);
+    }
+    result<std::any> finish() override { return std::any{}; }
+    std::shared_ptr<const runtime_processor> processor_;
+  };
+  explicit runtime_frame(std::shared_ptr<const runtime_processor> processor)
+      : implementation_(std::make_unique<functional_model>(std::move(processor))) {}
+  std::unique_ptr<interface> implementation_;
+  friend class browser;
+  friend class event_batch;
+};
+
+using runtime_factory =
+    std::function<result<runtime_frame>(const scene_snapshot &, event_time)>;
+
+class event_batch {
+public:
+  event_batch(event_batch &&) noexcept;
+  event_batch &operator=(event_batch &&) noexcept;
+  ~event_batch();
+  event_batch(const event_batch &) = delete;
+  event_batch &operator=(const event_batch &) = delete;
+
+  result<void> send(const dynamic_field &target, value payload);
+  result<bool> writable(const dynamic_field &target, write_intent intent) const;
+  template <class T>
+  result<bool> writable(const experimental::field<T> &target,
+                        write_intent intent) const {
+    return writable(target.dynamic(), intent);
+  }
+  result<void> send(const dynamic_field &target, value payload,
+                    value_space space);
+  result<void> send(const dynamic_field &target, const node &payload);
+  result<void> send(const dynamic_field &target, std::nullopt_t);
+  result<void> send(const dynamic_field &target, std::span<const node> payload);
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> send(const experimental::field<T> &target, T payload) {
+    return send(target.dynamic_, value{std::move(payload)});
+  }
+  template <class T>
+    requires(!std::same_as<T, node_id> && !std::same_as<T, node_list>)
+  result<void> send(const experimental::field<T> &target, T payload,
+                    value_space space) {
+    return send(target.dynamic_, value{std::move(payload)}, space);
+  }
+  result<void> send(const experimental::field<node_id> &target,
+                    const node &payload) {
+    return send(target.dynamic_, payload);
+  }
+  result<void> send(const experimental::field<node_id> &target, std::nullopt_t) {
+    return send(target.dynamic_, std::nullopt);
+  }
+  result<void> send(const experimental::field<node_list> &target,
+                    std::span<const node> payload) {
+    return send(target.dynamic_, payload);
+  }
+  result<event_result> commit();
+
+private:
+  result<void> send_value(const dynamic_field &target, value payload,
+                          bool node_authority_checked,
+                          value_space space = value_space::canonical);
+  struct impl;
+  explicit event_batch(std::unique_ptr<impl> implementation);
+  std::unique_ptr<impl> impl_;
+  friend class execution_context;
+  friend class runtime_step;
+};
+
+class execution_context {
+public:
+  using observer = std::function<void(const change_set &)>;
+  using event_observer = std::function<void(const event_delivery &)>;
+
+  generation_id generation() const noexcept;
+  // Check live context authority without acquiring a node or creating an edit.
+  // Historical snapshot inspection intentionally does not use this check.
+  result<void> validate() const;
+  scene_snapshot snapshot() const;
+  scene_edit edit() const;
+  // Reference-only setup extension for a never-activated, unrealized scene.
+  // Node-valued assignments retain normal validation without realizing their
+  // targets. Root installation/explicit realization still realizes the graph.
+  // Publication is rejected if the scene is activated in the meantime.
+  scene_edit construction_edit() const;
+  event_batch events(event_time time) const;
+  // Explicit host-driven turn: finite time may equal the last committed turn,
+  // but may not decrease. Shares the admission clock with strict events() and
+  // external_session calls; each commit has independent cascade suppression.
+  // Even an empty logical turn advances that clock. Failed turns never do.
+  // Unlike strict events(), external inputOnly seeds may repeat and each is
+  // delivered in call order, including identical payloads. This modern host
+  // policy does not reset per-turn output or ROUTE loop suppression.
+  event_batch logical_turn(event_time time) const;
+  subscription observe(observer callback) const;
+  template <class Callback>
+    requires detail::owned_callback<Callback, void, const change_set &>
+  subscription observe(Callback &&callback) const {
+    return observe(detail::own_callback<void(const change_set &)>(
+        std::forward<Callback>(callback)));
+  }
+  result<subscription> observe(const dynamic_field &source,
+                               event_observer callback) const;
+  template <class Callback>
+    requires detail::owned_callback<Callback, void, const event_delivery &>
+  result<subscription> observe(const dynamic_field &source,
+                               Callback &&callback) const {
+    return observe(source, detail::own_callback<void(const event_delivery &)>(
+                               std::forward<Callback>(callback)));
+  }
+  template <class T>
+  result<subscription> observe(const experimental::field<T> &source,
+                               event_observer callback) const {
+    return observe(source.dynamic(), std::move(callback));
+  }
+  template <class T, class Callback>
+    requires detail::owned_callback<Callback, void, const event_delivery &>
+  result<subscription> observe(const experimental::field<T> &source,
+                               Callback &&callback) const {
+    return observe(source.dynamic(), std::forward<Callback>(callback));
+  }
+  // Exactly one consumer dispatches a context at a time. Recursive/concurrent
+  // calls return immediately with already_draining, leaving the queue alone.
+  // The active consumer also drains notifications enqueued by its callbacks.
+  // A concurrent producer publishing after the empty check needs a later drain.
+  dispatch_report drain() const;
+
+private:
+  explicit execution_context(std::shared_ptr<detail::context_control> control);
+  std::shared_ptr<detail::context_control> control_;
+  friend class browser;
+  friend class scene_edit;
+};
+
+class browser {
+public:
+  explicit browser(type_registry registry);
+  browser(type_registry registry, browser_configuration configuration);
+
+  // Immediate owning browser-service results. No query/update here joins a
+  // scene edit, field-event cascade or external-session update gate. Identity
+  // is immutable; aliases share description, measurements and host handlers.
+  // These result services reject moved-from wrappers with stale_handle.
+  result<std::optional<std::string>> get_name() const;
+  result<std::optional<std::string>> get_version() const;
+  result<float> get_current_speed() const;
+  result<float> get_current_frame_rate() const;
+  result<std::string> description() const;
+  result<void> set_description(std::string description);
+  result<browser_property_map> get_rendering_properties() const;
+  result<browser_property_map> get_browser_properties() const;
+  result<bool> set_browser_option(std::string name, browser_property_value value);
+
+  // Host publication extensions, not synthetic renderer/navigation behavior.
+  // Samples must belong to the current world; replacement invalidates them.
+  // Rendering reports replace the complete map atomically after validation.
+  result<void> publish_metrics(const execution_context &current_world,
+                               browser_metrics metrics);
+  result<void> publish_rendering_properties(browser_property_map properties);
+  // An empty handler means no dynamic options are supported. Calls execute
+  // unlocked, one at a time; concurrent/reentrant option calls fail with
+  // operation_in_progress. Handler replacement and all metadata remain usable
+  // from inside the callback. Application resources are destroyed unlocked.
+  result<void> set_browser_option_handler(browser_option_handler handler);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<bool>,
+                                     const std::string &,
+                                     const browser_property_value &>
+  result<void> set_browser_option_handler(Callback &&handler) {
+    return set_browser_option_handler(
+        detail::own_callback<result<bool>(const std::string &,
+                                          const browser_property_value &)>(
+            std::forward<Callback>(handler)));
+  }
+
+  capability_set capabilities() const noexcept;
+  execution_context current_scene() const;
+  execution_context create_scene();
+  result<void> replace_world(const execution_context &replacement);
+  result<void> set_runtime_processor(const execution_context &scene,
+                                     runtime_processor processor);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<void>, runtime_step &>
+  result<void> set_runtime_processor(const execution_context &scene,
+                                     Callback &&processor) {
+    return set_runtime_processor(
+        scene, detail::own_callback<result<void>(runtime_step &)>(
+                   std::forward<Callback>(processor)));
+  }
+  result<void> set_runtime_factory(const execution_context &scene,
+                                   runtime_factory factory);
+  template <class Callback>
+    requires detail::owned_callback<Callback, result<runtime_frame>,
+                                    const scene_snapshot &, event_time>
+  result<void> set_runtime_factory(const execution_context &scene,
+                                   Callback &&factory) {
+    return set_runtime_factory(scene,
+                               detail::own_callback<result<runtime_frame>(
+                                   const scene_snapshot &, event_time)>(
+                                   std::forward<Callback>(factory)));
+  }
+  load_ticket begin_load();
+  result<void> cancel(const load_ticket &ticket);
+  // Ticket validation and installation are atomic with other world changes.
+  // Success consumes the ticket, including installation of the current scene.
+  // Rejected replacements leave it retryable/cancellable at its original epoch.
+  result<void> complete_load(const load_ticket &ticket,
+                             const execution_context &replacement);
+
+private:
+  result<void> install_runtime_factory(const execution_context &scene,
+                                       runtime_factory factory,
+                                       const char *operation);
+  std::shared_ptr<detail::browser_control> control_;
+};
+
+} // namespace x3d::sai::experimental
+
+#endif

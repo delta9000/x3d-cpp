@@ -77,6 +77,7 @@ nav:
           - Key-Device Sensor System: subsystems/system-keydevice.md
           - LoadSensor System: subsystems/system-loadsensor.md
           - Script / SAI Runtime: subsystems/system-script-sai.md
+          - SAI SDK (sai/): subsystems/sai-sdk.md
           - Native SAI Provider: subsystems/sai-provider.md
           - Sensor Layer Overview: subsystems/sensors.md
           - Physics (RigidBody dynamics): subsystems/physics.md
@@ -145,7 +146,7 @@ nav:
       - "ADR-0044: Asset-Import Backend Selection — Priority Registry & cgltf glTF Path": decisions/0044-asset-import-backend-selection.md
       - "ADR-0045: Shared Mesh Storage — Make GeomId's Instancing Contract Structural": decisions/0045-shared-mesh-instancing.md
       - "ADR-0046: LoadSensor as a System over the AssetResolver Seam": decisions/0046-loadsensor-assetresolver-oracle.md
-      - "ADR-0047: Split the Experimental SAI Semantic Kernel into a Sister Repository": decisions/0047-sai-sister-repo-split.md
+      - "ADR-0047: Split the SAI semantic kernel into a sister repository (superseded)": decisions/0047-sai-sister-repo-split.md
       - "ADR-0048: Script SFNode Handles Are Table Ids, Resolved to Owning References": decisions/0048-script-node-handles.md
       - "ADR-0049: Zero-Copy Field Reads": decisions/0049-zero-copy-field-reads.md
       - "ADR-0050: Decoded PCM and the Sound Ellipsoid Cross the AudioBackend Seam": decisions/0050-audio-pcm-and-ellipsoid-seam.md
@@ -174,6 +175,7 @@ nav:
       - "ADR-0073: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
       - "ADR-0074: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
       - "ADR-0075: Queued live SAI ROUTE addition": decisions/0075-sai-live-route-addition.md
+      - "ADR-0076: Fold the SAI SDK back into x3d-cpp": decisions/0076-fold-sai-into-x3d-cpp.md
   - Guides:
       - Gate system: guides/gate-system.md
       - Build and mise: guides/build-and-mise.md
