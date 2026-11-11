@@ -1,8 +1,7 @@
 """X3D field-type tables consumed by the UOM parser.
 
-Copied from x3d-cpp's generator at the 2026-07-19 split. These map X3D field
-types to the C++ spellings the parser records; the SAI emitters carry their own
-value-type mapping in emit/sai_bindings.py.
+These map X3D field types to the C++ spellings the parser records. The runtime
+generator and the SAI SDK generator (sai/) both read them from here.
 """
 
 FIELD_TYPE_MAPPING = {

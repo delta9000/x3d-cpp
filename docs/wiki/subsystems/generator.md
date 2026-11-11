@@ -22,7 +22,8 @@ The pipeline owns everything from the spec XML to the `.hpp`/`.cpp` files in `ge
 
 | File / directory | Role |
 |---|---|
-| `src/x3d_cpp_gen/generator.py` | Top-level orchestrator: `FIELD_TYPE_MAPPING`, `XS_TYPES`, type-header / enum-header / reflection-header / factory / interface-registry writers, and the `generate_cpp_bindings` / `generate_test_file` entry points |
+| `src/x3d_cpp_gen/fieldtypes.py` | `FIELD_TYPE_MAPPING`, `XS_TYPES`: X3D field type → C++ spelling tables the parser records (re-exported by `generator.py`) |
+| `src/x3d_cpp_gen/generator.py` | Top-level orchestrator: type-header / enum-header / reflection-header / factory / interface-registry writers, and the `generate_cpp_bindings` / `generate_test_file` entry points |
 | `src/x3d_cpp_gen/parser.py` | UOM XML parser: `X3DField`, `X3DNode` dataclasses; `parse_x3d_model`, `parse_enum_definitions`, `build_dependency_graph`, `resolve_inheritance_chain`, `get_own_fields` |
 | `src/x3d_cpp_gen/backends/cpp_header.py` | `CppHeaderBackend`: per-node rendering loop; drives `build_descriptors`, resolves diamond-inheritance qualifiers, invokes clang-format, writes `<Node>.hpp` + `<Node>.cpp` |
 | `src/x3d_cpp_gen/emit/descriptors.py` | `FieldDescriptor` + `build_descriptor(s)`: computes every per-field C++ decision (type, accessor names, default literal, constraint body, range-collect body, move-overload eligibility) |

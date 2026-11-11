@@ -13,9 +13,9 @@ from typing import Dict, List, Optional
 
 from x3d_sai_gen import __version__
 from x3d_sai_gen.emit.semantic_fields import resolved_node_fields
-from x3d_sai_gen.emit.naming import cpp_str
-from x3d_sai_gen.emit.registry import interfaces_of
-from x3d_sai_gen.parser import X3DNode
+from x3d_cpp_gen.emit.naming import cpp_str
+from x3d_cpp_gen.emit.registry import interfaces_of
+from x3d_cpp_gen.parser import X3DNode
 
 
 def _quoted(value: str) -> str:

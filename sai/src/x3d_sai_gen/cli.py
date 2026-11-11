@@ -1,9 +1,10 @@
 """Generate the experimental SAI bindings and semantic catalog from the UOM.
 
-This generator is self-contained. The X3D Unified Object Model is published by
-the Web3D Consortium; a copy is vendored under data/ and pinned by SHA-256, so
-this project consumes the specification directly rather than depending on
-x3d-cpp's generator.
+The UOM parser, type model and field descriptors are x3d-cpp's generator front
+end (``x3d_cpp_gen``); this package adds only the SAI emitters. The X3D Unified
+Object Model is published by the Web3D Consortium. The copy vendored in
+``x3d_cpp_gen/data`` is read here and checked against the SHA-256 pinned in
+``x3d_sai_gen/data``.
 """
 
 import argparse
@@ -13,9 +14,9 @@ from pathlib import Path
 import tempfile
 from importlib.resources import files
 
-from x3d_sai_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
+from x3d_cpp_gen.fieldtypes import FIELD_TYPE_MAPPING, XS_TYPES
 from x3d_sai_gen.format import format_files
-from x3d_sai_gen.parser import (
+from x3d_cpp_gen.parser import (
     parse_x3d_model, build_dependency_graph,
 )
 from x3d_sai_gen.emit.reflection import gen_reflection_header
@@ -33,10 +34,14 @@ def _data(name: str):
     return files("x3d_sai_gen.data") / name
 
 
+def _uom():
+    return files("x3d_cpp_gen.data") / f"X3dUnifiedObjectModel-{SPEC_VERSION}.xml"
+
+
 def verify_uom() -> str:
     """Return the vendored UOM's SHA-256, raising if it drifted from the pin."""
     actual = hashlib.sha256(
-        _data(f"X3dUnifiedObjectModel-{SPEC_VERSION}.xml").read_bytes()
+        _uom().read_bytes()
     ).hexdigest()
     expected = _data(f"UOM-{SPEC_VERSION}.sha256").read_text().strip()
     if actual != expected:
@@ -90,7 +95,7 @@ def check_generated(expected: Path, actual: Path) -> int:
 
 
 def _generate(out_dir: str, clang_format: str) -> None:
-    uom = str(_data(f"X3dUnifiedObjectModel-{SPEC_VERSION}.xml"))
+    uom = str(_uom())
     nodes, skipped = parse_x3d_model(uom, FIELD_TYPE_MAPPING, XS_TYPES)
     if not nodes or skipped:
         raise SystemExit(f"UOM cannot produce a complete catalog: {len(skipped)} unsupported fields")

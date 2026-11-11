@@ -50,7 +50,11 @@ The SAI SDK moves back into this repository as `sai/`, with its full history (a
   is a symlink to `src/x3d_cpp_gen/data/`; the copies were byte-identical (SHA-256 `0f1d9ede…`), and
   `mise run sai-uom-pin` still checks the SAI side's recorded hash. Built wheels contain the real file.
 - The two generators stay separate for now. Reconciling them is optional follow-up work,
-  not part of this move.
+  not part of this move. (Update, 2026-11-11: done for the front end. `x3d_sai_gen` now
+  depends on `x3d-cpp-gen` as a path dependency and imports its parser, type model,
+  field descriptors, naming and field-type tables; it keeps only the SAI emitters. The
+  UOM symlink is gone: the SAI generator reads `x3d_cpp_gen/data/` directly and still
+  checks it against `UOM-4.0.sha256`. The 343 generated SAI files were unchanged.)
 - The two service registers stay separate: `sai/docs/conformance/` for the SDK, and
   `docs/conformance/sai-services.yaml` for the runtime's Script SAI. Each cites tests its
   own build can resolve.

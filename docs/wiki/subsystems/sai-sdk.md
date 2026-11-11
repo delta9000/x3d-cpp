@@ -40,7 +40,7 @@ made, not defects. See the SDK README's
 |---|---|
 | `sai/include/x3d/sai/experimental/` | Public headers: `provider.hpp` (contract), `reference_provider.hpp`, `types.hpp`, `schema.hpp`, and reference-only `kernel.hpp`, `session.hpp`, `browser_services.hpp`, `matrix.hpp`, `image.hpp`, `user_data.hpp` |
 | `sai/src/` | Frontend (`provider.cpp`), reference backend, kernel, session and browser services |
-| `sai/src/x3d_sai_gen/` | Python generator (uv package `x3d-sai-gen`) reading the repo's UOM 4.0 (a symlink to `src/x3d_cpp_gen/data/`), SHA-pinned in `UOM-4.0.sha256` |
+| `sai/src/x3d_sai_gen/` | SAI emitters (uv package `x3d-sai-gen`). The UOM parser, type model and field descriptors come from `x3d_cpp_gen` (a path dependency), and the UOM is read from `src/x3d_cpp_gen/data/`, SHA-pinned in `UOM-4.0.sha256` |
 | `sai/generated_cpp_bindings/` | Generated field keys, typed bindings and the semantic metadata catalog |
 | `sai/tests/` | doctest suites registered as CTests, generator pytest |
 | `sai/docs/` | Contract, runtime, kernel guide and topic pages; `docs/conformance/` holds the register |
@@ -57,7 +57,9 @@ made, not defects. See the SDK README's
 
 `sai/` is its own CMake project (`find_package(x3d_sai)` after install, or
 `add_subdirectory(sai)`). The runtime's own build never adds it, and the SDK has
-no build, link or Python dependency on the runtime. The composition boundary from
+no build or link dependency on the runtime. Its generator shares the runtime
+generator's Python front end (`x3d-cpp-gen`), so a change under `src/x3d_cpp_gen/`
+also runs the `sai` CI job. The composition boundary from
 ADR-0047's 2026-10-07 update still applies: SAI headers live under
 `x3d/sai/experimental`, never under the runtime's `x3d/core` or `x3d/nodes`.
 

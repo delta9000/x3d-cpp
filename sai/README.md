@@ -128,8 +128,10 @@ still to finish and exits non-zero until none remain.
 
 ## Development
 
-The generator consumes a vendored SHA-pinned Web3D UOM. Python/generation are not
-needed by installed C++ applications. From the x3d-cpp checkout run
+The generator (`x3d-sai-gen`) adds the SAI emitters on top of x3d-cpp's
+generator front end (`x3d-cpp-gen`: UOM parser, type model, field descriptors)
+and reads its vendored Web3D UOM, checked against a SHA-256 pin. Python and
+generation are not needed by installed C++ applications. From the x3d-cpp checkout run
 `mise run sai-ci` (UOM pin, generator determinism, registers, generator pytest,
 CMake build and CTest); `mise run ci` includes it. `mise run sai-provider`
 checks the native provider against this directory in source and relocated

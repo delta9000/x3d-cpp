@@ -54,6 +54,9 @@ class FieldDescriptor:
     # accessor call (Base::getX()) when the same field name is reachable through
     # more than one base subobject (diamond), which would otherwise be ambiguous.
     inherited_from: Optional[str] = dataclass_field(default=None)
+    # Set by the SAI SDK's semantic projection (sai/); the runtime emitters
+    # ignore it.
+    unique_non_null_nodes: bool = False
 
     @property
     def getter_call(self) -> str:
