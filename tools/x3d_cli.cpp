@@ -490,9 +490,10 @@ int cmdExtract(const std::vector<std::string> &args) {
         "  matrix, shared meshes for DEF/USE, normals, texture coordinates,\n"
         "  vertex colours, lines and points, and materials (PhysicalMaterial\n"
         "  directly, Material approximated, UnlitMaterial as\n"
-        "  KHR_materials_unlit). ImageTexture urls (PNG/JPEG) are referenced, not\n"
-        "  embedded. Not exported: PixelTexture and other non-url textures,\n"
-        "  lights, cameras, animation, skinning.\n"
+        "  KHR_materials_unlit). ImageTexture urls (PNG/JPEG) are referenced;\n"
+        "  PixelTextures are embedded as PNG. Lights are written as\n"
+        "  KHR_lights_punctual and Viewpoints/OrthoViewpoints as cameras.\n"
+        "  Not exported: movie, multi, cube and 3D textures, animation, skinning.\n"
         "\n"
         "  stl: a single merged binary STL file (world-space, one triangle soup).\n"
         "  The STL is produced by running the full SceneExtractor pipeline\n"
@@ -641,7 +642,8 @@ int cmdExtract(const std::vector<std::string> &args) {
         auto note = [](std::size_t n, const char *what) {
             if (n) std::cerr << "note: " << n << " " << what << "\n";
         };
-        note(glbReport.droppedTextures, "texture slot(s) not exported (only PNG/JPEG url textures are)");
+        note(glbReport.droppedTextures, "texture slot(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG textures)");
+        note(glbReport.skippedViewpoints, "GeoViewpoint(s) not exported");
         note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
         note(glbReport.staticSkins, "skinned item(s) exported as static meshes");
         note(glbReport.droppedBackMaterials, "back material(s) not exported");
@@ -680,7 +682,9 @@ int cmdExtract(const std::vector<std::string> &args) {
     std::cerr << "extract: ";
     if (glb)
         std::cerr << glbReport.nodes << " node(s), " << glbReport.meshes
-                  << " mesh(es), " << glbReport.materials << " material(s), ";
+                  << " mesh(es), " << glbReport.materials << " material(s), "
+                  << glbReport.textures << " texture(s), " << glbReport.lights
+                  << " light(s), " << glbReport.cameras << " camera(s), ";
     std::cerr << triCount << " triangle(s) written"
               << (outPath.empty() ? " (stdout)" : " to '" + outPath + "'") << "\n";
     return 0;

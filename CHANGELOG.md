@@ -14,9 +14,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   shared across DEF/USE, normals, texture coordinates, vertex colours, lines
   and points, and materials (`PhysicalMaterial` directly, `Material`
   approximated, `UnlitMaterial` as `KHR_materials_unlit`). PNG/JPEG
-  `ImageTexture` urls are referenced, not embedded. Not exported: pixel and
-  other non-url textures, lights, cameras, skins, animation;
-  `GltfWriteReport` counts what was dropped.
+  `ImageTexture` urls are referenced; `PixelTexture`s and host-decoded images
+  are embedded as PNG. Lights are written as `KHR_lights_punctual` and
+  `Viewpoint`/`OrthoViewpoint` nodes as cameras. Not exported: movie, multi,
+  cube and 3D textures, skins, animation; `GltfWriteReport` counts what was
+  dropped. Light intensity has no unit conversion.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and
   `sdk::SceneBuilder`) gains a fluent builder:
   `b.add<Transform>().def("T").add<Shape>().add<Sphere>()`,

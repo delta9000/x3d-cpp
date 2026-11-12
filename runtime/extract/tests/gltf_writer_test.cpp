@@ -158,10 +158,12 @@ TEST_CASE("glb: url textures are referenced and t is flipped") {
       "</IndexedFaceSet></Shape>"
       "<Shape><Appearance><Material/><PixelTexture image='1 1 1 255'/>"
       "</Appearance><Box/></Shape>");
-  CHECK(g.report.textures == 1);
-  CHECK(g.report.droppedTextures == 1); // the PixelTexture
-  CHECK(has(g.json, "\"images\":[{\"uri\":\"wood.PNG\"}]"));
-  CHECK(has(g.json, "\"samplers\":[{\"wrapS\":33071,\"wrapT\":10497}]"));
+  CHECK(g.report.textures == 2);
+  CHECK(g.report.droppedTextures == 0);
+  CHECK(g.report.embeddedImages == 1); // the PixelTexture
+  CHECK(has(g.json, "\"images\":[{\"uri\":\"wood.PNG\"},{\"bufferView\":"));
+  CHECK(has(g.json, "\"mimeType\":\"image/png\""));
+  CHECK(has(g.json, "\"samplers\":[{\"wrapS\":33071,\"wrapT\":10497}"));
   CHECK(has(g.json, "\"baseColorTexture\":{\"index\":0}"));
   CHECK(has(g.json, "\"TEXCOORD_0\":"));
   // The first mesh's views are position, normal, texcoord: 3 vertices each.
@@ -201,4 +203,90 @@ TEST_CASE("glb: a RigidBody's collidable list is not mistaken for shape geometry
       "<CollidableShape USE='C'/>");
   CHECK(g.report.nodes >= 1);
   CHECK(has(g.json, "\"mode\":4"));
+}
+
+TEST_CASE("glb: a PixelTexture is embedded as a PNG, top row first") {
+  // 1x2 RGB: X3D lists the bottom row first, so red is the bottom pixel.
+  const Glb g = exportScene(
+      "<Shape><Appearance><Material/>"
+      "<PixelTexture image='1 2 3 0xFF0000 0x0000FF'/></Appearance><Box/></Shape>");
+  REQUIRE(g.report.embeddedImages == 1);
+  const std::size_t at = g.bin.find(std::string("\x89PNG\r\n\x1a\n", 8));
+  REQUIRE(at != std::string::npos);
+  CHECK(at % 4 == 0);
+  // IHDR: width 1, height 2, depth 8, colour type 2 (RGB).
+  const unsigned char *ihdr =
+      reinterpret_cast<const unsigned char *>(g.bin.data()) + at + 16;
+  CHECK(ihdr[3] == 1);
+  CHECK(ihdr[7] == 2);
+  CHECK(ihdr[8] == 8);
+  CHECK(ihdr[9] == 2);
+  // IDAT payload: zlib header (2), stored-block header (5), then two rows of
+  // filter byte + RGB. The first row is the image's top: blue.
+  const std::size_t idat = g.bin.find("IDAT", at);
+  REQUIRE(idat != std::string::npos);
+  const unsigned char *rows =
+      reinterpret_cast<const unsigned char *>(g.bin.data()) + idat + 4 + 7;
+  CHECK(rows[0] == 0);
+  CHECK(rows[1] == 0x00);
+  CHECK(rows[3] == 0xFF); // blue on top
+  CHECK(rows[5] == 0xFF); // red below
+  CHECK(rows[7] == 0x00);
+  // One image shared by a second shape using an equal PixelTexture.
+  const Glb two = exportScene(
+      "<Shape><Appearance><Material/><PixelTexture image='1 1 1 255'/>"
+      "</Appearance><Box/></Shape>"
+      "<Shape><Appearance><Material/><PixelTexture image='1 1 1 255'/>"
+      "</Appearance><Sphere/></Shape>");
+  CHECK(two.report.embeddedImages == 1);
+}
+
+TEST_CASE("glb: lights become KHR_lights_punctual nodes aimed in world space") {
+  const Glb g = exportScene(
+      "<DirectionalLight direction='1 0 0' color='1 0.5 0' intensity='0.5' global='true'/>"
+      "<Transform translation='0 3 0'>"
+      "  <PointLight location='1 0 0' radius='7'/>"
+      "  <SpotLight direction='0 -1 0' beamWidth='2' cutOffAngle='0.5'/>"
+      "</Transform><Shape><Box/></Shape>");
+  CHECK(g.report.lights == 3);
+  CHECK(g.report.nodes == 1); // items only
+  CHECK(has(g.json, "\"extensionsUsed\":[\"KHR_materials_unlit\",\"KHR_lights_punctual\"]"));
+  CHECK(has(g.json, "{\"type\":\"directional\",\"color\":[1,0.5,0],\"intensity\":0.5}"));
+  CHECK(has(g.json, "{\"type\":\"point\",\"color\":[1,1,1],\"intensity\":1,\"range\":7}"));
+  // beamWidth > cutOffAngle: inner is pulled just inside outer.
+  CHECK(has(g.json, "\"outerConeAngle\":0.5}"));
+  CHECK(has(g.json, "\"innerConeAngle\":0.49999"));
+  // -Z turned to +X is a quarter turn about -Y: (0, -sin45, 0, cos45).
+  CHECK(has(g.json, "\"rotation\":[0,-0.707106781,0,0.707106781]"));
+  CHECK(has(g.json, "\"translation\":[1,3,0]"));
+  // -Z turned to -Y is a quarter turn about -X.
+  CHECK(has(g.json, "\"translation\":[0,3,0],\"rotation\":[-0.707106781,0,0,0.707106781]"));
+}
+
+TEST_CASE("glb: viewpoints become cameras, the bound one first") {
+  const Glb g = exportScene(
+      "<Transform translation='0 0 5'>"
+      "  <Viewpoint DEF='Side' description='side view' position='1 2 3' "
+      "    fieldOfView='0.5' nearDistance='0.25' farDistance='80'/></Transform>"
+      "<OrthoViewpoint DEF='Top' fieldOfView='-2 -1 2 1' position='0 9 0'/>"
+      "<GeoViewpoint/><Shape><Box/></Shape>");
+  CHECK(g.report.cameras == 2);
+  CHECK(g.report.skippedViewpoints == 1);
+  CHECK(has(g.json,
+            "\"cameras\":[{\"type\":\"perspective\",\"perspective\":"
+            "{\"yfov\":0.5,\"znear\":0.25,\"zfar\":80},\"name\":\"side view\"}"));
+  CHECK(has(g.json, "{\"type\":\"orthographic\",\"orthographic\":"
+                    "{\"xmag\":2,\"ymag\":1,\"znear\":0,\"zfar\":10000},"
+                    "\"name\":\"Top\"}"));
+  CHECK(has(g.json, "{\"camera\":0,\"name\":\"side view\","
+                    "\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,1,2,8,1]}"));
+  CHECK(has(g.json, "0,9,0,1]}"));
+}
+
+TEST_CASE("glb: a scene with no viewpoint or light writes neither section") {
+  const Glb g = exportScene("<Shape><Box/></Shape>");
+  CHECK(g.report.cameras == 0);
+  CHECK(g.report.lights == 0);
+  CHECK(!has(g.json, "\"cameras\""));
+  CHECK(!has(g.json, "KHR_lights_punctual"));
 }

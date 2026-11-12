@@ -487,17 +487,31 @@ form.
 | `UnlitMaterial`, no material, lines/points without normals | `KHR_materials_unlit` with the emissive colour |
 | `transparency` | base colour alpha with `alphaMode` BLEND; `AlphaMode::Mask` → MASK with its cutoff |
 | `solid=FALSE` or a two-sided material | `doubleSided` |
-| url textures in the base colour/diffuse, normal, emissive, occlusion and metallic-roughness slots | External `images[].uri`: the first PNG or JPEG url, verbatim (not embedded, not resolved). `repeatS/T` → sampler wrap |
+| Textures in the base colour/diffuse, normal, emissive, occlusion and metallic-roughness slots | An ImageTexture with a PNG or JPEG url → external `images[].uri` (the url, verbatim; not resolved). A PixelTexture, or any other url texture the host's `TextureResolver` has decoded → an embedded PNG (stored uncompressed, identical images written once). `repeatS/T` → sampler wrap |
+| DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
+| Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
+
+Approximations: X3D light `intensity` is a unitless factor and is written
+unchanged as glTF intensity (lux or candela), so absolute brightness will not
+match a physically based viewer; `ambientIntensity`, the `attenuation`
+coefficients and light scoping (`global=FALSE`) have no glTF equivalent and
+are dropped. X3D `fieldOfView` spans the smaller viewport dimension and is
+written as `yfov`, which is the same angle for a landscape viewport. An
+OrthoViewpoint's off-centre extent is centred. Colours are copied as authored
+with no sRGB/linear conversion.
+
+`writeGlb(items, extras, ...)` takes the lights and cameras explicitly;
+`gltfExtrasFrom(extractor)` collects them, and the extractor overload does both.
 
 Not written, each counted in `GltfWriteReport`: packed (binary) geometry items;
-PixelTexture, MovieTexture, MultiTexture, cube and 3D textures; textures on
-generated texture coordinates; textures with no PNG/JPEG url; specular,
-shininess and ambient textures; back materials; author shaders. Skinned H-Anim
-items are written as static meshes. Lights, viewpoints, backgrounds and
-animation are not exported. Colours are copied as authored with no
-sRGB/linear conversion. The JSON is written by hand; the test
+MovieTexture, MultiTexture, cube and 3D textures; textures on generated texture
+coordinates; undecoded textures with no PNG/JPEG url; specular, shininess and
+ambient textures; back materials; author shaders; GeoViewpoint. Skinned H-Anim
+items are written as static meshes. Backgrounds, fog and animation are not
+exported. The JSON and the PNG encoder are written by hand; the test
 (`runtime/extract/tests/gltf_writer_test.cpp`) checks the container and
-selected values, and has not been run through the Khronos validator.
+selected values, and the output has not been run through the Khronos
+validator.
 
 ## Related
 

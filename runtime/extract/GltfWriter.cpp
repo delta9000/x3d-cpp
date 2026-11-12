@@ -1,7 +1,13 @@
 // GltfWriter.cpp — see GltfWriter.hpp for what is and is not exported.
 #include "GltfWriter.hpp"
 
+#include "X3DSceneBridge.hpp"
+#include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/OrthoViewpoint.hpp"
+#include "x3d/nodes/Viewpoint.hpp"
+
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -18,7 +24,7 @@ constexpr int kArrayBuffer = 34962, kElementArrayBuffer = 34963;
 constexpr int kRepeat = 10497, kClampToEdge = 33071;
 
 std::string num(double v) {
-  if (!std::isfinite(v)) v = 0.0;
+  if (!std::isfinite(v) || v == 0.0) v = 0.0; // also folds -0 to 0
   char buf[40];
   std::snprintf(buf, sizeof buf, "%.9g", v);
   return buf;
@@ -74,6 +80,99 @@ std::string imageUrl(const MFString &urls) {
     }
   }
   return {};
+}
+
+// ---- a minimal PNG encoder (stored, i.e. uncompressed, deflate blocks) ----
+
+std::uint32_t crc32(const unsigned char *data, std::size_t n,
+                    std::uint32_t crc = 0) {
+  static const auto table = [] {
+    std::array<std::uint32_t, 256> t{};
+    for (std::uint32_t i = 0; i < 256; ++i) {
+      std::uint32_t c = i;
+      for (int k = 0; k < 8; ++k) c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
+      t[i] = c;
+    }
+    return t;
+  }();
+  crc = ~crc;
+  for (std::size_t i = 0; i < n; ++i) crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);
+  return ~crc;
+}
+
+void be32(std::string &out, std::uint32_t v) {
+  for (int shift = 24; shift >= 0; shift -= 8)
+    out += static_cast<char>((v >> shift) & 0xFF);
+}
+
+void pngChunk(std::string &out, const char *type, const std::string &body) {
+  be32(out, static_cast<std::uint32_t>(body.size()));
+  const std::string tagged = std::string(type, 4) + body;
+  out += tagged;
+  be32(out, crc32(reinterpret_cast<const unsigned char *>(tagged.data()),
+                  tagged.size()));
+}
+
+// `pixels` holds height rows of width*components bytes, bottom row first (the
+// X3D and TexturePixels convention); PNG wants the top row first. Returns ""
+// when the dimensions and the data do not agree.
+std::string encodePng(std::size_t width, std::size_t height, int components,
+                      const unsigned char *pixels, std::size_t size) {
+  if (width == 0 || height == 0 || components < 1 || components > 4 ||
+      width > 0x7FFFFFFFu || height > 0x7FFFFFFFu)
+    return {};
+  const std::size_t stride = width * static_cast<std::size_t>(components);
+  if (size / stride < height) return {};
+
+  std::string raw; // filter byte 0 + row, top row first
+  raw.reserve((stride + 1) * height);
+  for (std::size_t y = height; y-- > 0;) {
+    raw += '\0';
+    raw.append(reinterpret_cast<const char *>(pixels + y * stride), stride);
+  }
+  std::string z = "\x78\x01"; // zlib header, no compression
+  std::uint32_t a = 1, b = 0;  // adler32
+  for (unsigned char c : raw) {
+    a = (a + c) % 65521u;
+    b = (b + a) % 65521u;
+  }
+  for (std::size_t at = 0; at < raw.size();) {
+    const std::size_t n = std::min<std::size_t>(65535, raw.size() - at);
+    z += static_cast<char>(at + n == raw.size() ? 1 : 0);
+    z += static_cast<char>(n & 0xFF);
+    z += static_cast<char>(n >> 8);
+    z += static_cast<char>(~n & 0xFF);
+    z += static_cast<char>((~n >> 8) & 0xFF);
+    z.append(raw, at, n);
+    at += n;
+  }
+  be32(z, (b << 16) | a);
+
+  static const int colorType[] = {0, 0, 4, 2, 6}; // grey, grey+a, rgb, rgba
+  std::string ihdr;
+  be32(ihdr, static_cast<std::uint32_t>(width));
+  be32(ihdr, static_cast<std::uint32_t>(height));
+  ihdr += '\x08';
+  ihdr += static_cast<char>(colorType[components]);
+  ihdr.append(3, '\0'); // deflate, adaptive filtering, no interlace
+  std::string png("\x89PNG\r\n\x1a\n", 8);
+  pngChunk(png, "IHDR", ihdr);
+  pngChunk(png, "IDAT", z);
+  pngChunk(png, "IEND", {});
+  return png;
+}
+
+// The rotation taking -Z (where a glTF light or camera points) to `dir`.
+std::array<double, 4> aimQuaternion(const SFVec3f &dir) {
+  double x = dir.x, y = dir.y, z = dir.z;
+  const double len = std::sqrt(x * x + y * y + z * z);
+  if (!(len > 1e-12)) return {0, 0, 0, 1};
+  x /= len; y /= len; z /= len;
+  // from = (0,0,-1): axis = from x dir = (y, -x, 0), cos = -z.
+  if (z > 0.999999) return {0, 1, 0, 0}; // opposite: half turn about Y
+  const double w = 1.0 - z;              // 1 + cos
+  const double n = std::sqrt(y * y + x * x + w * w);
+  return {y / n, -x / n, 0.0, w / n};
 }
 
 struct MeshAccessors {
@@ -139,8 +238,80 @@ public:
     report_.triangles += acc.triangles;
   }
 
+  void add(const LightDesc &light) {
+    std::string l = "{\"type\":";
+    l += light.type == LightDesc::Type::Directional ? "\"directional\""
+         : light.type == LightDesc::Type::Point ? "\"point\"" : "\"spot\"";
+    l += ",\"color\":" + array({std::clamp(light.color.r, 0.0f, 1.0f),
+                               std::clamp(light.color.g, 0.0f, 1.0f),
+                               std::clamp(light.color.b, 0.0f, 1.0f)});
+    l += ",\"intensity\":" + num(std::max(0.0f, light.intensity));
+    if (light.type != LightDesc::Type::Directional && light.radius > 0.0f)
+      l += ",\"range\":" + num(light.radius);
+    if (light.type == LightDesc::Type::Spot) {
+      // glTF: 0 <= inner < outer <= pi/2. X3D allows beamWidth > cutOffAngle
+      // (full intensity out to the cutoff).
+      const double outer =
+          std::clamp(double(light.cutOffAngle), 1e-4, 1.5707963267948966);
+      const double inner =
+          std::clamp(double(light.beamWidth), 0.0, outer - 1e-5);
+      l += ",\"spot\":{\"innerConeAngle\":" + num(inner) +
+           ",\"outerConeAngle\":" + num(outer) + "}";
+    }
+    lights_.push_back(l + "}");
+
+    std::string node = "{\"extensions\":{\"KHR_lights_punctual\":{\"light\":" +
+                       std::to_string(lights_.size() - 1) + "}}";
+    if (light.type != LightDesc::Type::Directional) {
+      const SFVec3f &p = light.worldLocation;
+      if (p.x != 0 || p.y != 0 || p.z != 0)
+        node += ",\"translation\":" + array({p.x, p.y, p.z});
+    }
+    if (light.type != LightDesc::Type::Point) {
+      const auto q = aimQuaternion(light.worldDirection);
+      if (q[3] < 1.0)
+        node += ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
+    }
+    extraNodes_.push_back(node + "}");
+  }
+
+  void add(const GltfCamera &camera) {
+    std::string c;
+    if (camera.ortho) {
+      const double znear = std::max(0.0f, camera.znear);
+      const double zfar =
+          camera.zfar > znear ? double(camera.zfar) : std::max(10000.0, znear * 2 + 1);
+      c = "{\"type\":\"orthographic\",\"orthographic\":{\"xmag\":" +
+          num(camera.xmag != 0 ? std::fabs(camera.xmag) : 1.0) + ",\"ymag\":" +
+          num(camera.ymag != 0 ? std::fabs(camera.ymag) : 1.0) + ",\"znear\":" +
+          num(znear) + ",\"zfar\":" + num(zfar) + "}";
+    } else {
+      const double znear = camera.znear > 0 ? double(camera.znear) : 0.1;
+      const double yfov = std::clamp(double(camera.yfov), 1e-3, 3.14);
+      c = "{\"type\":\"perspective\",\"perspective\":{\"yfov\":" + num(yfov) +
+          ",\"znear\":" + num(znear);
+      if (camera.zfar > znear) c += ",\"zfar\":" + num(camera.zfar);
+      c += "}";
+    }
+    if (!camera.name.empty()) c += ",\"name\":" + quote(camera.name);
+    cameras_.push_back(c + "}");
+
+    std::string node =
+        "{\"camera\":" + std::to_string(cameras_.size() - 1);
+    if (!camera.name.empty()) node += ",\"name\":" + quote(camera.name);
+    if (camera.cameraToWorld.m != Mat4::identity().m) {
+      std::vector<std::string> cells;
+      for (float v : camera.cameraToWorld.m) cells.push_back(num(v));
+      node += ",\"matrix\":[" + join(cells) + "]";
+    }
+    extraNodes_.push_back(node + "}");
+  }
+
   std::string finish() {
     report_.nodes = nodes_.size();
+    report_.lights = lights_.size();
+    report_.cameras = cameras_.size();
+    nodes_.insert(nodes_.end(), extraNodes_.begin(), extraNodes_.end());
     report_.meshes = meshes_.size();
     report_.materials = materials_.size();
     report_.textures = textures_.size();
@@ -148,8 +319,14 @@ public:
     std::vector<std::string> top;
     top.push_back("\"asset\":{\"version\":\"2.0\",\"generator\":" +
                   quote(options_.generator) + "}");
-    if (usesUnlit_)
-      top.push_back("\"extensionsUsed\":[\"KHR_materials_unlit\"]");
+    std::vector<std::string> used;
+    if (usesUnlit_) used.push_back("\"KHR_materials_unlit\"");
+    if (!lights_.empty()) used.push_back("\"KHR_lights_punctual\"");
+    if (!used.empty())
+      top.push_back("\"extensionsUsed\":[" + join(used) + "]");
+    if (!lights_.empty())
+      top.push_back("\"extensions\":{\"KHR_lights_punctual\":{\"lights\":[" +
+                    join(lights_) + "]}}");
     std::vector<std::string> roots;
     for (std::size_t i = 0; i < nodes_.size(); ++i)
       roots.push_back(std::to_string(i));
@@ -167,6 +344,7 @@ public:
     section("textures", textures_);
     section("images", images_);
     section("samplers", samplers_);
+    section("cameras", cameras_);
     section("accessors", accessors_);
     section("bufferViews", views_);
     if (!bin_.empty())
@@ -329,18 +507,44 @@ private:
   // A textureInfo object for `ref`, or "" (counted) when it cannot be written.
   std::string textureInfo(const TextureRef &ref, const MeshAccessors &acc,
                           const std::string &extra = {}) {
-    const std::string url =
-        ref.source == TextureRef::Source::Url ? imageUrl(ref.url) : "";
-    if (url.empty() || ref.hasTexCoordGen || acc.texcoords.empty()) {
-      ++report_.droppedTextures;
-      return {};
-    }
     auto intern = [](std::vector<std::string> &list, const std::string &v) {
       auto it = std::find(list.begin(), list.end(), v);
       if (it == list.end()) it = list.insert(list.end(), v);
       return static_cast<int>(it - list.begin());
     };
-    const int image = intern(images_, "{\"uri\":" + quote(url) + "}");
+    int image = -1;
+    if (!ref.hasTexCoordGen && !acc.texcoords.empty()) {
+      const std::string url =
+          ref.source == TextureRef::Source::Url ? imageUrl(ref.url) : "";
+      if (!url.empty()) {
+        image = intern(images_, "{\"uri\":" + quote(url) + "}");
+      } else if (ref.source == TextureRef::Source::Inline) {
+        const SFImage &img = ref.inlinePixels;
+        if (img.width > 0 && img.height > 0)
+          image = embed(encodePng(static_cast<std::size_t>(img.width),
+                                  static_cast<std::size_t>(img.height),
+                                  img.numComponents, img.data.data(),
+                                  img.data.size()));
+      } else if (ref.source == TextureRef::Source::Url &&
+                 ref.resolvedPixels.ready() &&
+                 ref.resolvedPixels.pixels->layers == 1) {
+        // No url glTF can reference (a KTX, GIF, data: url, ...), but the
+        // host decoded it: embed the decoded surface.
+        const TexturePixels &px = *ref.resolvedPixels.pixels;
+        auto cached = decodedImages_.find(&px);
+        if (cached != decodedImages_.end()) {
+          image = cached->second;
+        } else {
+          image = embed(encodePng(px.width, px.height, 4, px.rgba.data(),
+                                  px.rgba.size()));
+          decodedImages_.emplace(&px, image);
+        }
+      }
+    }
+    if (image < 0) {
+      ++report_.droppedTextures;
+      return {};
+    }
     const int sampler = intern(
         samplers_,
         "{\"wrapS\":" + std::to_string(ref.repeatS ? kRepeat : kClampToEdge) +
@@ -354,6 +558,25 @@ private:
         static_cast<std::size_t>(ref.channel) < acc.texcoords.size())
       info += ",\"texCoord\":" + std::to_string(ref.channel);
     return info + extra + "}";
+  }
+
+  // Store PNG bytes in the buffer and return its image index; identical
+  // images are stored once. -1 for an empty (unencodable) image.
+  int embed(const std::string &png) {
+    if (png.empty()) return -1;
+    auto found = embedded_.find(png);
+    if (found != embedded_.end()) return found->second;
+    while (bin_.size() % 4) bin_ += '\0';
+    const std::size_t offset = bin_.size();
+    bin_ += png;
+    while (bin_.size() % 4) bin_ += '\0';
+    views_.push_back("{\"buffer\":0,\"byteOffset\":" + std::to_string(offset) +
+                     ",\"byteLength\":" + std::to_string(png.size()) + "}");
+    images_.push_back("{\"bufferView\":" + std::to_string(views_.size() - 1) +
+                      ",\"mimeType\":\"image/png\"}");
+    ++report_.embeddedImages;
+    return embedded_.emplace(png, static_cast<int>(images_.size()) - 1)
+        .first->second;
   }
 
   int materialFor(const MaterialDesc &m, const MeshData &mesh,
@@ -455,7 +678,9 @@ private:
   GltfWriteReport &report_;
   std::string bin_;
   std::vector<std::string> nodes_, meshes_, materials_, textures_, images_,
-      samplers_, accessors_, views_;
+      samplers_, accessors_, views_, lights_, cameras_, extraNodes_;
+  std::unordered_map<std::string, int> embedded_;
+  std::unordered_map<const TexturePixels *, int> decodedImages_;
   std::unordered_map<const MeshData *, MeshAccessors> meshAccessors_;
   std::map<std::pair<const MeshData *, int>, int> meshIndex_;
   std::unordered_map<std::string, int> materialIndex_;
@@ -465,14 +690,79 @@ private:
 } // namespace
 
 std::string writeGlb(const std::vector<const RenderItem *> &items,
+                     const GltfSceneExtras &extras,
                      const GltfWriteOptions &options, GltfWriteReport *report) {
   GltfWriteReport local;
   GltfWriteReport &r = report ? *report : local;
+  const std::size_t skippedViewpoints = r.skippedViewpoints;
   r = GltfWriteReport{};
+  if (report) r.skippedViewpoints = skippedViewpoints;
   Writer writer(options, r);
   for (const RenderItem *item : items)
     if (item) writer.add(*item);
+  for (const LightDesc &light : extras.lights) writer.add(light);
+  for (const GltfCamera &camera : extras.cameras) writer.add(camera);
   return writer.finish();
+}
+
+GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
+                               GltfWriteReport *report) {
+  GltfSceneExtras extras;
+  extras.lights = extractor.lights();
+
+  const X3DExecutionContext &ctx = extractor.context();
+  const X3DNode *bound = ctx.boundViewpoint();
+  std::size_t skipped = 0;
+  x3d::runtime::detail::forEachNode(extractor.scene(), [&](X3DNode *n) {
+    if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(n)) {
+      ++skipped;
+      return;
+    }
+    const bool ortho = dynamic_cast<const x3d::nodes::OrthoViewpoint *>(n);
+    if (!ortho && !dynamic_cast<const x3d::nodes::Viewpoint *>(n)) return;
+
+    GltfCamera cam;
+    cam.name = geombounds::getField<std::string>(*n, "description", {});
+    if (cam.name.empty()) cam.name = n->getDEF();
+    cam.cameraToWorld =
+        ctx.worldOf(n) *
+        Mat4::translation(geombounds::getVec3fLenient(*n, "position", {0, 0, 10})) *
+        Mat4::rotation(
+            geombounds::getField<SFRotation>(*n, "orientation", {0, 0, 1, 0}));
+    const float nearDistance = geombounds::getField<float>(*n, "nearDistance", -1.0f);
+    const float farDistance = geombounds::getField<float>(*n, "farDistance", -1.0f);
+    cam.znear = nearDistance > 0 ? nearDistance : (ortho ? 0.0f : 0.1f);
+    cam.zfar = farDistance > 0 ? farDistance : 0.0f;
+    cam.ortho = ortho;
+    if (ortho) {
+      const auto fov = geombounds::getField<std::vector<float>>(
+          *n, "fieldOfView", {-1, -1, 1, 1});
+      if (fov.size() >= 4) {
+        cam.xmag = (fov[2] - fov[0]) * 0.5f;
+        cam.ymag = (fov[3] - fov[1]) * 0.5f;
+      }
+    } else {
+      cam.yfov = geombounds::getField<float>(*n, "fieldOfView", 0.7854f);
+    }
+    if (n == bound)
+      extras.cameras.insert(extras.cameras.begin(), std::move(cam));
+    else
+      extras.cameras.push_back(std::move(cam));
+  });
+  if (report) report->skippedViewpoints = skipped;
+  return extras;
+}
+
+std::string writeGlb(const SceneExtractor &extractor,
+                     const std::vector<RenderItemId> &ids,
+                     const GltfWriteOptions &options, GltfWriteReport *report) {
+  std::vector<const RenderItem *> items;
+  items.reserve(ids.size());
+  for (RenderItemId id : ids) items.push_back(&extractor.item(id));
+  GltfWriteReport local;
+  GltfWriteReport &r = report ? *report : local;
+  const GltfSceneExtras extras = gltfExtrasFrom(extractor, &r);
+  return writeGlb(items, extras, options, &r);
 }
 
 } // namespace x3d::runtime::extract
