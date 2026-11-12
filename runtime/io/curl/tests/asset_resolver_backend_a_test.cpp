@@ -1,4 +1,5 @@
 // HTTP resolver URL handling and resolved-address security boundaries.
+#include "doctest/doctest.h"
 #include "HttpResolver.hpp"
 
 #include "AssetResolver.hpp"
@@ -9,7 +10,6 @@
 #include <unistd.h>
 
 #include <atomic>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -142,10 +142,10 @@ public:
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    assert(::bind(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == 0);
-    assert(::listen(fd_, 8) == 0);
+    REQUIRE((::bind(fd_, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == 0));
+    REQUIRE((::listen(fd_, 8) == 0));
     socklen_t len = sizeof(addr);
-    assert(::getsockname(fd_, reinterpret_cast<sockaddr *>(&addr), &len) == 0);
+    REQUIRE((::getsockname(fd_, reinterpret_cast<sockaddr *>(&addr), &len) == 0));
     port = ntohs(addr.sin_port);
     thread_ = std::thread([this] { serve(); });
   }
@@ -186,12 +186,12 @@ private:
           sockaddr_in a{};
           a.sin_family = AF_INET;
           a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-          assert(::bind(data, reinterpret_cast<sockaddr *>(&a), sizeof(a)) ==
-                 0);
-          assert(::listen(data, 1) == 0);
+          REQUIRE((::bind(data, reinterpret_cast<sockaddr *>(&a), sizeof(a)) ==
+                 0));
+          REQUIRE((::listen(data, 1) == 0));
           socklen_t len = sizeof(a);
-          assert(::getsockname(data, reinterpret_cast<sockaddr *>(&a), &len) ==
-                 0);
+          REQUIRE((::getsockname(data, reinterpret_cast<sockaddr *>(&a), &len) ==
+                 0));
           send("229 Entering Extended Passive Mode (|||" +
                std::to_string(ntohs(a.sin_port)) + "|)\r\n");
         } else if (line.rfind("SIZE", 0) == 0)
@@ -231,35 +231,35 @@ private:
 
 }  // namespace
 
-int main() {
+TEST_CASE("asset_resolver_backend_a_test") {
   // 1. URL prefix check: rejects non-http schemes with Failed, no network call.
   AssetResolver r = makeHttpResolver();
-  assert(static_cast<bool>(r));
-  assert(r("urn:x3d:foo", AssetKind::Texture).failed());
-  assert(r("file:///etc/hosts", AssetKind::Texture).failed());
-  assert(r("plain/path.txt", AssetKind::Texture).failed());
-  assert(r("", AssetKind::Texture).failed());
-  assert(r("HTTP://uppercase-scheme.example/x", AssetKind::Texture).failed());
+  REQUIRE((static_cast<bool>(r)));
+  REQUIRE((r("urn:x3d:foo", AssetKind::Texture).failed()));
+  REQUIRE((r("file:///etc/hosts", AssetKind::Texture).failed()));
+  REQUIRE((r("plain/path.txt", AssetKind::Texture).failed()));
+  REQUIRE((r("", AssetKind::Texture).failed()));
+  REQUIRE((r("HTTP://uppercase-scheme.example/x", AssetKind::Texture).failed()));
 
   // 2. libcurl error path: unreachable host returns Failed.
   //    127.0.0.1:1 is reserved + unused; with the default options the
   //    resolved-address guard rejects loopback before the connect even starts.
-  assert(r("http://127.0.0.1:1/x", AssetKind::Texture).failed());
+  REQUIRE((r("http://127.0.0.1:1/x", AssetKind::Texture).failed()));
 
   // 3. URL prefix check honors https:// just like http://; use a non-routable
   //    host so we exercise the prefix-accept path (DNS failure -> Failed).
-  assert(r("https://nonexistent.invalid/x", AssetKind::Texture).failed());
+  REQUIRE((r("https://nonexistent.invalid/x", AssetKind::Texture).failed()));
 
   // 3b. The IPv6 guard classifies embedded IPv4 in forms other than the
   //     ::ffff: mapped prefix: NAT64 (64:ff9b::/96) and IPv4-compatible
   //     (::a.b.c.d). Both below embed 127.0.0.1 and are refused by default.
-  assert(r("http://[64:ff9b::7f00:1]/", AssetKind::Texture).failed());
-  assert(r("http://[::7f00:1]/", AssetKind::Texture).failed());
+  REQUIRE((r("http://[64:ff9b::7f00:1]/", AssetKind::Texture).failed()));
+  REQUIRE((r("http://[::7f00:1]/", AssetKind::Texture).failed()));
 
   // hardening, against an in-process loopback server
   TestServer srv;
   const int port = srv.start();
-  assert(port > 0);
+  REQUIRE((port > 0));
   const std::string base = "http://127.0.0.1:" + std::to_string(port);
 
   // Opt-in resolver for the tests that must actually reach the local server.
@@ -269,12 +269,12 @@ int main() {
   // 4. Loopback blocked by default: the server is up and answers 200, yet the
   //    default resolver refuses to connect (private-address guard). The opt-in
   //    resolver fetches the same URL — proving the server really is reachable.
-  assert(r(base + "/ok", AssetKind::Texture).failed());
+  REQUIRE((r(base + "/ok", AssetKind::Texture).failed()));
   {
     AssetResult ok = local(base + "/ok", AssetKind::Texture);
-    assert(ok.ready());
-    assert(ok.bytes.size() == 5);
-    assert(std::string(ok.bytes.begin(), ok.bytes.end()) == "hello");
+    REQUIRE((ok.ready()));
+    REQUIRE((ok.bytes.size() == 5));
+    REQUIRE((std::string(ok.bytes.begin(), ok.bytes.end()) == "hello"));
   }
 
   // 5. Size cap enforced: a body past maxBytes aborts the transfer -> Failed,
@@ -284,38 +284,37 @@ int main() {
     capped.allowPrivateNetworks = true;
     capped.maxBytes = 4096;
     AssetResolver resolved = makeHttpResolver(capped);
-    assert(resolved(base + "/ok", AssetKind::Texture).ready());
-    assert(resolved(base + "/big", AssetKind::Texture).failed());
+    REQUIRE((resolved(base + "/ok", AssetKind::Texture).ready()));
+    REQUIRE((resolved(base + "/big", AssetKind::Texture).failed()));
   }
 
   // 6. Redirect to a non-http scheme is rejected (REDIR_PROTOCOLS).
-  assert(local(base + "/redir-file", AssetKind::Texture).failed());
-  assert(local(base + "/redir-ftp", AssetKind::Texture).failed());
+  REQUIRE((local(base + "/redir-file", AssetKind::Texture).failed()));
+  REQUIRE((local(base + "/redir-ftp", AssetKind::Texture).failed()));
 
   // 7. Same-scheme redirects still follow; the redirect cap bounds a loop.
-  assert(local(base + "/redir-ok", AssetKind::Texture).ready());
+  REQUIRE((local(base + "/redir-ok", AssetKind::Texture).ready()));
   {
     HttpResolverOptions capped;
     capped.allowPrivateNetworks = true;
     capped.maxRedirects = 5;
     AssetResolver resolved = makeHttpResolver(capped);
-    assert(resolved(base + "/loop", AssetKind::Texture).failed());
+    REQUIRE((resolved(base + "/loop", AssetKind::Texture).failed()));
   }
 
   FtpServer ftp;
   const std::string ftpUrl =
       "ftp://127.0.0.1:" + std::to_string(ftp.port) + "/hello";
-  assert(makeFtpResolver()(ftpUrl, AssetKind::Texture).failed());
+  REQUIRE((makeFtpResolver()(ftpUrl, AssetKind::Texture).failed()));
   HttpResolverOptions ftpOptions;
   ftpOptions.allowPrivateNetworks = true;
   auto ftpFetch = makeFtpResolver(ftpOptions);
   auto fetched = ftpFetch(ftpUrl, AssetKind::Texture);
-  assert(fetched.ready());
-  assert(std::string(fetched.bytes.begin(), fetched.bytes.end()) == "hello");
-  assert(ftpFetch("FTP" + ftpUrl.substr(3), AssetKind::Texture).ready());
-  assert(ftpFetch("http://127.0.0.1/", AssetKind::Texture).failed());
-  assert(ftpFetch(ftpUrl + "missing", AssetKind::Texture).failed());
+  REQUIRE((fetched.ready()));
+  REQUIRE((std::string(fetched.bytes.begin(), fetched.bytes.end()) == "hello"));
+  REQUIRE((ftpFetch("FTP" + ftpUrl.substr(3), AssetKind::Texture).ready()));
+  REQUIRE((ftpFetch("http://127.0.0.1/", AssetKind::Texture).failed()));
+  REQUIRE((ftpFetch(ftpUrl + "missing", AssetKind::Texture).failed()));
   ftpOptions.maxBytes = 4;
-  assert(makeFtpResolver(ftpOptions)(ftpUrl, AssetKind::Texture).failed());
-  return 0;
+  REQUIRE((makeFtpResolver(ftpOptions)(ftpUrl, AssetKind::Texture).failed()));
 }

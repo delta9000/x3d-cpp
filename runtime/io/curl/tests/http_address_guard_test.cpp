@@ -1,9 +1,9 @@
 // Exercise the private resolved-address classifier without opening a socket.
+#include "doctest/doctest.h"
 #include "../HttpResolver.cpp"
 
-#include <cassert>
 
-int main() {
+TEST_CASE("http_address_guard_test") {
   using namespace x3d::runtime::io::curl;
   for (std::uint32_t address : {
            0xE0000000u, 0xEFFFFFFFu, // multicast endpoints
@@ -11,11 +11,11 @@ int main() {
            0xC0000000u, 0xC00000FFu, // protocol assignments endpoints
            0xC6120000u, 0xC613FFFFu  // benchmarking endpoints
        }) {
-    assert(isBlockedV4(address));
+    REQUIRE((isBlockedV4(address)));
     sockaddr_in v4{};
     v4.sin_family = AF_INET;
     v4.sin_addr.s_addr = htonl(address);
-    assert(isBlockedSockaddr(reinterpret_cast<const sockaddr*>(&v4)));
+    REQUIRE((isBlockedSockaddr(reinterpret_cast<const sockaddr*>(&v4))));
 
     // All supported IPv4-embedding forms must apply the same IPv4 policy.
     for (int prefix = 0; prefix < 3; ++prefix) {
@@ -26,10 +26,10 @@ int main() {
       if (prefix == 2) { bytes[1] = 0x64; bytes[2] = 0xFF; bytes[3] = 0x9B; }
       for (int i = 0; i < 4; ++i)
         bytes[12 + i] = static_cast<unsigned char>(address >> (24 - 8 * i));
-      assert(isBlockedSockaddr(reinterpret_cast<const sockaddr*>(&v6)));
+      REQUIRE((isBlockedSockaddr(reinterpret_cast<const sockaddr*>(&v6))));
     }
   }
   for (std::uint32_t address : {0xDFFFFFFFu, 0xC0000100u,
                                 0xC611FFFFu, 0xC6140000u, 0x08080808u})
-    assert(!isBlockedV4(address));
+    REQUIRE((!isBlockedV4(address)));
 }

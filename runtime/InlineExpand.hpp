@@ -28,21 +28,11 @@ namespace x3d::runtime {
 using namespace x3d::core;
 using x3d::nodes::X3DNodeFactory;
 
-// Re-export findField at the x3d::runtime level so callers (including the test)
-// can use ::x3d::runtime::findField without needing to know about proto_detail.
-inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {
-  return proto_detail::findField(n, name);
-}
-
 namespace inline_detail {
-
-inline const FieldInfo *field(const X3DNode &n, const std::string &name) {
-  return ::x3d::runtime::findField(n, name);
-}
 
 // Read an Inline's `url` (MFString) via reflection; empty if absent.
 inline std::vector<std::string> readUrl(const X3DNode &inl) {
-  const FieldInfo *u = field(inl, "url");
+  const FieldInfo *u = findField(inl, "url");
   if (!u || !u->get) return {};
   std::any v = u->get(inl);
   const auto *urls = fieldValueAs<std::vector<std::string>>(v);
@@ -51,7 +41,7 @@ inline std::vector<std::string> readUrl(const X3DNode &inl) {
 
 // Read an Inline's `load` (SFBool); default TRUE if absent.
 inline bool readLoad(const X3DNode &inl) {
-  const FieldInfo *l = field(inl, "load");
+  const FieldInfo *l = findField(inl, "load");
   if (!l || !l->get) return true;
   std::any v = l->get(inl);
   const bool *load = fieldValueAs<bool>(v);
@@ -62,7 +52,7 @@ inline bool readLoad(const X3DNode &inl) {
 inline std::shared_ptr<X3DNode>
 makeGroup(const std::vector<std::shared_ptr<X3DNode>> &content) {
   auto g = X3DNodeFactory::create("Group");
-  const FieldInfo *ch = field(*g, "children");
+  const FieldInfo *ch = findField(*g, "children");
   if (ch && ch->set)
     ch->set(*g, std::any(content));
   return g;

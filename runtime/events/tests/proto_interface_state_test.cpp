@@ -339,11 +339,11 @@ TEST_CASE("unconnected PROTO SFNode interface relays node identity and NULL") {
   CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
       doc.scene.authorFields->getValue(*relay, "value")) == geometry);
   CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
-      proto_detail::findField(*dest, "geometry")->get(*dest)) == geometry);
+      findField(*dest, "geometry")->get(*dest)) == geometry);
   ctx.postEvent(source.get(), "geometry", std::any(std::shared_ptr<X3DNode>{}));
   ctx.tick(1.0);
   CHECK_FALSE(std::any_cast<std::shared_ptr<X3DNode>>(
-      proto_detail::findField(*dest, "geometry")->get(*dest)));
+      findField(*dest, "geometry")->get(*dest)));
 }
 
 TEST_CASE("unconnected PROTO node defaults are private but caller overrides retain sharing") {

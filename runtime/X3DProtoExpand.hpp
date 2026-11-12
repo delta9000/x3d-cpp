@@ -2,6 +2,7 @@
 #ifndef X3D_RUNTIME_PROTO_EXPAND_HPP
 #define X3D_RUNTIME_PROTO_EXPAND_HPP
 
+#include "FieldRead.hpp"
 #include "DynamicField.hpp"
 #include "X3DProtoClone.hpp"
 #include "X3DProtoFieldOrder.hpp"
@@ -53,11 +54,6 @@ struct ExpandContext {
 } // namespace proto_detail
 
 namespace proto_detail {
-
-inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {
-  for (const auto &f : n.fields()) if (f.x3dName == name) return &f;
-  return nullptr;
-}
 
 inline std::optional<FieldInfo> findIsBodyField(const X3DNode &n,
                                         const std::string &name,
@@ -661,7 +657,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     if (found == localDefs.end()) return {};
     const auto &[node, iface] = found->second;
     if (!iface) {
-      const FieldInfo *reflected = proto_detail::findField(*node, field);
+      const FieldInfo *reflected = findField(*node, field);
       if (!reflected) {
         std::string base;
         if (!asSource && field.rfind("set_", 0) == 0)
@@ -670,7 +666,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
                  field.compare(field.size() - 8, 8, "_changed") == 0)
           base = field.substr(0, field.size() - 8);
         if (!base.empty()) {
-          auto alias = proto_detail::findField(*node, base);
+          auto alias = findField(*node, base);
           if (alias && alias->access == AccessType::InputOutput)
             reflected = alias;
         }
@@ -702,7 +698,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
           (asSource && field == "metadata_changed") ||
           (!asSource && field == "set_metadata");
       if (implicitMetadata) {
-        const FieldInfo *metadata = proto_detail::findField(*node, "metadata");
+        const FieldInfo *metadata = findField(*node, "metadata");
         if (metadata && metadata->type == X3DFieldType::SFNode &&
             metadata->access == AccessType::InputOutput)
           return {{{node, "metadata"}}, X3DFieldType::SFNode};
@@ -774,7 +770,7 @@ expandInstance(ProtoInstance &inst, Scene &scene,
       }
     }
     for (const auto &slot : slotsWithInstances) {
-      const FieldInfo *fi = proto_detail::findField(*cloned, slot);
+      const FieldInfo *fi = findField(*cloned, slot);
       if (fi && fi->type == X3DFieldType::MFNode && fi->set)
         fi->set(*cloned, std::any(std::move(ordered[slot])));
     }

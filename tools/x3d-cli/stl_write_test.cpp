@@ -10,10 +10,10 @@
 //   3. Two triangles → vertex_count=6, normals reconstructed and reasonable.
 //   4. Geometric normal auto-computation (no normals supplied) — correct direction.
 //   5. Supplied normals are carried through (averaged to facet normal, then stored).
+#include "doctest/doctest.h"
 #include "stl_write.hpp"   // x3d::cli::writeStlBinary
 #include "StlReader.hpp"   // x3d::runtime::ext::parseStlBinary
 
-#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -58,18 +58,18 @@ static void test_empty() {
     std::string bytes = x3d::cli::writeStlBinary(empty);
 
     // Size must be exactly 84.
-    assert(bytes.size() == 84 && "empty STL must be exactly 84 bytes");
+    REQUIRE((bytes.size() == 84 && "empty STL must be exactly 84 bytes"));
 
     // triCount at offset 80 must be 0.
     uint32_t N = 0;
     std::memcpy(&N, bytes.data() + 80, 4);
-    assert(N == 0 && "empty STL triCount must be 0");
+    REQUIRE((N == 0 && "empty STL triCount must be 0"));
 
     // parseStlBinary on an empty STL returns empty PackedMesh.
     PackedMesh pm = parseStlBinary(
         reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
     // For N=0, StlReader returns an empty-but-valid PackedMesh.
-    assert(pm.vertex_count == 0 && "readback vertex_count must be 0");
+    REQUIRE((pm.vertex_count == 0 && "readback vertex_count must be 0"));
 
     std::cout << "ok:   test_empty\n";
 }
@@ -84,19 +84,19 @@ static void test_one_triangle_bit_exact() {
     };
 
     std::string bytes = x3d::cli::writeStlBinary(pos);
-    assert(bytes.size() == 84u + 50u && "one-tri STL must be 134 bytes");
+    REQUIRE((bytes.size() == 84u + 50u && "one-tri STL must be 134 bytes"));
 
     PackedMesh pm = parseStlBinary(
         reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
-    assert(pm.vertex_count == 3 && "one-tri readback vertex_count must be 3");
+    REQUIRE((pm.vertex_count == 3 && "one-tri readback vertex_count must be 3"));
 
     std::vector<float> verts = extractFloats(pm, VertexAttrib::Position);
-    assert(verts.size() == 9 && "one-tri readback must have 9 position floats");
+    REQUIRE((verts.size() == 9 && "one-tri readback must have 9 position floats"));
 
     // Bit-exact round-trip.
-    assert(near(verts[0], 1.0f) && near(verts[1], 0.0f) && near(verts[2], 0.0f));
-    assert(near(verts[3], 0.0f) && near(verts[4], 1.0f) && near(verts[5], 0.0f));
-    assert(near(verts[6], 0.0f) && near(verts[7], 0.0f) && near(verts[8], 1.0f));
+    REQUIRE((near(verts[0], 1.0f) && near(verts[1], 0.0f) && near(verts[2], 0.0f)));
+    REQUIRE((near(verts[3], 0.0f) && near(verts[4], 1.0f) && near(verts[5], 0.0f)));
+    REQUIRE((near(verts[6], 0.0f) && near(verts[7], 0.0f) && near(verts[8], 1.0f)));
 
     std::cout << "ok:   test_one_triangle_bit_exact\n";
 }
@@ -111,11 +111,11 @@ static void test_two_triangles_vertex_count() {
     };
 
     std::string bytes = x3d::cli::writeStlBinary(pos);
-    assert(bytes.size() == 84u + 100u && "two-tri STL must be 184 bytes");
+    REQUIRE((bytes.size() == 84u + 100u && "two-tri STL must be 184 bytes"));
 
     PackedMesh pm = parseStlBinary(
         reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
-    assert(pm.vertex_count == 6 && "two-tri readback vertex_count must be 6");
+    REQUIRE((pm.vertex_count == 6 && "two-tri readback vertex_count must be 6"));
 
     std::cout << "ok:   test_two_triangles_vertex_count\n";
 }
@@ -136,9 +136,9 @@ static void test_geometric_normal() {
     std::memcpy(&ny, bytes.data() + 84 +  4, 4);
     std::memcpy(&nz, bytes.data() + 84 +  8, 4);
 
-    assert(near(nx, 0.0f, 1e-4f) && "geometric normal x should be 0");
-    assert(near(ny, 0.0f, 1e-4f) && "geometric normal y should be 0");
-    assert(near(nz, 1.0f, 1e-4f) && "geometric normal z should be +1");
+    REQUIRE((near(nx, 0.0f, 1e-4f) && "geometric normal x should be 0"));
+    REQUIRE((near(ny, 0.0f, 1e-4f) && "geometric normal y should be 0"));
+    REQUIRE((near(nz, 1.0f, 1e-4f) && "geometric normal z should be +1"));
 
     std::cout << "ok:   test_geometric_normal\n";
 }
@@ -160,9 +160,9 @@ static void test_supplied_normals() {
     std::memcpy(&nz, bytes.data() + 84 +  8, 4);
 
     // Averaged + renormalized: still (0,0,-1).
-    assert(near(nx, 0.0f, 1e-4f) && "supplied-normal x should be 0");
-    assert(near(ny, 0.0f, 1e-4f) && "supplied-normal y should be 0");
-    assert(near(nz, -1.0f, 1e-4f) && "supplied-normal z should be -1");
+    REQUIRE((near(nx, 0.0f, 1e-4f) && "supplied-normal x should be 0"));
+    REQUIRE((near(ny, 0.0f, 1e-4f) && "supplied-normal y should be 0"));
+    REQUIRE((near(nz, -1.0f, 1e-4f) && "supplied-normal z should be -1"));
 
     std::cout << "ok:   test_supplied_normals\n";
 }
@@ -176,18 +176,15 @@ static void test_invalid_size() {
     } catch (const std::invalid_argument &) {
         threw = true;
     }
-    assert(threw && "writeStlBinary should throw on non-multiple-of-3 positions");
+    REQUIRE((threw && "writeStlBinary should throw on non-multiple-of-3 positions"));
     std::cout << "ok:   test_invalid_size\n";
 }
 
-int main() {
+TEST_CASE("stl_write_test") {
     test_empty();
     test_one_triangle_bit_exact();
     test_two_triangles_vertex_count();
     test_geometric_normal();
     test_supplied_normals();
     test_invalid_size();
-
-    std::cout << "\nstl_write_test: all tests passed\n";
-    return 0;
 }

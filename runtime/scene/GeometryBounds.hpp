@@ -119,10 +119,7 @@ inline std::shared_ptr<X3DNode> getNode(const X3DNode &n, const char *name) {
   return getField<std::shared_ptr<X3DNode>>(n, name, nullptr);
 }
 
-inline bool hasField(const X3DNode &n, const char *name) {
-  for (const auto &f : n.fields()) if (f.x3dName == name) return true;
-  return false;
-}
+inline bool hasField(const X3DNode &n, const char *name) { return findField(n, name) != nullptr; }
 
 // AABB over a Coordinate-like node's "point". Accepts MFVec3f and MFVec3d
 // (GeoCoordinate / CoordinateDouble) via getPointsLenient. Empty if none.

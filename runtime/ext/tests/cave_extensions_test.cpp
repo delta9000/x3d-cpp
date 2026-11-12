@@ -5,6 +5,7 @@
 #include "AssetDocumentResolvers.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DParse.hpp"
+#include "InlineRuntimeSystem.hpp"
 #include "x3d/nodes/Transform.hpp"
 #include "x3d/nodes/Group.hpp"
 

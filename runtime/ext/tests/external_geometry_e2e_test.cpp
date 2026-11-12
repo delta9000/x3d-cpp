@@ -1,4 +1,5 @@
 // Lazy mesh materialization, caching, and Pending behavior.
+#include "doctest/doctest.h"
 #include "ExternalGeometry.hpp"
 #include "ExternalGeometryResolver.hpp"
 
@@ -14,7 +15,6 @@
 #include "X3DScene.hpp"
 
 #include <any>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -32,7 +32,7 @@ using x3d::runtime::ext::makeExternalGeometryResolver;
 static void setF(const std::shared_ptr<X3DNode>& n, const char* nm, std::any v) {
     for (auto& f : n->fields())
         if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-    assert(false && "field not found");
+    REQUIRE((false && "field not found"));
 }
 static void addChild(const std::shared_ptr<X3DNode>& p,
                      const std::shared_ptr<X3DNode>& c) {
@@ -43,7 +43,7 @@ static void addChild(const std::shared_ptr<X3DNode>& p,
             f.set(*p, std::any(std::move(k)));
             return;
         }
-    assert(false && "children field not found");
+    REQUIRE((false && "children field not found"));
 }
 
 // Build a binary STL with two triangles. Known v0 of triangle 0 = (1,2,3).
@@ -75,7 +75,7 @@ static std::vector<std::uint8_t> makeTwoTriangleStl() {
 // Read a Position float3 out of a PackedMesh at vertex index `vi`.
 static void readPosition(const PackedMesh& m, std::uint32_t vi,
                          float& x, float& y, float& z) {
-    assert(m.has(VertexAttrib::Position));
+    REQUIRE((m.has(VertexAttrib::Position)));
     const VertexBufferView& pv =
         m.attribute_views[static_cast<std::uint8_t>(VertexAttrib::Position)];
     const std::uint8_t* base = pv.data_ptr(m.attribute_data);
@@ -96,7 +96,7 @@ static std::shared_ptr<X3DNode> makeExtGeomShapeScene(const std::string& url) {
     return root;
 }
 
-int main() {
+TEST_CASE("external_geometry_e2e_test") {
     const std::vector<std::uint8_t> stlBytes = makeTwoTriangleStl();
     const std::uint32_t expectedVerts = 2u * 3u; // N*3
 
@@ -105,7 +105,7 @@ int main() {
         int byteCalls = 0;
         AssetResolver stub = [&](const std::string& url, AssetKind kind)
             -> AssetResult {
-            assert(kind == AssetKind::ExternalGeometry);
+            REQUIRE((kind == AssetKind::ExternalGeometry));
             if (url == "m.stl") {
                 ++byteCalls;
                 return AssetResult::makeReady(stlBytes);
@@ -126,26 +126,26 @@ int main() {
 
         // First extract → materialize.
         auto snap = ex.fullSnapshot();
-        assert(snap.added.size() == 1 && "expected one Packed RenderItem");
+        REQUIRE((snap.added.size() == 1 && "expected one Packed RenderItem"));
         const RenderItem& item = ex.item(snap.added[0]);
-        assert(item.geometry_ext.is_packed() && "geometry_ext.kind must be Packed");
+        REQUIRE((item.geometry_ext.is_packed() && "geometry_ext.kind must be Packed"));
 
         const PackedMesh& m = item.geometry_ext.packed;
-        assert(m.vertex_count == expectedVerts && "vertex_count must be N*3");
+        REQUIRE((m.vertex_count == expectedVerts && "vertex_count must be N*3"));
 
         // Known position: triangle 0 vertex 0 = (1,2,3).
         float x, y, z;
         readPosition(m, 0, x, y, z);
-        assert(x == 1.0f && y == 2.0f && z == 3.0f && "v0 position must read back");
+        REQUIRE((x == 1.0f && y == 2.0f && z == 3.0f && "v0 position must read back"));
 
-        assert(byteCalls == 1 && "first extract must fetch bytes exactly once");
+        REQUIRE((byteCalls == 1 && "first extract must fetch bytes exactly once"));
 
         // (2) cache — second extract must not re-fetch (cache hit).
         SceneExtractor ex2(ctx, scene, opts);
         auto snap2 = ex2.fullSnapshot();
-        assert(snap2.added.size() == 1 && "second extract still emits the item");
-        assert(ex2.item(snap2.added[0]).geometry_ext.is_packed());
-        assert(byteCalls == 1 && "second extract must reuse cache — no new fetch");
+        REQUIRE((snap2.added.size() == 1 && "second extract still emits the item"));
+        REQUIRE((ex2.item(snap2.added[0]).geometry_ext.is_packed()));
+        REQUIRE((byteCalls == 1 && "second extract must reuse cache — no new fetch"));
     }
 
     // (3) pending / skip
@@ -166,8 +166,6 @@ int main() {
 
         SceneExtractor ex(ctx, scene, opts);
         auto snap = ex.fullSnapshot();
-        assert(snap.added.empty() && "unresolvable url → Pending → no Packed item");
+        REQUIRE((snap.added.empty() && "unresolvable url → Pending → no Packed item"));
     }
-
-    return 0;
 }
