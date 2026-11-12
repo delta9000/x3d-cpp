@@ -133,6 +133,9 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Docs-drift service failures.** Advisory suggestions retain literal citation
+  results and clearly mark semantic checks unavailable when the embedding
+  service or vector store cannot be reached.
 - **Scene-source string boundaries.** Both script engines pass the complete
   `createX3DFromString`/`createVrmlFromString` source to the host factory,
   including bytes after embedded NULs. The default factory handles a leading
