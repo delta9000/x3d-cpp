@@ -2,7 +2,7 @@
 #ifndef X3D_PARSE_HPP
 #define X3D_PARSE_HPP
 
-#include "../InlineExpand.hpp"
+#include "../InlineResolver.hpp"
 #include "Encoding.hpp"
 #include "X3DProtoResolver.hpp"
 #include "X3DReader.hpp"

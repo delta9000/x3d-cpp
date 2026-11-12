@@ -1,5 +1,6 @@
 #include "X3DParse.hpp"
 
+#include "../InlineExpand.hpp"
 #include "ClassicVrmlReader.hpp"
 #include "FieldValueIO.hpp"
 #include "Inflate.hpp"

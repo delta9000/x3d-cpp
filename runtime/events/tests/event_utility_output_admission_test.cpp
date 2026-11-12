@@ -11,6 +11,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "EventUtilitySystem.hpp"
+#include "x3d/nodes/BooleanSequencer.hpp"
+#include "x3d/nodes/IntegerSequencer.hpp"
 
 using namespace x3d::core;
 using namespace x3d::nodes;

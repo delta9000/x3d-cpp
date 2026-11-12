@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include "InlineExpand.hpp"
 
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;

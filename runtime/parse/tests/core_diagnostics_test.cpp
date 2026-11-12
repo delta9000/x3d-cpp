@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "x3d/nodes/Inline.hpp"
 
 using namespace x3d;
 using x3d::runtime::ReaderWarning;

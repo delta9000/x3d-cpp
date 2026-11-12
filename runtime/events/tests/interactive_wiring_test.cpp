@@ -17,6 +17,7 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include "NavigationSystem.hpp"
 
 using namespace x3d;
 using namespace x3d::runtime;

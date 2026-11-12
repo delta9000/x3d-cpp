@@ -51,7 +51,8 @@ for the resolver exception contract and scope. The focused cases in
 
 | File / directory | Role |
 |---|---|
-| `runtime/InlineExpand.hpp` | Entry point `expandInlines()`, resolver typedef `InlineResolver`, helpers `readUrl`/`readLoad`/`makeGroup`/`hoistChildRoutes`/`replaceInParent` (all in `inline_detail` namespace), and `wireInlineImports()` — the §9.2 cross-Inline escape hatch |
+| `runtime/InlineResolver.hpp` | The `InlineResolver` loader typedef and `InlineCycleError`, kept apart so the parse and bridge headers can name them without the expansion engine |
+| `runtime/InlineExpand.hpp` | Entry point `expandInlines()`, helpers `readUrl`/`readLoad`/`makeGroup`/`hoistChildRoutes`/`replaceInParent` (all in `inline_detail` namespace), and `wireInlineImports()` — the §9.2 cross-Inline escape hatch |
 | `runtime/X3DImportExport.hpp` | Data-only structs `Import` and `Export`; stored in `Scene` and consumed by `wireInlineImports()` |
 | `runtime/parse/X3DParse.hpp` | `parseDocument` — calls `expandInlines()` immediately after the PROTO pass, then `wireInlineImports()`, then re-runs `resolveRoutes`; provides `localFileInlineResolver` (the default, file-relative, cycle-guarded resolver) |
 | `runtime/X3DScene.hpp` | `Scene::expandedInlines` (`unordered_map<X3DNode*, shared_ptr<X3DNode>>`), `Scene::expandedInlineScenes` (original Inline node -> child `Scene`, retained for IMPORT resolution), and `Scene::resolvedInlineRoutes` (`vector<ResolvedProtoRoute>`) — the side tables this subsystem populates |

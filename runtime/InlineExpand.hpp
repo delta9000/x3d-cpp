@@ -6,6 +6,7 @@
 #define X3D_RUNTIME_INLINE_EXPAND_HPP
 
 #include "FieldRead.hpp"
+#include "InlineResolver.hpp"
 #include "RecursionLimits.hpp"
 #include "X3DScene.hpp"
 #include "X3DProtoExpand.hpp"
@@ -32,18 +33,6 @@ using x3d::nodes::X3DNodeFactory;
 inline const FieldInfo *findField(const X3DNode &n, const std::string &name) {
   return proto_detail::findField(n, name);
 }
-
-/// Resolve an Inline's url list to a parsed sub-scene (null on failure).
-/// A loader may throw InlineCycleError to preserve a cycle rejection reason.
-using InlineResolver = std::function<std::shared_ptr<Scene>(
-    const std::vector<std::string> &urls, const std::string &baseUrl)>;
-
-// Optional failure detail from an Inline loader. Other exceptions keep their
-// existing behavior; only this cycle signal becomes a lenient Inline warning.
-class InlineCycleError : public std::runtime_error {
-public:
-  using std::runtime_error::runtime_error;
-};
 
 namespace inline_detail {
 
