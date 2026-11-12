@@ -1,5 +1,6 @@
 // Check interpolated values, sensor crossings, and trace determinism.
-// Pass the fixtures directory as argv[1].
+// Pass the fixtures directory as X3D_TEST_DATA_DIR.
+#include "doctest/doctest.h"
 #include "x3d/sdk.hpp"
 
 #include "sim_runtime.hpp"
@@ -7,7 +8,6 @@
 
 #include "x3d/nodes/Transform.hpp"
 
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -35,16 +35,16 @@ void testInterpolatorMidCycle(const std::string &dir) {
   for (int k = 0; k <= 2; ++k) ctx.tick(k * dt);  // last tick t=0.5
 
   auto mover = doc.scene.resolve("Mover");
-  assert(mover && "Mover DEF must resolve");
+  REQUIRE((mover && "Mover DEF must resolve"));
   auto *xf = dynamic_cast<x3d::nodes::Transform *>(mover.get());
-  assert(xf && "Mover must be a Transform");
+  REQUIRE((xf && "Mover must be a Transform"));
   const SFVec3f tr = xf->getTranslation();
   std::cout << "  [interp] Mover.translation at t=0.5 = (" << tr.x << ", "
             << tr.y << ", " << tr.z << ")\n";
   // keyValue 0..10 over fraction 0..1; at t=0.5 in a 1s cycle, fraction=0.5.
-  assert(std::fabs(tr.x - 5.0f) < 1e-3f &&
-         "translation.x must be ~5 at t=0.5 (lerp 0..10 @ 0.5)");
-  assert(std::fabs(tr.y) < 1e-4f && std::fabs(tr.z) < 1e-4f);
+  REQUIRE((std::fabs(tr.x - 5.0f) < 1e-3f &&
+         "translation.x must be ~5 at t=0.5 (lerp 0..10 @ 0.5)"));
+  REQUIRE((std::fabs(tr.y) < 1e-4f && std::fabs(tr.z) < 1e-4f));
 }
 
 void testProximityCrossing(const std::string &dir) {
@@ -53,7 +53,7 @@ void testProximityCrossing(const std::string &dir) {
   wire(doc, ctx);
 
   auto region = doc.scene.resolve("Region");
-  assert(region && "Region DEF must resolve");
+  REQUIRE((region && "Region DEF must resolve"));
 
   // Record (tick -> isActive) via the tracer watching Region.isActive.
   x3d::sim::FieldTracer tracer(doc.scene, {"Region.enterTime", "Region.exitTime"});
@@ -86,8 +86,8 @@ void testProximityCrossing(const std::string &dir) {
             << " exitTick=" << exitTick << "\n";
   // Box size 2 (|x|<=1). Viewer x = -5 + 10*t. Enters at x=-1 -> t=0.4 (tick 4),
   // exits at x=+1 -> t=0.7 (tick 7).
-  assert(enterTick == 4 && "ProximitySensor enterTime must fire at tick 4 (x=-1)");
-  assert(exitTick == 7 && "ProximitySensor exitTime must fire at tick 7 (x=+1)");
+  REQUIRE((enterTick == 4 && "ProximitySensor enterTime must fire at tick 4 (x=-1)"));
+  REQUIRE((exitTick == 7 && "ProximitySensor exitTime must fire at tick 7 (x=+1)"));
 }
 
 std::string runTrace(const std::string &path) {
@@ -112,20 +112,16 @@ void testDeterminism(const std::string &dir) {
   std::string a = runTrace(dir + "/sim-anim.x3d");
   std::string b = runTrace(dir + "/sim-anim.x3d");
   std::cout << "  [determinism] trace bytes=" << a.size() << "\n";
-  assert(!a.empty() && "trace must be non-empty");
-  assert(a == b && "two runs must yield byte-identical traces");
+  REQUIRE((!a.empty() && "trace must be non-empty"));
+  REQUIRE((a == b && "two runs must yield byte-identical traces"));
 }
 
 }  // namespace
 
-int main(int argc, char **argv) {
-  assert(argc >= 2 && "pass the fixtures dir as argv[1]");
-  const std::string dir = argv[1];
+TEST_CASE("sim_behavior_test") {
+  const std::string dir = X3D_TEST_DATA_DIR;
 
   testInterpolatorMidCycle(dir);
   testProximityCrossing(dir);
   testDeterminism(dir);
-
-  std::cout << "sim_behavior_test OK\n";
-  return 0;
 }

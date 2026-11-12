@@ -1,39 +1,35 @@
 // inline_roundtrip_test.cpp
 // Writer round-trip — after Inline expansion, writers must re-emit
 // the original <Inline url=.../> and not the synthetic Group's child content.
-// Pass the inline fixtures dir as argv[1].
+// Pass the inline fixtures dir as X3D_TEST_DATA_DIR.
+#include "doctest/doctest.h"
 #include "x3d/sdk.hpp"
-#include <cassert>
 #include <iostream>
 #include <string>
 
-int main(int argc, char **argv) {
-  assert(argc >= 2 && "pass the inline fixtures dir as argv[1]");
-  std::string dir = argv[1];
+TEST_CASE("inline_roundtrip_test") {
+  std::string dir = X3D_TEST_DATA_DIR;
   auto doc = x3d::sdk::parseFile(dir + "/parent.x3d");
 
   // After expansion, the Inline content (Box) is in the live graph...
   // ...but the writer must re-emit <Inline url=...> and not the Box.
   std::string xml = x3d::codec::XmlWriter{}.writeDocument(doc);
-  assert(xml.find("<Inline") != std::string::npos && "Inline must re-emit (XML)");
-  assert(xml.find("child.x3d") != std::string::npos && "url must be preserved (XML)");
-  assert(xml.find("<Box") == std::string::npos &&
-         "expanded child content must NOT be serialized (XML)");
+  REQUIRE((xml.find("<Inline") != std::string::npos && "Inline must re-emit (XML)"));
+  REQUIRE((xml.find("child.x3d") != std::string::npos && "url must be preserved (XML)"));
+  REQUIRE((xml.find("<Box") == std::string::npos &&
+         "expanded child content must NOT be serialized (XML)"));
 
   // Same for VRML encoding.
   std::string vrml = x3d::codec::VrmlWriter{}.writeDocument(doc);
-  assert(vrml.find("Inline") != std::string::npos && "Inline must re-emit (VRML)");
-  assert(vrml.find("child.x3d") != std::string::npos && "url must be preserved (VRML)");
-  assert(vrml.find("Box {") == std::string::npos &&
-         "expanded child content must NOT be serialized (VRML): 'Box {' node must be absent");
+  REQUIRE((vrml.find("Inline") != std::string::npos && "Inline must re-emit (VRML)"));
+  REQUIRE((vrml.find("child.x3d") != std::string::npos && "url must be preserved (VRML)"));
+  REQUIRE((vrml.find("Box {") == std::string::npos &&
+         "expanded child content must NOT be serialized (VRML): 'Box {' node must be absent"));
 
   // Same for JSON encoding.
   std::string json = x3d::codec::JsonWriter{}.writeDocument(doc);
-  assert(json.find("Inline") != std::string::npos && "Inline must re-emit (JSON)");
-  assert(json.find("child.x3d") != std::string::npos && "url must be preserved (JSON)");
-  assert(json.find("Box") == std::string::npos &&
-         "expanded child content must NOT be serialized (JSON)");
-
-  std::cout << "inline_roundtrip_test OK\n";
-  return 0;
+  REQUIRE((json.find("Inline") != std::string::npos && "Inline must re-emit (JSON)"));
+  REQUIRE((json.find("child.x3d") != std::string::npos && "url must be preserved (JSON)"));
+  REQUIRE((json.find("Box") == std::string::npos &&
+         "expanded child content must NOT be serialized (JSON)"));
 }

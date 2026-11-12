@@ -6,12 +6,12 @@
 // Finally, attaches the TimeSensor and interpolator systems, ticks to t=1
 // within the 4-second cycle (fraction=0.25), and asserts the inlined
 // Transform "Mover" actually moved (translation.x > 0).
-// Pass the inline fixtures dir as argv[1].
+// Pass the inline fixtures dir as X3D_TEST_DATA_DIR.
+#include "doctest/doctest.h"
 #include "x3d/sdk.hpp"
 #include "TimeSensorSystem.hpp"
 #include "InterpolatorRegistration.hpp"
 #include "x3d/nodes/Transform.hpp"
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -19,23 +19,22 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-int main(int argc, char** argv) {
-  assert(argc >= 2 && "pass the inline fixtures dir as argv[1]");
-  std::string dir = argv[1];
+TEST_CASE("inline_routes_test") {
+  std::string dir = X3D_TEST_DATA_DIR;
   auto doc = x3d::sdk::parseFile(dir + "/animated_parent.x3d");
 
   // The child's two internal ROUTEs were hoisted, pre-resolved.
-  assert(doc.scene.resolvedInlineRoutes.size() == 2 &&
-         "both child ROUTEs hoisted with concrete endpoints");
+  REQUIRE((doc.scene.resolvedInlineRoutes.size() == 2 &&
+         "both child ROUTEs hoisted with concrete endpoints"));
   for (auto& r : doc.scene.resolvedInlineRoutes) {
-    assert(r.from && r.to && "endpoints resolved in child scope");
+    REQUIRE((r.from && r.to && "endpoints resolved in child scope"));
   }
 
   // Bridge + attach systems: the inlined Transform should actually move on tick.
   x3d::sdk::X3DExecutionContext ctx;
   ctx.buildSceneGraph(doc.scene);
   auto bridge = ctx.buildFrom(doc.scene);
-  assert(bridge.routesAdded >= 2 && "inline routes registered on the context");
+  REQUIRE((bridge.routesAdded >= 2 && "inline routes registered on the context"));
 
   // Wire the TimeSensor system. Pull Clock from the first hoisted route's 'from'
   // endpoint (Clock.fraction_changed -> Path.set_fraction).
@@ -60,17 +59,13 @@ int main(int argc, char** argv) {
   // Locate Mover from the second hoisted route's 'to' endpoint
   // (Path.value_changed -> Mover.set_translation).
   std::shared_ptr<X3DNode> moverNode = doc.scene.resolvedInlineRoutes[1].to;
-  assert(moverNode && "Mover node must be alive via hoisted route endpoint");
+  REQUIRE((moverNode && "Mover node must be alive via hoisted route endpoint"));
 
   auto* mover = dynamic_cast<Transform*>(moverNode.get());
-  assert(mover && "Mover route endpoint must be a Transform");
+  REQUIRE((mover && "Mover route endpoint must be a Transform"));
 
   SFVec3f translation = mover->getTranslation();
-  assert(translation.x > 0.0f &&
+  REQUIRE((translation.x > 0.0f &&
          "inlined Transform moved: translation.x > 0 after tick at t=1 "
-         "(expected ~2.5 for fraction=0.25 over keyValue 0..10)");
-
-  std::cout << "inline_routes_test OK (Mover.translation.x = "
-            << translation.x << ")\n";
-  return 0;
+         "(expected ~2.5 for fraction=0.25 over keyValue 0..10)"));
 }

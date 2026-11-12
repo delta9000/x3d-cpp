@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "FieldRead.hpp"
 // File-authored Script lifecycle and output behavior.
 #include "EcmaScriptBackend.hpp"
@@ -32,17 +33,6 @@ using namespace x3d::nodes;
 
 namespace {
 
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 // Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
@@ -75,8 +65,7 @@ bool hasAuthorField(const X3DNode &node, const DynamicFieldStore &fields,
 void driveAndAssertStatus(Script *script, ScriptSystem &sys,
                           X3DExecutionContext &ctx, const std::string &tag) {
   std::any before = ctx.authorFields().getValue(*script, "status");
-  check(!before.has_value(),
-        tag + ": status author field starts unwritten (inert baseline)");
+  CHECK_MESSAGE((!before.has_value()), (tag + ": status author field starts unwritten (inert baseline)"));
 
   // initialize() already ran at attach. Deliver the author inputOnly 'enabled'
   // event exactly as a ROUTE from a TouchSensor.isActive would. mustEvaluate
@@ -87,11 +76,9 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
   ctx.tick(1.0);
 
   std::any after = ctx.authorFields().getValue(*script, "status");
-  check(after.has_value(),
-        tag + ": status WRITTEN after enabled(true) — the script RAN");
+  CHECK_MESSAGE((after.has_value()), (tag + ": status WRITTEN after enabled(true) — the script RAN"));
   if (after.has_value()) {
-    check(std::any_cast<SFBool>(after) == SFBool(true),
-          tag + ": enabled(true) handler set status -> true (handler logic ran)");
+    CHECK_MESSAGE((std::any_cast<SFBool>(after) == SFBool(true)), (tag + ": enabled(true) handler set status -> true (handler logic ran)"));
   }
 }
 
@@ -100,7 +87,7 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
 void testXmlFixture(const std::string &dataDir) {
 
   std::string xml = slurp(dataDir + "/AuthorScriptExample.x3d");
-  check(!xml.empty(), "xml fixture: AuthorScriptExample.x3d readable");
+  CHECK_MESSAGE((!xml.empty()), "xml fixture: AuthorScriptExample.x3d readable");
   if (xml.empty()) return;
 
   codec::XmlReader reader;
@@ -110,24 +97,21 @@ void testXmlFixture(const std::string &dataDir) {
 
   std::vector<Script *> scripts;
   for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
-  check(scripts.size() == 1, "xml fixture: the AuthorScript parsed");
+  CHECK_MESSAGE((scripts.size() == 1), "xml fixture: the AuthorScript parsed");
   if (scripts.empty()) return;
   Script *script = scripts[0];
 
-  check(hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
+  CHECK_MESSAGE((hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
             hasAuthorField(*script, *doc.scene.authorFields, "status") &&
-            hasAuthorField(*script, *doc.scene.authorFields, "landed"),
-        "xml fixture: author <field>s (enabled/status/landed) captured");
-  check(script->getSourceCode().find("function enabled") != std::string::npos,
-        "xml fixture: CDATA ecmascript body captured into sourceCode");
+            hasAuthorField(*script, *doc.scene.authorFields, "landed")), "xml fixture: author <field>s (enabled/status/landed) captured");
+  CHECK_MESSAGE((script->getSourceCode().find("function enabled") != std::string::npos), "xml fixture: CDATA ecmascript body captured into sourceCode");
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
   sys->attach(script, ctx);
-  check(sys->handleFor(script) != kInvalidScriptHandle,
-        "xml fixture: Script LOADED from captured sourceCode (was inert before)");
+  CHECK_MESSAGE((sys->handleFor(script) != kInvalidScriptHandle), "xml fixture: Script LOADED from captured sourceCode (was inert before)");
 
   driveAndAssertStatus(script, *sys, ctx, "xml fixture");
 }
@@ -137,7 +121,7 @@ void testXmlFixture(const std::string &dataDir) {
 void testVrmlFixture(const std::string &dataDir) {
 
   std::string vrml = slurp(dataDir + "/AuthorScriptExample.x3dv");
-  check(!vrml.empty(), "vrml fixture: AuthorScriptExample.x3dv readable");
+  CHECK_MESSAGE((!vrml.empty()), "vrml fixture: AuthorScriptExample.x3dv readable");
   if (vrml.empty()) return;
 
   codec::ClassicVrmlReader reader;
@@ -147,20 +131,18 @@ void testVrmlFixture(const std::string &dataDir) {
 
   std::vector<Script *> scripts;
   for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
-  check(scripts.size() == 1, "vrml fixture: the AuthorScript parsed");
+  CHECK_MESSAGE((scripts.size() == 1), "vrml fixture: the AuthorScript parsed");
   if (scripts.empty()) return;
   Script *script = scripts[0];
 
-  check(script->getSourceCode().find("function enabled") != std::string::npos,
-        "vrml fixture: inline url body mirrored into sourceCode");
+  CHECK_MESSAGE((script->getSourceCode().find("function enabled") != std::string::npos), "vrml fixture: inline url body mirrored into sourceCode");
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
   sys->attach(script, ctx);
-  check(sys->handleFor(script) != kInvalidScriptHandle,
-        "vrml fixture: Script LOADED from captured sourceCode (was inert before)");
+  CHECK_MESSAGE((sys->handleFor(script) != kInvalidScriptHandle), "vrml fixture: Script LOADED from captured sourceCode (was inert before)");
 
   driveAndAssertStatus(script, *sys, ctx, "vrml fixture");
 }
@@ -191,24 +173,21 @@ void testRealCorpusNotInert() {
 
   std::vector<Script *> scripts;
   for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
-  check(scripts.size() == 1, "real corpus: the ExampleSelectionScript parsed");
+  CHECK_MESSAGE((scripts.size() == 1), "real corpus: the ExampleSelectionScript parsed");
   if (scripts.empty()) return;
   Script *script = scripts[0];
 
-  check(hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
+  CHECK_MESSAGE((hasAuthorField(*script, *doc.scene.authorFields, "enabled") &&
             hasAuthorField(*script, *doc.scene.authorFields, "status") &&
-            hasAuthorField(*script, *doc.scene.authorFields, "landed"),
-        "real corpus: author <field>s (enabled/status/landed) captured");
-  check(script->getSourceCode().find("function enabled") != std::string::npos,
-        "real corpus: CDATA ecmascript body captured into sourceCode");
+            hasAuthorField(*script, *doc.scene.authorFields, "landed")), "real corpus: author <field>s (enabled/status/landed) captured");
+  CHECK_MESSAGE((script->getSourceCode().find("function enabled") != std::string::npos), "real corpus: CDATA ecmascript body captured into sourceCode");
 
   X3DExecutionContext ctx(doc.scene.authorFields);
   auto backend = std::make_shared<EcmaScriptBackend>();
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
   sys->attach(script, ctx);
-  check(sys->handleFor(script) != kInvalidScriptHandle,
-        "real corpus: Script LOADED from captured CDATA source (was inert)");
+  CHECK_MESSAGE((sys->handleFor(script) != kInvalidScriptHandle), "real corpus: Script LOADED from captured CDATA source (was inert)");
 
   // Deliver the inputOnly 'enabled' event the TouchSensor.isActive ROUTE feeds.
   // The handler references traceEnabled on the enclosing Canopy prototype,
@@ -218,7 +197,7 @@ void testRealCorpusNotInert() {
                          X3DFieldType::SFBool, 1.0);
   ctx.tick(1.0);
   ctx.tick(2.0);
-  check(true, "real corpus: handler dispatched + ticks completed without crash");
+  CHECK_MESSAGE((true), ("real corpus: handler dispatched + ticks completed without crash"));
 }
 
 } // namespace
@@ -252,7 +231,7 @@ void testRoutedEventInEndToEnd() {
   for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
   auto src = doc.scene.resolve("Src");
   auto t = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("T"));
-  check(scripts.size() == 1 && src && t, "eventIn e2e: scene parsed");
+  CHECK_MESSAGE((scripts.size() == 1 && src && t), "eventIn e2e: scene parsed");
   if (scripts.empty() || !src || !t) return;
 
   X3DExecutionContext ctx(doc.scene.authorFields);
@@ -261,14 +240,12 @@ void testRoutedEventInEndToEnd() {
   ctx.addScriptSystem(sys);
   sys->attach(scripts[0], ctx);
   const BridgeResult bridged = ctx.buildFrom(doc.scene);
-  check(bridged.ok() && bridged.routesAdded == 2,
-        "eventIn e2e: both document ROUTEs wired");
+  CHECK_MESSAGE((bridged.ok() && bridged.routesAdded == 2), "eventIn e2e: both document ROUTEs wired");
 
   ctx.postEvent(src.get(), "translation", std::any(SFVec3f{1, 2, 3}));
   ctx.tick(1.0);
   const SFVec3f p = t->getTranslation();
-  check(p.x == 2 && p.y == 4 && p.z == 6,
-        "eventIn e2e: ROUTE -> Script handler -> ROUTE moved T in one tick");
+  CHECK_MESSAGE((p.x == 2 && p.y == 4 && p.z == 6), "eventIn e2e: ROUTE -> Script handler -> ROUTE moved T in one tick");
 }
 
 // (e) A ROUTEd write to a Script's inputOutput author field must stick: the
@@ -292,7 +269,7 @@ void testRoutedInputOutputSticks() {
   expandScene(doc.scene, codec::noopProtoResolver, "", warnings);
   std::vector<Script *> scripts;
   for (auto &root : doc.scene.rootNodes) collectScripts(root.get(), scripts);
-  if (scripts.empty()) { check(false, "inputOutput: scene parsed"); return; }
+  if (scripts.empty()) { CHECK_MESSAGE((false), "inputOutput: scene parsed"); return; }
   Script *script = scripts[0];
 
   X3DExecutionContext ctx(doc.scene.authorFields);
@@ -308,17 +285,15 @@ void testRoutedInputOutputSticks() {
 
   std::any level = ctx.authorFields().getValue(*script, "level");
   std::any seen = ctx.authorFields().getValue(*script, "seen");
-  check(level.has_value() && std::any_cast<SFFloat>(level) == 0.5f,
-        "inputOutput: a routed write is not reverted by a later handler");
-  check(seen.has_value() && std::any_cast<SFFloat>(seen) == 0.5f,
-        "inputOutput: the script sees the routed value");
+  CHECK_MESSAGE((level.has_value() && std::any_cast<SFFloat>(level) == 0.5f), "inputOutput: a routed write is not reverted by a later handler");
+  CHECK_MESSAGE((seen.has_value() && std::any_cast<SFFloat>(seen) == 0.5f), "inputOutput: the script sees the routed value");
 }
 
-int main(int argc, char **argv) {
-  // argv[1] is the test-data dir (CMake passes it); fall back to the in-tree
+TEST_CASE("script_corpus_e2e_test") {
+  // X3D_TEST_DATA_DIR is the test-data dir (CMake passes it); fall back to the in-tree
   // path so the binary is runnable standalone.
   const std::string dataDir =
-      argc > 1 ? argv[1] : "runtime/script/tests/data";
+      X3D_TEST_DATA_DIR;
 
   testXmlFixture(dataDir);
   testVrmlFixture(dataDir);
@@ -326,10 +301,4 @@ int main(int argc, char **argv) {
   testRoutedEventInEndToEnd();
   testRoutedInputOutputSticks();
 
-  if (failures == 0) {
-    std::cout << "ALL SCRIPT CORPUS END-TO-END TESTS PASSED\n";
-    return 0;
-  }
-  std::cerr << failures << " script corpus e2e test(s) FAILED\n";
-  return 1;
 }

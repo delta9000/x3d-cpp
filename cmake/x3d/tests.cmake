@@ -232,10 +232,9 @@ if(X3D_CPP_BUILD_TESTS)
     # Pass the fixture directory so the test runs from any working directory.
     add_executable(x3d_event_scene_bridge
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/scene_bridge_test.cpp")
-    target_link_libraries(x3d_event_scene_bridge PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_event_scene_bridge
-        COMMAND x3d_event_scene_bridge
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv")
+    target_link_libraries(x3d_event_scene_bridge PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_event_scene_bridge COMMAND x3d_event_scene_bridge)
+    target_compile_definitions(x3d_event_scene_bridge PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv\"")
 
     add_executable(x3d_sai_context
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/sai_context_test.cpp")
@@ -272,33 +271,29 @@ if(X3D_CPP_BUILD_TESTS)
         add_executable(x3d_script_corpus_e2e
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_corpus_e2e_test.cpp")
         target_link_libraries(x3d_script_corpus_e2e PRIVATE
-            x3d_ecmascript_backend)
-        add_test(NAME x3d_script_corpus_e2e
-            COMMAND x3d_script_corpus_e2e
-                    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
+            x3d_ecmascript_backend x3d_doctest_main)
+        add_test(NAME x3d_script_corpus_e2e COMMAND x3d_script_corpus_e2e)
+    target_compile_definitions(x3d_script_corpus_e2e PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data\"")
     endif()
 
     # The data directory locates committed gzip fixtures and their plain siblings.
     add_executable(x3d_parse_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_test.cpp")
-    target_link_libraries(x3d_parse_reader PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_parse_reader
-        COMMAND x3d_parse_reader
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
+    target_link_libraries(x3d_parse_reader PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_parse_reader COMMAND x3d_parse_reader)
+    target_compile_definitions(x3d_parse_reader PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data\"")
 
     add_executable(x3d_classic_vrml_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/classic_vrml_reader_test.cpp")
-    target_link_libraries(x3d_classic_vrml_reader PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_classic_vrml_reader
-        COMMAND x3d_classic_vrml_reader
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv")
+    target_link_libraries(x3d_classic_vrml_reader PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_classic_vrml_reader COMMAND x3d_classic_vrml_reader)
+    target_compile_definitions(x3d_classic_vrml_reader PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv\"")
 
     add_executable(x3d_proto_front_door
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_front_door_test.cpp")
-    target_link_libraries(x3d_proto_front_door PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_proto_front_door
-        COMMAND x3d_proto_front_door
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto")
+    target_link_libraries(x3d_proto_front_door PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_proto_front_door COMMAND x3d_proto_front_door)
+    target_compile_definitions(x3d_proto_front_door PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto\"")
 
     add_executable(x3d_proto_expand_audit
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_expand_audit_test.cpp")
@@ -311,27 +306,24 @@ if(X3D_CPP_BUILD_TESTS)
     # via expandedInlines and do not serialize the synthetic Group's child content.
     add_executable(x3d_inline_roundtrip
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_roundtrip_test.cpp")
-    target_link_libraries(x3d_inline_roundtrip PRIVATE x3d_cpp::sdk)
-    add_test(NAME x3d_inline_roundtrip
-        COMMAND x3d_inline_roundtrip
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
+    target_link_libraries(x3d_inline_roundtrip PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_inline_roundtrip COMMAND x3d_inline_roundtrip)
+    target_compile_definitions(x3d_inline_roundtrip PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline\"")
 
     # resolvedInlineRoutes is populated by
     # expandInlines and registered on the execution context by the scene-bridge,
     # so self-animating inlined assets tick.
     add_executable(x3d_inline_routes
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_routes_test.cpp")
-    target_link_libraries(x3d_inline_routes PRIVATE x3d_cpp::sdk)
-    add_test(NAME x3d_inline_routes
-        COMMAND x3d_inline_routes
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
+    target_link_libraries(x3d_inline_routes PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_inline_routes COMMAND x3d_inline_routes)
+    target_compile_definitions(x3d_inline_routes PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline\"")
 
     add_executable(x3d_inline_cycle
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_cycle_test.cpp")
-    target_link_libraries(x3d_inline_cycle PRIVATE x3d_cpp::sdk)
-    add_test(NAME x3d_inline_cycle
-        COMMAND x3d_inline_cycle
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
+    target_link_libraries(x3d_inline_cycle PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_inline_cycle COMMAND x3d_inline_cycle)
+    target_compile_definitions(x3d_inline_cycle PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline\"")
 
     # inflateGzip bounds decompressed output to prevent decompression-bomb DoS.
     add_executable(x3d_inflate_bomb
@@ -358,24 +350,21 @@ if(X3D_CPP_BUILD_TESTS)
     # (USE-shared or self-referential nodes).
     add_executable(x3d_inline_containment_cycle
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_containment_cycle_test.cpp")
-    target_link_libraries(x3d_inline_containment_cycle PRIVATE x3d_cpp::sdk)
-    add_test(NAME x3d_inline_containment_cycle
-        COMMAND x3d_inline_containment_cycle
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline")
+    target_link_libraries(x3d_inline_containment_cycle PRIVATE x3d_cpp::sdk x3d_doctest_main)
+    add_test(NAME x3d_inline_containment_cycle COMMAND x3d_inline_containment_cycle)
+    target_compile_definitions(x3d_inline_containment_cycle PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/inline\"")
 
     add_executable(x3d_vrml97_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/vrml97_reader_test.cpp")
-    target_link_libraries(x3d_vrml97_reader PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_vrml97_reader
-        COMMAND x3d_vrml97_reader
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/wrl")
+    target_link_libraries(x3d_vrml97_reader PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_vrml97_reader COMMAND x3d_vrml97_reader)
+    target_compile_definitions(x3d_vrml97_reader PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/wrl\"")
 
     add_executable(x3d_json_reader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/json_reader_test.cpp")
-    target_link_libraries(x3d_json_reader PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_json_reader
-        COMMAND x3d_json_reader
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/json")
+    target_link_libraries(x3d_json_reader PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    add_test(NAME x3d_json_reader COMMAND x3d_json_reader)
+    target_compile_definitions(x3d_json_reader PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/json\"")
 
     # Link only the SDK façade to check its self-contained public surface.
     add_executable(x3d_sdk_facade

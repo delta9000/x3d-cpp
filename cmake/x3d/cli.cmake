@@ -53,14 +53,13 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/sim_behavior_test.cpp")
     target_include_directories(x3d_sim_behavior_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-    target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_cpp::sdk x3d_doctest_main)
     if(TARGET x3d_ecmascript_backend)
         target_link_libraries(x3d_sim_behavior_test PRIVATE x3d_ecmascript_backend)
         target_compile_definitions(x3d_sim_behavior_test PRIVATE X3D_SIM_HAVE_SCRIPT=1)
     endif()
-    add_test(NAME x3d_sim_behavior_test
-        COMMAND x3d_sim_behavior_test
-                "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures")
+    add_test(NAME x3d_sim_behavior_test COMMAND x3d_sim_behavior_test)
+    target_compile_definitions(x3d_sim_behavior_test PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/fixtures\"")
 endif()
 
 # `x3d validate` document checks (ROUTE endpoints and bridge rejections).
@@ -79,10 +78,9 @@ if(TARGET x3d_quickjs AND TARGET x3d_ecmascript_backend AND X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/quickjs_swap_test.cpp")
     target_link_libraries(x3d_quickjs_swap PRIVATE
         x3d_quickjs
-        x3d_ecmascript_backend)
-    add_test(NAME x3d_quickjs_swap
-        COMMAND x3d_quickjs_swap
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data")
+        x3d_ecmascript_backend x3d_doctest_main)
+    add_test(NAME x3d_quickjs_swap COMMAND x3d_quickjs_swap)
+    target_compile_definitions(x3d_quickjs_swap PRIVATE "X3D_TEST_DATA_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/data\"")
 endif()
 
 # External-corpus gates are excluded from ordinary CTest because the archive

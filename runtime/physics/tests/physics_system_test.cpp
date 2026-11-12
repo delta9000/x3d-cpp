@@ -241,8 +241,7 @@ TEST_CASE("physics_system_test") {
     auto cPhysics = std::make_shared<PhysicsSystem>(cBackend);
     cPhysics->attach(cWorld.get(), cCtx);
     CHECK_MESSAGE((cPhysics->bodyCount() == 0), "unsupported-geometry body not enrolled");
-    CHECK_MESSAGE((cPhysics->droppedBodyCount() == 1), "dropped body is observable via droppedBodyCount(),
-                  not silent");
+    CHECK_MESSAGE((cPhysics->droppedBodyCount() == 1), "dropped body is observable via droppedBodyCount(), not silent");
   }
 
   // RigidBody.forces applies a continuous force every frame (§37: forces
