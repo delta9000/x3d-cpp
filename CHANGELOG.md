@@ -133,6 +133,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Scene-source string boundaries.** Both script engines pass the complete
+  `createX3DFromString`/`createVrmlFromString` source to the host factory,
+  including bytes after embedded NULs. The default factory handles a leading
+  UTF-8 BOM before choosing the input encoding.
 - **Shader texture and array uniforms (REQ-SHADER-2).** `ShaderFieldBinding`
   now carries MF author fields as array `elements` and SFNode/MFNode texture
   fields as resolved `textures`, refreshed when the field or its texture

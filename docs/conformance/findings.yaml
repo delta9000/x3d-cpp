@@ -3199,6 +3199,8 @@
     created text are dropped, and Inline/EXTERNPROTO urls in it are not fetched.
     A host that sets no factory gets a thrown error. Tests: ecmascript/quickjs
     backend "create" cases, x3d_parse_tests string_scene_factory_test.
+    Source strings reach the factory with their explicit byte length, including
+    embedded NULs; the default factory strips a UTF-8 BOM before encoding detection.
 
 - id: SCRIPT-SFNODE-FIELD-ACCESS
   nodes: [Script]

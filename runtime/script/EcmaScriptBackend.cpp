@@ -933,14 +933,15 @@ duk_ret_t routeOp(duk_context *ctx, const char *name, Op op) {
 // so both `nodes[0]` and the SAI `scene.rootNodes` spelling work.
 duk_ret_t browser_createFromString(duk_context *ctx) {
   SaiContext *sai = saiOf(ctx);
-  const char *text = duk_to_string(ctx, 0);
+  duk_size_t length = 0;
+  const char *text = duk_to_lstring(ctx, 0, &length);
   char err[256] = {0};
   MFNode nodes;
   if (!sai) {
     std::snprintf(err, sizeof err, "no browser");
   } else {
     try {
-      nodes = sai->createX3DFromString(text ? text : "");
+      nodes = sai->createX3DFromString(std::string(text ? text : "", length));
     } catch (const std::exception &e) {
       std::snprintf(err, sizeof err, "%s", e.what());
       if (!err[0]) std::snprintf(err, sizeof err, "failed");

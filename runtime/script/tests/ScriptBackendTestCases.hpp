@@ -1130,8 +1130,10 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     Fixture fix;
     fix.script.setDirectOutputUnchecked(true);
     std::string seenText;
+    std::vector<std::string> seenSources;
     fix.sai.setSceneFactory([&](const std::string &text) {
       seenText = text;
+      seenSources.push_back(text);
       if (text == "bad") throw std::runtime_error("parse error");
       auto made = std::make_shared<Transform>();
       made->setTranslation(SFVec3f{4, 5, 6});
@@ -1160,10 +1162,12 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
         madeX = scene[0].translation.x;
         json = '' + scene[0] + JSON.stringify(scene);
         group.children = scene.rootNodes;
+        Browser.createVrmlFromString('<Transform/>\u0000<Shape/>');
         badThrew = false;
         try { Browser.createVrmlFromString('bad'); } catch (e) { badThrew = true; }
       }
-    )JS", fix.sai);
+    )JS",
+                                  fix.sai);
     check(h != kInvalidScriptHandle, "create: script loads");
     if (h != kInvalidScriptHandle) {
       backend.initialize(h);
@@ -1189,6 +1193,11 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
       std::any bad = store.getValue(fix.script, "badThrew");
       check(bad.has_value() && std::any_cast<bool>(bad) && seenText == "bad",
             "create: a factory error becomes a catchable script error");
+      check(seenSources.size() == 3 &&
+                seenSources[1] ==
+                    std::string("<Transform/>") + '\0' + "<Shape/>",
+            "create: the factory receives the full string, including embedded "
+            "NUL");
       backend.shutdown(h);
     }
     store.erase(fix.script);

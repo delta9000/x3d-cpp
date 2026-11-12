@@ -12971,7 +12971,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "createX3DFromString/createVrmlFromString go through SaiContext::SceneFactory (ScriptSystem::setSceneFactory, codec::makeStringSceneFactory) and return the root nodes as an MFNode that also answers to .rootNodes; it is not an X3DScene object. ROUTEs, IMPORT/EXPORT and Script author fields in the created text are dropped, and Inline/EXTERNPROTO urls in it are not fetched. A host that sets no factory gets a thrown error. Tests: ecmascript/quickjs backend \"create\" cases, x3d_parse_tests string_scene_factory_test.",
+      "note": "createX3DFromString/createVrmlFromString go through SaiContext::SceneFactory (ScriptSystem::setSceneFactory, codec::makeStringSceneFactory) and return the root nodes as an MFNode that also answers to .rootNodes; it is not an X3DScene object. ROUTEs, IMPORT/EXPORT and Script author fields in the created text are dropped, and Inline/EXTERNPROTO urls in it are not fetched. A host that sets no factory gets a thrown error. Tests: ecmascript/quickjs backend \"create\" cases, x3d_parse_tests string_scene_factory_test. Source strings reach the factory with their explicit byte length, including embedded NULs; the default factory strips a UTF-8 BOM before encoding detection.",
       "severity": "major",
       "status": "open",
       "summary": "The script `Browser` object is incomplete. Present: getName, getVersion, print/println, addRoute, deleteRoute, currentTime, currentFrameRate, createX3DFromString, createVrmlFromString. Missing: createX3DFromURL, loadURL, replaceWorld, currentScene, createNode, importDocument and the property forms (name, version, currentSpeed)."

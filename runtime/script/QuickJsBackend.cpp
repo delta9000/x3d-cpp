@@ -950,11 +950,12 @@ JSValue browser_createFromString(JSContext *ctx, JSValueConst, int argc,
                                  JSValueConst *argv) {
   SaiContext *sai = saiOf(ctx);
   if (!sai || argc < 1) return JS_ThrowTypeError(ctx, "createX3DFromString: no text");
-  const char *text = JS_ToCString(ctx, argv[0]);
+  size_t length = 0;
+  const char *text = JS_ToCStringLen(ctx, &length, argv[0]);
   if (!text) return JS_EXCEPTION;
   JSValue result = JS_UNDEFINED;
   try {
-    MFNode nodes = sai->createX3DFromString(text);
+    MFNode nodes = sai->createX3DFromString(std::string(text, length));
     result = pushValue(ctx, std::any(nodes), X3DFieldType::MFNode);
     if (JS_IsObject(result))
       // Non-enumerable, so the self reference stays out of JSON.stringify.
