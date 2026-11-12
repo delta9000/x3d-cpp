@@ -5,16 +5,14 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <memory>
 #include <vector>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime::extract;
-
-static void setF(const std::shared_ptr<X3DNode>& n, const char* nm, std::any v) {
-  for (auto& f : n->fields()) if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+using x3d::test::setF;
 
 TEST_CASE("nurbs_curve_arm_emits_lines") {
   auto coord = createX3DNode("Coordinate");

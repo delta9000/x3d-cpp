@@ -26,6 +26,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -34,8 +35,9 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
+using x3d::test::setF;
+using x3d::test::feq;
 
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static bool vecEq(const SFVec3f &a, const SFVec3f &b) {
   return feq(a.x, b.x) && feq(a.y, b.y) && feq(a.z, b.z);
 }
@@ -51,13 +53,6 @@ static SFVec3f normz(const SFVec3f &v) {
   return l > 0 ? SFVec3f{v.x / l, v.y / l, v.z / l} : v;
 }
 
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) {
-      f.set(*n, std::move(v));
-      return;
-    }
-}
 static std::shared_ptr<X3DNode> makeCoord(std::vector<SFVec3f> pts) {
   auto c = createX3DNode("Coordinate");
   setF(c, "point", std::any(std::move(pts)));
@@ -192,7 +187,7 @@ TEST_CASE("mesh_builder_b7_test") {
       return std::fabs(a) * 0.5f;
     };
     const float polyArea = shoelace(poly);
-    // Genuinely concave: at least one vertex turns the opposite way (a fan from
+    // Concave: at least one vertex turns the opposite way (a fan from
     // vertex 0 would emit an inverted ear here).
     bool concave = false;
     for (std::size_t i = 0; i < poly.size(); ++i) {

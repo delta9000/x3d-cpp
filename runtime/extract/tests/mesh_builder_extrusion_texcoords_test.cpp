@@ -6,6 +6,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -14,16 +15,8 @@ using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) {
-      f.set(*n, std::move(v));
-      return;
-    }
-}
+using x3d::test::setF;
+using x3d::test::feq;
 
 TEST_CASE("mesh_builder_tc3_test") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.

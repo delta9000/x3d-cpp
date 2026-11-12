@@ -156,7 +156,7 @@ public:
     // Each field is sent only when it differs from the §37 default — at the spec
     // defaults every field stays at its sentinel and the backend's own solver
     // settings are left untouched (spec-default behavior is preserved). Fields
-    // with no honest backend equivalent (constantForceMix, preferAccuracy) are
+    // with no backend equivalent (constantForceMix, preferAccuracy) are
     // deliberately not carried across the seam (CONF-RBP-SOLVER).
     SolverSettings solver;
     if (collection->getIterations() !=

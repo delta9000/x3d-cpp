@@ -4,7 +4,6 @@
 // programmatically, wires ROUTEs, posts initial events, runs the cascade, and
 // asserts values propagate with X3D single-timestamp semantics (fan-out +
 // per-route loop-breaking).
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"

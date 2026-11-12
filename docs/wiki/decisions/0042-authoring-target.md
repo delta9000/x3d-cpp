@@ -60,7 +60,7 @@ We decided to partition the codebase to expose a slim, header-only target for au
 ## Related
 
 - [Architecture](../subsystems/generated-bindings.md)
-- Ingestion roadmap: `docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md`
+- Ingestion roadmap: [`docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md)
 - Subsystem documentation: `docs/wiki/subsystems/asset-import.md`
 - `scripts/authoring-footprint.sh` — symbol scan and size gate script
 - `examples/asset_import/footprint/baseline.tsv` — committed size baseline

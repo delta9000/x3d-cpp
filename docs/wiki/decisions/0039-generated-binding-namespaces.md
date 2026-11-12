@@ -104,4 +104,4 @@ binding-hash golden was re-blessed; the *behavioral* goldens/conformance view di
 - Primary implementation: `src/x3d_cpp_gen/` (emitter), `generated_cpp_bindings/x3d/{core,nodes}/`,
   `cmake/x3d/header-targets.cmake` + `cmake/x3d/install.cmake` (layout + install), `include/x3d/sdk.hpp` (façade aliases)
 - Regression test: `runtime/tests/namespace_taxonomy_test.cpp`
-- Design record: `docs/superpowers/specs/2026-06-27-namespace-generated-bindings-design.md`
+- Design record: [`docs/superpowers/specs/2026-06-27-namespace-generated-bindings-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-27-namespace-generated-bindings-design.md)

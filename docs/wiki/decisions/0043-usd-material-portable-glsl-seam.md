@@ -111,7 +111,7 @@ a swap-test — see the seam-status matrix):
   interpreter and desktop GL; the CPU path matches the native fixed-function PBR to
   < 1/255 MAD, and the full `USDZ → X3D → interpreter` loop renders a real textured
   USDZ with normal/MR/occlusion maps landing.
-- **Honest fidelity story.** Two rendering paths with clearly stated ceilings: the
+- **Stated fidelity.** Two rendering paths with clearly stated ceilings: the
   `USD → X3D → renderer` path is glTF-MR-faithful; `--emit-glsl` is the escape hatch
   for full UsdPreviewSurface fidelity.
 - **No new heavy dependency.** UsdPreviewSurface is a fixed 14-input uber-shader; we
@@ -126,7 +126,7 @@ a swap-test — see the seam-status matrix):
   one metallic-roughness slot (the single-slot limit shared with X3D).
 - **Host-contract obligation.** Both backends must bind the fidelity uniforms; an
   unbound `uIor` defaults to 0 on GL and yields a mirror F0 — the swap-test exists to
-  keep that contract honest.
+  enforce that contract.
 
 ## Related
 

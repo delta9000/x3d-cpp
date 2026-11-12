@@ -7,6 +7,7 @@
 #include "Billboard.hpp"      // billboardLocalMatrix (§23.4.1)
 #include "BoundsSystem.hpp"
 #include "RecursionLimits.hpp" // kMaxNestingDepth (walk DoS guard)
+#include "Vec3.hpp"
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField, localGeometryBounds
 #include "LODSelection.hpp"
 #include "Intersect.hpp"
@@ -513,8 +514,8 @@ private:
     if (!best.hit || d < best.distance) {
       best.hit = true; best.node = shape; best.point = wp; best.distance = d;
       best.path = path; // root→this geometry-bearing node chain.
-      // World-space normal = normalize(inverse-transpose(worldM) · n).
-      best.normal = normalize(invTranspose(worldM).transformDirection(h->normal));
+      // World-space normal = vec3::normalize(inverse-transpose(worldM) · n).
+      best.normal = vec3::normalize(invTranspose(worldM).transformDirection(h->normal));
       best.texCoord = h->texCoord; // surface attribute — not transformed.
     }
   }
@@ -548,10 +549,6 @@ private:
     return r;
   }
 
-  static SFVec3f normalize(const SFVec3f &v) {
-    float l = std::sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
-    return l > 1e-12f ? SFVec3f{v.x/l, v.y/l, v.z/l} : v;
-  }
 
   // Pure Transform accumulation: the product of ancestor Transform local
   // matrices to `target`. Deliberately does not fold in Billboard view-facing

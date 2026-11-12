@@ -449,7 +449,7 @@ int main(int argc, char **argv) {
 
   // F3 anti-vacuous content assertion: the duktape reference trace must contain
   // the expected interpolated endpoints (2 at f=0, 10 at f=1) — proves the
-  // handler genuinely computed, not that both backends silently produced zeros.
+  // handler computed the value, not that both backends silently produced zeros.
   {
     Trace ref = runF3(kBackends[0]);
     bool sawLo = false, sawHi = false;

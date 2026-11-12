@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // follower_conformance_test.cpp
 // Behavioral-conformance tests for the Followers component runtime (§39):
 // FollowerArith ops, DamperSystem (IIR), ChaserSystem (FIR), wiring.
@@ -20,7 +21,7 @@ using namespace x3d::runtime;
 using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
-static bool feq(float a, float b, float e=1e-4f){ return std::fabs(a-b) < e; }
+using x3d::test::feq;
 
 TEST_CASE("Followers publish one value on equal-value initialization") {
   auto verify = [](auto &node, auto &system) {

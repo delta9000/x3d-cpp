@@ -39,12 +39,12 @@ had a clean 6-method abstract interface (`load` / `initialize` / `shutdown` / `p
 `invoke` / `eventsProcessed`), a language-agnostic contract (every value crossing the seam is
 the runtime's own field representation, `std::any` tagged by `X3DFieldType` — no
 scripting-language type ever crosses), and one backend already shipped (Duktape). QuickJS
-(quickjs-ng) is a genuinely independent engine with a different value model — refcounted
+(quickjs-ng) is an independent engine with a different value model — refcounted
 `JSValue` + explicit `JS_FreeValue` versus Duktape's value stack — so if the seam survived it
 unchanged, the seam is generic; if it forced a core `#ifdef` or an interface change, that would
 be a real, surfaced leak. See [ADR-0013](0013-js-engine-choice.md) (the original engine choice;
 quickjs-ng was named there as the migration target) and the dated spec
-`docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md`.
+[`docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md).
 
 ## Decision
 
@@ -110,7 +110,7 @@ for a second implementation too).
   Duktape-shipped / quickjs-ng-target decision this ADR follows through on.
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](0019-physics-seam.md) — the flag-gated
   isolated-backend precedent (Jolt) this build isolation mirrors; a candidate for the next GREEN row.
-- Design spec: `docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md`.
+- Design spec: [`docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-22-scriptengine-quickjs-design.md).
 
 ## Amendment (2026-11-05)
 

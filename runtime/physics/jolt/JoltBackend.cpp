@@ -631,7 +631,7 @@ void JoltBackend::setSolverSettings(WorldHandle world,
   if (settings.contactSurfaceThickness >= 0.0f) {
     // §37 contactSurfaceThickness (allowed interpenetration, m) -> Jolt's
     // penetration slop (how far bodies may sink into each other, m). The
-    // closest honest equivalent: both are the post-contact allowed overlap.
+    // closest equivalent: both are the post-contact allowed overlap.
     js.mPenetrationSlop = settings.contactSurfaceThickness;
     changed = true;
   }

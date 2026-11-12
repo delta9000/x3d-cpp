@@ -13,17 +13,16 @@
 #include "GeoNodes.hpp"
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <iostream>
 #include <memory>
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using x3d::test::setF;
+using x3d::test::feq;
 
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields()) if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 template <class T>
 static T getF(const std::shared_ptr<X3DNode> &n, const char *nm, T def = T{}) {
   for (auto &f : n->fields()) if (f.x3dName == nm && f.get) return std::any_cast<T>(f.get(*n));

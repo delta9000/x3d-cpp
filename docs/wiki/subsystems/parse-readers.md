@@ -28,7 +28,7 @@ in `x3d_extract_tests`.
 
 ## Purpose
 
-The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (` S1`). After the document is built it triggers PROTO/Inline expansion through injectable resolver seams. Unknown node types and unknown field names are skipped gracefully (lenient-read policy); only genuinely unrecoverable malformation throws.
+The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (` S1`). After the document is built it triggers PROTO/Inline expansion through injectable resolver seams. Unknown node types and unknown field names are skipped gracefully (lenient-read policy); only unrecoverable malformation throws.
 
 Input-hardening (DoS guards). The recursive-descent readers descend
 attacker-controlled structure, so each caps nesting depth against a shared

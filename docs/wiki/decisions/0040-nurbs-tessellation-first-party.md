@@ -44,7 +44,7 @@ in `MeshBuilder.hpp` read the X3D fields and call it; `recognizedGeometryType()`
 **Why first-party, not a seam.** A seam earns its genericity ritual only when it clears
 *two* bars: (1) it needs the outside world the SDK refuses to touch (files, http, fonts,
 an image decoder, a GPU context, a physics solver), and (2) reasonable implementations
-genuinely disagree (Jolt vs Bullet contact streams, FreeType vs stb metrics) so the
+disagree (Jolt vs Bullet contact streams, FreeType vs stb metrics) so the
 swap-test proves no backend's opinion leaked into the interface (ADR-0022). NURBS
 evaluation clears **neither**. It is pure in-memory math on `controlPoint`/`knot`/
 `weight` arrays (no I/O), and X3D §27 *prescribes* the result — Cox–de Boor basis,
@@ -120,7 +120,7 @@ behavior change for *all* geometry (Box, Sphere, …) that nobody asked for.
   still-deferred NURBS node (`NurbsTrimmedSurface`).
 - Double-precision CAD fidelity is not delivered: control points round to `SFVec3f`
   storage. A library (OpenNURBS) *would* be justified here and for trimmed surfaces
-  (clipping to 2D contour loops is genuinely hard) — both explicitly deferred and
+  (clipping to 2D contour loops is hard) — both explicitly deferred and
   reachable via the existing resolver seam.
 
 **Deferred (follow-up cards):** `NurbsTrimmedSurface`, `NurbsSweptSurface`,
@@ -136,4 +136,4 @@ component (G2D-1).
 - [ADR-0022: Second-backend swap-test = genericity proof](0022-scriptengine-second-backend-swap-test.md) — the seam bar NURBS does not clear
 - Primary implementation: `runtime/extract/NurbsEval.hpp`, `runtime/extract/MeshBuilder.hpp`, `runtime/scene/GeometryBounds.hpp`
 - Tests: `runtime/extract/tests/nurbs_eval_test.cpp`, `runtime/extract/tests/mesh_builder_nurbs_test.cpp`
-- Design record: `docs/superpowers/specs/2026-06-27-nurbs-curve-patch-design.md`
+- Design record: [`docs/superpowers/specs/2026-06-27-nurbs-curve-patch-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-27-nurbs-curve-patch-design.md)

@@ -17,30 +17,22 @@ test_exec
 *.o
 *.os
 
-# Note: generated_cpp_bindings/ is GOLDEN and intentionally tracked.
-# Drop only the smoke-test artifacts produced during generation. Post ADR-0039
-# the generator emits these under x3d/nodes/; keep the old flat paths too for
-# any pre-split working tree.
+# generated_cpp_bindings/ is golden and tracked; ignore only the generator's smoke-test output.
 generated_cpp_bindings/test.cpp
 generated_cpp_bindings/test_exec
 generated_cpp_bindings/x3d/nodes/test.cpp
 generated_cpp_bindings/x3d/nodes/test_exec
 
-# Phase 5 multi-version: the real X3D 4.1 output is derived from the large
-# (2.6MB) UOM fixture and is NOT committed as golden. The small synthetic-4.1
-# output, by contrast, is small enough to commit if desired.
+# Real X3D 4.1 bindings come from the 2.6 MB UOM fixture and are not golden.
 generated_cpp_bindings_v41/
 
 # CTest scratch output
 Testing/
 tools/x3d-cli/.javacache/
 
-# X3DJSAIL canonical reference fixtures: derived from the X3D conformance
-# example archive (per-file Web3D attribution + ~7.4MB), NOT bundled — the same
-# policy that keeps the corpus itself out of git. canon_gate therefore runs
-# tier-1-only on a fresh clone and SAYS SO loudly (no silent skip; see #105).
-# Regenerate locally with `mise run canon-golden-gen` (needs a corpus + JDK>=25
-# + X3DJSAIL.jar; the gen script header records the download URL).
+# X3DJSAIL canonical goldens are derived from the Web3D corpus (~7.4 MB, per-file
+# attribution), so they stay out of git like the corpus. Regenerate with
+# `mise run canon-golden-gen`; without them canon_gate runs tier 1 only and says so.
 tools/x3d-cli/goldens/canonical-goldens/
 
 # X3D test corpus fetched by `mise run corpus-fetch` (default location).
@@ -64,3 +56,6 @@ mise.local.toml
 
 # Scratch audit reports written by auditing agents; findings go in docs/conformance/findings.yaml.
 /AUDIT.md
+
+# Default output of examples/cpu_raster when run from the repo root.
+/cpu_raster.png

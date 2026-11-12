@@ -5,7 +5,6 @@
 // PositionInterpolator, whose value_changed ROUTEs to a Transform's translation.
 // This exercises every layer: clock -> system update -> outputOnly emit ->
 // cascade -> inputOnly handler -> outputOnly emit -> cascade -> inputOutput sink.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"

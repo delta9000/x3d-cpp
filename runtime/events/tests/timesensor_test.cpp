@@ -16,7 +16,6 @@
 //   - pause/resume: elapsedTime/fraction exclude the paused span; isPaused
 //   edges.
 //   - cycleInterval <= 0 guard: non-looping sensor deactivates after one tick.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"

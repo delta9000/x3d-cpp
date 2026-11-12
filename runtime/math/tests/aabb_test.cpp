@@ -1,10 +1,11 @@
 #include "Aabb.hpp"
 #include "Mat4.hpp"
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <numbers>
 using namespace x3d::runtime;
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
+using x3d::test::feq;
 
 TEST_CASE("aabb_test") {
   Aabb e;                       // empty is union identity

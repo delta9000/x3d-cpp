@@ -31,7 +31,7 @@ seam in production code is the `std::function<AssetResult(url, AssetKind)>` type
 That is one implementation — and one is not a proof. The interface could be quietly shaped by the
 local-file path (e.g. assuming a scene-dir baseUrl) without the seam ever saying so. The way to
 find out is to make a **second, independent** backend satisfy the same interface — one that uses a
-genuinely different bytes-fetching model — and prove the two are interchangeable by **behavior**,
+different bytes-fetching model — and prove the two are interchangeable by **behavior**,
 not by inspection.
 
 This is the second seam to take that proof after [ADR-0022](0022-scriptengine-second-backend-swap-test.md)
@@ -115,7 +115,7 @@ Concretely, for the `AssetResolver` pilot:
   — the pattern this card applies to the IO seam.
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](0019-physics-seam.md) — the flag-gated
   isolated-backend precedent (Jolt) this build isolation mirrors.
-- Design spec: `docs/superpowers/specs/2026-06-23-assetresolver-http-design.md`.
+- Design spec: [`docs/superpowers/specs/2026-06-23-assetresolver-http-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-23-assetresolver-http-design.md).
 
 ## Amendment (2026-11-05)
 

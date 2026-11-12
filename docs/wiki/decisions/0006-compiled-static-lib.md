@@ -31,7 +31,7 @@ Template instantiation of the `std::function` thunks — not parsing — was the
 
 A compounding effect: `X3DNodeFactory.hpp` `#include`d 265 of the 342 node headers (~178 k LOC) so it could construct nodes by name. Any TU that pulled the factory paid that parse cost in full, independently. The per-TU memory of these inline-heavy compiles forced the Ninja compile-job pool to `-j4` on a 16-core / 60 GB host (OOM-kill above that level), throttling parallelism on top of the already-high per-TU wall time.
 
-The full problem statement and profiling data are in `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`.
+The full problem statement and profiling data are in [`docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md).
 
 ## Decision
 
@@ -70,6 +70,6 @@ PCH was explicitly rejected as a remediation path: the profile proves it attacks
 
 - [Architecture](../architecture.md)
 - [Generated Bindings subsystem](../subsystems/generated-bindings.md)
-- Design spec: `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-06-16-c1-decl-def-split.md`
+- Design spec: [`docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md)
+- Implementation plan: [`docs/superpowers/plans/2026-06-16-c1-decl-def-split.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/plans/2026-06-16-c1-decl-def-split.md)
 - Live CMake wiring: `cmake/x3d/dev-tooling.cmake` (linker selection, job pool) and `cmake/x3d/libraries.cmake` (`x3d_cpp_nodes` target)

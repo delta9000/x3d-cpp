@@ -9,6 +9,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cstdint>
 #include <memory>
 #include <map>
@@ -19,23 +20,11 @@ using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 namespace {
 
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-void addChild(const std::shared_ptr<X3DNode> &p,
-              const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
-}
 // One Transform over one Box — the Transform is what we animate.
 Scene makeScene(std::shared_ptr<X3DNode> &xfOut) {
   auto box = createX3DNode("Box");
@@ -109,7 +98,7 @@ TEST_CASE("delta contract: second delta() with no tick returns EMPTY, not garbag
   RenderDelta first = ex.delta();
   CHECK(first.updatedTransform.size() == 1);
 
-  // No tick() in between: nothing CAN have changed, so the honest answer is an
+  // No tick() in between: nothing CAN have changed, so the answer is an
   // empty delta. (Previously: assert in debug, bogus re-diff under NDEBUG.)
   RenderDelta second = ex.delta();
   CHECK(second.updatedTransform.empty());

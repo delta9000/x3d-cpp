@@ -88,5 +88,5 @@ fields compare against unsuffixed literals, unchanged.
 
 - [Architecture](../architecture.md) — the data-layer / typed-API seam sits between the codec/parse layer and the node bindings.
 - [Reflection subsystem](../subsystems/reflection.md) — the `fields()` reflection thunk that routes all reads/writes and targets `set<Name>Unchecked`.
-- Design history: `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md` — full component design, DRY-constraint rationale, and TDD test plan for the warning-collection half of this decision.
+- Design history: [`docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md) — full component design, DRY-constraint rationale, and TDD test plan for the warning-collection half of this decision.
 - Implementation: `generated_cpp_bindings/x3d/core/X3DReflection.hpp` (`RangeDiagnostic`), `runtime/X3DRangeValidate.hpp` (`collectRangeWarnings`), `runtime/parse/X3DParse.hpp` (parse-front-door integration), `runtime/X3DDocument.hpp` (`rangeWarnings` field).

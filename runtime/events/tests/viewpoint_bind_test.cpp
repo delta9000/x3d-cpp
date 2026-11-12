@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // viewpoint_bind_test.cpp — bind-time offset rules
 // (ISO/IEC 19775-1 §23.3.1). A ViewpointBindSystem (post-cascade) applies, on each
 // bind, the jump / retainUserOffsets / stored-offset rules to the user offset —
@@ -25,12 +26,10 @@ using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using x3d::test::setF;
 
 namespace {
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields()) if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 
 // (1) jump=`FALSE` bind keeps the effective view continuous (no jump).
 void test_jump_false_continuous() {

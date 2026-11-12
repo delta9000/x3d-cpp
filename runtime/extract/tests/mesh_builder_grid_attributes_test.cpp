@@ -6,6 +6,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -14,14 +15,8 @@ using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) {
-      f.set(*n, std::move(v));
-      return;
-    }
-}
+using x3d::test::setF;
+using x3d::test::feq;
 
 static void attachColor(const std::shared_ptr<X3DNode> &g, std::vector<SFColor> c) {
   auto n = createX3DNode("Color");
@@ -33,7 +28,6 @@ static void attachNormal(const std::shared_ptr<X3DNode> &g, std::vector<SFVec3f>
   setF(n, "vector", std::any(std::move(v)));
   setF(g, "normal", std::any(std::static_pointer_cast<X3DNode>(n)));
 }
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static bool vecEq(const SFVec3f &a, const SFVec3f &b) {
   return feq(a.x, b.x) && feq(a.y, b.y) && feq(a.z, b.z);
 }

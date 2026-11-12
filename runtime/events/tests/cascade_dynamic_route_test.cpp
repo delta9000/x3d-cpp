@@ -4,7 +4,6 @@
 // iterator/reference invalidation), dynamically-added routes are honored on the
 // next cascade, and EventGraph::removeRoute stops delivery (dynamic rerouting,
 // X3D 19775-1 §4.3.7).
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"

@@ -10,7 +10,7 @@ human signaling layer (INDEX.md + components/*.md).
   judgments: behaves per ISO prose?  severity?  status?  clause?
              -> docs/conformance/findings.yaml  (the one file you edit)
 
-Design: docs/superpowers/specs/2026-06-19-conformance-view-design.md
+Design: x3d-cpp@db23737:docs/superpowers/specs/2026-06-19-conformance-view-design.md
 
 CLI:
   conformance_view.py generate           regenerate model.json + Markdown (in place)

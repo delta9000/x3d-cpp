@@ -83,7 +83,7 @@ read paths; a throw would surprise an embedder mid-frame).
 **Trade-offs / costs:**
 
 - The cap is a **policy ceiling**, not a correctness fix: per-path emission is the
-  intended instancing semantics, so a genuinely >1M-placement scene must raise
+  intended instancing semantics, so a >1M-placement scene must raise
   `maxWalkVisits` (and read `budgetExceeded()` to detect truncation).
 - A capped snapshot still allocates up to ~cap RenderItems, so the budget
   **bounds** — does not eliminate — worst-case memory.
@@ -99,6 +99,6 @@ read paths; a throw would surprise an embedder mid-frame).
 - Primary implementation: `runtime/RecursionLimits.hpp` (`WalkBudget`,
   `kMaxGraphWalkVisits`), `runtime/extract/SceneExtractor.hpp`,
   `runtime/extract/LightSystem.hpp`, `runtime/scene/PickSystem.hpp`
-- Design spec: `docs/superpowers/specs/2026-06-26-graph-walk-traversal-budget-design.md`
+- Design spec: [`docs/superpowers/specs/2026-06-26-graph-walk-traversal-budget-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-26-graph-walk-traversal-budget-design.md)
 - Regression test: `runtime/scene/tests/walker_budget_test.cpp`
 - Discovery context: adversarial review of the SEC-1/SEC-2/MEM-1 hardening (#20)

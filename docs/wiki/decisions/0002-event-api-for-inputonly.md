@@ -28,7 +28,7 @@ During the modernization audit (2026-06-02), the initial audit recommendation wa
 
 **The event cascade must be node-agnostic.** The cascade engine (`X3DEventCascade`) delivers events to field endpoints via the reflection `FieldTable` without knowing the concrete node type. For `inputOnly` fields, the cascade's `set` thunk must dispatch to whatever behavior is registered — not write a member variable that the node never uses. The event API is the exact shape the cascade needs: `on<Name>(value)` is the dispatch point the reflection thunk calls; `setOn<Name>Handler()` is the seam through which a System or test installs behavior.
 
-The prior state (before the event system was built) had `on<Name>` generated as an empty stub (`{ (void)value; }`), with no registrable handler and no reflection delivery path — confirmed in `docs/superpowers/specs/2026-06-03-event-system-design.md` §Current State.
+The prior state (before the event system was built) had `on<Name>` generated as an empty stub (`{ (void)value; }`), with no registrable handler and no reflection delivery path — confirmed in [`docs/superpowers/specs/2026-06-03-event-system-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-03-event-system-design.md) §Current State.
 
 ## Decision
 
@@ -40,7 +40,7 @@ The prior state (before the event system was built) had `on<Name>` generated as 
 
 No getter is generated. No value-storage member is generated. The field appears in the reflection `FieldTable` with a `set` thunk that calls `onFoo(value)` and a null `get` thunk (not readable). No `setFoo()` write-only mutator exists anywhere in the public API.
 
-The audit's alternative (`setX` write-only) is rejected. See `docs/superpowers/specs/2026-06-03-event-system-design.md` for the cascade architecture that consumes this shape; see `src/x3d_cpp_gen/templates/class_template.hpp.jinja` (the `{% if field.is_event %}` branch) and `src/x3d_cpp_gen/emit/descriptors.py` (`is_event`, `handler_name`, `handler_setter_name`, `handler_member`) for the generator implementation.
+The audit's alternative (`setX` write-only) is rejected. See [`docs/superpowers/specs/2026-06-03-event-system-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-03-event-system-design.md) for the cascade architecture that consumes this shape; see `src/x3d_cpp_gen/templates/class_template.hpp.jinja` (the `{% if field.is_event %}` branch) and `src/x3d_cpp_gen/emit/descriptors.py` (`is_event`, `handler_name`, `handler_setter_name`, `handler_member`) for the generator implementation.
 
 A concrete example: `IntegerTrigger.set_boolean` (access type `inputOnly`) generates `onSet_boolean(const SFBool&)` and `setOnSet_booleanHandler(std::function<void(const SFBool&)>)` in `generated_cpp_bindings/x3d/nodes/IntegerTrigger.hpp`. No `setSet_boolean()` exists.
 
@@ -68,4 +68,4 @@ A concrete example: `IntegerTrigger.set_boolean` (access type `inputOnly`) gener
 - [Generated Bindings subsystem](../subsystems/generated-bindings.md) — the golden headers this decision shapes.
 - [Reflection subsystem](../subsystems/reflection.md) — the `FieldTable` / `FieldInfo` that carries the null `get` and dispatch `set` thunks for `inputOnly` fields.
 
-Generator implementation: `src/x3d_cpp_gen/emit/descriptors.py` (`is_event`, `handler_name`, `handler_setter_name`, `handler_member`) and `src/x3d_cpp_gen/templates/class_template.hpp.jinja` (`{% if field.is_event %}` block, `{% elif field.is_event %}` in the cpp template's reflection thunk). Event cascade delivery: `src/x3d_cpp_gen/templates/class_template.cpp.jinja` lines 36–39. Concrete example: `generated_cpp_bindings/x3d/nodes/IntegerTrigger.hpp`. Original event-system design (the cascade context): `docs/superpowers/specs/2026-06-03-event-system-design.md`.
+Generator implementation: `src/x3d_cpp_gen/emit/descriptors.py` (`is_event`, `handler_name`, `handler_setter_name`, `handler_member`) and `src/x3d_cpp_gen/templates/class_template.hpp.jinja` (`{% if field.is_event %}` block, `{% elif field.is_event %}` in the cpp template's reflection thunk). Event cascade delivery: `src/x3d_cpp_gen/templates/class_template.cpp.jinja` lines 36–39. Concrete example: `generated_cpp_bindings/x3d/nodes/IntegerTrigger.hpp`. Original event-system design (the cascade context): [`docs/superpowers/specs/2026-06-03-event-system-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-03-event-system-design.md).

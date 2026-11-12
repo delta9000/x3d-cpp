@@ -22,7 +22,7 @@ TEST_CASE("readField classifies absent / ok / type-mismatch") {
   CHECK(sz.x == doctest::Approx(2.0f)); // default Box size is 2,2,2
 
   // Present, but requested type is wrong (SFVec3f field read as float).
-  // This is the silent-default bug class () — must be detected.
+  // This is the silent-default bug class — must be detected.
   float wrong = -1.0f;
   CHECK(readField(*box, "size", wrong) == FieldRead::TypeMismatch);
 
@@ -41,7 +41,7 @@ TEST_CASE("getVec3fLenient reads both SFVec3f and SFVec3d position fields") {
   CHECK(a.x == doctest::Approx(1.0f));
   CHECK(a.z == doctest::Approx(3.0f));
 
-  // GeoViewpoint.position is SFVec3d — must narrow, not silently read zero .
+  // GeoViewpoint.position is SFVec3d — must narrow, not silently read zero.
   auto gvp = createX3DNode("GeoViewpoint");
   for (auto &f : gvp->fields())
     if (f.x3dName == std::string("position") && f.set)

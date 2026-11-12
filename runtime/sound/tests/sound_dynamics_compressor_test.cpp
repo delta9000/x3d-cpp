@@ -1,4 +1,4 @@
-// sound_dynamics_compressor_test.cpp — the §16.4.9 DynamicsCompressor ,
+// sound_dynamics_compressor_test.cpp — the §16.4.9 DynamicsCompressor.
 // in two tiers following sound_system_test.cpp:
 // (a) recording tier: a §16 Oscillator -> DynamicsCompressor -> AudioDestination
 //       scene -> SoundSystem.attach(RecordingBackend) -> assert the compressor

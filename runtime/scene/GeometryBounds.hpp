@@ -26,7 +26,7 @@ namespace x3d::runtime {
 using namespace x3d::core;
 namespace geombounds {
 
-// Outcome of a reflection field read. Distinguishes a genuinely absent field
+// Outcome of a reflection field read. Distinguishes an absent field
 // (returning a default is correct) from a field that is present but stored as a
 // different type than requested (a caller-side contract violation — e.g. reading
 // an SFVec3d `position` as SFVec3f — which must be surfaced, not silently hidden).

@@ -35,7 +35,7 @@ struct GlyphAtlasResult {
 /// alongside a ready FontMetrics. `emPx` is the raster resolution in pixels per
 /// em (minimum 8). Glyph boxes/UVs enclose each complete bitmap, including
 /// accents and overhangs; advances retain the exact raw-font metric. DEL/C1
-/// controls, out-of-range codepoints, unmapped families, and.notdef glyphs
+/// controls, out-of-range codepoints, unmapped families, and .notdef glyphs
 /// resolve to Failed (the layout engine skips them). Style is ignored (all
 /// faces treated as PLAIN) — the atlas/raster path is outside the cross-backend
 /// equality surface (FontMetrics.hpp adapter contract item 4).

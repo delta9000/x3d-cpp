@@ -131,7 +131,7 @@ and extracted data stale. See [execution context](execution-context.md).
 
 ### Seam points
 
-- Reflection write path (lenient) — codec readers and the event cascade write field values via the reflection `set` thunk, which routes through a generated `set<Name>Unchecked()` that skips the range check. The typed public `setX()` accessor still throws `std::out_of_range` for out-of-range values; the lenient path keeps authored out-of-range values and surfaces them later via `RangeDiagnostic` (see `docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md`). This is the binding between the generated layer and every codec reader.
+- Reflection write path (lenient) — codec readers and the event cascade write field values via the reflection `set` thunk, which routes through a generated `set<Name>Unchecked()` that skips the range check. The typed public `setX()` accessor still throws `std::out_of_range` for out-of-range values; the lenient path keeps authored out-of-range values and surfaces them later via `RangeDiagnostic` (see [`docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-07-lenient-read-range-warnings-design.md)). This is the binding between the generated layer and every codec reader.
 
 - `NodeVisitor` provides generated enter/leave double dispatch through `accept()`. The built-in writers traverse field tables directly.
 

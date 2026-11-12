@@ -124,7 +124,7 @@ int main() {
     collection->setErrorCorrection(0.5f);
     collection->setContactSurfaceThickness(0.03f);
     collection->setMaxCorrectionSpeed(5.0f);
-    // No honest engine mapping — must not change anything on the seam.
+    // No engine mapping — must not change anything on the seam.
     collection->setConstantForceMix(0.2f);
     collection->setPreferAccuracy(true);
     physics.attach(collection.get(), ctx);

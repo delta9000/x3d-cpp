@@ -64,8 +64,8 @@ The tracer implementation lives in `tools/x3d-cli/sim_tracer.hpp`, namespace `x3
 - [Architecture](../architecture.md)
 - [CLI Suite](../subsystems/cli-suite.md) — `x3d sim` is one of the CLI suite subcommands; golden trace registration + `mise run cli-gate` regression machinery
 - [Event Cascade](../subsystems/event-cascade.md) — the cascade's single observer slot is the constraint this ADR works around; `setFieldObserver` signature and `observer_` in `runtime/events/X3DEventCascade.hpp`
-- Design spec: `docs/superpowers/specs/2026-06-20-x3d-sim-design.md` — the authoritative `sim` design; Unit 3 "Field-change tracer" names the snapshot-diff fallback and its rationale explicitly
-- `tools/x3d-cli/sim_tracer.hpp` — the tracer implementation; the file-top comment block restates this ADR's reasoning as load-bearing inline documentation
+- Design spec: [`docs/superpowers/specs/2026-06-20-x3d-sim-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-sim-design.md) — the authoritative `sim` design; Unit 3 "Field-change tracer" names the snapshot-diff fallback and its rationale explicitly
+- `tools/x3d-cli/sim_tracer.hpp` — the tracer implementation; the file-top comment block restates this ADR's reasoning inline
 - `tools/x3d-cli/sim_runtime.hpp` — `attachFullRuntime()` + the physics-attach hook; the "wire full runtime" helper that `sim` calls before the tick loop
 - `runtime/events/X3DExecutionContext.hpp` — `buildSceneGraph()` lines binding `cascade_.setFieldObserver` to `classifyDirty`; `writeField` and `classifyDirty` documentation
 - `runtime/events/X3DEventCascade.hpp` — `setFieldObserver(std::function<void(const FieldAddress&)>)` declaration; the single `observer_` slot

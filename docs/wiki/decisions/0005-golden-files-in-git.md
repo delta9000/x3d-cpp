@@ -66,8 +66,8 @@ The update workflow is intentional and explicit: change a template or emitter, r
 - `tests/test_golden_tree.py` — pytest twin of the shell gate
 - `generated_cpp_bindings/` — the committed golden tree (343 `.hpp` + 340 `.cpp`)
 - `src/x3d_cpp_gen/emit/factory.py` — uses `sorted()` for the factory registry include list; the canonical determinism pattern
-- `docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md` — the C1 spec that extended golden coverage from `*.hpp` to `*.hpp`+`*.cpp`
-- `docs/superpowers/plans/2026-06-16-c1-decl-def-split.md` — the C1 implementation plan
+- [`docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-16-c1-decl-def-split-design.md) — the C1 spec that extended golden coverage from `*.hpp` to `*.hpp`+`*.cpp`
+- [`docs/superpowers/plans/2026-06-16-c1-decl-def-split.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/plans/2026-06-16-c1-decl-def-split.md) — the C1 implementation plan
 
 ## Amendment (2026-11-05)
 

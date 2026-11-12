@@ -8,7 +8,6 @@
 // The EventGraph must store routes normalized, and EventCascade::deliver +
 // the per-field cap must also normalize so that alias and canonical name
 // share the same field identity within a timestamp.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"

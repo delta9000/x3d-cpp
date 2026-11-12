@@ -1,4 +1,4 @@
-// generated_cube_map_test.cpp — , §34.4.2 GeneratedCubeMapTexture.
+// generated_cube_map_test.cpp — §34.4.2 GeneratedCubeMapTexture.
 //
 // The extractor surfaces a generated cube (TextureRef::generatedCube: node,
 // update, size) for the consumer to render, and GeneratedCubeMapSystem resets

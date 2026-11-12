@@ -5,13 +5,13 @@
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 using namespace x3d::core;
 using namespace x3d::runtime;
 using namespace x3d::nodes;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
+using x3d::test::feq;
 
 static void setTranslation(const std::shared_ptr<X3DNode> &n, SFVec3f v) {
   for (auto &f : n->fields())

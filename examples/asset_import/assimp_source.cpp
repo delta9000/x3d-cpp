@@ -186,8 +186,8 @@ ImportCamera toCamera(const aiCamera* cam) {
   // matrix (right = up x lookat for a left-handed view... here we just place
   // position and encode orientation as identity — emit() derives orientation
   // from decomposeTRS, and the fixture/round-trip path only needs position +
-  // fov, which the Viewpoint setters carry). For full orientation, a future
-  // task can build the basis explicitly; this keeps the IR honest.
+  // fov, which the Viewpoint setters carry). Full orientation
+  // would need the basis built explicitly.
   out.world = Mat4{};  // identity; position encoded below.
   out.world.m[12] = cam->mPosition.x;
   out.world.m[13] = cam->mPosition.y;

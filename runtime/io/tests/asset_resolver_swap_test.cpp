@@ -187,7 +187,7 @@ int main() {
   std::cerr << "[swap-test] HTTP server on http://127.0.0.1:" << port << "\n";
 
   // 2. Resolve backend A (libcurl HTTP). The fixture server is on 127.0.0.1,
-  //    so opt in to private-network destinations ( default blocks them).
+  //    so opt in to private-network destinations (the default blocks them).
   auto backendA = x3d::runtime::io::curl::makeHttpResolver(
       x3d::runtime::io::curl::HttpResolverOptions{
           /*allowPrivateNetworks=*/true});

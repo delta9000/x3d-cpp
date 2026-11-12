@@ -21,6 +21,7 @@
 #include "GeometryBounds.hpp" // geombounds::getField/getNode/hasField/getPointsLenient
 #include "Mat4.hpp"
 #include "PickSystem.hpp"
+#include "Vec3.hpp"
 #include "Ray.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
@@ -66,9 +67,6 @@ private:
   // A pickingGeometry segment, in the pickingGeometry's local frame.
   struct Segment { SFVec3f a, b; };
 
-  static SFVec3f sub(const SFVec3f &a, const SFVec3f &b) {
-    return SFVec3f{a.x - b.x, a.y - b.y, a.z - b.z};
-  }
 
   // Pull the coord node's points, tolerating MFVec3f/MFVec3d (Coordinate /
   // CoordinateDouble/GeoCoordinate) via the shared lenient reader.
@@ -176,7 +174,7 @@ private:
           auto shapeGeom = geombounds::getNode(*shape, "geometry");
           if (!shapeGeom) continue;
           for (const Segment &seg : segs) {
-            const SFVec3f dir = sub(seg.b, seg.a);
+            const SFVec3f dir = vec3::sub(seg.b, seg.a);
             Ray localRay{inv.transformPoint(seg.a), inv.transformDirection(dir)};
             auto t = PickSystem::intersectGeometry(shapeGeom.get(), ctx.geoProjection(), localRay);
             if (!t || *t < -1e-5f || *t > 1.0f + 1e-5f) continue; // beyond segment

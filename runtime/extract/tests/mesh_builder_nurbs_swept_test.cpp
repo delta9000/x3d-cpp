@@ -6,6 +6,7 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -14,10 +15,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
-
-static void setF(const std::shared_ptr<X3DNode>& n, const char* nm, std::any v) {
-  for (auto& f : n->fields()) if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+using x3d::test::setF;
 
 // A degree-1 (order 2) closed polyline through `n` points on a radius-r circle,
 // with tessellation=n so the tessellator samples exactly on the vertices.

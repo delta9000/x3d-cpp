@@ -96,7 +96,7 @@ inline std::string escape(const std::string &s) {
 }
 
 /// Make text safe for a CDATA body: a literal `]]>` would close the section
-/// early (silently truncating e.g. Script source — ), so split
+/// early (silently truncating e.g. Script source), so split
 /// it across two sections: `]]` ends one, `>` starts the next. The reader
 /// concatenates consecutive CDATA sections, restoring the original text.
 inline std::string cdataEscape(const std::string &s) {

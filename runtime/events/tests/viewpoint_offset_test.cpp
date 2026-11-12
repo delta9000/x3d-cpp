@@ -1,6 +1,6 @@
 #include "doctest/doctest.h"
 // viewpoint_offset_test.cpp — the user-offset model.
-// Navigation must not mutate the authored Viewpoint pose (§23.2.3,); it
+// Navigation must not mutate the authored Viewpoint pose (§23.2.3); it
 // accumulates a process-local offset, and a CAVE head-pose seam composes on top.
 // The effective view (viewMatrix/cameraWorldPosition) = worldOf · pose · offset · head.
 // Cases: (1) setViewpointOffset moves the effective camera, authored fields

@@ -40,7 +40,7 @@ these feed the same camera queries. Set the pose before ticking. See
 | File / directory | Role |
 |---|---|
 | `runtime/scene/ViewDependentSystem.hpp` | `ViewDependentSystem` class (a `System`): `attach`, `update`, sensor/LOD tracking, observer seams |
-| `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1) + `viewdep::` math helpers (`sub`, `dot`, `cross`, `len`, `norm`); no `X3DExecutionContext` dependency |
+| `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1), using `runtime/math/Vec3.hpp`; no `X3DExecutionContext` dependency |
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
 | `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (31 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 

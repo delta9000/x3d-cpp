@@ -27,7 +27,7 @@ Three forces created the tension:
 
 **ECS batching is attractive for hot paths.** For behavior dispatch over large numbers of nodes of the same type (interpolators, TimeSensors), iterating a packed array is more cache-friendly than chasing `shared_ptr` chains through a heterogeneous scene graph. The performance intuition behind ECS is sound; the question is scope.
 
-A deep-research validation pass (25 claims verified, 0 refuted — see `docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md`) confirmed that no major X3D runtime uses ECS: X3DOM, Xj3D, FreeWRL, and Castle Game Engine all retain the OOP node model as the authoritative representation. Castle in particular is the closest prior art — a retained-mode X3D-node model manipulated in place, production-proven. The same validation confirmed that USD/Hydra's architecture (scene delegate → render index → render delegate) follows the same node-as-truth + systems-update-in-place + renderer-as-consumer pattern, further de-risking the node-model spine.
+A deep-research validation pass (25 claims verified, 0 refuted — see [`docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md)) confirmed that no major X3D runtime uses ECS: X3DOM, Xj3D, FreeWRL, and Castle Game Engine all retain the OOP node model as the authoritative representation. Castle in particular is the closest prior art — a retained-mode X3D-node model manipulated in place, production-proven. The same validation confirmed that USD/Hydra's architecture (scene delegate → render index → render delegate) follows the same node-as-truth + systems-update-in-place + renderer-as-consumer pattern, further de-risking the node-model spine.
 
 ## Decision
 
@@ -59,8 +59,8 @@ Concretely:
 - [Architecture](../architecture.md) — the full system map; §4 describes the behavior System set and both System styles (time-driven and event-driven).
 - `runtime/events/X3DSystem.hpp` — the `System` base class; the comment "A System owning its nodes contiguously is the seam for future data-oriented batching" is the ECS-flavored seam.
 - `runtime/events/X3DActiveNode.hpp` — the predecessor per-node `ActiveNode` protocol that `System` generalizes.
-- `docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md` — the deep-research validation that confirmed "ECS-flavored batching only at hot paths, NOT a full ECS" (§1, finding 3) and the Castle/USD/Hydra prior-art sweep.
-- `docs/superpowers/specs/2026-06-03-event-system-design.md` — the original event-system design where the node-as-truth + System decision was first made.
+- [`docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md) — the deep-research validation that confirmed "ECS-flavored batching only at hot paths, NOT a full ECS" (§1, finding 3) and the Castle/USD/Hydra prior-art sweep.
+- [`docs/superpowers/specs/2026-06-03-event-system-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-03-event-system-design.md) — the original event-system design where the node-as-truth + System decision was first made.
 
 ## Amendment (2026-11-05)
 

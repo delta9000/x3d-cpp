@@ -46,11 +46,12 @@ All internal links use relative markdown paths, resolvable from the file's own l
 <!-- Referencing an artifact OUTSIDE docs/wiki/ (a dated spec, source file, BACKLOG):
      cite it as an inline-code PATH, NOT a markdown link — mkdocs --strict cannot
      resolve links outside docs_dir and will fail the build. -->
-See the design at `docs/superpowers/specs/2026-06-20-project-wiki-design.md`.
+See the design at [`docs/superpowers/specs/2026-06-20-project-wiki-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-project-wiki-design.md).
 ```
 
 **Rules:**
-- **Hyperlink ONLY within `docs/wiki/`.** Anything outside it (dated specs/plans in `docs/superpowers/`, source files, `BACKLOG.md`, the conformance view) is cited as an **inline-code path** (`` `docs/superpowers/specs/…md` ``) — greppable and IDE-clickable, but NOT a live href. `docs_dir` is `docs/wiki`, so out-of-tree links break `mkdocs build --strict` (the docs gate). Rendering the dated specs into the site so they can be linked is a possible future change; until then, cite by path.
+- **Hyperlink ONLY within `docs/wiki/`.** Anything else in the repo (source files, the conformance view) is cited as an **inline-code path** — greppable and IDE-clickable, but NOT a live href. `docs_dir` is `docs/wiki`, so out-of-tree relative links break `mkdocs build --strict` (the docs gate).
+- The old dated specs and plans (`docs/superpowers/`, `docs/plans/`, `sai/docs/plans/`) were removed from the tree. Cite one as a GitHub link pinned to commit `db23737`, as the ADRs do.
 - Use `.md` extensions in in-wiki link hrefs (MkDocs resolves these correctly).
 - Do NOT use absolute paths or site-root-relative paths (`/architecture/`).
 - Reference dated specs/plans as the historical record (cite by path); do NOT duplicate their content.

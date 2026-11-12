@@ -59,7 +59,7 @@ angle — the same fallback `cpu_raster` uses. As a safety net, if a bound
 at), the tool automatically falls back to the fit so an arbitrary scene still
 yields an image. `--fit` forces the fit unconditionally.
 
-## Scope (honest boundaries)
+## Scope
 
 - Text uses the SDK's default metrics without a glyph atlas. Glyph quads are
   shaded as geometry; this tool does not rasterize font outlines.

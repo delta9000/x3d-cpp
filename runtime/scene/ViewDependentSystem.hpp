@@ -8,6 +8,7 @@
 
 #include "FieldRead.hpp"
 #include "Billboard.hpp"
+#include "Vec3.hpp"
 #include "GeometryBounds.hpp"
 #include "GeoNodes.hpp"
 #include "LODSelection.hpp"
@@ -80,7 +81,7 @@ public:
   // Consumer-supplied exact view volume (frustum). VisibilitySensor tests the
   // sensor box against the six planes of the bound viewpoint's frustum; the
   // consumer supplies the camera aspect ratio (default 1.0) so a wide-aspect
-  // periphery is not reported invisible . Renderers set this each frame
+  // periphery is not reported invisible. Renderers set this each frame
   // from their camera.
   struct ViewVolume { bool valid=false; float aspect=1.0f; };
   void setViewVolume(const ViewVolume &vv) { viewVolume_ = vv; }
@@ -116,7 +117,7 @@ public:
       const Mat4 w = ctx.worldTransform(node);
       const SFVec3f center = geombounds::getField<SFVec3f>(*node, "center", {0, 0, 0});
       const SFVec3f eyeLocal = w.inverse().transformPoint(eye);
-      const float d = viewdep::len(viewdep::sub(eyeLocal, center));
+      const float d = vec3::length(vec3::sub(eyeLocal, center));
       int lvl = lodSelectLevel(*node, d);
       // §23.4.3: when there are fewer children than range bins, the last
       // child is used for all further ranges; level_changed reports the index of
@@ -255,7 +256,7 @@ private:
       if (!kids.empty()) {
         const SFVec3f center = geombounds::getField<SFVec3f>(*n, "center", {0, 0, 0});
         const SFVec3f eyeLocal = world.inverse().transformPoint(ctx.cameraWorldPosition());
-        const float d = viewdep::len(viewdep::sub(eyeLocal, center));
+        const float d = vec3::length(vec3::sub(eyeLocal, center));
         int lvl = lodSelectLevel(*n, d);
         if (lvl >= static_cast<int>(kids.size())) lvl = static_cast<int>(kids.size()) - 1;
         if (kids[lvl]) collectActiveFrom(kids[lvl].get(), ctx, world, seen, budget);
@@ -316,10 +317,10 @@ private:
                     X3DExecutionContext &ctx) const {
     const SFVec3f eye = ctx.cameraWorldPosition();
     const Mat4 cam = ctx.viewMatrix().inverse();
-    const SFVec3f f = viewdep::norm(cam.transformDirection(SFVec3f{0, 0, -1}));
-    const SFVec3f u = viewdep::norm(ctx.cameraWorldUp());
-    SFVec3f r = viewdep::norm(viewdep::cross(f, u));
-    if (viewdep::len(r) < 1e-6f) r = viewdep::norm(viewdep::cross(f, SFVec3f{0, 0, 1}));
+    const SFVec3f f = vec3::normalizeOrZero(cam.transformDirection(SFVec3f{0, 0, -1}), 1e-9f);
+    const SFVec3f u = vec3::normalizeOrZero(ctx.cameraWorldUp(), 1e-9f);
+    SFVec3f r = vec3::normalizeOrZero(vec3::cross(f, u), 1e-9f);
+    if (vec3::length(r) < 1e-6f) r = vec3::normalizeOrZero(vec3::cross(f, SFVec3f{0, 0, 1}), 1e-9f);
     X3DNode *vp = ctx.boundViewpoint();
     const float fov = vp ? geombounds::getField<float>(*vp, "fieldOfView", 0.7854f) : 0.7854f;
     float aspect = (viewVolume_.valid && viewVolume_.aspect > 0.0f) ? viewVolume_.aspect : 1.0f;
@@ -342,8 +343,8 @@ private:
         const SFVec3f lc{center.x + ((i & 1) ? h.x : -h.x),
                          center.y + ((i & 2) ? h.y : -h.y),
                          center.z + ((i & 4) ? h.z : -h.z)};
-        const SFVec3f a = viewdep::sub(w.transformPoint(lc), eye);
-        if (viewdep::dot(a, p) >= 0.0f) allOutside = false;
+        const SFVec3f a = vec3::sub(w.transformPoint(lc), eye);
+        if (vec3::dot(a, p) >= 0.0f) allOutside = false;
       }
       if (allOutside) return false; // box entirely outside this plane => invisible
     }
@@ -369,14 +370,13 @@ private:
   // §22.4.1 orientation_changed: axis-angle that orients local -Z along `fwd`
   // and local +Y along `up`, in the sensor's coordinate system.
   static SFRotation lookAtRotation(const SFVec3f &fwd, const SFVec3f &up) {
-    using namespace viewdep;
-    const SFVec3f f = norm(fwd);
-    if (len(f) < 1e-9f) return SFRotation{0, 0, 1, 0};
+    const SFVec3f f = vec3::normalizeOrZero(fwd, 1e-9f);
+    if (vec3::length(f) < 1e-9f) return SFRotation{0, 0, 1, 0};
     const SFVec3f zAxis = {-f.x, -f.y, -f.z}; // camera looks down -Z, so +Z = -fwd
-    SFVec3f xAxis = cross(up, zAxis);
-    if (len(xAxis) < 1e-9f) xAxis = cross(SFVec3f{0, 1, 0}, zAxis);
-    xAxis = norm(xAxis);
-    const SFVec3f yAxis = cross(zAxis, xAxis);
+    SFVec3f xAxis = vec3::cross(up, zAxis);
+    if (vec3::length(xAxis) < 1e-9f) xAxis = vec3::cross(SFVec3f{0, 1, 0}, zAxis);
+    xAxis = vec3::normalizeOrZero(xAxis, 1e-9f);
+    const SFVec3f yAxis = vec3::cross(zAxis, xAxis);
     Mat4 m = Mat4::identity();
     m.m[0] = xAxis.x; m.m[1] = xAxis.y; m.m[2] = xAxis.z;
     m.m[4] = yAxis.x; m.m[5] = yAxis.y; m.m[6] = yAxis.z;
@@ -427,8 +427,8 @@ private:
     if (inside || last) {
       // §22.4.1: pose outputs include the exit instant.
       const SFVec3f fwdWorld = ctx.viewMatrix().inverse().transformDirection(SFVec3f{0, 0, -1});
-      const SFVec3f fwdLocal = viewdep::norm(inv.transformDirection(fwdWorld));
-      const SFVec3f upLocal = viewdep::norm(inv.transformDirection(ctx.cameraWorldUp()));
+      const SFVec3f fwdLocal = vec3::normalizeOrZero(inv.transformDirection(fwdWorld), 1e-9f);
+      const SFVec3f upLocal = vec3::normalizeOrZero(inv.transformDirection(ctx.cameraWorldUp()), 1e-9f);
       const SFRotation ori = lookAtRotation(fwdLocal, upLocal);
       // Emit only when the viewer pose actually changes, not every tick.
       if (!pst.has || !vecEq(eyeLocal, pst.pos)) {
@@ -489,7 +489,7 @@ private:
   // §22.4.3 VisibilitySensor: visible iff the size-box (in the sensor's frame)
   // may intersect the viewing volume, tested against the six view-frustum planes
   // of the bound viewpoint with the box transformed to world by its full
-  // world matrix so ancestor scale counts . enter/exitTime use
+  // world matrix so ancestor scale counts. enter/exitTime use
   // the tick `now` — a visibility region has no single geometric boundary the
   // viewer crosses, unlike ProximitySensor's box.
   void updateVisibility(X3DNode *node, bool &last, double now, X3DExecutionContext &ctx) {

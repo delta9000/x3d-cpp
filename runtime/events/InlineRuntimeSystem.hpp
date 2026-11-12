@@ -5,6 +5,7 @@
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 #include "GeoNodes.hpp"
+#include "Vec3.hpp"
 #include "ViewDependentSystem.hpp"
 #include "x3d/nodes/Inline.hpp"
 #include "x3d/nodes/GeoLOD.hpp"
@@ -257,7 +258,7 @@ private:
     SFVec3f center;
     if (!geo::toWorld(*lod, lod->getCenter(), center, ctx.geoProjection())) return;
     const SFVec3f eye = ctx.worldTransform(lod).inverse().transformPoint(ctx.cameraWorldPosition());
-    const bool near = viewdep::len(viewdep::sub(eye, center)) < lod->getRange();
+    const bool near = vec3::length(vec3::sub(eye, center)) < lod->getRange();
     const int wasDisplayed = state.displayed;
     const bool rootPending = lod->getRootNode().empty() && !state.root.group;
     if (rootPending)

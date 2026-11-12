@@ -11,6 +11,7 @@
 #include "TextLayout.hpp"
 
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <algorithm>
 #include <string>
@@ -18,6 +19,7 @@
 #include <vector>
 
 using namespace x3d::runtime::extract;
+using x3d::test::feq;
 
 // Monospaced stub: advance = n_chars * size, ascender = 0.8*size, desc = -0.2*size
 static FontMetricsCallback monoMetrics() {
@@ -30,11 +32,6 @@ static FontMetricsCallback monoMetrics() {
 }
 
 // Tolerance for float comparisons.
-static bool feq(float a, float b, float eps = 1e-4f) {
-    return std::fabs(a - b) < eps;
-}
-
-
 
 // Test 1: Single line, default params (horizontal, BEGIN/`FIRST`, size=1).
 //

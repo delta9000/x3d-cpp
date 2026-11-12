@@ -163,7 +163,7 @@ Concretely, for the `FontMetrics` seam:
 - [ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test](0023-assetresolver-second-backend-swap-test.md)
 - [ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test](0022-scriptengine-second-backend-swap-test.md)
   — the original pattern.
-- Design spec: `docs/superpowers/specs/2026-06-24-fontmetrics-seam-genericity-design.md`.
+- Design spec: [`docs/superpowers/specs/2026-06-24-fontmetrics-seam-genericity-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-24-fontmetrics-seam-genericity-design.md).
 
 ## Amendment (2026-11-05)
 

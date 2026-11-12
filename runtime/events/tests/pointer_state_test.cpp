@@ -6,7 +6,6 @@
 //   3. Multiple setters accumulate revision bumps (additive, not idempotent).
 //   4. X3DExecutionContext::setPointer / setPointerButton / setPointerPresent
 //      update the state visible via pointerState() and bump the revision.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "PointerState.hpp"
 #include "X3DExecutionContext.hpp"

@@ -1,7 +1,7 @@
 # Skybox cubemap test assets
 
 Six-face cube panoramas for exercising the X3D `Background` skybox path in the
-headless CPU rasterizer (see `docs/superpowers/plans/2026-06-24-skybox-background.md`).
+headless CPU rasterizer (see [`docs/superpowers/plans/2026-06-24-skybox-background.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/plans/2026-06-24-skybox-background.md)).
 Faces are **PNG**, decoded via the rasterizer's opt-in stb decode seam
 (`-DX3D_CPP_BUILD_STB=ON`).
 

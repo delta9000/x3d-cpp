@@ -60,7 +60,7 @@ related:
 
      Example forms (replace with real values):
        - [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md)   <- in-wiki: link
-       - Spec: `docs/superpowers/specs/2026-06-20-x3d-sim-design.md`   <- out-of-wiki: cite by path
+       - Spec: [`docs/superpowers/specs/2026-06-20-x3d-sim-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-sim-design.md)   <- removed archive: pinned GitHub link
 -->
 
 - <!-- add links here -->

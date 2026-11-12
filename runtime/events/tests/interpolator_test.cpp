@@ -6,7 +6,6 @@
 // and one off-key value and asserts the emitted value reaches the sink. A final
 // scene test drives several interpolators from one source fraction (fan-out) to
 // prove they coexist in a single cascade.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "GeoPositionInterpolatorSystem.hpp"

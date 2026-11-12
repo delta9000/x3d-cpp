@@ -44,7 +44,6 @@ made, not defects. See the SDK README's
 | `sai/generated_cpp_bindings/` | Generated field keys, typed bindings and the semantic metadata catalog |
 | `sai/tests/` | doctest suites registered as CTests, generator pytest |
 | `sai/docs/` | Contract, runtime, kernel guide and topic pages; `docs/conformance/` holds the register |
-| `sai/docs/plans/` | Frozen archive of the 2026-07-18/19 plans |
 
 ## CMake targets
 

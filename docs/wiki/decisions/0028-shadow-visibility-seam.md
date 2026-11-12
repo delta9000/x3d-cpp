@@ -101,7 +101,7 @@ SDK now carries it; the consumer/seam interprets it.
 
 ## Consequences
 
-- **+** Resolves "how do you write a *reference* shadow impl" honestly: you
+- **+** Resolves "how do you write a *reference* shadow impl": you
   don't — the reference is the *modulation*; the visibility is a seam with a
   default backend proven on invariants.
 - **+** Makes shadows first-party without over-committing the SDK to one

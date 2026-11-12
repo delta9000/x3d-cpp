@@ -1,11 +1,12 @@
 // mat4_test.cpp — column-major 4x4 math + X3D Transform composition.
 #include "Mat4.hpp"
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <numbers>
 using namespace x3d::runtime;
+using x3d::test::feq;
 
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static bool veq(const SFVec3f& a, const SFVec3f& b) {
   return feq(a.x,b.x) && feq(a.y,b.y) && feq(a.z,b.z);
 }

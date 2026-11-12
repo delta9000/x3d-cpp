@@ -4,7 +4,6 @@
 // so a whole document never fails to load over one bad field. The typed setX
 // API stays strict (throws std::out_of_range) for programmatic callers.
 //
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DParse.hpp"
 

@@ -22,11 +22,12 @@ The boundary this module owns: anything that takes two or more SF*/MF* values an
 |---|---|
 | `runtime/math/Mat4.hpp` | Column-major 4×4 float matrix. Builders (`identity()`, `translation`, `scale`, `rotation`), multiplication, `transformPoint` (w=1), `transformDirection` (w=0), `inverse` (adjugate form; returns `identity()` on near-singular). Free functions: `transformMatrix` (full X3D `T*C*R*SR*S*SR⁻¹*C⁻¹` composition) and `rotationFromMatrix` (Shepperd quaternion-from-matrix to `SFRotation`). |
 | `runtime/math/Aabb.hpp` | Axis-aligned bounding box (float). Stateful `expand(point)`, `unionWith(Aabb)`, `transformed(Mat4)` (all-8-corners method), `center()`, `size()`, and static factory `fromCenterSize`. Empty box is the union identity. |
+| `runtime/math/Vec3.hpp` | `vec3::` free functions on `SFVec3f`: `add`, `sub`, `scale`, `dot`, `cross`, `length`, `normalize` (degenerate input returned unchanged) and `normalizeOrZero` (degenerate input becomes zero; caller picks the threshold). The runtime systems use these instead of private copies. |
 | `runtime/math/Ray.hpp` | Origin + direction struct (`SFVec3f` both), plus `pointAt(t)` for evaluating a position along the ray. |
 | `runtime/math/Intersect.hpp` | Six free intersection functions, all returning `std::optional<float>` (entry parameter `t >= 0`): `rayAabb`, `raySphere`, `rayTriangle`, `rayTriangleBary` (with barycentric (u,v) out-params for texcoord interpolation), `rayCone` (X3D §13.3.2 geometry, `side`/`bottom` flags), `rayCylinder` (X3D §13.3.3 geometry, `side`/`top`/`bottom` flags). |
 | `runtime/math/tests/` | Unit test executables: `mat4_test.cpp`, `mat4_inverse_test.cpp`, `aabb_test.cpp`, `intersect_test.cpp`, `vec_math_audit_test.cpp`. |
 
-`Mat4.hpp` has one intra-runtime dependency: `runtime/events/Interpolation.hpp` for the `Quat` type and `quatFromRotation`/`rotationFromQuat` helpers it uses in `Mat4::rotation` and `rotationFromMatrix`. All other math headers depend only on `Mat4.hpp` (and transitively `X3Dtypes.hpp` and `Interpolation.hpp`).
+`Mat4.hpp` has one intra-runtime dependency: `runtime/events/Interpolation.hpp` for the `Quat` type and `quatFromRotation`/`rotationFromQuat` helpers it uses in `Mat4::rotation` and `rotationFromMatrix`. `Vec3.hpp` depends only on `X3Dtypes.hpp`. All other math headers depend only on `Mat4.hpp` (and transitively `X3Dtypes.hpp` and `Interpolation.hpp`).
 
 `rotationFromMatrix` normalizes its extracted quaternion before converting to
 axis-angle so float matrix rounding does not erase small rotations.

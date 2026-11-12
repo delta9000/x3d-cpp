@@ -10,6 +10,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -17,22 +18,11 @@
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 static bool feq(float a, float b, float eps = 1e-3f) { return std::fabs(a - b) < eps; }
 
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
-}
 static std::shared_ptr<X3DNode> shapeWith(const std::shared_ptr<X3DNode> &geom) {
   auto s = createX3DNode("Shape");
   setF(s, "geometry", std::any(std::shared_ptr<X3DNode>(geom)));

@@ -31,7 +31,7 @@ Three forces drove the decision:
 
 The design also had a specific footgun to close: a gate that runs against a missing corpus directory produces zero checks. If zero checks were silently allowed to pass the gate, a CI environment without the corpus would always be green — a false safety. This "0-checks" failure mode had to be an explicit exit-1, not a vacuous pass.
 
-See the full design rationale at `docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md`.
+See the full design rationale at [`docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md).
 
 ## Decision
 
@@ -71,7 +71,7 @@ Baselines are refreshed explicitly, not automatically: `mise run cli-gate-baseli
 - [CLI Suite](../subsystems/cli-suite.md) — the validate, convert, and canonicalize commands that the gate exercises; key files `tools/x3d-cli/cli_gate.cpp`, `tools/x3d-cli/canon_gate.cpp`, `tools/x3d-cli/scene_equiv.hpp`
 - [Gate System guide](../guides/gate-system.md) — operational detail: how to run `mise run cli-gate-regression`, regenerate baselines, and what the `--gate` vs informative modes do
 - [Architecture](../architecture.md)
-- Design spec: `docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md` — the "Phase B — gates" section; the "captured-golden differential gate" rationale; the convert-differential pivot off X3DJSAIL's converter onto its `-validate` (XSLT quirk)
+- Design spec: [`docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-cli-convert-validate-design.md) — the "Phase B — gates" section; the "captured-golden differential gate" rationale; the convert-differential pivot off X3DJSAIL's converter onto its `-validate` (XSLT quirk)
 - Committed baseline artifacts: `tools/x3d-cli/goldens/cli-gate-baseline.tsv`, `tools/x3d-cli/goldens/canon-gate-baseline.tsv`, `tools/x3d-cli/goldens/validate-check-categories.md`, `tools/x3d-cli/goldens/divergence-report.md`
 
 ## Amendment (2026-11-05)

@@ -30,27 +30,15 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <memory>
 #include <vector>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode> &p,
-                     const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
-}
+using x3d::test::setF;
+using x3d::test::addChild;
 
 static std::shared_ptr<X3DNode> makeTriShape() {
   auto coord = createX3DNode("Coordinate");

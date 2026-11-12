@@ -47,7 +47,7 @@ authoritative Viewpoint or re-running scene behavior on the wall.
 
 This ADR records the binding decisions that resolve these forces. The grounding source is
 `docs/memory/x3d-cpp-gen-cave-consumer.md` and the headless/embedder design already
-validated in `docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md`.
+validated in [`docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-07-architecture-validation-and-resequencing.md).
 
 ## Decision
 
@@ -105,7 +105,7 @@ We decided:
   requiring hardware PTP or NTP on the CAVE LAN.
 - Component breadth (physics, sound, NURBS) is not needed for the CAVE forcing function and
   remains deferred, which is the correct priority order: a synced world model with geometry,
-  material, and lighting is the load-bearing capability.
+  material, and lighting is the capability that matters.
 
 **Trade-offs / costs:**
 
@@ -133,5 +133,5 @@ We decided:
 - [Extract subsystem](../subsystems/extract.md) — `SceneExtractor`, `RenderItem`, `RenderDelta`
 - [ADR-0015: Extraction as Pull over an Incremental Dirty Set](0015-extraction-pull-per-path.md) — the structural precondition (pull seam, per-tick dirty clear, `{frame#, worldClock}` embedding)
 - Memory note: `docs/memory/x3d-cpp-gen-cave-consumer.md` — the user's CAVE topology description, the RenderDelta wire format requirement, and the head-pose offset approach
-- Design synthesis: `docs/superpowers/specs/2026-06-18-future-proof-architecture-synthesis.md` §5 (headless posture) + §6 (caveats: sustainability / real consumer as forcing function)
+- Design synthesis: [`docs/superpowers/specs/2026-06-18-future-proof-architecture-synthesis.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-18-future-proof-architecture-synthesis.md) §5 (headless posture) + §6 (caveats: sustainability / real consumer as forcing function)
 - `runtime/events/ViewpointOffset.hpp` — the per-wall viewpoint offset seam

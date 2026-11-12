@@ -253,7 +253,7 @@ void testSpinningCubeFixture() {
   }
 }
 // Round-trip symmetry: JsonWriter(JsonReader(text)) == text, byte-for-byte,
-// for both fixtures. This is the load-bearing read/write symmetry assertion.
+// for both fixtures. This is the read/write symmetry assertion.
 void testRoundTripByteStable(const std::string &name) {
   std::string text = readFile(g_dataDir + "/" + name);
   JsonReader reader;

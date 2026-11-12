@@ -11,6 +11,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <string>
@@ -20,15 +21,8 @@ using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static bool feq(float a, float b, float eps = 1e-4f) {
-  return std::fabs(a - b) < eps;
-}
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+using x3d::test::setF;
+using x3d::test::feq;
 
 // Build a Text node with the given strings and an optional FontStyle child.
 static std::shared_ptr<X3DNode>
