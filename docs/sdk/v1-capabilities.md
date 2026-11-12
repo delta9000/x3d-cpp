@@ -14,6 +14,7 @@ resource, and identity rules.
 | Parsing | XML, ClassicVRML, VRML97, JSON, and gzip input. | [Parsing](../wiki/subsystems/parse-readers.md) |
 | Document model and bindings | Typed X3D 4.0 nodes, fields, and reflection. | [Document model and bindings](../wiki/subsystems/generated-bindings.md) |
 | Node inspection | `sdk::forEachNode` visits each reachable node once; `sdk::readField<T>` returns an owned copy of a named field. | [SDK facade](../wiki/subsystems/sdk-facade.md) |
+| Scene authoring | `SceneBuilder` creates nodes by C++ type or X3D type name, attaches children by containerField, sets fields from text or typed values, and adds ROUTEs, rejecting unknown fields, malformed values, and ROUTEs with the wrong direction or type. Child node types and value ranges are not checked by the builder. | [Asset conversion](../wiki/subsystems/asset-import.md#scenebuilder) |
 | Serialization | XML, canonical XML, JSON, and ClassicVRML writers. | [Serialization](../wiki/subsystems/codecs-writers.md) |
 | Prototype expansion | Local and resolved external declarations, instance fields, IS connections, and nested routes. | [Prototype expansion](../wiki/subsystems/proto-expand.md) |
 | Inline composition | Parse-time expansion, IMPORT/EXPORT, and resolver-driven runtime replacement. Asset-loaded deferred Inlines keep source ancestry to bound self and mutual cycles, and fetched documents forward their reader, range, and expansion warnings with source context. | [Inline composition](../wiki/subsystems/inline-expand.md) |

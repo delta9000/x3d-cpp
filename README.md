@@ -112,8 +112,25 @@ auto changes = session->delta();
 ```
 
 For complete programs, see [embed_minimal](examples/embed_minimal/).
-For authoring without simulation or extraction, use `x3d/authoring.hpp` and
-`x3d_cpp::authoring`.
+To build a scene in code, use `SceneBuilder`. It places each child in the field
+its type belongs in and throws on a field, value or ROUTE that cannot be right:
+
+```cpp
+#include "x3d/authoring.hpp" // or x3d/sdk.hpp (sdk::SceneBuilder)
+
+x3d::authoring::SceneBuilder scene;
+auto spin = scene.add<x3d::nodes::Transform>().def("Spin");
+spin.add<x3d::nodes::Shape>().add<x3d::nodes::Sphere>().set("radius", "2");
+auto clock = scene.add<x3d::nodes::TimeSensor>().set("loop", "true");
+auto turn = scene.add("OrientationInterpolator")
+                .set("key", "0 1").set("keyValue", "0 1 0 0  0 1 0 3.14");
+scene.route(clock, "fraction_changed", turn, "set_fraction");
+scene.route(turn, "value_changed", spin, "rotation");
+std::cout << x3d::authoring::XmlWriter{}.writeDocument(scene.document());
+```
+
+`x3d/authoring.hpp` with `x3d_cpp::authoring` is the slim target for this: no
+parser, simulation or extraction.
 
 Simulation and extraction use host-supplied resource callbacks. `parseFile`
 and the default Inline/EXTERNPROTO resolvers read local files; inject both

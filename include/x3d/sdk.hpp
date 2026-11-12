@@ -28,6 +28,7 @@
 // Implementation headers (all reachable bare-name via the x3d_cpp include path).
 #include "X3DParse.hpp"
 #include "X3DCodecs.hpp"
+#include "SceneBuilder.hpp"
 #include "X3DRuntime.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
@@ -99,6 +100,7 @@ using x3d::codec::XmlWriter;
 using x3d::codec::JsonWriter;
 using x3d::codec::VrmlWriter;
 using x3d::codec::CanonicalXmlWriter;
+using x3d::authoring::SceneBuilder; ///< checked scene construction (SceneBuilder.hpp)
 
 // Execution context (runtime / tick)
 // Construct one per loaded document, default-constructed. Setup order:

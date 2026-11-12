@@ -8,6 +8,16 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and
+  `sdk::SceneBuilder`) gains a fluent builder:
+  `b.add<Transform>().def("T").add<Shape>().add<Sphere>()`,
+  `node.set("translation", "0 1 0")`, `b.route(clock, "fraction_changed", interp,
+  "set_fraction")`. A child goes into the field its containerField names, and an
+  unknown field, malformed value, duplicate DEF, or a ROUTE with the wrong
+  direction or mismatched types throws `std::invalid_argument` where it is
+  written. Nodes can also be created by X3D type name. Header-only
+  (`runtime/SceneBuilder.hpp`); child node types and value ranges are not
+  checked by the builder.
 - **Scripts can create scene content (SCRIPT-BROWSER-SERVICES, partial).**
   `Browser.createX3DFromString` and `Browser.createVrmlFromString` parse a
   document or fragment and return the new nodes, which a `directOutput` script
