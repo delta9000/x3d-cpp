@@ -3,6 +3,7 @@
 // at 0, T/4, T/2 are 1/3, and at 3*T/4 are -1.
 // SND-9: X3D 4.0 bindings lack OscillatorSource.periodicWave; the parse test
 // documents the deferred authored-wave gap.
+#include "doctest/doctest.h"
 #include "AudioBackend.hpp"
 #include "InlineExpand.hpp"  // x3d::runtime::findField (generic-by-name reads)
 #include "RecordingBackend.hpp"
@@ -29,16 +30,7 @@ using namespace x3d::nodes;
 using x3d::test::rms;
 using x3d::test::goertzel;
 
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
-
-int main() {
+TEST_CASE("sound_periodicwave_test") {
   constexpr float kSR = 48000.0f;
   constexpr int kFrames = 4096;
   constexpr float kFreq = 100.0f;  // period = kSR/kFreq = 480 samples
@@ -72,8 +64,8 @@ int main() {
     custom.optionsImag = {0.0f, 1.0f};
 
     std::vector<float> a = renderOsc(sine), b = renderOsc(custom);
-    CHECK(a.size() == static_cast<std::size_t>(kFrames), "sine rendered");
-    CHECK(b.size() == static_cast<std::size_t>(kFrames), "custom rendered");
+    CHECK_MESSAGE((a.size() == static_cast<std::size_t>(kFrames)), "sine rendered");
+    CHECK_MESSAGE((b.size() == static_cast<std::size_t>(kFrames)), "custom rendered");
     double maxDiff = 0.0;
     for (int i = 0; i < kFrames; ++i)
       maxDiff = std::max(maxDiff, std::fabs(double(a[std::size_t(i)]) -
@@ -81,7 +73,7 @@ int main() {
     std::fprintf(stderr,
                  "[P1 single-harmonic] max|custom - sine| = %.3g (expect ~0)\n",
                  maxDiff);
-    CHECK(maxDiff < 1e-6, "imag=[0,1] CUSTOM wave == Sine sample-for-sample");
+    CHECK_MESSAGE((maxDiff < 1e-6), "imag=[0,1] CUSTOM wave == Sine sample-for-sample");
   }
 
   // P2: two-harmonic CUSTOM — analytic values, normalization, period.
@@ -93,7 +85,7 @@ int main() {
     custom.optionsImag = {0.0f, 1.0f, 0.0f};  // sin(t)
 
     std::vector<float> b = renderOsc(custom);
-    CHECK(b.size() == static_cast<std::size_t>(kFrames), "two-harmonic rendered");
+    CHECK_MESSAGE((b.size() == static_cast<std::size_t>(kFrames)), "two-harmonic rendered");
     // x(t) = sin(t) + 0.5 cos(2t); normalized by the analytic peak 1.5.
     const int period = static_cast<int>(kSR / kFreq);  // 480 samples
     const std::size_t q = static_cast<std::size_t>(period) / 4;
@@ -101,15 +93,15 @@ int main() {
                  "[P2 two-harmonic] x[0]=%.6f x[T/4]=%.6f x[T/2]=%.6f "
                  "x[3T/4]=%.6f (expect 1/3, 1/3, 1/3, -1)\n",
                  b[0], b[q], b[2 * q], b[3 * q]);
-    CHECK(near(b[0], 1.0 / 3.0, 1e-6), "x(0) = (0+0.5)/1.5 = 1/3");
-    CHECK(near(b[q], 1.0 / 3.0, 1e-6), "x(T/4) = (1-0.5)/1.5 = 1/3");
-    CHECK(near(b[2 * q], 1.0 / 3.0, 1e-6), "x(T/2) = (0+0.5)/1.5 = 1/3");
-    CHECK(near(b[3 * q], -1.0, 1e-6), "x(3T/4) = (-1-0.5)/1.5 = -1");
+    CHECK_MESSAGE((near(b[0], 1.0 / 3.0, 1e-6)), ("x(0) = (0+0.5)/1.5 = 1/3"));
+    CHECK_MESSAGE((near(b[q], 1.0 / 3.0, 1e-6)), "x(T/4) = (1-0.5)/1.5 = 1/3");
+    CHECK_MESSAGE((near(b[2 * q], 1.0 / 3.0, 1e-6)), ("x(T/2) = (0+0.5)/1.5 = 1/3"));
+    CHECK_MESSAGE((near(b[3 * q], -1.0, 1e-6)), "x(3T/4) = (-1-0.5)/1.5 = -1");
 
     double peak = 0.0;
     for (float s : b) peak = std::max(peak, std::fabs(double(s)));
     std::fprintf(stderr, "[P2 two-harmonic] peak = %.6f (expect 1)\n", peak);
-    CHECK(near(peak, 1.0, 1e-6), "normalized: peak absolute value 1");
+    CHECK_MESSAGE((near(peak, 1.0, 1e-6)), "normalized: peak absolute value 1");
 
     double periodDiff = 0.0;
     for (int i = 0; i + period < kFrames; ++i)
@@ -119,21 +111,21 @@ int main() {
     std::fprintf(stderr,
                  "[P2 two-harmonic] max|x[i] - x[i+%d]| = %.3g (expect ~0)\n",
                  period, periodDiff);
-    CHECK(periodDiff < 1e-5, "wave repeats with period SR/f");
+    CHECK_MESSAGE((periodDiff < 1e-5), "wave repeats with period SR/f");
   }
 
   // P3: no custom wave — the Sine default is unchanged.
   {
     NodeParams p;  // waveform defaults to Sine
     p.frequency = kFreq;
-    CHECK(p.waveform == Waveform::Sine, "NodeParams.waveform defaults to Sine");
+    CHECK_MESSAGE((p.waveform == Waveform::Sine), "NodeParams.waveform defaults to Sine");
     std::vector<float> b = renderOsc(p);
     double r = rms(b);
     double g = goertzel(b, double(kFreq), kSR);
     std::fprintf(stderr, "[P3 unset] RMS=%.4f (sine ~0.7071) goertzel=%.4f\n",
                  r, g);
-    CHECK(r > 0.68 && r < 0.73, "default oscillator is a unit sine");
-    CHECK(g > 0.6, "strong fundamental present");
+    CHECK_MESSAGE((r > 0.68 && r < 0.73), "default oscillator is a unit sine");
+    CHECK_MESSAGE((g > 0.6), "strong fundamental present");
   }
 
   // (b) system: SoundSystem::setPeriodicWave registered waves
@@ -178,9 +170,8 @@ int main() {
     std::fprintf(stderr,
                  "[P4 system custom] x[0]=%.6f x[3T/4]=%.6f (expect 1/3, -1)\n",
                  buf[0], buf[3 * q]);
-    CHECK(near(buf[0], 1.0 / 3.0, 1e-6), "registered CUSTOM wave: x(0) = 1/3");
-    CHECK(near(buf[3 * q], -1.0, 1e-6),
-          "registered CUSTOM wave: x(3T/4) = -1");
+    CHECK_MESSAGE((near(buf[0], 1.0 / 3.0, 1e-6)), "registered CUSTOM wave: x(0) = 1/3");
+    CHECK_MESSAGE((near(buf[3 * q], -1.0, 1e-6)), "registered CUSTOM wave: x(3T/4) = -1");
   }
 
   // P5: the four standard types map onto the Waveform enum — a SAWTOOTH wave
@@ -206,7 +197,7 @@ int main() {
     std::fprintf(stderr,
                  "[P5 system sawtooth] max|system - seam enum| = %.3g (expect ~0)\n",
                  d);
-    CHECK(d < 1e-6, "type=SAWTOOTH maps onto the seam's sawtooth");
+    CHECK_MESSAGE((d < 1e-6), "type=SAWTOOTH maps onto the seam's sawtooth");
   }
 
   // P6: no registered wave -> sine (the §16 default, unchanged).
@@ -226,7 +217,7 @@ int main() {
     direct.waveform = Waveform::Sine;
     const double d = maxAbsDiff(buf, renderOsc(direct));
     std::fprintf(stderr, "[P6 unset] max|system - sine| = %.3g (expect ~0)\n", d);
-    CHECK(d < 1e-6, "oscillator with NO registered wave stays sine");
+    CHECK_MESSAGE((d < 1e-6), "oscillator with NO registered wave stays sine");
   }
 
   // P7: the wave rides the seam in the node's params (recording tier) — and a
@@ -259,15 +250,14 @@ int main() {
       if (seen++ == 0) customParams = &cr.params;
       else emptyParams = &cr.params;
     }
-    CHECK(customParams && customParams->waveform == Waveform::Custom,
-          "CUSTOM wave rides the seam as Waveform::Custom");
-    CHECK(customParams && customParams->optionsReal.size() == 3 &&
+    CHECK_MESSAGE((customParams && customParams->waveform == Waveform::Custom),
+                  "CUSTOM wave rides the seam as Waveform::Custom");
+    CHECK_MESSAGE((customParams && customParams->optionsReal.size() == 3 &&
               customParams->optionsImag.size() == 3 &&
               customParams->optionsReal[2] == 0.5f &&
-              customParams->optionsImag[1] == 1.0f,
-          "optionsReal/optionsImag harmonic terms crossed the seam");
-    CHECK(emptyParams && emptyParams->waveform == Waveform::Sine,
-          "CUSTOM wave with no harmonic terms falls back to sine");
+              customParams->optionsImag[1] == 1.0f), "optionsReal/optionsImag harmonic terms crossed the seam");
+    CHECK_MESSAGE((emptyParams && emptyParams->waveform == Waveform::Sine),
+                  "CUSTOM wave with no harmonic terms falls back to sine");
   }
 
   // (c) parse path: the 4.1 field is unreadable on the 4.0 bindings
@@ -286,12 +276,12 @@ int main() {
     OscillatorSource *osc = nullptr;
     for (const auto &root : doc.scene.rootNodes)
       if ((osc = dynamic_cast<OscillatorSource *>(root.get()))) break;
-    CHECK(osc != nullptr, "OscillatorSource parsed from the scene");
+    CHECK_MESSAGE((osc != nullptr), "OscillatorSource parsed from the scene");
     if (osc) {
       // SND-9: generic-by-name field reads cannot reach the authored wave —
       // the 4.0 field table has no periodicWave entry.
-      CHECK(findField(*osc, "periodicWave") == nullptr,
-            "OscillatorSource has NO periodicWave field (X3D 4.0 object model)");
+      CHECK_MESSAGE((findField(*osc, "periodicWave") == nullptr),
+                    "OscillatorSource has NO periodicWave field (X3D 4.0 object model)");
       // The parser's best-effort fallback parks the child in the IS field,
       // where Proto field connections live — unreadable as periodicWave.
       auto *wave = dynamic_cast<PeriodicWave *>(osc->getIS().get());
@@ -299,12 +289,8 @@ int main() {
                    "[parse] periodicWave field=%s; fallback parked node: %s\n",
                    findField(*osc, "periodicWave") ? "present" : "absent",
                    wave ? "PeriodicWave (in IS)" : "none");
-      CHECK(wave != nullptr && wave->getOptionsImag().size() == 2,
-            "authored PeriodicWave lands in IS (parser fallback), not a "
+      CHECK_MESSAGE((wave != nullptr && wave->getOptionsImag().size() == 2), "authored PeriodicWave lands in IS (parser fallback), not a "
             "readable periodicWave field");
     }
   }
-
-  if (g_failures == 0) std::fprintf(stderr, "sound_periodicwave: all checks passed\n");
-  return g_failures == 0 ? 0 : 1;
 }

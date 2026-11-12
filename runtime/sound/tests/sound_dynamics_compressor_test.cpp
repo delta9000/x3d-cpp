@@ -15,6 +15,7 @@
 //   (c) SoundSystem end-to-end: a sine (the §16 mapping's only waveform) through
 //       the same compressor is compressed to roughly the peak-level ratio law.
 
+#include "doctest/doctest.h"
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -38,15 +39,6 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using x3d::test::rms;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
 
 constexpr float kSR = 48000.0f;
 constexpr int kFrames = 4096;
@@ -101,7 +93,7 @@ static std::vector<float> renderDirect(float oscAmp, float threshold,
   return buf;
 }
 
-int main() {
+TEST_CASE("sound_dynamics_compressor_test") {
   // (a) recording tier: the compressor and its subtree are built.
   {
     CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
@@ -110,9 +102,9 @@ int main() {
     X3DExecutionContext ctx;
     sys.attach(c.dest.get(), ctx);
 
-    CHECK(rec->creates.size() == 3, "3 nodes created (osc/compressor/dest)");
-    CHECK(rec->connects.size() == 2, "2 connections (the chain edges)");
-    CHECK(sys.nodeCount() == 3, "SoundSystem mapped the compressor subtree");
+    CHECK_MESSAGE((rec->creates.size() == 3), "3 nodes created (osc/compressor/dest)");
+    CHECK_MESSAGE((rec->connects.size() == 2), "2 connections (the chain edges)");
+    CHECK_MESSAGE((sys.nodeCount() == 3), "SoundSystem mapped the compressor subtree");
     std::fprintf(stderr, "[recording] %zu nodes, %zu edges\n",
                  rec->creates.size(), rec->connects.size());
   }
@@ -122,10 +114,10 @@ int main() {
     // A square of amplitude 0.1 sits at -20 dB, below the -12 dB threshold:
     // the gain computer stays at unity, so the RMS is untouched.
     const std::vector<float> buf = renderDirect(0.1f, -12.0f, true);
-    CHECK(buf.size() == static_cast<std::size_t>(kFrames), "rendered kFrames");
+    CHECK_MESSAGE((buf.size() == static_cast<std::size_t>(kFrames)), "rendered kFrames");
     const double r = rms(buf);
     std::fprintf(stderr, "[dsp below] RMS=%.4f (expect ~0.1)\n", r);
-    CHECK(std::fabs(r - 0.1) < 0.002, "below-threshold signal passes unchanged");
+    CHECK_MESSAGE((std::fabs(r - 0.1) < 0.002), "below-threshold signal passes unchanged");
   }
 
   // (b2) DSP: a steady above-threshold signal settles at the ratio law.
@@ -142,9 +134,9 @@ int main() {
     const double r = rms(tail);
     std::fprintf(stderr, "[dsp above] tail RMS=%.4f (expect ~%.4f)\n", r,
                  expected);
-    CHECK(r < 0.4 && r > 0.15, "above-threshold signal is compressed");
-    CHECK(std::fabs(r - expected) < 0.03,
-          "settled level matches threshold + (level - threshold)/ratio");
+    CHECK_MESSAGE((r < 0.4 && r > 0.15), "above-threshold signal is compressed");
+    CHECK_MESSAGE((std::fabs(r - expected) < 0.03),
+                  ("settled level matches threshold + (level - threshold)/ratio"));
   }
 
   // (b3) DSP: enabled=false passes the input through unchanged.
@@ -152,7 +144,7 @@ int main() {
     const std::vector<float> buf = renderDirect(0.5f, -12.0f, false);
     const double r = rms(buf);
     std::fprintf(stderr, "[dsp disabled] RMS=%.4f (expect ~0.5)\n", r);
-    CHECK(std::fabs(r - 0.5) < 0.005, "disabled compressor passes through");
+    CHECK_MESSAGE((std::fabs(r - 0.5) < 0.005), "disabled compressor passes through");
   }
 
   // (c) SoundSystem end-to-end: a sine through the full §16 path.
@@ -189,12 +181,6 @@ int main() {
     const std::vector<float> tail(buf.begin() + 1024, buf.end());
     const double r = rms(tail);
     std::fprintf(stderr, "[dsp sys sine] tail RMS=%.4f (peak-law ~0.188)\n", r);
-    CHECK(r > 0.12 && r < 0.25, "SoundSystem-built compressor compresses");
+    CHECK_MESSAGE((r > 0.12 && r < 0.25), "SoundSystem-built compressor compresses");
   }
-
-  if (g_failures > 0)
-    std::fprintf(stderr, "%d check(s) FAILED\n", g_failures);
-  else
-    std::fprintf(stderr, "all dynamics-compressor checks passed\n");
-  return g_failures > 0 ? 1 : 0;
 }

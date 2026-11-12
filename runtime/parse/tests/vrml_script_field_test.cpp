@@ -1,5 +1,6 @@
 // ClassicVRML and VRML97 Script author fields and inline source survive round-trips.
 
+#include "doctest/doctest.h"
 #include "ClassicVrmlReader.hpp"
 #include "DynamicField.hpp"
 #include "Vrml97Reader.hpp"
@@ -21,17 +22,6 @@ using x3d::runtime::effectiveFields;
 namespace runtime = x3d::runtime;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
   return std::dynamic_pointer_cast<T>(n);
@@ -73,63 +63,58 @@ const char *kScriptDoc =
 void assertCaptured(const std::shared_ptr<Script> &script,
                     const runtime::DynamicFieldStore &store,
                     const std::string &tag) {
-  check(static_cast<bool>(script), tag + ": Script root node parsed");
+  CHECK_MESSAGE((static_cast<bool>(script)), (tag + ": Script root node parsed"));
   if (!script)
     return;
 
   FieldTable eff = effectiveFields(*script, store);
 
   const FieldInfo *fraction = find(eff, "fraction");
-  check(fraction != nullptr,
-        tag + ": author field 'fraction' in effectiveFields");
+  CHECK_MESSAGE((fraction != nullptr), (tag + ": author field 'fraction' in effectiveFields"));
   if (fraction) {
-    check(fraction->type == X3DFieldType::SFFloat,
-          tag + ": fraction type SFFloat");
-    check(fraction->access == AccessType::InputOnly,
-          tag + ": fraction is inputOnly (eventIn-style)");
-    check(!fraction->isReadable(), tag + ": fraction has no get (inputOnly)");
-    check(fraction->isWritable(), tag + ": fraction has set (inputOnly sink)");
+    CHECK_MESSAGE((fraction->type == X3DFieldType::SFFloat), (tag + ": fraction type SFFloat"));
+    CHECK_MESSAGE((fraction->access == AccessType::InputOnly),
+                  (tag + ": fraction is inputOnly (eventIn-style)"));
+    CHECK_MESSAGE((!fraction->isReadable()), (tag + ": fraction has no get (inputOnly)"));
+    CHECK_MESSAGE((fraction->isWritable()), (tag + ": fraction has set (inputOnly sink)"));
   }
 
   const FieldInfo *scale = find(eff, "scale");
-  check(scale != nullptr, tag + ": author field 'scale' in effectiveFields");
+  CHECK_MESSAGE((scale != nullptr), (tag + ": author field 'scale' in effectiveFields"));
   if (scale) {
-    check(scale->type == X3DFieldType::SFVec3f, tag + ": scale type SFVec3f");
-    check(scale->access == AccessType::OutputOnly,
-          tag + ": scale is outputOnly (eventOut-style)");
-    check(scale->isReadable(), tag + ": scale has get (outputOnly source)");
-    check(!scale->isWritable(), tag + ": scale has no set (read-only)");
+    CHECK_MESSAGE((scale->type == X3DFieldType::SFVec3f), (tag + ": scale type SFVec3f"));
+    CHECK_MESSAGE((scale->access == AccessType::OutputOnly),
+                  (tag + ": scale is outputOnly (eventOut-style)"));
+    CHECK_MESSAGE((scale->isReadable()), (tag + ": scale has get (outputOnly source)"));
+    CHECK_MESSAGE((!scale->isWritable()), (tag + ": scale has no set (read-only)"));
   }
 
   const FieldInfo *gain = find(eff, "gain");
-  check(gain != nullptr, tag + ": author field 'gain' in effectiveFields");
+  CHECK_MESSAGE((gain != nullptr), (tag + ": author field 'gain' in effectiveFields"));
   if (gain) {
-    check(gain->access == AccessType::InputOutput,
-          tag + ": gain is inputOutput");
-    check(gain->isReadable() && gain->isWritable(),
-          tag + ": gain has get+set (inputOutput)");
+    CHECK_MESSAGE((gain->access == AccessType::InputOutput), (tag + ": gain is inputOutput"));
+    CHECK_MESSAGE((gain->isReadable() && gain->isWritable()),
+                  (tag + ": gain has get+set (inputOutput)"));
     auto v = gain->get(*script);
-    check(v.has_value(), tag + ": gain default value boxed");
+    CHECK_MESSAGE((v.has_value()), (tag + ": gain default value boxed"));
     if (v.has_value())
-      check(std::any_cast<SFFloat>(v) == 2.5f, tag + ": gain default == 2.5");
+      CHECK_MESSAGE((std::any_cast<SFFloat>(v) == 2.5f), (tag + ": gain default == 2.5"));
   }
 
   const FieldInfo *threshold = find(eff, "threshold");
-  check(threshold != nullptr,
-        tag + ": author field 'threshold' in effectiveFields");
+  CHECK_MESSAGE((threshold != nullptr), (tag + ": author field 'threshold' in effectiveFields"));
   if (threshold) {
-    check(threshold->access == AccessType::InitializeOnly,
-          tag + ": threshold is initializeOnly (field-style)");
+    CHECK_MESSAGE((threshold->access == AccessType::InitializeOnly),
+                  (tag + ": threshold is initializeOnly (field-style)"));
     auto v = threshold->get(*script);
-    check(v.has_value() && std::any_cast<SFFloat>(v) == 0.5f,
-          tag + ": threshold default == 0.5");
+    CHECK_MESSAGE((v.has_value() && std::any_cast<SFFloat>(v) == 0.5f),
+                  (tag + ": threshold default == 0.5"));
   }
 
-  check(!script->getSourceCode().empty(),
-        tag + ": inline url body mirrored into sourceCode");
-  check(script->getSourceCode().find("scale = new SFVec3f") !=
-            std::string::npos,
-        tag + ": sourceCode carries the ecmascript body");
+  CHECK_MESSAGE((!script->getSourceCode().empty()),
+                (tag + ": inline url body mirrored into sourceCode"));
+  CHECK_MESSAGE((script->getSourceCode().find("scale = new SFVec3f") !=
+            std::string::npos), (tag + ": sourceCode carries the ecmascript body"));
 }
 
 void testClassicVrmlCapture() {
@@ -161,7 +146,7 @@ void testRoundTrip() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(kScriptDoc);
   auto script = findScript(doc.scene);
-  check(static_cast<bool>(script), "roundtrip: parsed Script");
+  CHECK_MESSAGE((static_cast<bool>(script)), "roundtrip: parsed Script");
   if (!script)
     return;
 
@@ -169,11 +154,10 @@ void testRoundTrip() {
   // declarations + the url body so a re-parse recovers them.
   VrmlWriter writer;
   std::string out = writer.writeDocument(doc);
-  check(out.find("inputOnly") != std::string::npos ||
-            out.find("eventIn") != std::string::npos,
-        "roundtrip: writer emits the inputOnly decl");
-  check(out.find("scale") != std::string::npos,
-        "roundtrip: writer emits the outputOnly 'scale' decl");
+  CHECK_MESSAGE((out.find("inputOnly") != std::string::npos ||
+            out.find("eventIn") != std::string::npos), "roundtrip: writer emits the inputOnly decl");
+  CHECK_MESSAGE((out.find("scale") != std::string::npos),
+                "roundtrip: writer emits the outputOnly 'scale' decl");
 
   // Re-parse the written text into a clean store and re-assert capture.
   ClassicVrmlReader reader2;
@@ -184,14 +168,8 @@ void testRoundTrip() {
 
 } // namespace
 
-int main() {
+TEST_CASE("vrml_script_field_test") {
   testClassicVrmlCapture();
   testVrml97Capture();
   testRoundTrip();
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all vrml script-field checks passed\n";
-  return 0;
 }

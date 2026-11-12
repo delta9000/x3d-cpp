@@ -16,8 +16,8 @@
 //      canonical keys).
 //
 // Hermetic: builds a temp directory layout, asserts, tears it down.
-// Exit code 0 on success; nonzero on any failed assertion.
 
+#include "doctest/doctest.h"
 #include "X3DParse.hpp"
 
 #include <any>
@@ -33,16 +33,6 @@ using namespace x3d::codec;
 namespace fs = std::filesystem;
 
 namespace {
-
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 void write(const fs::path &p, const std::string &content) {
   fs::create_directories(p.parent_path());
@@ -108,7 +98,7 @@ int countInlines(const x3d::runtime::X3DDocument &doc) {
 
 } // namespace
 
-int main() {
+TEST_CASE("inline_confine_test") {
   // <root>/Content/{parent_escape.x3d, parent_ok.x3d, cycle_a.x3d,
   // cycle_b.x3d, child.x3d} and <root>/outside.x3d above the Content tree.
   // parseFile defaults the confine root to the top-level file's own directory,
@@ -142,20 +132,20 @@ int main() {
   // DEF must not leak into the parent scene.
   {
     auto doc = parseFile((content / "parent_escape.x3d").string());
-    check(countInlines(doc) == 1,
-          "default Inline resolver: ../ escape above the root is not expanded");
-    check(doc.scene.resolve("ESCAPED_LEAK") == nullptr,
-          "default Inline resolver: escaped file's contents do not leak");
+    CHECK_MESSAGE((countInlines(doc) == 1),
+                  "default Inline resolver: ../ escape above the root is not expanded");
+    CHECK_MESSAGE((doc.scene.resolve("ESCAPED_LEAK") == nullptr),
+                  "default Inline resolver: escaped file's contents do not leak");
   }
   {
     auto doc = parseFile((content / "parent_deep_escape.x3d").string());
-    check(countInlines(doc) == 1,
-          "default Inline resolver: ../../ escape above the root is not expanded");
+    CHECK_MESSAGE((countInlines(doc) == 1),
+                  "default Inline resolver: ../../ escape above the root is not expanded");
   }
   {
     auto doc = parseFile((content / "parent_absolute.x3d").string());
-    check(countInlines(doc) == 1,
-          "default Inline resolver: absolute url is not expanded");
+    CHECK_MESSAGE((countInlines(doc) == 1),
+                  "default Inline resolver: absolute url is not expanded");
   }
 
   // (2) The guard must not over-block: a sibling within the root resolves
@@ -163,30 +153,23 @@ int main() {
   // same file resolves identically (SEC-4 canonical key).
   {
     auto doc = parseFile((content / "parent_ok.x3d").string());
-    check(countInlines(doc) == 0,
-          "default Inline resolver: sibling within the root still expands");
-    check(doc.scene.rootNodes.size() == 1,
-          "expanded child roots are spliced into the parent scene");
+    CHECK_MESSAGE((countInlines(doc) == 0),
+                  "default Inline resolver: sibling within the root still expands");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1),
+                  "expanded child roots are spliced into the parent scene");
   }
   {
     auto doc = parseFile((content / "parent_dotted.x3d").string());
-    check(countInlines(doc) == 0,
-          "default Inline resolver: ./ spelling of a sibling still expands");
+    CHECK_MESSAGE((countInlines(doc) == 0),
+                  "default Inline resolver: ./ spelling of a sibling still expands");
   }
 
   // (3) Cycle termination survives the canonical-key change (a -> b -> a).
   {
     auto doc = parseFile((content / "cycle_a.x3d").string());
-    check(doc.scene.rootNodes.size() >= 1,
-          "inline cycle a -> b -> a terminates");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() >= 1), "inline cycle a -> b -> a terminates");
   }
 
   fs::remove_all(root, ec);
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all inline_confine checks passed\n";
-  return 0;
 }

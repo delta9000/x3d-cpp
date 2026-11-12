@@ -5,6 +5,7 @@
 // isActive/isPaused/pitch -> playback), and BufferAudioSource scenes (authored
 // PCM -> the same Buffer node; MediaTimeSystem lifecycle, loop, gain, channels).
 
+#include "doctest/doctest.h"
 #include "AudioBackend.hpp"
 #include "SoundSystem.hpp"
 #include "RecordingBackend.hpp"
@@ -35,15 +36,6 @@ using x3d::test::goertzel;
 using x3d::test::rms;
 using x3d::test::rmsStereo;
 
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                       \
-  do {                                                                         \
-    if (!(cond)) {                                                             \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);    \
-      ++g_failures;                                                            \
-    }                                                                          \
-  } while (0)
-
 // A RIFF/WAVE file: `channels` interleaved 16-bit PCM of a 1 kHz sine at `rate`.
 static std::vector<std::uint8_t> makeWav16(int rate, int channels, int frames) {
   std::vector<std::uint8_t> b;
@@ -64,15 +56,16 @@ static std::vector<std::uint8_t> makeWav16(int rate, int channels, int frames) {
 
 static void testWav() {
   const DecodedAudio a = io::wav::decodeWav(makeWav16(8000, 2, 4000));
-  CHECK(a.ok, "wav: 16-bit stereo decodes");
-  CHECK(a.samples.size() == 4000, "wav: stereo downmixed to one sample per frame");
-  CHECK(a.sampleRate == 8000.0f, "wav: sample rate read from fmt");
-  CHECK(std::fabs(a.duration() - 0.5) < 1e-9, "wav: duration = frames / rate");
-  CHECK(std::fabs(a.samples[2] - 16384.0f / 32768.0f) < 1e-3f, "wav: 16-bit scaled to [-1,1]");
-  CHECK(!io::wav::decodeWav({'n', 'o', 'p', 'e'}).ok, "wav: garbage is rejected");
+  CHECK_MESSAGE((a.ok), "wav: 16-bit stereo decodes");
+  CHECK_MESSAGE((a.samples.size() == 4000), "wav: stereo downmixed to one sample per frame");
+  CHECK_MESSAGE((a.sampleRate == 8000.0f), "wav: sample rate read from fmt");
+  CHECK_MESSAGE((std::fabs(a.duration() - 0.5) < 1e-9), "wav: duration = frames / rate");
+  CHECK_MESSAGE((std::fabs(a.samples[2] - 16384.0f / 32768.0f) < 1e-3f),
+                "wav: 16-bit scaled to [-1,1]");
+  CHECK_MESSAGE((!io::wav::decodeWav({'n', 'o', 'p', 'e'}).ok), "wav: garbage is rejected");
   std::vector<std::uint8_t> trunc = makeWav16(8000, 1, 100);
   trunc.resize(30);
-  CHECK(!io::wav::decodeWav(trunc).ok, "wav: a truncated header is rejected");
+  CHECK_MESSAGE((!io::wav::decodeWav(trunc).ok), "wav: a truncated header is rejected");
 }
 
 static void testSoundClipScene() {
@@ -86,29 +79,29 @@ static void testSoundClipScene() {
   SoundSystem sys(std::make_shared<BuiltinDspBackend>());
   sys.setAssetResolver([&](const std::string &url, extract::AssetKind kind) {
     ++fetches;
-    CHECK(kind == extract::AssetKind::Audio, "scene: clip fetched as AssetKind::Audio");
+    CHECK_MESSAGE((kind == extract::AssetKind::Audio), "scene: clip fetched as AssetKind::Audio");
     return url == "tone.wav" ? extract::AssetResult::makeReady(wav) : extract::AssetResult::makeFailed();
   });
   sys.setAudioDecoder(io::wav::makeWavDecoder());
   X3DExecutionContext ctx;  // no Viewpoint: listener at the origin facing -Z
   sys.attach(snd.get(), ctx);
-  CHECK(fetches == 2, "scene: url list tried in order until one loads");
-  CHECK(sys.destinationCount() == 1, "scene: Sound owns a stereo destination");
+  CHECK_MESSAGE((fetches == 2), "scene: url list tried in order until one loads");
+  CHECK_MESSAGE((sys.destinationCount() == 1), "scene: Sound owns a stereo destination");
 
   std::vector<float> lr;
   sys.update(0.0, ctx);
   sys.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
-  CHECK(rmsStereo(lr) < 1e-6, "scene: an inactive AudioClip is silent");
+  CHECK_MESSAGE((rmsStereo(lr) < 1e-6), "scene: an inactive AudioClip is silent");
 
   clip->emitIsActive(true);
   sys.update(0.1, ctx);
   sys.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
   const double level = rmsStereo(lr);
-  CHECK(level > 0.05, "scene: isActive plays the clip (listener inside minFront)");
+  CHECK_MESSAGE((level > 0.05), "scene: isActive plays the clip (listener inside minFront)");
   std::vector<float> left(lr.size() / 2);
   for (std::size_t i = 0; i < left.size(); ++i) left[i] = lr[2 * i];
-  CHECK(goertzel(left, 1000.0, x3d::test::kImmSR) > 20.0 * goertzel(left, 2500.0, x3d::test::kImmSR),
-        "scene: the decoded 1 kHz tone reaches the output");
+  CHECK_MESSAGE((goertzel(left, 1000.0, x3d::test::kImmSR) > 20.0 * goertzel(left, 2500.0, x3d::test::kImmSR)),
+                "scene: the decoded 1 kHz tone reaches the output");
 
   // Move the Sound 5 m down its own +Z (the listener is at the origin): between
   // the ellipsoids, -20 dB * 4/9.
@@ -116,13 +109,13 @@ static void testSoundClipScene() {
   sys.update(0.2, ctx);
   sys.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
   const double want = x3d::test::ellipsoidExpected(5.0, 1.0, 10.0);
-  CHECK(std::fabs(rmsStereo(lr) / level - want) < 0.05 * want,
-        "scene: Sound.location moves the source through the ellipsoid falloff");
+  CHECK_MESSAGE((std::fabs(rmsStereo(lr) / level - want) < 0.05 * want),
+                "scene: Sound.location moves the source through the ellipsoid falloff");
 
   clip->emitIsPaused(true);
   sys.update(0.3, ctx);
   sys.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
-  CHECK(rmsStereo(lr) < 1e-6, "scene: isPaused silences the clip");
+  CHECK_MESSAGE((rmsStereo(lr) < 1e-6), "scene: isPaused silences the clip");
 }
 
 static void testActivePitchStaysAtActivationRate() {
@@ -149,7 +142,8 @@ static void testActivePitchStaysAtActivationRate() {
   float rate = -1.0f;
   for (const auto &p : backend->setParams)
     if (p.param == Param::PlaybackRate) rate = p.value;
-  CHECK(rate == 1.0f, "scene: active AudioClip retains its activation pitch in the backend");
+  CHECK_MESSAGE((rate == 1.0f),
+                "scene: active AudioClip retains its activation pitch in the backend");
 }
 
 static void testMovieTextureSourceLifecycle() {
@@ -165,7 +159,7 @@ static void testMovieTextureSourceLifecycle() {
   int fetches = 0;
   sound.setAssetResolver([&](const std::string &, extract::AssetKind kind) {
     ++fetches;
-    CHECK(kind == extract::AssetKind::Movie, "movie source resolves as movie media");
+    CHECK_MESSAGE((kind == extract::AssetKind::Movie), "movie source resolves as movie media");
     return extract::AssetResult::makeReady({1});
   });
   sound.setMovieAudioDecoder([](const std::vector<std::uint8_t> &) {
@@ -191,18 +185,18 @@ static void testMovieTextureSourceLifecycle() {
     sound.renderStereo(x3d::test::kImmFrames, x3d::test::kImmSR, lr);
     return rmsStereo(lr);
   };
-  CHECK(levelAt(0.0) < 1e-6, "movie audio is silent before activation");
-  CHECK(fetches == 0, "load FALSE defers movie audio fetch");
+  CHECK_MESSAGE((levelAt(0.0) < 1e-6), "movie audio is silent before activation");
+  CHECK_MESSAGE((fetches == 0), "load FALSE defers movie audio fetch");
   movie->setLoad(true);
-  CHECK(levelAt(1.0) > 0.05, "movie audio plays while active");
-  CHECK(fetches == 1, "movie audio is fetched once when load becomes TRUE");
+  CHECK_MESSAGE((levelAt(1.0) > 0.05), "movie audio plays while active");
+  CHECK_MESSAGE((fetches == 1), "movie audio is fetched once when load becomes TRUE");
   movie->setSpeed(4.0f); // active speed remains captured at 2.
-  CHECK(levelAt(1.5) > 0.05, "movie audio keeps playing after active speed write");
+  CHECK_MESSAGE((levelAt(1.5) > 0.05), "movie audio keeps playing after active speed write");
   movie->setPauseTime(2.0);
-  CHECK(levelAt(2.0) < 1e-6, "movie audio pauses with MovieTexture");
+  CHECK_MESSAGE((levelAt(2.0) < 1e-6), "movie audio pauses with MovieTexture");
   movie->setResumeTime(3.0);
-  CHECK(levelAt(3.0) > 0.05, "movie audio resumes with MovieTexture");
-  CHECK(levelAt(4.0) < 1e-6, "movie audio stops with MovieTexture");
+  CHECK_MESSAGE((levelAt(3.0) > 0.05), "movie audio resumes with MovieTexture");
+  CHECK_MESSAGE((levelAt(4.0) < 1e-6), "movie audio stops with MovieTexture");
 }
 
 // An n-sample ascending ramp: the Buffer node plays it back sample-exactly at
@@ -242,15 +236,15 @@ static void testBufferAudioSourceScene() {
       sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
     };
     renderAt(0.0);
-    CHECK(rms(out) < 1e-6, "buffer source: silent before startTime");
+    CHECK_MESSAGE((rms(out) < 1e-6), "buffer source: silent before startTime");
     renderAt(1.0);
     bool exact = true;
     for (int i = 0; i < x3d::test::kImmFrames && exact; ++i)
       exact = std::fabs(out[static_cast<std::size_t>(i)] - ramp[static_cast<std::size_t>(i) % 8]) < 1e-6f;
-    CHECK(exact, "buffer source: the authored ramp renders at its level");
+    CHECK_MESSAGE((exact), "buffer source: the authored ramp renders at its level");
     renderAt(1.01);
-    CHECK(rms(out) < 1e-6 && !src->getIsActive(),
-          "buffer source: non-loop renders once, then the lifecycle stops it");
+    CHECK_MESSAGE((rms(out) < 1e-6 && !src->getIsActive()),
+                  "buffer source: non-loop renders once, then the lifecycle stops it");
   }
 
   // Loop: the buffer repeats and the node stays active; gain scales the output.
@@ -278,9 +272,9 @@ static void testBufferAudioSourceScene() {
     bool exact = true;
     for (int i = 0; i < x3d::test::kImmFrames && exact; ++i)
       exact = std::fabs(out[static_cast<std::size_t>(i)] - ramp[static_cast<std::size_t>(i) % 8]) < 1e-6f;
-    CHECK(exact, "buffer source: loop repeats the buffer");
+    CHECK_MESSAGE((exact), "buffer source: loop repeats the buffer");
     renderAt(2.0);
-    CHECK(src->getIsActive(), "buffer source: loop keeps the node active");
+    CHECK_MESSAGE((src->getIsActive()), "buffer source: loop keeps the node active");
     src->setGain(0.5f);
     renderAt(2.1);
     exact = true;
@@ -288,7 +282,7 @@ static void testBufferAudioSourceScene() {
       const std::size_t k = static_cast<std::size_t>(i) % 8;
       exact = std::fabs(out[static_cast<std::size_t>(i)] - 0.5f * ramp[k]) < 1e-6f;
     }
-    CHECK(exact, "buffer source: gain scales the output");
+    CHECK_MESSAGE((exact), "buffer source: gain scales the output");
   }
 }
 
@@ -313,9 +307,8 @@ static void testBufferAudioSourceChannelsAndDuration() {
     ctx.tick(1.0);
     sound.update(1.0, ctx);
     sound.render(x3d::test::kImmFrames, x3d::test::kImmSR, out);
-    CHECK(std::fabs(out[0] - 0.75f) < 1e-6f && std::fabs(out[1] - 0.375f) < 1e-6f &&
-              std::fabs(out[2] - 0.75f) < 1e-6f,
-          "buffer source: a stereo buffer is averaged to the mono Buffer node");
+    CHECK_MESSAGE((std::fabs(out[0] - 0.75f) < 1e-6f && std::fabs(out[1] - 0.375f) < 1e-6f &&
+              std::fabs(out[2] - 0.75f) < 1e-6f), "buffer source: a stereo buffer is averaged to the mono Buffer node");
   }
   {
     auto src = std::make_shared<BufferAudioSource>();
@@ -339,7 +332,7 @@ static void testBufferAudioSourceChannelsAndDuration() {
     const bool truncated = std::fabs(out[0] - ramp[0]) < 1e-6f &&
                            std::fabs(out[3] - ramp[3]) < 1e-6f &&
                            std::fabs(out[4] - ramp[0]) < 1e-6f;
-    CHECK(truncated, "buffer source: bufferDuration truncates the used portion");
+    CHECK_MESSAGE((truncated), "buffer source: bufferDuration truncates the used portion");
   }
 }
 
@@ -370,11 +363,11 @@ static void testBufferAudioSourceRateCapture() {
   src->setDetune(0.0f);
   ctx.tick(2.0);
   sound.update(2.0, ctx);
-  CHECK(src->getIsActive(), "buffer source: unknown duration keeps the node active");
+  CHECK_MESSAGE((src->getIsActive()), "buffer source: unknown duration keeps the node active");
   float rate = -1.0f;
   for (const auto &p : backend->setParams)
     if (p.param == Param::PlaybackRate) rate = p.value;
-  CHECK(rate == 4.0f, "buffer source: playbackRate x detune is captured at activation");
+  CHECK_MESSAGE((rate == 4.0f), "buffer source: playbackRate x detune is captured at activation");
 }
 
 // ADR-0051 detach: a MovieTexture whose audio is still pending (load FALSE)
@@ -401,12 +394,12 @@ static void testDetachDropsPendingMovie() {
   snd->setSource(nullptr);
   movie.reset();  // the unloaded content is freed
   sound.update(1.0, ctx);
-  CHECK(fetches == 0, "a detached pending movie is never retried");
+  CHECK_MESSAGE((fetches == 0), "a detached pending movie is never retried");
 }
 
-int main() {
+TEST_CASE("sound_immersive_test") {
   x3d::test::runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
-                                  [](bool ok, const char *msg) { CHECK(ok, msg); });
+                                  [](bool ok, const char *msg) { CHECK_MESSAGE((ok), msg); });
   testWav();
   testSoundClipScene();
   testBufferAudioSourceScene();
@@ -415,6 +408,4 @@ int main() {
   testActivePitchStaysAtActivationRate();
   testMovieTextureSourceLifecycle();
   testDetachDropsPendingMovie();
-  if (g_failures == 0) std::fprintf(stderr, "sound_immersive_test: ALL PASS\n");
-  return g_failures == 0 ? 0 : 1;
 }

@@ -69,7 +69,7 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/validate_checks_test.cpp")
     target_include_directories(x3d_validate_checks_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-    target_link_libraries(x3d_validate_checks_test PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_validate_checks_test PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_validate_checks_test COMMAND x3d_validate_checks_test)
 endif()
 
@@ -92,7 +92,7 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/scene_equiv_test.cpp")
     target_include_directories(x3d_scene_equiv_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-    target_link_libraries(x3d_scene_equiv_test PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_scene_equiv_test PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_scene_equiv_test COMMAND x3d_scene_equiv_test)
 
     # Relative Inline/EXTERNPROTO resources must expand against the same baseUrl:
@@ -104,7 +104,7 @@ if(X3D_CPP_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/gate_baseurl_roundtrip_test.cpp")
     target_include_directories(x3d_gate_baseurl_roundtrip_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-    target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_gate_baseurl_roundtrip_test PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_gate_baseurl_roundtrip_test
              COMMAND x3d_gate_baseurl_roundtrip_test)
 endif()

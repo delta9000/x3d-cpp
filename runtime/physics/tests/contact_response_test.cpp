@@ -4,6 +4,7 @@
 // BOUNCE gates bounce (default ["BOUNCE"]). The selector gates, not the value
 // (an explicit selection with value 0 still overrides; no selection leaves the
 // engine default untouched). No engine.
+#include "doctest/doctest.h"
 #include "PhysicsSystem.hpp"
 
 #include "X3DExecutionContext.hpp"
@@ -23,13 +24,6 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; }             \
-    else { std::printf("ok:   %s\n", msg); }                                   \
-  } while (0)
 
 // Records the last setContactResponse args.
 class RecordingBackend : public PhysicsBackend {
@@ -74,7 +68,7 @@ makeColl(std::vector<AppliedParametersChoices> ap, SFVec2f fc, float bounce) {
   return rbc;
 }
 
-int main() {
+TEST_CASE("contact_response_test") {
   // Case 1: FRICTION_COEFFICIENT_2 selected, frictionCoefficients (1,1), bounce 0.
   // Selector present -> frictionCoefficients.x applied; BOUNCE not selected -> restitution unset.
   {
@@ -85,11 +79,10 @@ int main() {
         std::vector<AppliedParametersChoices>{AppliedParametersChoices::FRICTION_COEFFICIENT_2},
         SFVec2f{1.0f, 1.0f}, 0.0f);
     sys.attach(rbc.get(), ctx);
-    CHECK(backend->called, "setContactResponse called (friction selector)");
-    CHECK(backend->friction == 1.0f,
-          "FRICTION_COEFFICIENT-2 selector -> frictionCoefficients.x forwarded");
-    CHECK(backend->restitution < 0.0f,
-          "no BOUNCE selector -> restitution unset (-1)");
+    CHECK_MESSAGE((backend->called), "setContactResponse called (friction selector)");
+    CHECK_MESSAGE((backend->friction == 1.0f),
+                  "FRICTION_COEFFICIENT-2 selector -> frictionCoefficients.x forwarded");
+    CHECK_MESSAGE((backend->restitution < 0.0f), "no BOUNCE selector -> restitution unset (-1)");
   }
   // Case 2: BOUNCE selected, frictionCoefficients (0,0), bounce 0.8.
   // Selector present -> bounce applied; FRICTION_COEFFICIENT-2 not selected -> friction unset.
@@ -101,10 +94,10 @@ int main() {
         std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
         SFVec2f{0.0f, 0.0f}, 0.8f);
     sys.attach(rbc.get(), ctx);
-    CHECK(backend->friction < 0.0f,
-          "no FRICTION_COEFFICIENT-2 selector -> friction unset (-1)");
-    CHECK(backend->restitution == 0.8f,
-          "BOUNCE selector -> bounce forwarded as restitution");
+    CHECK_MESSAGE((backend->friction < 0.0f),
+                  "no FRICTION_COEFFICIENT-2 selector -> friction unset (-1)");
+    CHECK_MESSAGE((backend->restitution == 0.8f),
+                  "BOUNCE selector -> bounce forwarded as restitution");
   }
   // Case 3: default selector {BOUNCE}, bounce = 0.
   // BOUNCE present -> restitution = bounce = 0 (explicit zero, not -1);
@@ -117,10 +110,9 @@ int main() {
         std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
         SFVec2f{0.0f, 0.0f}, 0.0f);
     sys.attach(rbc.get(), ctx);
-    CHECK(backend->friction < 0.0f,
-          "default selector (BOUNCE only) -> friction unset");
-    CHECK(backend->restitution == 0.0f,
-          "BOUNCE selector with bounce=0 -> restitution=0 (explicit, not -1)");
+    CHECK_MESSAGE((backend->friction < 0.0f), "default selector (BOUNCE only) -> friction unset");
+    CHECK_MESSAGE((backend->restitution == 0.0f),
+                  "BOUNCE selector with bounce=0 -> restitution=0 (explicit, not -1)");
   }
   // Case 4: explicit empty appliedParameters {}.
   // Neither selector -> both unset (-1).
@@ -132,8 +124,8 @@ int main() {
         std::vector<AppliedParametersChoices>{},
         SFVec2f{0.0f, 0.0f}, 0.0f);
     sys.attach(rbc.get(), ctx);
-    CHECK(backend->friction < 0.0f && backend->restitution < 0.0f,
-          "empty appliedParameters -> both unset (-1)");
+    CHECK_MESSAGE((backend->friction < 0.0f && backend->restitution < 0.0f),
+                  "empty appliedParameters -> both unset (-1)");
   }
   // Case 5: selector gates, not the value: {} but frictionCoefficients (1,1).
   // No FRICTION_COEFFICIENT-2 selector -> friction not applied despite non-zero value.
@@ -145,8 +137,7 @@ int main() {
         std::vector<AppliedParametersChoices>{},
         SFVec2f{1.0f, 1.0f}, 0.0f);
     sys.attach(rbc.get(), ctx);
-    CHECK(backend->friction < 0.0f,
-          "SELECTOR gates (not value): no FRICTION_COEFFICIENT-2 -> friction unset even when coefficients non-zero");
+    CHECK_MESSAGE((backend->friction < 0.0f),
+                  "SELECTOR gates (not value): no FRICTION_COEFFICIENT-2 -> friction unset even when coefficients non-zero");
   }
-  return g_failures == 0 ? 0 : 1;
 }

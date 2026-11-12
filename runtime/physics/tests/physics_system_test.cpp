@@ -1,4 +1,5 @@
 // §37 physics integration: body poses and ROUTE events through PhysicsSystem.
+#include "doctest/doctest.h"
 #include "JoltBackend.hpp"
 #include "PhysicsSystem.hpp"
 
@@ -37,16 +38,7 @@ using namespace x3d::runtime;
 static const SFRotation kNoRot{0, 0, 1, 0};
 static const SFVec3f    kZero{0, 0, 0};
 
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
-
-int main() {
+TEST_CASE("physics_system_test") {
   // Build a §37 scene programmatically: a single dynamic box falling.
   auto box = std::make_shared<Box>();
   box->setSizeUnchecked(SFVec3f{1, 1, 1});
@@ -86,7 +78,7 @@ int main() {
   auto physics = std::make_shared<PhysicsSystem>(backend);
   physics->attach(collection.get(), ctx);
   ctx.addSystem(physics);
-  CHECK(physics->bodyCount() == 1, "one body enrolled in simulation");
+  CHECK_MESSAGE((physics->bodyCount() == 1), "one body enrolled in simulation");
 
   // Tick 60 frames at 1/60 s (~1 s of fall). First tick establishes t0.
   double t = 0.0;
@@ -100,16 +92,16 @@ int main() {
   SFVec3f bodyPos = body->getPosition();
   std::fprintf(stderr, "RigidBody.position.y = %f (started 10, expect ~5.1)\n",
                bodyPos.y);
-  CHECK(bodyPos.y < 9.0f, "RigidBody fell (position updated by simulation)");
-  CHECK(std::fabs(bodyPos.y - 5.1f) < 0.5f, "RigidBody near free-fall y=5.1");
+  CHECK_MESSAGE((bodyPos.y < 9.0f), "RigidBody fell (position updated by simulation)");
+  CHECK_MESSAGE((std::fabs(bodyPos.y - 5.1f) < 0.5f), "RigidBody near free-fall y=5.1");
 
   // (b) position_changed was delivered to the routed Transform (cascade proof).
   SFVec3f tPos = transform->getTranslation();
   std::fprintf(stderr, "Transform.translation.y = %f (routed from body)\n",
                tPos.y);
-  CHECK(std::fabs(tPos.y - bodyPos.y) < 1e-4f,
-        "Transform.translation tracks RigidBody.position via the ROUTE");
-  CHECK(tPos.y < 9.0f, "Transform moved (event delivered, not just backend)");
+  CHECK_MESSAGE((std::fabs(tPos.y - bodyPos.y) < 1e-4f),
+                "Transform.translation tracks RigidBody.position via the ROUTE");
+  CHECK_MESSAGE((tPos.y < 9.0f), "Transform moved (event delivered, not just backend)");
 
   // §37 joint via the core PhysicsSystem path: a BallJoint pins a dynamic
   //     RigidBody to a fixed world anchor at the origin; the body starts 1 unit
@@ -155,7 +147,7 @@ int main() {
     auto jPhysics = std::make_shared<PhysicsSystem>(jBackend);
     jPhysics->attach(jWorld.get(), jCtx);
     jCtx.addSystem(jPhysics);
-    CHECK(jPhysics->bodyCount() == 1, "joint scene: one body enrolled");
+    CHECK_MESSAGE((jPhysics->bodyCount() == 1), "joint scene: one body enrolled");
 
     double jt = 0.0;
     jCtx.tick(jt);
@@ -171,12 +163,12 @@ int main() {
     std::fprintf(stderr,
                  "[joint] BallJoint pendulum: maxDistErr=%f minY=%f\n",
                  maxDistErr, minY);
-    CHECK(maxDistErr < 0.05f, "ball joint holds body ~1 unit from anchor");
-    CHECK(minY < -0.3f, "ball joint body swings down under gravity");
+    CHECK_MESSAGE((maxDistErr < 0.05f), "ball joint holds body ~1 unit from anchor");
+    CHECK_MESSAGE((minY < -0.3f), "ball joint body swings down under gravity");
     // The swing is routed to the Transform (cascade delivery, not just backend).
     SFVec3f jTr = jXf->getTranslation();
-    CHECK(std::fabs(jTr.y - jBody->getPosition().y) < 1e-4f,
-          "joint motion routed onto the Transform via the ROUTE");
+    CHECK_MESSAGE((std::fabs(jTr.y - jBody->getPosition().y) < 1e-4f),
+                  "joint motion routed onto the Transform via the ROUTE");
   }
 
   // per-body enabled=FALSE excludes the body from the simulation.
@@ -208,8 +200,8 @@ int main() {
     auto dBackend = std::make_shared<JoltBackend>();
     auto dPhysics = std::make_shared<PhysicsSystem>(dBackend);
     dPhysics->attach(dWorld.get(), dCtx);
-    CHECK(dPhysics->bodyCount() == 0,
-          "enabled=FALSE RigidBody is excluded from the simulation");
+    CHECK_MESSAGE((dPhysics->bodyCount() == 0),
+                  "enabled=FALSE RigidBody is excluded from the simulation");
 
     // And it must not move when stepped.
     dCtx.addSystem(dPhysics);
@@ -219,8 +211,8 @@ int main() {
       dt += 1.0 / 60.0;
       dCtx.tick(dt);
     }
-    CHECK(std::fabs(disabled->getPosition().y - 10.0f) < 1e-4f,
-          "disabled RigidBody does not fall (not simulated)");
+    CHECK_MESSAGE((std::fabs(disabled->getPosition().y - 10.0f) < 1e-4f),
+                  "disabled RigidBody does not fall (not simulated)");
   }
 
   // a body whose collidable geometry is an unsupported mesh (IndexedFaceSet,
@@ -248,9 +240,9 @@ int main() {
     auto cBackend = std::make_shared<JoltBackend>();
     auto cPhysics = std::make_shared<PhysicsSystem>(cBackend);
     cPhysics->attach(cWorld.get(), cCtx);
-    CHECK(cPhysics->bodyCount() == 0, "unsupported-geometry body not enrolled");
-    CHECK(cPhysics->droppedBodyCount() == 1,
-          "dropped body is observable via droppedBodyCount(), not silent");
+    CHECK_MESSAGE((cPhysics->bodyCount() == 0), "unsupported-geometry body not enrolled");
+    CHECK_MESSAGE((cPhysics->droppedBodyCount() == 1), "dropped body is observable via droppedBodyCount(),
+                  not silent");
   }
 
   // RigidBody.forces applies a continuous force every frame (§37: forces
@@ -293,10 +285,10 @@ int main() {
     }
     std::fprintf(stderr, "[forces] y after 1s under F=10N = %f (expect ~5)\n",
                  fBody->getPosition().y);
-    CHECK(fBody->getPosition().y > 3.0f,
-          "constant RigidBody.forces accelerates the body upward");
-    CHECK(std::fabs(fBody->getPosition().y - 5.0f) < 1.0f,
-          "force integrates to ~½·a·t² (a=F/m=10)");
+    CHECK_MESSAGE((fBody->getPosition().y > 3.0f),
+                  "constant RigidBody.forces accelerates the body upward");
+    CHECK_MESSAGE((std::fabs(fBody->getPosition().y - 5.0f) < 1.0f),
+                  "force integrates to ~½·a·t² (a=F/m=10)");
   }
 
   // useGlobalGravity=FALSE: the body ignores the collection's gravity
@@ -336,8 +328,8 @@ int main() {
     }
     std::fprintf(stderr, "[useGlobalGravity=F] y after 1s = %f (expect ~5)\n",
                  gBody->getPosition().y);
-    CHECK(std::fabs(gBody->getPosition().y - 5.0f) < 0.1f,
-          "useGlobalGravity=FALSE body ignores gravity (does not fall)");
+    CHECK_MESSAGE((std::fabs(gBody->getPosition().y - 5.0f) < 0.1f),
+                  "useGlobalGravity=FALSE body ignores gravity (does not fall)");
   }
 
   // autoDamp: the damping factors apply a velocity-opposing force
@@ -380,9 +372,9 @@ int main() {
     }
     std::fprintf(stderr, "[autoDamp] y after 1s = %f (expect ~1, undamped ~5)\n",
                  hBody->getPosition().y);
-    CHECK(hBody->getPosition().y > 0.3f, "damped body still moved up some");
-    CHECK(hBody->getPosition().y < 2.5f,
-          "autoDamp decays the motion (well short of the undamped ~5)");
+    CHECK_MESSAGE((hBody->getPosition().y > 0.3f), "damped body still moved up some");
+    CHECK_MESSAGE((hBody->getPosition().y < 2.5f),
+                  "autoDamp decays the motion (well short of the undamped ~5)");
   }
 
   // Cylinder + Cone collidable geometry enroll (Cylinder exact, Cone
@@ -425,16 +417,16 @@ int main() {
     auto sPhysics = std::make_shared<PhysicsSystem>(sBackend);
     sPhysics->attach(sWorld.get(), sCtx);
     sCtx.addSystem(sPhysics);
-    CHECK(sPhysics->bodyCount() == 2, "Cylinder + Cone bodies both enrolled");
-    CHECK(sPhysics->droppedBodyCount() == 0, "no body dropped for Cylinder/Cone");
+    CHECK_MESSAGE((sPhysics->bodyCount() == 2), ("Cylinder + Cone bodies both enrolled"));
+    CHECK_MESSAGE((sPhysics->droppedBodyCount() == 0), "no body dropped for Cylinder/Cone");
     double st = 0.0;
     sCtx.tick(st);
     for (int i = 0; i < 30; ++i) {
       st += 1.0 / 60.0;
       sCtx.tick(st);
     }
-    CHECK(cylBody->getPosition().y < 9.5f, "cylinder body fell (simulated)");
-    CHECK(coneBody->getPosition().y < 9.5f, "cone body fell (simulated)");
+    CHECK_MESSAGE((cylBody->getPosition().y < 9.5f), "cylinder body fell (simulated)");
+    CHECK_MESSAGE((coneBody->getPosition().y < 9.5f), "cone body fell (simulated)");
   }
 
   // Collision reporting: a dynamic box falls onto a fixed floor; a
@@ -488,17 +480,17 @@ int main() {
       ctx.tick(t);
       if (!sensor->getContacts().empty()) sawContact = true;
     }
-    CHECK(sawContact, "CollisionSensor emitted a Contact when boxes collided");
-    CHECK(sensor->getIsActive() == true, "CollisionSensor isActive on collision");
+    CHECK_MESSAGE((sawContact), "CollisionSensor emitted a Contact when boxes collided");
+    CHECK_MESSAGE((sensor->getIsActive() == true), "CollisionSensor isActive on collision");
     auto cs = sensor->getContacts();
     if (!cs.empty()) {
       auto *c = dynamic_cast<Contact *>(cs[0].get());
-      CHECK(c != nullptr, "emitted node is a Contact");
+      CHECK_MESSAGE((c != nullptr), "emitted node is a Contact");
       if (c) {
         // The contact normal should be roughly vertical (floor vs faller).
-        CHECK(std::fabs(c->getContactNormal().y) > 0.5f,
-              "Contact normal is roughly vertical");
-        CHECK(c->getBounce() == 0.2f, "Contact.bounce from collection default");
+        CHECK_MESSAGE((std::fabs(c->getContactNormal().y) > 0.5f),
+                      "Contact normal is roughly vertical");
+        CHECK_MESSAGE((c->getBounce() == 0.2f), "Contact.bounce from collection default");
       }
     }
   }
@@ -538,7 +530,7 @@ int main() {
     };
     auto r1 = run_once();
     auto r2 = run_once();
-    CHECK(r1 == r2, "collision reporting is deterministic (two runs identical)");
+    CHECK_MESSAGE((r1 == r2), "collision reporting is deterministic (two runs identical)");
   }
 
   // Inertia honored: under a constant torque about x, the roll angle after t
@@ -577,10 +569,10 @@ int main() {
     std::fprintf(stderr, "[inertia] authored roll=%.4f derived roll=%.4f (expect authored~0.25)\n",
                  authored, derived);
     // theta = 1/2 * (0.02/0.01) * 0.5^2 = 0.25 rad (within discrete-integration tol).
-    CHECK(std::fabs(authored - 0.25f) < 0.05f,
-          "authored inertia: roll matches tau/Ixx (theta ~= 0.25 rad)");
-    CHECK(std::fabs(authored - derived) > 0.05f,
-          "authored inertia DIFFERS from shape-derived (tensor is honored)");
+    CHECK_MESSAGE((std::fabs(authored - 0.25f) < 0.05f),
+                  "authored inertia: roll matches tau/Ixx (theta ~= 0.25 rad)");
+    CHECK_MESSAGE((std::fabs(authored - derived) > 0.05f),
+                  "authored inertia DIFFERS from shape-derived (tensor is honored)");
   }
 
   // centerOfMass honored: a body given a pure spin (no forces/gravity) with an
@@ -615,10 +607,8 @@ int main() {
     float displacedCentered = originMoved(false);
     std::fprintf(stderr, "[COM] offset origin displacement=%.4f centered=%.4f\n",
                  displacedOffset, displacedCentered);
-    CHECK(displacedOffset > 0.05f,
-          "offset COM: body origin orbits the COM under spin");
-    CHECK(displacedCentered < 1e-3f,
-          "centered COM: body origin stays put under spin");
+    CHECK_MESSAGE((displacedOffset > 0.05f), "offset COM: body origin orbits the COM under spin");
+    CHECK_MESSAGE((displacedCentered < 1e-3f), "centered COM: body origin stays put under spin");
   }
 
   // Rear-wheel-drive vehicle: chassis + 4 cylinder wheels on free hinge
@@ -711,11 +701,11 @@ int main() {
     DriveResult slip  = driveDistance(false);
     DriveResult grip2 = driveDistance(true);
 
-    CHECK(grip.dz > 2.0f, "high-friction vehicle drives forward (>2 m)");
-    CHECK(std::fabs(grip.dx) < 0.3f, "vehicle tracks straight (small dx)");
-    CHECK(std::fabs(grip.dy) < 0.2f, "vehicle stays upright (y ~ constant)");
-    CHECK(grip.dz > slip.dz + 1.0f, "authored friction drives farther than mu=0.2");
-    CHECK(std::fabs(grip.dz - grip2.dz) < 1e-3f, "vehicle drive is deterministic");
+    CHECK_MESSAGE((grip.dz > 2.0f), "high-friction vehicle drives forward (>2 m)");
+    CHECK_MESSAGE((std::fabs(grip.dx) < 0.3f), "vehicle tracks straight (small dx)");
+    CHECK_MESSAGE((std::fabs(grip.dy) < 0.2f), "vehicle stays upright (y ~ constant)");
+    CHECK_MESSAGE((grip.dz > slip.dz + 1.0f), "authored friction drives farther than mu=0.2");
+    CHECK_MESSAGE((std::fabs(grip.dz - grip2.dz) < 1e-3f), "vehicle drive is deterministic");
   }
 
   // Vehicle dynamics (backend-level, mirrors the validated spike): skid-steer
@@ -777,10 +767,10 @@ int main() {
       std::fprintf(stderr,
                    "vehicle pivot: yaw=%.3f axisY=%.2f d=(%.2f,%.2f)\n",
                    yaw, p1.second.y, dx, dz);
-      CHECK(std::fabs(yaw) > 1.0f, "skid-steer pivot yaws the chassis (>1 rad)");
-      CHECK(std::fabs(p1.second.y) > 0.9f, "pivot is about +Y (upright, pure yaw)");
-      CHECK(std::fabs(dx) < 0.5f && std::fabs(dz) < 0.5f,
-            "pivot stays in place (no significant translation)");
+      CHECK_MESSAGE((std::fabs(yaw) > 1.0f), "skid-steer pivot yaws the chassis (>1 rad)");
+      CHECK_MESSAGE((std::fabs(p1.second.y) > 0.9f), ("pivot is about +Y (upright, pure yaw)"));
+      CHECK_MESSAGE((std::fabs(dx) < 0.5f && std::fabs(dz) < 0.5f),
+                    "pivot stays in place (no significant translation)");
     }
 
     // (b) Incline climb: ground tilted ~7deg; drive uphill (-6) gains height; a
@@ -801,8 +791,8 @@ int main() {
       float coast = inclineDy(0.0f);    // no drive
       std::fprintf(stderr, "vehicle incline: climb dy=%.3f vs coast dy=%.3f\n",
                    climb, coast);
-      CHECK(climb > 0.3f, "vehicle climbs the incline under drive (dy > 0.3)");
-      CHECK(climb > coast + 0.3f, "drive climbs higher than coasting on the slope");
+      CHECK_MESSAGE((climb > 0.3f), "vehicle climbs the incline under drive (dy > 0.3)");
+      CHECK_MESSAGE((climb > coast + 0.3f), "drive climbs higher than coasting on the slope");
     }
 
     // (c) Brake/reverse: forward (+3), record peak z, then reverse (-6) past start.
@@ -823,15 +813,15 @@ int main() {
       float finalZ = chassisPose(b, v).first.z;
       std::fprintf(stderr, "vehicle brake/reverse: peakZ=%.2f finalZ=%.2f\n",
                    peakZ, finalZ);
-      CHECK(peakZ > 0.5f, "vehicle drove forward before braking");
-      CHECK(finalZ < peakZ - 1.0f, "reverse torque arrests and reverses the vehicle");
+      CHECK_MESSAGE((peakZ > 0.5f), "vehicle drove forward before braking");
+      CHECK_MESSAGE((finalZ < peakZ - 1.0f), "reverse torque arrests and reverses the vehicle");
     }
 
     // (d) Determinism: the pivot maneuver is value-identical across two runs.
     {
       auto a = pivotRun(); auto c = pivotRun();
-      CHECK(std::fabs(a.second.second.angle - c.second.second.angle) < 1e-4f,
-            "vehicle pivot is deterministic (two runs identical yaw)");
+      CHECK_MESSAGE((std::fabs(a.second.second.angle - c.second.second.angle) < 1e-4f),
+                    "vehicle pivot is deterministic (two runs identical yaw)");
     }
   }
 
@@ -889,13 +879,7 @@ int main() {
                  "§37 autoDisable wiring: body.autoDisable=false active=%d, "
                  "body.autoDisable=true active=%d\n",
                  neverSleeps ? 1 : 0, maySleep ? 1 : 0);
-    CHECK(neverSleeps,
-          "RigidBody.autoDisable=FALSE never sleeps through PhysicsSystem");
-    CHECK(!maySleep,
-          "autoDisable=TRUE + collection disableTime=0.1 body sleeps");
+    CHECK_MESSAGE((neverSleeps), "RigidBody.autoDisable=FALSE never sleeps through PhysicsSystem");
+    CHECK_MESSAGE((!maySleep), ("autoDisable=TRUE + collection disableTime=0.1 body sleeps"));
   }
-
-  if (g_failures == 0)
-    std::fprintf(stderr, "physics_system_test: ALL PASS\n");
-  return g_failures == 0 ? 0 : 1;
 }

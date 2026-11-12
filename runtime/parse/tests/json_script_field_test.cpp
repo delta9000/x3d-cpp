@@ -1,4 +1,5 @@
 // JSON Script author fields and inline source survive read/write round-trips.
+#include "doctest/doctest.h"
 #include "DynamicField.hpp"
 #include "JsonWriter.hpp"
 #include "X3DParse.hpp"
@@ -16,17 +17,6 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 std::shared_ptr<X3DNode> firstScript(const X3DDocument &doc) {
   for (auto &n : doc.scene.rootNodes)
@@ -61,45 +51,45 @@ const char *kScriptJson = R"JSON({ "X3D": { "@profile": "Interchange", "@version
 void parsesDeclsAndSource() {
   auto doc = codec::parseDocument(kScriptJson);
   auto script = firstScript(doc);
-  check(script != nullptr, "JSON Script parses to a Script node");
+  CHECK_MESSAGE((script != nullptr), "JSON Script parses to a Script node");
   if (!script)
     return;
 
   // Author field decls land in the dynamic store / effectiveFields.
-  check(doc.scene.authorFields->hasAuthorFields(*script),
-        "Script has author fields in the dynamic store");
+  CHECK_MESSAGE((doc.scene.authorFields->hasAuthorFields(*script)),
+                "Script has author fields in the dynamic store");
 
   const FieldTable fields = effectiveFields(*script, *doc.scene.authorFields);
   const FieldInfo *fraction = byName(fields, "fraction");
-  check(fraction != nullptr, "author field 'fraction' visible in effectiveFields");
+  CHECK_MESSAGE((fraction != nullptr), "author field 'fraction' visible in effectiveFields");
   if (fraction) {
-    check(fraction->type == X3DFieldType::SFFloat, "'fraction' type SFFloat");
-    check(fraction->access == AccessType::InputOnly, "'fraction' inputOnly");
+    CHECK_MESSAGE((fraction->type == X3DFieldType::SFFloat), "'fraction' type SFFloat");
+    CHECK_MESSAGE((fraction->access == AccessType::InputOnly), "'fraction' inputOnly");
     // inputOnly carries no readable value: get thunk is empty.
-    check(!fraction->get, "'fraction' (inputOnly) has no get thunk");
+    CHECK_MESSAGE((!fraction->get), "'fraction' (inputOnly) has no get thunk");
   }
 
   const FieldInfo *scale = byName(fields, "scale");
-  check(scale != nullptr, "author field 'scale' visible in effectiveFields");
+  CHECK_MESSAGE((scale != nullptr), "author field 'scale' visible in effectiveFields");
   if (scale) {
-    check(scale->type == X3DFieldType::SFVec3f, "'scale' type SFVec3f");
-    check(scale->access == AccessType::InputOutput, "'scale' inputOutput");
-    check(static_cast<bool>(scale->get) && static_cast<bool>(scale->set),
-          "'scale' (inputOutput) has get+set thunks");
+    CHECK_MESSAGE((scale->type == X3DFieldType::SFVec3f), "'scale' type SFVec3f");
+    CHECK_MESSAGE((scale->access == AccessType::InputOutput), "'scale' inputOutput");
+    CHECK_MESSAGE((static_cast<bool>(scale->get) && static_cast<bool>(scale->set)),
+                  ("'scale' (inputOutput) has get+set thunks"));
     if (scale->get) {
       auto v = std::any_cast<SFVec3f>(scale->get(*script));
-      check(v.x == 2.f && v.y == 2.f && v.z == 2.f,
-            "'scale' initial value 2 2 2 seeded from @value");
+      CHECK_MESSAGE((v.x == 2.f && v.y == 2.f && v.z == 2.f),
+                    "'scale' initial value 2 2 2 seeded from @value");
     }
   }
 
   // Inline source captured into Script.sourceCode.
   auto *s = dynamic_cast<x3d::nodes::Script *>(script.get());
-  check(s != nullptr, "node downcasts to Script");
+  CHECK_MESSAGE((s != nullptr), "node downcasts to Script");
   if (s) {
     const std::string src = s->getSourceCode();
-    check(src.find("function fraction") != std::string::npos,
-          "sourceCode contains the inline #sourceText body");
+    CHECK_MESSAGE((src.find("function fraction") != std::string::npos),
+                  "sourceCode contains the inline #sourceText body");
   }
 }
 
@@ -110,42 +100,35 @@ void roundTrips() {
   // Re-parse the writer's output; decls + source must survive.
   auto doc1 = codec::parseDocument(js);
   auto script = firstScript(doc1);
-  check(script != nullptr, "round-trip: Script survives write->reparse");
+  CHECK_MESSAGE((script != nullptr), "round-trip: Script survives write->reparse");
   if (!script)
     return;
 
   const FieldTable fields = effectiveFields(*script, *doc1.scene.authorFields);
   const FieldInfo *fraction = byName(fields, "fraction");
   const FieldInfo *scale = byName(fields, "scale");
-  check(fraction != nullptr && fraction->access == AccessType::InputOnly,
-        "round-trip: 'fraction' inputOnly decl survives");
-  check(scale != nullptr && scale->type == X3DFieldType::SFVec3f &&
-            scale->access == AccessType::InputOutput,
-        "round-trip: 'scale' SFVec3f inputOutput decl survives");
+  CHECK_MESSAGE((fraction != nullptr && fraction->access == AccessType::InputOnly),
+                "round-trip: 'fraction' inputOnly decl survives");
+  CHECK_MESSAGE((scale != nullptr && scale->type == X3DFieldType::SFVec3f &&
+            scale->access == AccessType::InputOutput), "round-trip: 'scale' SFVec3f inputOutput decl survives");
   if (scale && scale->get) {
     auto v = std::any_cast<SFVec3f>(scale->get(*script));
-    check(v.x == 2.f && v.y == 2.f && v.z == 2.f,
-          "round-trip: 'scale' default 2 2 2 survives");
+    CHECK_MESSAGE((v.x == 2.f && v.y == 2.f && v.z == 2.f),
+                  "round-trip: 'scale' default 2 2 2 survives");
   }
 
   auto *s = dynamic_cast<x3d::nodes::Script *>(script.get());
-  check(s != nullptr, "round-trip: node downcasts to Script");
+  CHECK_MESSAGE((s != nullptr), "round-trip: node downcasts to Script");
   if (s) {
     const std::string src = s->getSourceCode();
-    check(src.find("function fraction") != std::string::npos,
-          "round-trip: sourceCode survives write->reparse");
+    CHECK_MESSAGE((src.find("function fraction") != std::string::npos),
+                  "round-trip: sourceCode survives write->reparse");
   }
 }
 
 } // namespace
 
-int main() {
+TEST_CASE("json_script_field_test") {
   parsesDeclsAndSource();
   roundTrips();
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all json_script_field checks passed\n";
-  return 0;
 }

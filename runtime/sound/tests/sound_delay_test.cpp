@@ -1,4 +1,5 @@
 // §16.4.6 Delay: impulse timing, clamping, and disabled passthrough.
+#include "doctest/doctest.h"
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -18,15 +19,6 @@
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
 
 // Build Destination <- Delay <- Buffer(impulse) directly on the backend and
 // render it. The impulse is a 1.0 at samples[0] of a long buffer (no wrap over
@@ -64,7 +56,7 @@ static std::size_t peakIndex(const std::vector<float> &buf) {
   return best;
 }
 
-int main() {
+TEST_CASE("sound_delay_test") {
   constexpr float kSR = 48000.0f;
 
   // (a) recording tier: SoundSystem builds + wires a Delay node.
@@ -82,9 +74,9 @@ int main() {
     X3DExecutionContext ctx;
     sys.attach(dest.get(), ctx);
 
-    CHECK(rec->creates.size() == 3, "3 nodes created (dest/delay/osc)");
-    CHECK(rec->connects.size() == 2, "2 connections (osc->delay, delay->dest)");
-    CHECK(sys.nodeCount() == 3, "SoundSystem mapped 3 nodes");
+    CHECK_MESSAGE((rec->creates.size() == 3), "3 nodes created (dest/delay/osc)");
+    CHECK_MESSAGE((rec->connects.size() == 2), "2 connections (osc->delay, delay->dest)");
+    CHECK_MESSAGE((sys.nodeCount() == 3), "SoundSystem mapped 3 nodes");
 
     NodeHandle hDelay = 0;
     NodeParams delayP;
@@ -96,10 +88,10 @@ int main() {
         delayP = cr.params;
       }
     }
-    CHECK(foundDelay, "a NodeKind::Delay node was created");
-    CHECK(std::fabs(delayP.delayTime - 0.25f) < 1e-6f, "delayTime read = 0.25");
-    CHECK(std::fabs(delayP.maxDelayTime - 0.5f) < 1e-6f, "maxDelayTime read = 0.5");
-    CHECK(delayP.enabled, "enabled read = true");
+    CHECK_MESSAGE((foundDelay), "a NodeKind::Delay node was created");
+    CHECK_MESSAGE((std::fabs(delayP.delayTime - 0.25f) < 1e-6f), "delayTime read = 0.25");
+    CHECK_MESSAGE((std::fabs(delayP.maxDelayTime - 0.5f) < 1e-6f), "maxDelayTime read = 0.5");
+    CHECK_MESSAGE((delayP.enabled), "enabled read = true");
 
     // update() re-reads the (possibly route-animated) fields -> setParam.
     delay->setDelayTime(0.125);
@@ -109,7 +101,7 @@ int main() {
       if (sp.node == hDelay && sp.param == Param::DelayTime) {
         pushedDelay = std::fabs(sp.value - 0.125f) < 1e-6f;
       }
-    CHECK(pushedDelay, "update() pushes Param::DelayTime = 0.125");
+    CHECK_MESSAGE((pushedDelay), "update() pushes Param::DelayTime = 0.125");
 
     std::fprintf(stderr, "[recording] Delay built + wired, 3 nodes, 2 edges\n");
   }
@@ -123,16 +115,16 @@ int main() {
     renderImpulse(dsp, static_cast<float>(delaySamples) / kSR, 0.01f, true,
                   frames, kSR, out);
 
-    CHECK(out.size() == static_cast<std::size_t>(frames), "rendered `frames`");
-    CHECK(std::fabs(out[0]) < 1e-6f, "no output before the delay elapses");
-    CHECK(std::fabs(out[delaySamples]) > 0.99f, "impulse appears at the delay");
-    CHECK(peakIndex(out) == static_cast<std::size_t>(delaySamples),
-          "the delayed impulse is at sample delaySamples");
+    CHECK_MESSAGE((out.size() == static_cast<std::size_t>(frames)), "rendered `frames`");
+    CHECK_MESSAGE((std::fabs(out[0]) < 1e-6f), "no output before the delay elapses");
+    CHECK_MESSAGE((std::fabs(out[delaySamples]) > 0.99f), "impulse appears at the delay");
+    CHECK_MESSAGE((peakIndex(out) == static_cast<std::size_t>(delaySamples)),
+                  "the delayed impulse is at sample delaySamples");
     // Exactly one non-zero sample (a pure delay adds no smearing). Tolerance
     // 1e-4 absorbs the float rounding of delayTime -> sample count.
     int nonzero = 0;
     for (float v : out) if (std::fabs(v) > 1e-4f) ++nonzero;
-    CHECK(nonzero == 1, "impulse out is a single sample");
+    CHECK_MESSAGE((nonzero == 1), "impulse out is a single sample");
     std::fprintf(stderr, "[dsp] delay %d samples -> peak at %zu\n",
                  delaySamples, peakIndex(out));
   }
@@ -145,9 +137,9 @@ int main() {
     std::vector<float> out;
     renderImpulse(dsp, /*delayTime=*/0.5f, /*maxDelayTime=*/0.001f, true,
                   frames, kSR, out);
-    CHECK(peakIndex(out) == static_cast<std::size_t>(maxSamples),
-          "delayTime > maxDelayTime clamps to maxDelayTime");
-    CHECK(std::fabs(out[maxSamples]) > 0.99f, "clamped impulse at maxDelayTime");
+    CHECK_MESSAGE((peakIndex(out) == static_cast<std::size_t>(maxSamples)),
+                  "delayTime > maxDelayTime clamps to maxDelayTime");
+    CHECK_MESSAGE((std::fabs(out[maxSamples]) > 0.99f), "clamped impulse at maxDelayTime");
     std::fprintf(stderr, "[dsp] clamp 0.5s -> peak at %zu (max=%d)\n",
                  peakIndex(out), maxSamples);
   }
@@ -159,14 +151,10 @@ int main() {
     std::vector<float> out;
     renderImpulse(dsp, /*delayTime=*/100.0f / kSR, /*maxDelayTime=*/0.01f,
                   /*enabled=*/false, frames, kSR, out);
-    CHECK(std::fabs(out[0] - 1.0f) < 1e-6f,
-          "disabled Delay passes the impulse straight through");
-    CHECK(peakIndex(out) == 0, "no delay applied while disabled");
+    CHECK_MESSAGE((std::fabs(out[0] - 1.0f) < 1e-6f),
+                  "disabled Delay passes the impulse straight through");
+    CHECK_MESSAGE((peakIndex(out) == 0), "no delay applied while disabled");
     std::fprintf(stderr, "[dsp] enabled=false passthrough peak at %zu\n",
                  peakIndex(out));
   }
-
-  if (g_failures == 0)
-    std::fprintf(stderr, "sound_delay_test: ALL PASS\n");
-  return g_failures == 0 ? 0 : 1;
 }

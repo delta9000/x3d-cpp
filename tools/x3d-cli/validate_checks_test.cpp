@@ -1,5 +1,6 @@
 // `x3d validate` structural checks that need a parsed document: ROUTE endpoint
 // resolution and the runtime bridge's field, access and type checks.
+#include "doctest/doctest.h"
 #include "validate.hpp"
 
 #include <iostream>
@@ -7,15 +8,6 @@
 #include <vector>
 
 namespace {
-
-int failures = 0;
-
-void expect(bool ok, const std::string &what) {
-  if (!ok) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  }
-}
 
 std::vector<x3d::cli_detail::Diag> routeDiags(const char *xml) {
   auto doc = x3d::sdk::parseDocument(xml, x3d::sdk::Encoding::XML);
@@ -34,7 +26,7 @@ bool has(const std::vector<x3d::cli_detail::Diag> &diags, const std::string &nee
 
 } // namespace
 
-int main() {
+TEST_CASE("validate_checks_test") {
   {
     auto d = routeDiags(
         R"(<X3D version="4.0"><Scene><Transform DEF="T"/>)"
@@ -42,30 +34,30 @@ int main() {
         R"(<ROUTE fromNode="C" fromField="fraction_changed" toNode="P" toField="set_fraction"/>)"
         R"(<ROUTE fromNode="P" fromField="value_changed" toNode="T" toField="set_translation"/>)"
         R"(</Scene></X3D>)");
-    expect(d.empty(), "valid routes produce no diagnostics");
+    CHECK_MESSAGE((d.empty()), "valid routes produce no diagnostics");
   }
   {
     auto d = routeDiags(
         R"(<X3D version="4.0"><Scene><Transform DEF="T"/><TimeSensor DEF="C"/>)"
         R"(<ROUTE fromNode="C" fromField="fraction_changed" toNode="X" toField="set_translation"/>)"
         R"(</Scene></X3D>)");
-    expect(has(d, "ROUTE C.fraction_changed TO X.set_translation: no node is DEF'd as 'X'"),
-           "unknown DEF is reported");
+    CHECK_MESSAGE((has(d, "ROUTE C.fraction_changed TO X.set_translation: no node is DEF'd as 'X'")),
+                  "unknown DEF is reported");
   }
   {
     auto d = routeDiags(
         R"(<X3D version="4.0"><Scene><Transform DEF="T"/><TimeSensor DEF="C"/>)"
         R"(<ROUTE fromNode="C" fromField="fraction_changed" toNode="T" toField="set_translation"/>)"
         R"(</Scene></X3D>)");
-    expect(has(d, "ROUTE C.fraction_changed TO T.set_translation: type mismatch"),
-           "type mismatch is reported");
+    CHECK_MESSAGE((has(d, "ROUTE C.fraction_changed TO T.set_translation: type mismatch")),
+                  "type mismatch is reported");
   }
   {
     auto d = routeDiags(
         R"(<X3D version="4.0"><Scene><Transform DEF="T"/><TimeSensor DEF="C"/>)"
         R"(<ROUTE fromNode="C" fromField="nope" toNode="T" toField="set_translation"/>)"
         R"(</Scene></X3D>)");
-    expect(has(d, "ROUTE C.nope TO T.set_translation"), "unknown field is reported");
+    CHECK_MESSAGE((has(d, "ROUTE C.nope TO T.set_translation")), "unknown field is reported");
   }
   {
     // An IMPORTed name stays unresolved until its Inline loads; not an error.
@@ -75,9 +67,6 @@ int main() {
         R"(<IMPORT inlineDEF="I" importedDEF="Mover" AS="M"/>)"
         R"(<ROUTE fromNode="M" fromField="value_changed" toNode="T" toField="set_translation"/>)"
         R"(</Scene></X3D>)");
-    expect(!has(d, "no node is DEF'd as 'M'"), "IMPORTed names are not flagged");
+    CHECK_MESSAGE((!has(d, "no node is DEF'd as 'M'")), "IMPORTed names are not flagged");
   }
-  if (failures) return 1;
-  std::cout << "validate_checks_test: OK\n";
-  return 0;
 }

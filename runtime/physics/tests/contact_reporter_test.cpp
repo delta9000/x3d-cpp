@@ -1,6 +1,7 @@
 // contact_reporter_test.cpp — ungated pure-logic tests for the §37 contact-
 // reporting bridge (ContactPoint seam struct + ContactReporter). No physics
 // engine: synthetic ResolvedContacts + hand-built nodes exercise the translator.
+#include "doctest/doctest.h"
 #include "PhysicsBackend.hpp"
 #include "ContactReporter.hpp"
 #include "X3DExecutionContext.hpp"
@@ -16,20 +17,13 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; }             \
-    else { std::printf("ok:   %s\n", msg); }                                   \
-  } while (0)
-
 static void test_contact_point_defaults() {
   ContactPoint cp;
-  CHECK(cp.bodyA == kInvalidBodyHandle, "ContactPoint.bodyA defaults invalid");
-  CHECK(cp.bodyB == kInvalidBodyHandle, "ContactPoint.bodyB defaults invalid");
-  CHECK(cp.normal.x == 0.0f && cp.normal.y == 1.0f && cp.normal.z == 0.0f,
-        "ContactPoint.normal defaults to up");
-  CHECK(cp.depth == 0.0f, "ContactPoint.depth defaults 0");
+  CHECK_MESSAGE((cp.bodyA == kInvalidBodyHandle), "ContactPoint.bodyA defaults invalid");
+  CHECK_MESSAGE((cp.bodyB == kInvalidBodyHandle), "ContactPoint.bodyB defaults invalid");
+  CHECK_MESSAGE((cp.normal.x == 0.0f && cp.normal.y == 1.0f && cp.normal.z == 0.0f),
+                "ContactPoint.normal defaults to up");
+  CHECK_MESSAGE((cp.depth == 0.0f), "ContactPoint.depth defaults 0");
 }
 
 // Build: sensor -> collider(collection{bounce=0.5, collidables=[shapeA,shapeB]})
@@ -67,23 +61,23 @@ static void test_single_contact_emitted() {
   ctx.process();
 
   MFNode contacts = sensor->getContacts();
-  CHECK(contacts.size() == 1, "one Contact emitted");
-  CHECK(sensor->getIsActive() == true, "isActive true when contacts");
-  CHECK(sensor->getIntersections().size() == 2, "two intersecting collidables");
+  CHECK_MESSAGE((contacts.size() == 1), "one Contact emitted");
+  CHECK_MESSAGE((sensor->getIsActive() == true), "isActive true when contacts");
+  CHECK_MESSAGE((sensor->getIntersections().size() == 2), "two intersecting collidables");
 
   if (contacts.size() == 1) {
     auto *c = dynamic_cast<Contact *>(contacts[0].get());
-    CHECK(c != nullptr, "emitted node is a Contact");
+    CHECK_MESSAGE((c != nullptr), "emitted node is a Contact");
     if (c) {
-      CHECK(c->getPosition().y == 2.0f, "Contact.position from engine");
-      CHECK(c->getContactNormal().y == 1.0f, "Contact.contactNormal from engine");
-      CHECK(c->getDepth() == 0.05f, "Contact.depth from engine");
-      CHECK(c->getBody1().get() == bodyA.get(), "Contact.body1 = bodyA");
-      CHECK(c->getGeometry2().get() == shapeB.get(), "Contact.geometry2 = shapeB");
-      CHECK(c->getBounce() == 0.5f, "Contact.bounce from collection default");
-      CHECK(c->getFrictionCoefficients().x == 0.3f, "frictionCoefficients copied");
-      CHECK(c->getSlipCoefficients().y == 0.2f, "slipFactors -> slipCoefficients");
-      CHECK(c->getMinBounceSpeed() == 0.2f, "minBounceSpeed copied");
+      CHECK_MESSAGE((c->getPosition().y == 2.0f), "Contact.position from engine");
+      CHECK_MESSAGE((c->getContactNormal().y == 1.0f), "Contact.contactNormal from engine");
+      CHECK_MESSAGE((c->getDepth() == 0.05f), "Contact.depth from engine");
+      CHECK_MESSAGE((c->getBody1().get() == bodyA.get()), "Contact.body1 = bodyA");
+      CHECK_MESSAGE((c->getGeometry2().get() == shapeB.get()), "Contact.geometry2 = shapeB");
+      CHECK_MESSAGE((c->getBounce() == 0.5f), "Contact.bounce from collection default");
+      CHECK_MESSAGE((c->getFrictionCoefficients().x == 0.3f), "frictionCoefficients copied");
+      CHECK_MESSAGE((c->getSlipCoefficients().y == 0.2f), "slipFactors -> slipCoefficients");
+      CHECK_MESSAGE((c->getMinBounceSpeed() == 0.2f), "minBounceSpeed copied");
     }
   }
 }
@@ -96,8 +90,8 @@ static void test_null_collider_silent() {
   reporter.addSensor(sensor.get());
   reporter.report({}, ctx);
   ctx.process();
-  CHECK(sensor->getContacts().empty(), "null collider -> no contacts");
-  CHECK(sensor->getIsActive() == false, "null collider -> isActive false");
+  CHECK_MESSAGE((sensor->getContacts().empty()), "null collider -> no contacts");
+  CHECK_MESSAGE((sensor->getIsActive() == false), "null collider -> isActive false");
 }
 
 // collection.enabled == FALSE silences the sensor even with a matching contact.
@@ -116,7 +110,7 @@ static void test_disabled_collection_silent() {
   reporter.addSensor(sensor.get());
   reporter.report({rc}, ctx);
   ctx.process();
-  CHECK(sensor->getContacts().empty(), "disabled collection -> no contacts");
+  CHECK_MESSAGE((sensor->getContacts().empty()), "disabled collection -> no contacts");
 }
 
 // Two ResolvedContacts with the same pairKey collapse to one (keep max depth).
@@ -134,11 +128,11 @@ static void test_dedupe_by_pair_keep_max_depth() {
   reporter.addSensor(sensor.get());
   reporter.report({a, b}, ctx);
   ctx.process();
-  CHECK(sensor->getContacts().size() == 1, "same pairKey deduped to one Contact");
+  CHECK_MESSAGE((sensor->getContacts().size() == 1), "same pairKey deduped to one Contact");
   auto *c = sensor->getContacts().empty()
                 ? nullptr
                 : dynamic_cast<Contact *>(sensor->getContacts()[0].get());
-  CHECK(c && c->getDepth() == 0.09f, "dedupe keeps the deepest contact");
+  CHECK_MESSAGE((c && c->getDepth() == 0.09f), "dedupe keeps the deepest contact");
 }
 
 // Contacts emit sorted by pairKey regardless of input order.
@@ -158,11 +152,11 @@ static void test_deterministic_ordering() {
   reporter.report({hi, lo}, ctx);  // deliberately out of order
   ctx.process();
   auto cs = sensor->getContacts();
-  CHECK(cs.size() == 2, "two distinct-pair contacts emitted");
+  CHECK_MESSAGE((cs.size() == 2), "two distinct-pair contacts emitted");
   // lo (pairKey 5) must come first.
   auto *first = cs.empty() ? nullptr : dynamic_cast<Contact *>(cs[0].get());
-  CHECK(first && first->getGeometry1().get() == s1.get(),
-        "contacts ordered by pairKey (lowest first)");
+  CHECK_MESSAGE((first && first->getGeometry1().get() == s1.get()),
+                "contacts ordered by pairKey (lowest first)");
 }
 
 // isActive only changes on transitions: true once, then false once contacts stop.
@@ -180,13 +174,13 @@ static void test_isactive_transition() {
   reporter.addSensor(sensor.get());
 
   reporter.report({rc}, ctx); ctx.process();
-  CHECK(sensor->getIsActive() == true, "isActive true after a contact");
+  CHECK_MESSAGE((sensor->getIsActive() == true), "isActive true after a contact");
 
   reporter.report({}, ctx); ctx.process();
-  CHECK(sensor->getIsActive() == false, "isActive false after contacts stop");
+  CHECK_MESSAGE((sensor->getIsActive() == false), "isActive false after contacts stop");
 }
 
-int main() {
+TEST_CASE("contact_reporter_test") {
   test_contact_point_defaults();
   test_single_contact_emitted();
   test_null_collider_silent();
@@ -194,5 +188,4 @@ int main() {
   test_dedupe_by_pair_keep_max_depth();
   test_deterministic_ordering();
   test_isactive_transition();
-  return g_failures == 0 ? 0 : 1;
 }

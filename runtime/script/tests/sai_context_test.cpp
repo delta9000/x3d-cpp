@@ -1,4 +1,5 @@
 // SaiContext field access, directOutput gates, and route delivery.
+#include "doctest/doctest.h"
 #include "SaiContext.hpp"
 #include "ScriptEngine.hpp"
 #include "tests/MockScriptEngine.hpp"
@@ -21,17 +22,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
@@ -56,23 +46,20 @@ void testAuthorFieldOwnerIsolation() {
                               AccessType::InputOutput, std::any(SFBool(true))});
   SaiContext firstSai(first, script, "b", "v");
   SaiContext secondSai(second, script, "b", "v");
-  check(&first.authorFields() != &second.authorFields(),
-        "default contexts own distinct author-field stores");
-  check(std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 1 &&
-            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
-        "SAI reads same-node author values from its own context");
-  check(!secondSai.getField(&script, "onlyFirst").has_value(),
-        "SAI cannot discover another context's author declarations");
+  CHECK_MESSAGE((&first.authorFields() != &second.authorFields()),
+                "default contexts own distinct author-field stores");
+  CHECK_MESSAGE((std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 1 &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2), "SAI reads same-node author values from its own context");
+  CHECK_MESSAGE((!secondSai.getField(&script, "onlyFirst").has_value()),
+                "SAI cannot discover another context's author declarations");
 
   firstSai.setField(&script, "level", std::any(SFFloat(3)));
   first.process();
-  check(std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 3 &&
-            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
-        "author-field cascade writes stay in the originating context");
+  CHECK_MESSAGE((std::any_cast<SFFloat>(firstSai.getField(&script, "level")) == 3 &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2), "author-field cascade writes stay in the originating context");
   first.authorFields().erase(script);
-  check(!firstSai.getField(&script, "level").has_value() &&
-            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2,
-        "erasing one context's author state preserves another context's state");
+  CHECK_MESSAGE((!firstSai.getField(&script, "level").has_value() &&
+            std::any_cast<SFFloat>(secondSai.getField(&script, "level")) == 2), "erasing one context's author state preserves another context's state");
 
   auto declaredFields = std::make_shared<DynamicFieldStore>();
   declaredFields->addAuthorField(
@@ -80,9 +67,8 @@ void testAuthorFieldOwnerIsolation() {
                               AccessType::InputOutput, std::any(SFFloat(4))});
   X3DExecutionContext explicitOwner(declaredFields);
   SaiContext explicitSai(explicitOwner, script, "b", "v");
-  check(&explicitOwner.authorFields() == declaredFields.get() &&
-            std::any_cast<SFFloat>(explicitSai.getField(&script, "level")) == 4,
-        "explicit context owner retains fields declared before construction");
+  CHECK_MESSAGE((&explicitOwner.authorFields() == declaredFields.get() &&
+            std::any_cast<SFFloat>(explicitSai.getField(&script, "level")) == 4), "explicit context owner retains fields declared before construction");
 }
 
 // field get/set round-trip, on the owning script's own node
@@ -96,15 +82,14 @@ void testFieldRoundTrip() {
 
   // getField reads the live value.
   std::any got = sai.getField(&target, "translation");
-  check(got.has_value(), "getField returns a value for a known field");
-  check(veq(std::any_cast<SFVec3f>(got), 1, 2, 3),
-        "getField reads the current translation");
+  CHECK_MESSAGE((got.has_value()), "getField returns a value for a known field");
+  CHECK_MESSAGE((veq(std::any_cast<SFVec3f>(got), 1, 2, 3)),
+                "getField reads the current translation");
 
   // getField on an unknown field / null node is empty, not a crash.
-  check(!sai.getField(&target, "nope").has_value(),
-        "getField on unknown field is empty");
-  check(!sai.getField(nullptr, "translation").has_value(),
-        "getField on null node is empty");
+  CHECK_MESSAGE((!sai.getField(&target, "nope").has_value()), "getField on unknown field is empty");
+  CHECK_MESSAGE((!sai.getField(nullptr, "translation").has_value()),
+                "getField on null node is empty");
 
   // setField on the owning script itself is always allowed (self-write).
   // Use a Script field route into its own node — write metadata-free: just prove
@@ -115,7 +100,7 @@ void testFieldRoundTrip() {
   } catch (...) {
     threw = true;
   }
-  check(!threw, "setField on the owning script never throws (self-write)");
+  CHECK_MESSAGE((!threw), "setField on the owning script never throws (self-write)");
 }
 
 // directOutput write-gate to a second node
@@ -134,9 +119,9 @@ void testDirectOutputGate() {
     } catch (const std::logic_error &) {
       threw = true;
     }
-    check(threw, "directOutput=FALSE: cross-node setField throws (undefined per spec)");
-    check(veq(transformTranslation(other), 0, 0, 0),
-          "directOutput=FALSE: rejected write left the other node unchanged");
+    CHECK_MESSAGE((threw), "directOutput=FALSE: cross-node setField throws (undefined per spec)");
+    CHECK_MESSAGE((veq(transformTranslation(other), 0, 0, 0)),
+                  "directOutput=FALSE: rejected write left the other node unchanged");
   }
 
   // directOutput TRUE: cross-node write is allowed and lands via the cascade.
@@ -160,14 +145,14 @@ void testDirectOutputGate() {
     } catch (...) {
       threw = true;
     }
-    check(!threw, "directOutput=TRUE: cross-node setField is allowed");
+    CHECK_MESSAGE((!threw), "directOutput=TRUE: cross-node setField is allowed");
     ctx.process();
-    check(veq(transformTranslation(other), 4, 5, 6),
-          "directOutput=TRUE: permitted write mutated the target field");
+    CHECK_MESSAGE((veq(transformTranslation(other), 4, 5, 6)),
+                  "directOutput=TRUE: permitted write mutated the target field");
     // DO-CASCADE (SAI §4.5.2 / ADR-0029): the direct write is a value mutation,
     // not a cascade seed — no ROUTE fans out from the written field.
-    check(veq(transformTranslation(sink), 0, 0, 0),
-          "DO-CASCADE: no ROUTE fans out from a directOutput cross-node write");
+    CHECK_MESSAGE((veq(transformTranslation(sink), 0, 0, 0)),
+                  "DO-CASCADE: no ROUTE fans out from a directOutput cross-node write");
   }
 
   // A self-write to the Script's own field keeps the routable path (§29.2.4):
@@ -188,8 +173,8 @@ void testDirectOutputGate() {
 
     sai.setField(&script, "out", std::any(SFVec3f{7, 8, 9}));
     ctx.process();
-    check(veq(transformTranslation(sink), 7, 8, 9),
-          "DO-CASCADE: a self-write keeps the routable path (fans out)");
+    CHECK_MESSAGE((veq(transformTranslation(sink), 7, 8, 9)),
+                  "DO-CASCADE: a self-write keeps the routable path (fans out)");
     ctx.authorFields().erase(script);
   }
 }
@@ -208,10 +193,9 @@ void testRouteGateAndEffect() {
     catch (const std::logic_error &) { addThrew = true; }
     try { sai.deleteRoute(&a, "translation", &b, "translation"); }
     catch (const std::logic_error &) { delThrew = true; }
-    check(addThrew, "directOutput=FALSE: addRoute throws");
-    check(delThrew, "directOutput=FALSE: deleteRoute throws");
-    check(ctx.graph().routeCount() == 0,
-          "directOutput=FALSE: no route was added");
+    CHECK_MESSAGE((addThrew), "directOutput=FALSE: addRoute throws");
+    CHECK_MESSAGE((delThrew), "directOutput=FALSE: deleteRoute throws");
+    CHECK_MESSAGE((ctx.graph().routeCount() == 0), "directOutput=FALSE: no route was added");
   }
 
   // TRUE: add a route, see it carry an event, then delete it.
@@ -225,23 +209,23 @@ void testRouteGateAndEffect() {
     SaiContext sai(ctx, script, "b", "v");
 
     sai.addRoute(&a, "translation", &b, "translation");
-    check(ctx.graph().routeCount() == 1, "directOutput=TRUE: addRoute added a route");
+    CHECK_MESSAGE((ctx.graph().routeCount() == 1), "directOutput=TRUE: addRoute added a route");
 
     // Drive the source: posting a's translation should fan out to b.
     ctx.postEvent(&a, "translation", std::any(SFVec3f{7, 8, 9}));
     ctx.process();
-    check(veq(transformTranslation(b), 7, 8, 9),
-          "added route carried the event from a -> b");
+    CHECK_MESSAGE((veq(transformTranslation(b), 7, 8, 9)),
+                  "added route carried the event from a -> b");
 
     sai.deleteRoute(&a, "translation", &b, "translation");
-    check(ctx.graph().routeCount() == 0, "deleteRoute removed the route");
+    CHECK_MESSAGE((ctx.graph().routeCount() == 0), "deleteRoute removed the route");
 
     // Deleted routes do not fan out.
     b.setTranslation(SFVec3f{0, 0, 0});
     ctx.postEvent(&a, "translation", std::any(SFVec3f{1, 1, 1}));
     ctx.process();
-    check(veq(transformTranslation(b), 0, 0, 0),
-          "deleted route no longer carries events");
+    CHECK_MESSAGE((veq(transformTranslation(b), 0, 0, 0)),
+                  "deleted route no longer carries events");
   }
 }
 
@@ -251,19 +235,19 @@ void testBrowserInfo() {
   Script script;
   SaiContext sai(ctx, script, "x3d-cpp-gen", "4.0");
 
-  check(sai.getName() == "x3d-cpp-gen", "getName reports the browser name");
-  check(sai.getVersion() == "4.0", "getVersion reports the browser version");
+  CHECK_MESSAGE((sai.getName() == "x3d-cpp-gen"), "getName reports the browser name");
+  CHECK_MESSAGE((sai.getVersion() == "4.0"), "getVersion reports the browser version");
 
   ctx.tick(2.5);
-  check(sai.currentTime() == 2.5, "currentTime follows the context clock");
+  CHECK_MESSAGE((sai.currentTime() == 2.5), "currentTime follows the context clock");
 
-  check(sai.currentFrameRate() == 0.0, "currentFrameRate defaults to 0");
+  CHECK_MESSAGE((sai.currentFrameRate() == 0.0), "currentFrameRate defaults to 0");
   sai.setCurrentFrameRate(60.0);
-  check(sai.currentFrameRate() == 60.0, "currentFrameRate reflects the set value");
+  CHECK_MESSAGE((sai.currentFrameRate() == 60.0), "currentFrameRate reflects the set value");
 
   sai.print("hello ");
   sai.print("world");
-  check(sai.log() == "hello world", "print accumulates into the log");
+  CHECK_MESSAGE((sai.log() == "hello world"), "print accumulates into the log");
 }
 
 // the seam through the MockScriptEngine
@@ -279,8 +263,8 @@ void testSeamWithMock() {
   ScriptEngine &seam = engine;  // exercise via the abstract interface
 
   ScriptHandle h = seam.load(script, "ecmascript: /* ignored by mock */", sai);
-  check(h != kInvalidScriptHandle, "load returns a valid handle");
-  check(engine.saiFor(h) == &sai, "engine retained the SaiContext for the handle");
+  CHECK_MESSAGE((h != kInvalidScriptHandle), "load returns a valid handle");
+  CHECK_MESSAGE((engine.saiFor(h) == &sai), "engine retained the SaiContext for the handle");
 
   seam.initialize(h);
 
@@ -297,30 +281,29 @@ void testSeamWithMock() {
 
   // The reaction posted into the cascade; drain it.
   ctx.process();
-  check(veq(transformTranslation(target), 3, 3, 3),
-        "invoke drove the SAI to write through the cascade");
+  CHECK_MESSAGE((veq(transformTranslation(target), 3, 3, 3)),
+                "invoke drove the SAI to write through the cascade");
 
   // The call log records the lifecycle in order.
-  check(engine.count("load") == 1, "one load recorded");
-  check(engine.count("initialize") == 1, "one initialize recorded");
-  check(engine.count("prepareEvents") == 1, "one prepareEvents recorded");
-  check(engine.count("invoke") == 1, "one invoke recorded");
-  check(engine.count("eventsProcessed") == 1, "one eventsProcessed recorded");
-  check(engine.count("shutdown") == 1, "one shutdown recorded");
+  CHECK_MESSAGE((engine.count("load") == 1), "one load recorded");
+  CHECK_MESSAGE((engine.count("initialize") == 1), "one initialize recorded");
+  CHECK_MESSAGE((engine.count("prepareEvents") == 1), "one prepareEvents recorded");
+  CHECK_MESSAGE((engine.count("invoke") == 1), "one invoke recorded");
+  CHECK_MESSAGE((engine.count("eventsProcessed") == 1), "one eventsProcessed recorded");
+  CHECK_MESSAGE((engine.count("shutdown") == 1), "one shutdown recorded");
 
   // Ordering: load < initialize < prepareEvents < invoke < eventsProcessed < shutdown.
   const auto &c = engine.calls;
-  check(c.size() == 6 && c[0].kind == "load" && c[1].kind == "initialize" &&
+  CHECK_MESSAGE((c.size() == 6 && c[0].kind == "load" && c[1].kind == "initialize" &&
             c[2].kind == "prepareEvents" && c[3].kind == "invoke" &&
-            c[4].kind == "eventsProcessed" && c[5].kind == "shutdown",
-        "seam calls were recorded in lifecycle order");
-  check(c[3].eventName == "set_target" && c[3].timestamp == 1.0,
-        "invoke recorded the event name and timestamp");
+            c[4].kind == "eventsProcessed" && c[5].kind == "shutdown"), "seam calls were recorded in lifecycle order");
+  CHECK_MESSAGE((c[3].eventName == "set_target" && c[3].timestamp == 1.0),
+                "invoke recorded the event name and timestamp");
 }
 
 } // namespace
 
-int main() {
+TEST_CASE("sai_context_test") {
   testAuthorFieldOwnerIsolation();
   testFieldRoundTrip();
   testDirectOutputGate();
@@ -328,10 +311,4 @@ int main() {
   testBrowserInfo();
   testSeamWithMock();
 
-  if (failures == 0) {
-    std::cout << "ALL SAI CONTEXT TESTS PASSED\n";
-    return 0;
-  }
-  std::cerr << failures << " SAI context test(s) FAILED\n";
-  return 1;
 }

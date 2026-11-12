@@ -19,7 +19,7 @@ if(X3D_CPP_BUILD_TESTS)
     # A recording backend checks solver settings without requiring Jolt.
     add_executable(x3d_physics_solver_settings_test
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_solver_settings_test.cpp")
-    target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_physics_solver_settings_test PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_physics_solver_settings_test PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_physics_solver_settings
@@ -167,26 +167,26 @@ if(X3D_CPP_BUILD_TESTS)
     #   A. XML capture
     add_executable(x3d_xml_script_field
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_script_field_test.cpp")
-    target_link_libraries(x3d_xml_script_field PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_xml_script_field PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_xml_script_field
         COMMAND x3d_xml_script_field
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/data")
     #   A'. XML ComposedShader capture (author <field>s + ShaderPart source)
     add_executable(x3d_xml_composed_shader
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_composed_shader_test.cpp")
-    target_link_libraries(x3d_xml_composed_shader PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_xml_composed_shader PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_xml_composed_shader COMMAND x3d_xml_composed_shader)
     #   B. ClassicVRML / VRML97 capture
     add_executable(x3d_vrml_script_field
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/vrml_script_field_test.cpp")
-    target_link_libraries(x3d_vrml_script_field PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_vrml_script_field PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_vrml_script_field
         COMMAND x3d_vrml_script_field
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
     #   C. JSON capture
     add_executable(x3d_json_script_field
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/json_script_field_test.cpp")
-    target_link_libraries(x3d_json_script_field PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_json_script_field PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_json_script_field
         COMMAND x3d_json_script_field
                 "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
@@ -196,7 +196,7 @@ if(X3D_CPP_BUILD_TESTS)
     # the reporter is engine-free; only the Jolt drain path needs the physics flag.
     add_executable(x3d_contact_reporter
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/contact_reporter_test.cpp")
-    target_link_libraries(x3d_contact_reporter PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_contact_reporter PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_contact_reporter PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_contact_reporter COMMAND x3d_contact_reporter)
@@ -205,7 +205,7 @@ if(X3D_CPP_BUILD_TESTS)
     # Ungated (a fake backend scripts a contact); proves the engine-free wiring.
     add_executable(x3d_physics_contact_wiring
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_contact_wiring_test.cpp")
-    target_link_libraries(x3d_physics_contact_wiring PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_physics_contact_wiring PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_physics_contact_wiring PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_physics_contact_wiring COMMAND x3d_physics_contact_wiring)
@@ -214,7 +214,7 @@ if(X3D_CPP_BUILD_TESTS)
     # Ungated — the detection is engine-free; only the Jolt mapping needs the flag.
     add_executable(x3d_inertia_massprops
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/inertia_massprops_test.cpp")
-    target_link_libraries(x3d_inertia_massprops PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_inertia_massprops PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_inertia_massprops PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_inertia_massprops COMMAND x3d_inertia_massprops)
@@ -224,7 +224,7 @@ if(X3D_CPP_BUILD_TESTS)
     # non-default detection. Ungated — engine-free; uses a recording fake backend.
     add_executable(x3d_contact_response
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/contact_response_test.cpp")
-    target_link_libraries(x3d_contact_response PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_contact_response PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_contact_response PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics")
     add_test(NAME x3d_contact_response COMMAND x3d_contact_response)
@@ -239,13 +239,13 @@ if(X3D_CPP_BUILD_TESTS)
 
     add_executable(x3d_sai_context
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/sai_context_test.cpp")
-    target_link_libraries(x3d_sai_context PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sai_context PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sai_context COMMAND x3d_sai_context)
 
     # §29.2 Script lifecycle and event ordering, exercised with a mock engine.
     add_executable(x3d_script_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_system_test.cpp")
-    target_link_libraries(x3d_script_system PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_script_system PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_script_system COMMAND x3d_script_system)
 
     if(TARGET x3d_ecmascript_backend)
@@ -258,14 +258,14 @@ if(X3D_CPP_BUILD_TESTS)
         add_executable(x3d_ecmascript_corpus_smoke_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_corpus_smoke_test.cpp")
         target_link_libraries(x3d_ecmascript_corpus_smoke_test PRIVATE
-            x3d_ecmascript_backend)
+            x3d_ecmascript_backend x3d_doctest_main)
         add_test(NAME x3d_ecmascript_corpus_smoke
             COMMAND x3d_ecmascript_corpus_smoke_test)
 
         add_executable(x3d_script_author_runtime
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/script_author_runtime_test.cpp")
         target_link_libraries(x3d_script_author_runtime PRIVATE
-            x3d_ecmascript_backend)
+            x3d_ecmascript_backend x3d_doctest_main)
         add_test(NAME x3d_script_author_runtime COMMAND x3d_script_author_runtime)
 
         # The data argument locates the ClassicVRML fixture; XML uses a corpus path.
@@ -336,13 +336,13 @@ if(X3D_CPP_BUILD_TESTS)
     # inflateGzip bounds decompressed output to prevent decompression-bomb DoS.
     add_executable(x3d_inflate_bomb
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inflate_bomb_test.cpp")
-    target_link_libraries(x3d_inflate_bomb PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_inflate_bomb PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_inflate_bomb COMMAND x3d_inflate_bomb)
 
     # Reject traversal and absolute paths; canonicalize cycle keys (ADR-0038).
     add_executable(x3d_path_confine
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/path_confine_test.cpp")
-    target_link_libraries(x3d_path_confine PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_path_confine PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_path_confine COMMAND x3d_path_confine)
 
     # SEC-3 regression at the default resolver call sites: localFileInlineResolver
@@ -351,7 +351,7 @@ if(X3D_CPP_BUILD_TESTS)
     # the a->b->a cycle must still terminate on the canonical keys.
     add_executable(x3d_inline_confine
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/inline_confine_test.cpp")
-    target_link_libraries(x3d_inline_confine PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_inline_confine PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_inline_confine COMMAND x3d_inline_confine)
 
     # Regression: expandInlines walk must not stack-overflow on containment cycles
@@ -441,21 +441,21 @@ if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_sound_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_system_test.cpp")
-    target_link_libraries(x3d_sound_system PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_system PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sound_system COMMAND x3d_sound_system)
 
     # Delay (§16.4.6): the ring-buffer delay node on the built-in backend.
     add_executable(x3d_sound_delay
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_delay_test.cpp")
-    target_link_libraries(x3d_sound_delay PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_delay PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sound_delay COMMAND x3d_sound_delay)
 
     # WaveShaper (§16.4.21): the transfer-curve node on the built-in backend.
     add_executable(x3d_sound_waveshaper
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_waveshaper_test.cpp")
-    target_link_libraries(x3d_sound_waveshaper PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_waveshaper PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sound_waveshaper COMMAND x3d_sound_waveshaper)
 
     # Immersive Sound (ADR-0050): Sound ellipsoid + AudioClip Buffer on the
@@ -463,7 +463,7 @@ if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_sound_immersive
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_immersive_test.cpp")
-    target_link_libraries(x3d_sound_immersive PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_immersive PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     target_include_directories(x3d_sound_immersive PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/wav")
     add_test(NAME x3d_sound_immersive COMMAND x3d_sound_immersive)
@@ -473,14 +473,14 @@ if(X3D_CPP_BUILD_TESTS)
     add_executable(x3d_sound_dynamics
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_dynamics_compressor_test.cpp")
-    target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_dynamics PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sound_dynamics COMMAND x3d_sound_dynamics)
     # PeriodicWave custom oscillator waveform (§16.4.18) — backend
     # synthesis, SoundSystem registration, and the 4.0 parse-path evidence.
     add_executable(x3d_sound_periodicwave
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/tests/sound_periodicwave_test.cpp")
-    target_link_libraries(x3d_sound_periodicwave PRIVATE x3d_cpp::x3d_cpp)
+    target_link_libraries(x3d_sound_periodicwave PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
     add_test(NAME x3d_sound_periodicwave COMMAND x3d_sound_periodicwave)
 
 endif()

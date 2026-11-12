@@ -1,5 +1,6 @@
 // XML Script author fields and inline source survive round-trips (design §3.4).
 
+#include "doctest/doctest.h"
 #include "DynamicField.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
@@ -18,17 +19,6 @@ namespace runtime = x3d::runtime;
 namespace codec = x3d::codec;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 // Find a Script node in a scene's root nodes (the test scenes place the Script
 // at the root).
@@ -80,51 +70,46 @@ std::string sampleXml() {
 // Verify the two author fields + sourceCode are present on a parsed Script.
 void checkDecls(const runtime::Scene &scene, const std::string &phase) {
   auto script = findScript(scene);
-  check(script != nullptr, phase + ": Script node parsed");
+  CHECK_MESSAGE((script != nullptr), (phase + ": Script node parsed"));
   if (!script)
     return;
 
   FieldTable table;
   const FieldInfo *frac =
       authorField(*script, "set_fraction", *scene.authorFields, table);
-  check(frac != nullptr, phase + ": author field set_fraction visible");
+  CHECK_MESSAGE((frac != nullptr), (phase + ": author field set_fraction visible"));
   if (frac) {
-    check(frac->access == AccessType::InputOnly,
-          phase + ": set_fraction is inputOnly");
-    check(frac->type == X3DFieldType::SFFloat,
-          phase + ": set_fraction is SFFloat");
+    CHECK_MESSAGE((frac->access == AccessType::InputOnly), (phase + ": set_fraction is inputOnly"));
+    CHECK_MESSAGE((frac->type == X3DFieldType::SFFloat), (phase + ": set_fraction is SFFloat"));
     // inputOnly: no get thunk (write-only event sink).
-    check(!frac->isReadable(), phase + ": set_fraction has no getter");
-    check(frac->isWritable(), phase + ": set_fraction has a setter");
+    CHECK_MESSAGE((!frac->isReadable()), (phase + ": set_fraction has no getter"));
+    CHECK_MESSAGE((frac->isWritable()), (phase + ": set_fraction has a setter"));
   }
 
   FieldTable table2;
   const FieldInfo *color = authorField(*script, "color", *scene.authorFields, table2);
-  check(color != nullptr, phase + ": author field color visible");
+  CHECK_MESSAGE((color != nullptr), (phase + ": author field color visible"));
   if (color) {
-    check(color->access == AccessType::InputOutput,
-          phase + ": color is inputOutput");
-    check(color->type == X3DFieldType::SFColor, phase + ": color is SFColor");
-    check(color->isReadable() && color->isWritable(),
-          phase + ": color is read+write");
+    CHECK_MESSAGE((color->access == AccessType::InputOutput), (phase + ": color is inputOutput"));
+    CHECK_MESSAGE((color->type == X3DFieldType::SFColor), (phase + ": color is SFColor"));
+    CHECK_MESSAGE((color->isReadable() && color->isWritable()), (phase + ": color is read+write"));
     // The boxed default 1 0 0 seeded into the store.
     std::any v = color->get(*script);
-    check(v.has_value(), phase + ": color has a seeded value");
+    CHECK_MESSAGE((v.has_value()), (phase + ": color has a seeded value"));
     if (v.has_value()) {
       auto c = std::any_cast<SFColor>(v);
-      check(c.r == 1.0f && c.g == 0.0f && c.b == 0.0f,
-            phase + ": color default is (1 0 0)");
+      CHECK_MESSAGE((c.r == 1.0f && c.g == 0.0f && c.b == 0.0f),
+                    (phase + ": color default is (1 0 0)"));
     }
   }
 
-  check(script->getSourceCode().find("function set_fraction") !=
-            std::string::npos,
-        phase + ": CDATA body captured into sourceCode");
+  CHECK_MESSAGE((script->getSourceCode().find("function set_fraction") !=
+            std::string::npos), (phase + ": CDATA body captured into sourceCode"));
 }
 
 } // namespace
 
-int main() {
+TEST_CASE("xml_script_field_test") {
   codec::XmlReader reader;
   codec::XmlWriter writer;
   runtime::X3DDocument doc = reader.readDocument(sampleXml());
@@ -132,19 +117,19 @@ int main() {
   {
     runtime::X3DExecutionContext ctx(doc.scene.authorFields);
     runtime::BridgeResult br = runtime::buildRoutes(doc.scene, ctx);
-    check(br.rejected.empty(),
-          "author-field ROUTE not rejected (resolves via effectiveFields)");
-    check(br.routesAdded == 1, "author-field ROUTE added to context");
+    CHECK_MESSAGE((br.rejected.empty()),
+                  "author-field ROUTE not rejected (resolves via effectiveFields)");
+    CHECK_MESSAGE((br.routesAdded == 1), "author-field ROUTE added to context");
   }
   std::string out = writer.writeDocument(doc);
-  check(out.find("set_fraction") != std::string::npos,
-        "writer re-emits author field set_fraction");
-  check(out.find("accessType=\"inputOnly\"") != std::string::npos,
-        "writer re-emits inputOnly accessType on author field");
-  check(out.find("accessType=\"inputOutput\"") != std::string::npos,
-        "writer re-emits inputOutput accessType on author field");
-  check(out.find("function set_fraction") != std::string::npos,
-        "writer re-emits CDATA source body");
+  CHECK_MESSAGE((out.find("set_fraction") != std::string::npos),
+                "writer re-emits author field set_fraction");
+  CHECK_MESSAGE((out.find("accessType=\"inputOnly\"") != std::string::npos),
+                "writer re-emits inputOnly accessType on author field");
+  CHECK_MESSAGE((out.find("accessType=\"inputOutput\"") != std::string::npos),
+                "writer re-emits inputOutput accessType on author field");
+  CHECK_MESSAGE((out.find("function set_fraction") != std::string::npos),
+                "writer re-emits CDATA source body");
 
   runtime::X3DDocument doc2 = reader.readDocument(out);
   checkDecls(doc2.scene, "reparse");
@@ -153,8 +138,8 @@ int main() {
   {
     runtime::X3DExecutionContext ctx(doc2.scene.authorFields);
     runtime::BridgeResult br = runtime::buildRoutes(doc2.scene, ctx);
-    check(br.rejected.empty(), "reparse: author-field ROUTE still resolves");
-    check(br.routesAdded == 1, "reparse: author-field ROUTE added");
+    CHECK_MESSAGE((br.rejected.empty()), "reparse: author-field ROUTE still resolves");
+    CHECK_MESSAGE((br.routesAdded == 1), "reparse: author-field ROUTE added");
   }
   {
     const std::string urlXml =
@@ -165,14 +150,13 @@ int main() {
         "</Script></Scene></X3D>";
     runtime::X3DDocument d = reader.readDocument(urlXml);
     auto s = findScript(d.scene);
-    check(s != nullptr, "url-source Script parsed");
+    CHECK_MESSAGE((s != nullptr), "url-source Script parsed");
     if (s) {
-      check(s->getUrl().size() == 1 &&
-                s->getUrl()[0].find("ecmascript:") != std::string::npos,
-            "inline ecmascript: scheme retained in url");
+      CHECK_MESSAGE((s->getUrl().size() == 1 &&
+                s->getUrl()[0].find("ecmascript:") != std::string::npos), "inline ecmascript: scheme retained in url");
       FieldTable t;
-      check(authorField(*s, "on", *d.scene.authorFields, t) != nullptr,
-            "author field present alongside url source");
+      CHECK_MESSAGE((authorField(*s, "on", *d.scene.authorFields, t) != nullptr),
+                    "author field present alongside url source");
     }
   }
   {
@@ -188,32 +172,26 @@ int main() {
         "</Script></Scene></X3D>";
     auto nodeChecks = [&](const runtime::X3DDocument &d, const std::string &phase) {
       auto s = findScript(d.scene);
-      check(s != nullptr, phase + ": node-field Script parsed");
+      CHECK_MESSAGE((s != nullptr), (phase + ": node-field Script parsed"));
       if (!s) return;
       const auto &store = *d.scene.authorFields;
       auto target = store.getValue(*s, "target");
       auto *one = std::any_cast<SFNode>(&target);
-      check(one && *one == d.scene.resolve("T"), phase + ": SFNode field holds USE T");
+      CHECK_MESSAGE((one && *one == d.scene.resolve("T")), (phase + ": SFNode field holds USE T"));
       auto list = store.getValue(*s, "list");
       auto *many = std::any_cast<MFNode>(&list);
-      check(many && many->size() == 2 && (*many)[1] == d.scene.resolve("T"),
-            phase + ": MFNode field holds Group and USE T");
+      CHECK_MESSAGE((many && many->size() == 2 && (*many)[1] == d.scene.resolve("T")),
+                    (phase + ": MFNode field holds Group and USE T"));
       auto none = store.getValue(*s, "none");
       auto *empty = std::any_cast<SFNode>(&none);
-      check(empty && !*empty, phase + ": empty SFNode field is NULL");
+      CHECK_MESSAGE((empty && !*empty), (phase + ": empty SFNode field is NULL"));
     };
     runtime::X3DDocument d = reader.readDocument(nodeXml);
     nodeChecks(d, "parse");
     const std::string written = writer.writeDocument(d);
-    check(written.find("value=\"\"") == std::string::npos,
-          "node fields are written as children, not empty values");
+    CHECK_MESSAGE((written.find("value=\"\"") == std::string::npos),
+                  "node fields are written as children, not empty values");
     nodeChecks(reader.readDocument(written), "reparse");
   }
 
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "All XML Script author-field checks passed.\n";
-  return 0;
 }

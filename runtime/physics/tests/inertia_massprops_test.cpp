@@ -1,4 +1,5 @@
 // §37 inertia and centerOfMass mapping without a physics engine.
+#include "doctest/doctest.h"
 #include "PhysicsBackend.hpp"
 #include "PhysicsSystem.hpp"
 #include "X3DExecutionContext.hpp"
@@ -15,22 +16,14 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; }             \
-    else { std::printf("ok:   %s\n", msg); }                                   \
-  } while (0)
-
 static void test_massprops_defaults() {
   MassProperties mp;
-  CHECK(mp.mass == 1.0f, "MassProperties.mass defaults to 1");
-  CHECK(mp.overrideInertia == false, "overrideInertia defaults false");
-  CHECK(mp.centerOfMass.x == 0.0f && mp.centerOfMass.y == 0.0f &&
-            mp.centerOfMass.z == 0.0f,
-        "centerOfMass defaults to origin");
-  CHECK(mp.inertia.matrix[0][0] == 0.0f && mp.inertia.matrix[2][2] == 0.0f,
-        "inertia tensor zero-initialises");
+  CHECK_MESSAGE((mp.mass == 1.0f), "MassProperties.mass defaults to 1");
+  CHECK_MESSAGE((mp.overrideInertia == false), "overrideInertia defaults false");
+  CHECK_MESSAGE((mp.centerOfMass.x == 0.0f && mp.centerOfMass.y == 0.0f &&
+            mp.centerOfMass.z == 0.0f), "centerOfMass defaults to origin");
+  CHECK_MESSAGE((mp.inertia.matrix[0][0] == 0.0f && mp.inertia.matrix[2][2] == 0.0f),
+                "inertia tensor zero-initialises");
 }
 
 // A fake backend that records the MassProperties passed to the last addBody, so
@@ -86,8 +79,8 @@ static void test_default_inertia_not_overridden() {
   PhysicsSystem sys(backend);
   x3d::runtime::X3DExecutionContext ctx;
   sys.attach(collection.get(), ctx);
-  CHECK(backend->lastMass.overrideInertia == false,
-        "identity inertia -> overrideInertia false (shape-derived)");
+  CHECK_MESSAGE((backend->lastMass.overrideInertia == false),
+                "identity inertia -> overrideInertia false (shape-derived)");
 }
 
 static void test_nondefault_inertia_overridden() {
@@ -100,10 +93,10 @@ static void test_nondefault_inertia_overridden() {
   PhysicsSystem sys(backend);
   x3d::runtime::X3DExecutionContext ctx;
   sys.attach(collection.get(), ctx);
-  CHECK(backend->lastMass.overrideInertia == true,
-        "non-identity inertia -> overrideInertia true");
-  CHECK(backend->lastMass.inertia.matrix[1][1] == 0.02f,
-        "authored inertia tensor passed through");
+  CHECK_MESSAGE((backend->lastMass.overrideInertia == true),
+                "non-identity inertia -> overrideInertia true");
+  CHECK_MESSAGE((backend->lastMass.inertia.matrix[1][1] == 0.02f),
+                "authored inertia tensor passed through");
 }
 
 static void test_centerofmass_passed_through() {
@@ -114,16 +107,15 @@ static void test_centerofmass_passed_through() {
   PhysicsSystem sys(backend);
   x3d::runtime::X3DExecutionContext ctx;
   sys.attach(collection.get(), ctx);
-  CHECK(backend->lastMass.centerOfMass.x == 0.5f,
-        "centerOfMass.x passed through to the backend");
-  CHECK(backend->lastMass.centerOfMass.y == 0.25f,
-        "centerOfMass.y passed through to the backend");
+  CHECK_MESSAGE((backend->lastMass.centerOfMass.x == 0.5f),
+                "centerOfMass.x passed through to the backend");
+  CHECK_MESSAGE((backend->lastMass.centerOfMass.y == 0.25f),
+                "centerOfMass.y passed through to the backend");
 }
 
-int main() {
+TEST_CASE("inertia_massprops_test") {
   test_massprops_defaults();
   test_default_inertia_not_overridden();
   test_nondefault_inertia_overridden();
   test_centerofmass_passed_through();
-  return g_failures == 0 ? 0 : 1;
 }

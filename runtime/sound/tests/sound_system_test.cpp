@@ -1,4 +1,5 @@
 // §16 graph construction, synthesis, parameter animation, and spatialization.
+#include "doctest/doctest.h"
 #include "AudioBackend.hpp"
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
@@ -23,15 +24,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using x3d::test::rms;
 using x3d::test::goertzel;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
 
 // Build a §16 chain: AudioDestination <- Gain <- BiquadFilter <- OscillatorSource
 // (children = inputs). Returns the nodes so the test can mutate/route fields.
@@ -62,7 +54,7 @@ static Chain buildChain(float oscFreq, float cutoff,
   return c;
 }
 
-int main() {
+TEST_CASE("sound_system_test") {
   constexpr float kSR = 48000.0f;
   constexpr int kFrames = 4096;
 
@@ -75,10 +67,10 @@ int main() {
     X3DExecutionContext ctx;
     sys.attach(c.dest.get(), ctx);
 
-    CHECK(rec->creates.size() == 4, "4 nodes created (osc/biquad/gain/dest)");
-    CHECK(rec->connects.size() == 3, "3 connections (the chain edges)");
-    CHECK(sys.nodeCount() == 4, "SoundSystem mapped 4 nodes");
-    CHECK(sys.destinationCount() == 1, "one AudioDestination enrolled");
+    CHECK_MESSAGE((rec->creates.size() == 4), "4 nodes created (osc/biquad/gain/dest)");
+    CHECK_MESSAGE((rec->connects.size() == 3), "3 connections (the chain edges)");
+    CHECK_MESSAGE((sys.nodeCount() == 4), "SoundSystem mapped 4 nodes");
+    CHECK_MESSAGE((sys.destinationCount() == 1), "one AudioDestination enrolled");
 
     // Identify handles by kind from the create records.
     NodeHandle hDest = 0, hGain = 0, hBiq = 0, hOsc = 0;
@@ -96,13 +88,13 @@ int main() {
       case NodeKind::WaveShaper: break;
       }
     }
-    CHECK(hDest && hGain && hBiq && hOsc, "all four kinds present");
+    CHECK_MESSAGE((hDest && hGain && hBiq && hOsc), "all four kinds present");
 
     // Initial params read off the §16 nodes.
-    CHECK(std::fabs(oscP.frequency - 440.0f) < 1e-3f, "osc frequency = 440");
-    CHECK(std::fabs(biqP.frequency - 8000.0f) < 1e-3f, "biquad cutoff = 8000");
-    CHECK(biqP.filterType == FilterType::Lowpass, "biquad type = lowpass");
-    CHECK(std::fabs(gainP.gain - 0.5f) < 1e-3f, "gain = 0.5");
+    CHECK_MESSAGE((std::fabs(oscP.frequency - 440.0f) < 1e-3f), "osc frequency = 440");
+    CHECK_MESSAGE((std::fabs(biqP.frequency - 8000.0f) < 1e-3f), "biquad cutoff = 8000");
+    CHECK_MESSAGE((biqP.filterType == FilterType::Lowpass), "biquad type = lowpass");
+    CHECK_MESSAGE((std::fabs(gainP.gain - 0.5f) < 1e-3f), "gain = 0.5");
 
     // Connections are child->parent: osc->biquad, biquad->gain, gain->dest.
     bool oscToBiq = false, biqToGain = false, gainToDest = false;
@@ -111,9 +103,9 @@ int main() {
       if (cn.dst == hGain && cn.src == hBiq) biqToGain = true;
       if (cn.dst == hDest && cn.src == hGain) gainToDest = true;
     }
-    CHECK(oscToBiq, "osc feeds INTO biquad (child->parent)");
-    CHECK(biqToGain, "biquad feeds INTO gain (child->parent)");
-    CHECK(gainToDest, "gain feeds INTO destination (child->parent)");
+    CHECK_MESSAGE((oscToBiq), "osc feeds INTO biquad (child->parent)");
+    CHECK_MESSAGE((biqToGain), "biquad feeds INTO gain (child->parent)");
+    CHECK_MESSAGE((gainToDest), "gain feeds INTO destination (child->parent)");
 
     // Determinism of the op sequence: a second identical build records the same
     // ordered ops (same kinds, same connect directions, same handles).
@@ -123,7 +115,7 @@ int main() {
     X3DExecutionContext ctx2;
     sys2.attach(c2.dest.get(), ctx2);
     bool sameLen = rec->ops.size() == rec2->ops.size();
-    CHECK(sameLen, "two runs record the same number of ops");
+    CHECK_MESSAGE((sameLen), "two runs record the same number of ops");
     if (sameLen) {
       bool identical = true;
       for (std::size_t i = 0; i < rec->ops.size(); ++i) {
@@ -135,7 +127,7 @@ int main() {
           break;
         }
       }
-      CHECK(identical, "op sequence is byte-for-byte deterministic across runs");
+      CHECK_MESSAGE((identical), "op sequence is byte-for-byte deterministic across runs");
     }
     std::fprintf(stderr, "[recording] 4 nodes, 3 edges, op-seq len=%zu\n",
                  rec->ops.size());
@@ -151,7 +143,7 @@ int main() {
 
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
-    CHECK(buf.size() == static_cast<std::size_t>(kFrames), "rendered kFrames");
+    CHECK_MESSAGE((buf.size() == static_cast<std::size_t>(kFrames)), "rendered kFrames");
 
     double r = rms(buf);
     double g440 = goertzel(buf, 440.0, kSR);
@@ -160,14 +152,14 @@ int main() {
     std::fprintf(stderr,
                  "[dsp lowpass] RMS=%.4f (expect ~0.354) goertzel@440=%.4f\n",
                  r, g440);
-    CHECK(r > 0.30 && r < 0.40, "half-gain 440 Hz tone has RMS ~= 0.354");
-    CHECK(g440 > 0.30, "strong 440 Hz component present (Goertzel)");
+    CHECK_MESSAGE((r > 0.30 && r < 0.40), "half-gain 440 Hz tone has RMS ~= 0.354");
+    CHECK_MESSAGE((g440 > 0.30), "strong 440 Hz component present (Goertzel)");
 
     // Off-frequency Goertzel should be far smaller (the tone is at 440, not 5k).
     double gOff = goertzel(buf, 5000.0, kSR);
     std::fprintf(stderr, "[dsp lowpass] goertzel@5000=%.5f (should be << @440)\n",
                  gOff);
-    CHECK(gOff < g440 * 0.1, "440 component dominates a non-harmonic bin");
+    CHECK_MESSAGE((gOff < g440 * 0.1), "440 component dominates a non-harmonic bin");
 
     // A high-frequency oscillator (15 kHz) through the same lowpass(1 kHz cutoff)
     // is strongly attenuated vs a low tone (200 Hz) through that lowpass.
@@ -187,8 +179,8 @@ int main() {
                  "[dsp lowpass] passband(200Hz)=%.4f  stopband(15kHz)=%.5f  "
                  "attenuation=%.1fx\n",
                  rLo, rHi, rHi > 0 ? rLo / rHi : 0.0);
-    CHECK(rLo > 0.5, "200 Hz passes the 1 kHz lowpass (near unity)");
-    CHECK(rHi < rLo * 0.1, "15 kHz is strongly attenuated by the 1 kHz lowpass");
+    CHECK_MESSAGE((rLo > 0.5), "200 Hz passes the 1 kHz lowpass (near unity)");
+    CHECK_MESSAGE((rHi < rLo * 0.1), "15 kHz is strongly attenuated by the 1 kHz lowpass");
   }
 
   // (c) param animation: Gain.gain ramped via the inbound event cascade.
@@ -228,8 +220,8 @@ int main() {
       if (prevRms >= 0.0 && r <= prevRms - 1e-4) monotonic = false;
       prevRms = r;
     }
-    CHECK(monotonic, "per-block RMS ramps up as Gain.gain animates 0 -> 1");
-    CHECK(prevRms > 0.30, "at gain=1.0 the tone reaches ~full half... (>0.30)");
+    CHECK_MESSAGE((monotonic), "per-block RMS ramps up as Gain.gain animates 0 -> 1");
+    CHECK_MESSAGE((prevRms > 0.30), "at gain=1.0 the tone reaches ~full half... (>0.30)");
   }
 
   // (d) determinism: same graph + same render twice -> byte-identical buffer.
@@ -251,7 +243,7 @@ int main() {
         if (a[i] != b[i]) { identical = false; break; }
     std::fprintf(stderr, "[determinism] %zu samples, byte-identical=%d\n",
                  a.size(), identical ? 1 : 0);
-    CHECK(identical, "two identical renders produce byte-identical buffers");
+    CHECK_MESSAGE((identical), "two identical renders produce byte-identical buffers");
   }
 
   // (g) enabled semantics and destination gain.
@@ -272,25 +264,25 @@ int main() {
     ctx.tick(0.01);
     sys.update(0.01, ctx);
     sys.render(2048, kSR, changed);
-    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
-          "AudioDestination.gain scales rendered output");
+    CHECK_MESSAGE((std::fabs(rms(changed) / rms(full) - 0.25) < 0.01),
+                  "AudioDestination.gain scales rendered output");
     c.biquad->setEnabled(false);
     ctx.tick(0.1);
     sys.update(0.1, ctx);
     sys.render(2048, kSR, changed);
-    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
-          "disabled BiquadFilter passes input through");
+    CHECK_MESSAGE((std::fabs(rms(changed) / rms(full) - 0.25) < 0.01),
+                  "disabled BiquadFilter passes input through");
     c.gain->setEnabled(false);
     ctx.tick(0.2);
     sys.update(0.2, ctx);
     sys.render(2048, kSR, changed);
-    CHECK(std::fabs(rms(changed) / rms(full) - 0.25) < 0.01,
-          "disabled Gain passes input through");
+    CHECK_MESSAGE((std::fabs(rms(changed) / rms(full) - 0.25) < 0.01),
+                  "disabled Gain passes input through");
     c.osc->setEnabled(false);
     ctx.tick(0.3);
     sys.update(0.3, ctx);
     sys.render(2048, kSR, changed);
-    CHECK(rms(changed) < 1e-6, "disabled OscillatorSource emits silence");
+    CHECK_MESSAGE((rms(changed) < 1e-6), "disabled OscillatorSource emits silence");
   }
 
   // (e) panner seam: NodeKind::Panner + positional params cross the seam.
@@ -310,7 +302,7 @@ int main() {
     auto rec = std::make_shared<RecordingBackend>();
     NodeHandle hPanner = rec->createNode(NodeKind::Panner, pannerParams);
 
-    CHECK(hPanner != kInvalidNodeHandle, "Panner node returns a valid handle");
+    CHECK_MESSAGE((hPanner != kInvalidNodeHandle), "Panner node returns a valid handle");
 
     bool foundPanner = false;
     float recordedX  = 0.0f;
@@ -320,15 +312,15 @@ int main() {
         recordedX   = cr.params.sourcePosition[0];
       }
     }
-    CHECK(foundPanner, "RecordingBackend has a Panner create record");
-    CHECK(std::fabs(recordedX - 2.0f) < 1e-5f,
-          "Panner create record carries sourcePosition[0] = 2.0");
+    CHECK_MESSAGE((foundPanner), "RecordingBackend has a Panner create record");
+    CHECK_MESSAGE((std::fabs(recordedX - 2.0f) < 1e-5f),
+                  "Panner create record carries sourcePosition[0] = 2.0");
 
     // renderStereo: the seam must expose a stereo path (interleaved L,R,...).
     std::vector<float> stereoOut;
     rec->renderStereo(hPanner, /*frames=*/4, /*sampleRate=*/48000.0f, stereoOut);
-    CHECK(stereoOut.size() == 8,
-          "renderStereo output length == 2*frames (interleaved L,R)");
+    CHECK_MESSAGE((stereoOut.size() == 8),
+                  "renderStereo output length == 2*frames (interleaved L,R)");
 
     std::fprintf(stderr,
                  "[panner seam] Panner node handle=%llu, "
@@ -400,7 +392,7 @@ int main() {
       std::fprintf(stderr,
                    "[spatial] hard-left: rmsL=%.4f rmsR=%.4f ratio=%.1fx\n",
                    L, R, R > 1e-9 ? L / R : 0.0);
-      CHECK(L > 4.0 * R, "hard-left source: L channel dominates (L > 4*R)");
+      CHECK_MESSAGE((L > 4.0 * R), "hard-left source: L channel dominates (L > 4*R)");
     }
 
     // Hard right: source at (+5, 0, 0) -> az_norm = +1 -> rmsR >> rmsL
@@ -431,7 +423,7 @@ int main() {
       std::fprintf(stderr,
                    "[spatial] hard-right: rmsL=%.4f rmsR=%.4f ratio=%.1fx\n",
                    L, R, L > 1e-9 ? R / L : 0.0);
-      CHECK(R > 4.0 * L, "hard-right source: R channel dominates (R > 4*L)");
+      CHECK_MESSAGE((R > 4.0 * L), "hard-right source: R channel dominates (R > 4*L)");
     }
 
     // Centered: source directly in front of listener (0, 0, -5).
@@ -468,11 +460,11 @@ int main() {
                    "[spatial] centered: rmsL=%.4f rmsR=%.4f |L-R|=%.5f "
                    "L^2+R^2=%.5f\n",
                    L, R, balance, sumSq);
-      CHECK(balance < 0.01 * (L + R + 1e-9), "centered: L ≈ R (within 1%)");
+      CHECK_MESSAGE((balance < 0.01 * (L + R + 1e-9)), "centered: L ≈ R (within 1%)");
       // Energy conservation: gL^2+gR^2 = 1 means L^2+R^2 = mono_energy/2 for
       // each channel; here we just verify that L ≈ R not L==R via channel balance.
-      CHECK(L > 0.01, "centered: non-zero output on L channel");
-      CHECK(R > 0.01, "centered: non-zero output on R channel");
+      CHECK_MESSAGE((L > 0.01), "centered: non-zero output on L channel");
+      CHECK_MESSAGE((R > 0.01), "centered: non-zero output on R channel");
     }
 
     // Distance falloff: source at referenceDistance vs maxDistance.
@@ -512,12 +504,9 @@ int main() {
                    "rmsMax=%.5f\n",
                    rmsRef, rmsMax);
       // At maxDistance with LINEAR model and rolloff=1, gain clamped to 0.
-      CHECK(rmsRef > 0.1, "at referenceDistance: non-zero output");
-      CHECK(rmsMax < rmsRef * 0.05, "at maxDistance (linear): energy << referenceDistance");
+      CHECK_MESSAGE((rmsRef > 0.1), "at referenceDistance: non-zero output");
+      CHECK_MESSAGE((rmsMax < rmsRef * 0.05),
+                    "at maxDistance (linear): energy << referenceDistance");
     }
   }
-
-  if (g_failures == 0)
-    std::fprintf(stderr, "sound_system_test: ALL PASS\n");
-  return g_failures == 0 ? 0 : 1;
 }

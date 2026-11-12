@@ -53,7 +53,7 @@ if(X3D_CPP_BUILD_EXAMPLES)
         "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/corpus_audit_selftest.cpp")
     target_include_directories(x3d_corpus_audit_selftest
         PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tools")
-    target_link_libraries(x3d_corpus_audit_selftest PRIVATE x3d_cpp::sdk)
+    target_link_libraries(x3d_corpus_audit_selftest PRIVATE x3d_cpp::sdk x3d_doctest_main)
     add_test(NAME x3d_corpus_audit_selftest COMMAND x3d_corpus_audit_selftest)
 
     # CLI-level regression test for the corpus tools (arg-parsing edge cases,

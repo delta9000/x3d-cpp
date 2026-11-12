@@ -1,4 +1,5 @@
 // Script lifecycle and event ordering under ISO/IEC 19775-1 §29.2.
+#include "doctest/doctest.h"
 #include "ScriptSystem.hpp"
 
 #include "AssetResolver.hpp"
@@ -25,17 +26,6 @@ using namespace x3d::nodes;
 using x3d::runtime::test::MockScriptEngine;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
@@ -67,18 +57,18 @@ void testInitializeBeforeFirstEvent() {
   auto sys = std::make_shared<ScriptSystem>(engine, "x3d-cpp-gen", "4.0");
   sys->attach(&script, ctx);
 
-  check(engine->count("load") == 1, "attach with load=TRUE loads the script");
-  check(engine->count("initialize") == 1, "attach initializes the script");
-  check(indexOf(*engine, "load") < indexOf(*engine, "initialize"),
-        "load precedes initialize");
+  CHECK_MESSAGE((engine->count("load") == 1), "attach with load=TRUE loads the script");
+  CHECK_MESSAGE((engine->count("initialize") == 1), "attach initializes the script");
+  CHECK_MESSAGE((indexOf(*engine, "load") < indexOf(*engine, "initialize")),
+                "load precedes initialize");
   // No event yet -> no invoke before initialize.
-  check(engine->count("invoke") == 0, "no invoke before the first event");
+  CHECK_MESSAGE((engine->count("invoke") == 0), "no invoke before the first event");
 
   // Deliver an inputOnly event; initialize must already have happened.
   sys->deliverInputEvent(&script, "set_x", std::any(SFFloat(1.0f)),
                          X3DFieldType::SFFloat, 1.0);
-  check(indexOf(*engine, "initialize") < indexOf(*engine, "invoke"),
-        "initialize precedes the first invoke");
+  CHECK_MESSAGE((indexOf(*engine, "initialize") < indexOf(*engine, "invoke")),
+                "initialize precedes the first invoke");
 }
 
 // load=FALSE must not load/initialize at attach time
@@ -91,8 +81,8 @@ void testLoadFalseDefersLoad() {
   auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
   sys->attach(&script, ctx);
 
-  check(engine->count("load") == 0, "load=FALSE: not loaded at attach");
-  check(engine->count("initialize") == 0, "load=FALSE: not initialized");
+  CHECK_MESSAGE((engine->count("load") == 0), "load=FALSE: not loaded at attach");
+  CHECK_MESSAGE((engine->count("initialize") == 0), "load=FALSE: not initialized");
 }
 
 // prepareEvents once per timestamp, before routes
@@ -107,12 +97,11 @@ void testPrepareEventsPhasing() {
 
   ctx.tick(1.0);
   ctx.tick(2.0);
-  check(engine->count("prepareEvents") == 2,
-        "prepareEvents called once per tick");
+  CHECK_MESSAGE((engine->count("prepareEvents") == 2), "prepareEvents called once per tick");
   // prepareEvents carries the tick timestamp.
   int pi = indexOf(*engine, "prepareEvents");
-  check(pi >= 0 && engine->calls[pi].timestamp == 1.0,
-        "prepareEvents carries the timestamp");
+  CHECK_MESSAGE((pi >= 0 && engine->calls[pi].timestamp == 1.0),
+                "prepareEvents carries the timestamp");
 }
 
 // inputOnly -> invoke; outputOnly write -> cascade at trigger timestamp
@@ -138,16 +127,15 @@ void testInputInvokeAndOutputTimestamp() {
   sys->deliverInputEvent(&script, "set_target", std::any(SFVec3f{3, 3, 3}),
                          X3DFieldType::SFVec3f, 1.0);
 
-  check(engine->count("invoke") == 1, "inputOnly delivered to engine.invoke");
+  CHECK_MESSAGE((engine->count("invoke") == 1), "inputOnly delivered to engine.invoke");
   int ii = indexOf(*engine, "invoke");
-  check(ii >= 0 && engine->calls[ii].eventName == "set_target" &&
-            engine->calls[ii].timestamp == 1.0,
-        "invoke recorded the event name + triggering timestamp");
+  CHECK_MESSAGE((ii >= 0 && engine->calls[ii].eventName == "set_target" &&
+            engine->calls[ii].timestamp == 1.0), ("invoke recorded the event name + triggering timestamp"));
 
   // The SAI write posted into the cascade; drain it.
   ctx.process();
-  check(veq(target.getTranslation(), 3, 3, 3),
-        "outputOnly write reached the target via the cascade");
+  CHECK_MESSAGE((veq(target.getTranslation(), 3, 3, 3)),
+                "outputOnly write reached the target via the cascade");
 }
 
 // eventsProcessed runs once after a batch, only for receivers
@@ -162,8 +150,8 @@ void testEventsProcessedAfterBatch() {
 
   // Tick with no events: eventsProcessed must not fire.
   ctx.tick(1.0);
-  check(engine->count("eventsProcessed") == 0,
-        "eventsProcessed skipped on a tick with no received events");
+  CHECK_MESSAGE((engine->count("eventsProcessed") == 0),
+                "eventsProcessed skipped on a tick with no received events");
 
   // A tick during which two events are delivered -> exactly one eventsProcessed,
   // after both invokes.
@@ -174,20 +162,19 @@ void testEventsProcessedAfterBatch() {
   sys->deliverInputEvent(&script, "set_b", std::any(SFFloat(2.0f)),
                          X3DFieldType::SFFloat, 2.0);
   sys->runEventsProcessed(ctx);
-  check(engine->count("eventsProcessed") == 1,
-        "eventsProcessed fires once after a batch of events");
+  CHECK_MESSAGE((engine->count("eventsProcessed") == 1),
+                "eventsProcessed fires once after a batch of events");
   // Both invokes precede the eventsProcessed.
   int ep = indexOf(*engine, "eventsProcessed");
   int lastInvoke = -1;
   for (std::size_t i = 0; i < engine->calls.size(); ++i)
     if (engine->calls[i].kind == "invoke") lastInvoke = static_cast<int>(i);
-  check(lastInvoke >= 0 && lastInvoke < ep,
-        "all invokes precede eventsProcessed");
+  CHECK_MESSAGE((lastInvoke >= 0 && lastInvoke < ep), "all invokes precede eventsProcessed");
 
   // A second runEventsProcessed without new events must not re-fire.
   sys->runEventsProcessed(ctx);
-  check(engine->count("eventsProcessed") == 1,
-        "eventsProcessed not re-fired without new events");
+  CHECK_MESSAGE((engine->count("eventsProcessed") == 1),
+                "eventsProcessed not re-fired without new events");
 }
 
 // set_url: shutdown old, then load + initialize new
@@ -198,14 +185,14 @@ void testSetUrlReload() {
   auto engine = std::make_shared<MockScriptEngine>();
   auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
   sys->attach(&script, ctx);
-  check(engine->count("load") == 1 && engine->count("initialize") == 1,
-        "initial load + initialize");
+  CHECK_MESSAGE((engine->count("load") == 1 && engine->count("initialize") == 1),
+                ("initial load + initialize"));
 
   sys->setUrl(&script, MFString{"ecmascript:/* new body */"}, ctx);
 
-  check(engine->count("shutdown") == 1, "set_url shuts the old script down");
-  check(engine->count("load") == 2, "set_url loads the new script");
-  check(engine->count("initialize") == 2, "set_url initializes the new script");
+  CHECK_MESSAGE((engine->count("shutdown") == 1), "set_url shuts the old script down");
+  CHECK_MESSAGE((engine->count("load") == 2), "set_url loads the new script");
+  CHECK_MESSAGE((engine->count("initialize") == 2), "set_url initializes the new script");
   // Ordering: the shutdown precedes the second load and second initialize.
   int sd = indexOf(*engine, "shutdown");
   // Find the 2nd load / 2nd initialize.
@@ -215,8 +202,8 @@ void testSetUrlReload() {
     if (engine->calls[i].kind == "initialize" && ++ic == 2)
       init2 = static_cast<int>(i);
   }
-  check(sd >= 0 && sd < load2 && load2 < init2,
-        "set_url order: shutdown < new load < new initialize");
+  CHECK_MESSAGE((sd >= 0 && sd < load2 && load2 < init2),
+                "set_url order: shutdown < new load < new initialize");
 }
 
 // directOutput gate honored end-to-end through the system
@@ -241,9 +228,9 @@ void testDirectOutputGate() {
   sys->deliverInputEvent(&script, "set_x", std::any(SFVec3f{9, 9, 9}),
                          X3DFieldType::SFVec3f, 1.0);
   ctx.process();
-  check(threw, "directOutput=FALSE: cross-node write rejected (gate honored)");
-  check(veq(other.getTranslation(), 0, 0, 0),
-        "directOutput=FALSE: the other node is unchanged");
+  CHECK_MESSAGE((threw), "directOutput=FALSE: cross-node write rejected (gate honored)");
+  CHECK_MESSAGE((veq(other.getTranslation(), 0, 0, 0)),
+                "directOutput=FALSE: the other node is unchanged");
 }
 
 // mustEvaluate: TRUE eager, FALSE deferred to the batch flush
@@ -258,8 +245,8 @@ void testMustEvaluateEagerVsLazy() {
 
     sys->deliverInputEvent(&script, "set_x", std::any(SFFloat(1.0f)),
                            X3DFieldType::SFFloat, 1.0);
-    check(engine->count("invoke") == 1,
-          "mustEvaluate=TRUE: input delivered eagerly (invoke immediate)");
+    CHECK_MESSAGE((engine->count("invoke") == 1),
+                  "mustEvaluate=TRUE: input delivered eagerly (invoke immediate)");
   }
 
   // mustEvaluate = FALSE: delivery may be deferred; the invoke shows up only
@@ -273,16 +260,16 @@ void testMustEvaluateEagerVsLazy() {
 
     sys->deliverInputEvent(&script, "set_x", std::any(SFFloat(1.0f)),
                            X3DFieldType::SFFloat, 1.0);
-    check(engine->count("invoke") == 0,
-          "mustEvaluate=FALSE: input deferred (no immediate invoke)");
+    CHECK_MESSAGE((engine->count("invoke") == 0),
+                  "mustEvaluate=FALSE: input deferred (no immediate invoke)");
 
     sys->runEventsProcessed(ctx);
-    check(engine->count("invoke") == 1,
-          "mustEvaluate=FALSE: deferred input invoked at batch flush");
+    CHECK_MESSAGE((engine->count("invoke") == 1),
+                  "mustEvaluate=FALSE: deferred input invoked at batch flush");
     int ii = indexOf(*engine, "invoke");
     int ep = indexOf(*engine, "eventsProcessed");
-    check(ii >= 0 && ep >= 0 && ii < ep,
-          "deferred invoke still precedes eventsProcessed");
+    CHECK_MESSAGE((ii >= 0 && ep >= 0 && ii < ep),
+                  "deferred invoke still precedes eventsProcessed");
   }
 }
 
@@ -298,11 +285,11 @@ void testShutdownOnTeardown() {
   {
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
     sys->attach(&script, ctx);
-    check(engine->count("load") == 1, "scr002: loaded at attach");
-    check(engine->count("shutdown") == 0, "scr002: not shut down while alive");
+    CHECK_MESSAGE((engine->count("load") == 1), "scr002: loaded at attach");
+    CHECK_MESSAGE((engine->count("shutdown") == 0), "scr002: not shut down while alive");
   } // ScriptSystem destroyed here -> teardown shutdown
-  check(engine->count("shutdown") == 1,
-        "scr002: ScriptSystem teardown shuts down the loaded script");
+  CHECK_MESSAGE((engine->count("shutdown") == 1),
+                "scr002: ScriptSystem teardown shuts down the loaded script");
 }
 
 // external url fetched through the AssetResolver seam
@@ -335,13 +322,13 @@ void testExternalUrlFetch() {
     auto engine = std::make_shared<MockScriptEngine>();
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
     sys->attach(&script, ctx);
-    check(engine->count("load") == 1,
-          "CONF-CRITIC-2: a Ready external url is fetched and loaded");
+    CHECK_MESSAGE((engine->count("load") == 1),
+                  "CONF-CRITIC-2: a Ready external url is fetched and loaded");
     int li = indexOf(*engine, "load");
-    check(li >= 0 && engine->calls[li].source == "/*fetched*/",
-          "CONF-CRITIC-2: the fetched bytes are the loaded source");
-    check(!r.calls.empty() && r.calls[0] == "file:///scripts/body.js",
-          "CONF-CRITIC-2: the resolver was called with the url");
+    CHECK_MESSAGE((li >= 0 && engine->calls[li].source == "/*fetched*/"),
+                  "CONF-CRITIC-2: the fetched bytes are the loaded source");
+    CHECK_MESSAGE((!r.calls.empty() && r.calls[0] == "file:///scripts/body.js"),
+                  "CONF-CRITIC-2: the resolver was called with the url");
   }
 
   // 2. Pending defers the load; a later tick retries the same url.
@@ -360,11 +347,10 @@ void testExternalUrlFetch() {
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
     ctx.addScriptSystem(sys);
     sys->attach(&script, ctx);
-    check(engine->count("load") == 0,
-          "CONF-CRITIC-2: a Pending fetch does not load yet");
+    CHECK_MESSAGE((engine->count("load") == 0), "CONF-CRITIC-2: a Pending fetch does not load yet");
     ctx.tick(1.0); // retryPendingLoads
-    check(engine->count("load") == 1,
-          "CONF-CRITIC-2: a Pending fetch is retried on a later tick");
+    CHECK_MESSAGE((engine->count("load") == 1),
+                  "CONF-CRITIC-2: a Pending fetch is retried on a later tick");
   }
 
   // 3. Failed advances to the next url in preference order.
@@ -381,14 +367,13 @@ void testExternalUrlFetch() {
     auto engine = std::make_shared<MockScriptEngine>();
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v", r.seam());
     sys->attach(&script, ctx);
-    check(engine->count("load") == 1,
-          "CONF-CRITIC-2: a Failed url advances to the next candidate");
+    CHECK_MESSAGE((engine->count("load") == 1),
+                  "CONF-CRITIC-2: a Failed url advances to the next candidate");
     int li = indexOf(*engine, "load");
-    check(li >= 0 && engine->calls[li].source == "B",
-          "CONF-CRITIC-2: the second (Ready) url is the one loaded");
-    check(r.calls.size() == 2 && r.calls[0] == "http://a/missing.js" &&
-              r.calls[1] == "http://b/body.js",
-          "CONF-CRITIC-2: urls are tried in preference order");
+    CHECK_MESSAGE((li >= 0 && engine->calls[li].source == "B"),
+                  "CONF-CRITIC-2: the second (Ready) url is the one loaded");
+    CHECK_MESSAGE((r.calls.size() == 2 && r.calls[0] == "http://a/missing.js" &&
+              r.calls[1] == "http://b/body.js"), "CONF-CRITIC-2: urls are tried in preference order");
   }
 
   // 4. The default (no resolver) stays IO-free: an external url is inert.
@@ -400,8 +385,8 @@ void testExternalUrlFetch() {
     auto engine = std::make_shared<MockScriptEngine>();
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v"); // null stub
     sys->attach(&script, ctx);
-    check(engine->count("load") == 0,
-          "CONF-CRITIC-2: the null default resolver leaves an external url inert");
+    CHECK_MESSAGE((engine->count("load") == 0),
+                  "CONF-CRITIC-2: the null default resolver leaves an external url inert");
   }
 }
 
@@ -416,8 +401,8 @@ void testAutoRefresh() {
     ctx.addScriptSystem(sys);
     sys->attach(&script, ctx);
     ctx.tick(5.0);
-    check(engine->count("load") == 1 && engine->count("shutdown") == 0,
-          "SCR-005: autoRefresh=0 leaves the script loaded once (no refresh)");
+    CHECK_MESSAGE((engine->count("load") == 1 && engine->count("shutdown") == 0),
+                  "SCR-005: autoRefresh=0 leaves the script loaded once (no refresh)");
   }
 
   // 2. autoRefresh=1.0 reloads + re-initializes every second (no limit).
@@ -430,17 +415,15 @@ void testAutoRefresh() {
     auto sys = std::make_shared<ScriptSystem>(engine, "b", "v");
     ctx.addScriptSystem(sys);
     sys->attach(&script, ctx);
-    check(engine->count("load") == 1, "SCR-005: loaded at attach");
+    CHECK_MESSAGE((engine->count("load") == 1), "SCR-005: loaded at attach");
 
     ctx.tick(0.5);
-    check(engine->count("load") == 1, "SCR-005: no refresh before the interval");
+    CHECK_MESSAGE((engine->count("load") == 1), "SCR-005: no refresh before the interval");
     ctx.tick(1.0);
-    check(engine->count("shutdown") == 1 && engine->count("load") == 2 &&
-              engine->count("initialize") == 2,
-          "SCR-005: at the interval the script reloads + re-initializes");
+    CHECK_MESSAGE((engine->count("shutdown") == 1 && engine->count("load") == 2 &&
+              engine->count("initialize") == 2), ("SCR-005: at the interval the script reloads + re-initializes"));
     ctx.tick(2.0);
-    check(engine->count("load") == 3,
-          "SCR-005: subsequent intervals keep refreshing");
+    CHECK_MESSAGE((engine->count("load") == 3), "SCR-005: subsequent intervals keep refreshing");
   }
 
   // 3. autoRefreshTimeLimit stops refreshing once the window elapses.
@@ -454,11 +437,11 @@ void testAutoRefresh() {
     ctx.addScriptSystem(sys);
     sys->attach(&script, ctx);
     ctx.tick(1.0); // within the window: refresh (load #2)
-    check(engine->count("load") == 2, "SCR-005: refresh within the time limit");
+    CHECK_MESSAGE((engine->count("load") == 2), "SCR-005: refresh within the time limit");
     ctx.tick(2.0); // window (1.5s from t=0) elapsed: stop
     ctx.tick(3.0);
-    check(engine->count("load") == 2,
-          "SCR-005: refreshing stops after autoRefreshTimeLimit elapses");
+    CHECK_MESSAGE((engine->count("load") == 2),
+                  "SCR-005: refreshing stops after autoRefreshTimeLimit elapses");
   }
 }
 
@@ -488,30 +471,29 @@ void testRoutedEventInvokesHandler() {
 
   ctx.postEvent(&source, "translation", std::any(SFVec3f{1, 2, 3}));
   ctx.tick(5.0);
-  check(engine->count("invoke") == 1,
-        "SCRIPT-EVENTIN: a ROUTEd event into an inputOnly field invokes once");
+  CHECK_MESSAGE((engine->count("invoke") == 1),
+                "SCRIPT-EVENTIN: a ROUTEd event into an inputOnly field invokes once");
   const int inv = indexOf(*engine, "invoke");
-  check(inv >= 0 && engine->calls[inv].eventName == "set_pos" &&
-            engine->calls[inv].timestamp == 5.0,
-        "SCRIPT-EVENTIN: the handler of that name runs at the tick timestamp");
-  check(indexOf(*engine, "eventsProcessed") > inv,
-        "SCRIPT-EVENTIN: eventsProcessed follows the routed event");
+  CHECK_MESSAGE((inv >= 0 && engine->calls[inv].eventName == "set_pos" &&
+            engine->calls[inv].timestamp == 5.0), "SCRIPT-EVENTIN: the handler of that name runs at the tick timestamp");
+  CHECK_MESSAGE((indexOf(*engine, "eventsProcessed") > inv),
+                "SCRIPT-EVENTIN: eventsProcessed follows the routed event");
 
   // A direct post to the eventIn is an event too.
   ctx.postEvent(&script, "set_pos", std::any(SFVec3f{4, 5, 6}));
   ctx.tick(6.0);
-  check(engine->count("invoke") == 2,
-        "SCRIPT-EVENTIN: a direct post to an inputOnly field invokes too");
+  CHECK_MESSAGE((engine->count("invoke") == 2),
+                "SCRIPT-EVENTIN: a direct post to an inputOnly field invokes too");
 
   // An inputOutput author field stores the value but is not a handler call.
   ctx.postEvent(&script, "level", std::any(SFFloat(0.5f)));
   ctx.tick(7.0);
-  check(engine->count("invoke") == 2,
-        "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
+  CHECK_MESSAGE((engine->count("invoke") == 2),
+                "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
   ctx.authorFields().erase(script);
 }
 
-int main() {
+TEST_CASE("script_system_test") {
   testShutdownOnTeardown();
   testInitializeBeforeFirstEvent();
   testLoadFalseDefersLoad();
@@ -525,10 +507,4 @@ int main() {
   testExternalUrlFetch();
   testAutoRefresh();
 
-  if (failures == 0) {
-    std::cout << "ALL SCRIPT SYSTEM TESTS PASSED\n";
-    return 0;
-  }
-  std::cerr << failures << " script system test(s) FAILED\n";
-  return 1;
 }

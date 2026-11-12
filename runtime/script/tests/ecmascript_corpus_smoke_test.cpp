@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "FieldRead.hpp"
 // Parse, expand, attach, and tick authored and corpus Script scenes.
 #include "EcmaScriptBackend.hpp"
@@ -26,17 +27,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 // Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
@@ -67,7 +57,7 @@ std::string slurp(const std::string &path) {
 
 } // namespace
 
-int main() {
+TEST_CASE("ecmascript_corpus_smoke_test") {
 
   // known scene: a Script whose initialize() prints a deterministic string,
   // and an enabled() handler that toggles a global. Body lives in url= so the
@@ -96,7 +86,7 @@ int main() {
 
     std::vector<Script *> scripts;
     for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
-    check(scripts.size() == 1, "known scene: one Script parsed from the graph");
+    CHECK_MESSAGE((scripts.size() == 1), "known scene: one Script parsed from the graph");
 
     X3DExecutionContext ctx(scene.authorFields);
     auto backend = std::make_shared<EcmaScriptBackend>();
@@ -106,14 +96,14 @@ int main() {
 
     // initialize() ran at attach time; verify its print landed.
     SaiContext *sai = sys->saiFor(scripts[0]);
-    check(sai != nullptr, "known scene: SAI surface exists for the Script");
-    check(sai && sai->log() == "init@x3d-cpp-gen",
-          "known scene: initialize() printed via Browser (end-to-end)");
+    CHECK_MESSAGE((sai != nullptr), "known scene: SAI surface exists for the Script");
+    CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-gen"),
+                  "known scene: initialize() printed via Browser (end-to-end)");
 
     // A few ticks must not crash (prepareEvents/eventsProcessed phases).
     ctx.tick(1.0);
     ctx.tick(2.0);
-    check(true, "known scene: ticks run without crash");
+    CHECK_MESSAGE((true), "known scene: ticks run without crash");
 
     // Deliver an inputOnly-style event to the 'ping' handler; it prints
     // value@timestamp, proving marshalling through the real ScriptSystem seam.
@@ -122,8 +112,8 @@ int main() {
     sys->deliverInputEvent(scripts[0], "ping", std::any(SFFloat(0.5f)),
                            X3DFieldType::SFFloat, 3.0);
     ctx.tick(3.0);
-    check(sai && sai->log() == "init@x3d-cpp-genping=0.5@3",
-          "known scene: ping handler received marshalled (value, timestamp)");
+    CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-genping=0.5@3"),
+                  "known scene: ping handler received marshalled (value, timestamp)");
   }
 
   // real corpus: parse -> expand -> attach -> tick a handful of Script-bearing
@@ -180,10 +170,4 @@ int main() {
                 << " real Script-bearing scene(s) ran without crash\n";
   }
 
-  if (failures == 0) {
-    std::cout << "All ecmascript corpus smoke tests passed.\n";
-    return 0;
-  }
-  std::cerr << failures << " corpus smoke test(s) FAILED.\n";
-  return 1;
 }
