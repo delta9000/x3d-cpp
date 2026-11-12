@@ -1224,6 +1224,48 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     fix.ctx.authorFields().erase(fix.script);
   }
 
+  // Allocating the returned node handles must either finish or throw; a heap
+  // limit must never turn a successful factory result into a partial array.
+  {
+    backend.setMemoryLimit(std::size_t{1} << 20);
+    backend.setCallBudget(std::chrono::seconds(60));
+    Fixture fix;
+    fix.sai.setSceneFactory([](const std::string &) {
+      return MFNode(32768, std::make_shared<Transform>());
+    });
+    auto &store = fix.ctx.authorFields();
+    store.addAuthorField(fix.script, AuthorFieldDecl{"caught",
+                                                     X3DFieldType::SFBool,
+                                                     AccessType::OutputOnly,
+                                                     {}});
+    store.addAuthorField(fix.script, AuthorFieldDecl{"alive",
+                                                     X3DFieldType::SFBool,
+                                                     AccessType::OutputOnly,
+                                                     {}});
+    ScriptHandle h =
+        backend.load(fix.script,
+                     "function initialize() { caught = false;"
+                     " try { Browser.createX3DFromString('<Transform/>'); }"
+                     " catch (e) { caught = true; } }"
+                     "function fine(v, t) { alive = true; }",
+                     fix.sai);
+    check(h != kInvalidScriptHandle, "create: limited-heap script loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      std::any caught = store.getValue(fix.script, "caught");
+      check(caught.has_value() && std::any_cast<bool>(caught),
+            "create: exhausting memory while returning nodes throws");
+      backend.invoke(h, "fine", std::any{}, X3DFieldType::SFBool, 0.0);
+      std::any alive = store.getValue(fix.script, "alive");
+      check(alive.has_value() && std::any_cast<bool>(alive),
+            "create: the script recovers after node conversion runs out of "
+            "memory");
+      backend.shutdown(h);
+    }
+    store.erase(fix.script);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+  }
 }
 
 } // namespace script_backend_tests

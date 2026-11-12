@@ -133,6 +133,9 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **QuickJS allocation errors.** Returning multi-value fields and newly created
+  scene roots releases partial arrays and propagates allocation failures, so
+  exhausting the script heap cannot appear to succeed with an incomplete result.
 - **Docs-drift service failures.** Advisory suggestions retain literal citation
   results and clearly mark semantic checks unavailable when the embedding
   service or vector store cannot be reached.

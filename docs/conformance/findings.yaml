@@ -2110,7 +2110,8 @@
     ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses
     JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an
     allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests:
-    ecmascript/quickjs backend T15h.
+    ecmascript/quickjs backend T15h, plus shared "create" cases that force a heap-cap
+    failure while converting factory roots and verify catchable errors and recovery.
 
 - id: SCRIPT-HOSTILE-VALUE-ABORT
   nodes: [Script]

@@ -262,7 +262,14 @@ JSValue pushMF(JSContext *c, const Vec &v, PushElem pushElem) {
   if (JS_IsException(arr)) return arr;
   for (std::size_t i = 0; i < v.size(); ++i) {
     JSValue elem = pushElem(c, v[i]);          // owned
-    JS_SetPropertyUint32(c, arr, (uint32_t)i, elem);  // consumes elem
+    if (JS_IsException(elem)) {
+      JS_FreeValue(c, arr);
+      return elem;
+    }
+    if (JS_SetPropertyUint32(c, arr, (uint32_t)i, elem) < 0) { // consumes elem
+      JS_FreeValue(c, arr);
+      return JS_EXCEPTION;
+    }
   }
   return arr;
 }
@@ -957,11 +964,15 @@ JSValue browser_createFromString(JSContext *ctx, JSValueConst, int argc,
   try {
     MFNode nodes = sai->createX3DFromString(std::string(text, length));
     result = pushValue(ctx, std::any(nodes), X3DFieldType::MFNode);
-    if (JS_IsObject(result))
+    if (JS_IsObject(result)) {
       // Non-enumerable, so the self reference stays out of JSON.stringify.
-      JS_DefinePropertyValueStr(ctx, result, "rootNodes",
-                                JS_DupValue(ctx, result),
-                                JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+      if (JS_DefinePropertyValueStr(
+              ctx, result, "rootNodes", JS_DupValue(ctx, result),
+              JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE) < 0) {
+        JS_FreeValue(ctx, result);
+        result = JS_EXCEPTION;
+      }
+    }
   } catch (const std::exception &e) {
     result = JS_ThrowTypeError(ctx, "createX3DFromString: %s", e.what());
   }
