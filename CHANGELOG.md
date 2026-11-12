@@ -133,6 +133,8 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Duktape string fields.** SFString and MFString values preserve their explicit
+  lengths in both directions, retaining embedded NULs and the text after them.
 - **QuickJS allocation errors.** Returning multi-value fields and newly created
   scene roots releases partial arrays and propagates allocation failures, so
   exhausting the script heap cannot appear to succeed with an incomplete result.

@@ -154,7 +154,7 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 - `X3DExecutionContext::addScriptSystem()` — registers the `ScriptSystem` as the post-cascade hook; the context drives `update()` (prepareEvents phase) and `runEventsProcessed()` around each cascade drain. `ScriptSystem` must be registered *first* among systems to guarantee §29.2.5 ordering.
 
-- `ScriptEngine` seam — the only place Duktape API calls appear. All values crossing the seam are `std::any` boxed with the runtime's own field types and a `X3DFieldType` tag; no scripting-language objects cross this boundary.
+- `ScriptEngine` seam — the only place Duktape API calls appear. All values crossing the seam are `std::any` boxed with the runtime's own field types and a `X3DFieldType` tag; no scripting-language objects cross this boundary. SFString and MFString values retain their explicit byte lengths, including embedded NULs, in both directions.
 
 - `DynamicFieldStore` / `effectiveFields()` — author `<field>` declarations captured by readers into `Scene::authorFields`, retained on declarations for PROTO templates (see [ADR-0014](../decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node, ctx.authorFields())` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out. Readback uses the active cascade timestamp through `SaiContext`.
 

@@ -202,6 +202,12 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     check(std::any_cast<SFString>(
               roundTrip(backend, SFString("héllo"), X3DFieldType::SFString)) == "héllo",
           "T12: SFString round-trips (UTF-8)");
+    {
+      SFString in = SFString("héllo") + '\0' + "tail";
+      auto out = std::any_cast<SFString>(
+          roundTrip(backend, in, X3DFieldType::SFString));
+      check(out == in, "T12: SFString round-trips with an embedded NUL");
+    }
 
     // structured SF
     {
@@ -263,6 +269,13 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
       MFString in{"a", "bb", "ccc"};
       auto out = std::any_cast<MFString>(roundTrip(backend, in, X3DFieldType::MFString));
       check(out.size() == 3 && out[2] == "ccc", "T12: MFString round-trips");
+    }
+    {
+      MFString in{"", SFString("left") + '\0' + "right", "tail"};
+      auto out = std::any_cast<MFString>(
+          roundTrip(backend, in, X3DFieldType::MFString));
+      check(out == in,
+            "T12: MFString round-trips empty and embedded-NUL strings");
     }
     {
       MFVec3f in{{1, 0, 0}, {0, 1, 0}};

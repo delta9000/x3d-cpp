@@ -3183,7 +3183,9 @@
     receiver first (Open Inventor / X_ITE convention; the standard's text is
     ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay
     flat arrays), SFNode/MFNode construction from a string. Tests:
-    ecmascript/quickjs backend "field types" cases.
+    ecmascript/quickjs backend "field types" cases. SFString/MFString values
+    retain embedded NUL bytes across the engine boundary (shared backend T12
+    round-trip cases).
 
 - id: SCRIPT-BROWSER-SERVICES
   nodes: [Script]

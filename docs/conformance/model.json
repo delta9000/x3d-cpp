@@ -12957,7 +12957,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "runtime/script/FieldTypesPrelude.hpp (ES5.1, evaluated by both backends at load) defines SFVec2f/2d/3f/3d/4f/4d, SFColor, SFColorRGBA, SFRotation, SFImage and all MF* constructors with the binding's methods and index accessors; MF values are JS arrays. Pushed values adopt the same prototypes from a table scripts cannot replace. SFRotation.multiply applies the receiver first (Open Inventor / X_ITE convention; the standard's text is ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay flat arrays), SFNode/MFNode construction from a string. Tests: ecmascript/quickjs backend \"field types\" cases.",
+      "note": "runtime/script/FieldTypesPrelude.hpp (ES5.1, evaluated by both backends at load) defines SFVec2f/2d/3f/3d/4f/4d, SFColor, SFColorRGBA, SFRotation, SFImage and all MF* constructors with the binding's methods and index accessors; MF values are JS arrays. Pushed values adopt the same prototypes from a table scripts cannot replace. SFRotation.multiply applies the receiver first (Open Inventor / X_ITE convention; the standard's text is ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay flat arrays), SFNode/MFNode construction from a string. Tests: ecmascript/quickjs backend \"field types\" cases. SFString/MFString values retain embedded NUL bytes across the engine boundary (shared backend T12 round-trip cases).",
       "severity": "major",
       "status": "fixed",
       "summary": "The ECMAScript binding had no field-type objects: `new SFVec3f(1, 2, 3)` raised a ReferenceError, and a received vector had no methods or index access, so typical authored scripts failed at their first line."
