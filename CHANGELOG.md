@@ -8,6 +8,15 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **glTF export.** `sdk::writeGlb(extractor, snapshot.added)` and
+  `x3d extract scene.x3d -o scene.glb` (or `-f glb`) write the extracted scene
+  as binary glTF 2.0: one node per placed shape with its world matrix, meshes
+  shared across DEF/USE, normals, texture coordinates, vertex colours, lines
+  and points, and materials (`PhysicalMaterial` directly, `Material`
+  approximated, `UnlitMaterial` as `KHR_materials_unlit`). PNG/JPEG
+  `ImageTexture` urls are referenced, not embedded. Not exported: pixel and
+  other non-url textures, lights, cameras, skins, animation;
+  `GltfWriteReport` counts what was dropped.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and
   `sdk::SceneBuilder`) gains a fluent builder:
   `b.add<Transform>().def("T").add<Shape>().add<Sphere>()`,
@@ -143,6 +152,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **`x3d extract` on physics scenes in debug builds.** The extractor read
+  `RigidBody.geometry` (an MFNode of collidables) as a shape's SFNode geometry,
+  which tripped a type assertion in debug builds; release builds were
+  unaffected. It now reads only SFNode geometry.
 - **Shader texture and array uniforms (REQ-SHADER-2).** `ShaderFieldBinding`
   now carries MF author fields as array `elements` and SFNode/MFNode texture
   fields as resolved `textures`, refreshed when the field or its texture

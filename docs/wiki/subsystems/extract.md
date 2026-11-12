@@ -40,6 +40,7 @@ only when the published list differs.
 |---|---|
 | `runtime/extract/SceneExtractor.hpp` | Top-level extractor: visibility-aware DFS, path interning, reverse-index maintenance, `fullSnapshot()` + `delta()` |
 | `runtime/extract/MeshBuilder.hpp` | Geometry-node → `MeshData` in the node's local frame; handles all composed, lattice, analytic, line, and point types |
+| `runtime/extract/GltfWriter.hpp`, `.cpp` | `writeGlb`: render items → binary glTF 2.0 (see [glTF export](#gltf-export)) |
 | `runtime/extract/PackedMesh.hpp` | Binary slab descriptor for embedder-supplied geometry (glTF-accessor-compatible layout) |
 | `runtime/extract/RenderItem.hpp` | Pure-POD descriptor layer: `PathKey`, `RenderItemId`, `GeomId`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`, `FogDesc`, `LocalFogDesc`, `RenderDelta` |
 | `runtime/extract/TextureExtract.hpp` | Texture/material extraction + resolver threading (see [Texture extraction](extract-textures.md)) |
@@ -465,6 +466,38 @@ Single-threaded producer+consumer. The mutable interning caches (`items_`, `inde
 intervening tick returns an empty delta. The guard uses `tickGeneration()`, not
 the supplied clock, so repeated timestamps remain valid. `tick()` clears the
 dirty set at its start: consume each tick before advancing again.
+
+## glTF export
+
+`extract::writeGlb(extractor, snapshot.added, options, &report)` (also
+`sdk::writeGlb`) serializes render items to a GLB. It reads only the render
+feed, so it exports what a renderer would be given: the scene after PROTO and
+Inline expansion, with Switch and LOD selections applied and every
+MeshBuilder geometry tessellated. `x3d extract in.x3d -o out.glb` is the CLI
+form.
+
+| X3D side | glTF side |
+|---|---|
+| One `RenderItem` | One root node with the item's world `matrix` (the grouping hierarchy is flattened), named after the nearest DEF on its path |
+| One `MeshData` per material | One mesh; DEF/USE placements share its accessors |
+| positions, normals, `texcoords` and further `texcoordSets`, per-vertex colours | `POSITION` (with min/max), `NORMAL` (normalized), `TEXCOORD_n` with `t` flipped to glTF's top-left origin, `COLOR_0` (RGBA float) |
+| Triangles, Lines, Points | modes 4, 1, 0; `ccw=FALSE` triangles are turned round |
+| `PhysicalMaterial` | `pbrMetallicRoughness` directly |
+| `Material` | Approximation: diffuse → base colour, metallic 0, roughness `(2 / (128·shininess + 2))^¼`. Specular colour and ambient intensity are lost |
+| `UnlitMaterial`, no material, lines/points without normals | `KHR_materials_unlit` with the emissive colour |
+| `transparency` | base colour alpha with `alphaMode` BLEND; `AlphaMode::Mask` → MASK with its cutoff |
+| `solid=FALSE` or a two-sided material | `doubleSided` |
+| url textures in the base colour/diffuse, normal, emissive, occlusion and metallic-roughness slots | External `images[].uri`: the first PNG or JPEG url, verbatim (not embedded, not resolved). `repeatS/T` → sampler wrap |
+
+Not written, each counted in `GltfWriteReport`: packed (binary) geometry items;
+PixelTexture, MovieTexture, MultiTexture, cube and 3D textures; textures on
+generated texture coordinates; textures with no PNG/JPEG url; specular,
+shininess and ambient textures; back materials; author shaders. Skinned H-Anim
+items are written as static meshes. Lights, viewpoints, backgrounds and
+animation are not exported. Colours are copied as authored with no
+sRGB/linear conversion. The JSON is written by hand; the test
+(`runtime/extract/tests/gltf_writer_test.cpp`) checks the container and
+selected values, and has not been run through the Khronos validator.
 
 ## Related
 

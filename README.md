@@ -83,6 +83,7 @@ build/x3d convert scene.x3dv -o scene.x3d -f xml
 build/x3d validate scene.x3d --json
 build/x3d sim scene.x3d --ticks 120
 build/x3d extract scene.x3d -o scene.stl
+build/x3d extract scene.x3d -o scene.glb
 build/x3d canonicalize scene.x3d
 ```
 

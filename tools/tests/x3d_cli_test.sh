@@ -355,6 +355,24 @@ fi
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" --unknown-flag >/dev/null 2>&1; echo $?)
 check "extract unknown option exits 1" "$ec" "1"
 
+# GLB output: chosen by the .glb extension or by -f glb.
+glb_out="$TD/simple_extract.glb"
+ec=$("$CLI" extract "$FIXTURE_SIMPLE" -o "$glb_out" 2>/dev/null; echo $?)
+check "extract to .glb exits 0" "$ec" "0"
+check "extract .glb starts with the glTF magic" "$(head -c 4 "$glb_out" 2>/dev/null)" "glTF"
+glb_len=$(od -A d -j 8 -N 4 -t u4 "$glb_out" 2>/dev/null | head -1 | awk '{print $2}')
+check "extract .glb header length matches the file" "$glb_len" "$(wc -c < "$glb_out" | tr -d ' ')"
+if grep -q '"POSITION"' "$glb_out"; then
+    echo "ok:   extract .glb has a POSITION attribute"
+else
+    echo "FAIL: extract .glb has no POSITION attribute"
+    failures=$(( failures + 1 ))
+fi
+check "extract -f glb to stdout is glTF" \
+    "$("$CLI" extract "$FIXTURE_SIMPLE" -f glb 2>/dev/null | head -c 4)" "glTF"
+ec=$("$CLI" extract "$FIXTURE_SIMPLE" -f obj >/dev/null 2>&1; echo $?)
+check "extract unknown format exits 1" "$ec" "1"
+
 # x3d canonicalize subcommand
 
 ec=$("$CLI" canonicalize --help >/dev/null 2>&1; echo $?)

@@ -42,6 +42,7 @@
 #include "SceneExtractor.hpp"
 #include "RenderItem.hpp"
 #include "MeshBuilder.hpp"
+#include "GltfWriter.hpp"
 #include "AssetResolver.hpp"
 #include "TextureResolver.hpp"
 #include "FontMetrics.hpp"
@@ -145,6 +146,9 @@ using x3d::runtime::extract::PathKeyEqual;
 using x3d::runtime::extract::GeomId; ///< in-process, baseline-scoped content key
 using x3d::runtime::extract::GeomIdHash;
 using x3d::runtime::extract::MeshData;
+using x3d::runtime::extract::writeGlb; ///< render items -> binary glTF 2.0
+using x3d::runtime::extract::GltfWriteOptions;
+using x3d::runtime::extract::GltfWriteReport;
 using x3d::runtime::extract::Topology;
 using x3d::runtime::extract::MaterialDesc;
 using x3d::runtime::extract::MaterialModel;

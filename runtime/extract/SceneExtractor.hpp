@@ -1311,7 +1311,11 @@ private:
     if (geombounds::hasField(*n, "geometry")) {
       // Includes recognized-empty geometry: later revival must read current state.
       itemStateDeps_.insert(n);
-      if (auto geom = geombounds::getNode(*n, "geometry")) {
+      // A shape's geometry is an SFNode. RigidBody.geometry is an MFNode of
+      // collidables, which are walked as children, not meshed here.
+      std::shared_ptr<X3DNode> geom;
+      if (geombounds::readField(*n, "geometry", geom) ==
+              geombounds::FieldRead::Ok && geom) {
         bool recognized = false;
         // ADR-0045: build-once per distinct geometry node, not per placement.
         // ISO/IEC 19774-1 §6.6: the nearest enclosing Segment's displacers
