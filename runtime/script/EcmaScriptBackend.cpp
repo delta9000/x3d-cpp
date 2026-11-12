@@ -817,11 +817,28 @@ duk_ret_t browser_getCurrentFrameRate(duk_context *ctx) {
 // names read as undefined; a write to an unknown or non-input field throws.
 namespace {
 
+// String form of a node handle, so `'' + node` and print(node) work.
+duk_ret_t node_toString(duk_context *ctx) {
+  std::string text = "[SFNode]";
+  duk_push_this(ctx);
+  {
+    SFNode node = extractNode(ctx, -1);
+    if (node) text = "[SFNode " + node->nodeTypeName() + "]";
+  }
+  duk_pop(ctx);
+  duk_push_string(ctx, text.c_str());
+  return 1;
+}
+
 duk_ret_t node_get(duk_context *ctx) {
   if (!duk_is_string(ctx, 1) || duk_is_symbol(ctx, 1)) return 0;
   SaiContext *sai = stashedSai(ctx);
   if (!sai) return 0;
   const std::string name = duk_get_string(ctx, 1);
+  if (name == "toString") {
+    duk_push_c_function(ctx, node_toString, 0);
+    return 1;
+  }
   std::any value;
   X3DFieldType type{};
   bool found = false;
@@ -911,6 +928,41 @@ duk_ret_t routeOp(duk_context *ctx, const char *name, Op op) {
   return 0;
 }
 
+// Browser.createX3DFromString / createVrmlFromString (text). Returns the new
+// root nodes as an MFNode array; the array also carries itself as `rootNodes`,
+// so both `nodes[0]` and the SAI `scene.rootNodes` spelling work.
+duk_ret_t browser_createFromString(duk_context *ctx) {
+  SaiContext *sai = saiOf(ctx);
+  const char *text = duk_to_string(ctx, 0);
+  char err[256] = {0};
+  MFNode nodes;
+  if (!sai) {
+    std::snprintf(err, sizeof err, "no browser");
+  } else {
+    try {
+      nodes = sai->createX3DFromString(text ? text : "");
+    } catch (const std::exception &e) {
+      std::snprintf(err, sizeof err, "%s", e.what());
+      if (!err[0]) std::snprintf(err, sizeof err, "failed");
+      nodes.clear();
+    }
+  }
+  if (err[0]) {
+    // Release the owning vector before the non-local exit.
+    MFNode().swap(nodes);
+    return duk_error(ctx, DUK_ERR_ERROR, "createX3DFromString: %s", err);
+  }
+  EcmaScriptBackend::pushValue(ctx, std::any(nodes), X3DFieldType::MFNode);
+  // Non-enumerable: the self reference must not show up in JSON.stringify or
+  // in a for-in over the array.
+  duk_push_string(ctx, "rootNodes");
+  duk_dup(ctx, -2);
+  duk_def_prop(ctx, -3, DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_SET_WRITABLE |
+                            DUK_DEFPROP_CLEAR_ENUMERABLE |
+                            DUK_DEFPROP_SET_CONFIGURABLE);
+  return 1;
+}
+
 duk_ret_t browser_addRoute(duk_context *ctx) {
   return routeOp(ctx, "addRoute",
                  [](SaiContext &sai, X3DNode *from, const char *fromField,
@@ -984,6 +1036,8 @@ void EcmaScriptBackend::installBrowser(duk_context *ctx, Entry *entry) {
   defineBrowserMethod(ctx, "println", browser_print, 1, sai);
   defineBrowserMethod(ctx, "addRoute", browser_addRoute, 4, sai);
   defineBrowserMethod(ctx, "deleteRoute", browser_deleteRoute, 4, sai);
+  defineBrowserMethod(ctx, "createX3DFromString", browser_createFromString, 1, sai);
+  defineBrowserMethod(ctx, "createVrmlFromString", browser_createFromString, 1, sai);
 
   duk_put_prop_string(ctx, -2, "Browser");  // global.Browser = {...}
   duk_pop(ctx);                              // pop global object

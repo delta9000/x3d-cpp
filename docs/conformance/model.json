@@ -12971,10 +12971,10 @@
       "nodes": [
         "Script"
       ],
-      "note": "Needs a parse-and-attach path through SaiContext under the directOutput gate. Planned with the SAI convergence work.",
+      "note": "createX3DFromString/createVrmlFromString go through SaiContext::SceneFactory (ScriptSystem::setSceneFactory, codec::makeStringSceneFactory) and return the root nodes as an MFNode that also answers to .rootNodes; it is not an X3DScene object. ROUTEs, IMPORT/EXPORT and Script author fields in the created text are dropped, and Inline/EXTERNPROTO urls in it are not fetched. A host that sets no factory gets a thrown error. Tests: ecmascript/quickjs backend \"create\" cases, x3d_parse_tests string_scene_factory_test.",
       "severity": "major",
       "status": "open",
-      "summary": "The script `Browser` object offers only getName, getVersion, print/println, addRoute, deleteRoute, currentTime and currentFrameRate. createX3DFromString, createVrmlFromString, createX3DFromURL, loadURL, replaceWorld, currentScene, createNode and the property forms (name, version, currentSpeed) are missing, so a script that builds scene content fails with 'not callable'."
+      "summary": "The script `Browser` object is incomplete. Present: getName, getVersion, print/println, addRoute, deleteRoute, currentTime, currentFrameRate, createX3DFromString, createVrmlFromString. Missing: createX3DFromURL, loadURL, replaceWorld, currentScene, createNode, importDocument and the property forms (name, version, currentSpeed)."
     },
     {
       "clause": "29.2.6, 29.4.1; ISO/IEC 19777-1 clause 7 (SFNode object)",

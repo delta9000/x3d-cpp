@@ -8,6 +8,7 @@
 #include "TimeSensorSystem.hpp"
 #include "io/file/FileResolver.hpp"
 #include "ViewpointBindSystem.hpp"
+#include "X3DParse.hpp"
 #include "X3DScene.hpp"
 #include "x3d/nodes/CollisionSensor.hpp"
 #include "x3d/nodes/RigidBodyCollection.hpp"
@@ -80,6 +81,8 @@ inline RuntimeWiring attachFullRuntime(x3d::runtime::Scene &scene,
     // See ADR-0038 for path confinement.
     auto scriptSys = std::make_shared<ScriptSystem>(
         backend, "x3d-sim", "4.0", io::file::makeFileResolver());
+    // Browser.createX3DFromString / createVrmlFromString parse through the SDK.
+    scriptSys->setSceneFactory(x3d::codec::makeStringSceneFactory());
     detail::forEachNode(scene, [&](X3DNode *n) {
       if (n && dynamic_cast<const x3d::nodes::Script *>(n) != nullptr) {
         scriptSys->attach(n, ctx);

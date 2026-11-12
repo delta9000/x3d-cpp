@@ -865,6 +865,14 @@ JSValue browser_addRoute(JSContext *ctx, JSValueConst, int argc,
 // the Duktape Proxy traps: reads go through SaiContext::getField, writes
 // through SaiContext::setField (directOutput gate); unknown names read as
 // undefined, a write to an unknown or non-input field throws.
+// String form of a node handle, so `'' + node` and print(node) work.
+JSValue node_toString(JSContext *ctx, JSValueConst self, int, JSValueConst *) {
+  SFNode node = extractNode(ctx, self);
+  const std::string text =
+      node ? "[SFNode " + node->nodeTypeName() + "]" : std::string("[SFNode]");
+  return JS_NewString(ctx, text.c_str());
+}
+
 JSValue node_get_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
                           JSValueConst /*receiver*/) {
   SaiContext *sai = saiOf(ctx);
@@ -872,6 +880,10 @@ JSValue node_get_property(JSContext *ctx, JSValueConst obj, JSAtom atom,
   if (!sai || !node) return JS_UNDEFINED;
   const char *name = JS_AtomToCString(ctx, atom);
   if (!name) return JS_UNDEFINED;
+  if (std::strcmp(name, "toString") == 0) {
+    JS_FreeCString(ctx, name);
+    return JS_NewCFunction(ctx, node_toString, "toString", 0);
+  }
   JSValue out = JS_UNDEFINED;
   try {
     if (auto info = sai->fieldInfo(*node, name); info && info->get)
@@ -930,6 +942,30 @@ JSClassExoticMethods *nodeExoticMethods() {
     return e;
   }();
   return &m;
+}
+
+// Browser.createX3DFromString / createVrmlFromString (text). Returns the new
+// root nodes as an MFNode array that also carries itself as `rootNodes`.
+JSValue browser_createFromString(JSContext *ctx, JSValueConst, int argc,
+                                 JSValueConst *argv) {
+  SaiContext *sai = saiOf(ctx);
+  if (!sai || argc < 1) return JS_ThrowTypeError(ctx, "createX3DFromString: no text");
+  const char *text = JS_ToCString(ctx, argv[0]);
+  if (!text) return JS_EXCEPTION;
+  JSValue result = JS_UNDEFINED;
+  try {
+    MFNode nodes = sai->createX3DFromString(text);
+    result = pushValue(ctx, std::any(nodes), X3DFieldType::MFNode);
+    if (JS_IsObject(result))
+      // Non-enumerable, so the self reference stays out of JSON.stringify.
+      JS_DefinePropertyValueStr(ctx, result, "rootNodes",
+                                JS_DupValue(ctx, result),
+                                JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE);
+  } catch (const std::exception &e) {
+    result = JS_ThrowTypeError(ctx, "createX3DFromString: %s", e.what());
+  }
+  JS_FreeCString(ctx, text);
+  return result;
 }
 
 JSValue browser_deleteRoute(JSContext *ctx, JSValueConst, int argc,
@@ -1008,6 +1044,10 @@ void installBrowser(JSContext *ctx) {
   defineBrowserMethod(ctx, browser, "println", browser_print, 1);
   defineBrowserMethod(ctx, browser, "addRoute", browser_addRoute, 4);
   defineBrowserMethod(ctx, browser, "deleteRoute", browser_deleteRoute, 4);
+  defineBrowserMethod(ctx, browser, "createX3DFromString",
+                      browser_createFromString, 1);
+  defineBrowserMethod(ctx, browser, "createVrmlFromString",
+                      browser_createFromString, 1);
 
   JS_SetPropertyStr(ctx, global.get(), "Browser", browser);  // consumes browser
 }

@@ -67,6 +67,14 @@ declaration-local scene's interface and body marks to `ProtoDeclaration::authore
 an externally resolved declaration keeps its marks after its source document
 is destroyed. Unknown and read-only fields are not recorded.
 
+## Scene text created at run time
+
+`codec::makeStringSceneFactory()` returns the parser behind the script services
+`Browser.createX3DFromString` and `createVrmlFromString`. It accepts a full
+document or a fragment in any encoding, expands PROTOs declared in the text,
+returns the root nodes, and never opens a file: its PROTO and Inline resolvers
+decline every url. See [Script execution](system-script-sai.md).
+
 ## Key files
 
 | File / directory | Role |

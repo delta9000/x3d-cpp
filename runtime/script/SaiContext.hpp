@@ -186,6 +186,37 @@ public:
                      FieldAddress{toNode, toField});
   }
 
+  // Scene creation (SAI createX3DFromString / createVrmlFromString).
+
+  /// Turns X3D source text into root nodes. Throws on unparsable text. The
+  /// host injects it (ScriptSystem::setSceneFactory); the script layer itself
+  /// has no parser.
+  using SceneFactory = std::function<MFNode(const std::string &text)>;
+
+  void setSceneFactory(SceneFactory factory) { sceneFactory_ = std::move(factory); }
+
+  /**
+   * @brief Parse `text` into new nodes (SAI Browser.createX3DFromString).
+   * @details Not gated by directOutput: creating nodes does not change the
+   *          scene; inserting them into another node's field does, and that
+   *          write is gated by setField. The created roots stay owned by this
+   *          SaiContext for the script's lifetime, because a script's node
+   *          handle does not keep a node alive (ADR-0048) and the script may
+   *          insert them at any later time.
+   * @throws std::logic_error if the host supplied no scene factory.
+   * @throws std::exception whatever the factory throws for invalid text.
+   */
+  MFNode createX3DFromString(const std::string &text) {
+    requireActive();
+    if (!sceneFactory_)
+      throw std::logic_error(
+          "SaiContext::createX3DFromString: the host supplied no scene factory");
+    MFNode nodes = sceneFactory_(text);
+    for (const auto &node : nodes)
+      if (node) createdNodes_.push_back(node);
+    return nodes;
+  }
+
   // Browser info (§29.4.1; SAI Browser object).
 
   /** @brief Browser name (SAI Browser.getName()). */
@@ -279,6 +310,8 @@ private:
   double frameRate_ = 0.0;
   std::string log_;
   NodeHandleTable nodeHandles_;
+  SceneFactory sceneFactory_;
+  MFNode createdNodes_;  // roots made by createX3DFromString (see there)
   std::function<bool()> active_;
 };
 

@@ -7,6 +7,7 @@
 #include "X3DProtoResolver.hpp"
 #include "X3DReader.hpp"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -68,6 +69,17 @@ runtime::X3DDocument parseDocument(
     const ProtoDeclarationResolver &resolver = localFileProtoResolver,
     const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
     const std::string &confineRoot = "");
+
+/// A parser for scene text created at run time (the SAI
+/// Browser.createX3DFromString / createVrmlFromString services; pass it to
+/// ScriptSystem::setSceneFactory). Returns the root nodes of the parsed text.
+/// A fragment is accepted: XML without an <X3D> element is wrapped in one, and
+/// ClassicVRML without a header line gets `#X3D V4.0 utf8`. PROTOs declared in
+/// the text are expanded; Inline and EXTERNPROTO urls are not fetched. The
+/// text's ROUTEs, IMPORT/EXPORT and Script author fields are not carried over.
+/// Throws std::runtime_error when the text yields no nodes.
+std::function<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>(const std::string &)>
+makeStringSceneFactory();
 
 /// Read a file, sniff its encoding from path + content (content wins when
 /// confident), and parse it. gzip-compressed input (gzip magic 0x1f 0x8b) is
