@@ -17,7 +17,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // The reflection set thunk (used by every reader) is non-validating: it keeps an
 // out-of-range value instead of throwing.
 void test_reflection_set_is_lenient() {

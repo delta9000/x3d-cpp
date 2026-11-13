@@ -50,14 +50,13 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool approx(double a, double b, double eps = 1e-4) {
   return std::fabs(a - b) <= eps;
 }
 
 // The fixtures dir is passed as X3D_TEST_DATA_DIR (CMake sets it); fall back to a path
 // relative to this source file's build layout.
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
@@ -74,7 +73,7 @@ template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
   return std::dynamic_pointer_cast<T>(n);
 }
 // Corpus fixture 1: ship.x3dv — smallest sanity (header + Shape{ Box }).
-void testShipFixture() {
+TEST_CASE("ship fixture") {
   std::string text = readFile(g_dataDir + "/ship.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -97,7 +96,7 @@ void testShipFixture() {
 // Corpus fixture 2: HelloWorld.x3dv — the canonical happy path. Exercises
 // META lists (incl. escaped quotes), MFString, nested SFNode/MFNode children,
 // DEF/USE shared Material identity, and field values.
-void testHelloWorldFixture() {
+TEST_CASE("hello world fixture") {
   std::string text = readFile(g_dataDir + "/HelloWorld.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -173,7 +172,7 @@ void testHelloWorldFixture() {
 // Corpus fixture 3: AddDynamicRoutes.x3dv — Script node carried as data with an
 // inline interface declaration (`inputOnly SFTime touchTime`) consumed, then a
 // real field (url). Exercises the access-type-led interface-decl path.
-void testScriptFixture() {
+TEST_CASE("script fixture") {
   std::string text = readFile(g_dataDir + "/AddDynamicRoutes.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -207,7 +206,7 @@ void testScriptFixture() {
 }
 // Corpus fixture 4: animated_patch.x3dv — large MF arrays (multi-line, no
 // commas), DEF'd nodes, and two ROUTEs that resolve to DEF'd endpoints.
-void testNurbsFixture() {
+TEST_CASE("nurbs fixture") {
   std::string text = readFile(g_dataDir + "/animated_patch.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -253,7 +252,7 @@ void testNurbsFixture() {
   }
 }
 // Hand-authored grammar snippets.
-void testHeaderStatements() {
+TEST_CASE("header statements") {
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
                           "COMPONENT NURBS:3\n"
@@ -275,7 +274,7 @@ void testHeaderStatements() {
             doc.head.meta[0].content == "snippet"), "hdr: META title snippet");
 }
 
-void testDefUseIdentity() {
+TEST_CASE("def use identity") {
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
                           "Group {\n"
@@ -302,7 +301,7 @@ void testDefUseIdentity() {
   }
 }
 
-void testMfReJoin() {
+TEST_CASE("mf re join") {
   // Mixed comma+whitespace, bracketed, and MFString quote preservation.
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
@@ -360,7 +359,7 @@ void testRouteAndImportExport() {
 // bleeds an inline `{ }` body (defensive recovery, no throw). Corpus evidence:
 // stylesheets/java/examples/SmokeTestProgramOutput_CommandLine.{wrl,x3dv} use
 // the block form for both IMPORT and EXPORT.
-void testImportVariants() {
+TEST_CASE("import variants") {
   // 1. Single-line dot form (the baseline already covered by
   //    testRouteAndImportExport, re-asserted here for the variant matrix).
   {
@@ -446,7 +445,7 @@ void testImportVariants() {
   }
 }
 
-void testProto() {
+TEST_CASE("proto") {
   const std::string src =
       "#X3D V4.0 utf8\n"
       "PROFILE Interchange\n"
@@ -503,7 +502,7 @@ void testProto() {
 }
 
 // Body IS connections retain their target node; nested instances retain parent slots.
-void protoIsCaptureTest() {
+TEST_CASE("proto is capture test") {
   const char *src =
       "#X3D V4.0 utf8\n"
       "PROTO Param [ initializeOnly SFVec3f size 2 2 2 ] {\n"
@@ -532,7 +531,7 @@ void protoIsCaptureTest() {
   }
 }
 
-void testFrontDoorSniff() {
+TEST_CASE("front door sniff") {
   // parseDocument with no hint must content-sniff `#X3D V…` as ClassicVRML and
   // dispatch to the new reader.
   const std::string src =
@@ -546,7 +545,7 @@ void testFrontDoorSniff() {
   CHECK_MESSAGE((reader && reader->encoding() == Encoding::ClassicVRML), "frontdoor: makeReader(ClassicVRML) yields a ClassicVrmlReader");
 }
 
-void testUnknownNodeSkipped() {
+TEST_CASE("unknown node skipped") {
   const std::string src =
       "#X3D V4.0 utf8\n"
       "PROFILE Interchange\n"
@@ -575,7 +574,7 @@ void testUnknownNodeSkipped() {
 //   * embedded ROUTE / EXTERNPROTO statements inside an MFNode list,
 //   * a node-valued proto-instance field whose declaration is unknown,
 //   * a raw `[ ... ]` value assigned to an SFNode-typed proto field.
-void testRecoverableMalformation() {
+TEST_CASE("recoverable malformation") {
   // (a) Empty MFNode list + a stray scalar list where nodes are expected: both
   // degrade to "no children", and the sibling Shape after them is still parsed.
   {
@@ -716,7 +715,7 @@ void testRecoverableMalformation() {
 //   (d) a child node missing its '}' inside an MFNode list, the array's ']'
 //       arriving at the node-body field position -> node closed, list ']'
 //       consumed, document continues.
-void testStrayCloserAndImplicitChildRecovery() {
+TEST_CASE("stray closer and implicit child recovery") {
   // (a) Stray prose: a real type name (`Box`) appears as a bare word not
   // followed by '{' (the comment-leak shape from AddDynamicRoutes.x3dv). It is
   // ignored as a stray token; the following words drain word-by-word; the real
@@ -811,25 +810,6 @@ void testStrayCloserAndImplicitChildRecovery() {
 
 } // namespace
 
-TEST_CASE("classic_vrml_reader_test") {
-  g_dataDir = X3D_TEST_DATA_DIR;
-
-  std::cout << "===== ClassicVRML: corpus fixtures =====\n";
-  testShipFixture();
-  testHelloWorldFixture();
-  testScriptFixture();
-  testNurbsFixture();
-  std::cout << "===== ClassicVRML: grammar snippets =====\n";
-  testHeaderStatements();
-  testDefUseIdentity();
-  testMfReJoin();
+TEST_CASE("route and import export") {
   testRouteAndImportExport();
-  testImportVariants();
-  testProto();
-  protoIsCaptureTest();
-  testFrontDoorSniff();
-  testUnknownNodeSkipped();
-  testRecoverableMalformation();
-  testStrayCloserAndImplicitChildRecovery();
-
 }

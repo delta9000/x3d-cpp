@@ -53,7 +53,7 @@ static bool near(float a, float b, float tol = 1e-5f) {
 }
 
 // Test 1: empty list → 84-byte buffer, triCount=0, readback gives empty mesh.
-static void test_empty() {
+TEST_CASE("empty") {
     std::vector<SFVec3f> empty;
     std::string bytes = x3d::cli::writeStlBinary(empty);
 
@@ -70,12 +70,10 @@ static void test_empty() {
         reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
     // For N=0, StlReader returns an empty-but-valid PackedMesh.
     REQUIRE((pm.vertex_count == 0 && "readback vertex_count must be 0"));
-
-    std::cout << "ok:   test_empty\n";
 }
 
 // Test 2: one triangle — vertices round-trip bit-exactly.
-static void test_one_triangle_bit_exact() {
+TEST_CASE("one triangle bit exact") {
     // CCW triangle in XY plane.
     std::vector<SFVec3f> pos = {
         {1.0f, 0.0f, 0.0f},
@@ -97,12 +95,10 @@ static void test_one_triangle_bit_exact() {
     REQUIRE((near(verts[0], 1.0f) && near(verts[1], 0.0f) && near(verts[2], 0.0f)));
     REQUIRE((near(verts[3], 0.0f) && near(verts[4], 1.0f) && near(verts[5], 0.0f)));
     REQUIRE((near(verts[6], 0.0f) && near(verts[7], 0.0f) && near(verts[8], 1.0f)));
-
-    std::cout << "ok:   test_one_triangle_bit_exact\n";
 }
 
 // Test 3: two triangles — vertex_count = 6.
-static void test_two_triangles_vertex_count() {
+TEST_CASE("two triangles vertex count") {
     std::vector<SFVec3f> pos = {
         // tri 0 (XY plane, +Z normal)
         {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
@@ -116,13 +112,11 @@ static void test_two_triangles_vertex_count() {
     PackedMesh pm = parseStlBinary(
         reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size());
     REQUIRE((pm.vertex_count == 6 && "two-tri readback vertex_count must be 6"));
-
-    std::cout << "ok:   test_two_triangles_vertex_count\n";
 }
 
 // Test 4: geometric normal auto-computation (no normals supplied).
 //   Triangle in XY plane (z=0), CCW → normal should be +Z = (0,0,1).
-static void test_geometric_normal() {
+TEST_CASE("geometric normal") {
     std::vector<SFVec3f> pos = {
         {0.0f, 0.0f, 0.0f},
         {1.0f, 0.0f, 0.0f},
@@ -139,12 +133,10 @@ static void test_geometric_normal() {
     REQUIRE((near(nx, 0.0f, 1e-4f) && "geometric normal x should be 0"));
     REQUIRE((near(ny, 0.0f, 1e-4f) && "geometric normal y should be 0"));
     REQUIRE((near(nz, 1.0f, 1e-4f) && "geometric normal z should be +1"));
-
-    std::cout << "ok:   test_geometric_normal\n";
 }
 
 // Test 5: supplied normals → they appear (averaged) in the STL facet normal.
-static void test_supplied_normals() {
+TEST_CASE("supplied normals") {
     std::vector<SFVec3f> pos = {
         {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
     };
@@ -163,12 +155,10 @@ static void test_supplied_normals() {
     REQUIRE((near(nx, 0.0f, 1e-4f) && "supplied-normal x should be 0"));
     REQUIRE((near(ny, 0.0f, 1e-4f) && "supplied-normal y should be 0"));
     REQUIRE((near(nz, -1.0f, 1e-4f) && "supplied-normal z should be -1"));
-
-    std::cout << "ok:   test_supplied_normals\n";
 }
 
 // Test 6: invalid size (not divisible by 3) → exception.
-static void test_invalid_size() {
+TEST_CASE("invalid size") {
     std::vector<SFVec3f> bad = {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
     bool threw = false;
     try {
@@ -177,14 +167,4 @@ static void test_invalid_size() {
         threw = true;
     }
     REQUIRE((threw && "writeStlBinary should throw on non-multiple-of-3 positions"));
-    std::cout << "ok:   test_invalid_size\n";
-}
-
-TEST_CASE("stl_write_test") {
-    test_empty();
-    test_one_triangle_bit_exact();
-    test_two_triangles_vertex_count();
-    test_geometric_normal();
-    test_supplied_normals();
-    test_invalid_size();
 }

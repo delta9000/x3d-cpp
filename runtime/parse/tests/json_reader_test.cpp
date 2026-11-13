@@ -51,13 +51,12 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool approx(double a, double b, double eps = 1e-4) {
   return std::fabs(a - b) <= eps;
 }
 
 // The fixtures dir is passed as X3D_TEST_DATA_DIR (CMake sets it).
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
@@ -125,7 +124,7 @@ void collect(const std::shared_ptr<X3DNode> &n,
 }
 // Corpus fixture 1: HelloWorld.json — header metadata, MFString, nested
 // SF/MFNode children, DEF/USE shared Material identity.
-void testHelloWorldFixture() {
+TEST_CASE("hello world fixture") {
   std::string text = readFile(g_dataDir + "/HelloWorld.json");
   JsonReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -182,7 +181,7 @@ void testHelloWorldFixture() {
 }
 // Corpus fixture 2: spinning_cube.json — DEF/USE, ROUTEs, enums/bools, MF
 // arrays (key/keyValue), TimeSensor + OrientationInterpolator animation wiring.
-void testSpinningCubeFixture() {
+TEST_CASE("spinning cube fixture") {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
   JsonReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
@@ -242,7 +241,7 @@ void testRoundTripByteStable(const std::string &name) {
   CHECK_MESSAGE((again == text), ("round-trip: JsonWriter(JsonReader(" + name + ")) is byte-stable"));
 }
 // Hand-authored snippets: isolate specific value shapes and scene members.
-void testHandAuthoredSnippets() {
+TEST_CASE("hand authored snippets") {
   // SFString vs MFString (with an embedded escaped quote), bool, MF numeric.
   {
     const std::string j = R"({"X3D":{"@profile":"Immersive","@version":"4.0",
@@ -318,7 +317,7 @@ void testHandAuthoredSnippets() {
 }
 // Front-door dispatch: parseDocument with no hint must sniff JSON by content
 // and produce the same document the explicit JsonReader does.
-void testFrontDoorDispatch() {
+TEST_CASE("front door dispatch") {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
   CHECK_MESSAGE((codec::sniffByContent(text) == Encoding::JSON), "frontdoor: content sniffs as JSON");
   runtime::X3DDocument viaFront = codec::parseDocument(text);
@@ -330,14 +329,10 @@ void testFrontDoorDispatch() {
 
 } // namespace
 
-TEST_CASE("json_reader_test") {
-  g_dataDir = X3D_TEST_DATA_DIR;
-
-  testHelloWorldFixture();
-  testSpinningCubeFixture();
+TEST_CASE("round trip byte stable: HelloWorld.json") {
   testRoundTripByteStable("HelloWorld.json");
-  testRoundTripByteStable("spinning_cube.json");
-  testHandAuthoredSnippets();
-  testFrontDoorDispatch();
+}
 
+TEST_CASE("round trip byte stable: spinning_cube.json") {
+  testRoundTripByteStable("spinning_cube.json");
 }

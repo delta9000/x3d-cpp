@@ -89,120 +89,132 @@ static float read_f32_at(const uint8_t* base, std::size_t byte_offset) {
     return v;
 }
 
-TEST_CASE("stl_reader_test") {
+TEST_CASE("a nominal two-triangle binary STL") {
     using namespace x3d::runtime::ext;
     using namespace x3d::runtime::extract;
 
     // nominal two-triangle binary STL
 
-    {
-        auto stl = build_stl_binary();
-        PackedMesh mesh = parseStlBinary(stl.data(), stl.size());
+    auto stl = build_stl_binary();
+    PackedMesh mesh = parseStlBinary(stl.data(), stl.size());
 
-        // vertex_count == N*3 (non-indexed, 3 verts per triangle)
-        REQUIRE((mesh.vertex_count == 6 && "vertex_count must be N*3"));
+    // vertex_count == N*3 (non-indexed, 3 verts per triangle)
+    REQUIRE((mesh.vertex_count == 6 && "vertex_count must be N*3"));
 
-        // Non-indexed: index_count == 0
-        REQUIRE((mesh.index_count == 0 && "non-indexed: index_count must be 0"));
+    // Non-indexed: index_count == 0
+    REQUIRE((mesh.index_count == 0 && "non-indexed: index_count must be 0"));
 
-        // Position attribute present
-        REQUIRE((mesh.has(VertexAttrib::Position) && "Position attribute must be set"));
+    // Position attribute present
+    REQUIRE((mesh.has(VertexAttrib::Position) && "Position attribute must be set"));
 
-        // Normal attribute present
-        REQUIRE((mesh.has(VertexAttrib::Normal) && "Normal attribute must be set"));
+    // Normal attribute present
+    REQUIRE((mesh.has(VertexAttrib::Normal) && "Normal attribute must be set"));
 
-        // Topology == Triangles
-        REQUIRE((mesh.topology == Topology::Triangles && "topology must be Triangles"));
+    // Topology == Triangles
+    REQUIRE((mesh.topology == Topology::Triangles && "topology must be Triangles"));
 
-        // winding/culling defaults
-        REQUIRE((mesh.ccw   == true  && "ccw must be true"));
-        REQUIRE((mesh.solid == true  && "solid must be true"));
+    // winding/culling defaults
+    REQUIRE((mesh.ccw   == true  && "ccw must be true"));
+    REQUIRE((mesh.solid == true  && "solid must be true"));
 
-        // Verify known position values via VertexBufferView + attribute_data
+    // Verify known position values via VertexBufferView + attribute_data
 
-        const VertexBufferView& pv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Position)];
-        REQUIRE((pv.component_type == ComponentType::Float));
-        REQUIRE((pv.components_per_vertex == 3));
-        REQUIRE((pv.vertex_count == 6));
+    const VertexBufferView& pv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Position)];
+    REQUIRE((pv.component_type == ComponentType::Float));
+    REQUIRE((pv.components_per_vertex == 3));
+    REQUIRE((pv.vertex_count == 6));
 
-        const uint8_t* pos_base = pv.data_ptr(mesh.attribute_data) + pv.byte_offset;
+    const uint8_t* pos_base = pv.data_ptr(mesh.attribute_data) + pv.byte_offset;
 
-        // Triangle 0, vertex 0 = (0,0,0)
-        REQUIRE((read_f32_at(pos_base,  0) == 0.0f));
-        REQUIRE((read_f32_at(pos_base,  4) == 0.0f));
-        REQUIRE((read_f32_at(pos_base,  8) == 0.0f));
-        // Triangle 0, vertex 1 = (1,0,0)
-        REQUIRE((read_f32_at(pos_base, 12) == 1.0f));
-        REQUIRE((read_f32_at(pos_base, 16) == 0.0f));
-        REQUIRE((read_f32_at(pos_base, 20) == 0.0f));
-        // Triangle 0, vertex 2 = (0,1,0)
-        REQUIRE((read_f32_at(pos_base, 24) == 0.0f));
-        REQUIRE((read_f32_at(pos_base, 28) == 1.0f));
-        REQUIRE((read_f32_at(pos_base, 32) == 0.0f));
-        // Triangle 1, vertex 0 = (2,0,0)
-        REQUIRE((read_f32_at(pos_base, 36) == 2.0f));
-        REQUIRE((read_f32_at(pos_base, 40) == 0.0f));
-        REQUIRE((read_f32_at(pos_base, 44) == 0.0f));
+    // Triangle 0, vertex 0 = (0,0,0)
+    REQUIRE((read_f32_at(pos_base,  0) == 0.0f));
+    REQUIRE((read_f32_at(pos_base,  4) == 0.0f));
+    REQUIRE((read_f32_at(pos_base,  8) == 0.0f));
+    // Triangle 0, vertex 1 = (1,0,0)
+    REQUIRE((read_f32_at(pos_base, 12) == 1.0f));
+    REQUIRE((read_f32_at(pos_base, 16) == 0.0f));
+    REQUIRE((read_f32_at(pos_base, 20) == 0.0f));
+    // Triangle 0, vertex 2 = (0,1,0)
+    REQUIRE((read_f32_at(pos_base, 24) == 0.0f));
+    REQUIRE((read_f32_at(pos_base, 28) == 1.0f));
+    REQUIRE((read_f32_at(pos_base, 32) == 0.0f));
+    // Triangle 1, vertex 0 = (2,0,0)
+    REQUIRE((read_f32_at(pos_base, 36) == 2.0f));
+    REQUIRE((read_f32_at(pos_base, 40) == 0.0f));
+    REQUIRE((read_f32_at(pos_base, 44) == 0.0f));
 
-        // Verify normal: the facet normal replicated to all 3 verts of each triangle
-        // Triangle 0 normal = (0,0,1); Triangle 1 normal = (0,1,0)
+    // Verify normal: the facet normal replicated to all 3 verts of each triangle
+    // Triangle 0 normal = (0,0,1); Triangle 1 normal = (0,1,0)
 
-        const VertexBufferView& nv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Normal)];
-        REQUIRE((nv.component_type == ComponentType::Float));
-        REQUIRE((nv.components_per_vertex == 3));
-        REQUIRE((nv.vertex_count == 6));
+    const VertexBufferView& nv = mesh.attribute_views[static_cast<uint8_t>(VertexAttrib::Normal)];
+    REQUIRE((nv.component_type == ComponentType::Float));
+    REQUIRE((nv.components_per_vertex == 3));
+    REQUIRE((nv.vertex_count == 6));
 
-        const uint8_t* nor_base = nv.data_ptr(mesh.attribute_data) + nv.byte_offset;
+    const uint8_t* nor_base = nv.data_ptr(mesh.attribute_data) + nv.byte_offset;
 
-        // Triangle 0: all 3 verts share normal (0,0,1)
-        for (int i = 0; i < 3; ++i) {
-            REQUIRE((read_f32_at(nor_base, (i*3+0)*4) == 0.0f)); // nx
-            REQUIRE((read_f32_at(nor_base, (i*3+1)*4) == 0.0f)); // ny
-            REQUIRE((read_f32_at(nor_base, (i*3+2)*4) == 1.0f)); // nz
-        }
-        // Triangle 1: all 3 verts share normal (0,1,0)
-        for (int i = 3; i < 6; ++i) {
-            REQUIRE((read_f32_at(nor_base, (i*3+0)*4) == 0.0f)); // nx
-            REQUIRE((read_f32_at(nor_base, (i*3+1)*4) == 1.0f)); // ny
-            REQUIRE((read_f32_at(nor_base, (i*3+2)*4) == 0.0f)); // nz
-        }
-
-        // Verify AABB: positions span (0,0,0)-(3,1,0)
-
-        const auto& bb = mesh.bounds;
-        REQUIRE((!bb.empty && "bounds must not be empty"));
-        REQUIRE((bb.min.x == 0.0f && bb.min.y == 0.0f && bb.min.z == 0.0f));
-        REQUIRE((bb.max.x == 3.0f && bb.max.y == 1.0f && bb.max.z == 0.0f));
+    // Triangle 0: all 3 verts share normal (0,0,1)
+    for (int i = 0; i < 3; ++i) {
+        REQUIRE((read_f32_at(nor_base, (i*3+0)*4) == 0.0f)); // nx
+        REQUIRE((read_f32_at(nor_base, (i*3+1)*4) == 0.0f)); // ny
+        REQUIRE((read_f32_at(nor_base, (i*3+2)*4) == 1.0f)); // nz
     }
+    // Triangle 1: all 3 verts share normal (0,1,0)
+    for (int i = 3; i < 6; ++i) {
+        REQUIRE((read_f32_at(nor_base, (i*3+0)*4) == 0.0f)); // nx
+        REQUIRE((read_f32_at(nor_base, (i*3+1)*4) == 1.0f)); // ny
+        REQUIRE((read_f32_at(nor_base, (i*3+2)*4) == 0.0f)); // nz
+    }
+
+    // Verify AABB: positions span (0,0,0)-(3,1,0)
+
+    const auto& bb = mesh.bounds;
+    REQUIRE((!bb.empty && "bounds must not be empty"));
+    REQUIRE((bb.min.x == 0.0f && bb.min.y == 0.0f && bb.min.z == 0.0f));
+    REQUIRE((bb.max.x == 3.0f && bb.max.y == 1.0f && bb.max.z == 0.0f));
+}
+
+TEST_CASE("input shorter than the header gives an empty mesh") {
+    using namespace x3d::runtime::ext;
+    using namespace x3d::runtime::extract;
 
     // malformed / truncated input → empty PackedMesh, no crash
 
-    {
-        // Buffer shorter than the 84-byte minimum header
-        std::vector<uint8_t> too_short(10, 0);
-        PackedMesh mesh = parseStlBinary(too_short.data(), too_short.size());
-        REQUIRE((mesh.empty() && "truncated (<84 bytes) input must produce empty PackedMesh"));
-        REQUIRE((mesh.vertex_count == 0));
-        REQUIRE((mesh.index_count  == 0));
-    }
-    {
-        // Buffer has header + N=3 claimed triangles but only 1 triangle's worth of data
-        std::vector<uint8_t> partial(80 + 4 + 1 * 50, 0);
-        write_u32(partial, 80, 3); // claim 3 triangles
-        PackedMesh mesh = parseStlBinary(partial.data(), partial.size());
-        REQUIRE((mesh.empty() && "partially-truncated input must produce empty PackedMesh"));
-    }
-    {
-        // Null pointer + zero length: should return empty without crashing
-        PackedMesh mesh = parseStlBinary(nullptr, 0);
-        REQUIRE((mesh.empty() && "null/0-length input must produce empty PackedMesh"));
-    }
+    // Buffer shorter than the 84-byte minimum header
+    std::vector<uint8_t> too_short(10, 0);
+    PackedMesh mesh = parseStlBinary(too_short.data(), too_short.size());
+    REQUIRE((mesh.empty() && "truncated (<84 bytes) input must produce empty PackedMesh"));
+    REQUIRE((mesh.vertex_count == 0));
+    REQUIRE((mesh.index_count  == 0));
+}
+
+TEST_CASE("a truncated triangle list gives an empty mesh") {
+    using namespace x3d::runtime::ext;
+    using namespace x3d::runtime::extract;
+
+    // Buffer has header + N=3 claimed triangles but only 1 triangle's worth of data
+    std::vector<uint8_t> partial(80 + 4 + 1 * 50, 0);
+    write_u32(partial, 80, 3); // claim 3 triangles
+    PackedMesh mesh = parseStlBinary(partial.data(), partial.size());
+    REQUIRE((mesh.empty() && "partially-truncated input must produce empty PackedMesh"));
+}
+
+TEST_CASE("null input gives an empty mesh") {
+    using namespace x3d::runtime::ext;
+    using namespace x3d::runtime::extract;
+
+    // Null pointer + zero length: should return empty without crashing
+    PackedMesh mesh = parseStlBinary(nullptr, 0);
+    REQUIRE((mesh.empty() && "null/0-length input must produce empty PackedMesh"));
+}
+
+TEST_CASE("the vector overload matches") {
+    using namespace x3d::runtime::ext;
+    using namespace x3d::runtime::extract;
 
     // convenience overload — span-via-vector
 
-    {
-        auto stl = build_stl_binary();
-        PackedMesh mesh = parseStlBinary(stl);
-        REQUIRE((mesh.vertex_count == 6 && "vector overload must produce same result"));
-    }
+    auto stl = build_stl_binary();
+    PackedMesh mesh = parseStlBinary(stl);
+    REQUIRE((mesh.vertex_count == 6 && "vector overload must produce same result"));
 }

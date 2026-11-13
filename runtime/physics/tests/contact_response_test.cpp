@@ -68,76 +68,78 @@ makeColl(std::vector<AppliedParametersChoices> ap, SFVec2f fc, float bounce) {
   return rbc;
 }
 
-TEST_CASE("contact_response_test") {
-  // Case 1: FRICTION_COEFFICIENT_2 selected, frictionCoefficients (1,1), bounce 0.
+TEST_CASE("FRICTION_COEFFICIENT-2 selects friction only") {
+  // FRICTION_COEFFICIENT_2 selected, frictionCoefficients (1,1), bounce 0.
   // Selector present -> frictionCoefficients.x applied; BOUNCE not selected -> restitution unset.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem sys(backend);
-    X3DExecutionContext ctx;
-    auto rbc = makeColl(
-        std::vector<AppliedParametersChoices>{AppliedParametersChoices::FRICTION_COEFFICIENT_2},
-        SFVec2f{1.0f, 1.0f}, 0.0f);
-    sys.attach(rbc.get(), ctx);
-    CHECK_MESSAGE((backend->called), "setContactResponse called (friction selector)");
-    CHECK_MESSAGE((backend->friction == 1.0f),
-                  "FRICTION_COEFFICIENT-2 selector -> frictionCoefficients.x forwarded");
-    CHECK_MESSAGE((backend->restitution < 0.0f), "no BOUNCE selector -> restitution unset (-1)");
-  }
-  // Case 2: BOUNCE selected, frictionCoefficients (0,0), bounce 0.8.
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem sys(backend);
+  X3DExecutionContext ctx;
+  auto rbc = makeColl(
+      std::vector<AppliedParametersChoices>{AppliedParametersChoices::FRICTION_COEFFICIENT_2},
+      SFVec2f{1.0f, 1.0f}, 0.0f);
+  sys.attach(rbc.get(), ctx);
+  CHECK_MESSAGE((backend->called), "setContactResponse called (friction selector)");
+  CHECK_MESSAGE((backend->friction == 1.0f),
+                "FRICTION_COEFFICIENT-2 selector -> frictionCoefficients.x forwarded");
+  CHECK_MESSAGE((backend->restitution < 0.0f), "no BOUNCE selector -> restitution unset (-1)");
+}
+
+TEST_CASE("BOUNCE selects restitution only") {
+  // BOUNCE selected, frictionCoefficients (0,0), bounce 0.8.
   // Selector present -> bounce applied; FRICTION_COEFFICIENT-2 not selected -> friction unset.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem sys(backend);
-    X3DExecutionContext ctx;
-    auto rbc = makeColl(
-        std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
-        SFVec2f{0.0f, 0.0f}, 0.8f);
-    sys.attach(rbc.get(), ctx);
-    CHECK_MESSAGE((backend->friction < 0.0f),
-                  "no FRICTION_COEFFICIENT-2 selector -> friction unset (-1)");
-    CHECK_MESSAGE((backend->restitution == 0.8f),
-                  "BOUNCE selector -> bounce forwarded as restitution");
-  }
-  // Case 3: default selector {BOUNCE}, bounce = 0.
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem sys(backend);
+  X3DExecutionContext ctx;
+  auto rbc = makeColl(
+      std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
+      SFVec2f{0.0f, 0.0f}, 0.8f);
+  sys.attach(rbc.get(), ctx);
+  CHECK_MESSAGE((backend->friction < 0.0f),
+                "no FRICTION_COEFFICIENT-2 selector -> friction unset (-1)");
+  CHECK_MESSAGE((backend->restitution == 0.8f),
+                "BOUNCE selector -> bounce forwarded as restitution");
+}
+
+TEST_CASE("default selector applies an explicit zero bounce") {
+  // default selector {BOUNCE}, bounce = 0.
   // BOUNCE present -> restitution = bounce = 0 (explicit zero, not -1);
   // no FRICTION_COEFFICIENT-2 -> friction unset.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem sys(backend);
-    X3DExecutionContext ctx;
-    auto rbc = makeColl(
-        std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
-        SFVec2f{0.0f, 0.0f}, 0.0f);
-    sys.attach(rbc.get(), ctx);
-    CHECK_MESSAGE((backend->friction < 0.0f), "default selector (BOUNCE only) -> friction unset");
-    CHECK_MESSAGE((backend->restitution == 0.0f),
-                  "BOUNCE selector with bounce=0 -> restitution=0 (explicit, not -1)");
-  }
-  // Case 4: explicit empty appliedParameters {}.
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem sys(backend);
+  X3DExecutionContext ctx;
+  auto rbc = makeColl(
+      std::vector<AppliedParametersChoices>{AppliedParametersChoices::BOUNCE},
+      SFVec2f{0.0f, 0.0f}, 0.0f);
+  sys.attach(rbc.get(), ctx);
+  CHECK_MESSAGE((backend->friction < 0.0f), "default selector (BOUNCE only) -> friction unset");
+  CHECK_MESSAGE((backend->restitution == 0.0f),
+                "BOUNCE selector with bounce=0 -> restitution=0 (explicit, not -1)");
+}
+
+TEST_CASE("empty appliedParameters leaves both unset") {
+  // explicit empty appliedParameters {}.
   // Neither selector -> both unset (-1).
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem sys(backend);
-    X3DExecutionContext ctx;
-    auto rbc = makeColl(
-        std::vector<AppliedParametersChoices>{},
-        SFVec2f{0.0f, 0.0f}, 0.0f);
-    sys.attach(rbc.get(), ctx);
-    CHECK_MESSAGE((backend->friction < 0.0f && backend->restitution < 0.0f),
-                  "empty appliedParameters -> both unset (-1)");
-  }
-  // Case 5: selector gates, not the value: {} but frictionCoefficients (1,1).
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem sys(backend);
+  X3DExecutionContext ctx;
+  auto rbc = makeColl(
+      std::vector<AppliedParametersChoices>{},
+      SFVec2f{0.0f, 0.0f}, 0.0f);
+  sys.attach(rbc.get(), ctx);
+  CHECK_MESSAGE((backend->friction < 0.0f && backend->restitution < 0.0f),
+                "empty appliedParameters -> both unset (-1)");
+}
+
+TEST_CASE("the selector gates, not the value") {
+  // selector gates, not the value: {} but frictionCoefficients (1,1).
   // No FRICTION_COEFFICIENT-2 selector -> friction not applied despite non-zero value.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem sys(backend);
-    X3DExecutionContext ctx;
-    auto rbc = makeColl(
-        std::vector<AppliedParametersChoices>{},
-        SFVec2f{1.0f, 1.0f}, 0.0f);
-    sys.attach(rbc.get(), ctx);
-    CHECK_MESSAGE((backend->friction < 0.0f),
-                  "SELECTOR gates (not value): no FRICTION_COEFFICIENT-2 -> friction unset even when coefficients non-zero");
-  }
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem sys(backend);
+  X3DExecutionContext ctx;
+  auto rbc = makeColl(
+      std::vector<AppliedParametersChoices>{},
+      SFVec2f{1.0f, 1.0f}, 0.0f);
+  sys.attach(rbc.get(), ctx);
+  CHECK_MESSAGE((backend->friction < 0.0f),
+                "SELECTOR gates (not value): no FRICTION_COEFFICIENT-2 -> friction unset even when coefficients non-zero");
 }

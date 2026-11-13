@@ -32,7 +32,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 constexpr double kEps = 1e-6;
 bool deq(double a, double b) { return std::fabs(a - b) <= kEps; }
 

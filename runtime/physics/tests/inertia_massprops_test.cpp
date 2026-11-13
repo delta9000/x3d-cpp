@@ -16,7 +16,7 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-static void test_massprops_defaults() {
+TEST_CASE("massprops defaults") {
   MassProperties mp;
   CHECK_MESSAGE((mp.mass == 1.0f), "MassProperties.mass defaults to 1");
   CHECK_MESSAGE((mp.overrideInertia == false), "overrideInertia defaults false");
@@ -72,7 +72,7 @@ makeOneBody(std::shared_ptr<RigidBody> &outBody) {
   return collection;
 }
 
-static void test_default_inertia_not_overridden() {
+TEST_CASE("default inertia not overridden") {
   std::shared_ptr<RigidBody> body;
   auto collection = makeOneBody(body);  // inertia defaults to identity
   auto backend = std::make_shared<RecordingBackend>();
@@ -83,7 +83,7 @@ static void test_default_inertia_not_overridden() {
                 "identity inertia -> overrideInertia false (shape-derived)");
 }
 
-static void test_nondefault_inertia_overridden() {
+TEST_CASE("nondefault inertia overridden") {
   std::shared_ptr<RigidBody> body;
   auto collection = makeOneBody(body);
   SFMatrix3f tensor{};                  // diag(0.01, 0.02, 0.03)
@@ -99,7 +99,7 @@ static void test_nondefault_inertia_overridden() {
                 "authored inertia tensor passed through");
 }
 
-static void test_centerofmass_passed_through() {
+TEST_CASE("centerofmass passed through") {
   std::shared_ptr<RigidBody> body;
   auto collection = makeOneBody(body);
   body->setCenterOfMass(SFVec3f{0.5f, 0.25f, 0});
@@ -111,11 +111,4 @@ static void test_centerofmass_passed_through() {
                 "centerOfMass.x passed through to the backend");
   CHECK_MESSAGE((backend->lastMass.centerOfMass.y == 0.25f),
                 "centerOfMass.y passed through to the backend");
-}
-
-TEST_CASE("inertia_massprops_test") {
-  test_massprops_defaults();
-  test_default_inertia_not_overridden();
-  test_nondefault_inertia_overridden();
-  test_centerofmass_passed_through();
 }

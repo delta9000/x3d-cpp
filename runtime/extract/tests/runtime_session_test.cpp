@@ -17,7 +17,6 @@ using namespace x3d::runtime::extract;
 using namespace x3d::core;
 
 namespace {
-
 // A Transform driven by a TimeSensor->PositionInterpolator ROUTE chain: renders
 // from buildSceneGraph, but only animates if buildFrom resolved the ROUTEs.
 const char *kScene = R"X3D(<?xml version="1.0" encoding="UTF-8"?>

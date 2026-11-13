@@ -21,7 +21,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // Relay: inputOutput SFVec3f value (no is) over a Group body. Source drives it;
 // Dest receives the relayed value_changed.
 const char *kRelayXml = R"(<X3D version='4.0'><Scene>
@@ -283,7 +282,6 @@ TEST_CASE("proto_interface_state_test") {
   test_nested_siblings_do_not_overwrite();
   test_shared_primary_keeps_both();
   test_externproto_unconnected_field();
-
 }
 
 TEST_CASE("unconnected PROTO MFNode interface relays node identity and empty values") {

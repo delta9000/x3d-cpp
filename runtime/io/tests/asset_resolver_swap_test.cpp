@@ -167,7 +167,7 @@ std::vector<std::uint8_t> readFile(const std::string &p) {
   return std::vector<std::uint8_t>(s.begin(), s.end());
 }
 
-TEST_CASE("asset_resolver_swap_test") {
+TEST_CASE("HTTP resolver serves fixture bytes and fails on a missing file") {
   // Locate fixtures relative to the binary's working dir (ctest sets cwd to
   // the build dir). The CMake target passes the source dir as a compile def.
 #ifndef FIXTURES_DIR

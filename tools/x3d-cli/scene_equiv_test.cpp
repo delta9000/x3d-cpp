@@ -93,21 +93,27 @@ static const char kScene1ExtraRoute[] = R"(<?xml version="1.0" encoding="UTF-8"?
 </X3D>
 )";
 
-TEST_CASE("scene_equiv_test") {
-    std::cout << "=== sceneEquivalent unit tests ===\n\n";
+TEST_CASE("empty scenes are equivalent") {
+    sdk::Scene a, b;
+    std::string why;
+    CHECK_MESSAGE((x3d_cli::sceneEquivalent(a, b, why)), "empty scenes are equal");
+}
 
-    // 1. Empty scenes.
-    {
-        sdk::Scene a, b;
-        std::string why;
-        CHECK_MESSAGE((x3d_cli::sceneEquivalent(a, b, why)), "empty scenes are equal");
-    }
+TEST_CASE("ROUTE set comparison is order-insensitive") {
+    sdk::Scene sa, sb;
+    sa.routes.push_back({"A", "f1", "B", "g1"});
+    sa.routes.push_back({"C", "f2", "D", "g2"});
+    sb.routes.push_back({"C", "f2", "D", "g2"});
+    sb.routes.push_back({"A", "f1", "B", "g1"});
+    std::string why;
+    CHECK_MESSAGE((x3d_cli::sceneEquivalent(sa, sb, why)),
+                  "ROUTE set comparison is order-insensitive");
+}
 
-    // Parse the base scene.
+TEST_CASE("sceneEquivalent against a parsed scene") {
     sdk::X3DDocument doc1 = sdk::parseDocument(kScene1, x3d::codec::Encoding::XML);
 
-    // 2. Same scene round-tripped through XmlWriter → reparse.
-    {
+    SUBCASE("an XML roundtrip is equivalent") {
         sdk::XmlWriter w;
         std::string xml = w.writeDocument(doc1);
         sdk::X3DDocument doc1rt = sdk::parseDocument(xml, x3d::codec::Encoding::XML);
@@ -116,8 +122,7 @@ TEST_CASE("scene_equiv_test") {
                       "round-tripped XML scene is equivalent");
     }
 
-    // 3. Same scene round-tripped through VrmlWriter → reparse.
-    {
+    SUBCASE("a ClassicVRML roundtrip is equivalent") {
         sdk::VrmlWriter w;
         std::string vrml = w.writeDocument(doc1);
         sdk::X3DDocument doc1rt = sdk::parseDocument(vrml, x3d::codec::Encoding::ClassicVRML);
@@ -126,8 +131,7 @@ TEST_CASE("scene_equiv_test") {
                       "round-tripped ClassicVRML scene is equivalent");
     }
 
-    // 4. Mutated scene (diffuseColor changed) is not equivalent.
-    {
+    SUBCASE("a changed diffuseColor is not equivalent") {
         sdk::X3DDocument doc2 = sdk::parseDocument(kScene1Mutated, x3d::codec::Encoding::XML);
         std::string why;
         bool eq = x3d_cli::sceneEquivalent(doc1.scene, doc2.scene, why);
@@ -135,33 +139,17 @@ TEST_CASE("scene_equiv_test") {
         CHECK_MESSAGE((!why.empty()), "mismatch has a reason");
     }
 
-    // 5. Extra root node is not equivalent.
-    {
+    SUBCASE("an extra root node is not equivalent") {
         sdk::X3DDocument doc3 = sdk::parseDocument(kScene1ExtraNode, x3d::codec::Encoding::XML);
         std::string why;
         bool eq = x3d_cli::sceneEquivalent(doc1.scene, doc3.scene, why);
         CHECK_MESSAGE((!eq), "extra root node is not equivalent");
     }
 
-    // 6. Extra ROUTE is not equivalent.
-    {
+    SUBCASE("an extra ROUTE is not equivalent") {
         sdk::X3DDocument doc4 = sdk::parseDocument(kScene1ExtraRoute, x3d::codec::Encoding::XML);
         std::string why;
         bool eq = x3d_cli::sceneEquivalent(doc1.scene, doc4.scene, why);
         CHECK_MESSAGE((!eq), "extra ROUTE is not equivalent");
-    }
-
-    // 7. ROUTE order doesn't matter (reparse of XML reorders nothing, but
-    //    sceneEquivalent uses set comparison, so this is verified by the RT tests).
-    {
-        // Build scene A with route in one order, B with same routes.
-        sdk::Scene sa, sb;
-        sa.routes.push_back({"A", "f1", "B", "g1"});
-        sa.routes.push_back({"C", "f2", "D", "g2"});
-        sb.routes.push_back({"C", "f2", "D", "g2"});
-        sb.routes.push_back({"A", "f1", "B", "g1"});
-        std::string why;
-        CHECK_MESSAGE((x3d_cli::sceneEquivalent(sa, sb, why)),
-                      "ROUTE set comparison is order-insensitive");
     }
 }

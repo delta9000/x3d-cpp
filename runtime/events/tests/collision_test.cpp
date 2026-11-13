@@ -38,7 +38,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 2e-2f) { return std::fabs(a - b) < e; }
 
 using NodeP = std::shared_ptr<X3DNode>;
@@ -192,5 +191,4 @@ TEST_CASE("collision_test") {
     run(w->ctx, 0.0, 1.0);
     CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("lines: an IndexedLineSet is not collidable"));
   }
-
 }

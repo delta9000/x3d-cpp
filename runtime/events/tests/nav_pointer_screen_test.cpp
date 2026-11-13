@@ -31,7 +31,6 @@ using namespace x3d::runtime;
 using x3d::test::setF;
 
 namespace {
-
 float dist(const SFVec3f &a, const SFVec3f &b) {
   float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
   return std::sqrt(dx * dx + dy * dy + dz * dz);

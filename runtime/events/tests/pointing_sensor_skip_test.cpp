@@ -33,7 +33,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 std::shared_ptr<X3DNode> boxShape() {
   auto shape = std::make_shared<Shape>();
   auto box = std::make_shared<Box>();

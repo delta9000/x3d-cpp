@@ -27,7 +27,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
@@ -57,117 +56,113 @@ std::string slurp(const std::string &path) {
 
 } // namespace
 
-TEST_CASE("ecmascript_corpus_smoke_test") {
-
+TEST_CASE("a known Script runs initialize and its handlers") {
   // known scene: a Script whose initialize() prints a deterministic string,
   // and an enabled() handler that toggles a global. Body lives in url= so the
   // reader captures it. Drive it through the real ScriptSystem + cascade.
 
-  {
-    // The url is an MFString — its single inline entry must be double-quoted so
-    // the whole script body is one element (unquoted whitespace would split it
-    // into separate url entries). The XML attribute is delimited by " (\"), the
-    // one MFString element by &quot;, and the JS string literals by &apos; so
-    // nothing collides with the C++/XML/MFString quoting layers.
-    const std::string xml =
-        "<X3D profile='Interactive' version='3.3'>"
-        "  <Scene>"
-        "    <Group>"
-        "      <Script DEF='S' url=\"&quot;"
-        "ecmascript:"
-        " function initialize() { Browser.print(&apos;init@&apos; + Browser.getName()); }"
-        " function ping(value, ts) { Browser.print(&apos;ping=&apos; + value + &apos;@&apos; + ts); }"
-        "&quot;\"/>"
-        "    </Group>"
-        "  </Scene>"
-        "</X3D>";
+  // The url is an MFString — its single inline entry must be double-quoted so
+  // the whole script body is one element (unquoted whitespace would split it
+  // into separate url entries). The XML attribute is delimited by " (\"), the
+  // one MFString element by &quot;, and the JS string literals by &apos; so
+  // nothing collides with the C++/XML/MFString quoting layers.
+  const std::string xml =
+      "<X3D profile='Interactive' version='3.3'>"
+      "  <Scene>"
+      "    <Group>"
+      "      <Script DEF='S' url=\"&quot;"
+      "ecmascript:"
+      " function initialize() { Browser.print(&apos;init@&apos; + Browser.getName()); }"
+      " function ping(value, ts) { Browser.print(&apos;ping=&apos; + value + &apos;@&apos; + ts); }"
+      "&quot;\"/>"
+      "    </Group>"
+      "  </Scene>"
+      "</X3D>";
 
+  runtime::Scene scene = parseAndExpand(xml);
+
+  std::vector<Script *> scripts;
+  for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
+  CHECK_MESSAGE((scripts.size() == 1), "known scene: one Script parsed from the graph");
+
+  X3DExecutionContext ctx(scene.authorFields);
+  auto backend = std::make_shared<EcmaScriptBackend>();
+  auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
+  ctx.addScriptSystem(sys);
+  for (Script *s : scripts) sys->attach(s, ctx);
+
+  // initialize() ran at attach time; verify its print landed.
+  SaiContext *sai = sys->saiFor(scripts[0]);
+  CHECK_MESSAGE((sai != nullptr), "known scene: SAI surface exists for the Script");
+  CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-gen"),
+                "known scene: initialize() printed via Browser (end-to-end)");
+
+  // A few ticks must not crash (prepareEvents/eventsProcessed phases).
+  ctx.tick(1.0);
+  ctx.tick(2.0);
+  CHECK_MESSAGE((true), "known scene: ticks run without crash");
+
+  // Deliver an inputOnly-style event to the 'ping' handler; it prints
+  // value@timestamp, proving marshalling through the real ScriptSystem seam.
+  // mustEvaluate defaults FALSE, so the event is deferred until the batch
+  // flush — a tick drives runEventsProcessed() (post-cascade) which invokes it.
+  sys->deliverInputEvent(scripts[0], "ping", std::any(SFFloat(0.5f)),
+                         X3DFieldType::SFFloat, 3.0);
+  ctx.tick(3.0);
+  CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-genping=0.5@3"),
+                "known scene: ping handler received marshalled (value, timestamp)");
+}
+
+TEST_CASE("real corpus Scripts run without crashing") {
+  // real corpus: parse -> expand -> attach -> tick a handful of Script-bearing
+  // .x3d files; assert no crash and that the pipeline runs to completion.
+
+  // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
+  // bundled). Unset => base is empty => every slurp misses => graceful skip.
+  const char *corpusEnv = std::getenv("X3D_CORPUS_DIR");
+  const std::string base =
+      corpusEnv ? std::string(corpusEnv) +
+                      "/x3d-code/www.web3d.org/x3d/content/examples/Savage/"
+                : std::string();
+  const std::vector<std::string> files = {
+      "AircraftFixedWing/F18BlueAngelUnitedStates/CanopyExample.x3d",
+      "Weapons/SmallArms/RifleM24Example.x3d",
+      "AircraftFixedWing/F18BlueAngelUnitedStates/WheelsFrontExample.x3d",
+  };
+
+  int ran = 0;
+  for (const std::string &rel : files) {
+    std::string xml = slurp(base + rel);
+    if (xml.empty()) {
+      std::cout << "skip (missing corpus file): " << rel << "\n";
+      continue;
+    }
     runtime::Scene scene = parseAndExpand(xml);
-
     std::vector<Script *> scripts;
     for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
-    CHECK_MESSAGE((scripts.size() == 1), "known scene: one Script parsed from the graph");
 
     X3DExecutionContext ctx(scene.authorFields);
     auto backend = std::make_shared<EcmaScriptBackend>();
     auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
     ctx.addScriptSystem(sys);
     for (Script *s : scripts) sys->attach(s, ctx);
-
-    // initialize() ran at attach time; verify its print landed.
-    SaiContext *sai = sys->saiFor(scripts[0]);
-    CHECK_MESSAGE((sai != nullptr), "known scene: SAI surface exists for the Script");
-    CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-gen"),
-                  "known scene: initialize() printed via Browser (end-to-end)");
-
-    // A few ticks must not crash (prepareEvents/eventsProcessed phases).
+    ctx.tick(0.0);
     ctx.tick(1.0);
     ctx.tick(2.0);
-    CHECK_MESSAGE((true), "known scene: ticks run without crash");
-
-    // Deliver an inputOnly-style event to the 'ping' handler; it prints
-    // value@timestamp, proving marshalling through the real ScriptSystem seam.
-    // mustEvaluate defaults FALSE, so the event is deferred until the batch
-    // flush — a tick drives runEventsProcessed() (post-cascade) which invokes it.
-    sys->deliverInputEvent(scripts[0], "ping", std::any(SFFloat(0.5f)),
-                           X3DFieldType::SFFloat, 3.0);
-    ctx.tick(3.0);
-    CHECK_MESSAGE((sai && sai->log() == "init@x3d-cpp-genping=0.5@3"),
-                  "known scene: ping handler received marshalled (value, timestamp)");
+    ++ran;
+    std::cout << "corpus ok (" << scripts.size() << " Script(s), no crash): "
+              << rel << "\n";
   }
-
-  // real corpus: parse -> expand -> attach -> tick a handful of Script-bearing
-  // .x3d files; assert no crash and that the pipeline runs to completion.
-
-  {
-    // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
-    // bundled). Unset => base is empty => every slurp misses => graceful skip.
-    const char *corpusEnv = std::getenv("X3D_CORPUS_DIR");
-    const std::string base =
-        corpusEnv ? std::string(corpusEnv) +
-                        "/x3d-code/www.web3d.org/x3d/content/examples/Savage/"
-                  : std::string();
-    const std::vector<std::string> files = {
-        "AircraftFixedWing/F18BlueAngelUnitedStates/CanopyExample.x3d",
-        "Weapons/SmallArms/RifleM24Example.x3d",
-        "AircraftFixedWing/F18BlueAngelUnitedStates/WheelsFrontExample.x3d",
-    };
-
-    int ran = 0;
-    for (const std::string &rel : files) {
-      std::string xml = slurp(base + rel);
-      if (xml.empty()) {
-        std::cout << "skip (missing corpus file): " << rel << "\n";
-        continue;
-      }
-      runtime::Scene scene = parseAndExpand(xml);
-      std::vector<Script *> scripts;
-      for (auto &root : scene.rootNodes) collectScripts(root.get(), scripts);
-
-      X3DExecutionContext ctx(scene.authorFields);
-      auto backend = std::make_shared<EcmaScriptBackend>();
-      auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
-      ctx.addScriptSystem(sys);
-      for (Script *s : scripts) sys->attach(s, ctx);
-      ctx.tick(0.0);
-      ctx.tick(1.0);
-      ctx.tick(2.0);
-      ++ran;
-      std::cout << "corpus ok (" << scripts.size() << " Script(s), no crash): "
-                << rel << "\n";
-    }
-    // The conformance corpus is an optional local asset — it cannot be
-    // committed (licensing) and is absent in CI / fresh checkouts. When present
-    // we prove no-crash on real Script-bearing scenes; when absent we skip
-    // without failing. The known scene above already exercises the full
-    // parse -> attach -> tick -> event path deterministically, so coverage is
-    // preserved. Mirrors script_corpus_e2e + corpus_sweep (graceful skip).
-    if (ran == 0)
-      std::cout << "skip (no corpus files present): real-corpus robustness "
-                   "smoke not exercised\n";
-    else
-      std::cout << "corpus smoke: " << ran
-                << " real Script-bearing scene(s) ran without crash\n";
-  }
-
+  // The conformance corpus is an optional local asset — it cannot be
+  // committed (licensing) and is absent in CI / fresh checkouts. When present
+  // we prove no-crash on real Script-bearing scenes; when absent we skip
+  // without failing. The known scene above already exercises the full
+  // parse -> attach -> tick -> event path deterministically, so coverage is
+  // preserved. Mirrors script_corpus_e2e + corpus_sweep (graceful skip).
+  if (ran == 0)
+    std::cout << "skip (no corpus files present): real-corpus robustness "
+                 "smoke not exercised\n";
+  else
+    std::cout << "corpus smoke: " << ran
+              << " real Script-bearing scene(s) ran without crash\n";
 }

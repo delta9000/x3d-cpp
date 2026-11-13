@@ -22,7 +22,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }
@@ -31,7 +30,7 @@ SFVec3f transformTranslation(Transform &t) { return t.getTranslation(); }
 
 // The same node identity must resolve author state through the SAI's context,
 // never through another live context's table.
-void testAuthorFieldOwnerIsolation() {
+TEST_CASE("author field owner isolation") {
   Script script;
   X3DExecutionContext first;
   X3DExecutionContext second;
@@ -72,7 +71,7 @@ void testAuthorFieldOwnerIsolation() {
 }
 
 // field get/set round-trip, on the owning script's own node
-void testFieldRoundTrip() {
+TEST_CASE("field round trip") {
   X3DExecutionContext ctx;
   Transform target;
   target.setTranslation(SFVec3f{1, 2, 3});
@@ -104,7 +103,7 @@ void testFieldRoundTrip() {
 }
 
 // directOutput write-gate to a second node
-void testDirectOutputGate() {
+TEST_CASE("direct output gate") {
   // directOutput FALSE (default): cross-node write is rejected.
   {
     X3DExecutionContext ctx;
@@ -180,7 +179,7 @@ void testDirectOutputGate() {
 }
 
 // addRoute / deleteRoute gate + effect
-void testRouteGateAndEffect() {
+TEST_CASE("route gate and effect") {
   // FALSE: add/delete route both throw.
   {
     X3DExecutionContext ctx;
@@ -230,7 +229,7 @@ void testRouteGateAndEffect() {
 }
 
 // browser info
-void testBrowserInfo() {
+TEST_CASE("browser info") {
   X3DExecutionContext ctx;
   Script script;
   SaiContext sai(ctx, script, "x3d-cpp-gen", "4.0");
@@ -251,7 +250,7 @@ void testBrowserInfo() {
 }
 
 // the seam through the MockScriptEngine
-void testSeamWithMock() {
+TEST_CASE("seam with mock") {
   X3DExecutionContext ctx;
   Script script;
   script.setDirectOutputUnchecked(true);
@@ -302,13 +301,3 @@ void testSeamWithMock() {
 }
 
 } // namespace
-
-TEST_CASE("sai_context_test") {
-  testAuthorFieldOwnerIsolation();
-  testFieldRoundTrip();
-  testDirectOutputGate();
-  testRouteGateAndEffect();
-  testBrowserInfo();
-  testSeamWithMock();
-
-}

@@ -54,7 +54,7 @@ static std::vector<std::uint8_t> makeWav16(int rate, int channels, int frames) {
   return b;
 }
 
-static void testWav() {
+TEST_CASE("wav") {
   const DecodedAudio a = io::wav::decodeWav(makeWav16(8000, 2, 4000));
   CHECK_MESSAGE((a.ok), "wav: 16-bit stereo decodes");
   CHECK_MESSAGE((a.samples.size() == 4000), "wav: stereo downmixed to one sample per frame");
@@ -68,7 +68,7 @@ static void testWav() {
   CHECK_MESSAGE((!io::wav::decodeWav(trunc).ok), "wav: a truncated header is rejected");
 }
 
-static void testSoundClipScene() {
+TEST_CASE("sound clip scene") {
   auto clip = std::make_shared<AudioClip>();
   clip->setUrl(MFString{"missing.wav", "tone.wav"});
   auto snd = std::make_shared<Sound>();
@@ -118,7 +118,7 @@ static void testSoundClipScene() {
   CHECK_MESSAGE((rmsStereo(lr) < 1e-6), "scene: isPaused silences the clip");
 }
 
-static void testActivePitchStaysAtActivationRate() {
+TEST_CASE("active pitch stays at activation rate") {
   auto clip = std::make_shared<AudioClip>();
   clip->setUrl(MFString{"tone.wav"});
   auto snd = std::make_shared<Sound>();
@@ -146,7 +146,7 @@ static void testActivePitchStaysAtActivationRate() {
                 "scene: active AudioClip retains its activation pitch in the backend");
 }
 
-static void testMovieTextureSourceLifecycle() {
+TEST_CASE("movie texture source lifecycle") {
   auto movie = std::make_shared<MovieTexture>();
   movie->setUrl(MFString{"movie.mpg"});
   movie->setLoad(false);
@@ -211,7 +211,7 @@ static MFFloat makeRamp(std::size_t n) {
 // a BufferAudioSource (§16.4.5) feeds its authored PCM `buffer` into the
 // same Buffer node an AudioClip decodes into; playback follows the
 // MediaTimeSystem lifecycle, loop repeats, gain scales.
-static void testBufferAudioSourceScene() {
+TEST_CASE("buffer audio source scene") {
   const MFFloat ramp = makeRamp(8);
 
   // Non-loop: the ramp renders once — the lifecycle stops the node after one
@@ -288,7 +288,7 @@ static void testBufferAudioSourceScene() {
 
 // as modeled: numberOfChannels > 1 is interleaved and averaged down to
 // the Buffer node's mono contract; bufferDuration limits the seconds used.
-static void testBufferAudioSourceChannelsAndDuration() {
+TEST_CASE("buffer audio source channels and duration") {
   {
     auto src = std::make_shared<BufferAudioSource>();
     src->setBuffer(MFFloat{0.5f, 1.0f, 0.25f, 0.5f});
@@ -340,7 +340,7 @@ static void testBufferAudioSourceChannelsAndDuration() {
 // captured at activation, exactly like AudioClip.pitch. No authored sampleRate
 // means the buffer's seconds are unknowable, so the node plays until stopTime
 // (the AudioClip unknown-duration precedent) and stays active across the test.
-static void testBufferAudioSourceRateCapture() {
+TEST_CASE("buffer audio source rate capture") {
   auto src = std::make_shared<BufferAudioSource>();
   src->setBuffer(makeRamp(8));
   src->setPlaybackRate(2.0f);
@@ -373,7 +373,7 @@ static void testBufferAudioSourceRateCapture() {
 // ADR-0051 detach: a MovieTexture whose audio is still pending (load FALSE)
 // is removed with its Inline and freed; later ticks must not touch it (the
 // sanitizer build turns a stale pending entry into a use-after-free report).
-static void testDetachDropsPendingMovie() {
+TEST_CASE("detach drops pending movie") {
   auto movie = std::make_shared<MovieTexture>();
   movie->setUrl(MFString{"movie.mpg"});
   movie->setLoad(false);
@@ -397,15 +397,7 @@ static void testDetachDropsPendingMovie() {
   CHECK_MESSAGE((fetches == 0), "a detached pending movie is never retried");
 }
 
-TEST_CASE("sound_immersive_test") {
+TEST_CASE("shared immersive fixtures on the builtin DSP backend") {
   x3d::test::runImmersiveFixtures([] { return std::make_shared<BuiltinDspBackend>(); },
                                   [](bool ok, const char *msg) { CHECK_MESSAGE((ok), msg); });
-  testWav();
-  testSoundClipScene();
-  testBufferAudioSourceScene();
-  testBufferAudioSourceChannelsAndDuration();
-  testBufferAudioSourceRateCapture();
-  testActivePitchStaysAtActivationRate();
-  testMovieTextureSourceLifecycle();
-  testDetachDropsPendingMovie();
 }

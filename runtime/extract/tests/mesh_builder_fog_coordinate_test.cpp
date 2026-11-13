@@ -29,7 +29,6 @@ using namespace x3d::nodes;
 using x3d::test::setF;
 
 namespace {
-
 std::shared_ptr<X3DNode> fogCoordinate(std::vector<float> depth) {
   auto n = createX3DNode("FogCoordinate");
   setF(n, "depth", std::any(std::move(depth)));

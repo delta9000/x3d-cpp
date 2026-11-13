@@ -38,7 +38,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // Backend factory list. With X3D_CPP_BUILD_QUICKJS=ON, both the Duktape backend
 // (x3d_ecmascript_backend — always built) and the QuickJS backend are linked.
 // Each factory returns a fresh engine so no state leaks between fixtures.
@@ -428,47 +427,49 @@ void swap(const std::string &fixture,
 
 } // namespace
 
-TEST_CASE("quickjs_swap_test") {
-  const std::string dataDir =
-      X3D_TEST_DATA_DIR;
-
+TEST_CASE("F1 author output drives a ROUTE identically on both backends") {
   swap("F1 author-output-drives-route", runF1);
+}
+
+TEST_CASE("F2 inputOutput accumulation matches on both backends") {
   swap("F2 inputOutput-accumulation", runF2);
+}
+
+TEST_CASE("F3 computed interpolation matches on both backends") {
   swap("F3 computed-interpolation", runF3);
+}
 
-  // F3 anti-vacuous content assertion: the duktape reference trace must contain
-  // the expected interpolated endpoints (2 at f=0, 10 at f=1) — proves the
-  // handler computed the value, not that both backends silently produced zeros.
-  {
-    Trace ref = runF3(kBackends[0]);
-    bool sawLo = false, sawHi = false;
-    for (const auto &line : ref) {
-      if (line.find("val=2 ") != std::string::npos ||
-          line.rfind("val=2", 0) == 0 || line.find("val=2 |") != std::string::npos)
-        sawLo = true;
-      if (line.find("val=10 ") != std::string::npos ||
-          line.find("val=10 |") != std::string::npos)
-        sawHi = true;
-    }
-    CHECK_MESSAGE((sawLo), "F3: computed value reached the lo endpoint (val=2) — real arithmetic");
-    CHECK_MESSAGE((sawHi), "F3: computed value reached the hi endpoint (val=10) — real arithmetic");
+TEST_CASE("F3 reference trace reaches both interpolation endpoints") {
+  // The duktape reference trace must contain the expected interpolated
+  // endpoints (2 at f=0, 10 at f=1): the handler computed the value, rather
+  // than both backends silently producing zeros.
+  Trace ref = runF3(kBackends[0]);
+  bool sawLo = false, sawHi = false;
+  for (const auto &line : ref) {
+    if (line.find("val=2 ") != std::string::npos ||
+        line.rfind("val=2", 0) == 0 || line.find("val=2 |") != std::string::npos)
+      sawLo = true;
+    if (line.find("val=10 ") != std::string::npos ||
+        line.find("val=10 |") != std::string::npos)
+      sawHi = true;
   }
+  CHECK_MESSAGE((sawLo), "F3: computed value reached the lo endpoint (val=2) — real arithmetic");
+  CHECK_MESSAGE((sawHi), "F3: computed value reached the hi endpoint (val=10) — real arithmetic");
+}
 
-  // F4: the real authored CDATA fixture through the codec path, both backends.
-  {
-    bool loadedD = false, loadedQ = false;
-    Trace tD = runF4(kBackends[0], dataDir, loadedD);
-    Trace tQ = runF4(kBackends[1], dataDir, loadedQ);
-    CHECK_MESSAGE((loadedD && loadedQ), ("F4 corpus-cdata: fixture parsed + LOADED under both backends"));
-    if (loadedD && loadedQ) {
-      CHECK_MESSAGE((!tD.empty()), "F4 corpus-cdata: duktape trace non-empty");
-      bool eq = tracesEqual("F4 corpus-cdata", tD, tQ);
-      CHECK_MESSAGE((eq), "F4 corpus-cdata: duktape trace == quickjs trace (observable parity)");
-      // Content guard: status must actually toggle (true then false), proving
-      // the authored handler ran identically and was not a vacuous all-unset.
-      CHECK_MESSAGE((tD.size() == 2 && tD[0].find("status=true") != std::string::npos &&
-                tD[1].find("status=false") != std::string::npos), "F4 corpus-cdata: status toggled true->false (authored handler ran)");
-    }
+TEST_CASE("F4 authored CDATA fixture matches on both backends") {
+  const std::string dataDir = X3D_TEST_DATA_DIR;
+  bool loadedD = false, loadedQ = false;
+  Trace tD = runF4(kBackends[0], dataDir, loadedD);
+  Trace tQ = runF4(kBackends[1], dataDir, loadedQ);
+  CHECK_MESSAGE((loadedD && loadedQ), ("F4 corpus-cdata: fixture parsed + LOADED under both backends"));
+  if (loadedD && loadedQ) {
+    CHECK_MESSAGE((!tD.empty()), "F4 corpus-cdata: duktape trace non-empty");
+    bool eq = tracesEqual("F4 corpus-cdata", tD, tQ);
+    CHECK_MESSAGE((eq), "F4 corpus-cdata: duktape trace == quickjs trace (observable parity)");
+    // Content guard: status must actually toggle (true then false), proving
+    // the authored handler ran identically and was not a vacuous all-unset.
+    CHECK_MESSAGE((tD.size() == 2 && tD[0].find("status=true") != std::string::npos &&
+              tD[1].find("status=false") != std::string::npos), "F4 corpus-cdata: status toggled true->false (authored handler ran)");
   }
-
 }

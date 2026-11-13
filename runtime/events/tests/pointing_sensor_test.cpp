@@ -34,7 +34,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
 
 // Reflection field setter / child-append helpers (mirror m2d_tick_test).

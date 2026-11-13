@@ -755,8 +755,8 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   // If no plane normal was ever valid (straight / 2-point spine): the spine
   // tangent fixes the SCP plane normal but leaves the in-plane X/Z free. Per
   // ADR-0031, align them to the local model axes: Y = unit tangent,
-  // Z = vec3::normalizeOrZero(modelZ - (modelZ·Y)Y) (fall back to modelX when Y ∥ modelZ),
-  // X = vec3::normalizeOrZero(Y × Z), re-derive Z = X × Y. No arbitrary ref × Y sign flip.
+  // Z = normalize(modelZ - (modelZ·Y)Y) (fall back to modelX when Y ∥ modelZ),
+  // X = normalize(Y × Z), re-derive Z = X × Y. No arbitrary ref × Y sign flip.
   if (!haveZ) {
     const SFVec3f y = axY[0]; // unit spine tangent.
     const auto projPerp = [&](const SFVec3f &v) {

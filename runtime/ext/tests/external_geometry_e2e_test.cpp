@@ -96,12 +96,12 @@ static std::shared_ptr<X3DNode> makeExtGeomShapeScene(const std::string& url) {
     return root;
 }
 
-TEST_CASE("external_geometry_e2e_test") {
+TEST_CASE("ExternalGeometry through SceneExtractor") {
     const std::vector<std::uint8_t> stlBytes = makeTwoTriangleStl();
     const std::uint32_t expectedVerts = 2u * 3u; // N*3
 
-    // (1) packed + (2) cache
-    {
+    SUBCASE("STL bytes are packed once and then cached") {
+        // (1) packed + (2) cache
         int byteCalls = 0;
         AssetResolver stub = [&](const std::string& url, AssetKind kind)
             -> AssetResult {
@@ -148,8 +148,8 @@ TEST_CASE("external_geometry_e2e_test") {
         REQUIRE((byteCalls == 1 && "second extract must reuse cache — no new fetch"));
     }
 
-    // (3) pending / skip
-    {
+    SUBCASE("a url that never resolves emits no item") {
+        // (3) pending / skip
         AssetResolver pendingStub = [&](const std::string& /*url*/, AssetKind)
             -> AssetResult {
             return AssetResult::makePending(); // never resolves

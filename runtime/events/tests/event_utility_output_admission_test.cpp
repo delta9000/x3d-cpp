@@ -20,7 +20,6 @@ using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
-
 // Register the ordinary scene-owned systems, preserving their callback guards.
 // No test replaces a utility input handler or reaches its private index state.
 struct Utilities {
@@ -225,7 +224,6 @@ void sequencerRepair(Value first, Value last) {
 } // namespace
 
 TEST_SUITE("event utility output admission") {
-
 TEST_CASE("BooleanTrigger admits repeated equal and distinct time inputs once") {
   for (bool identical : {false, true}) {
     INFO("identical times: " << identical);

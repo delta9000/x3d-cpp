@@ -23,7 +23,7 @@ The Interpolator System animates scene-graph field values by responding to `set_
 | `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
 | `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). On attach they initialize output readback from the first authored keyValue without sending an event; their `set_fraction` handlers post later `value_changed` events through the cascade. |
 | `runtime/events/SplineInterpolatorSystem.hpp` | Three concrete `System` subclasses for the non-linear family: `SplineInterpolatorSystem<NodeT,ValueT>` (Hermite spline), `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` (emits `modifiedFraction_changed`). |
-| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `attachInterpolators(scene, ctx)` (the production caller, defined in `runtime/events/X3DSceneBridge.hpp`) walks the scene and calls each system's `attach` on every node. |
+| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `attachInterpolators(scene, ctx)` (the production caller, declared in `runtime/events/X3DSceneBridge.hpp` and defined in `X3DSceneBridge.cpp`) walks the scene and calls each system's `attach` on every node. |
 | `runtime/events/NurbsInterpolatorSystem.hpp` | Three §27 systems reuse `runtime/extract/NurbsEval.hpp` for curve positions, tangent orientations, and surface positions/normals. |
 
 ## Interfaces and seams
@@ -110,7 +110,7 @@ float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
 
 - [TimeSensor System](system-time.md) as upstream source — in production, a TimeSensor emits `fraction_changed` (an `SFFloat`), which is ROUTEd to an interpolator's `set_fraction`. The Interpolator System does not depend on TimeSensor directly; the ROUTE graph wires them.
 
-- `attachInterpolators` scene-walk — `InterpolatorRegistration.hpp` provides `makeInterpolatorSystems()`. The production caller `attachInterpolators` in `runtime/events/X3DSceneBridge.hpp` offers every node in the scene to every system's `attach`; each system filters by `dynamic_cast<NodeT*>`, so the walk is safe to offer all nodes.
+- `attachInterpolators` scene-walk — `InterpolatorRegistration.hpp` provides `makeInterpolatorSystems()`. The production caller `attachInterpolators` in `runtime/events/X3DSceneBridge.cpp` offers every node in the scene to every system's `attach`; each system filters by `dynamic_cast<NodeT*>`, so the walk is safe to offer all nodes.
 
 ### Spec-conformance annotations
 

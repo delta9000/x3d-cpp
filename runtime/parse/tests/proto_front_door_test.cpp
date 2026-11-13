@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-static std::string g_dataDir = "runtime/parse/tests/data/proto";
+static std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 static bool hasRootNamed(const x3d::runtime::X3DDocument &doc,
                          const std::string &typeName) {
@@ -38,7 +38,7 @@ static bool hasRootNamed(const x3d::runtime::X3DDocument &doc,
 }
 
 // Local PROTO expands end-to-end through the in-memory front door.
-static void frontDoorLocalExpandTest() {
+TEST_CASE("front door local expand test") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='P'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -51,7 +51,7 @@ static void frontDoorLocalExpandTest() {
 // A PROTO has one DEF table for its interface and body, isolated from the
 // enclosing scene and from a nested PROTO. Expansion preserves aliases within
 // each instance but gives separate instances independent copies.
-static void declarationDefScopeTest() {
+TEST_CASE("declaration def scope test") {
   const struct {
     x3d::codec::Encoding encoding;
     const char *text;
@@ -116,7 +116,7 @@ static void declarationDefScopeTest() {
   }
 }
 
-static void nestedDeclarationShadowingTest() {
+TEST_CASE("nested declaration shadowing test") {
   const struct {
     x3d::codec::Encoding encoding;
     const char *text;
@@ -170,20 +170,20 @@ static void nestedDeclarationShadowingTest() {
 
 // EXTERN resolves a sibling file via the default local-file resolver, with the
 // base directory derived from the parsed file's path.
-static void frontDoorExternResolveTest() {
+TEST_CASE("front door extern resolve test") {
   auto doc = x3d::codec::parseFile(g_dataDir + "/main.x3d");
   REQUIRE((hasRootNamed(doc, "Box")));
 }
 
 // A mutually-referential EXTERN cycle must terminate (bounded, no hang).
-static void frontDoorExternCycleTest() {
+TEST_CASE("front door extern cycle test") {
   auto doc = x3d::codec::parseFile(g_dataDir + "/cycleA.x3d");
   // We only require that parsing returns at all. The cycle resolves to nothing
   // concrete, so no Box is spliced; the key property is termination.
   (void)doc;
 }
 
-static void sourceUnitProvenanceTest() {
+TEST_CASE("source unit provenance test") {
   const std::string parentHead =
       "<head><unit category='length' name='kilometre' "
       "conversionFactor='1000'/></head>";
@@ -278,7 +278,7 @@ static void sourceUnitProvenanceTest() {
   REQUIRE((roundtrip.head.units[0].name == "kilometre"));
 }
 
-static void authoredScalarPresenceTest() {
+TEST_CASE("authored scalar presence test") {
   const struct {
     x3d::codec::Encoding encoding;
     const char *text;
@@ -392,7 +392,7 @@ static void authoredScalarPresenceTest() {
   REQUIRE((nestedLiteral.scene.authoredScalarFields.contains(literalBox, "size")));
 }
 
-static void directNestedDeclarationWriteTest() {
+TEST_CASE("direct nested declaration write test") {
   const char *source =
       "<X3D version='4.0'><head><unit category='length' name='metre' "
       "conversionFactor='2'/></head><Scene>"
@@ -473,7 +473,7 @@ static void directNestedDeclarationWriteTest() {
   REQUIRE((withNull.scene.protoDeclarations[1]->body.nodes.size() == 2));
 }
 
-static void declarationAliasWriteTest() {
+TEST_CASE("declaration alias write test") {
   auto doc = x3d::codec::parseDocument(
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoInterface>"
       "<field name='a' type='SFNode' accessType='initializeOnly'>"
@@ -513,7 +513,7 @@ static void declarationAliasWriteTest() {
   }
 }
 
-static void nodeContainedDeclarationPlacementTest() {
+TEST_CASE("node contained declaration placement test") {
   const std::string classic =
       "#X3D V4.0 utf8\n"
       "PROTO Choice [ ] { Group { } }\n"
@@ -568,7 +568,7 @@ static void nodeContainedDeclarationPlacementTest() {
   }
 }
 
-static void nodeContainedInterleavedFieldTest() {
+TEST_CASE("node contained interleaved field test") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='Choice'><ProtoBody><Group/></ProtoBody></ProtoDeclare>"
@@ -625,7 +625,7 @@ static void nodeContainedInterleavedFieldTest() {
 
 // Classic declarations cannot occur inside an MFNode list. A literal prefix
 // can move after them without changing prototype lookup or child order.
-static void literalPrefixDeclarationRoundTripTest() {
+TEST_CASE("literal prefix declaration round trip test") {
   auto original = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Wrap'><ProtoBody><Group>
 <Group DEF='Before'><Shape/></Group>
@@ -655,7 +655,7 @@ static void literalPrefixDeclarationRoundTripTest() {
   }
 }
 
-static void descendantPrototypeHoistGuardTest() {
+TEST_CASE("descendant prototype hoist guard test") {
   auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Wrap'><ProtoBody><Group>
@@ -672,7 +672,7 @@ static void descendantPrototypeHoistGuardTest() {
   REQUIRE((rejected)); // Hoisting would rebind the descendant to Transform.
 }
 
-static void nodeContainedMutationTest() {
+TEST_CASE("node contained mutation test") {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoBody><Group>"
       "<Group DEF='Shared'/><Group USE='Shared'/>"
@@ -700,7 +700,7 @@ static void nodeContainedMutationTest() {
   REQUIRE((sequence->second[2].proto && sequence->second[2].proto->name == "Unused"));
 }
 
-static void nodeContainedReorderTest() {
+TEST_CASE("node contained reorder test") {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoBody><Group>"
       "<Shape DEF='A'/><Shape DEF='B'/>"
@@ -737,7 +737,7 @@ static void nodeContainedReorderTest() {
   }
 }
 
-static void repeatedNodeFieldJsonGuardTest() {
+TEST_CASE("repeated node field json guard test") {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'><ProtoBody><Group>"
       "<Group/><MetadataString containerField='metadata'/>"
@@ -753,7 +753,7 @@ static void repeatedNodeFieldJsonGuardTest() {
   REQUIRE((rejected));
 }
 
-static void interfaceDefaultContainedProtoTest() {
+TEST_CASE("interface default contained proto test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Outer'><ProtoInterface><field name='parts' type='MFNode' accessType='inputOutput'>
 <Group DEF='DefaultGroup'><ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
@@ -812,7 +812,7 @@ Outer { }
     check(x3d::codec::parseDocument(output.text, output.encoding));
 }
 
-static void sfNodeDefaultContainedProtoTest() {
+TEST_CASE("sf node default contained proto test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Outer'><ProtoInterface><field name='proxy' type='SFNode' accessType='inputOutput'>
 <Group><ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
@@ -850,7 +850,7 @@ PROTO Outer [ inputOutput SFNode proxy Group {
                                    x3d::codec::Encoding::JSON));
 }
 
-static void directDefaultInstanceTest() {
+TEST_CASE("direct default instance test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Group><Shape/></Group></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Outer'><ProtoInterface>
@@ -932,7 +932,7 @@ Outer { }
   REQUIRE((sf.protoWarnings.empty()));
 }
 
-static void unresolvedDirectDefaultRoundTripTest() {
+TEST_CASE("unresolved direct default round trip test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ExternProtoDeclare name='Remote' url='"missing.x3d#Remote"'/>
 <ProtoDeclare name='Outer'><ProtoInterface>
@@ -970,7 +970,7 @@ static void unresolvedDirectDefaultRoundTripTest() {
   REQUIRE((retained->instance.externDeclaration));
 }
 
-static void directDefaultInstanceIsForwardTest() {
+TEST_CASE("direct default instance is forward test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoInterface>
 <field name='items' type='MFNode' accessType='inputOutput'/></ProtoInterface>
@@ -998,7 +998,7 @@ static void directDefaultInstanceIsForwardTest() {
   REQUIRE((doc.protoWarnings.empty()));
 }
 
-static void instanceNodeValueRootTest() {
+TEST_CASE("instance node value root test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Holder'><ProtoInterface>
@@ -1053,7 +1053,7 @@ Outer { value Holder { payload Leaf { } } }
                                   x3d::codec::Encoding::JSON));
 }
 
-static void instanceNodeValueMixedTest() {
+TEST_CASE("instance node value mixed test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Outer'><ProtoInterface>
@@ -1100,7 +1100,7 @@ static void instanceNodeValueMixedTest() {
                                   x3d::codec::Encoding::JSON));
 }
 
-static void instanceNodeValueSharedCallerTest() {
+TEST_CASE("instance node value shared caller test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Outer'><ProtoInterface>
@@ -1183,7 +1183,7 @@ DEF O4 Outer { }
                                   x3d::codec::Encoding::JSON));
 }
 
-static void unresolvedInstanceNodeValueTest() {
+TEST_CASE("unresolved instance node value test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ExternProtoDeclare name='Remote' url='"missing.x3d#Remote"'/>
 <ProtoDeclare name='Outer'><ProtoInterface>
@@ -1222,10 +1222,9 @@ static void unresolvedInstanceNodeValueTest() {
   parse(x3d::codec::CanonicalXmlWriter().writeDocument(original), x3d::codec::Encoding::XML);
   parse(x3d::codec::VrmlWriter().writeDocument(original), x3d::codec::Encoding::ClassicVRML);
   parse(x3d::codec::JsonWriter().writeDocument(original), x3d::codec::Encoding::JSON);
-
 }
 
-static void sceneRootProtoOrderTest() {
+TEST_CASE("scene root proto order test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Group/></ProtoBody></ProtoDeclare>
 <ProtoInstance name='Leaf' DEF='First'/><Shape DEF='Middle'/>
@@ -1281,7 +1280,7 @@ Leaf { }
                                   x3d::codec::Encoding::JSON));
 }
 
-static void unresolvedRootProtoOrderTest() {
+TEST_CASE("unresolved root proto order test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ExternProtoDeclare name='Remote' url='"missing.x3d#Remote"'/>
 <Shape DEF='Before'/><ProtoInstance name='Remote' DEF='Missing'/>
@@ -1343,7 +1342,7 @@ static void unresolvedRootProtoOrderTest() {
   parseChild(x3d::codec::JsonWriter().writeDocument(child), x3d::codec::Encoding::JSON);
 }
 
-static void rootProtoMutationTest() {
+TEST_CASE("root proto mutation test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Group/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Alt'><ProtoBody><Shape/></ProtoBody></ProtoDeclare>
@@ -1417,7 +1416,7 @@ static void rootProtoMutationTest() {
   REQUIRE((warnings.empty()));
 }
 
-static void sceneChildProtoOrderTest() {
+TEST_CASE("scene child proto order test") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Leaf'><ProtoBody><Group/></ProtoBody></ProtoDeclare>
 <Group DEF='Parent'><ProtoInstance name='Leaf' DEF='First'/><Shape/>
@@ -1480,7 +1479,7 @@ DEF Parent Group { children [ DEF First Leaf { } Shape { }
   REQUIRE((warnings.empty()));
 }
 
-static void firstProtoViewpointBindsTest() {
+TEST_CASE("first proto viewpoint binds test") {
   const char *xmlProtoFirst = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='VP'><ProtoBody><Viewpoint/></ProtoBody></ProtoDeclare>
 <ProtoInstance name='VP' DEF='First'/><Viewpoint DEF='Second'/></Scene></X3D>)";
@@ -1525,38 +1524,4 @@ DEF First VP { }
                                   x3d::codec::Encoding::ClassicVRML), "First");
   check(x3d::codec::parseDocument(x3d::codec::JsonWriter().writeDocument(protoFirst),
                                   x3d::codec::Encoding::JSON), "First");
-}
-
-TEST_CASE("proto_front_door_test") {
-  g_dataDir = X3D_TEST_DATA_DIR;
-  frontDoorLocalExpandTest();
-  declarationDefScopeTest();
-  nestedDeclarationShadowingTest();
-  frontDoorExternResolveTest();
-  frontDoorExternCycleTest();
-  sourceUnitProvenanceTest();
-  authoredScalarPresenceTest();
-  directNestedDeclarationWriteTest();
-  declarationAliasWriteTest();
-  nodeContainedDeclarationPlacementTest();
-  nodeContainedInterleavedFieldTest();
-  literalPrefixDeclarationRoundTripTest();
-  descendantPrototypeHoistGuardTest();
-  nodeContainedMutationTest();
-  nodeContainedReorderTest();
-  repeatedNodeFieldJsonGuardTest();
-  interfaceDefaultContainedProtoTest();
-  sfNodeDefaultContainedProtoTest();
-  directDefaultInstanceTest();
-  unresolvedDirectDefaultRoundTripTest();
-  directDefaultInstanceIsForwardTest();
-  instanceNodeValueRootTest();
-  instanceNodeValueMixedTest();
-  instanceNodeValueSharedCallerTest();
-  unresolvedInstanceNodeValueTest();
-  sceneRootProtoOrderTest();
-  unresolvedRootProtoOrderTest();
-  rootProtoMutationTest();
-  sceneChildProtoOrderTest();
-  firstProtoViewpointBindsTest();
 }

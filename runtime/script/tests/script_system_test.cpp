@@ -26,7 +26,6 @@ using namespace x3d::nodes;
 using x3d::runtime::test::MockScriptEngine;
 
 namespace {
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }
@@ -49,7 +48,7 @@ Script makeScript(bool directOutput = false, bool mustEvaluate = true) {
 }
 
 // load -> initialize happens once, before any event
-void testInitializeBeforeFirstEvent() {
+TEST_CASE("initialize before first event") {
   X3DExecutionContext ctx;
   Script script = makeScript();
 
@@ -72,7 +71,7 @@ void testInitializeBeforeFirstEvent() {
 }
 
 // load=FALSE must not load/initialize at attach time
-void testLoadFalseDefersLoad() {
+TEST_CASE("load false defers load") {
   X3DExecutionContext ctx;
   Script script = makeScript();
   script.setLoad(false);
@@ -86,7 +85,7 @@ void testLoadFalseDefersLoad() {
 }
 
 // prepareEvents once per timestamp, before routes
-void testPrepareEventsPhasing() {
+TEST_CASE("prepare events phasing") {
   X3DExecutionContext ctx;
   Script script = makeScript();
 
@@ -105,7 +104,7 @@ void testPrepareEventsPhasing() {
 }
 
 // inputOnly -> invoke; outputOnly write -> cascade at trigger timestamp
-void testInputInvokeAndOutputTimestamp() {
+TEST_CASE("input invoke and output timestamp") {
   X3DExecutionContext ctx;
   Script script = makeScript(/*directOutput=*/true);
   Transform target;
@@ -139,7 +138,7 @@ void testInputInvokeAndOutputTimestamp() {
 }
 
 // eventsProcessed runs once after a batch, only for receivers
-void testEventsProcessedAfterBatch() {
+TEST_CASE("events processed after batch") {
   X3DExecutionContext ctx;
   Script script = makeScript();
 
@@ -178,7 +177,7 @@ void testEventsProcessedAfterBatch() {
 }
 
 // set_url: shutdown old, then load + initialize new
-void testSetUrlReload() {
+TEST_CASE("set url reload") {
   X3DExecutionContext ctx;
   Script script = makeScript();
 
@@ -207,7 +206,7 @@ void testSetUrlReload() {
 }
 
 // directOutput gate honored end-to-end through the system
-void testDirectOutputGate() {
+TEST_CASE("direct output gate") {
   X3DExecutionContext ctx;
   Script script = makeScript(/*directOutput=*/false);  // FALSE
   Transform other;
@@ -234,7 +233,7 @@ void testDirectOutputGate() {
 }
 
 // mustEvaluate: TRUE eager, FALSE deferred to the batch flush
-void testMustEvaluateEagerVsLazy() {
+TEST_CASE("must evaluate eager vs lazy") {
   // mustEvaluate = TRUE: invoke happens immediately on delivery.
   {
     X3DExecutionContext ctx;
@@ -276,7 +275,7 @@ void testMustEvaluateEagerVsLazy() {
 // §29.2.3 shutdown() runs when the world is unloaded. Destroying the
 // ScriptSystem (its execution context going away) is that teardown, so every
 // still-loaded script must be shut down.
-void testShutdownOnTeardown() {
+TEST_CASE("shutdown on teardown") {
   X3DExecutionContext ctx;
   Script script;
   script.setSourceCode("function shutdown() {}"); // non-empty -> the mock loads it
@@ -310,7 +309,7 @@ static extract::AssetResult readyWith(const std::string &s) {
       std::vector<std::uint8_t>(s.begin(), s.end()));
 }
 
-void testExternalUrlFetch() {
+TEST_CASE("external url fetch") {
   // 1. A Ready external url is fetched and loaded.
   {
     X3DExecutionContext ctx;
@@ -391,7 +390,7 @@ void testExternalUrlFetch() {
 }
 
 // autoRefresh / autoRefreshTimeLimit
-void testAutoRefresh() {
+TEST_CASE("auto refresh") {
   // 1. autoRefresh=0 (default) never reloads.
   {
     X3DExecutionContext ctx;
@@ -451,7 +450,7 @@ void testAutoRefresh() {
 // ISO/IEC 19775-1 §29.2: an event arriving at a Script's inputOnly field invokes
 // the function of that name, within the same cascade, at the current timestamp;
 // eventsProcessed() follows once the batch drains. No embedder bridging.
-void testRoutedEventInvokesHandler() {
+TEST_CASE("routed event invokes handler") {
   X3DExecutionContext ctx;
   Script script = makeScript();
   Transform source;
@@ -491,20 +490,4 @@ void testRoutedEventInvokesHandler() {
   CHECK_MESSAGE((engine->count("invoke") == 2),
                 "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
   ctx.authorFields().erase(script);
-}
-
-TEST_CASE("script_system_test") {
-  testShutdownOnTeardown();
-  testInitializeBeforeFirstEvent();
-  testLoadFalseDefersLoad();
-  testPrepareEventsPhasing();
-  testInputInvokeAndOutputTimestamp();
-  testEventsProcessedAfterBatch();
-  testSetUrlReload();
-  testDirectOutputGate();
-  testMustEvaluateEagerVsLazy();
-  testRoutedEventInvokesHandler();
-  testExternalUrlFetch();
-  testAutoRefresh();
-
 }

@@ -3,7 +3,7 @@
 #include "../HttpResolver.cpp"
 
 
-TEST_CASE("http_address_guard_test") {
+TEST_CASE("special-purpose IPv4 ranges are blocked in every IPv6 embedding") {
   using namespace x3d::runtime::io::curl;
   for (std::uint32_t address : {
            0xE0000000u, 0xEFFFFFFFu, // multicast endpoints
@@ -29,6 +29,10 @@ TEST_CASE("http_address_guard_test") {
       REQUIRE((isBlockedSockaddr(reinterpret_cast<const sockaddr*>(&v6))));
     }
   }
+}
+
+TEST_CASE("addresses just outside the blocked ranges are allowed") {
+  using namespace x3d::runtime::io::curl;
   for (std::uint32_t address : {0xDFFFFFFFu, 0xC0000100u,
                                 0xC611FFFFu, 0xC6140000u, 0x08080808u})
     REQUIRE((!isBlockedV4(address)));

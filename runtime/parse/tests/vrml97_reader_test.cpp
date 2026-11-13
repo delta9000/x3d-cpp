@@ -59,12 +59,11 @@ using x3d::codec::Encoding;
 using x3d::codec::Vrml97Reader;
 
 namespace {
-
 bool approx(double a, double b, double eps = 1e-4) {
   return std::fabs(a - b) <= eps;
 }
 
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
@@ -105,7 +104,7 @@ void collectTypes(const std::shared_ptr<X3DNode> &n,
   }
 }
 // (1) Dialect-table tripwire: every mapped X3D target must really exist.
-void testDialectTableResolves() {
+TEST_CASE("dialect table resolves") {
   // VRML97 node names resolve directly through the X3D factory.
   for (const char *t :
        {"Shape", "Transform", "Group", "Switch", "LOD", "WorldInfo",
@@ -133,7 +132,7 @@ void testDialectTableResolves() {
             "translation"), "dialect: unmapped field passes through unchanged");
 }
 // (2) Corpus fixture: NewShape.wrl — minimal PROTO + instance + Switch/Group.
-void testNewShapeFixture() {
+TEST_CASE("new shape fixture") {
   Vrml97Reader reader;
   reader.setStrict(true); // must parse cleanly
   runtime::X3DDocument doc =
@@ -162,7 +161,7 @@ void testNewShapeFixture() {
   CHECK_MESSAGE((types.count("WorldInfo") && types.count("NavigationInfo")), ("newshape: WorldInfo + NavigationInfo present"));
 }
 // (2) Corpus fixture: Rollers.wrl — DEF/USE + ROUTE + interpolators.
-void testRollersFixture() {
+TEST_CASE("rollers fixture") {
   Vrml97Reader reader;
   reader.setStrict(true);
   runtime::X3DDocument doc =
@@ -204,7 +203,7 @@ void testRollersFixture() {
       CHECK_MESSAGE((r.from.lock().get() == ts.get()), "rollers: ROUTE.from resolved to the TimeSensor node");
 }
 // (2) Corpus fixture: TranslationTestScene.wrl — PROTO + Billboard + instance.
-void testTranslationFixture() {
+TEST_CASE("translation fixture") {
   Vrml97Reader reader;
   runtime::X3DDocument doc =
       reader.readDocument(readFile(g_dataDir + "/TranslationTestScene.wrl"));
@@ -217,7 +216,7 @@ void testTranslationFixture() {
 // (2) Corpus fixtures: Chasers.wrl / Dampers.wrl — PROTO libraries with inline
 // Script nodes carrying IS-bound interface declarations and multi-line
 // vrmlscript: url strings. The point is they parse cleanly end-to-end.
-void testProtoLibraryFixtures() {
+TEST_CASE("proto library fixtures") {
   for (const char *name : {"Chasers.wrl", "Dampers.wrl"}) {
     Vrml97Reader reader;
     runtime::X3DDocument doc =
@@ -230,7 +229,7 @@ void testProtoLibraryFixtures() {
 }
 // (3) Hand-authored: TRUE/FALSE + access-keyword aliases (already in the shared
 // base, asserted here through the VRML97 entry point).
-void testBooleansAndAccessAliases() {
+TEST_CASE("booleans and access aliases") {
   const std::string src = "#VRML V2.0 utf8\n"
                           "DEF TS TimeSensor { loop TRUE enabled FALSE }\n"
                           "PROTO P [\n"
@@ -262,7 +261,7 @@ void testBooleansAndAccessAliases() {
   }
 }
 // (3) Hand-authored: the LOD.level / Switch.choice -> children field aliases.
-void testFieldAliases() {
+TEST_CASE("field aliases") {
   const std::string src = "#VRML V2.0 utf8\n"
                           "DEF L LOD {\n"
                           "  range [ 10 50 ]\n"
@@ -290,7 +289,7 @@ void testFieldAliases() {
 }
 // (3) Hand-authored: VRML 1.0 is rejected; unknown node/field collected as a
 // warning (and strict mode promotes it to a throw).
-void testHeaderRejectionAndWarnings() {
+TEST_CASE("header rejection and warnings") {
   // VRML 1.0 header -> hard error.
   {
     Vrml97Reader reader;
@@ -345,7 +344,7 @@ void testHeaderRejectionAndWarnings() {
 }
 // (4) Front door: parseDocument sniffs VRML97; makeReader yields a
 // Vrml97Reader; gzip is detected and refused.
-void testFrontDoor() {
+TEST_CASE("front door") {
   const std::string src = "#VRML V2.0 utf8\nShape { geometry Cylinder {} }\n";
   runtime::X3DDocument doc = codec::parseDocument(src);
   CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "frontdoor: parseDocument sniffs VRML97 and parses it");
@@ -366,7 +365,7 @@ void testFrontDoor() {
 // coordinate list assigned to an SFNode-typed proto field — must parse without
 // throwing `expected node type name, got '['`. The EXTERNPROTO is declared, the
 // instance carried, and the Shape still produced.
-void testRecoverableMalformation() {
+TEST_CASE("recoverable malformation") {
   const std::string src =
       "#VRML V2.0 utf8\n"
       "Shape {\n"
@@ -402,7 +401,7 @@ void testRecoverableMalformation() {
 // closed, list consumes the ']') must apply through Vrml97Reader too, and must
 // surface a warning() (this reader collects them). The trailing node still
 // parses.
-void testStrayCloserRecovery() {
+TEST_CASE("stray closer recovery") {
   const std::string src = "#VRML V2.0 utf8\n"
                           "DEF G Group {\n"
                           "  children [\n"
@@ -424,23 +423,3 @@ void testStrayCloserRecovery() {
 }
 
 } // namespace
-
-TEST_CASE("vrml97_reader_test") {
-  g_dataDir = X3D_TEST_DATA_DIR;
-
-  std::cout << "===== VRML97: dialect table =====\n";
-  testDialectTableResolves();
-  std::cout << "===== VRML97: corpus fixtures =====\n";
-  testNewShapeFixture();
-  testRollersFixture();
-  testTranslationFixture();
-  testProtoLibraryFixtures();
-  std::cout << "===== VRML97: grammar snippets =====\n";
-  testBooleansAndAccessAliases();
-  testFieldAliases();
-  testHeaderRejectionAndWarnings();
-  testRecoverableMalformation();
-  testStrayCloserRecovery();
-  testFrontDoor();
-
-}

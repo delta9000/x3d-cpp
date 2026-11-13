@@ -20,7 +20,6 @@ namespace runtime = x3d::runtime;
 namespace codec = x3d::codec;
 
 namespace {
-
 const char *sampleXml() {
   return R"X3D(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
@@ -58,7 +57,7 @@ std::shared_ptr<ComposedShader> findComposedShader(const runtime::Scene &scene) 
 
 } // namespace
 
-TEST_CASE("xml_composed_shader_test") {
+TEST_CASE("XML ComposedShader keeps author fields and per-stage source") {
   codec::XmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(sampleXml());
 
@@ -87,5 +86,4 @@ TEST_CASE("xml_composed_shader_test") {
   }
   CHECK_MESSAGE((vsOk), "VERTEX ShaderPart CDATA captured into sourceCode");
   CHECK_MESSAGE((fsOk), "FRAGMENT ShaderPart CDATA captured into sourceCode");
-
 }

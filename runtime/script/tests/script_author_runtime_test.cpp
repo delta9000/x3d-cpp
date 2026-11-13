@@ -23,7 +23,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool nearly(double a, double b) { return std::fabs(a - b) < 1e-5; }
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
@@ -44,7 +43,7 @@ AuthorFieldDecl decl(const std::string &name, X3DFieldType type,
 // source from sourceCode (the CDATA destination), not url. A Script with an
 //     empty url but a non-empty sourceCode must still load + initialize.
 
-void testSourceFromSourceCode() {
+TEST_CASE("source from source code") {
   X3DExecutionContext ctx;
   Script script;
   // No url at all — only sourceCode carries the body (the reader-CDATA path).
@@ -66,7 +65,7 @@ void testSourceFromSourceCode() {
 
 // sourceCode takes precedence over url when both are present.
 
-void testSourceCodePrecedence() {
+TEST_CASE("source code precedence") {
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -84,7 +83,7 @@ void testSourceCodePrecedence() {
 
 // url fallback still works when sourceCode is empty (no regression).
 
-void testUrlFallback() {
+TEST_CASE("url fallback") {
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -102,7 +101,7 @@ void testUrlFallback() {
 // initialize() seeds JS globals from author-field initialValue. An
 //     initializeOnly author field's boxed default is visible to the script.
 
-void testInitialValueSeeding() {
+TEST_CASE("initial value seeding") {
   X3DExecutionContext ctx;
   Script script;
   script.setSourceCode(
@@ -131,7 +130,7 @@ void testInitialValueSeeding() {
 //     constructed programmatically via the same seams a reader would use) whose
 //     author field, written by its own handler, drives the cascade.
 
-void testAuthorOutputDrivesRoute() {
+TEST_CASE("author output drives route") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -193,7 +192,7 @@ void testAuthorOutputDrivesRoute() {
 // an inputOutput author field round-trips — the handler reads its seeded
 //     value, mutates it, and the mutation is read back into the store + emitted.
 
-void testInputOutputAuthorField() {
+TEST_CASE("input output author field") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -229,7 +228,7 @@ void testInputOutputAuthorField() {
 //     confirms prepareEvents actually ran (so a red is the missing readback,
 //     not a missing call).
 
-void testPrepareEventsAuthorOutput() {
+TEST_CASE("prepare events author output") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -268,7 +267,7 @@ void testPrepareEventsAuthorOutput() {
 //     copies an inputOnly SFMatrix4f to an outputOnly SFMatrix4f must round-trip
 // all 16 components.
 
-void testMatrixFieldMarshalling() {
+TEST_CASE("matrix field marshalling") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -313,7 +312,7 @@ void testMatrixFieldMarshalling() {
 //     field must have that write read back + emitted (§29.2.4). mustEvaluate
 //     FALSE defers the input to the batch so eventsProcessed fires this tick.
 
-void testEventsProcessedAuthorOutput() {
+TEST_CASE("events processed author output") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -348,16 +347,3 @@ void testEventsProcessedAuthorOutput() {
 }
 
 } // namespace
-
-TEST_CASE("script_author_runtime_test") {
-  testSourceFromSourceCode();
-  testSourceCodePrecedence();
-  testUrlFallback();
-  testInitialValueSeeding();
-  testAuthorOutputDrivesRoute();
-  testInputOutputAuthorField();
-  testPrepareEventsAuthorOutput();
-  testMatrixFieldMarshalling();
-  testEventsProcessedAuthorOutput();
-
-}

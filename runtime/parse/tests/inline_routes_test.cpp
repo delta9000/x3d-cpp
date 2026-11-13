@@ -19,7 +19,7 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-TEST_CASE("inline_routes_test") {
+TEST_CASE("Inline ROUTEs are hoisted and animate the inlined Transform") {
   std::string dir = X3D_TEST_DATA_DIR;
   auto doc = x3d::sdk::parseFile(dir + "/animated_parent.x3d");
 

@@ -17,7 +17,6 @@
 using namespace x3d::runtime;
 
 namespace {
-
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-6f; }
 // Part 1: PointerState struct in isolation
 void test_initial_state() {

@@ -82,7 +82,7 @@ makeBody(std::shared_ptr<CollidableShape> &outShape) {
   return body;
 }
 
-TEST_CASE("physics_contact_wiring_test") {
+TEST_CASE("PhysicsSystem routes backend contacts to a CollisionSensor") {
   std::shared_ptr<CollidableShape> shapeA, shapeB;
   auto bodyA = makeBody(shapeA);
   auto bodyB = makeBody(shapeB);

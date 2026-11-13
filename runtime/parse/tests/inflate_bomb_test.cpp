@@ -14,7 +14,6 @@
 using namespace x3d::codec;
 
 namespace {
-
 // Wrap `payload` in a valid gzip stream using a single STORED (uncompressed)
 // DEFLATE block. tinfl inflates this like any gzip, and a stored block lets us
 // pick the exact decompressed size by hand. `payload.size()` must be < 65536.
@@ -53,7 +52,7 @@ bool throwsInflate(const std::string &gz, std::size_t maxOut) {
 
 } // namespace
 
-TEST_CASE("inflate_bomb_test") {
+TEST_CASE("inflateGzip caps decompressed output") {
   const std::string payload(4096, 'A');
   const std::string gz = gzipStored(payload);
 
@@ -71,5 +70,4 @@ TEST_CASE("inflate_bomb_test") {
   // The default cap is the shared, generous kMaxDecompressedBytes constant.
   CHECK_MESSAGE((x3d::kMaxDecompressedBytes >= (1u << 20)),
                 "kMaxDecompressedBytes default is generous (>= 1 MiB)");
-
 }

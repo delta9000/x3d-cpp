@@ -23,7 +23,6 @@ using namespace x3d;
 using x3d::runtime::ReaderWarning;
 
 namespace {
-
 // Depth-first walk over every SFNode/MFNode child of `n`, returning true if any
 // node's type name equals `typeName`.
 bool subtreeHasType(const std::shared_ptr<nodes::X3DNode> &n,

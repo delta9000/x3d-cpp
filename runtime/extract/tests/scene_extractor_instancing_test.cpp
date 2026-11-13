@@ -43,7 +43,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 // A Shape whose IndexedFaceSet carries authored normals, so the builder keeps it
 // indexed (no flat-normal expansion) and the byte counts stay predictable.
 std::shared_ptr<X3DNode> makeQuadShape() {

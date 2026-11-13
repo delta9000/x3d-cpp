@@ -22,7 +22,6 @@ using x3d::runtime::effectiveFields;
 namespace runtime = x3d::runtime;
 
 namespace {
-
 template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
   return std::dynamic_pointer_cast<T>(n);
 }
@@ -117,13 +116,13 @@ void assertCaptured(const std::shared_ptr<Script> &script,
             std::string::npos), (tag + ": sourceCode carries the ecmascript body"));
 }
 
-void testClassicVrmlCapture() {
+TEST_CASE("classic vrml capture") {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(kScriptDoc);
   assertCaptured(findScript(doc.scene), *doc.scene.authorFields, "classic-read");
 }
 
-void testVrml97Capture() {
+TEST_CASE("vrml97 capture") {
   // VRML97 uses eventIn/eventOut/field keywords + a #VRML header. The shared
   // base maps those keywords to the same AccessTypes.
   std::string wrl =
@@ -142,7 +141,7 @@ void testVrml97Capture() {
   assertCaptured(findScript(doc.scene), *doc.scene.authorFields, "vrml97-read");
 }
 
-void testRoundTrip() {
+TEST_CASE("round trip") {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(kScriptDoc);
   auto script = findScript(doc.scene);
@@ -167,9 +166,3 @@ void testRoundTrip() {
 }
 
 } // namespace
-
-TEST_CASE("vrml_script_field_test") {
-  testClassicVrmlCapture();
-  testVrml97Capture();
-  testRoundTrip();
-}

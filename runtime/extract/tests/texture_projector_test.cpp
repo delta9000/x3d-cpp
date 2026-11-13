@@ -18,7 +18,6 @@ using namespace x3d::runtime;
 using extract::ProjectorDesc;
 
 namespace {
-
 std::unique_ptr<RuntimeSession> session(const std::string &body,
                                         SessionOptions options = {}) {
   auto s = RuntimeSession::create(

@@ -35,7 +35,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 std::shared_ptr<X3DNode> makeTriShape() {
   auto coord = createX3DNode("Coordinate");
   setF(coord, "point",

@@ -32,7 +32,7 @@ static const char* kDoc = R"(<?xml version="1.0" encoding="UTF-8"?>
 </X3D>
 )";
 
-TEST_CASE("external_geometry_roundtrip_test") {
+TEST_CASE("ExternalGeometry ProtoInstance through install()") {
     using namespace x3d::runtime;
     using namespace x3d::runtime::ext;
     using namespace x3d::codec;
@@ -82,17 +82,17 @@ TEST_CASE("external_geometry_roundtrip_test") {
     REQUIRE((eg_node->getUrl().size() == 1 && "url must have exactly one entry"));
     REQUIRE((eg_node->getUrl()[0] == "chair.stl" && "url[0] must be 'chair.stl'"));
 
-    // expandedSources maps the primary back to its ProtoInstance
+    SUBCASE("expandedSources maps the node back to its ProtoInstance") {
+        // expandedSources maps the primary back to its ProtoInstance
 
-    {
         auto it = doc.scene.expandedSources.find(eg_node);
         REQUIRE((it != doc.scene.expandedSources.end() && "expandedSources must map the EG node"));
         REQUIRE((it->second.name == "ExternalGeometry" && "Instance name must be 'ExternalGeometry'"));
     }
 
-    // round-trip via XmlWriter re-emits ProtoInstance, not raw node
+    SUBCASE("XmlWriter re-emits the ProtoInstance") {
+        // round-trip via XmlWriter re-emits ProtoInstance, not raw node
 
-    {
         XmlWriter writer;
         std::string xml = writer.writeDocument(doc);
 
@@ -138,12 +138,12 @@ TEST_CASE("external_geometry_roundtrip_test") {
         }
     }
 
-    // firewall-degradation — parse the same doc without install().
-    //   The ExternProto must stay unexpanded, an UnresolvedExtern warning must
-    //   be recorded, and the round-trip must still emit <ExternProtoDeclare> +
-    //   <ProtoInstance> (not a raw <ExternalGeometry> element).
+    SUBCASE("without install() the ExternProto stays unexpanded and still round-trips") {
+        // firewall-degradation — parse the same doc without install().
+        //   The ExternProto must stay unexpanded, an UnresolvedExtern warning must
+        //   be recorded, and the round-trip must still emit <ExternProtoDeclare> +
+        //   <ProtoInstance> (not a raw <ExternalGeometry> element).
 
-    {
         // Parse with a no-op resolver (returns nullptr for everything) so the
         // URN is unresolvable — simulates the "no ext module installed" case.
         ProtoDeclarationResolver no_resolver =
@@ -198,11 +198,11 @@ TEST_CASE("external_geometry_roundtrip_test") {
         std::fprintf(stderr, "TEST 5a PASS: no-install path degraded gracefully (UnresolvedExtern + clean round-trip)\n");
     }
 
-    // delegation — install() resolver delegates non-matching URNs to base.
-    //   Use a stub base resolver that records whether it was called, then confirm
-    //   a non-ExternalGeometry URN reaches the stub.
+    SUBCASE("install() delegates other URNs to the base resolver") {
+        // delegation — install() resolver delegates non-matching URNs to base.
+        //   Use a stub base resolver that records whether it was called, then confirm
+        //   a non-ExternalGeometry URN reaches the stub.
 
-    {
         bool stub_called = false;
         // Stub resolver: records invocations, never returns a real decl.
         auto stub = [&stub_called](const std::vector<std::string>& /*urls*/,

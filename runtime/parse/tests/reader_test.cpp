@@ -32,7 +32,6 @@ using namespace x3d::nodes;
 using x3d::codec::Encoding;
 
 namespace {
-
 runtime::X3DDocument buildSampleDocument() {
   runtime::X3DDocument doc;
   doc.version = "4.0";
@@ -65,7 +64,7 @@ runtime::X3DDocument buildSampleDocument() {
   return doc;
 }
 
-void testSniffing() {
+TEST_CASE("sniffing") {
   using x3d::codec::sniff;
   using x3d::codec::sniffByContent;
   using x3d::codec::sniffByExtension;
@@ -102,7 +101,7 @@ void testSniffing() {
   CHECK_MESSAGE((sniff("scene.json", "{\"unrecognized\":true}") == Encoding::JSON), "extension is the fallback when content is inconclusive");
 }
 
-void testTokenizer() {
+TEST_CASE("tokenizer") {
   using x3d::codec::VrmlToken;
   using x3d::codec::VrmlTokenizer;
 
@@ -137,7 +136,7 @@ void testTokenizer() {
   CHECK_MESSAGE((h.atEnd()), "tok: body exhausted after header skip");
 }
 
-void testCollectFieldValue() {
+TEST_CASE("collect field value") {
   namespace b = x3d::codec::build;
   using x3d::codec::VrmlTokenizer;
 
@@ -197,7 +196,7 @@ void testCollectFieldValue() {
   }
 }
 
-void testXmlAdapterAndFrontDoor() {
+TEST_CASE("xml adapter and front door") {
   runtime::X3DDocument doc = buildSampleDocument();
   codec::XmlWriter writer;
   std::string xml = writer.writeDocument(doc);
@@ -262,7 +261,7 @@ void testXmlAdapterAndFrontDoor() {
   CHECK_MESSAGE((threw), "parseDocument throws on unrecognizable content");
 }
 // Lenient recovery for BOM, nested quotes, and write-only MFNode fields.
-void testLenientReadFixes() {
+TEST_CASE("lenient read fixes") {
   // Strip the UTF-8 BOM before XML sniffing and parsing.
   {
     const std::string bom = "\xEF\xBB\xBF";
@@ -422,8 +421,7 @@ void testGzipInflate(const std::string &dataDir) {
 // A no-containerField child must attach to the parent field named by the
 // CHILD's default containerField, not be dropped onto an arbitrary slot. The
 // canonical case: <Contour2D/> under <NurbsTrimmedSurface> -> trimmingContour.
-void testDefaultContainerFieldRouting() {
-  std::cout << "----- default containerField routing -----\n";
+TEST_CASE("default container field routing") {
   const std::string xml =
       "<X3D profile='Immersive' version='3.3'><Scene>"
       "<Shape><NurbsTrimmedSurface><Contour2D/></NurbsTrimmedSurface></Shape>"
@@ -448,21 +446,6 @@ void testDefaultContainerFieldRouting() {
 
 } // namespace
 
-TEST_CASE("reader_test") {
-  const std::string dataDir = X3D_TEST_DATA_DIR;
-  std::cout << "===== WS-A: sniffing =====\n";
-  testSniffing();
-  std::cout << "===== WS-A: VrmlTokenizer =====\n";
-  testTokenizer();
-  std::cout << "===== WS-A: collectFieldValue =====\n";
-  testCollectFieldValue();
-  std::cout << "===== WS-A: XmlReaderAdapter + parseDocument =====\n";
-  testXmlAdapterAndFrontDoor();
-  std::cout << "===== Fix 1: gzip inflate before sniffing =====\n";
-  testGzipInflate(dataDir);
-  std::cout << "===== Lenient read: BOM + nested-quote + set-only guard =====\n";
-  testLenientReadFixes();
-  std::cout << "===== Default containerField routing =====\n";
-  testDefaultContainerFieldRouting();
-
+TEST_CASE("gzip inflate") {
+  testGzipInflate(X3D_TEST_DATA_DIR);
 }

@@ -77,64 +77,61 @@ static std::shared_ptr<RigidBodyCollection> makeCollection() {
   return collection;
 }
 
-TEST_CASE("physics_solver_settings_test") {
+TEST_CASE("§37 defaults leave every solver field at its sentinel") {
   // (a) §37 defaults: every solver field is left at its sentinel.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem physics(backend);
-    X3DExecutionContext ctx;
-    auto collection = makeCollection();
-    physics.attach(collection.get(), ctx);
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem physics(backend);
+  X3DExecutionContext ctx;
+  auto collection = makeCollection();
+  physics.attach(collection.get(), ctx);
 
-    CHECK_MESSAGE((backend->solverCalls.size() == 1), "solver settings delivered once on attach");
-    if (!backend->solverCalls.empty()) {
-      const SolverSettings &s = backend->solverCalls.front().settings;
-      std::fprintf(stderr,
-                   "defaults -> iterations=%d errorCorrection=%g thickness=%g "
-                   "maxCorrectionSpeed=%g\n",
-                   s.velocityIterations, s.errorCorrection,
-                   s.contactSurfaceThickness, s.maxCorrectionSpeed);
-      CHECK_MESSAGE((s.velocityIterations == 0),
-                    "default iterations leaves the sentinel (engine default untouched)");
-      CHECK_MESSAGE((s.errorCorrection < 0.0f), "default errorCorrection leaves the sentinel");
-      CHECK_MESSAGE((s.contactSurfaceThickness < 0.0f),
-                    "default contactSurfaceThickness leaves the sentinel");
-      CHECK_MESSAGE((s.maxCorrectionSpeed < 0.0f),
-                    "default maxCorrectionSpeed leaves the sentinel");
-    }
+  CHECK_MESSAGE((backend->solverCalls.size() == 1), "solver settings delivered once on attach");
+  if (!backend->solverCalls.empty()) {
+    const SolverSettings &s = backend->solverCalls.front().settings;
+    std::fprintf(stderr,
+                 "defaults -> iterations=%d errorCorrection=%g thickness=%g "
+                 "maxCorrectionSpeed=%g\n",
+                 s.velocityIterations, s.errorCorrection,
+                 s.contactSurfaceThickness, s.maxCorrectionSpeed);
+    CHECK_MESSAGE((s.velocityIterations == 0),
+                  "default iterations leaves the sentinel (engine default untouched)");
+    CHECK_MESSAGE((s.errorCorrection < 0.0f), "default errorCorrection leaves the sentinel");
+    CHECK_MESSAGE((s.contactSurfaceThickness < 0.0f),
+                  "default contactSurfaceThickness leaves the sentinel");
+    CHECK_MESSAGE((s.maxCorrectionSpeed < 0.0f),
+                  "default maxCorrectionSpeed leaves the sentinel");
   }
+}
 
+TEST_CASE("authored non-default solver values cross the seam verbatim") {
   // (b) authored non-default values cross the seam verbatim.
-  {
-    auto backend = std::make_shared<RecordingBackend>();
-    PhysicsSystem physics(backend);
-    X3DExecutionContext ctx;
-    auto collection = makeCollection();
-    collection->setIterations(25);
-    collection->setErrorCorrection(0.5f);
-    collection->setContactSurfaceThickness(0.03f);
-    collection->setMaxCorrectionSpeed(5.0f);
-    // No engine mapping — must not change anything on the seam.
-    collection->setConstantForceMix(0.2f);
-    collection->setPreferAccuracy(true);
-    physics.attach(collection.get(), ctx);
+  auto backend = std::make_shared<RecordingBackend>();
+  PhysicsSystem physics(backend);
+  X3DExecutionContext ctx;
+  auto collection = makeCollection();
+  collection->setIterations(25);
+  collection->setErrorCorrection(0.5f);
+  collection->setContactSurfaceThickness(0.03f);
+  collection->setMaxCorrectionSpeed(5.0f);
+  // No engine mapping — must not change anything on the seam.
+  collection->setConstantForceMix(0.2f);
+  collection->setPreferAccuracy(true);
+  physics.attach(collection.get(), ctx);
 
-    CHECK_MESSAGE((backend->solverCalls.size() == 1), "solver settings delivered once on attach");
-    if (!backend->solverCalls.empty()) {
-      const SolverSettings &s = backend->solverCalls.front().settings;
-      std::fprintf(stderr,
-                   "authored -> iterations=%d errorCorrection=%g thickness=%g "
-                   "maxCorrectionSpeed=%g\n",
-                   s.velocityIterations, s.errorCorrection,
-                   s.contactSurfaceThickness, s.maxCorrectionSpeed);
-      CHECK_MESSAGE((s.velocityIterations == 25), "authored iterations crosses the seam");
-      CHECK_MESSAGE((std::fabs(s.errorCorrection - 0.5f) < 1e-6f),
-                    "authored errorCorrection crosses the seam");
-      CHECK_MESSAGE((std::fabs(s.contactSurfaceThickness - 0.03f) < 1e-6f),
-                    "authored contactSurfaceThickness crosses the seam");
-      CHECK_MESSAGE((std::fabs(s.maxCorrectionSpeed - 5.0f) < 1e-6f),
-                    "authored maxCorrectionSpeed crosses the seam");
-    }
+  CHECK_MESSAGE((backend->solverCalls.size() == 1), "solver settings delivered once on attach");
+  if (!backend->solverCalls.empty()) {
+    const SolverSettings &s = backend->solverCalls.front().settings;
+    std::fprintf(stderr,
+                 "authored -> iterations=%d errorCorrection=%g thickness=%g "
+                 "maxCorrectionSpeed=%g\n",
+                 s.velocityIterations, s.errorCorrection,
+                 s.contactSurfaceThickness, s.maxCorrectionSpeed);
+    CHECK_MESSAGE((s.velocityIterations == 25), "authored iterations crosses the seam");
+    CHECK_MESSAGE((std::fabs(s.errorCorrection - 0.5f) < 1e-6f),
+                  "authored errorCorrection crosses the seam");
+    CHECK_MESSAGE((std::fabs(s.contactSurfaceThickness - 0.03f) < 1e-6f),
+                  "authored contactSurfaceThickness crosses the seam");
+    CHECK_MESSAGE((std::fabs(s.maxCorrectionSpeed - 5.0f) < 1e-6f),
+                  "authored maxCorrectionSpeed crosses the seam");
   }
-
 }

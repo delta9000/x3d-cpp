@@ -19,7 +19,6 @@ namespace runtime = x3d::runtime;
 namespace codec = x3d::codec;
 
 namespace {
-
 // Find a Script node in a scene's root nodes (the test scenes place the Script
 // at the root).
 std::shared_ptr<Script> findScript(const runtime::Scene &scene) {
@@ -109,39 +108,43 @@ void checkDecls(const runtime::Scene &scene, const std::string &phase) {
 
 } // namespace
 
-TEST_CASE("xml_script_field_test") {
+TEST_CASE("XML Script author fields") {
   codec::XmlReader reader;
   codec::XmlWriter writer;
-  runtime::X3DDocument doc = reader.readDocument(sampleXml());
-  checkDecls(doc.scene, "parse");
-  {
-    runtime::X3DExecutionContext ctx(doc.scene.authorFields);
-    runtime::BridgeResult br = runtime::buildRoutes(doc.scene, ctx);
-    CHECK_MESSAGE((br.rejected.empty()),
-                  "author-field ROUTE not rejected (resolves via effectiveFields)");
-    CHECK_MESSAGE((br.routesAdded == 1), "author-field ROUTE added to context");
-  }
-  std::string out = writer.writeDocument(doc);
-  CHECK_MESSAGE((out.find("set_fraction") != std::string::npos),
-                "writer re-emits author field set_fraction");
-  CHECK_MESSAGE((out.find("accessType=\"inputOnly\"") != std::string::npos),
-                "writer re-emits inputOnly accessType on author field");
-  CHECK_MESSAGE((out.find("accessType=\"inputOutput\"") != std::string::npos),
-                "writer re-emits inputOutput accessType on author field");
-  CHECK_MESSAGE((out.find("function set_fraction") != std::string::npos),
-                "writer re-emits CDATA source body");
 
-  runtime::X3DDocument doc2 = reader.readDocument(out);
-  checkDecls(doc2.scene, "reparse");
+  SUBCASE("author fields and their ROUTE survive a write and reparse") {
+    runtime::X3DDocument doc = reader.readDocument(sampleXml());
+    checkDecls(doc.scene, "parse");
+    {
+      runtime::X3DExecutionContext ctx(doc.scene.authorFields);
+      runtime::BridgeResult br = runtime::buildRoutes(doc.scene, ctx);
+      CHECK_MESSAGE((br.rejected.empty()),
+                    "author-field ROUTE not rejected (resolves via effectiveFields)");
+      CHECK_MESSAGE((br.routesAdded == 1), "author-field ROUTE added to context");
+    }
+    std::string out = writer.writeDocument(doc);
+    CHECK_MESSAGE((out.find("set_fraction") != std::string::npos),
+                  "writer re-emits author field set_fraction");
+    CHECK_MESSAGE((out.find("accessType=\"inputOnly\"") != std::string::npos),
+                  "writer re-emits inputOnly accessType on author field");
+    CHECK_MESSAGE((out.find("accessType=\"inputOutput\"") != std::string::npos),
+                  "writer re-emits inputOutput accessType on author field");
+    CHECK_MESSAGE((out.find("function set_fraction") != std::string::npos),
+                  "writer re-emits CDATA source body");
 
-  // The round-tripped ROUTE still resolves on reparse.
-  {
-    runtime::X3DExecutionContext ctx(doc2.scene.authorFields);
-    runtime::BridgeResult br = runtime::buildRoutes(doc2.scene, ctx);
-    CHECK_MESSAGE((br.rejected.empty()), "reparse: author-field ROUTE still resolves");
-    CHECK_MESSAGE((br.routesAdded == 1), "reparse: author-field ROUTE added");
+    runtime::X3DDocument doc2 = reader.readDocument(out);
+    checkDecls(doc2.scene, "reparse");
+
+    // The round-tripped ROUTE still resolves on reparse.
+    {
+      runtime::X3DExecutionContext ctx(doc2.scene.authorFields);
+      runtime::BridgeResult br = runtime::buildRoutes(doc2.scene, ctx);
+      CHECK_MESSAGE((br.rejected.empty()), "reparse: author-field ROUTE still resolves");
+      CHECK_MESSAGE((br.routesAdded == 1), "reparse: author-field ROUTE added");
+    }
   }
-  {
+
+  SUBCASE("a url-source Script keeps its author fields") {
     const std::string urlXml =
         "<X3D profile=\"Interchange\" version=\"4.0\"><Scene>"
         "<Script DEF=\"U\" url='\"ecmascript: function f(){}\"'>"
@@ -159,7 +162,8 @@ TEST_CASE("xml_script_field_test") {
                     "author field present alongside url source");
     }
   }
-  {
+
+  SUBCASE("SFNode and MFNode author fields round-trip") {
     const std::string nodeXml =
         "<X3D profile=\"Immersive\" version=\"4.0\"><Scene>"
         "<Transform DEF=\"T\"/>"
@@ -193,5 +197,4 @@ TEST_CASE("xml_script_field_test") {
                   "node fields are written as children, not empty values");
     nodeChecks(reader.readDocument(written), "reparse");
   }
-
 }

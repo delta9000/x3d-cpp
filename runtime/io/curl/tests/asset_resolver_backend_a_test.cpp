@@ -21,7 +21,6 @@ using namespace x3d::runtime::extract;
 using namespace x3d::runtime::io::curl;
 
 namespace {
-
 // Minimal single-connection-at-a-time HTTP server on 127.0.0.1 with the few
 // routes the security assertions need.
 class TestServer {
@@ -231,90 +230,97 @@ private:
 
 }  // namespace
 
-TEST_CASE("asset_resolver_backend_a_test") {
-  // 1. URL prefix check: rejects non-http schemes with Failed, no network call.
+TEST_CASE("libcurl asset resolver") {
   AssetResolver r = makeHttpResolver();
   REQUIRE((static_cast<bool>(r)));
-  REQUIRE((r("urn:x3d:foo", AssetKind::Texture).failed()));
-  REQUIRE((r("file:///etc/hosts", AssetKind::Texture).failed()));
-  REQUIRE((r("plain/path.txt", AssetKind::Texture).failed()));
-  REQUIRE((r("", AssetKind::Texture).failed()));
-  REQUIRE((r("HTTP://uppercase-scheme.example/x", AssetKind::Texture).failed()));
 
-  // 2. libcurl error path: unreachable host returns Failed.
-  //    127.0.0.1:1 is reserved + unused; with the default options the
-  //    resolved-address guard rejects loopback before the connect even starts.
-  REQUIRE((r("http://127.0.0.1:1/x", AssetKind::Texture).failed()));
+  SUBCASE("bad schemes and private addresses are refused") {
+    // 1. URL prefix check: rejects non-http schemes with Failed, no network call.
+    REQUIRE((r("urn:x3d:foo", AssetKind::Texture).failed()));
+    REQUIRE((r("file:///etc/hosts", AssetKind::Texture).failed()));
+    REQUIRE((r("plain/path.txt", AssetKind::Texture).failed()));
+    REQUIRE((r("", AssetKind::Texture).failed()));
+    REQUIRE((r("HTTP://uppercase-scheme.example/x", AssetKind::Texture).failed()));
 
-  // 3. URL prefix check honors https:// just like http://; use a non-routable
-  //    host so we exercise the prefix-accept path (DNS failure -> Failed).
-  REQUIRE((r("https://nonexistent.invalid/x", AssetKind::Texture).failed()));
+    // 2. libcurl error path: unreachable host returns Failed.
+    //    127.0.0.1:1 is reserved + unused; with the default options the
+    //    resolved-address guard rejects loopback before the connect even starts.
+    REQUIRE((r("http://127.0.0.1:1/x", AssetKind::Texture).failed()));
 
-  // 3b. The IPv6 guard classifies embedded IPv4 in forms other than the
-  //     ::ffff: mapped prefix: NAT64 (64:ff9b::/96) and IPv4-compatible
-  //     (::a.b.c.d). Both below embed 127.0.0.1 and are refused by default.
-  REQUIRE((r("http://[64:ff9b::7f00:1]/", AssetKind::Texture).failed()));
-  REQUIRE((r("http://[::7f00:1]/", AssetKind::Texture).failed()));
+    // 3. URL prefix check honors https:// just like http://; use a non-routable
+    //    host so we exercise the prefix-accept path (DNS failure -> Failed).
+    REQUIRE((r("https://nonexistent.invalid/x", AssetKind::Texture).failed()));
 
-  // hardening, against an in-process loopback server
-  TestServer srv;
-  const int port = srv.start();
-  REQUIRE((port > 0));
-  const std::string base = "http://127.0.0.1:" + std::to_string(port);
-
-  // Opt-in resolver for the tests that must actually reach the local server.
-  const AssetResolver local =
-      makeHttpResolver(HttpResolverOptions{/*allowPrivateNetworks=*/true});
-
-  // 4. Loopback blocked by default: the server is up and answers 200, yet the
-  //    default resolver refuses to connect (private-address guard). The opt-in
-  //    resolver fetches the same URL — proving the server really is reachable.
-  REQUIRE((r(base + "/ok", AssetKind::Texture).failed()));
-  {
-    AssetResult ok = local(base + "/ok", AssetKind::Texture);
-    REQUIRE((ok.ready()));
-    REQUIRE((ok.bytes.size() == 5));
-    REQUIRE((std::string(ok.bytes.begin(), ok.bytes.end()) == "hello"));
+    // 3b. The IPv6 guard classifies embedded IPv4 in forms other than the
+    //     ::ffff: mapped prefix: NAT64 (64:ff9b::/96) and IPv4-compatible
+    //     (::a.b.c.d). Both below embed 127.0.0.1 and are refused by default.
+    REQUIRE((r("http://[64:ff9b::7f00:1]/", AssetKind::Texture).failed()));
+    REQUIRE((r("http://[::7f00:1]/", AssetKind::Texture).failed()));
   }
 
-  // 5. Size cap enforced: a body past maxBytes aborts the transfer -> Failed,
-  //    while a body under the same cap still succeeds.
-  {
-    HttpResolverOptions capped;
-    capped.allowPrivateNetworks = true;
-    capped.maxBytes = 4096;
-    AssetResolver resolved = makeHttpResolver(capped);
-    REQUIRE((resolved(base + "/ok", AssetKind::Texture).ready()));
-    REQUIRE((resolved(base + "/big", AssetKind::Texture).failed()));
+  SUBCASE("a local server: loopback opt-in, size cap and redirects") {
+    // hardening, against an in-process loopback server
+    TestServer srv;
+    const int port = srv.start();
+    REQUIRE((port > 0));
+    const std::string base = "http://127.0.0.1:" + std::to_string(port);
+
+    // Opt-in resolver for the tests that must actually reach the local server.
+    const AssetResolver local =
+        makeHttpResolver(HttpResolverOptions{/*allowPrivateNetworks=*/true});
+
+    // 4. Loopback blocked by default: the server is up and answers 200, yet the
+    //    default resolver refuses to connect (private-address guard). The opt-in
+    //    resolver fetches the same URL — proving the server really is reachable.
+    REQUIRE((r(base + "/ok", AssetKind::Texture).failed()));
+    {
+      AssetResult ok = local(base + "/ok", AssetKind::Texture);
+      REQUIRE((ok.ready()));
+      REQUIRE((ok.bytes.size() == 5));
+      REQUIRE((std::string(ok.bytes.begin(), ok.bytes.end()) == "hello"));
+    }
+
+    // 5. Size cap enforced: a body past maxBytes aborts the transfer -> Failed,
+    //    while a body under the same cap still succeeds.
+    {
+      HttpResolverOptions capped;
+      capped.allowPrivateNetworks = true;
+      capped.maxBytes = 4096;
+      AssetResolver resolved = makeHttpResolver(capped);
+      REQUIRE((resolved(base + "/ok", AssetKind::Texture).ready()));
+      REQUIRE((resolved(base + "/big", AssetKind::Texture).failed()));
+    }
+
+    // 6. Redirect to a non-http scheme is rejected (REDIR_PROTOCOLS).
+    REQUIRE((local(base + "/redir-file", AssetKind::Texture).failed()));
+    REQUIRE((local(base + "/redir-ftp", AssetKind::Texture).failed()));
+
+    // 7. Same-scheme redirects still follow; the redirect cap bounds a loop.
+    REQUIRE((local(base + "/redir-ok", AssetKind::Texture).ready()));
+    {
+      HttpResolverOptions capped;
+      capped.allowPrivateNetworks = true;
+      capped.maxRedirects = 5;
+      AssetResolver resolved = makeHttpResolver(capped);
+      REQUIRE((resolved(base + "/loop", AssetKind::Texture).failed()));
+    }
   }
 
-  // 6. Redirect to a non-http scheme is rejected (REDIR_PROTOCOLS).
-  REQUIRE((local(base + "/redir-file", AssetKind::Texture).failed()));
-  REQUIRE((local(base + "/redir-ftp", AssetKind::Texture).failed()));
-
-  // 7. Same-scheme redirects still follow; the redirect cap bounds a loop.
-  REQUIRE((local(base + "/redir-ok", AssetKind::Texture).ready()));
-  {
-    HttpResolverOptions capped;
-    capped.allowPrivateNetworks = true;
-    capped.maxRedirects = 5;
-    AssetResolver resolved = makeHttpResolver(capped);
-    REQUIRE((resolved(base + "/loop", AssetKind::Texture).failed()));
+  SUBCASE("the FTP resolver honours the same guards") {
+    FtpServer ftp;
+    const std::string ftpUrl =
+        "ftp://127.0.0.1:" + std::to_string(ftp.port) + "/hello";
+    REQUIRE((makeFtpResolver()(ftpUrl, AssetKind::Texture).failed()));
+    HttpResolverOptions ftpOptions;
+    ftpOptions.allowPrivateNetworks = true;
+    auto ftpFetch = makeFtpResolver(ftpOptions);
+    auto fetched = ftpFetch(ftpUrl, AssetKind::Texture);
+    REQUIRE((fetched.ready()));
+    REQUIRE((std::string(fetched.bytes.begin(), fetched.bytes.end()) == "hello"));
+    REQUIRE((ftpFetch("FTP" + ftpUrl.substr(3), AssetKind::Texture).ready()));
+    REQUIRE((ftpFetch("http://127.0.0.1/", AssetKind::Texture).failed()));
+    REQUIRE((ftpFetch(ftpUrl + "missing", AssetKind::Texture).failed()));
+    ftpOptions.maxBytes = 4;
+    REQUIRE((makeFtpResolver(ftpOptions)(ftpUrl, AssetKind::Texture).failed()));
   }
-
-  FtpServer ftp;
-  const std::string ftpUrl =
-      "ftp://127.0.0.1:" + std::to_string(ftp.port) + "/hello";
-  REQUIRE((makeFtpResolver()(ftpUrl, AssetKind::Texture).failed()));
-  HttpResolverOptions ftpOptions;
-  ftpOptions.allowPrivateNetworks = true;
-  auto ftpFetch = makeFtpResolver(ftpOptions);
-  auto fetched = ftpFetch(ftpUrl, AssetKind::Texture);
-  REQUIRE((fetched.ready()));
-  REQUIRE((std::string(fetched.bytes.begin(), fetched.bytes.end()) == "hello"));
-  REQUIRE((ftpFetch("FTP" + ftpUrl.substr(3), AssetKind::Texture).ready()));
-  REQUIRE((ftpFetch("http://127.0.0.1/", AssetKind::Texture).failed()));
-  REQUIRE((ftpFetch(ftpUrl + "missing", AssetKind::Texture).failed()));
-  ftpOptions.maxBytes = 4;
-  REQUIRE((makeFtpResolver(ftpOptions)(ftpUrl, AssetKind::Texture).failed()));
 }

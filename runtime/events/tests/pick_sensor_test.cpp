@@ -30,7 +30,6 @@ using namespace x3d::runtime;
 using x3d::test::setF;
 
 namespace {
-
 std::shared_ptr<X3DNode> makeCoord(std::vector<SFVec3f> pts) {
   auto c = createX3DNode("Coordinate");
   setF(c, "point", std::any(std::move(pts)));

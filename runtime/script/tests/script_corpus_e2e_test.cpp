@@ -32,7 +32,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // Visit every Script node
 // reachable through SFNode/MFNode fields, depth-first.
 void collectScripts(X3DNode *n, std::vector<Script *> &out) {
@@ -85,7 +84,6 @@ void driveAndAssertStatus(Script *script, ScriptSystem &sys,
 // (a) XML fixture loaded through the real XmlReader: author <field>s + CDATA.
 
 void testXmlFixture(const std::string &dataDir) {
-
   std::string xml = slurp(dataDir + "/AuthorScriptExample.x3d");
   CHECK_MESSAGE((!xml.empty()), "xml fixture: AuthorScriptExample.x3d readable");
   if (xml.empty()) return;
@@ -119,7 +117,6 @@ void testXmlFixture(const std::string &dataDir) {
 // (b) ClassicVRML (.x3dv) fixture loaded through the real ClassicVrmlReader.
 
 void testVrmlFixture(const std::string &dataDir) {
-
   std::string vrml = slurp(dataDir + "/AuthorScriptExample.x3dv");
   CHECK_MESSAGE((!vrml.empty()), "vrml fixture: AuthorScriptExample.x3dv readable");
   if (vrml.empty()) return;
@@ -149,8 +146,7 @@ void testVrmlFixture(const std::string &dataDir) {
 
 // CanopyExample.x3d: capture author fields and dispatch its CDATA handler.
 
-void testRealCorpusNotInert() {
-
+TEST_CASE("real corpus not inert") {
   // Corpus root comes from the X3D_CORPUS_DIR env var (the archive is not
   // bundled). Unset/absent => skip (the XML+VRML fixtures above still run).
   const char *corpusEnv = std::getenv("X3D_CORPUS_DIR");
@@ -207,7 +203,7 @@ void testRealCorpusNotInert() {
 //     ROUTEs on into the scene within the same tick.
 //       Src.translation -> S.set_pos (inputOnly) ; S.pos (outputOnly) -> T.translation
 
-void testRoutedEventInEndToEnd() {
+TEST_CASE("routed event in end to end") {
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Transform DEF='Src'/>
   <Transform DEF='T'/>
@@ -252,7 +248,7 @@ void testRoutedEventInEndToEnd() {
 //     script sees the new value, and a later handler that does not touch the
 //     field must not write the stale script-side value back over it.
 
-void testRoutedInputOutputSticks() {
+TEST_CASE("routed input output sticks") {
   const std::string xml = R"(<X3D profile='Immersive' version='4.0'><Scene>
   <Script DEF='S' mustEvaluate='true'>
     <field name='level' type='SFFloat' accessType='inputOutput' value='0'/>
@@ -289,16 +285,10 @@ void testRoutedInputOutputSticks() {
   CHECK_MESSAGE((seen.has_value() && std::any_cast<SFFloat>(seen) == 0.5f), "inputOutput: the script sees the routed value");
 }
 
-TEST_CASE("script_corpus_e2e_test") {
-  // X3D_TEST_DATA_DIR is the test-data dir (CMake passes it); fall back to the in-tree
-  // path so the binary is runnable standalone.
-  const std::string dataDir =
-      X3D_TEST_DATA_DIR;
+TEST_CASE("xml fixture") {
+  testXmlFixture(X3D_TEST_DATA_DIR);
+}
 
-  testXmlFixture(dataDir);
-  testVrmlFixture(dataDir);
-  testRealCorpusNotInert();
-  testRoutedEventInEndToEnd();
-  testRoutedInputOutputSticks();
-
+TEST_CASE("vrml fixture") {
+  testVrmlFixture(X3D_TEST_DATA_DIR);
 }

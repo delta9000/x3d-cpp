@@ -34,7 +34,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 constexpr float kEps = 1e-4f;
 bool feq(float a, float b) { return std::fabs(a - b) <= kEps; }
 

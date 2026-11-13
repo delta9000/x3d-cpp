@@ -1,4 +1,3 @@
-#include "doctest/doctest.h"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -12,6 +11,10 @@ namespace sai = x3d::sai::experimental;
 namespace p = sai::provider;
 namespace sdk = x3d::sdk;
 namespace {
+void require(bool value, const char *message) {
+  if (!value)
+    throw std::runtime_error(message);
+}
 template <class T> T take(sai::result<T> value) {
   if (!value)
     throw std::runtime_error(value.error().operation + ": " +
@@ -47,59 +50,71 @@ void adopted_graph_and_extraction() {
   auto *original = session.get();
   // A host may already have consumed its baseline on the loader thread.
   const auto initial = session->fullSnapshot();
-  CHECK_MESSAGE((initial.added.size() == 2), "fixture has two shared Shape placements");
+  require(initial.added.size() == 2, "fixture has two shared Shape placements");
   for (auto id : initial.added) {
     const auto &item = session->extractor().item(id);
-    CHECK_MESSAGE((item.material.phong.diffuse == x3d::core::SFColor{.2f, .4f, .6f}), "authored native material survives loading");
+    require(item.material.phong.diffuse == x3d::core::SFColor{.2f, .4f, .6f},
+            "authored native material survives loading");
   }
   const auto initial_mesh =
       session->extractor().item(initial.added.front()).mesh;
   auto adopted = take(sai::native::adopt_session(std::move(session)));
   auto &service = *adopted.service;
-  CHECK_MESSAGE((service.supported().supports(p::service_id::scene_metadata)), "scene_metadata stays a service capability");
+  require(service.supported().supports(p::service_id::scene_metadata),
+          "scene_metadata stays a service capability");
   {
     const auto refused = service.metadata(adopted.scene);
-    CHECK_MESSAGE((!refused &&
-                refused.error().code == sai::error_code::unsupported_operation), "only the adopted scene refuses its undefined META projection");
+    require(!refused &&
+                refused.error().code == sai::error_code::unsupported_operation,
+            "only the adopted scene refuses its undefined META projection");
     const auto other = take(service.create_scene());
     take(service.set_metadata(other, "title", std::string{"Other"}));
-    CHECK_MESSAGE((take(service.metadata(other, "title")) ==
-                std::optional<std::string>{"Other"}), "other scenes in an adopted service keep scene metadata");
+    require(take(service.metadata(other, "title")) ==
+                std::optional<std::string>{"Other"},
+            "other scenes in an adopted service keep scene metadata");
     take(service.retire(other));
   }
   auto context = take(service.root_context(adopted.scene));
   auto *host = take(adopted.host.session(service));
-  CHECK_MESSAGE((host == original), "adoption keeps the exact prepared session");
-  CHECK_MESSAGE((host->extractor().item(initial.added.front()).mesh == initial_mesh), "adoption does not rebuild the extractor mesh baseline");
-  CHECK_MESSAGE((host->delta().added.empty()), "adoption does not reset the host extraction baseline");
-  CHECK_MESSAGE((take(service.roots(context)) ==
+  require(host == original, "adoption keeps the exact prepared session");
+  require(host->extractor().item(initial.added.front()).mesh == initial_mesh,
+          "adoption does not rebuild the extractor mesh baseline");
+  require(host->delta().added.empty(),
+          "adoption does not reset the host extraction baseline");
+  require(take(service.roots(context)) ==
               std::vector<p::node>{take(service.named(context, "Moving")),
                                    take(service.named(context, "Second")),
                                    take(service.named(context, "Curve")),
-                                   take(service.named(context, "Curve"))}), "authored root order and repeated occurrences retained");
+                                   take(service.named(context, "Curve"))},
+          "authored root order and repeated occurrences retained");
   auto shared = take(service.named(context, "Shared"));
   for (const char *name : {"Moving", "Second"}) {
     auto children = std::get<p::node_values>(
         take(service.read(field(service, context, name, "children"))));
-    CHECK_MESSAGE((children.size() == 1 && children.front() == p::node_value{shared}), "DEF/USE traversal returns one Shape identity");
+    require(children.size() == 1 && children.front() == p::node_value{shared},
+            "DEF/USE traversal returns one Shape identity");
   }
-  CHECK_MESSAGE((take(service.type_name(take(service.named(context, "Ball")))) ==
-              "Sphere"), "adopted type outside creation whitelist is addressable");
-  CHECK_MESSAGE((take(service.named_nodes(context)).size() == 8 &&
-              take(service.names(shared)) == std::vector<std::string>{"Shared"}), "root DEF discovery includes detached nodes and reverse names");
+  require(take(service.type_name(take(service.named(context, "Ball")))) ==
+              "Sphere",
+          "adopted type outside creation whitelist is addressable");
+  require(take(service.named_nodes(context)).size() == 8 &&
+              take(service.names(shared)) == std::vector<std::string>{"Shared"},
+          "root DEF discovery includes detached nodes and reverse names");
   auto geometry = field(service, context, "Shared", "geometry");
-  CHECK_MESSAGE((std::get<p::node_value>(take(service.read(geometry))) ==
-              p::node_value{take(service.named(context, "Ball"))}), "SFNode traversal uses the same identity registry");
+  require(std::get<p::node_value>(take(service.read(geometry))) ==
+              p::node_value{take(service.named(context, "Ball"))},
+          "SFNode traversal uses the same identity registry");
   const auto metadata =
       take(service.read(field(service, context, "Shared", "metadata")));
-  CHECK_MESSAGE((!std::get<p::node_value>(metadata)), "NULL SFNode slots remain NULL");
+  require(!std::get<p::node_value>(metadata), "NULL SFNode slots remain NULL");
   auto client = take(service.connect(adopted.active));
   auto translation = field(service, context, "Moving", "translation");
   auto fraction = field(service, context, "Curve", "set_fraction");
-  CHECK_MESSAGE((!service.read(fraction)), "inputOnly remains unreadable");
-  CHECK_MESSAGE((!service.enqueue(client,
+  require(!service.read(fraction), "inputOnly remains unreadable");
+  require(!service.enqueue(client,
                            {{field(service, context, "Curve", "value_changed"),
-                             sai::vec3f{1, 2, 3}}})), "outputOnly remains unwritable");
+                             sai::vec3f{1, 2, 3}}}),
+          "outputOnly remains unwritable");
   std::vector<p::notification> observed;
   auto subscription = take(
       service.observe(adopted.active, translation,
@@ -108,20 +123,26 @@ void adopted_graph_and_extraction() {
   host = nullptr;
   auto report = take(service.pump(adopted.active, {0}));
   host = take(adopted.host.session(service));
-  CHECK_MESSAGE((report.state == p::activation_state::active && !report.error &&
-              take(receipt.status()).state == p::request_state::processed), "native adopted turn succeeds");
-  CHECK_MESSAGE((host->context().tickGeneration() == 1), "one pump performs exactly one tick");
-  CHECK_MESSAGE((observed.empty()), "native execution defers application observation");
+  require(report.state == p::activation_state::active && !report.error &&
+              take(receipt.status()).state == p::request_state::processed,
+          "native adopted turn succeeds");
+  require(host->context().tickGeneration() == 1,
+          "one pump performs exactly one tick");
+  require(observed.empty(), "native execution defers application observation");
   const sai::vec3f expected{2, 4, 6};
-  CHECK_MESSAGE((std::get<sai::vec3f>(take(service.read(translation))) == expected), "retained native ROUTE updates SAI readback");
+  require(std::get<sai::vec3f>(take(service.read(translation))) == expected,
+          "retained native ROUTE updates SAI readback");
   auto delta = host->delta();
-  CHECK_MESSAGE((delta.updatedTransform.size() == 1 && delta.added.empty() &&
-              delta.removed.empty()), "provider leaves transform extraction for the host");
+  require(delta.updatedTransform.size() == 1 && delta.added.empty() &&
+              delta.removed.empty(),
+          "provider leaves transform extraction for the host");
   const auto world =
       host->extractor().item(delta.updatedTransform.front()).worldTransform.m;
-  CHECK_MESSAGE((world[12] == 2 && world[13] == 4 && world[14] == 6), "same-pump extraction agrees with SAI");
-  CHECK_MESSAGE((take(service.dispatch_notifications()) == 1 && observed.size() == 1 &&
-              std::get<sai::vec3f>(observed.front().value) == expected), "deferred routed observation agrees with extraction");
+  require(world[12] == 2 && world[13] == 4 && world[14] == 6,
+          "same-pump extraction agrees with SAI");
+  require(take(service.dispatch_notifications()) == 1 && observed.size() == 1 &&
+              std::get<sai::vec3f>(observed.front().value) == expected,
+          "deferred routed observation agrees with extraction");
   auto diffuse = field(service, context, "Paint", "diffuseColor");
   std::vector<p::notification> colors;
   auto material_observation =
@@ -132,36 +153,47 @@ void adopted_graph_and_extraction() {
   host = nullptr;
   take(service.pump(adopted.active, {1}));
   host = take(adopted.host.session(service));
-  CHECK_MESSAGE((colors.empty()), "Material callbacks are deferred");
+  require(colors.empty(), "Material callbacks are deferred");
   delta = host->delta();
-  CHECK_MESSAGE((delta.updatedMaterial.size() == 2), "shared Material invalidates both placements");
+  require(delta.updatedMaterial.size() == 2,
+          "shared Material invalidates both placements");
   for (auto id : delta.updatedMaterial)
-    CHECK_MESSAGE((host->extractor().item(id).material.phong.diffuse ==
-                x3d::core::SFColor{.8f, .1f, .3f}), "generic reflected Material write reaches native extraction");
-  CHECK_MESSAGE((std::get<sai::color3f>(take(service.read(diffuse))) ==
-              sai::color3f{.8f, .1f, .3f}), "generic color readback agrees with material extraction");
-  CHECK_MESSAGE((take(service.dispatch_notifications()) == 1 && colors.size() == 1 &&
+    require(host->extractor().item(id).material.phong.diffuse ==
+                x3d::core::SFColor{.8f, .1f, .3f},
+            "generic reflected Material write reaches native extraction");
+  require(std::get<sai::color3f>(take(service.read(diffuse))) ==
+              sai::color3f{.8f, .1f, .3f},
+          "generic color readback agrees with material extraction");
+  require(take(service.dispatch_notifications()) == 1 && colors.size() == 1 &&
               std::get<sai::color3f>(colors.front().value) ==
-                  sai::color3f{.8f, .1f, .3f}), "Material observation agrees with same-pump readback and extraction");
-  CHECK_MESSAGE((!service.enqueue(client,
-                           {{field(service, context, "Ball", "radius"), 3.f}})), "initializeOnly is fixed at adoption");
-  CHECK_MESSAGE((!service.enqueue(client, {{geometry, p::node_value{shared}}})), "adopted node-valued writes fail closed");
-  CHECK_MESSAGE((!service.enqueue(
-              client, {{field(service, context, "Paint", "shininess"), 2.f}})), "lenient reflected numeric setter cannot bypass range checks");
+                  sai::color3f{.8f, .1f, .3f},
+          "Material observation agrees with same-pump readback and extraction");
+  require(!service.enqueue(client,
+                           {{field(service, context, "Ball", "radius"), 3.f}}),
+          "initializeOnly is fixed at adoption");
+  require(!service.enqueue(client, {{geometry, p::node_value{shared}}}),
+          "adopted node-valued writes fail closed");
+  require(!service.enqueue(
+              client, {{field(service, context, "Paint", "shininess"), 2.f}}),
+          "lenient reflected numeric setter cannot bypass range checks");
   auto alpha = field(service, context, "Look", "alphaMode");
-  CHECK_MESSAGE((!service.enqueue(client, {{alpha, std::string{"unknown-token"}}})), "enum setter cannot silently discard unknown tokens");
+  require(!service.enqueue(client, {{alpha, std::string{"unknown-token"}}}),
+          "enum setter cannot silently discard unknown tokens");
   take(service.enqueue(client, {{alpha, std::string{"BLEND"}}}));
   host = nullptr;
   take(service.pump(adopted.active, {2}));
-  CHECK_MESSAGE((std::get<std::string>(take(service.read(alpha))) == "BLEND"), "valid enum token reaches native storage");
+  require(std::get<std::string>(take(service.read(alpha))) == "BLEND",
+          "valid enum token reaches native storage");
   bool denied = false;
   std::thread other([&] { denied = !adopted.host.session(service); });
   other.join();
-  CHECK_MESSAGE((denied), "host access validates owner thread");
+  require(denied, "host access validates owner thread");
   auto foreign = take(sai::native::make_service());
-  CHECK_MESSAGE((!adopted.host.session(*foreign)), "host access validates exact service");
+  require(!adopted.host.session(*foreign),
+          "host access validates exact service");
   take(service.retire(adopted.active));
-  CHECK_MESSAGE((!service.read(translation) && !adopted.host.session(service)), "retirement revokes portable and native access");
+  require(!service.read(translation) && !adopted.host.session(service),
+          "retirement revokes portable and native access");
 }
 void same_pump_time_sensor_ingress() {
   auto session = sdk::RuntimeSession::create(sdk::parseDocument(
@@ -180,22 +212,29 @@ void same_pump_time_sensor_ingress() {
                        {{field(service, context, "Clock", "cycleInterval"),
                          sai::time_value{2}}}));
   auto report = take(service.pump(adopted.active, {.5}));
-  CHECK_MESSAGE((report.state == p::activation_state::active && !report.error), "standard runtime and retained ingress coexist");
-  CHECK_MESSAGE((std::get<float>(take(service.read(output))) == .25f), "TimeSensor sees new cycleInterval before its first output this pump");
-  CHECK_MESSAGE((notices.empty()), "TimeSensor observation is deferred");
-  CHECK_MESSAGE((take(service.dispatch_notifications()) > 0 &&
+  require(report.state == p::activation_state::active && !report.error,
+          "standard runtime and retained ingress coexist");
+  require(
+      std::get<float>(take(service.read(output))) == .25f,
+      "TimeSensor sees new cycleInterval before its first output this pump");
+  require(notices.empty(), "TimeSensor observation is deferred");
+  require(
+      take(service.dispatch_notifications()) > 0 &&
           std::all_of(notices.begin(), notices.end(),
                       [](const auto &notice) {
                         return std::get<float>(notice.value) == .25f;
-                      })), "every native fraction occurrence uses the new interval in this pump");
-  CHECK_MESSAGE((take(adopted.host.session(service))->context().tickGeneration() == 1), "same-pump ingress does not need an extra tick");
+                      }),
+      "every native fraction occurrence uses the new interval in this pump");
+  require(take(adopted.host.session(service))->context().tickGeneration() == 1,
+          "same-pump ingress does not need an extra tick");
 }
 void adoption_preconditions_and_opaque_content() {
-  CHECK_MESSAGE((!sai::native::adopt_session(nullptr)), "null session refused");
+  require(!sai::native::adopt_session(nullptr), "null session refused");
   auto running = sdk::RuntimeSession::create(sdk::parseDocument(
       "<X3D profile='Immersive' version='4.0'><Scene/></X3D>"));
   running->tick(0);
-  CHECK_MESSAGE((!sai::native::adopt_session(std::move(running))), "already-ticked session refused");
+  require(!sai::native::adopt_session(std::move(running)),
+          "already-ticked session refused");
   auto session = sdk::RuntimeSession::create(
       sdk::parseDocument(R"(<X3D profile='Immersive' version='4.0'><Scene>
     <ProtoDeclare name='Body'><ProtoBody><Transform><Shape><Sphere/></Shape></Transform></ProtoBody></ProtoDeclare>
@@ -208,22 +247,28 @@ void adoption_preconditions_and_opaque_content() {
   for (const auto &[name, type] :
        std::vector<std::pair<const char *, const char *>>{
            {"Instance", "Body"}, {"Child", "Inline"}, {"Code", "Script"}}) {
-    CHECK_MESSAGE((take(service.type_name(take(service.named(context, name)))) ==
-                type), "opaque nodes report their real type or PROTO name");
+    require(take(service.type_name(take(service.named(context, name)))) ==
+                type,
+            "opaque nodes report their real type or PROTO name");
     const auto refused = service.fields(take(service.named(context, name)));
-    CHECK_MESSAGE((!refused &&
+    require(!refused &&
                 refused.error().code ==
                     sai::error_code::unsupported_operation &&
-                refused.error().message.find("opaque") != std::string::npos), "unsupported PROTO/Inline/Script interface is explicitly opaque");
+                refused.error().message.find("opaque") != std::string::npos,
+            "unsupported PROTO/Inline/Script interface is explicitly opaque");
   }
   const auto imported = service.named(context, "Alias");
-  CHECK_MESSAGE((!imported &&
+  require(!imported &&
               imported.error().code == sai::error_code::unsupported_operation &&
-              imported.error().message.find("IMPORT") != std::string::npos), "IMPORT alias lookup names the unsupported boundary");
+              imported.error().message.find("IMPORT") != std::string::npos,
+          "IMPORT alias lookup names the unsupported boundary");
   const auto names = take(service.named_nodes(context));
-  CHECK_MESSAGE((std::none_of(names.begin(), names.end(),
-                   [](const auto &binding) { return binding.name == "Alias"; })), "IMPORT aliases do not enter root DEF enumeration");
-  CHECK_MESSAGE((take(adopted.host.session(service))->delta().added.size() == 1), "provider leaves the first extraction untouched and opaque PROTO "
+  require(
+      std::none_of(names.begin(), names.end(),
+                   [](const auto &binding) { return binding.name == "Alias"; }),
+      "IMPORT aliases do not enter root DEF enumeration");
+  require(take(adopted.host.session(service))->delta().added.size() == 1,
+          "provider leaves the first extraction untouched and opaque PROTO "
           "renders");
 }
 void live_routes_on_adopted_session() {
@@ -247,66 +292,83 @@ void live_routes_on_adopted_session() {
   auto earlier = take(service.enqueue(client, {{fraction, .25f}}));
   auto route = take(service.enqueue_route(client, output, translation));
   auto later = take(service.enqueue(client, {{fraction, .5f}}));
-  CHECK_MESSAGE((take(adopted.host.session(service))->scene().routes.empty()), "route admission does not mutate retained document");
+  require(take(adopted.host.session(service))->scene().routes.empty(),
+          "route admission does not mutate retained document");
   take(service.pump(adopted.active, {0}));
-  CHECK_MESSAGE((take(earlier.status()).state == p::request_state::processed &&
+  require(take(earlier.status()).state == p::request_state::processed &&
               std::get<sai::vec3f>(take(service.read(translation))) ==
-                  sai::vec3f{}), "an earlier queued event cannot use the future route");
+                  sai::vec3f{},
+          "an earlier queued event cannot use the future route");
   auto report = take(service.pump(adopted.active, {1}));
-  CHECK_MESSAGE((!report.error &&
-              take(route.status()).state == p::request_state::processed), "route installation is an ordinary processed FIFO ticket");
-  CHECK_MESSAGE((std::get<sai::vec3f>(take(service.read(translation))) == sai::vec3f{}), "route installation does not replay the previous output");
+  require(!report.error &&
+              take(route.status()).state == p::request_state::processed,
+          "route installation is an ordinary processed FIFO ticket");
+  require(std::get<sai::vec3f>(take(service.read(translation))) == sai::vec3f{},
+          "route installation does not replay the previous output");
   {
     const auto *host = take(adopted.host.session(service));
     const auto &routes = host->scene().routes;
-    CHECK_MESSAGE((routes.size() == 1 && routes.front().fromField == "value_changed" &&
+    require(
+        routes.size() == 1 && routes.front().fromField == "value_changed" &&
             routes.front().toField == "translation" &&
             routes.front().binding ==
                 x3d::runtime::Route::Binding::DirectNodes &&
             routes.front().from.lock() == host->scene().resolve("Curve") &&
             routes.front().to.lock() == host->scene().resolve("Target") &&
-            host->context().graph().routeCount() == 1), "retained document and executable route agree on identity and fields");
+            host->context().graph().routeCount() == 1,
+        "retained document and executable route agree on identity and fields");
   }
   report = take(service.pump(adopted.active, {2}));
-  CHECK_MESSAGE((!report.error &&
+  require(!report.error &&
               take(later.status()).state == p::request_state::processed &&
               std::get<sai::vec3f>(take(service.read(translation))) ==
-                  sai::vec3f{2, 4, 6}), "the next queued turn executes the installed native route");
-  CHECK_MESSAGE((notices.empty()), "live-route observations remain deferred");
-  CHECK_MESSAGE((take(service.dispatch_notifications()) == 1 &&
+                  sai::vec3f{2, 4, 6},
+          "the next queued turn executes the installed native route");
+  require(notices.empty(), "live-route observations remain deferred");
+  require(take(service.dispatch_notifications()) == 1 &&
               std::get<sai::vec3f>(notices.front().value) ==
-                  sai::vec3f{2, 4, 6}), "deferred observation reports the live routed value");
-  CHECK_MESSAGE((service.enqueue_route(client, output, fraction).error().code ==
-              sai::error_code::invalid_route), "live ROUTE refuses wrong exact kind");
-  CHECK_MESSAGE((service.enqueue_route(client, fraction, translation).error().code ==
-              sai::error_code::invalid_route), "inputOnly is not a ROUTE source");
-  CHECK_MESSAGE((service.enqueue_route(client, output, output).error().code ==
-              sai::error_code::invalid_route), "outputOnly is not a ROUTE destination");
+                  sai::vec3f{2, 4, 6},
+          "deferred observation reports the live routed value");
+  require(service.enqueue_route(client, output, fraction).error().code ==
+              sai::error_code::invalid_route,
+          "live ROUTE refuses wrong exact kind");
+  require(service.enqueue_route(client, fraction, translation).error().code ==
+              sai::error_code::invalid_route,
+          "inputOnly is not a ROUTE source");
+  require(service.enqueue_route(client, output, output).error().code ==
+              sai::error_code::invalid_route,
+          "outputOnly is not a ROUTE destination");
   const auto metadata = field(service, context, "Target", "metadata");
   const auto topology = service.enqueue_route(client, metadata, metadata);
-  CHECK_MESSAGE((!topology &&
-              topology.error().code == sai::error_code::unsupported_operation), "live ROUTEs cannot bypass adopted node-valued write refusal, and "
+  require(!topology &&
+              topology.error().code == sai::error_code::unsupported_operation,
+          "live ROUTEs cannot bypass adopted node-valued write refusal, and "
           "the refusal happens at admission");
   const auto alpha = field(service, context, "Look", "alphaMode");
   const auto description = field(service, context, "Link", "description");
   const auto mismatch = service.enqueue_route(client, alpha, description);
-  CHECK_MESSAGE((!mismatch && mismatch.error().code == sai::error_code::invalid_route), "SFEnum -> SFString shares sf_string but fails native admission");
+  require(!mismatch && mismatch.error().code == sai::error_code::invalid_route,
+          "SFEnum -> SFString shares sf_string but fails native admission");
   const auto other = take(service.create_scene());
   const auto other_context = take(service.root_context(other));
   const auto node = take(service.create_node(other_context, "Transform"));
-  CHECK_MESSAGE((service.enqueue_route(client, output,
+  require(service.enqueue_route(client, output,
                                 take(service.get_field(node, "translation")))
                   .error()
-                  .code == sai::error_code::invalid_context), "live ROUTE refuses another scene's lexical context");
-  CHECK_MESSAGE((!service.get_field(take(service.named(context, "Child")), "load")), "opaque nested contexts cannot supply a live ROUTE endpoint");
+                  .code == sai::error_code::invalid_context,
+          "live ROUTE refuses another scene's lexical context");
+  require(!service.get_field(take(service.named(context, "Child")), "load"),
+          "opaque nested contexts cannot supply a live ROUTE endpoint");
   auto duplicate = take(service.enqueue_route(client, output, translation));
   report = take(service.pump(adopted.active, {3}));
-  CHECK_MESSAGE((!report.error && report.state == p::activation_state::active &&
-              take(duplicate.status()).state == p::request_state::processed), "a redundant live ROUTE is a successful no-op (ISO 19775-1 4.4.8.2)");
+  require(!report.error && report.state == p::activation_state::active &&
+              take(duplicate.status()).state == p::request_state::processed,
+          "a redundant live ROUTE is a successful no-op (ISO 19775-1 4.4.8.2)");
   {
     const auto *host = take(adopted.host.session(service));
-    CHECK_MESSAGE((host->scene().routes.size() == 1 &&
-                host->context().graph().routeCount() == 1), "a redundant ROUTE adds no document or executable edge");
+    require(host->scene().routes.size() == 1 &&
+                host->context().graph().routeCount() == 1,
+            "a redundant ROUTE adds no document or executable edge");
   }
   take(service.begin_update(client));
   const auto scale = field(service, context, "Target", "scale");
@@ -316,16 +378,19 @@ void live_routes_on_adopted_session() {
   auto held_installed = take(service.enqueue_route(client, output, translation));
   take(service.end_update(client));
   report = take(service.pump(adopted.active, {4}));
-  CHECK_MESSAGE((!report.error &&
+  require(!report.error &&
               take(held_input.status()).submission ==
                   take(held_route.status()).submission &&
               std::get<sai::vec3f>(take(service.read(scale))) ==
-                  sai::vec3f{3, 6, 9}), "a released gate installs its routes before evaluating its inputs");
-  CHECK_MESSAGE((take(held_copy.status()).state == p::request_state::processed &&
+                  sai::vec3f{3, 6, 9},
+          "a released gate installs its routes before evaluating its inputs");
+  require(take(held_copy.status()).state == p::request_state::processed &&
               take(held_installed.status()).state ==
                   p::request_state::processed &&
-              report.state == p::activation_state::active), "duplicates in one gate, queued or installed, do not fault it");
-  CHECK_MESSAGE((take(adopted.host.session(service))->scene().routes.size() == 2), "each successfully installed route is retained in the document");
+              report.state == p::activation_state::active,
+          "duplicates in one gate, queued or installed, do not fault it");
+  require(take(adopted.host.session(service))->scene().routes.size() == 2,
+          "each successfully installed route is retained in the document");
 }
 void native_node_writes_after_adoption() {
   auto adopted = take(sai::native::adopt_session(sdk::RuntimeSession::create(
@@ -355,18 +420,23 @@ void native_node_writes_after_adoption() {
                                   "Group")});
   }
   auto report = take(service.pump(adopted.active, {0}));
-  CHECK_MESSAGE((!report.error && report.state == p::activation_state::active), "an observed native SFNode/MFNode write does not fault the tick");
-  CHECK_MESSAGE((take(service.dispatch_notifications()) == 1 && notices.size() == 1), "the observed children write is published once");
+  require(!report.error && report.state == p::activation_state::active,
+          "an observed native SFNode/MFNode write does not fault the tick");
+  require(take(service.dispatch_notifications()) == 1 && notices.size() == 1,
+          "the observed children write is published once");
   const auto published = std::get<p::node_values>(notices.front().value);
-  CHECK_MESSAGE((published.size() == 1 && published.front() &&
-              take(service.type_name(*published.front())) == "Transform"), "the newly reachable node has an SAI identity");
+  require(published.size() == 1 && published.front() &&
+              take(service.type_name(*published.front())) == "Transform",
+          "the newly reachable node has an SAI identity");
   const auto grandchildren = std::get<p::node_values>(
       take(service.read(take(service.get_field(*published.front(), "children")))));
-  CHECK_MESSAGE((grandchildren.size() == 1 &&
-              take(service.type_name(*grandchildren.front())) == "Shape"), "its subgraph is reachable through ordinary reads");
+  require(grandchildren.size() == 1 &&
+              take(service.type_name(*grandchildren.front())) == "Shape",
+          "its subgraph is reachable through ordinary reads");
   const auto quiet = std::get<p::node_values>(
       take(service.read(field(service, context, "Quiet", "children"))));
-  CHECK_MESSAGE((quiet.size() == 1 && take(service.type_name(*quiet.front())) == "Group"), "unobserved native writes register on first read");
+  require(quiet.size() == 1 && take(service.type_name(*quiet.front())) == "Group",
+          "unobserved native writes register on first read");
 }
 void inline_diagnostics_drain_through_pump() {
   sdk::SessionOptions options;
@@ -382,22 +452,24 @@ void inline_diagnostics_drain_through_pump() {
   auto &service = *adopted.service;
   {
     auto *host = take(adopted.host.session(service));
-    CHECK_MESSAGE((host->context().writeField(host->scene().resolve("Child").get(),
+    require(host->context().writeField(host->scene().resolve("Child").get(),
                                        "load", true) ==
-                x3d::runtime::FieldWriteResult::Ok), "host requests a deferred Inline load");
+                x3d::runtime::FieldWriteResult::Ok,
+            "host requests a deferred Inline load");
   }
   take(service.pump(adopted.active, {0}));
   const auto *host = take(adopted.host.session(service));
-  CHECK_MESSAGE((host->scene().pendingInlineWarnings.empty() &&
+  require(host->scene().pendingInlineWarnings.empty() &&
               std::any_of(host->document().inlineWarnings.begin(),
                           host->document().inlineWarnings.end(),
                           [](const auto &warning) {
                             return warning.detail.find("missing.x3d") !=
                                    std::string::npos;
-                          })), "pump ticks through RuntimeSession and drains Inline diagnostics");
+                          }),
+          "pump ticks through RuntimeSession and drains Inline diagnostics");
 }
 } // namespace
-TEST_CASE("adopt_session_test") {
+int main() {
   try {
     live_routes_on_adopted_session();
     adopted_graph_and_extraction();

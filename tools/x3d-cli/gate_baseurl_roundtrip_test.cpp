@@ -42,7 +42,7 @@ static bool roundtripEquiv(const std::string &srcPath, const std::string &enc,
     return x3d_cli::sceneEquivalent(src.scene, rt.scene, why);
 }
 
-TEST_CASE("gate_baseurl_roundtrip_test") {
+TEST_CASE("relative Inline and EXTERNPROTO urls survive a gate roundtrip") {
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     fs::path dir = fs::temp_directory_path() /
                    ("x3d_gate_baseurl_" + std::to_string(stamp));
@@ -103,5 +103,4 @@ TEST_CASE("gate_baseurl_roundtrip_test") {
 
     std::error_code ec;
     fs::remove_all(dir, ec);
-
 }

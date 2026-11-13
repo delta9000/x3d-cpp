@@ -17,7 +17,6 @@ using extract::TextureRef;
 using Update = x3d::core::GeneratedCubeMapTextureUpdateChoices;
 
 namespace {
-
 const TextureRef *cubeRef(RuntimeSession &s) {
   for (extract::RenderItemId id = 0; id < s.extractor().itemCount(); ++id)
     for (const TextureRef &t : s.extractor().item(id).material.textures)

@@ -17,7 +17,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 
-static void test_contact_point_defaults() {
+TEST_CASE("contact point defaults") {
   ContactPoint cp;
   CHECK_MESSAGE((cp.bodyA == kInvalidBodyHandle), "ContactPoint.bodyA defaults invalid");
   CHECK_MESSAGE((cp.bodyB == kInvalidBodyHandle), "ContactPoint.bodyB defaults invalid");
@@ -30,7 +30,7 @@ static void test_contact_point_defaults() {
 // One ResolvedContact between bodyA/bodyB whose shapes are shapeA/shapeB.
 // Expect: one Contact emitted with geometric + collection-default fields,
 // intersections = {shapeA, shapeB}, isActive = true.
-static void test_single_contact_emitted() {
+TEST_CASE("single contact emitted") {
   auto bodyA = std::make_shared<RigidBody>();
   auto bodyB = std::make_shared<RigidBody>();
   auto shapeA = std::make_shared<CollidableShape>();
@@ -83,7 +83,7 @@ static void test_single_contact_emitted() {
 }
 
 // collider == NULL -> no contacts, no isActive event (stays default false).
-static void test_null_collider_silent() {
+TEST_CASE("null collider silent") {
   auto sensor = std::make_shared<CollisionSensor>();  // collider defaults NULL
   x3d::runtime::X3DExecutionContext ctx;
   ContactReporter reporter;
@@ -95,7 +95,7 @@ static void test_null_collider_silent() {
 }
 
 // collection.enabled == FALSE silences the sensor even with a matching contact.
-static void test_disabled_collection_silent() {
+TEST_CASE("disabled collection silent") {
   auto shapeA = std::make_shared<CollidableShape>();
   auto shapeB = std::make_shared<CollidableShape>();
   auto col = std::make_shared<CollisionCollection>();
@@ -114,7 +114,7 @@ static void test_disabled_collection_silent() {
 }
 
 // Two ResolvedContacts with the same pairKey collapse to one (keep max depth).
-static void test_dedupe_by_pair_keep_max_depth() {
+TEST_CASE("dedupe by pair keep max depth") {
   auto shapeA = std::make_shared<CollidableShape>();
   auto shapeB = std::make_shared<CollidableShape>();
   auto col = std::make_shared<CollisionCollection>();
@@ -136,7 +136,7 @@ static void test_dedupe_by_pair_keep_max_depth() {
 }
 
 // Contacts emit sorted by pairKey regardless of input order.
-static void test_deterministic_ordering() {
+TEST_CASE("deterministic ordering") {
   auto s1 = std::make_shared<CollidableShape>();
   auto s2 = std::make_shared<CollidableShape>();
   auto s3 = std::make_shared<CollidableShape>();
@@ -160,7 +160,7 @@ static void test_deterministic_ordering() {
 }
 
 // isActive only changes on transitions: true once, then false once contacts stop.
-static void test_isactive_transition() {
+TEST_CASE("isactive transition") {
   auto shapeA = std::make_shared<CollidableShape>();
   auto shapeB = std::make_shared<CollidableShape>();
   auto col = std::make_shared<CollisionCollection>();
@@ -178,14 +178,4 @@ static void test_isactive_transition() {
 
   reporter.report({}, ctx); ctx.process();
   CHECK_MESSAGE((sensor->getIsActive() == false), "isActive false after contacts stop");
-}
-
-TEST_CASE("contact_reporter_test") {
-  test_contact_point_defaults();
-  test_single_contact_emitted();
-  test_null_collider_silent();
-  test_disabled_collection_silent();
-  test_dedupe_by_pair_keep_max_depth();
-  test_deterministic_ordering();
-  test_isactive_transition();
 }

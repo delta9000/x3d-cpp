@@ -30,7 +30,7 @@ using namespace x3d::nodes;
 using x3d::test::rms;
 using x3d::test::goertzel;
 
-TEST_CASE("sound_periodicwave_test") {
+TEST_CASE("PeriodicWave") {
   constexpr float kSR = 48000.0f;
   constexpr int kFrames = 4096;
   constexpr float kFreq = 100.0f;  // period = kSR/kFreq = 480 samples
@@ -49,10 +49,32 @@ TEST_CASE("sound_periodicwave_test") {
     return std::fabs(a - b) <= tol;
   };
 
-  // (a) backend DSP
+  // (b) system: SoundSystem::setPeriodicWave registered waves
+  // A §16 chain AudioDestination <- OscillatorSource. The 4.0 bindings cannot
+  // read the authored periodicWave field (tier (c)), so the test registers the
+  // PeriodicWave node the way an embedder bridges the gap.
+  auto buildDest = [](const std::shared_ptr<OscillatorSource> &osc) {
+    auto dest = std::make_shared<AudioDestination>();
+    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(osc)});
+    return dest;
+  };
+  auto customWave = [] {
+    auto w = std::make_shared<PeriodicWave>();
+    w->setType(PeriodicWaveTypeChoices::CUSTOM);
+    w->setOptionsReal(MFFloat{0.0f, 0.0f, 0.5f});
+    w->setOptionsImag(MFFloat{0.0f, 1.0f, 0.0f});
+    return w;
+  };
+  auto maxAbsDiff = [](const std::vector<float> &a, const std::vector<float> &b) {
+    double d = 0.0;
+    const std::size_t n = std::min(a.size(), b.size());
+    for (std::size_t i = 0; i < n; ++i)
+      d = std::max(d, std::fabs(double(a[i]) - double(b[i])));
+    return d;
+  };
 
-  // P1: single-harmonic CUSTOM (imag[1]=1) == Sine, sample-for-sample.
-  {
+  SUBCASE("backend: a single-harmonic CUSTOM wave equals Sine") {
+    // P1: single-harmonic CUSTOM (imag[1]=1) == Sine, sample-for-sample.
     NodeParams sine;
     sine.frequency = kFreq;
     sine.waveform = Waveform::Sine;
@@ -76,8 +98,8 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((maxDiff < 1e-6), "imag=[0,1] CUSTOM wave == Sine sample-for-sample");
   }
 
-  // P2: two-harmonic CUSTOM — analytic values, normalization, period.
-  {
+  SUBCASE("backend: a two-harmonic CUSTOM wave has the analytic values") {
+    // P2: two-harmonic CUSTOM — analytic values, normalization, period.
     NodeParams custom;
     custom.frequency = kFreq;
     custom.waveform = Waveform::Custom;
@@ -114,8 +136,8 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((periodDiff < 1e-5), "wave repeats with period SR/f");
   }
 
-  // P3: no custom wave — the Sine default is unchanged.
-  {
+  SUBCASE("backend: no custom wave keeps the Sine default") {
+    // P3: no custom wave — the Sine default is unchanged.
     NodeParams p;  // waveform defaults to Sine
     p.frequency = kFreq;
     CHECK_MESSAGE((p.waveform == Waveform::Sine), "NodeParams.waveform defaults to Sine");
@@ -128,32 +150,8 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((g > 0.6), "strong fundamental present");
   }
 
-  // (b) system: SoundSystem::setPeriodicWave registered waves
-  // A §16 chain AudioDestination <- OscillatorSource. The 4.0 bindings cannot
-  // read the authored periodicWave field (tier (c)), so the test registers the
-  // PeriodicWave node the way an embedder bridges the gap.
-  auto buildDest = [](const std::shared_ptr<OscillatorSource> &osc) {
-    auto dest = std::make_shared<AudioDestination>();
-    dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(osc)});
-    return dest;
-  };
-  auto customWave = [] {
-    auto w = std::make_shared<PeriodicWave>();
-    w->setType(PeriodicWaveTypeChoices::CUSTOM);
-    w->setOptionsReal(MFFloat{0.0f, 0.0f, 0.5f});
-    w->setOptionsImag(MFFloat{0.0f, 1.0f, 0.0f});
-    return w;
-  };
-  auto maxAbsDiff = [](const std::vector<float> &a, const std::vector<float> &b) {
-    double d = 0.0;
-    const std::size_t n = std::min(a.size(), b.size());
-    for (std::size_t i = 0; i < n; ++i)
-      d = std::max(d, std::fabs(double(a[i]) - double(b[i])));
-    return d;
-  };
-
-  // P4: a registered CUSTOM wave renders the harmonic sum (P2's values).
-  {
+  SUBCASE("system: a registered CUSTOM wave renders the harmonic sum") {
+    // P4: a registered CUSTOM wave renders the harmonic sum (P2's values).
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
     auto wave = customWave();
@@ -174,9 +172,9 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((near(buf[3 * q], -1.0, 1e-6)), "registered CUSTOM wave: x(3T/4) = -1");
   }
 
-  // P5: the four standard types map onto the Waveform enum — a SAWTOOTH wave
-  // renders sample-for-sample like the seam's own sawtooth.
-  {
+  SUBCASE("system: SAWTOOTH maps onto the seam sawtooth") {
+    // P5: the four standard types map onto the Waveform enum — a SAWTOOTH wave
+    // renders sample-for-sample like the seam's own sawtooth.
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
     auto wave = std::make_shared<PeriodicWave>();
@@ -200,8 +198,8 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((d < 1e-6), "type=SAWTOOTH maps onto the seam's sawtooth");
   }
 
-  // P6: no registered wave -> sine (the §16 default, unchanged).
-  {
+  SUBCASE("system: no registered wave renders sine") {
+    // P6: no registered wave -> sine (the §16 default, unchanged).
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
 
@@ -220,9 +218,9 @@ TEST_CASE("sound_periodicwave_test") {
     CHECK_MESSAGE((d < 1e-6), "oscillator with NO registered wave stays sine");
   }
 
-  // P7: the wave rides the seam in the node's params (recording tier) — and a
-  // CUSTOM wave with no harmonic terms falls back to sine.
-  {
+  SUBCASE("system: the wave rides the seam, and an empty CUSTOM falls back to sine") {
+    // P7: the wave rides the seam in the node's params (recording tier) — and a
+    // CUSTOM wave with no harmonic terms falls back to sine.
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
     auto emptyOsc = std::make_shared<OscillatorSource>();
@@ -260,8 +258,8 @@ TEST_CASE("sound_periodicwave_test") {
                   "CUSTOM wave with no harmonic terms falls back to sine");
   }
 
-  // (c) parse path: the 4.1 field is unreadable on the 4.0 bindings
-  {
+  SUBCASE("parse: the 4.1 field is unreadable on the 4.0 bindings") {
+    // (c) parse path: the 4.1 field is unreadable on the 4.0 bindings
     const char *xml =
         "<?xml version='1.0' encoding='UTF-8'?>"
         "<X3D profile='Immersive' version='4.0'>"

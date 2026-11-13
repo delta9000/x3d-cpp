@@ -41,7 +41,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 bool deq(double a, double b, double e = 1e-6) { return std::fabs(a - b) <= e; }
 
 using NodeP = std::shared_ptr<X3DNode>;
@@ -299,7 +298,6 @@ TEST_CASE("events_misc_test") {
   test_nested_inline_readiness();
   test_anchor_activation();
   test_anchor_loadsensor_waits_for_viewpoint_bind();
-
 }
 
 TEST_CASE("structural removal retires listeners before node address reuse") {

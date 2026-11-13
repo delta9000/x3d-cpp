@@ -17,7 +17,6 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 
 namespace {
-
 std::shared_ptr<X3DNode> firstScript(const X3DDocument &doc) {
   for (auto &n : doc.scene.rootNodes)
     if (n && n->nodeTypeName() == "Script")
@@ -48,7 +47,7 @@ const char *kScriptJson = R"JSON({ "X3D": { "@profile": "Interchange", "@version
         ] } }
   ] } } })JSON";
 
-void parsesDeclsAndSource() {
+TEST_CASE("parses decls and source") {
   auto doc = codec::parseDocument(kScriptJson);
   auto script = firstScript(doc);
   CHECK_MESSAGE((script != nullptr), "JSON Script parses to a Script node");
@@ -93,7 +92,7 @@ void parsesDeclsAndSource() {
   }
 }
 
-void roundTrips() {
+TEST_CASE("round trips") {
   auto doc0 = codec::parseDocument(kScriptJson);
   std::string js = codec::JsonWriter().writeDocument(doc0);
 
@@ -127,8 +126,3 @@ void roundTrips() {
 }
 
 } // namespace
-
-TEST_CASE("json_script_field_test") {
-  parsesDeclsAndSource();
-  roundTrips();
-}

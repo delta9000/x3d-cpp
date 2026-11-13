@@ -24,7 +24,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 // One Transform over one Box — the Transform is what we animate.
 Scene makeScene(std::shared_ptr<X3DNode> &xfOut) {
   auto box = createX3DNode("Box");

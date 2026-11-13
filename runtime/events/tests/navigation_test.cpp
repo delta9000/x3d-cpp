@@ -43,7 +43,6 @@ using x3d::test::setF;
 using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
 
 float dist(const SFVec3f &a, const SFVec3f &b) {

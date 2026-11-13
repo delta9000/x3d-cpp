@@ -90,7 +90,7 @@ void compareUtm(const BuiltinGeoProjection &builtin,
 }
 } // namespace
 
-TEST_CASE("proj_geo_swap_test") {
+TEST_CASE("PROJ matches the builtin projection on every ellipsoid") {
   const BuiltinGeoProjection builtin;
   const ProjGeoProjection proj;
   const std::string codes[] = {"WE", "CC", "AA", "IN", "KA", "BR"};
@@ -111,12 +111,23 @@ TEST_CASE("proj_geo_swap_test") {
         for (double dLon : {-3.5, -3.0, 0.0, 3.0, 3.5})
           compareUtm(builtin, proj, e, code, zone, lat < 0, lat, dLon);
   }
+  MESSAGE(std::setprecision(12) << "Worst differences: geocentric " << worstGc
+          << " m; UTM " << worstUtm << " m; inverse lat " << worstLat
+          << " deg, lon " << worstLon << " deg, height " << worstHeight << " m");
+}
+
+TEST_CASE("PROJ rejects the earth centre, zone 0 and an unconfigured geoid") {
+  const ProjGeoProjection proj;
   Ellipsoid we;
   ellipsoidByCode("WE", we);
   double lat, lon, h, east, north, n = 0;
   CHECK_MESSAGE((!proj.geocentricToGeodetic(we, SFVec3d{0, 0, 0}, lat, lon, h)), "earth centre");
   CHECK_MESSAGE((!proj.geodeticToUtm(we, 0, false, 0, 0, east, north)), "invalid zone");
   CHECK_MESSAGE((!proj.geoidUndulation(0, 0, n)), "unconfigured geoid");
+}
+
+TEST_CASE("a sample geoid grid applies the WGS84 height rule") {
+  double n = 0;
   // A 2x2 test grid isolates §25.2.3's WGS84 height rule from downloaded data.
   ProjGeoProjection sampleGrid(X3D_PROJ_TEST_GRID);
   CHECK_MESSAGE((sampleGrid.geoidUndulation(40 * kDegToRad, -75 * kDegToRad, n)),
@@ -131,6 +142,10 @@ TEST_CASE("proj_geo_swap_test") {
   CHECK_MESSAGE((std::max({std::fabs(fromGeoid.x - fromEllipsoid.x),
                   std::fabs(fromGeoid.y - fromEllipsoid.y),
                   std::fabs(fromGeoid.z - fromEllipsoid.z)}) <= 1e-9), "sample geoid height application");
+}
+
+TEST_CASE("a real geoid grid from X3D_GEOID_GRID, when set") {
+  double n = 0;
   const char *gridEnv = std::getenv("X3D_GEOID_GRID");
   const std::string grid = gridEnv ? gridEnv : "";
   if (!grid.empty() && std::filesystem::exists(grid)) {
@@ -148,14 +163,9 @@ TEST_CASE("proj_geo_swap_test") {
                                     std::fabs(fromGeoid.y - fromEllipsoid.y),
                                     std::fabs(fromGeoid.z - fromEllipsoid.z)});
       CHECK_MESSAGE((diff <= 1e-9), "geoid height sign");
-      std::cout << "Geoid N at 40,-75: " << n << " m\n";
+      MESSAGE("Geoid N at 40,-75: " << n << " m");
     }
   } else {
-    std::cout
-        << "Geoid grid case skipped (set X3D_GEOID_GRID to a GTX/GTG path)\n";
+    MESSAGE("Geoid grid case skipped (set X3D_GEOID_GRID to a GTX/GTG path)");
   }
-  std::cout << std::setprecision(12) << "Worst differences: geocentric "
-            << worstGc << " m; UTM " << worstUtm << " m; inverse lat "
-            << worstLat << " deg, lon " << worstLon << " deg, height "
-            << worstHeight << " m\n";
 }

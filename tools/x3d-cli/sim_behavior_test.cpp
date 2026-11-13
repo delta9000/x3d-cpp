@@ -16,7 +16,6 @@
 using namespace x3d::core;
 
 namespace {
-
 // Build + wire a scene's full runtime; returns the live context (the doc must
 // outlive it, so the caller owns both).
 void wire(x3d::sdk::X3DDocument &doc, x3d::runtime::X3DExecutionContext &ctx) {
@@ -118,10 +117,8 @@ void testDeterminism(const std::string &dir) {
 
 }  // namespace
 
-TEST_CASE("sim_behavior_test") {
-  const std::string dir = X3D_TEST_DATA_DIR;
+TEST_CASE("interpolator mid-cycle") { testInterpolatorMidCycle(X3D_TEST_DATA_DIR); }
 
-  testInterpolatorMidCycle(dir);
-  testProximityCrossing(dir);
-  testDeterminism(dir);
-}
+TEST_CASE("proximity crossing") { testProximityCrossing(X3D_TEST_DATA_DIR); }
+
+TEST_CASE("determinism") { testDeterminism(X3D_TEST_DATA_DIR); }

@@ -30,14 +30,13 @@ using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }
 
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
@@ -49,7 +48,7 @@ std::string readFile(const std::string &path) {
 // (1) Validation
 // Build a Scene programmatically with one valid route and one of each invalid
 // kind, plus a dangling-DEF route. Bridge it and assert the diagnostics.
-void test_route_validation() {
+TEST_CASE("route validation") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   auto mover = std::make_shared<Transform>();
@@ -106,7 +105,7 @@ void test_route_validation() {
 }
 
 // A scene whose every route is valid yields ok() == true and no rejects.
-void test_all_valid_ok() {
+TEST_CASE("all valid ok") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   auto mover = std::make_shared<Transform>();
@@ -126,7 +125,7 @@ void test_all_valid_ok() {
 }
 
 // (2) Load a document with ROUTEs and tick it
-void test_load_and_tick() {
+TEST_CASE("load and tick") {
   std::string text = readFile(g_dataDir + "/animated_transform.x3dv");
   CHECK_MESSAGE((!text.empty()), "fixture animated_transform.x3dv loaded");
 
@@ -179,7 +178,7 @@ void test_load_and_tick() {
 
 // A ROUTE whose sink is an initializeOnly field must be rejected: the field is
 // Data-layer writable initializeOnly fields are not routable event sinks.
-void testInitializeOnlyNotRoutableSink() {
+TEST_CASE("initialize only not routable sink") {
   Scene scene;
   auto ts = createX3DNode("TimeSensor");
   auto sphere = createX3DNode("Sphere");
@@ -206,7 +205,7 @@ void testInitializeOnlyNotRoutableSink() {
 //     redirected onto the cloned body endpoints (sink and source side), not
 //     rejected as unknown fields;
 //   - a body-internal ROUTE is registered directly from resolvedProtoRoutes.
-void testProtoRouteRedirect() {
+TEST_CASE("proto route redirect") {
   Scene scene;
 
   auto decl = std::make_shared<ProtoDeclaration>();
@@ -270,7 +269,7 @@ void testProtoRouteRedirect() {
 
 // Body ROUTEs name the nested instance's declared interface, even when its
 // physical primary has a different field name. Each Outer gets private clones.
-void testNestedProtoBodyRoutes() {
+TEST_CASE("nested proto body routes") {
   const std::string xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -336,7 +335,7 @@ DEF O2 Outer { }
 // A direct first nested instance is also the Outer primary. Body-local A must
 // retain its own interface route mapping while scene routes see only Outer's
 // exposed names; the underlying Transform.translation is private.
-void testNestedFirstPrimaryAndEventIsAliases() {
+TEST_CASE("nested first primary and event is aliases") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -404,7 +403,7 @@ void testNestedFirstPrimaryAndEventIsAliases() {
   CHECK_MESSAGE((veq(tr(hidden), 0, 0, 0)), "nested-first: native field route cannot bypass nominal Outer interface");
 }
 
-void testNestedProtoRouteValidation() {
+TEST_CASE("nested proto route validation") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -451,7 +450,7 @@ void testNestedProtoRouteValidation() {
   CHECK_MESSAGE((veq(tr(b), 0, 0, 0)), "invalid nested routes: no value reaches outputOnly sink");
 }
 
-void testInheritedProtoMetadataRoutes() {
+TEST_CASE("inherited proto metadata routes") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Outer'><ProtoBody>
@@ -491,7 +490,7 @@ void testInheritedProtoMetadataRoutes() {
             external->getMetadata() == metadata), "metadata: event reaches outer primary, body ROUTEs, and scene sink");
 }
 
-void testSceneProtoToProtoRoute() {
+TEST_CASE("scene proto to proto route") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Mover'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -519,7 +518,7 @@ void testSceneProtoToProtoRoute() {
 // §4.4.2.2: an inputOutput field zzz is addressable as set_zzz (sink) and
 // zzz_changed (source). Document ROUTEs using the aliases must wire and
 // deliver; the aliases are side-specific.
-void testInputOutputAliases() {
+TEST_CASE("input output aliases") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   interp->setKey({0, 1});
@@ -545,21 +544,4 @@ void testInputOutputAliases() {
   ctx.tick(0.0);
   CHECK_MESSAGE((veq(tr(mover), 1, 0, 0)), "set_translation alias delivers");
   CHECK_MESSAGE((veq(tr(follower), 1, 0, 0)), "translation_changed alias fans out");
-}
-
-TEST_CASE("scene_bridge_test") {
-  g_dataDir = X3D_TEST_DATA_DIR;
-
-  test_route_validation();
-  test_all_valid_ok();
-  test_load_and_tick();
-  testInitializeOnlyNotRoutableSink();
-  testProtoRouteRedirect();
-  testNestedProtoBodyRoutes();
-  testNestedFirstPrimaryAndEventIsAliases();
-  testNestedProtoRouteValidation();
-  testInheritedProtoMetadataRoutes();
-  testSceneProtoToProtoRoute();
-  testInputOutputAliases();
-
 }

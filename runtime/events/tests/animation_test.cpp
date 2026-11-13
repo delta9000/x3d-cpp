@@ -24,7 +24,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }

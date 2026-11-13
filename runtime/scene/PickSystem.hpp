@@ -514,7 +514,7 @@ private:
     if (!best.hit || d < best.distance) {
       best.hit = true; best.node = shape; best.point = wp; best.distance = d;
       best.path = path; // root→this geometry-bearing node chain.
-      // World-space normal = vec3::normalize(inverse-transpose(worldM) · n).
+      // World-space normal = normalize(inverse-transpose(worldM) · n).
       best.normal = vec3::normalize(invTranspose(worldM).transformDirection(h->normal));
       best.texCoord = h->texCoord; // surface attribute — not transformed.
     }

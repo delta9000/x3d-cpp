@@ -19,7 +19,6 @@ namespace audit = x3d::audit;
 namespace sdk = x3d::sdk;
 
 namespace {
-
 // Build a known-good document programmatically:
 //   Transform DEF=Root translation=(0 1 0)
 //     Shape DEF=Ball   { Box size=2,2,2 ; Appearance{ Material diffuse=red } }
@@ -71,89 +70,86 @@ sdk::X3DDocument buildGoodDoc() {
 
 } // namespace
 
-TEST_CASE("corpus_audit_selftest") {
-  {
-    sdk::X3DDocument doc = buildGoodDoc();
-    std::vector<audit::Finding> findings;
-    audit::AuditOptions ao; // invariants + round-trip.
-    audit::auditDocument(doc, "synthetic/good.x3d", ao, findings);
+TEST_CASE("a clean scene yields no findings in any encoding") {
+  sdk::X3DDocument doc = buildGoodDoc();
+  std::vector<audit::Finding> findings;
+  audit::AuditOptions ao; // invariants + round-trip.
+  audit::auditDocument(doc, "synthetic/good.x3d", ao, findings);
 
-    if (!findings.empty()) {
-      std::cerr << "  unexpected findings on clean scene:\n";
-      for (const auto &f : findings)
-        std::cerr << "    [" << f.check << "/" << f.encoding << "] " << f.detail
-                  << "\n";
-    }
-    CHECK_MESSAGE((findings.empty()), "clean scene yields zero findings (all 3 encodings)");
+  if (!findings.empty()) {
+    std::cerr << "  unexpected findings on clean scene:\n";
+    for (const auto &f : findings)
+      std::cerr << "    [" << f.check << "/" << f.encoding << "] " << f.detail
+                << "\n";
   }
+  CHECK_MESSAGE((findings.empty()), "clean scene yields zero findings (all 3 encodings)");
+}
 
-  {
-    sdk::X3DDocument doc = buildGoodDoc();
-    audit::Fingerprint fp = audit::makeFingerprint(doc);
-    CHECK_MESSAGE((fp.itemCount == 2), ("good doc emits 2 render items (DEF + USE)"));
-    CHECK_MESSAGE((fp.defCount == 2), "good doc has 2 DEFs (Root, Ball)");
-    CHECK_MESSAGE((fp.useCount == 1), "good doc has 1 USE share");
-    CHECK_MESSAGE((fp.routeCount == 1), "good doc has 1 ROUTE");
-    CHECK_MESSAGE((fp.nodeCount >= 5), "good doc reachable node count is plausible");
+TEST_CASE("fingerprint counts items, DEFs, USEs and ROUTEs") {
+  sdk::X3DDocument doc = buildGoodDoc();
+  audit::Fingerprint fp = audit::makeFingerprint(doc);
+  CHECK_MESSAGE((fp.itemCount == 2), ("good doc emits 2 render items (DEF + USE)"));
+  CHECK_MESSAGE((fp.defCount == 2), "good doc has 2 DEFs (Root, Ball)");
+  CHECK_MESSAGE((fp.useCount == 1), "good doc has 1 USE share");
+  CHECK_MESSAGE((fp.routeCount == 1), "good doc has 1 ROUTE");
+  CHECK_MESSAGE((fp.nodeCount >= 5), "good doc reachable node count is plausible");
+}
+
+TEST_CASE("fingerprint is deterministic") {
+  sdk::X3DDocument docA = buildGoodDoc();
+  sdk::X3DDocument docB = buildGoodDoc();
+  audit::Fingerprint a = audit::makeFingerprint(docA);
+  audit::Fingerprint b = audit::makeFingerprint(docB);
+  CHECK_MESSAGE((a == b), "fingerprint is deterministic (equal across two builds)");
+}
+
+TEST_CASE("tampered fingerprints are detected and explained") {
+  sdk::X3DDocument doc = buildGoodDoc();
+  audit::Fingerprint good = audit::makeFingerprint(doc);
+
+  audit::Fingerprint tampered = good;
+  tampered.routeCount += 1; // simulate ROUTE loss across a round-trip.
+  CHECK_MESSAGE((!(good == tampered)), "tampered (ROUTE-loss) fingerprint is detected");
+
+  audit::Fingerprint tampered2 = good;
+  if (!tampered2.items.empty())
+    tampered2.items[0] = "999|0|0|0,0,0|0,0,0|0,0,0|0"; // mutate a geom tuple.
+  CHECK_MESSAGE((!(good == tampered2)), "tampered (geometry-tuple) fingerprint is detected");
+
+  // explainMismatch must produce a non-empty, structural reason.
+  const std::string why = audit::explainMismatch(good, tampered);
+  CHECK_MESSAGE((why.find("routeCount") != std::string::npos),
+                "explainMismatch names the differing routeCount");
+}
+
+TEST_CASE("unparseable output is observable and not excused") {
+  std::vector<audit::Finding> findings;
+  // Feed parseDocument garbage that LOOKS like XML so the XML hint is taken
+  // but the body is broken — a genuine "we'd emit unparseable output" shape.
+  const std::string broken =
+      "<?xml version=\"1.0\"?><X3D><Scene><Shape><<<garbage></Scene>";
+  bool threw = false;
+  try {
+    (void)sdk::parseDocument(broken, sdk::Encoding::XML);
+  } catch (const std::exception &) {
+    threw = true;
   }
+  CHECK_MESSAGE((threw), "broken XML body throws on reparse (oracle can observe it)");
+  // And the throw is not classified as an expected external-resolution throw.
+  CHECK_MESSAGE((!audit::isExpectedExternalThrow("unexpected token at line 1")),
+                "a non-external parse error is classified as a real defect");
+  CHECK_MESSAGE((audit::isExpectedExternalThrow("could not resolve EXTERNPROTO url")),
+                "an external-resolution throw is classified as expected");
+}
 
-  {
-    sdk::X3DDocument docA = buildGoodDoc();
-    sdk::X3DDocument docB = buildGoodDoc();
-    audit::Fingerprint a = audit::makeFingerprint(docA);
-    audit::Fingerprint b = audit::makeFingerprint(docB);
-    CHECK_MESSAGE((a == b), "fingerprint is deterministic (equal across two builds)");
-  }
-
-  {
-    sdk::X3DDocument doc = buildGoodDoc();
-    audit::Fingerprint good = audit::makeFingerprint(doc);
-
-    audit::Fingerprint tampered = good;
-    tampered.routeCount += 1; // simulate ROUTE loss across a round-trip.
-    CHECK_MESSAGE((!(good == tampered)), "tampered (ROUTE-loss) fingerprint is detected");
-
-    audit::Fingerprint tampered2 = good;
-    if (!tampered2.items.empty())
-      tampered2.items[0] = "999|0|0|0,0,0|0,0,0|0,0,0|0"; // mutate a geom tuple.
-    CHECK_MESSAGE((!(good == tampered2)), "tampered (geometry-tuple) fingerprint is detected");
-
-    // explainMismatch must produce a non-empty, structural reason.
-    const std::string why = audit::explainMismatch(good, tampered);
-    CHECK_MESSAGE((why.find("routeCount") != std::string::npos),
-                  "explainMismatch names the differing routeCount");
-  }
-
-  {
-    std::vector<audit::Finding> findings;
-    // Feed parseDocument garbage that LOOKS like XML so the XML hint is taken
-    // but the body is broken — a genuine "we'd emit unparseable output" shape.
-    const std::string broken =
-        "<?xml version=\"1.0\"?><X3D><Scene><Shape><<<garbage></Scene>";
-    bool threw = false;
-    try {
-      (void)sdk::parseDocument(broken, sdk::Encoding::XML);
-    } catch (const std::exception &) {
-      threw = true;
-    }
-    CHECK_MESSAGE((threw), "broken XML body throws on reparse (oracle can observe it)");
-    // And the throw is not classified as an expected external-resolution throw.
-    CHECK_MESSAGE((!audit::isExpectedExternalThrow("unexpected token at line 1")),
-                  "a non-external parse error is classified as a real defect");
-    CHECK_MESSAGE((audit::isExpectedExternalThrow("could not resolve EXTERNPROTO url")),
-                  "an external-resolution throw is classified as expected");
-  }
-
-  {
-    audit::Finding a = audit::makeFinding("a/1.x3d", "roundtrip", "xml", "",
-                                          "routeCount 3->2; ");
-    audit::Finding b = audit::makeFinding("b/2.x3d", "roundtrip", "xml", "",
-                                          "routeCount 17->4; ");
-    CHECK_MESSAGE((a.signature == b.signature),
-                  "same defect class clusters to one signature (numbers bucketed)");
-    audit::Finding c = audit::makeFinding("c/3.x3d", "roundtrip", "json", "",
-                                          "routeCount 3->2; ");
-    CHECK_MESSAGE((a.signature != c.signature), "different encoding -> different signature");
-  }
-
+TEST_CASE("finding signatures bucket numbers but keep encodings apart") {
+  audit::Finding a = audit::makeFinding("a/1.x3d", "roundtrip", "xml", "",
+                                        "routeCount 3->2; ");
+  audit::Finding b = audit::makeFinding("b/2.x3d", "roundtrip", "xml", "",
+                                        "routeCount 17->4; ");
+  CHECK_MESSAGE((a.signature == b.signature),
+                "same defect class clusters to one signature (numbers bucketed)");
+  audit::Finding c = audit::makeFinding("c/3.x3d", "roundtrip", "json", "",
+                                        "routeCount 3->2; ");
+  CHECK_MESSAGE((a.signature != c.signature), "different encoding -> different signature");
 }

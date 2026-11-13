@@ -93,94 +93,92 @@ static std::vector<float> renderDirect(float oscAmp, float threshold,
   return buf;
 }
 
-TEST_CASE("sound_dynamics_compressor_test") {
+TEST_CASE("the compressor subtree is recorded") {
   // (a) recording tier: the compressor and its subtree are built.
-  {
-    CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
-    auto rec = std::make_shared<RecordingBackend>();
-    SoundSystem sys(rec);
-    X3DExecutionContext ctx;
-    sys.attach(c.dest.get(), ctx);
+  CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
+  auto rec = std::make_shared<RecordingBackend>();
+  SoundSystem sys(rec);
+  X3DExecutionContext ctx;
+  sys.attach(c.dest.get(), ctx);
 
-    CHECK_MESSAGE((rec->creates.size() == 3), "3 nodes created (osc/compressor/dest)");
-    CHECK_MESSAGE((rec->connects.size() == 2), "2 connections (the chain edges)");
-    CHECK_MESSAGE((sys.nodeCount() == 3), "SoundSystem mapped the compressor subtree");
-    std::fprintf(stderr, "[recording] %zu nodes, %zu edges\n",
-                 rec->creates.size(), rec->connects.size());
-  }
+  CHECK_MESSAGE((rec->creates.size() == 3), "3 nodes created (osc/compressor/dest)");
+  CHECK_MESSAGE((rec->connects.size() == 2), "2 connections (the chain edges)");
+  CHECK_MESSAGE((sys.nodeCount() == 3), "SoundSystem mapped the compressor subtree");
+  std::fprintf(stderr, "[recording] %zu nodes, %zu edges\n",
+               rec->creates.size(), rec->connects.size());
+}
 
+TEST_CASE("a below-threshold signal passes unchanged") {
   // (b) DSP: a below-threshold signal passes ~unchanged.
-  {
-    // A square of amplitude 0.1 sits at -20 dB, below the -12 dB threshold:
-    // the gain computer stays at unity, so the RMS is untouched.
-    const std::vector<float> buf = renderDirect(0.1f, -12.0f, true);
-    CHECK_MESSAGE((buf.size() == static_cast<std::size_t>(kFrames)), "rendered kFrames");
-    const double r = rms(buf);
-    std::fprintf(stderr, "[dsp below] RMS=%.4f (expect ~0.1)\n", r);
-    CHECK_MESSAGE((std::fabs(r - 0.1) < 0.002), "below-threshold signal passes unchanged");
-  }
+  // A square of amplitude 0.1 sits at -20 dB, below the -12 dB threshold:
+  // the gain computer stays at unity, so the RMS is untouched.
+  const std::vector<float> buf = renderDirect(0.1f, -12.0f, true);
+  CHECK_MESSAGE((buf.size() == static_cast<std::size_t>(kFrames)), "rendered kFrames");
+  const double r = rms(buf);
+  std::fprintf(stderr, "[dsp below] RMS=%.4f (expect ~0.1)\n", r);
+  CHECK_MESSAGE((std::fabs(r - 0.1) < 0.002), "below-threshold signal passes unchanged");
+}
 
+TEST_CASE("a steady above-threshold signal settles at the ratio law") {
   // (b2) DSP: a steady above-threshold signal settles at the ratio law.
-  {
-    // Constant |x| = 0.5 (-6.02 dB) against the -12 dB threshold: after the
-    // attack settles, the applied gain is (1/12 - 1) * 5.98 dB = -5.48 dB
-    // (0.532 linear), i.e. the level rides at threshold + (level-thr)/ratio.
-    const double expected =
-        0.5 * std::pow(10.0, (1.0 / 12.0 - 1.0) *
-                                  (20.0 * std::log10(0.5) + 12.0) / 20.0);
-    const std::vector<float> buf = renderDirect(0.5f, -12.0f, true);
-    // Skip the first 1024 samples (the attack ramp) before measuring.
-    const std::vector<float> tail(buf.begin() + 1024, buf.end());
-    const double r = rms(tail);
-    std::fprintf(stderr, "[dsp above] tail RMS=%.4f (expect ~%.4f)\n", r,
-                 expected);
-    CHECK_MESSAGE((r < 0.4 && r > 0.15), "above-threshold signal is compressed");
-    CHECK_MESSAGE((std::fabs(r - expected) < 0.03),
-                  ("settled level matches threshold + (level - threshold)/ratio"));
-  }
+  // Constant |x| = 0.5 (-6.02 dB) against the -12 dB threshold: after the
+  // attack settles, the applied gain is (1/12 - 1) * 5.98 dB = -5.48 dB
+  // (0.532 linear), i.e. the level rides at threshold + (level-thr)/ratio.
+  const double expected =
+      0.5 * std::pow(10.0, (1.0 / 12.0 - 1.0) *
+                                (20.0 * std::log10(0.5) + 12.0) / 20.0);
+  const std::vector<float> buf = renderDirect(0.5f, -12.0f, true);
+  // Skip the first 1024 samples (the attack ramp) before measuring.
+  const std::vector<float> tail(buf.begin() + 1024, buf.end());
+  const double r = rms(tail);
+  std::fprintf(stderr, "[dsp above] tail RMS=%.4f (expect ~%.4f)\n", r,
+               expected);
+  CHECK_MESSAGE((r < 0.4 && r > 0.15), "above-threshold signal is compressed");
+  CHECK_MESSAGE((std::fabs(r - expected) < 0.03),
+                ("settled level matches threshold + (level - threshold)/ratio"));
+}
 
+TEST_CASE("enabled=false passes the input through") {
   // (b3) DSP: enabled=false passes the input through unchanged.
-  {
-    const std::vector<float> buf = renderDirect(0.5f, -12.0f, false);
-    const double r = rms(buf);
-    std::fprintf(stderr, "[dsp disabled] RMS=%.4f (expect ~0.5)\n", r);
-    CHECK_MESSAGE((std::fabs(r - 0.5) < 0.005), "disabled compressor passes through");
-  }
+  const std::vector<float> buf = renderDirect(0.5f, -12.0f, false);
+  const double r = rms(buf);
+  std::fprintf(stderr, "[dsp disabled] RMS=%.4f (expect ~0.5)\n", r);
+  CHECK_MESSAGE((std::fabs(r - 0.5) < 0.005), "disabled compressor passes through");
+}
 
+TEST_CASE("a sine runs end to end through SoundSystem") {
   // (c) SoundSystem end-to-end: a sine through the full §16 path.
-  {
-    CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
-    auto dsp = std::make_shared<BuiltinDspBackend>();
-    auto sys = std::make_shared<SoundSystem>(dsp);
-    auto clock = std::make_shared<SoundTimeSystem>();
+  CompChain c = buildCompChain(0.5f, -12.0f, 0.0f, 12.0f);
+  auto dsp = std::make_shared<BuiltinDspBackend>();
+  auto sys = std::make_shared<SoundSystem>(dsp);
+  auto clock = std::make_shared<SoundTimeSystem>();
 
-    Scene scene;
-    scene.rootNodes.push_back(std::static_pointer_cast<X3DNode>(c.dest));
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    sys->attach(c.dest.get(), ctx);
-    clock->attach(c.osc.get(), ctx);
-    clock->attach(c.comp.get(), ctx);
-    ctx.addSystem(clock);
-    ctx.addSystem(sys);
+  Scene scene;
+  scene.rootNodes.push_back(std::static_pointer_cast<X3DNode>(c.dest));
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  sys->attach(c.dest.get(), ctx);
+  clock->attach(c.osc.get(), ctx);
+  clock->attach(c.comp.get(), ctx);
+  ctx.addSystem(clock);
+  ctx.addSystem(sys);
 
-    // The tick path: SoundTimeSystem activates the compressor (§8.2.4), the
-    // cascade delivers isActive, and SoundSystem::update pushes the fields +
-    // PlaybackState. The compressor must stay audible through the lifecycle,
-    // not be gated to silence.
-    ctx.tick(0.0);
-    ctx.tick(0.5);
+  // The tick path: SoundTimeSystem activates the compressor (§8.2.4), the
+  // cascade delivers isActive, and SoundSystem::update pushes the fields +
+  // PlaybackState. The compressor must stay audible through the lifecycle,
+  // not be gated to silence.
+  ctx.tick(0.0);
+  ctx.tick(0.5);
 
-    std::vector<float> buf;
-    sys->render(kFrames, kSR, buf);
-    // Peak-level ratio law for a 0.5 sine: -6.02 dB is 5.98 dB over the -12 dB
-    // threshold -> gain 0.532 -> RMS 0.3536 * 0.532 = 0.188. The one-pole
-    // detector lags the peaks slightly (the attack time constant exceeds a
-    // half period), so allow a loose band; the point is compressed, not
-    // silenced and not unity.
-    const std::vector<float> tail(buf.begin() + 1024, buf.end());
-    const double r = rms(tail);
-    std::fprintf(stderr, "[dsp sys sine] tail RMS=%.4f (peak-law ~0.188)\n", r);
-    CHECK_MESSAGE((r > 0.12 && r < 0.25), "SoundSystem-built compressor compresses");
-  }
+  std::vector<float> buf;
+  sys->render(kFrames, kSR, buf);
+  // Peak-level ratio law for a 0.5 sine: -6.02 dB is 5.98 dB over the -12 dB
+  // threshold -> gain 0.532 -> RMS 0.3536 * 0.532 = 0.188. The one-pole
+  // detector lags the peaks slightly (the attack time constant exceeds a
+  // half period), so allow a loose band; the point is compressed, not
+  // silenced and not unity.
+  const std::vector<float> tail(buf.begin() + 1024, buf.end());
+  const double r = rms(tail);
+  std::fprintf(stderr, "[dsp sys sine] tail RMS=%.4f (peak-law ~0.188)\n", r);
+  CHECK_MESSAGE((r > 0.12 && r < 0.25), "SoundSystem-built compressor compresses");
 }
