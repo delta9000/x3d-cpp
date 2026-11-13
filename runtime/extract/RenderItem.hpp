@@ -607,8 +607,8 @@ struct ShaderProgramDesc {
 //   * `global` is the authored flag, carried not promoted. Verified spec
 //     defaults: DirectionalLight global=false, PointLight/SpotLight global=true.
 //     A consumer must not silently promote a global=false light to scene-wide.
-//   * scopeRoot is the enclosing grouping node the light was collected under, so
-//     a non-global light can be scoped to descendants of its PathKey ancestor.
+//   * scopeRoot identifies the enclosing grouping node; scopePath identifies
+//     its placement, so local lights stay separate across USE instances.
 struct LightDesc {
   enum class Type { Directional, Point, Spot };
 
@@ -631,6 +631,7 @@ struct LightDesc {
 
   bool global = false;                 // authored; carried not promoted.
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
+  PathKey scopePath; // full placement of scopeRoot; empty means scene-wide.
 
   bool operator==(const LightDesc &) const = default;
 };
@@ -709,6 +710,7 @@ struct ProjectorDesc {
 
   bool global = true;                 // authored (default TRUE for projectors).
   const X3DNode *scopeRoot = nullptr; // enclosing grouping node (scoping).
+  PathKey scopePath; // full placement of scopeRoot; empty means scene-wide.
 
   // (s, t) of a world point, false outside the projection volume.
   bool project(const SFVec3f &world, float &s, float &t) const {

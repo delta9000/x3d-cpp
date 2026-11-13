@@ -23,8 +23,10 @@ struct IsConnection;
 struct ProtoBody;
 struct ProtoDeclaration;
 struct ProtoField;
+struct Unit;
 class ProtoInstance;
 class Scene;
+class AuthoredScalarFields;
 } // namespace x3d::runtime
 namespace x3d::xml {
 struct Element;
@@ -46,7 +48,8 @@ public:
       const runtime::DynamicFieldStore *authorFields = nullptr)
       : policy_(policy), authorFields_(authorFields) {}
 
-  void writeSceneInto(xml::Element *element, const runtime::Scene &scene);
+  void writeSceneInto(xml::Element *element, const runtime::Scene &scene,
+                      const std::vector<runtime::Unit> *units = nullptr);
   std::unique_ptr<xml::Element>
   writeNodeElement(const std::shared_ptr<nodes::X3DNode> &node,
                    const std::string &containerOverride);
@@ -57,6 +60,7 @@ private:
   std::unordered_set<const nodes::X3DNode *> seen_;
   std::unordered_map<std::string, std::shared_ptr<nodes::X3DNode>> defaults_;
   const runtime::Scene *scene_ = nullptr;
+  const runtime::AuthoredScalarFields *unitDefaults_ = nullptr;
   const runtime::DynamicFieldStore *authorFields_ = nullptr;
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;
   const runtime::ProtoBody *bodyOrder_ = nullptr;

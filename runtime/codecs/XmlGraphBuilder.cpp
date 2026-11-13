@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "XmlGraphBuilder.hpp"
 
 #include "DynamicField.hpp"
@@ -30,8 +31,11 @@ void appendImport(xml::Element &parent, const runtime::Import &imp) {
 } // namespace
 
 void XmlGraphBuilder::writeSceneInto(xml::Element *scene,
-                                     const runtime::Scene &s) {
+                                     const runtime::Scene &s,
+                                     const std::vector<runtime::Unit> *units) {
   scene_ = &s;
+  unitDefaults_ = authoredUnitDefaults(s.authoredScalarFields,
+                                       units ? *units : s.sourceUnits);
   authorFields_ =
       s.authorFields
           .get(); // enable <ProtoInstance> re-emit for expanded primaries below
@@ -219,7 +223,8 @@ XmlGraphBuilder::writeNodeElement(const std::shared_ptr<X3DNode> &node,
       }
     }
     // Omit fields equal to their default to keep output clean.
-    if (defaults && text == defText)
+    if (defaults && text == defText &&
+        !(unitDefaults_ && unitDefaults_->contains(node, f.x3dName)))
       continue;
     // An empty SF/MFString that is also the default-empty is already skipped;
     // emit non-default empties (rare) too.
@@ -440,6 +445,10 @@ XmlGraphBuilder::writeProtoDeclareElement(const runtime::ProtoDeclaration &d) {
   // Interface defaults and body nodes share the declaration's DEF scope.
   XmlGraphBuilder bodyWriter(policy_);
   bodyWriter.authorFields_ = d.authorFields.get();
+  // Raw readers do not snapshot sourceUnits; inherit the document's need to
+  // retain authored defaults as well as honoring declaration-local units.
+  bodyWriter.unitDefaults_ = unitDefaults_ ? &d.authoredScalarFields
+      : authoredUnitDefaults(d.authoredScalarFields, d.sourceUnits);
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   for (const auto &f : d.interface)

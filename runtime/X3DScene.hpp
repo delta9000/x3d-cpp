@@ -68,6 +68,7 @@ public:
   // Body-internal ROUTEs of expanded instances, pre-resolved to concrete
   // endpoints (proto-local DEF scope; not registered in `defs`).
   std::vector<ResolvedProtoRoute> resolvedProtoRoutes;
+  std::vector<DeferredProtoRoute> deferredProtoRoutes;
 
   // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
   std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;

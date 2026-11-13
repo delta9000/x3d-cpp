@@ -60,7 +60,7 @@ std::string CanonicalXmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 
   // <Scene>
   xml::Element *scene = root->addChild("Scene");
-  graph.writeSceneInto(scene, doc.scene);
+  graph.writeSceneInto(scene, doc.scene, &doc.head.units);
 
   std::ostringstream os;
   os << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";

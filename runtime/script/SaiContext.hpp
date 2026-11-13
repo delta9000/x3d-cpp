@@ -42,11 +42,14 @@
 
 #include "x3d/nodes/Script.hpp"  // Script::getDirectOutput()
 
+#include <algorithm>
 #include <any>
+#include <cstddef>
 #include <functional>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace x3d::nodes { class X3DNode; }
 
@@ -78,6 +81,28 @@ public:
              std::string version)
       : ctx_(ctx), script_(scriptNode), name_(std::move(name)),
         version_(std::move(version)), active_(ctx.callbackLease()) {}
+
+  // Native resources are separate from the backend's JavaScript heap quota.
+  // These per-context lifetime limits do not reset between event callbacks.
+  // Source/root quotas are not a byte limit on an arbitrary host factory's
+  // allocations: embedders must still bound parser expansion and scene memory.
+  struct ResourceLimits {
+    std::size_t logBytes = 1024 * 1024;
+    std::size_t sceneSourceBytes = 16 * 1024 * 1024;
+    std::size_t sceneCalls = 4096;
+    std::size_t createdRoots = 65536;
+  };
+
+  void setResourceLimits(ResourceLimits limits) {
+    if (limits.logBytes < log_.size() ||
+        limits.sceneSourceBytes < sceneSourceBytes_ ||
+        limits.sceneCalls < sceneCalls_ ||
+        limits.createdRoots < createdNodes_.size())
+      throw std::invalid_argument("SaiContext: limits below resources already used");
+    limits_ = limits;
+  }
+  const ResourceLimits &resourceLimits() const { return limits_; }
+  bool logTruncated() const { return logTruncated_; }
 
   // Field access (§29.4.1 paragraph 1: read is unconditional).
 
@@ -204,6 +229,7 @@ public:
    *          handle does not keep a node alive (ADR-0048) and the script may
    *          insert them at any later time.
    * @throws std::logic_error if the host supplied no scene factory.
+   * @throws std::length_error when a native creation quota is exhausted.
    * @throws std::exception whatever the factory throws for invalid text.
    */
   MFNode createX3DFromString(const std::string &text) {
@@ -211,7 +237,25 @@ public:
     if (!sceneFactory_)
       throw std::logic_error(
           "SaiContext::createX3DFromString: the host supplied no scene factory");
+    if (sceneCalls_ >= limits_.sceneCalls ||
+        text.size() > limits_.sceneSourceBytes - sceneSourceBytes_ ||
+        createdNodes_.size() >= limits_.createdRoots)
+      throw std::length_error("SaiContext::createX3DFromString: native resource limit");
+    // Charge attempts before calling the host, including failures/empty results.
+    ++sceneCalls_;
+    sceneSourceBytes_ += text.size();
     MFNode nodes = sceneFactory_(text);
+    const auto count = static_cast<std::size_t>(std::count_if(
+        nodes.begin(), nodes.end(), [](const auto &node) { return bool(node); }));
+    if (count > limits_.createdRoots - createdNodes_.size())
+      throw std::length_error("SaiContext::createX3DFromString: created-root limit");
+    // Reserve first: allocation failure must not leave partially retained roots.
+    const auto required = createdNodes_.size() + count;
+    if (required > createdNodes_.capacity()) {
+      const auto growth = std::min(createdNodes_.capacity(),
+                                   limits_.createdRoots - required);
+      createdNodes_.reserve(required + growth);
+    }
     for (const auto &node : nodes)
       if (node) createdNodes_.push_back(node);
     return nodes;
@@ -234,8 +278,13 @@ public:
   /** @brief Set the reported frame rate (the embedder/ScriptSystem updates it). */
   void setCurrentFrameRate(double fps) { frameRate_ = fps; }
 
-  /** @brief SAI print/console output. Default sink is the captured log. */
-  void print(const std::string &message) { log_ += message; }
+  /** @brief Capture output up to logBytes, then discard excess output.
+   *         Inspect logTruncated() to detect truncation. No per-call reset. */
+  void print(std::string_view message) {
+    const auto count = std::min(message.size(), limits_.logBytes - log_.size());
+    if (count) log_.append(message.data(), count);
+    if (count != message.size()) logTruncated_ = true;
+  }
 
   /** @brief Accumulated print() output (test/inspection surface). */
   const std::string &log() const { return log_; }
@@ -308,6 +357,10 @@ private:
   std::string name_;
   std::string version_;
   double frameRate_ = 0.0;
+  ResourceLimits limits_;
+  std::size_t sceneSourceBytes_ = 0;
+  std::size_t sceneCalls_ = 0;
+  bool logTruncated_ = false;
   std::string log_;
   NodeHandleTable nodeHandles_;
   SceneFactory sceneFactory_;

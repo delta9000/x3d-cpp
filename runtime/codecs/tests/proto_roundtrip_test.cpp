@@ -73,18 +73,6 @@ TEST_CASE("ProtoBody IMPORT aliases survive every encoding without leaking scope
   }
 }
 
-TEST_CASE("ProtoBody IMPORT runtime limitation is diagnosed on instantiation") {
-  const auto doc = codec::parseDocument(R"(<X3D><Scene>
-    <ProtoDeclare name="P"><ProtoBody><Group/><Inline DEF="Source"/>
-    <IMPORT inlineDEF="Source" importedDEF="Clock"/>
-    </ProtoBody></ProtoDeclare><ProtoInstance name="P"/>
-    </Scene></X3D>)");
-  bool diagnosed = false;
-  for (const auto &warning : doc.protoWarnings)
-    diagnosed |= warning.detail.find("per-instance import resolution") != std::string::npos;
-  CHECK(diagnosed);
-  CHECK(doc.scene.imports.empty());
-}
 
 TEST_CASE("JSON child-wrapped IMPORT stays in its prototype scope") {
   const auto doc = codec::parseDocument(R"({"X3D":{"@version":"4.0","Scene":{"-children":[

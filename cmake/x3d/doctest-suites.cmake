@@ -69,6 +69,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/enum_quote_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/xml_proto_capture_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_roundtrip_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_import_runtime_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_decl_body_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_deep_is_roundtrip_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/proto_is_json_vrml_roundtrip_test.cpp"
@@ -111,6 +112,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/lenient_read_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/encoding_lex_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/json_surrogate_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/strict_scalar_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/range_warnings_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/value_syntax_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/string_scene_factory_test.cpp"
@@ -119,6 +121,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/version_floor_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/reader_audit_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/parser_depth_guard_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/input_budget_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_proto_resolver_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/asset_loader_policy_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/core_diagnostics_test.cpp")

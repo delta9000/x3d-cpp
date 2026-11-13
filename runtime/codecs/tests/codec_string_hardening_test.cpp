@@ -11,6 +11,7 @@
 #include "X3DParse.hpp"
 #include "UnitConversion.hpp"
 
+#include "x3d/nodes/Box.hpp"
 #include "x3d/nodes/PixelTexture.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/Transform.hpp"
@@ -643,5 +644,75 @@ TEST_CASE("UNIT writer guard does not reject retained Inline references") {
            codec::VrmlWriter().writeDocument(parent)}) {
     CHECK(contains(output, "child.x3d"));
     CHECK_FALSE(contains(output, "Transform"));
+  }
+}
+
+TEST_CASE("UNIT parse-only writers retain authored defaults without inventing them") {
+  for (bool rawReader : {false, true}) {
+    for (bool inProto : {false, true}) {
+      const std::string boxes =
+          "<Shape><Box DEF='authored' size='2 2 2'/></Shape>"
+          "<Shape><Box DEF='implicit'/></Shape>";
+      const auto source = std::string(
+          "<X3D profile='Full' version='4.0'><head>"
+          "<unit category='length' name='centimetre' conversionFactor='0.01'/>"
+          "</head><Scene>") +
+          (inProto ? "<ProtoDeclare name='Pair'><ProtoBody><Group>" + boxes +
+                         "</Group></ProtoBody></ProtoDeclare><ProtoInstance name='Pair'/>"
+                   : boxes) + "</Scene></X3D>";
+      auto original = rawReader ? codec::XmlReader().readDocument(source)
+                                : codec::parseDocument(source);
+      for (const auto &output : {
+               codec::XmlWriter().writeDocument(original),
+               codec::CanonicalXmlWriter().writeDocument(original),
+               codec::JsonWriter().writeDocument(original),
+               codec::VrmlWriter().writeDocument(original)}) {
+        INFO(output);
+        auto copy = codec::parseDocument(output);
+        // Inspect retained declarations before expansion as well as scene nodes.
+        const auto &fields = inProto ? copy.scene.protoDeclarations.at(0)->authoredScalarFields
+                                     : copy.scene.authoredScalarFields;
+        const auto &roots = inProto ? copy.scene.protoDeclarations.at(0)->body.nodes
+                                    : copy.scene.rootNodes;
+        std::vector<std::shared_ptr<Box>> boxesFound;
+        std::function<void(const std::shared_ptr<X3DNode> &)> visit = [&](const auto &n) {
+          if (auto box = std::dynamic_pointer_cast<Box>(n)) boxesFound.push_back(box);
+          for (const auto &field : n->fields()) {
+            if (!field.isReadable() || !field.isNode()) continue;
+            auto value = field.get(*n);
+            if (field.type == core::X3DFieldType::MFNode) {
+              for (const auto &child : std::any_cast<core::MFNode>(value)) if (child) visit(child);
+            } else if (field.type == core::X3DFieldType::SFNode) {
+              auto child = std::any_cast<core::SFNode>(value);
+              if (child) visit(child);
+            }
+          }
+        };
+        for (const auto &root : roots) visit(root);
+        REQUIRE(boxesFound.size() == 2);
+        CHECK(fields.contains(boxesFound[0], "size"));
+        CHECK_FALSE(fields.contains(boxesFound[1], "size"));
+        runtime::normalizeRuntimeUnits(copy.scene);
+        boxesFound.clear();
+        for (const auto &root : copy.scene.rootNodes) visit(root);
+        REQUIRE(boxesFound.size() == 2);
+        CHECK(boxesFound[0]->getSize().x == doctest::Approx(0.02));
+        CHECK(boxesFound[1]->getSize().x == doctest::Approx(2.0));
+      }
+    }
+  }
+}
+
+TEST_CASE("UNIT identity scopes still elide authored factory defaults") {
+  auto doc = codec::parseDocument(
+      "<X3D profile='Interchange' version='4.0'><head>"
+      "<unit category='length' name='metre' conversionFactor='1'/>"
+      "</head><Scene><Shape><Box size='2 2 2'/></Shape></Scene></X3D>");
+  for (const auto &output : {
+           codec::XmlWriter().writeDocument(doc),
+           codec::CanonicalXmlWriter().writeDocument(doc),
+           codec::JsonWriter().writeDocument(doc),
+           codec::VrmlWriter().writeDocument(doc)}) {
+    CHECK_FALSE(contains(output, "size"));
   }
 }

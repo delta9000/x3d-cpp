@@ -511,7 +511,23 @@ void testRoutedEventInvokesHandler() {
   ctx.authorFields().erase(script);
 }
 
+void testResourceLimitsBeforeEnrollment() {
+  X3DExecutionContext ctx;
+  Script script = makeScript();
+  auto engine = std::make_shared<MockScriptEngine>();
+  ScriptSystem system(engine, "test", "1");
+  system.setResourceLimits({8, 16, 2, 3});
+  system.attach(&script, ctx);
+  auto *sai = system.saiFor(&script);
+  check(sai && sai->resourceLimits().logBytes == 8 &&
+        sai->resourceLimits().sceneCalls == 2, "native quotas propagated on enrollment");
+  bool threw = false;
+  try { system.setResourceLimits({}); } catch (const std::logic_error &) { threw = true; }
+  check(threw, "changing system quotas after enrollment rejected explicitly");
+}
+
 int main() {
+  testResourceLimitsBeforeEnrollment();
   testShutdownOnTeardown();
   testInitializeBeforeFirstEvent();
   testLoadFalseDefersLoad();

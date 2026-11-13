@@ -25,6 +25,8 @@ std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
+  unitDefaults_ = authoredUnitDefaults(doc.scene.authoredScalarFields,
+                                       doc.head.units);
   authorFields_ = doc.scene.authorFields.get();
   std::ostringstream os;
   os << "{\n";
@@ -340,6 +342,10 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   JsonWriter bodyWriter;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
   bodyWriter.authorFields_ = d.authorFields.get();
+  // Raw readers do not snapshot sourceUnits; inherit the document's need to
+  // retain authored defaults as well as honoring declaration-local units.
+  bodyWriter.unitDefaults_ = unitDefaults_ ? &d.authoredScalarFields
+      : authoredUnitDefaults(d.authoredScalarFields, d.sourceUnits);
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   pad(os, depth);
@@ -581,7 +587,8 @@ void JsonWriter::writeNode(std::ostringstream &os,
       std::string val = jsonValue(*node, f);
       if (val.empty())
         continue;
-      if (defaults && val == jsonValue(*defaults, f))
+      if (defaults && val == jsonValue(*defaults, f) &&
+          !(unitDefaults_ && unitDefaults_->contains(node, f.x3dName)))
         continue; // equals the type default -> omit
       members.push_back("\"@" + f.x3dName + "\": " + val);
     }

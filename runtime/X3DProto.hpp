@@ -28,6 +28,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::nodes { class X3DNode; }
@@ -73,6 +74,20 @@ struct ResolvedProtoRoute {
 struct ProtoRedirect {
   std::shared_ptr<X3DNode> targetNode;  // cloned body node (keep-alive)
   std::string targetField;
+};
+
+// Deferred body ROUTEs retain identity, not DEF strings in the enclosing scene.
+// Weak references let unloading an enclosing Inline release its entire scope.
+struct DeferredProtoEndpoint {
+  std::vector<std::pair<std::weak_ptr<X3DNode>, std::string>> targets;
+  std::weak_ptr<X3DNode> inlineNode;
+  std::string exportedName;
+  std::string field;
+  std::optional<X3DFieldType> nominalType;
+};
+struct DeferredProtoRoute {
+  std::weak_ptr<X3DNode> owner;
+  DeferredProtoEndpoint source, sink;
 };
 
 /// Non-fatal PROTO diagnostic, collected into X3DDocument.protoWarnings.

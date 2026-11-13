@@ -8,6 +8,7 @@
 #include "NodeBuilder.hpp"
 #include "x3d/nodes/Script.hpp"
 
+#include <cmath>
 #include <limits>
 
 namespace x3d::codec {
@@ -773,8 +774,14 @@ int JsonReader::intMember(const json::Value &obj, const std::string &key,
   const json::Value *v = obj.member(key);
   if (!v)
     return fallback;
-  if (v->isNumber())
+  if (v->isNumber()) {
+    if (!std::isfinite(v->number) || std::trunc(v->number) != v->number ||
+        v->number < std::numeric_limits<int>::min() ||
+        v->number > std::numeric_limits<int>::max())
+      throw std::runtime_error(
+          "JSON integer member out of range or fractional: " + key);
     return static_cast<int>(v->number);
+  }
   if (v->isString())
     return parseInt(v->str);
   return fallback;

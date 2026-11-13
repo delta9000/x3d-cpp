@@ -40,9 +40,6 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sound_dynamics
         x3d_sound_periodicwave
         x3d_sound_waveshaper
-        x3d_corpus_sweep
-        x3d_corpus_audit
-        x3d_corpus_audit_selftest
         x3d_sim_behavior_test
         x3d_validate_checks_test
         x3d_scene_equiv_test
@@ -56,6 +53,15 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_extract_tests
         x3d_events_tests
         x3d_fileresolver_test)
+    if(X3D_CPP_BUILD_EXAMPLES)
+        list(APPEND _x3d_behavior_targets
+            x3d_example_01_load_validate_convert
+            x3d_example_02_extract_render_feed
+            x3d_example_03_attach_behavior_tick
+            x3d_corpus_sweep
+            x3d_corpus_audit
+            x3d_corpus_audit_selftest)
+    endif()
     if(TARGET x3d_ecmascript_backend)
         list(APPEND _x3d_behavior_targets
             x3d_ecmascript_backend_test
@@ -63,8 +69,10 @@ if(X3D_CPP_BUILD_TESTS)
             x3d_script_author_runtime
             x3d_script_corpus_e2e)
     endif()
-    add_custom_target(x3d_behavior_tests DEPENDS ${_x3d_behavior_targets})
-    add_custom_target(x3d_sanitizer_tests DEPENDS ${_x3d_behavior_targets})
+    foreach(_suite IN ITEMS x3d_behavior_tests x3d_sanitizer_tests)
+        add_custom_target(${_suite})
+        add_dependencies(${_suite} ${_x3d_behavior_targets})
+    endforeach()
 
     add_custom_target(x3d_compile_contracts DEPENDS x3d_cpp_all_headers)
     if(X3D_CPP_PER_HEADER_CHECKS)
@@ -112,10 +120,6 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sound_dynamics
         x3d_sound_periodicwave
         x3d_sound_waveshaper
-        x3d_corpus_smoke
-        x3d_corpus_audit_smoke
-        x3d_corpus_audit_selftest
-        x3d_corpus_tools_cli_test
         x3d_cli_test
         x3d_sim_behavior_test
         x3d_validate_checks_test
@@ -131,6 +135,16 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_events_tests
         x3d_hanim_skin_tests
         x3d_fileresolver_test)
+    if(X3D_CPP_BUILD_EXAMPLES)
+        list(APPEND _x3d_behavior_tests
+            x3d_example_01_load_validate_convert
+            x3d_example_02_extract_render_feed
+            x3d_example_03_attach_behavior_tick
+            x3d_corpus_smoke
+            x3d_corpus_audit_smoke
+            x3d_corpus_audit_selftest
+            x3d_corpus_tools_cli_test)
+    endif()
     if(TARGET x3d_ecmascript_backend)
         list(APPEND _x3d_behavior_tests
             x3d_ecmascript_backend
@@ -143,7 +157,12 @@ if(X3D_CPP_BUILD_TESTS)
     endif()
     set_tests_properties(${_x3d_behavior_tests} PROPERTIES LABELS behavior)
 
-    set(_x3d_compile_contract_tests x3d_cpp_all_headers)
+    set(_x3d_compile_contract_tests
+        x3d_cpp_all_headers
+        x3d_package_version_contract
+        x3d_dev_tooling_isolation
+        x3d_test_selection_examples_on
+        x3d_test_selection_examples_off)
     if(X3D_CPP_PER_HEADER_CHECKS)
         list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
     endif()

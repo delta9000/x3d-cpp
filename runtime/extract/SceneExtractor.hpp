@@ -117,12 +117,11 @@ struct RenderItem {
 
 // §42 texture projector scope (ADR-0061): a global projector lights every
 // placement; a scoped one only placements whose path passes through its
-// enclosing grouping node (a root-level projector lights the whole scene).
+// enclosing grouping placement (a root-level projector lights the whole scene).
 inline bool projectorApplies(const ProjectorDesc &p, const RenderItem &item) {
   if (p.global || !p.scopeRoot) return true;
-  for (const X3DNode *n : item.path)
-    if (n == p.scopeRoot) return true;
-  return false;
+  return p.scopePath.size() <= item.path.size() &&
+      std::equal(p.scopePath.begin(), p.scopePath.end(), item.path.begin());
 }
 
 class SceneExtractor {
@@ -201,7 +200,8 @@ private:
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
     lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                         ctx_.cameraWorldPosition(), &lightDeps_);
+                         ctx_.cameraWorldPosition(), &lightDeps_,
+                         ctx_.cameraWorldUp());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
@@ -455,7 +455,9 @@ public:
     // Dependencies come from the light collection itself, so lights in subtrees
     // the geometry walk skips (visible=FALSE, Collision.proxy, GeoLOD rootNode)
     // and viewer-driven LOD choices there are covered too.
-    bool lightDirty = selectionChanged;
+    bool lightDirty = selectionChanged || (lightDeps_.viewDependent &&
+        (lightDeps_.eye != ctx_.cameraWorldPosition() ||
+         lightDeps_.up != ctx_.cameraWorldUp()));
     for (const X3DNode *n : dirty.changedNodes())
       if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
     for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
@@ -484,7 +486,8 @@ public:
     if (refreshLights) {
       LightSystem lightSystem;
       lights_ = lightSystem.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                                    ctx_.cameraWorldPosition());
+                                    ctx_.cameraWorldPosition(), nullptr,
+                                    ctx_.cameraWorldUp());
       for (RenderItemId id : liveIds_) tagLights(items_[id], items_[id].path);
     }
     const std::unordered_set<RenderItemId> added(delta.added.begin(), delta.added.end());
@@ -611,7 +614,8 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition());
+    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition(),
+                      ctx_.cameraWorldUp());
   }
 
   // projectors — the active §42 texture projectors, world-resolved like
@@ -623,7 +627,8 @@ public:
     LightSystem ls;
     WalkBudget budget(meshOptions_.maxWalkVisits);
     std::vector<ProjectorDesc> out = ls.collectProjectors(
-        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition());
+        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition(),
+        ctx_.cameraWorldUp());
     for (ProjectorDesc &p : out) {
       std::vector<TextureRef> refs{std::move(p.texture)};
       resolveTextures(refs);
@@ -853,7 +858,8 @@ private:
     WalkBudget budget(kMaxGraphWalkVisits);
     lightDeps_.clear();
     auto out = ls.collect(scene_, ctx_.geoProjection(), budget,
-                          ctx_.cameraWorldPosition(), &lightDeps_);
+                          ctx_.cameraWorldPosition(), &lightDeps_,
+                         ctx_.cameraWorldUp());
     dropCoveredLightSelections();
     return out;
   }
@@ -1571,13 +1577,12 @@ private:
         // Global light: illuminates every placement.
         rec.lights.push_back(i);
       } else {
-        // Scoped light: illuminates geometry whose path includes the scopeRoot.
-        // L.scopeRoot is the enclosing grouping node; the item is in-scope iff
-        // that node appears on its PathKey (i.e. the shape is a sibling or
-        // descendant of the light inside that grouping node).
+        // Match the complete enclosing placement, not only its node identity:
+        // USE instances of one group can have differently transformed lights.
         if (L.scopeRoot) {
-          for (const X3DNode *n : path)
-            if (n == L.scopeRoot) { rec.lights.push_back(i); break; }
+          if (L.scopePath.size() <= path.size() &&
+              std::equal(L.scopePath.begin(), L.scopePath.end(), path.begin()))
+            rec.lights.push_back(i);
         }
         // scopeRoot == nullptr means the light had no enclosing grouping node
         // (it is a root-level node). By X3D spec a root-level non-global light

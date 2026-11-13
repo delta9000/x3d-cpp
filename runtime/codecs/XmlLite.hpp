@@ -142,14 +142,28 @@ inline std::string unescape(const std::string &s) {
     } else if (ent == "apos") {
       out += '\'';
     } else if (!ent.empty() && ent[0] == '#') {
-      // Numeric character reference: decode to UTF-8.
-      long code = 0;
-      if (ent.size() > 1 && (ent[1] == 'x' || ent[1] == 'X')) {
-        code = std::strtol(ent.c_str() + 2, nullptr, 16);
-      } else {
-        code = std::strtol(ent.c_str() + 1, nullptr, 10);
+      // XML CharRef grammar permits only decimal digits or lowercase-x hex.
+      const bool hex = ent.size() > 1 && ent[1] == 'x';
+      const std::size_t start = hex ? 2 : 1;
+      const std::uint32_t base = hex ? 16 : 10;
+      std::uint32_t cp = 0;
+      if (start == ent.size())
+        throw std::runtime_error("empty XML character reference");
+      for (std::size_t j = start; j < ent.size(); ++j) {
+        const char c = ent[j];
+        const std::uint32_t digit = c >= '0' && c <= '9' ? c - '0'
+            : c >= 'a' && c <= 'f' ? c - 'a' + 10
+            : c >= 'A' && c <= 'F' ? c - 'A' + 10 : 16;
+        if (digit >= base || cp > (0x10FFFFu - digit) / base)
+          throw std::runtime_error("invalid XML character reference");
+        cp = cp * base + digit;
       }
-      auto cp = static_cast<std::uint32_t>(code);
+      // XML 1.0 Char production excludes controls, surrogates and FFFE/FFFF.
+      if (!(cp == 9 || cp == 10 || cp == 13 ||
+            (cp >= 0x20 && cp <= 0xD7FF) ||
+            (cp >= 0xE000 && cp <= 0xFFFD) ||
+            (cp >= 0x10000 && cp <= 0x10FFFF)))
+        throw std::runtime_error("invalid XML character reference code point");
       if (cp < 0x80) {
         out += static_cast<char>(cp);
       } else if (cp < 0x800) {

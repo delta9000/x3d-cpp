@@ -57,6 +57,18 @@ vs `a.x3d`) cannot defeat it (SEC-4). See `runtime/parse/PathConfine.hpp` and
 [ADR-0038](../decisions/0038-local-resolver-path-confinement.md). Embedders
 needing remote/non-filesystem access supply their own resolver.
 
+The front doors also share a synchronous per-thread parse session across nested
+resolver calls. `ParseLimits` defaults to 64 documents of include depth (including
+the top-level document) and 256 MiB of cumulative input. File reads are checked
+before growing the buffer; gzip consumes both compressed and decoded bytes.
+Failed URL candidates still consume their input allowance. Exceeding a budget
+throws `x3d::ParseResourceLimitError` through Inline/EXTERNPROTO fallback and
+PROTO expansion; ordinary missing or malformed URL candidates remain lenient.
+Independent top-level calls start fresh, including after exceptions. These limits
+bound parser input, not expanded scene heap size or bytes fetched internally by
+custom asset backends. Nested calls inherit the outer limits rather than widening
+them; asynchronous custom resolvers must enforce their own budgets.
+
 The subsystem boundary is everything under `runtime/parse/`. The entry point for consumers is `parseFile()` / `parseDocument()` in `runtime/parse/X3DParse.hpp`. Reader declarations are in headers; their implementations are compiled from `runtime/parse/*.cpp` in `namespace x3d::codec`.
 
 Readers record successfully assigned scalar field names in
@@ -105,7 +117,9 @@ The primary consumer-facing API (`namespace x3d::codec`):
 // runtime/parse/X3DParse.hpp
 
 // Parse from a file path (sniffs encoding, inflates gzip, resolves protos/inlines).
-runtime::X3DDocument parseFile(const std::string &path);
+runtime::X3DDocument parseFile(const std::string &path,
+                               const std::string &confineRoot = "",
+                               const ParseLimits &limits = {});
 
 // Parse from in-memory text with optional encoding hint and resolver overrides.
 runtime::X3DDocument
@@ -113,7 +127,9 @@ parseDocument(const std::string &text,
               Encoding hint = Encoding::Unknown,
               const std::string &baseUrl = "",
               const ProtoDeclarationResolver &resolver = localFileProtoResolver,
-              const runtime::InlineResolver &inlineResolver = localFileInlineResolver);
+              const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
+              const std::string &confineRoot = "",
+              const ParseLimits &limits = {});
 
 // Sniff an encoding from path + content bytes (content wins when confident).
 Encoding sniff(std::string_view path, std::string_view bytes); // Encoding.hpp

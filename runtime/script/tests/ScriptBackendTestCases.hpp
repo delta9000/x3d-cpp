@@ -1194,6 +1194,38 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     store.erase(fix.script);
   }
 
+  // Native quotas survive repeated callbacks, independently of the JS heap.
+  {
+    Fixture fix;
+    fix.sai.setResourceLimits({8, 64, 100, 2});
+    fix.ctx.authorFields().addAuthorField(fix.script,
+        AuthorFieldDecl{"rejected", X3DFieldType::SFInt32, AccessType::OutputOnly, {}});
+    unsigned calls = 0;
+    fix.sai.setSceneFactory([&](const std::string &) {
+      ++calls;
+      return MFNode{std::make_shared<Transform>()};
+    });
+    auto h = backend.load(fix.script, R"JS(
+      var errors = 0;
+      function prepareEvents() {
+        Browser.print('abcd');
+        try { Browser.createX3DFromString('x'); }
+        catch (e) { rejected = ++errors; Browser.print('!'); }
+      }
+    )JS", fix.sai);
+    check(h != kInvalidScriptHandle, "quota: script loads");
+    if (h != kInvalidScriptHandle) {
+      for (int i = 0; i < 8; ++i) backend.prepareEvents(h, i);
+      check(calls == 2, "quota: retained roots bounded across callbacks");
+      auto rejected = fix.ctx.authorFields().getValue(fix.script, "rejected");
+      check(rejected.has_value() && std::any_cast<SFInt32>(rejected) == 6,
+            "quota: creation errors are catchable on every subsequent callback");
+      check(fix.sai.log() == "abcdabcd" && fix.sai.logTruncated(),
+            "quota: log bounded across callbacks and catchable creation errors");
+      backend.shutdown(h);
+    }
+  }
+
   // With no scene factory the call throws instead of returning nothing.
   {
     Fixture fix;

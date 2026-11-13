@@ -313,25 +313,41 @@ private:
     std::size_t start = i_;
     if (peek() == '-')
       ++i_;
-    while (i_ < s_.size() && std::isdigit(static_cast<unsigned char>(s_[i_])))
+    auto isDigit = [this]() { return peek() >= '0' && peek() <= '9'; };
+    if (peek() == '0') {
       ++i_;
+      if (isDigit())
+        fail("leading zero in number");
+    } else {
+      if (!isDigit())
+        fail("invalid number");
+      while (isDigit())
+        ++i_;
+    }
     if (peek() == '.') {
       ++i_;
-      while (i_ < s_.size() && std::isdigit(static_cast<unsigned char>(s_[i_])))
+      if (!isDigit())
+        fail("missing fractional digits");
+      while (isDigit())
         ++i_;
     }
     if (peek() == 'e' || peek() == 'E') {
       ++i_;
       if (peek() == '+' || peek() == '-')
         ++i_;
-      while (i_ < s_.size() && std::isdigit(static_cast<unsigned char>(s_[i_])))
+      if (!isDigit())
+        fail("missing exponent digits");
+      while (isDigit())
         ++i_;
     }
     auto v = std::make_unique<Value>();
     v->type = Type::Number;
     v->numberLexeme = s_.substr(start, i_ - start);
     try {
-      v->number = std::stod(v->numberLexeme);
+      std::size_t consumed = 0;
+      v->number = std::stod(v->numberLexeme, &consumed);
+      if (consumed != v->numberLexeme.size())
+        fail("invalid number");
     } catch (const std::invalid_argument &) {
       fail("invalid number");
     } catch (const std::out_of_range &) {

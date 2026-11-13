@@ -308,8 +308,9 @@ private:
           });
           return found;
         };
-    for (const auto &root : scene_.rootNodes)
-      if (auto found = walk(root, nullptr)) return found;
+    for (const auto *roots : {&scene_.rootNodes, &scene_.protoPeerNodes})
+      for (const auto &root : *roots)
+        if (auto found = walk(root, nullptr)) return found;
     return {};
   }
 
@@ -320,15 +321,28 @@ private:
     std::unordered_set<const X3DNode *> nodes;
     auto collect = [&](X3DNode *n) { ctx.collectSubtreeNodes(n, nodes); };
     collect(old.group.get());
+    // Auxiliary PROTO roots are owned by the child scope but are not children
+    // of its visible group. Include them before finding nested loads, including
+    // the original Inline nodes that expansion replaced with groups.
+    std::vector<std::shared_ptr<X3DNode>> scopeRoots;
+    if (auto child = scene_.expandedInlineScenes.find(inlineNode);
+        child != scene_.expandedInlineScenes.end()) {
+      scopeRoots = child->second->protoPeerNodes;
+      for (const auto &[group, original] : child->second->expandedInlines)
+        scopeRoots.push_back(original);
+    }
+    for (const auto &root : scopeRoots) collect(root.get());
     std::vector<X3DNode *> nested;
     for (const auto &[n, entry] : loaded_)
-      if (n != inlineNode && entry.parent && nodes.count(entry.parent)) nested.push_back(n);
+      if (n != inlineNode && (nodes.count(entry.group.get()) || nodes.count(n)))
+        nested.push_back(n);
     for (X3DNode *n : nested) unload(n, ctx);
+    // Nested unload changes the graph: discard raw identities of retired
+    // groups and traverse again to find restored Inline slots. Keep auxiliary
+    // roots and Inline originals alive until their final detach is complete.
     nodes.clear();
     collect(old.group.get());
-    if (auto child = scene_.expandedInlineScenes.find(inlineNode);
-        child != scene_.expandedInlineScenes.end())
-      for (const auto &peer : child->second->protoPeerNodes) collect(peer.get());
+    for (const auto &root : scopeRoots) collect(root.get());
 
     ctx.detachNodes(nodes);
     auto touches = [&](const ResolvedProtoRoute &r) {
@@ -336,10 +350,18 @@ private:
     };
     scene_.resolvedInlineRoutes.erase(std::remove_if(scene_.resolvedInlineRoutes.begin(),
         scene_.resolvedInlineRoutes.end(), touches), scene_.resolvedInlineRoutes.end());
+    scene_.deferredProtoRoutes.erase(std::remove_if(scene_.deferredProtoRoutes.begin(),
+        scene_.deferredProtoRoutes.end(), [&](const DeferredProtoRoute &r) {
+          auto owner = r.owner.lock();
+          return !owner || nodes.count(owner.get());
+        }), scene_.deferredProtoRoutes.end());
     scene_.resolvedProtoRoutes.erase(std::remove_if(scene_.resolvedProtoRoutes.begin(),
         scene_.resolvedProtoRoutes.end(), touches), scene_.resolvedProtoRoutes.end());
     scene_.protoPeerNodes.erase(std::remove_if(scene_.protoPeerNodes.begin(),
-        scene_.protoPeerNodes.end(), [&](const auto &p) { return nodes.count(p.get()); }),
+        scene_.protoPeerNodes.end(), [&](const auto &p) {
+          // A peer-root Inline's own slot is restored below, not discarded.
+          return p.get() != old.group.get() && nodes.count(p.get());
+        }),
         scene_.protoPeerNodes.end());
     for (auto def = scene_.defs.begin(); def != scene_.defs.end();) {
       bool imported = false;
@@ -356,8 +378,9 @@ private:
     scene_.expandedInlineScenes.erase(inlineNode);
     scene_.expandedInlines.erase(old.group.get());
     if (old.parent) inline_detail::replaceInParent(*old.parent, old.group.get(), old.original);
-    else for (auto &root : scene_.rootNodes)
-      if (root.get() == old.group.get()) { root = old.original; break; }
+    else for (auto *roots : {&scene_.rootNodes, &scene_.protoPeerNodes})
+      for (auto &root : *roots)
+        if (root.get() == old.group.get()) root = old.original;
     loaded_.erase(it);
     attempted_.erase(inlineNode);
     scene_.resolveRoutes();
