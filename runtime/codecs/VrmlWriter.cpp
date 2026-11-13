@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "VrmlWriter.hpp"
 #include "JsonString.hpp"
 #include "VrmlTokenizer.hpp"
@@ -57,6 +58,7 @@ void VrmlWriter::writeInterfaceValue(std::ostringstream &os,
 }
 
 std::string VrmlWriter::writeDocument(const runtime::X3DDocument &doc) {
+  requireUnnormalizedUnits(doc.scene);
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
@@ -303,6 +305,12 @@ void VrmlWriter::writeVrmlProtoDeclare(std::ostringstream &os,
       if (entry.externProto) bodyWriter.writeVrmlExternProtoDeclare(os, *entry.externProto);
       break;
     }
+  }
+  for (const auto &imp : d.body.imports) {
+    os << "  IMPORT " << imp.inlineDEF << "." << imp.importedDEF;
+    if (!imp.as.empty())
+      os << " AS " << imp.as;
+    os << "\n";
   }
   for (const auto &r : d.body.routes) {
     os << "  ROUTE " << r.fromNode << "." << r.fromField << " TO " << r.toNode

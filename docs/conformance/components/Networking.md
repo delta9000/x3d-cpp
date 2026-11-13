@@ -10,8 +10,8 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 ## Findings
 
-- **PROTO-BODY-IMPORT-MODEL** [minor/OPEN] — §ISO/IEC 19775-1 9.2.5: Prototype-local IMPORT records are lost across all encodings because ProtoBody has no imports collection.
-  - Readers collect prototype-local imports in a temporary Scene, but the shared ProtoBody model cannot retain them. Extending that model and expansion is separate from capturing JSON statement wrappers.
+- **PROTO-BODY-IMPORT-MODEL** [minor/OPEN] — §ISO/IEC 19775-1 9.2.5: Prototype-local IMPORT records round-trip, but per-instance runtime import resolution remains unsupported.
+  - ProtoBody now retains imports across XML, Classic and JSON readers and all writers. Instantiation emits an explicit warning rather than silently implying imported endpoints resolve. Per-instance Inline alias binding and routes remain separate runtime work. Tests: proto_roundtrip_test.cpp.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.

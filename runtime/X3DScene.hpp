@@ -143,6 +143,10 @@ public:
   // survive repeated builds and separate execution contexts without owning nodes.
   AuthoredScalarFields normalizedUnitFields;
 
+  // Writers cannot mix normalized values with retained authored UNIT metadata.
+  // Shared with shallow copies, whose nodes alias this scene's mutable graph.
+  std::shared_ptr<bool> hasNormalizedUnitValues = std::make_shared<bool>(false);
+
   // URL provenance follows weak node identity without changing authored URLs.
   // PROTO clones and retained Inline scenes preserve their source directory.
   std::map<std::weak_ptr<X3DNode>, std::string,

@@ -9,9 +9,11 @@
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
 #include "X3DParse.hpp"
+#include "UnitConversion.hpp"
 
 #include "x3d/nodes/PixelTexture.hpp"
 #include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/Transform.hpp"
 #include "x3d/nodes/WorldInfo.hpp"
 
 #include <functional>
@@ -554,5 +556,92 @@ TEST_CASE("shader author interfaces survive every writer") {
         CHECK(fields[1].access == core::AccessType::InputOnly);
       }
     }
+  }
+}
+
+// UNIT conversion is deliberately one-way until writers can preserve both
+// authored PROTO values and normalized built-in fields without double scaling.
+TEST_CASE("Document writers reject normalized UNIT values but preserve parsed units") {
+  const std::string source =
+      "<X3D profile='Interchange' version='4.0'><head>"
+      "<unit category='length' name='centimetre' conversionFactor='0.01'/>"
+      "</head><Scene><Transform translation='100 0 0'/></Scene></X3D>";
+  auto doc = codec::parseDocument(source);
+  const auto checkWritable = [](const runtime::X3DDocument &d) {
+    CHECK_NOTHROW(codec::XmlWriter().writeDocument(d));
+    CHECK_NOTHROW(codec::CanonicalXmlWriter().writeDocument(d));
+    CHECK_NOTHROW(codec::JsonWriter().writeDocument(d));
+    CHECK_NOTHROW(codec::VrmlWriter().writeDocument(d));
+  };
+  checkWritable(doc);
+  auto roundtrip = codec::parseDocument(codec::XmlWriter().writeDocument(doc));
+  REQUIRE(roundtrip.head.units.size() == 1);
+  CHECK(roundtrip.head.units[0].conversionFactor == doctest::Approx(0.01));
+  CHECK(codec::XmlWriter().writeDocument(roundtrip) == codec::XmlWriter().writeDocument(doc));
+
+  auto alias = doc; // Runtime builds may take a shallow Scene copy.
+  auto transform = findNode<Transform>(doc.scene);
+  REQUIRE(transform);
+  CHECK(transform->getTranslation().x == doctest::Approx(100));
+  REQUIRE(doc.scene.sourceUnits.size() == 1);
+  runtime::normalizeRuntimeUnits(alias.scene);
+  CHECK(transform->getTranslation().x == doctest::Approx(1));
+  CHECK(*doc.scene.hasNormalizedUnitValues);
+  CHECK(*alias.scene.hasNormalizedUnitValues);
+  CHECK_THROWS_WITH(codec::XmlWriter().writeDocument(doc),
+      doctest::Contains("nonidentity UNIT normalization"));
+  CHECK_THROWS(codec::CanonicalXmlWriter().writeDocument(doc));
+  CHECK_THROWS(codec::JsonWriter().writeDocument(doc));
+  CHECK_THROWS(codec::VrmlWriter().writeDocument(doc));
+  CHECK_THROWS(codec::XmlWriter().writeScene(doc.scene));
+  CHECK_THROWS(codec::XmlWriter().writeDocument(alias));
+  checkWritable(roundtrip); // Independent parsing has not entered runtime.
+}
+
+TEST_CASE("UNIT writer guard permits identity conversion and untouched defaults") {
+  for (const auto &body : {"<Transform/>", "<WorldInfo title='units'/>"}) {
+    auto doc = codec::parseDocument(
+        std::string("<X3D profile='Interchange' version='4.0'><head>") +
+        "<unit category='length' name='centimetre' conversionFactor='0.01'/>"
+        "</head><Scene>" + body + "</Scene></X3D>");
+    runtime::normalizeRuntimeUnits(doc.scene);
+    CHECK_NOTHROW(codec::XmlWriter().writeDocument(doc));
+  }
+  auto doc = codec::parseDocument(
+      "<X3D profile='Interchange' version='4.0'><head>"
+      "<unit category='length' name='metre' conversionFactor='1'/>"
+      "</head><Scene><Transform translation='100 0 0'/></Scene></X3D>");
+  runtime::normalizeRuntimeUnits(doc.scene);
+  CHECK_NOTHROW(codec::XmlWriter().writeDocument(doc));
+}
+
+TEST_CASE("UNIT writer guard does not reject retained Inline references") {
+  auto parent = codec::parseDocument(
+      "<X3D profile='Interchange' version='4.0'><Scene>"
+      "<Inline url='\"child.x3d\"'/></Scene></X3D>");
+  auto child = codec::parseDocument(
+      "<X3D profile='Interchange' version='4.0'><head>"
+      "<unit category='length' name='centimetre' conversionFactor='0.01'/>"
+      "</head><Scene><Transform translation='100 0 0'/></Scene></X3D>");
+  auto retained = parent.scene.rootNodes.front();
+  auto expanded = child.scene.rootNodes.front();
+  parent.scene.rootNodes = {expanded};
+  parent.scene.expandedInlines[expanded.get()] = retained;
+  parent.scene.expandedInlineScenes[expanded.get()] =
+      std::make_shared<runtime::Scene>(child.scene);
+  runtime::normalizeRuntimeUnits(parent.scene);
+  auto transform = findNode<Transform>(child.scene);
+  REQUIRE(transform);
+  CHECK(transform->getTranslation().x == doctest::Approx(1));
+  CHECK(*child.scene.hasNormalizedUnitValues);
+  CHECK_FALSE(*parent.scene.hasNormalizedUnitValues);
+  CHECK_THROWS(codec::XmlWriter().writeDocument(child));
+  for (const auto &output : {
+           codec::XmlWriter().writeDocument(parent),
+           codec::CanonicalXmlWriter().writeDocument(parent),
+           codec::JsonWriter().writeDocument(parent),
+           codec::VrmlWriter().writeDocument(parent)}) {
+    CHECK(contains(output, "child.x3d"));
+    CHECK_FALSE(contains(output, "Transform"));
   }
 }

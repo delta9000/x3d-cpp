@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "XmlWriter.hpp"
 
 #include "FieldValueIO.hpp"
@@ -11,6 +12,7 @@
 namespace x3d::codec {
 
 std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
+  requireUnnormalizedUnits(doc.scene);
   XmlGraphBuilder graph({.formatValue = formatValue,
                          .authoredChildOrder = true,
                          .sortAttributes = false});
@@ -60,6 +62,7 @@ std::string XmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 }
 
 std::string XmlWriter::writeScene(const runtime::Scene &scene) {
+  requireUnnormalizedUnits(scene);
   XmlGraphBuilder graph({.formatValue = formatValue,
                          .authoredChildOrder = true,
                          .sortAttributes = false});

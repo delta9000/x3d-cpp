@@ -412,12 +412,19 @@ public:
       delta.updatedMaterial.push_back(id);
     }
 
+    // Geometry refresh can replace many records. Build membership indices once,
+    // after those replacements, without changing publication order.
+    const std::unordered_set<RenderItemId> geometryRemoved(
+        delta.removed.begin(), delta.removed.end());
+    const std::unordered_set<RenderItemId> geometryAdded(
+        delta.added.begin(), delta.added.end());
+
     // Billboards depend on the tracked eye/up as well as scene fields. A camera
     // change does not dirty a scene node, so compare the affected placements
     // directly. Stable views retain both mesh payloads and transform uploads.
     for (RenderItemId id : billboardItems_) {
       if (!liveIds_.count(id) || transformSeen.count(id) ||
-          std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end())
+          geometryRemoved.count(id))
         continue;
       Mat4 world = worldAlongPath(items_[id].path, localXf);
       if (world.m != items_[id].worldTransform.m) {
@@ -428,8 +435,7 @@ public:
     }
 
     for (RenderItemId id = 0; id < items_.size(); ++id) {
-      if (std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end() ||
-          std::find(delta.added.begin(), delta.added.end(), id) != delta.added.end())
+      if (geometryRemoved.count(id) || geometryAdded.count(id))
         continue;
       if (!liveIds_.count(id)) continue;
       auto &rec = items_[id];
@@ -753,15 +759,25 @@ private:
         rec.shaderProgram = std::move(old.shaderProgram);
         rec.skin = std::move(old.skin);
       }
-    auto publish = [](std::vector<RenderItemId> &ids, RenderItemId id) {
-      if (std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
+    // Scalar refresh may already have published updates. Preserve that prefix
+    // and append each newly discovered update once, in the existing walk order.
+    std::unordered_set<RenderItemId> materialPublished(
+        delta.updatedMaterial.begin(), delta.updatedMaterial.end());
+    std::unordered_set<RenderItemId> skinPublished(
+        delta.updatedSkinPose.begin(), delta.updatedSkinPose.end());
+    std::unordered_set<RenderItemId> geometryPublished(
+        delta.updatedGeometry.begin(), delta.updatedGeometry.end());
+    auto publish = [](std::vector<RenderItemId> &ids,
+                      std::unordered_set<RenderItemId> &published,
+                      RenderItemId id) {
+      if (published.insert(id).second) ids.push_back(id);
     };
     for (RenderItemId id : next) {
       if (!oldLive.count(id)) { delta.added.push_back(id); continue; }
       const auto &old = before.at(id); const auto &now = items_[id];
       if (!(old.material == now.material) || old.shaderProgram != now.shaderProgram)
-        publish(delta.updatedMaterial, id);
-      if (old.skin != now.skin) publish(delta.updatedSkinPose, id);
+        publish(delta.updatedMaterial, materialPublished, id);
+      if (old.skin != now.skin) publish(delta.updatedSkinPose, skinPublished, id);
       // These descriptors have no narrow update channel. Only records whose
       // descriptors changed need remove-before-add publication.
       bool stateChanged = old.localFog != now.localFog || old.lights != now.lights ||
@@ -774,7 +790,7 @@ private:
       // External packed payloads are re-resolved by the walk, with no immutable
       // mesh cache to prove content equality.
       if (now.geometry_ext.is_packed() || old.geometry != now.geometry)
-        publish(delta.updatedGeometry, id);
+        publish(delta.updatedGeometry, geometryPublished, id);
     }
     // No cached payload may outlive its source dependencies. A field in an
     // inactive level does not reach the active reverse index, so a deselected

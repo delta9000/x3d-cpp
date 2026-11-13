@@ -84,6 +84,8 @@ void writeOutput(const std::string &out, const std::string &content) {
 
 // Emit each range/proto warning to stderr (non-fatal).
 void surfaceWarnings(const sdk::X3DDocument &doc) {
+    for (const auto &w : doc.readerWarnings)
+        std::cerr << "warning: reader: " << w.detail << "\n";
     for (const auto &w : doc.rangeWarnings)
         std::cerr << "warning: out-of-range: " << w.message() << "\n";
     for (const auto &w : doc.protoWarnings)
@@ -128,7 +130,7 @@ struct SubCmd {
 int cmdConvert(const std::vector<std::string> &args) {
     // x3d convert <in> [-o <out>] [-f xml|vrml|json]
     static const char *kUsage =
-        "usage: x3d convert <input> [-o <output>] [-f xml|vrml|json]\n"
+        "usage: x3d convert <input> [-o <output>] [-f xml|vrml|json] [--allow-lossy]\n"
         "\n"
         "  Convert an X3D scene between encodings.\n"
         "\n"
@@ -145,7 +147,9 @@ int cmdConvert(const std::vector<std::string> &args) {
         "  If no -o and no -f, output is written to stdout and format must be set"
         " via -f.\n"
         "\n"
-        "  Exit codes: 0 ok, 1 usage error, 2 parse/IO failure.\n";
+        "  Unknown-node data loss is rejected before writing. Use --allow-lossy\n"
+        "  to explicitly permit it; reader warnings still describe the loss.\n"
+        "  Exit codes: 0 ok, 1 usage error, 2 parse/IO failure or lossy conversion.\n";
 
     if (args.empty()) {
         std::cerr << kUsage;
@@ -159,6 +163,7 @@ int cmdConvert(const std::vector<std::string> &args) {
     std::string inPath;
     std::string outPath;
     std::string fmtFlag;
+    bool allowLossy = false;
 
     for (int i = 0; i < static_cast<int>(args.size()); ++i) {
         const std::string &a = args[static_cast<size_t>(i)];
@@ -174,6 +179,8 @@ int cmdConvert(const std::vector<std::string> &args) {
                 return 1;
             }
             fmtFlag = args[static_cast<size_t>(++i)];
+        } else if (a == "--allow-lossy") {
+            allowLossy = true;
         } else if (a[0] == '-') {
             std::cerr << "error: unknown option: " << a << "\n" << kUsage;
             return 1;
@@ -224,6 +231,18 @@ int cmdConvert(const std::vector<std::string> &args) {
         return 2;
     }
     surfaceWarnings(doc);
+
+    // XML retains opaque unknown nodes; the other writers cannot encode their
+    // fields. A reader may also already have discarded unknown content. Fail
+    // before opening the output file so a rejected conversion cannot truncate it.
+    for (const auto &w : doc.readerWarnings) {
+        if (w.kind == x3d::runtime::ReaderWarning::Kind::UnknownNode &&
+            (!w.preservedForXml || fmt != OutFmt::XML) && !allowLossy) {
+            std::cerr << "error: conversion would lose unknown-node content; "
+                         "use --allow-lossy to permit this loss\n";
+            return 2;
+        }
+    }
 
     // Serialize.
     std::string output;

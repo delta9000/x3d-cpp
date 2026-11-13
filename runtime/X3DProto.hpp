@@ -17,6 +17,7 @@
 #include "DynamicField.hpp"
 #include "X3DHeader.hpp"
 #include "X3DRoute.hpp"
+#include "X3DImportExport.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
@@ -104,6 +105,9 @@ struct ReaderWarning {
   enum class Kind { UnknownNode, ProfileCoerced, Value };
   Kind kind;
   std::string detail;
+  // Unknown XML content is retained for XML writing only. Other recovery may
+  // discard data; consumers such as convert must not mistake it for lossless IO.
+  bool preservedForXml = false;
 };
 
 /**
@@ -159,6 +163,8 @@ inline const ProtoField *findProtoRouteField(
 struct ProtoBody {
   std::vector<std::shared_ptr<X3DNode>> nodes;
   std::vector<Route> routes;
+  // IMPORT aliases belong to this declaration, never the enclosing Scene.
+  std::vector<Import> imports;
   std::vector<IsConnection> isConnections;
   // ProtoInstances that appear inside this body (template). Each carries its
   // placement (parent = an original body node, or empty for a direct body-root

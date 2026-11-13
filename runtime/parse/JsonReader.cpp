@@ -410,6 +410,7 @@ JsonReader::readJsonProtoDeclare(const json::Value &obj,
   if (const json::Value *bodyObj = obj.member("ProtoBody");
       bodyObj && bodyObj->isObject())
     readJsonProtoBody(*bodyObj, local, decl->body);
+  decl->body.imports = std::move(local.imports);
   decl->authorFields = std::move(local.authorFields);
   decl->authoredScalarFields = std::move(local.authoredScalarFields);
   scene.declareProto(decl);
@@ -459,6 +460,7 @@ void JsonReader::readJsonProtoBody(const json::Value &obj,
       out.recordNode(node);
     }
   }
+  readImports(obj.member("IMPORT"), scene);
   readRoutesInto(obj.member("ROUTE"), out.routes);
 }
 

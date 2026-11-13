@@ -684,6 +684,7 @@ ClassicVrmlReader::parseProto(VrmlTokenizer &tok, runtime::Scene &scene) {
   expectPunct(tok, '}', "PROTO body close");
   decl->body.nodes = std::move(local.rootNodes);
   decl->body.routes = std::move(local.routes);
+  decl->body.imports = std::move(local.imports);
   decl->authorFields = std::move(local.authorFields);
   decl->authoredScalarFields = std::move(local.authoredScalarFields);
   scene.declareProto(decl);

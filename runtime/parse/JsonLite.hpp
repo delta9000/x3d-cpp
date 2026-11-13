@@ -250,10 +250,13 @@ private:
           // it, but the parser does not throw on the common case).
           if (cp >= 0xD800 && cp <= 0xDBFF && i_ + 1 < s_.size() &&
               s_[i_] == '\\' && s_[i_ + 1] == 'u') {
+            const auto nextEscape = i_;
             i_ += 2; // consume the literal backslash-u
             unsigned low = parseHex4();
             if (low >= 0xDC00 && low <= 0xDFFF)
               cp = 0x10000u + ((cp - 0xD800u) << 10) + (low - 0xDC00u);
+            else
+              i_ = nextEscape; // not a pair: decode the next escape normally
           }
           appendUtf8(out, cp);
           break;

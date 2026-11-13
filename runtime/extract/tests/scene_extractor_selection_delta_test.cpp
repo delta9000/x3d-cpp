@@ -10,6 +10,7 @@
 #include <any>
 #include <functional>
 #include <map>
+#include <unordered_set>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
@@ -374,4 +375,49 @@ TEST_CASE("tick propagation refreshes a geo transform's cached local matrix on g
   ctx.postEvent(a, "translation", std::any(SFVec3f{1, 2, 3}));
   ctx.tick(2);
   same(ctx.worldTransform(g), Mat4::translation({1, 2, 3}) * fresh);
+}
+
+TEST_CASE("selection delta: wide replacement keeps scalar update order and unique IDs") {
+  constexpr std::size_t width = 64;
+  auto material = createX3DNode("Material");
+  auto appearance = createX3DNode("Appearance");
+  set(appearance, "material", material);
+  Scene scene;
+  std::vector<Node> switches;
+  for (std::size_t i = 0; i < width; ++i) {
+    auto fixed = shape();
+    set(fixed, "appearance", appearance);
+    scene.rootNodes.push_back(fixed);
+  }
+  for (std::size_t i = 0; i < width; ++i) {
+    auto sw = createX3DNode("Switch");
+    set(sw, "children", MFNode{shape(), shape()});
+    set(sw, "whichChoice", SFInt32{0});
+    switches.push_back(sw);
+    scene.rootNodes.push_back(sw);
+  }
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  SceneExtractor ex(ctx, scene);
+  const auto snap = ex.fullSnapshot();
+  REQUIRE(snap.added.size() == width * 2);
+  const std::vector<RenderItemId> fixedIds(snap.added.begin(), snap.added.begin() + width);
+  std::map<RenderItemId, RenderItem> live;
+  apply(live, snap, ex);
+  for (int choice : {1, 0, 1}) {
+    for (const auto &sw : switches)
+      ctx.postEvent(sw.get(), "whichChoice", SFInt32{choice});
+    ctx.postEvent(material.get(), "diffuseColor", SFColor{float(choice), 0.2f, 0.3f});
+    ctx.tick(1);
+    const auto delta = ex.delta();
+    CHECK(delta.added.size() == width);
+    CHECK(delta.removed.size() == width);
+    CHECK(delta.updatedMaterial == fixedIds);
+    for (const auto *ids : {&delta.added, &delta.removed, &delta.updatedMaterial}) {
+      const std::unordered_set<RenderItemId> unique(ids->begin(), ids->end());
+      CHECK(unique.size() == ids->size());
+    }
+    apply(live, delta, ex);
+    compare(live, ctx, scene);
+  }
 }

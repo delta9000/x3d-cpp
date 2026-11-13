@@ -295,6 +295,14 @@ private:
       if (dynamic_cast<const runtime::UnknownNode *>(child.get()) &&
           !hasNodeSlot(table, slot)) {
         scene.opaqueChildren[node.get()].push_back(child);
+        // PROTO-local side tables are not retained by ProtoDeclaration. Do
+        // not claim XML preservation for a child that will be lost with them.
+        if (currentProtoBody)
+          readerWarnings_.push_back(
+              {runtime::ReaderWarning::Kind::UnknownNode,
+               "unknown node element <" + childEl->name +
+                   "> under <" + el.name +
+                   "> inside PROTO discarded (opaque child slot not retained)"});
         continue;
       }
       attachChild(*node, table, slot, childEl->name, child, &scene);
@@ -324,7 +332,7 @@ private:
         {runtime::ReaderWarning::Kind::UnknownNode,
          "unknown node element <" + el.name +
              "> kept as opaque content (not interpreted; only the XML writers "
-             "re-emit its attributes and children)"});
+             "re-emit its attributes and children)", true});
     for (const auto &a : el.attributes) {
       if (a.first == "DEF")
         node->setDEF(a.second);
@@ -527,11 +535,17 @@ private:
     }
   }
 
-  /// <ProtoBody>: child nodes into body.nodes, <ROUTE> into body.routes, and
-  /// each body node's <IS><connect/></IS> into body.isConnections.
+  /// <ProtoBody>: child nodes, local ROUTEs and IMPORTs, and each body node's
+  /// <IS><connect/></IS> mappings stay in the declaration's own scope.
   void readProtoBody(const xml::Element &el, runtime::Scene &local,
                      runtime::ProtoBody &out) {
     for (const auto &c : el.children) {
+      if (c->name == "IMPORT") {
+        out.imports.push_back({c->attrOr("inlineDEF", ""),
+                               c->attrOr("importedDEF", ""),
+                               c->attrOr("AS", "")});
+        continue;
+      }
       if (c->name == "ROUTE") {
         out.routes.emplace_back(
             c->attrOr("fromNode", ""), c->attrOr("fromField", ""),

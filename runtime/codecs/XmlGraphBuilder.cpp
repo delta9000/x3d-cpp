@@ -18,6 +18,17 @@ using namespace x3d::core;
 using x3d::nodes::Script;
 using x3d::nodes::X3DNodeFactory;
 
+namespace {
+// Scene and ProtoBody imports have identical XML representation.
+void appendImport(xml::Element &parent, const runtime::Import &imp) {
+  auto *element = parent.addChild("IMPORT");
+  element->setAttr("inlineDEF", imp.inlineDEF);
+  element->setAttr("importedDEF", imp.importedDEF);
+  if (!imp.as.empty())
+    element->setAttr("AS", imp.as);
+}
+} // namespace
+
 void XmlGraphBuilder::writeSceneInto(xml::Element *scene,
                                      const runtime::Scene &s) {
   scene_ = &s;
@@ -47,13 +58,8 @@ void XmlGraphBuilder::writeSceneInto(xml::Element *scene,
     e->setAttr("toNode", r.toNode);
     e->setAttr("toField", r.toField);
   }
-  for (const auto &imp : s.imports) {
-    xml::Element *e = scene->addChild("IMPORT");
-    e->setAttr("inlineDEF", imp.inlineDEF);
-    e->setAttr("importedDEF", imp.importedDEF);
-    if (!imp.as.empty())
-      e->setAttr("AS", imp.as);
-  }
+  for (const auto &imp : s.imports)
+    appendImport(*scene, imp);
   for (const auto &exp : s.exports) {
     xml::Element *e = scene->addChild("EXPORT");
     e->setAttr("localDEF", exp.localDEF);
@@ -475,6 +481,8 @@ XmlGraphBuilder::writeProtoDeclareElement(const runtime::ProtoDeclaration &d) {
       break;
     }
   }
+  for (const auto &imp : d.body.imports)
+    appendImport(*body, imp);
   for (const auto &r : d.body.routes) {
     xml::Element *re = body->addChild("ROUTE");
     re->setAttr("fromNode", r.fromNode);

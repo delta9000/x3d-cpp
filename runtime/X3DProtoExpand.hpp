@@ -286,6 +286,11 @@ expandInstance(ProtoInstance &inst, Scene &scene,
         {ProtoWarning::Kind::MissingDeclaration, inst.name, "no declaration"});
     return nullptr;
   }
+  if (!decl->body.imports.empty()) {
+    warnings.push_back({ProtoWarning::Kind::SourceWarning, inst.name,
+        "ProtoBody IMPORT declarations are preserved, but per-instance import "
+        "resolution is not implemented"});
+  }
   const std::string bodyBaseUrl = decl->sourceBaseUrl.value_or(baseUrl);
   const auto bodyStatements = decl->body.orderedStatements();
   const auto firstNode = std::find_if(bodyStatements.begin(), bodyStatements.end(),

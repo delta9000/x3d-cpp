@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "JsonWriter.hpp"
 #include "JsonString.hpp"
 #include "X3DProtoFieldOrder.hpp"
@@ -20,6 +21,7 @@ namespace x3d::codec {
 using x3d::nodes::X3DNodeFactory;
 
 std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
+  requireUnnormalizedUnits(doc.scene);
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
@@ -412,6 +414,26 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   os << "\n";
   pad(os, depth + 2);
   os << "]";
+
+  if (!d.body.imports.empty()) {
+    os << ",\n";
+    pad(os, depth + 2);
+    os << "\"IMPORT\": [\n";
+    for (std::size_t i = 0; i < d.body.imports.size(); ++i) {
+      const auto &imp = d.body.imports[i];
+      pad(os, depth + 3);
+      os << "{ \"@inlineDEF\": " << jstr(imp.inlineDEF)
+         << ", \"@importedDEF\": " << jstr(imp.importedDEF);
+      if (!imp.as.empty())
+        os << ", \"@AS\": " << jstr(imp.as);
+      os << " }";
+      if (i + 1 < d.body.imports.size())
+        os << ",";
+      os << "\n";
+    }
+    pad(os, depth + 2);
+    os << "]";
+  }
 
   // Body ROUTEs.
   if (!d.body.routes.empty()) {
