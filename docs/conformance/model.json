@@ -11396,7 +11396,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15h.",
+      "note": "ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests: ecmascript/quickjs backend T15h. This is a JavaScript-heap limit, not a whole-process sandbox. SaiContext separately bounds captured Browser.print output and cumulative scene-creation source bytes, attempts and retained roots; ScriptSystem::setResourceLimits configures these before enrollment. Logs truncate with logTruncated() diagnostics; exhausted creation quotas throw catchable script errors. Limits persist across callbacks. Arbitrary host scene factories must still bound parser expansion and native graph memory; source/root quotas are not a byte accounting mechanism for all native allocations, field writes or routes. Tests: sai_context, script_system and shared script-backend native-quota cases.",
       "severity": "major",
       "status": "fixed",
       "summary": "A Script could allocate without bound and get the host process killed; neither engine capped script memory."
@@ -12661,10 +12661,10 @@
       "nodes": [
         "Inline"
       ],
-      "note": "ProtoBody now retains imports across XML, Classic and JSON readers and all writers. Instantiation emits an explicit warning rather than silently implying imported endpoints resolve. Per-instance Inline alias binding and routes remain separate runtime work. Tests: proto_roundtrip_test.cpp.",
+      "note": "Deferred endpoint identities bind after Inline loading without publishing aliases in enclosing DEF tables. Explicit exports and exported PROTO interfaces are resolved with access/type checks; unload removes concrete edges, and reload rebinds them. Auxiliary ProtoBody Inline roots are included. Tests: proto_roundtrip_test.cpp and proto_import_runtime_test.cpp (two-instance isolation, bidirectional events, deferred loading, nested unload, and peer-root reload).",
       "severity": "minor",
-      "status": "open",
-      "summary": "Prototype-local IMPORT records round-trip, but per-instance runtime import resolution remains unsupported."
+      "status": "fixed",
+      "summary": "Prototype-local IMPORT records round-trip and body ROUTEs bind within each instance's Inline scope."
     },
     {
       "clause": "ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8",
@@ -13177,7 +13177,7 @@
     ]
   },
   "summary": {
-    "closed_count": 320,
+    "closed_count": 321,
     "component_count": 36,
     "deferred_count": 22,
     "finding_count": 354,
@@ -13185,7 +13185,7 @@
     "open_by_severity": {
       "low": 2,
       "major": 16,
-      "minor": 16
+      "minor": 15
     }
   },
   "unresolved_findings": []
