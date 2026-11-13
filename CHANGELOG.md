@@ -14,8 +14,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   shared across DEF/USE, normals, texture coordinates, vertex colours, lines
   and points, and materials (`PhysicalMaterial` directly, `Material`
   approximated, `UnlitMaterial` as `KHR_materials_unlit`). PNG/JPEG
-  `ImageTexture` urls are referenced; `PixelTexture`s and host-decoded images
-  are embedded as PNG. Lights are written as `KHR_lights_punctual` and
+  `ImageTexture` files are embedded (the CLI reads them; SDK hosts pass
+  `GltfWriteOptions::readImage`) or referenced by url; `PixelTexture`s and
+  host-decoded images are embedded as PNG. Textures on unlit surfaces become
+  the base colour texture. Lights are written as `KHR_lights_punctual` and
   `Viewpoint`/`OrthoViewpoint` nodes as cameras. Not exported: movie, multi,
   cube and 3D textures, skins, animation; `GltfWriteReport` counts what was
   dropped. Light intensity has no unit conversion.

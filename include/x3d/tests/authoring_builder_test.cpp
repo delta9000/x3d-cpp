@@ -12,6 +12,7 @@
 
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -110,6 +111,33 @@ int main() {
   check(b.document().scene.routes[0].fromNode == "Clock",
         "DEF rename follows into routes");
   check(b.document().scene.resolve("Clock") == clock.shared(), "rename rebinds");
+
+  // Enum fields: an unknown token is rejected, for SFEnum and MFEnum alike.
+  auto style = b.create("FontStyle");
+  style.set("justify", "\"MIDDLE\" \"END\"");
+  check(rejects([&] { style.set("justify", "\"MIDDLE\" \"SIDEWAYS\""); },
+                "is not a value of"),
+        "unknown MFEnum token is rejected");
+  check(rejects([&] { style.set("style", "WOBBLY"); }, "is not a value of"),
+        "unknown SFEnum token is rejected");
+
+  // A document's own routes carry names only; a rename must follow them too.
+  {
+    x3d::authoring::X3DDocument parsed;
+    auto a = std::make_shared<TimeSensor>();
+    a->setDEF("A");
+    auto t = std::make_shared<Transform>();
+    t->setDEF("B");
+    parsed.scene.addRootNode(a);
+    parsed.scene.addRootNode(t);
+    parsed.scene.routes.emplace_back("A", "fraction_changed", "B", "set_scale");
+    SceneBuilder again(std::move(parsed));
+    again.find("A").def("Clock2");
+    check(again.document().scene.routes[0].fromNode == "Clock2",
+          "rename follows a name-bound route");
+    check(again.document().scene.routes[0].toNode == "B",
+          "rename leaves the other endpoint alone");
+  }
 
   x3d::authoring::X3DDocument doc = b.take();
   check(b.document().scene.rootNodes.empty(), "take leaves the builder empty");

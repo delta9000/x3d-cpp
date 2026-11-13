@@ -39,6 +39,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace x3d::authoring {
 
@@ -246,11 +247,17 @@ public:
     const std::string old = node->getDEF();
     if (!old.empty() && old != name) {
       auto prev = defs.find(old);
-      if (prev != defs.end() && prev->second == node) defs.erase(prev);
+      // `old` is this node's name unless the table binds it to another node.
+      const bool owned = prev == defs.end() || prev->second == node;
+      // A route added here carries resolved endpoints; one read from a file
+      // names its endpoints only, until resolveRoutes(). Follow both.
       for (auto &r : doc_.scene.routes) {
-        if (r.from.lock() == node) r.fromNode = name;
-        if (r.to.lock() == node) r.toNode = name;
+        const auto from = r.from.lock(), to = r.to.lock();
+        if (from == node || (!from && owned && r.fromNode == old))
+          r.fromNode = name;
+        if (to == node || (!to && owned && r.toNode == old)) r.toNode = name;
       }
+      if (prev != defs.end() && prev->second == node) defs.erase(prev);
     }
     node->setDEF(name);
     defs[name] = node;
@@ -364,10 +371,14 @@ Node<T> &Node<T>::set(const std::string &field, const std::string &text) {
     if (!f->setEnumString || !f->getEnumString)
       detail::fail("set: " + detail::describe(*node_) + "." + field +
                    " is not writable");
-    f->setEnumString(*node_, text);
-    // setEnumString ignores a token it does not know; catch that here.
-    if (f->type == x3d::core::X3DFieldType::SFEnum &&
-        f->getEnumString(*node_) != x3d::codec::stripEnumQuotes(text))
+    // The setter takes bare tokens; X3D text may quote them.
+    f->setEnumString(*node_, x3d::codec::stripEnumQuotes(text));
+    // setEnumString ignores a token it does not know; catch that by reading
+    // the value back. An MFEnum is a list of tokens, each quoted or bare.
+    std::vector<std::string> want;
+    for (const std::string &token : x3d::codec::tokenize(text))
+      want.push_back(x3d::codec::stripEnumQuotes(token));
+    if (x3d::codec::tokenize(f->getEnumString(*node_)) != want)
       detail::fail("set: '" + text + "' is not a value of " +
                    detail::describe(*node_) + "." + field);
     return *this;

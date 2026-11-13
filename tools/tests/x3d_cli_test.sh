@@ -373,6 +373,33 @@ check "extract -f glb to stdout is glTF" \
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" -f obj >/dev/null 2>&1; echo $?)
 check "extract unknown format exits 1" "$ec" "1"
 
+# A texture file next to the input is embedded, so the .glb still has its image
+# when it is written to another directory. The shape has no Material: the
+# texture is the unlit surface colour.
+mkdir -p "$TD/tex_in" "$TD/tex_out"
+printf '\x89PNG\r\n\x1a\nfake-png-payload' > "$TD/tex_in/photo.png"
+cat > "$TD/tex_in/quad.x3d" <<'X3D'
+<X3D profile='Interchange' version='4.0'><Scene><Shape>
+<Appearance><ImageTexture url='"photo.png"'/></Appearance><Box/>
+</Shape></Scene></X3D>
+X3D
+ec=$("$CLI" extract "$TD/tex_in/quad.x3d" -o "$TD/tex_out/quad.glb" 2>/dev/null; echo $?)
+check "extract textured quad exits 0" "$ec" "0"
+for needle in '"baseColorTexture"' '"mimeType":"image/png"' 'fake-png-payload'; do
+    if grep -q -a "$needle" "$TD/tex_out/quad.glb"; then
+        echo "ok:   extract .glb contains $needle"
+    else
+        echo "FAIL: extract .glb lacks $needle"
+        failures=$(( failures + 1 ))
+    fi
+done
+if grep -q -a '"uri"' "$TD/tex_out/quad.glb"; then
+    echo "FAIL: extract .glb still references an external image"
+    failures=$(( failures + 1 ))
+else
+    echo "ok:   extract .glb has no external image reference"
+fi
+
 # x3d canonicalize subcommand
 
 ec=$("$CLI" canonicalize --help >/dev/null 2>&1; echo $?)

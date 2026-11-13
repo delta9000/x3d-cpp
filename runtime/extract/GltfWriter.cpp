@@ -517,7 +517,13 @@ private:
       const std::string url =
           ref.source == TextureRef::Source::Url ? imageUrl(ref.url) : "";
       if (!url.empty()) {
-        image = intern(images_, "{\"uri\":" + quote(url) + "}");
+        // Prefer the file's own bytes (a GLB is then self-contained and does
+        // not depend on where it is written); else reference the url.
+        image = embedFile(url, ref.baseUrl);
+        if (image < 0) {
+          image = intern(images_, "{\"uri\":" + quote(url) + "}");
+          ++report_.externalImages;
+        }
       } else if (ref.source == TextureRef::Source::Inline) {
         const SFImage &img = ref.inlinePixels;
         if (img.width > 0 && img.height > 0)
@@ -560,9 +566,26 @@ private:
     return info + extra + "}";
   }
 
-  // Store PNG bytes in the buffer and return its image index; identical
+  // Embed the PNG or JPEG file behind `url` through options_.readImage. -1
+  // when there is no reader, it returns nothing, or the bytes are neither.
+  int embedFile(const std::string &url, const std::string &baseUrl) {
+    if (!options_.readImage) return -1;
+    const std::string key = std::to_string(baseUrl.size()) + ":" + baseUrl + url;
+    auto cached = fileImages_.find(key);
+    if (cached != fileImages_.end()) return cached->second;
+    const std::string bytes = options_.readImage(url, baseUrl);
+    int image = -1;
+    if (bytes.compare(0, 8, std::string("\x89PNG\r\n\x1a\n", 8)) == 0)
+      image = embed(bytes, "image/png");
+    else if (bytes.compare(0, 3, "\xFF\xD8\xFF") == 0)
+      image = embed(bytes, "image/jpeg");
+    fileImages_.emplace(key, image);
+    return image;
+  }
+
+  // Store image bytes in the buffer and return the image index; identical
   // images are stored once. -1 for an empty (unencodable) image.
-  int embed(const std::string &png) {
+  int embed(const std::string &png, const char *mime = "image/png") {
     if (png.empty()) return -1;
     auto found = embedded_.find(png);
     if (found != embedded_.end()) return found->second;
@@ -573,7 +596,7 @@ private:
     views_.push_back("{\"buffer\":0,\"byteOffset\":" + std::to_string(offset) +
                      ",\"byteLength\":" + std::to_string(png.size()) + "}");
     images_.push_back("{\"bufferView\":" + std::to_string(views_.size() - 1) +
-                      ",\"mimeType\":\"image/png\"}");
+                      ",\"mimeType\":\"" + mime + "\"}");
     ++report_.embeddedImages;
     return embedded_.emplace(png, static_cast<int>(images_.size()) - 1)
         .first->second;
@@ -592,10 +615,14 @@ private:
     // A per-vertex Color replaces the material colour (COLOR_0 multiplies
     // baseColorFactor, so the factor's RGB goes to white).
     if (acc.color >= 0) base.r = base.g = base.b = 1.0f;
+    // glTF factors must lie in [0,1]; the lenient readers keep out-of-range
+    // authored colours (validateRanges reports them).
+    auto unit = [](float v) { return std::clamp(v, 0.0f, 1.0f); };
+    base = {unit(base.r), unit(base.g), unit(base.b), unit(base.a)};
     double metallic = 0.0, roughness = 1.0;
     if (m.model == MaterialModel::Physical) {
-      metallic = m.physical.metallic;
-      roughness = m.physical.roughness;
+      metallic = unit(m.physical.metallic);
+      roughness = unit(m.physical.roughness);
     } else if (m.model == MaterialModel::Phong) {
       // Blinn-Phong exponent (shininess * 128) to perceptual roughness.
       const double exponent = std::max(0.0, double(m.phong.shininess)) * 128.0;
@@ -607,25 +634,39 @@ private:
                   array({base.r, base.g, base.b, base.a}));
     pbr.push_back("\"metallicFactor\":" + num(metallic));
     pbr.push_back("\"roughnessFactor\":" + num(roughness));
+    // Each glTF texture property is written at most once: the first texture
+    // that maps to it wins and any further one is counted as unmapped.
+    std::vector<std::string> written;
     auto slot = [&](std::vector<std::string> &into, const char *key,
                     const TextureRef &ref, const std::string &extra = {}) {
+      if (std::find(written.begin(), written.end(), key) != written.end()) {
+        ++report_.unmappedTextureSlots;
+        return false;
+      }
       const std::string info = textureInfo(ref, acc, extra);
-      if (!info.empty())
-        into.push_back(std::string("\"") + key + "\":" + info);
+      if (info.empty()) return false;
+      written.push_back(key);
+      into.push_back(std::string("\"") + key + "\":" + info);
+      return true;
     };
     bool emissiveTexture = false;
+    const bool phong = m.model == MaterialModel::Phong;
     for (const TextureRef &ref : m.textures) {
-      const bool phong = m.model == MaterialModel::Phong;
-      if (ref.slot == Slot::BaseColor || (phong && ref.slot == Slot::Diffuse)) {
+      if (unlit) {
+        // KHR_materials_unlit shows the base colour, and an unlit X3D
+        // surface's colour is its emissive colour and texture: an Appearance
+        // with a texture and no Material, or UnlitMaterial.emissiveTexture.
+        if (ref.slot == Slot::Emissive)
+          slot(pbr, "baseColorTexture", ref);
+        else
+          ++report_.unmappedTextureSlots; // lighting inputs of an unlit surface
+      } else if (ref.slot == Slot::BaseColor ||
+                 (phong && ref.slot == Slot::Diffuse)) {
         slot(pbr, "baseColorTexture", ref);
-      } else if (unlit) {
-        ++report_.droppedTextures;
       } else if (ref.slot == Slot::Normal) {
         slot(fields, "normalTexture", ref, ",\"scale\":" + num(m.normalScale));
       } else if (ref.slot == Slot::Emissive) {
-        const std::size_t before = fields.size();
-        slot(fields, "emissiveTexture", ref);
-        emissiveTexture = fields.size() > before;
+        emissiveTexture = slot(fields, "emissiveTexture", ref);
       } else if (ref.slot == Slot::Occlusion) {
         const double strength = phong ? m.phong.occlusionStrength
                                       : m.physical.occlusionStrength;
@@ -634,7 +675,7 @@ private:
       } else if (ref.slot == Slot::MetallicRoughness && !phong) {
         slot(pbr, "metallicRoughnessTexture", ref);
       } else {
-        ++report_.droppedTextures; // specular, shininess, ambient
+        ++report_.unmappedTextureSlots; // specular, shininess, ambient
       }
     }
     fields.insert(fields.begin(),
@@ -653,7 +694,7 @@ private:
     }
     if (m.alphaMode == AlphaMode::Mask) {
       fields.push_back("\"alphaMode\":\"MASK\"");
-      fields.push_back("\"alphaCutoff\":" + num(m.alphaCutoff));
+      fields.push_back("\"alphaCutoff\":" + num(std::max(0.0f, m.alphaCutoff)));
     } else if (m.alphaMode == AlphaMode::Blend || base.a < 1.0f) {
       fields.push_back("\"alphaMode\":\"BLEND\"");
     }
@@ -679,7 +720,7 @@ private:
   std::string bin_;
   std::vector<std::string> nodes_, meshes_, materials_, textures_, images_,
       samplers_, accessors_, views_, lights_, cameras_, extraNodes_;
-  std::unordered_map<std::string, int> embedded_;
+  std::unordered_map<std::string, int> embedded_, fileImages_;
   std::unordered_map<const TexturePixels *, int> decodedImages_;
   std::unordered_map<const MeshData *, MeshAccessors> meshAccessors_;
   std::map<std::pair<const MeshData *, int>, int> meshIndex_;

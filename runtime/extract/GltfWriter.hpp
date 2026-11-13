@@ -22,10 +22,13 @@
 //     KHR_materials_unlit. transparency becomes alpha with BLEND.
 //     solid=FALSE becomes doubleSided;
 //   - textures for the base colour, normal, emissive, occlusion and
-//     metallic-roughness slots. An ImageTexture with a PNG or JPEG url is an
-//     external image reference (the url, verbatim). A PixelTexture, and any
-//     texture the host's TextureResolver has decoded, is embedded as a PNG.
-//     Texture coordinates are flipped to glTF's top-left origin;
+//     metallic-roughness slots; on an unlit surface (UnlitMaterial, or a
+//     texture with no Material) the emissive texture is the base colour
+//     texture. A PNG or JPEG ImageTexture is embedded when
+//     GltfWriteOptions::readImage supplies its bytes, else referenced by its
+//     url as authored. A PixelTexture, and any other texture the host's
+//     TextureResolver has decoded, is embedded as a PNG. Texture coordinates
+//     are flipped to glTF's top-left origin;
 //   - lights as KHR_lights_punctual (directional, point, spot), each on a node
 //     placed and aimed in world space;
 //   - Viewpoint and OrthoViewpoint nodes as cameras, the bound one first.
@@ -44,7 +47,7 @@
 // Not written (each is counted in GltfWriteReport): packed/binary geometry
 // items, MovieTexture, MultiTexture, cube and 3D textures, textures on
 // generated texture coordinates, undecoded textures with no PNG/JPEG url,
-// back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
+// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
 // written as static meshes in the mesh's stored pose. Animation is not
 // exported.
 #ifndef X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
@@ -53,6 +56,7 @@
 #include "SceneExtractor.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -61,6 +65,14 @@ namespace x3d::runtime::extract {
 struct GltfWriteOptions {
   /// asset.generator in the output.
   std::string generator = "x3d-cpp";
+  /// Returns the bytes of the image file behind a texture url, or "" if it
+  /// cannot be read. `baseUrl` is the url of the document the texture node
+  /// came from (may be empty). When set, PNG and JPEG files it returns are
+  /// embedded in the GLB; without it, or when it returns nothing, the image
+  /// is referenced by its url as authored, which a viewer resolves against
+  /// the .glb's own location.
+  std::function<std::string(const std::string &url, const std::string &baseUrl)>
+      readImage;
 };
 
 struct GltfWriteReport {
@@ -68,14 +80,21 @@ struct GltfWriteReport {
   std::size_t meshes = 0;    ///< distinct glTF meshes
   std::size_t materials = 0; ///< distinct glTF materials
   std::size_t textures = 0;  ///< distinct glTF textures
-  std::size_t embeddedImages = 0; ///< images embedded as PNG
+  std::size_t embeddedImages = 0; ///< images embedded (PNG or JPEG)
+  std::size_t externalImages = 0; ///< texture uses left as url references
   std::size_t lights = 0;    ///< KHR_lights_punctual lights
   std::size_t cameras = 0;   ///< cameras
   std::size_t triangles = 0; ///< triangles over all nodes (instances counted)
 
   std::size_t skippedEmpty = 0;    ///< items with no positions or indices
   std::size_t skippedPacked = 0;   ///< packed/binary geometry items
-  std::size_t droppedTextures = 0; ///< texture slots that could not be written
+  /// Textures with no image glTF can carry: movie, multi, cube and 3D
+  /// textures, generated texture coordinates, a mesh without texture
+  /// coordinates, or an undecoded image that is not a PNG/JPEG url.
+  std::size_t droppedTextures = 0;
+  /// Textures in a slot glTF has no property for: specular, shininess and
+  /// ambient maps, and the lighting maps of an unlit surface.
+  std::size_t unmappedTextureSlots = 0;
   std::size_t staticSkins = 0;     ///< skinned items written without a skin
   std::size_t droppedBackMaterials = 0;
   std::size_t droppedShaders = 0;

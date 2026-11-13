@@ -39,6 +39,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -490,8 +491,9 @@ int cmdExtract(const std::vector<std::string> &args) {
         "  matrix, shared meshes for DEF/USE, normals, texture coordinates,\n"
         "  vertex colours, lines and points, and materials (PhysicalMaterial\n"
         "  directly, Material approximated, UnlitMaterial as\n"
-        "  KHR_materials_unlit). ImageTexture urls (PNG/JPEG) are referenced;\n"
-        "  PixelTextures are embedded as PNG. Lights are written as\n"
+        "  KHR_materials_unlit). Local PNG/JPEG ImageTexture files and\n"
+        "  PixelTextures are embedded; an image that cannot be read is left as a\n"
+        "  url reference. Lights are written as\n"
         "  KHR_lights_punctual and Viewpoints/OrthoViewpoints as cameras.\n"
         "  Not exported: movie, multi, cube and 3D textures, animation, skinning.\n"
         "\n"
@@ -595,8 +597,33 @@ int cmdExtract(const std::vector<std::string> &args) {
         // Gather skipped geometry types.
         skipped = ex.skippedGeometryCounts();
 
-        if (glb)
-            glbBytes = sdk::writeGlb(ex, frame0.added, {}, &glbReport);
+        if (glb) {
+            // Embed local PNG/JPEG texture files so the .glb does not depend on
+            // where it is written. A url is resolved against the document its
+            // texture node came from, else against the input file.
+            sdk::GltfWriteOptions glbOptions;
+            glbOptions.readImage = [&inPath](const std::string &url,
+                                             const std::string &baseUrl) {
+                std::string path = url.substr(0, url.find_first_of("?#"));
+                if (path.rfind("file://", 0) == 0) path.erase(0, 7);
+                else if (path.find("://") != std::string::npos) return std::string();
+                std::string base = baseUrl.empty() ? inPath : baseUrl;
+                if (base.rfind("file://", 0) == 0) base.erase(0, 7);
+                if (base.find("://") != std::string::npos) return std::string();
+                std::filesystem::path file(path);
+                if (file.is_relative()) {
+                    // A base url may name the document or its directory.
+                    std::error_code ec;
+                    std::filesystem::path dir(base);
+                    if (!std::filesystem::is_directory(dir, ec)) dir = dir.parent_path();
+                    file = dir / file;
+                }
+                std::ifstream in(file, std::ios::binary);
+                if (!in) return std::string();
+                return std::string(std::istreambuf_iterator<char>(in), {});
+            };
+            glbBytes = sdk::writeGlb(ex, frame0.added, glbOptions, &glbReport);
+        }
 
         // For each RenderItem, transform its local-frame triangles to world space.
         for (sdk::RenderItemId id : glb ? std::vector<sdk::RenderItemId>{} : frame0.added) {
@@ -642,7 +669,9 @@ int cmdExtract(const std::vector<std::string> &args) {
         auto note = [](std::size_t n, const char *what) {
             if (n) std::cerr << "note: " << n << " " << what << "\n";
         };
-        note(glbReport.droppedTextures, "texture slot(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG textures)");
+        note(glbReport.externalImages, "texture(s) left as url references (file not found, or not local)");
+        note(glbReport.droppedTextures, "texture(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG image)");
+        note(glbReport.unmappedTextureSlots, "texture(s) in a slot glTF has no property for (specular, shininess, ambient, or lighting maps of an unlit surface)");
         note(glbReport.skippedViewpoints, "GeoViewpoint(s) not exported");
         note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
         note(glbReport.staticSkins, "skinned item(s) exported as static meshes");

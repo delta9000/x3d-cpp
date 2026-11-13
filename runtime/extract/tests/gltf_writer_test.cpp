@@ -3,6 +3,7 @@
 #include "x3d/sdk.hpp"
 
 #include "doctest/doctest.h"
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -24,7 +25,7 @@ std::uint32_t u32(const std::string &s, std::size_t at) {
   return v;
 }
 
-Glb exportScene(const std::string &body) {
+Glb exportScene(const std::string &body, const sdk::GltfWriteOptions &options = {}) {
   const std::string text =
       "<X3D profile='Full' version='4.0'><Scene>" + body + "</Scene></X3D>";
   sdk::X3DDocument doc = sdk::parseDocument(text, sdk::Encoding::XML);
@@ -34,7 +35,7 @@ Glb exportScene(const std::string &body) {
   sdk::SceneExtractor ex(ctx, doc.scene);
   const auto frame = ex.fullSnapshot();
   Glb out;
-  const std::string glb = sdk::writeGlb(ex, frame.added, {}, &out.report);
+  const std::string glb = sdk::writeGlb(ex, frame.added, options, &out.report);
 
   REQUIRE(glb.size() >= 20);
   CHECK(glb.compare(0, 4, "glTF") == 0);
@@ -289,4 +290,69 @@ TEST_CASE("glb: a scene with no viewpoint or light writes neither section") {
   CHECK(g.report.lights == 0);
   CHECK(!has(g.json, "\"cameras\""));
   CHECK(!has(g.json, "KHR_lights_punctual"));
+}
+
+// An unlit X3D surface takes its colour from the emissive colour and texture:
+// an Appearance with a texture and no Material (§12.2.5), or
+// UnlitMaterial.emissiveTexture. KHR_materials_unlit reads the base colour.
+TEST_CASE("glb: textures on unlit surfaces are the base colour texture") {
+  const Glb g = exportScene(
+      "<Shape><Appearance><ImageTexture url='\"photo.jpg\"'/></Appearance>"
+      "  <Box/></Shape>"
+      "<Shape><Appearance><PixelTexture image='1 1 3 0x00FF00'/></Appearance>"
+      "  <Box/></Shape>"
+      "<Shape><Appearance><UnlitMaterial emissiveColor='1 0 0'>"
+      "  <ImageTexture containerField='emissiveTexture' url='\"glow.png\"'/>"
+      "  <ImageTexture containerField='normalTexture' url='\"n.png\"'/>"
+      "</UnlitMaterial></Appearance><Box/></Shape>");
+  CHECK(g.report.textures == 3);
+  CHECK(g.report.droppedTextures == 0);
+  CHECK(g.report.unmappedTextureSlots == 1); // the unlit shape's normal map
+  CHECK(g.report.embeddedImages == 1);
+  CHECK(g.report.externalImages == 2);
+  CHECK(count(g.json, "\"baseColorTexture\"") == 3);
+  CHECK(count(g.json, "KHR_materials_unlit\":{}") == 3);
+  CHECK(!has(g.json, "\"emissiveTexture\""));
+  CHECK(!has(g.json, "\"normalTexture\""));
+  CHECK(has(g.json, "\"baseColorFactor\":[1,0,0,1]"));
+  CHECK(has(g.json, "{\"uri\":\"photo.jpg\"}"));
+  CHECK(has(g.json, "{\"uri\":\"glow.png\"}"));
+}
+
+TEST_CASE("glb: out-of-range material values are clamped to valid glTF") {
+  const Glb g = exportScene(
+      "<Shape><Appearance><Material diffuseColor='2 -1 0.5' transparency='-3'/>"
+      "</Appearance><Box/></Shape>"
+      "<Shape><Appearance><PhysicalMaterial metallic='4' roughness='-2'/>"
+      "</Appearance><Box/></Shape>");
+  CHECK(has(g.json, "\"baseColorFactor\":[1,0,0.5,1]"));
+  CHECK(has(g.json, "\"metallicFactor\":1,\"roughnessFactor\":0"));
+}
+
+TEST_CASE("glb: readImage embeds PNG and JPEG files and falls back to the url") {
+  sdk::GltfWriteOptions options;
+  std::vector<std::string> asked;
+  options.readImage = [&](const std::string &url, const std::string &) {
+    asked.push_back(url);
+    if (url == "a.png") return std::string("\x89PNG\r\n\x1a\n-png-bytes-", 19);
+    if (url == "b.jpg") return std::string("\xFF\xD8\xFF-jpeg-bytes-");
+    if (url == "liar.png") return std::string("GIF89a not what it says");
+    return std::string();
+  };
+  const std::string shape = "<Shape><Appearance><Material/><ImageTexture url='\"";
+  const Glb g = exportScene(shape + "a.png\"'/></Appearance><Box/></Shape>" +
+                            shape + "b.jpg\"'/></Appearance><Sphere/></Shape>" +
+                            shape + "a.png\"'/></Appearance><Cone/></Shape>" +
+                            shape + "liar.png\"'/></Appearance><Cylinder/></Shape>" +
+                            shape + "gone.png\"'/></Appearance><Box/></Shape>",
+                            options);
+  CHECK(g.report.embeddedImages == 2); // a.png once, b.jpg
+  CHECK(g.report.externalImages == 2); // liar.png, gone.png
+  CHECK(count(g.json, "\"mimeType\":\"image/png\"") == 1);
+  CHECK(count(g.json, "\"mimeType\":\"image/jpeg\"") == 1);
+  CHECK(has(g.json, "{\"uri\":\"liar.png\"}"));
+  CHECK(has(g.json, "{\"uri\":\"gone.png\"}"));
+  CHECK(has(g.bin, "-png-bytes-"));
+  CHECK(has(g.bin, "-jpeg-bytes-"));
+  CHECK(std::count(asked.begin(), asked.end(), "a.png") == 1); // read once
 }

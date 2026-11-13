@@ -487,7 +487,8 @@ form.
 | `UnlitMaterial`, no material, lines/points without normals | `KHR_materials_unlit` with the emissive colour |
 | `transparency` | base colour alpha with `alphaMode` BLEND; `AlphaMode::Mask` → MASK with its cutoff |
 | `solid=FALSE` or a two-sided material | `doubleSided` |
-| Textures in the base colour/diffuse, normal, emissive, occlusion and metallic-roughness slots | An ImageTexture with a PNG or JPEG url → external `images[].uri` (the url, verbatim; not resolved). A PixelTexture, or any other url texture the host's `TextureResolver` has decoded → an embedded PNG (stored uncompressed, identical images written once). `repeatS/T` → sampler wrap |
+| Textures in the base colour/diffuse, normal, emissive, occlusion and metallic-roughness slots | The matching glTF texture property. On an unlit surface (an `Appearance` with a texture and no `Material`, or `UnlitMaterial.emissiveTexture`) the emissive texture is the `baseColorTexture`, since `KHR_materials_unlit` shows the base colour. `repeatS/T` → sampler wrap |
+| Texture images | A PNG or JPEG `ImageTexture` is embedded when `GltfWriteOptions::readImage` returns its bytes (the CLI reads local files, resolved against the texture's source document), so the GLB does not depend on where it is written; otherwise it is an external `images[].uri`, the url as authored. A PixelTexture, or any other url texture the host's `TextureResolver` has decoded → an embedded PNG (stored uncompressed). Identical images are written once |
 | DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
 
@@ -503,15 +504,23 @@ with no sRGB/linear conversion.
 `writeGlb(items, extras, ...)` takes the lights and cameras explicitly;
 `gltfExtrasFrom(extractor)` collects them, and the extractor overload does both.
 
+Colour, metallic, roughness and alpha factors are clamped to [0,1], so an
+out-of-range authored value still gives a valid file.
+
 Not written, each counted in `GltfWriteReport`: packed (binary) geometry items;
-MovieTexture, MultiTexture, cube and 3D textures; textures on generated texture
-coordinates; undecoded textures with no PNG/JPEG url; specular, shininess and
-ambient textures; back materials; author shaders; GeoViewpoint. Skinned H-Anim
+MovieTexture, MultiTexture, cube and 3D textures, textures on generated texture
+coordinates and undecoded textures with no PNG/JPEG url (`droppedTextures`);
+specular, shininess and ambient textures and the lighting maps of an unlit
+surface (`unmappedTextureSlots`); back materials; author shaders; GeoViewpoint.
+A normal map is written without a `TANGENT` attribute, so viewers derive the
+tangent space. Skinned H-Anim
 items are written as static meshes. Backgrounds, fog and animation are not
-exported. The JSON and the PNG encoder are written by hand; the test
-(`runtime/extract/tests/gltf_writer_test.cpp`) checks the container and
-selected values, and the output has not been run through the Khronos
-validator.
+exported. Animation needs the grouping hierarchy the exporter flattens (an
+interpolator drives a Transform, not a placed shape), so it is a separate
+piece of work. The JSON and the PNG encoder are written by hand; the tests
+(`runtime/extract/tests/gltf_writer_test.cpp`) check the container and
+selected values, and exports of the CLI fixtures and the lion-head models pass
+the Khronos glTF validator with no errors.
 
 ## Related
 
