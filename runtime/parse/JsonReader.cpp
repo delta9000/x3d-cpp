@@ -6,6 +6,7 @@
 #include "ProtoNameMaps.hpp"
 #include "JsonLite.hpp"
 #include "NodeBuilder.hpp"
+#include "OpenNodeScope.hpp"
 #include "x3d/nodes/Script.hpp"
 
 #include <cmath>
@@ -215,10 +216,13 @@ JsonReader::readNode(const json::Value &wrapper, runtime::Scene &scene,
           node, std::string(canonicalInputFieldName(typeName, x3dName)));
   }
 
-  // Register DEF before recursing so a nested USE resolves to this node.
+  // Register DEF before recursing so a nested USE resolves to this node, and
+  // keep the node open until its body is read so that USE cannot attach it
+  // inside itself.
   const std::string def = node->getDEF();
   if (!def.empty())
     build::defineDef(scene, def, node);
+  OpenNodeScope open(def.empty() ? nullptr : node.get());
 
   // Collect IS connections at every body depth, bound to this node.
   if (currentProtoBody)
@@ -257,11 +261,14 @@ void JsonReader::attachChildren(X3DNode &node, const std::string &slot,
                          currentProtoBody))
       return;
     auto child = readNode(childWrapper, scene, currentProtoBody);
-    if (child) {
-      build::attachChild(node, slot, child, &scene);
-      if (currentProtoBody)
-        currentProtoBody->recordChildNode(parentNode, slot, child);
+    if (!child)
+      return;
+    if (!build::attachChild(node, slot, child, &scene)) {
+      noteEnclosingUse(readerWarnings_, *child);
+      return;
     }
+    if (currentProtoBody)
+      currentProtoBody->recordChildNode(parentNode, slot, child);
   };
   if (val.isArray()) {
     for (const auto &c : val.array)
@@ -617,8 +624,7 @@ void JsonReader::readJsonProtoInstance(const json::Value &obj,
           (nodeTyped || !fv.member("@value")) && kids && kids->isArray()) {
         for (const auto &c : kids->array)
           if (c && c->isObject())
-            if (auto n = readNode(*c, scene))
-              pv.nodeValue.push_back(n);
+            pushNodeValue(pv.nodeValue, readNode(*c, scene), readerWarnings_);
       }
       if (pv.nodeValue.empty()) {
         if (const json::Value *v = fv.member("@value")) {

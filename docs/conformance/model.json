@@ -198,6 +198,7 @@
         "PROTO-SCENE-ORDER",
         "PROTO-SHADOW",
         "PROTO-WRITE-DEF-SCOPE",
+        "READ-CYCLIC-USE",
         "READ-NUMERIC-LEXEMES",
         "READ-UNKNOWN-NODE-PASSTHROUGH",
         "REQ-UNIT",
@@ -2600,7 +2601,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "10.2.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "10.2.1; 4.4.2.2, 4.4.8.2; ISO/IEC 19776-5 Annex A; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 4.4.3 (DEF/USE semantics)",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2609,6 +2610,7 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
+            "READ-CYCLIC-USE",
             "ROUTE-IO-ALIAS"
           ],
           "geometry": false,
@@ -2686,7 +2688,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5; ISO/IEC 19775-1 4.4.8.2",
+          "clause": "ISO/IEC 19776-1 5.5, 5.6, 5.8; ISO/IEC 19776-2 5.5, 5.6, 5.8, A.4; 10.2.1; 4.4.2.2, 4.4.8.2; 4.3.6; 7.2.5.5; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 5 (field types); ISO/IEC 19776-1 5, 19776-2 5; ISO/IEC 19775-1 4.4.3 (DEF/USE semantics); ISO/IEC 19775-1 4.4.8.2",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2695,6 +2697,7 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
+            "READ-CYCLIC-USE",
             "READ-NUMERIC-LEXEMES",
             "REQ-UNIT",
             "ROUTE-IO-ALIAS",
@@ -12924,6 +12927,19 @@
       "summary": "Malformed authored values were coerced without a trace. An unparsable number token read as 0, a short SF tuple was padded with 0 and a trailing partial MF tuple was dropped, and `x3d validate` reported the file valid."
     },
     {
+      "clause": "ISO/IEC 19775-1 4.4.3 (DEF/USE semantics)",
+      "component": "Core",
+      "id": "READ-CYCLIC-USE",
+      "nodes": [
+        "Transform",
+        "Group"
+      ],
+      "note": "Every reader keeps each DEF'd node whose body is being read open on a thread-local set (OpenNodeScope) and refuses to attach an open node as a child, as an XML unknown element's child, or as a ProtoInstance fieldValue node. The USE is dropped with ReaderWarning{Kind::CyclicUse}; `x3d validate` reports it under the `use` category. A Script or shader author field may still name its own node (the value lives in the DynamicFieldStore). Tests: x3d_parse_tests cyclic_use_test; fuzz seeds cyclic_use*.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "A USE inside the body of the node it names (`DEF A Transform { children [ USE A ] }`, or the same node as a nested ProtoInstance fieldValue) was attached, so the node contained itself. The shared_ptr cycle leaked any document that was parsed but not passed to buildSceneGraph, where breakContainmentCycles runs. Found by the libFuzzer parseDocument gate."
+    },
+    {
       "clause": "ISO/IEC 19775-1 4.4.8.2",
       "component": "Core",
       "id": "VALIDATE-ROUTES",
@@ -13177,10 +13193,10 @@
     ]
   },
   "summary": {
-    "closed_count": 321,
+    "closed_count": 322,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 354,
+    "finding_count": 355,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

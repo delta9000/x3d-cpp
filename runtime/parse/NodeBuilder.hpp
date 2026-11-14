@@ -50,7 +50,10 @@ bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
 /// `slot` is the explicit containerField/field-name the syntax supplied (may be
 /// empty). SFNode sets; MFNode appends. When `scene` is supplied, the resolved
 /// field is recorded in authored order so round-trip writers preserve it.
-void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
+/// Returns false, attaching nothing, when `child` is a node whose body is still
+/// open (a USE of an enclosing node; see OpenNodeScope.hpp). The caller records
+/// the CyclicUse warning.
+bool attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
                  const std::shared_ptr<x3d::nodes::X3DNode> &child,
                  runtime::Scene *scene = nullptr);
 

@@ -6,6 +6,7 @@
 #include "JsonLite.hpp"
 #include "ProtoNameMaps.hpp"
 #include "NodeBuilder.hpp"
+#include "OpenNodeScope.hpp"
 #include "RecursionLimits.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
@@ -318,6 +319,9 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
     // Register DEF before recursing the body so a nested USE resolves to it.
     build::defineDef(scene, def, node);
   }
+  // Keep a DEF'd node open while its body is read so a USE of it inside the
+  // body is not attached (the node would contain itself).
+  OpenNodeScope open(def.empty() ? nullptr : node.get());
 
   expectPunct(tok, '{', "node body open");
   parseNodeBody(tok, scene, *node, rawTypeName, currentProtoBody, node);
@@ -504,8 +508,9 @@ void ClassicVrmlReader::applyNodeField(
       return;
     auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
     if (child) {
-      build::attachChild(parent, slot, child, &scene);
-      if (currentProtoBody && parentShared)
+      if (!build::attachChild(parent, slot, child, &scene))
+        noteEnclosingUse(readerWarnings_, *child);
+      else if (currentProtoBody && parentShared)
         currentProtoBody->recordChildNode(parentShared, slot, child);
     }
     return;
@@ -525,8 +530,9 @@ void ClassicVrmlReader::applyNodeField(
         continue;
       auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
       if (child) {
-        build::attachChild(parent, slot, child, &scene);
-        if (currentProtoBody && parentShared)
+        if (!build::attachChild(parent, slot, child, &scene))
+          noteEnclosingUse(readerWarnings_, *child);
+        else if (currentProtoBody && parentShared)
           currentProtoBody->recordChildNode(parentShared, slot, child);
       }
     }
@@ -538,8 +544,9 @@ void ClassicVrmlReader::applyNodeField(
       return;
     auto child = parseNode(tok, scene, currentProtoBody, parentShared, slot);
     if (child) {
-      build::attachChild(parent, slot, child, &scene);
-      if (currentProtoBody && parentShared)
+      if (!build::attachChild(parent, slot, child, &scene))
+        noteEnclosingUse(readerWarnings_, *child);
+      else if (currentProtoBody && parentShared)
         currentProtoBody->recordChildNode(parentShared, slot, child);
     }
   }
@@ -1150,9 +1157,7 @@ void ClassicVrmlReader::captureInstanceNodeValue(VrmlTokenizer &tok,
     }
     if (!drainLeadingDeclarations(tok, scene))
       return;
-    auto n = parseNode(tok, scene);
-    if (n)
-      fv.nodeValue.push_back(n);
+    pushNodeValue(fv.nodeValue, parseNode(tok, scene), readerWarnings_);
     return;
   }
   if (tok.peek().isPunct('[')) {
@@ -1164,18 +1169,14 @@ void ClassicVrmlReader::captureInstanceNodeValue(VrmlTokenizer &tok,
       }
       if (skipNonNodeListItem(tok, scene))
         continue;
-      auto n = parseNode(tok, scene);
-      if (n)
-        fv.nodeValue.push_back(n);
+      pushNodeValue(fv.nodeValue, parseNode(tok, scene), readerWarnings_);
     }
     expectPunct(tok, ']', "MFNode instance value close");
   } else if (!tok.peek().isPunct('}') && !tok.peek().isPunct(']')) {
     // A single bare node value, possibly preceded by inline declarations.
     if (!drainLeadingDeclarations(tok, scene))
       return;
-    auto n = parseNode(tok, scene);
-    if (n)
-      fv.nodeValue.push_back(n);
+    pushNodeValue(fv.nodeValue, parseNode(tok, scene), readerWarnings_);
   }
 }
 
