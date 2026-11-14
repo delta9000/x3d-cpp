@@ -4,6 +4,7 @@
 
 #include "doctest/doctest.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -355,4 +356,121 @@ TEST_CASE("glb: readImage embeds PNG and JPEG files and falls back to the url") 
   CHECK(has(g.bin, "-png-bytes-"));
   CHECK(has(g.bin, "-jpeg-bytes-"));
   CHECK(std::count(asked.begin(), asked.end(), "a.png") == 1); // read once
+}
+
+namespace {
+const char *kAnimated =
+    "<Transform translation='10 0 0'>"
+    "  <Transform DEF='Spin' translation='1 2 3' center='0 1 0'>"
+    "    <Transform translation='0 0 1'><Shape DEF='A'><Box/></Shape></Transform>"
+    "  </Transform></Transform>"
+    "<Transform translation='-5 0 0'><Transform USE='Spin'/></Transform>"
+    "<Shape DEF='Still'><Cone/></Shape>"
+    "<TimeSensor DEF='Clock' cycleInterval='4' loop='true'/>"
+    "<OrientationInterpolator DEF='Rot' key='0 0.5 1' "
+    "  keyValue='0 1 0 0  0 1 0 3.14159265  0 1 0 0'/>"
+    "<PositionInterpolator DEF='Pos' key='0 0.5 0.5 1' "
+    "  keyValue='1 2 3  1 4 3  0 0 0  1 2 3'/>"
+    "<ColorInterpolator DEF='Col' key='0 1' keyValue='1 0 0 0 1 0'/>"
+    "<Material DEF='M'/>"
+    "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Rot' toField='set_fraction'/>"
+    "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Pos' toField='set_fraction'/>"
+    "<ROUTE fromNode='Rot' fromField='value_changed' toNode='Spin' toField='set_rotation'/>"
+    "<ROUTE fromNode='Pos' fromField='value_changed' toNode='Spin' toField='translation'/>"
+    "<ROUTE fromNode='Col' fromField='value_changed' toNode='M' toField='diffuseColor'/>";
+
+// The floats of the accessor with index `accessor`, read through the JSON by
+// position: accessors are written in order, each over its own buffer view.
+std::vector<float> floatsAt(const Glb &g, std::size_t byteOffset, std::size_t n) {
+  std::vector<float> out(n);
+  REQUIRE(byteOffset + n * 4 <= g.bin.size());
+  std::memcpy(out.data(), g.bin.data() + byteOffset, n * 4);
+  return out;
+}
+} // namespace
+
+TEST_CASE("glb: an interpolator-driven Transform becomes an animated node") {
+  const Glb g = exportScene(kAnimated);
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 4); // rotation + translation, two placements
+  CHECK(g.report.skippedAnimationRoutes == 1); // the ColorInterpolator
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.nodes == 3);
+
+  // The plain Transform above Spin is a matrix node; Spin is TRS with the
+  // centre folded into the translation and undone by a child.
+  CHECK(has(g.json, "{\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,10,0,0,1],\"children\":[1]}"));
+  CHECK(count(g.json, "{\"name\":\"Spin\",\"translation\":[1,3,3],"
+                      "\"rotation\":[0,0,0,1],\"scale\":[1,1,1],\"children\":[") == 2);
+  CHECK(count(g.json, "{\"translation\":[0,-1,0],\"children\":[") == 2);
+  // The shape below keeps the plain Transform between it and Spin.
+  CHECK(count(g.json, "\"name\":\"A\",\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,1,1]") == 2);
+  // The unanimated shape is still a root with no parent.
+  CHECK(has(g.json, "\"name\":\"Still\"}"));
+
+  CHECK(has(g.json, "\"animations\":[{\"name\":\"Clock\",\"channels\":["));
+  CHECK(count(g.json, "\"path\":\"rotation\"") == 2);
+  CHECK(count(g.json, "\"path\":\"translation\"") == 2);
+  CHECK(count(g.json, "\"interpolation\":\"LINEAR\"") == 2);
+  // Sample data is not vertex data: its buffer views carry no target.
+  CHECK(count(g.json, "\"type\":\"SCALAR\",\"min\":[0],\"max\":[4]") == 2);
+
+  // The samples are the last four views: rotation times, rotation values,
+  // translation times, translation values.
+  const std::size_t rotT = 3 * 4, rotV = 3 * 16, posT = 4 * 4, posV = 4 * 12;
+  const std::size_t end = g.bin.size();
+  const auto times = floatsAt(g, end - posV - posT, 4);
+  CHECK(times[0] == 0.0f);
+  CHECK(times[1] == 2.0f);          // key 0.5 x cycleInterval 4
+  CHECK(times[2] > 2.0f);           // the repeated key, nudged forward
+  CHECK(times[2] < 2.0001f);
+  CHECK(times[3] == 4.0f);
+  const auto positions = floatsAt(g, end - posV, 12);
+  CHECK(positions[1] == 3.0f);      // y: 2 + centre 1
+  CHECK(positions[4] == 5.0f);
+  CHECK(positions[7] == 1.0f);      // 0 + centre 1
+  const auto quats = floatsAt(g, end - posV - posT - rotV, 12);
+  CHECK(quats[3] == doctest::Approx(1.0f));  // no rotation
+  CHECK(std::fabs(quats[5]) == doctest::Approx(1.0f)); // half turn about Y
+  CHECK(quats[7] == doctest::Approx(0.0f).epsilon(1e-6));
+  CHECK(quats[11] == doctest::Approx(1.0f));
+  (void)rotT;
+}
+
+TEST_CASE("glb: scaleOrientation on an animated Transform uses helper nodes") {
+  const Glb g = exportScene(
+      "<Transform DEF='Arm' scaleOrientation='0 0 1 0.5' scale='1 3 1' center='1 0 0'>"
+      "  <Shape><Sphere/></Shape></Transform>"
+      "<PositionInterpolator DEF='Scl' key='0 1' keyValue='1 3 1  2 1 2'/>"
+      "<ROUTE fromNode='Scl' fromField='value_changed' toNode='Arm' toField='scale'/>");
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 1);
+  // trs { T + C, R } -> scale { SR, S } -> tail { SR^-1(-C), SR^-1 } -> mesh
+  CHECK(has(g.json, "{\"name\":\"Arm\",\"translation\":[1,0,0],"
+                    "\"rotation\":[0,0,0,1],\"children\":[1]}"));
+  CHECK(has(g.json, "{\"rotation\":[0,0,0.247403959,0.968912422],"
+                    "\"scale\":[1,3,1],\"children\":[2]}"));
+  CHECK(has(g.json, "{\"translation\":[-0.87758255,0.47942555,0],"
+                    "\"rotation\":[0,0,-0.247403959,0.968912422],\"children\":[3]}"));
+  // The scale channel aims at the node that carries the scale.
+  CHECK(has(g.json, "\"target\":{\"node\":1,\"path\":\"scale\"}"));
+  // No TimeSensor: an unnamed animation one second long.
+  CHECK(has(g.json, "\"animations\":[{\"channels\":["));
+  CHECK(has(g.json, "\"max\":[1]"));
+}
+
+TEST_CASE("glb: animation that cannot be exported is counted, not written") {
+  const Glb g = exportScene(
+      "<Transform DEF='Hidden'/><Shape><Box/></Shape>"
+      "<PositionInterpolator DEF='P' key='0 1' keyValue='0 0 0 1 1 1'/>"
+      "<PositionInterpolator DEF='Bad' key='0 1' keyValue='0 0 0'/>"
+      "<Transform DEF='T'><Shape><Cone/></Shape></Transform>"
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Hidden' toField='translation'/>"
+      "<ROUTE fromNode='Bad' fromField='value_changed' toNode='T' toField='translation'/>"
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='T' toField='center'/>");
+  CHECK(g.report.animations == 0);
+  CHECK(g.report.skippedAnimationChannels == 1); // Hidden has no shape under it
+  CHECK(g.report.skippedAnimationRoutes == 2);   // short keyValue; center
+  CHECK(!has(g.json, "\"animations\""));
+  CHECK(!has(g.json, "\"children\""));
 }

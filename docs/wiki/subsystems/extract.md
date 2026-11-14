@@ -491,6 +491,7 @@ form.
 | Texture images | A PNG or JPEG `ImageTexture` is embedded when `GltfWriteOptions::readImage` returns its bytes (the CLI reads local files, resolved against the texture's source document), so the GLB does not depend on where it is written; otherwise it is an external `images[].uri`, the url as authored. A PixelTexture, or any other url texture the host's `TextureResolver` has decoded → an embedded PNG (stored uncompressed). Identical images are written once |
 | DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
+| PositionInterpolator / OrientationInterpolator routed to a Transform's `translation`, `scale` or `rotation` | A glTF animation: the Transform is kept as a node (see below), the interpolator's `key`/`keyValue` become a `LINEAR` sampler (rotations as quaternions), and key times are `key × cycleInterval` of the TimeSensor routed to the interpolator's `set_fraction`. One animation per TimeSensor, named by its DEF |
 
 Approximations: X3D light `intensity` is a unitless factor and is written
 unchanged as glTF intensity (lux or candela), so absolute brightness will not
@@ -514,10 +515,32 @@ specular, shininess and ambient textures and the lighting maps of an unlit
 surface (`unmappedTextureSlots`); back materials; author shaders; GeoViewpoint.
 A normal map is written without a `TANGENT` attribute, so viewers derive the
 tangent space. Skinned H-Anim
-items are written as static meshes. Backgrounds, fog and animation are not
-exported. Animation needs the grouping hierarchy the exporter flattens (an
-interpolator drives a Transform, not a placed shape), so it is a separate
-piece of work. The JSON and the PNG encoder are written by hand; the tests
+items are written as static meshes. Backgrounds and fog are not exported.
+
+**Animated Transforms.** A scene with no exportable animation is written flat,
+as above. Each Transform that an animation targets becomes glTF nodes, once per
+placement (a USE'd Transform under two parents gives two node chains and two
+channels on one sampler). X3D composes `T·C·R·SR·S·SR⁻¹·C⁻¹` where glTF has
+only `T·R·S`, so the Transform is written as `{translation T+C, rotation R,
+scale S}` with a child `{translation −C}` when it has a `center`, or as three
+nodes `{T+C, R}` → `{rotation SR, scale S}` → `{translation SR⁻¹(−C), rotation
+SR⁻¹}` when it has a `scaleOrientation`. Translation keys have the centre
+added. Plain Transforms above an animated one collapse into one `matrix` node;
+shapes below hang from the animated node with the remainder of their world
+matrix, so every shape's composed matrix at export time equals its
+`RenderItem::worldTransform`. A repeated `key` (an X3D jump) is nudged forward
+by one float step, because glTF sample times must strictly increase.
+
+Animation limits: only those three Transform fields. Interpolators that drive
+anything else (colours, scalars, coordinates, viewpoints, lights), chains
+through other nodes (sequencers, Scripts, EaseInEaseOut, followers), `center`
+and `scaleOrientation` animation, and H-Anim motion are not exported; dropped
+interpolator routes are counted in `skippedAnimationRoutes`, and a channel
+whose Transform has no exported shape under it in `skippedAnimationChannels`.
+glTF has no loop flag, so `TimeSensor.loop` is left to the viewer. Lights and
+cameras under an animated Transform stay where they were at export time.
+
+The JSON and the PNG encoder are written by hand; the tests
 (`runtime/extract/tests/gltf_writer_test.cpp`) check the container and
 selected values, and exports of the CLI fixtures and the lion-head models pass
 the Khronos glTF validator with no errors.

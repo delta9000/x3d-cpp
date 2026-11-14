@@ -23,7 +23,7 @@ The top-level CMake build produces `build/x3d`.
 | `x3d convert input -o output -f xml\|vrml\|json` | Parse a document and serialize it in the selected encoding |
 | `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, and profile-fit diagnostics |
 | `x3d extract input -o output.stl` | Export extracted triangle geometry as binary STL |
-| `x3d extract input -o output.glb` (or `-f glb`) | Export the extracted scene as binary glTF 2.0: nodes with world matrices, shared meshes, materials, textures (local PNG/JPEG files and PixelTextures embedded), lights, and viewpoints as cameras. See [glTF export](extract.md#gltf-export) for what is left out |
+| `x3d extract input -o output.glb` (or `-f glb`) | Export the extracted scene as binary glTF 2.0: nodes with world matrices, shared meshes, materials, textures (local PNG/JPEG files and PixelTextures embedded), lights, viewpoints as cameras, and Transform animation. See [glTF export](extract.md#gltf-export) for what is left out |
 | `x3d canonicalize input -o output.x3d` | Write canonical XML |
 | `x3d sim input --ticks 120` | Tick the behavior runtime and trace changed fields |
 
