@@ -392,6 +392,10 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_cpp::authoring)
     add_test(NAME x3d_authoring_link_contract
         COMMAND x3d_authoring_link_contract)
+    add_executable(x3d_authoring_builder
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/authoring_builder_test.cpp")
+    target_link_libraries(x3d_authoring_builder PRIVATE x3d_cpp::authoring)
+    add_test(NAME x3d_authoring_builder COMMAND x3d_authoring_builder)
     add_executable(x3d_native_host_contract
         "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/native_host.cpp")
     target_link_libraries(x3d_native_host_contract PRIVATE x3d_cpp::sdk)
