@@ -32,7 +32,7 @@ Read the generated view on GitHub:
 
 `docs/conformance/sai-services.yaml` (checked by `mise run sai-services`) is
 the *runtime's* Script-SAI register for
-[`SaiContext`](../../subsystems/system-script-sai.md). The two registers stay
+[`SaiContext`](../../reference/subsystems/system-script-sai.md). The two registers stay
 separate.
 
 ## Support values

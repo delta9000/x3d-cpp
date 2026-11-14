@@ -121,15 +121,16 @@ automatic garbage collection.
 
 ## Source and SDK choices
 
-The published C++ binding's
-[§4.3.3.1, Data storage](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/concepts.html#DataStorage)
-requires user-data associations with both node and field identity, observed
-identically through different references, including after wrapper disposal and
-reacquisition. It permits release once neither applications nor the scene graph
-retain the node or field, without requiring immediate reclamation. The field
-operations appear in
-[Annex A.4.5, X3DField](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/abstracts.html#X3DField)
-as `setUserData(CObject)` and `getUserData()`.
+- The published C++ binding's [§4.3.3.1, Data
+  storage](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/concepts.html#DataStorage)
+  requires user-data associations with both node and field identity, observed
+  identically through different references, including after wrapper disposal
+  and reacquisition.
+- It permits release once neither applications nor the scene graph retain the
+  node or field, without requiring immediate reclamation.
+- The field operations appear in [Annex A.4.5,
+  X3DField](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/abstracts.html#X3DField)
+  as `setUserData(CObject)` and `getUserData()`.
 
 The owning C++ types, error vocabulary, immediate-update policy and
 conservative retention above are SDK choices. The node methods here are not

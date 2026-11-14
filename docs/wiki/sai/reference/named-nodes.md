@@ -5,13 +5,13 @@ tags: [sai, reference, provider]
 updated: 2026-11-14
 related:
   - ../how-to/find-named-nodes.md
-  - ../../decisions/0067-provider-named-node-discovery.md
+  - ../../explanation/decisions/0067-provider-named-node-discovery.md
 ---
 
 # SAI named-node discovery
 
 Decision record:
-[ADR-0067](../../decisions/0067-provider-named-node-discovery.md). Task guide:
+[ADR-0067](../../explanation/decisions/0067-provider-named-node-discovery.md). Task guide:
 [Find named nodes](../how-to/find-named-nodes.md).
 
 ## Operations

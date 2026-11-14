@@ -4,8 +4,8 @@ summary: Entry point for the C++20 Scene Access Interface SDK, its two backends 
 tags: [sai, index]
 updated: 2026-11-14
 related:
-  - ../subsystems/system-script-sai.md
-  - ../decisions/0076-fold-sai-into-x3d-cpp.md
+  - ../reference/subsystems/system-script-sai.md
+  - ../explanation/decisions/0076-fold-sai-into-x3d-cpp.md
 ---
 
 # SAI SDK
@@ -119,10 +119,10 @@ Evidence:
 ## Not the Script API
 
 The runtime's Script nodes use a different, in-process API, `SaiContext`,
-described in [Script / SAI Runtime](../subsystems/system-script-sai.md). It
+described in [Script / SAI Runtime](../reference/subsystems/system-script-sai.md). It
 does not expose provider handles, and linking both packages does not connect
 their scenes.
 
 The SDK was developed in a separate `x3d-sai` repository and folded back into
 x3d-cpp on 2026-11-11
-([ADR-0076](../decisions/0076-fold-sai-into-x3d-cpp.md)).
+([ADR-0076](../explanation/decisions/0076-fold-sai-into-x3d-cpp.md)).

@@ -5,7 +5,7 @@ tags: [sai, reference, native, presentation]
 updated: 2026-11-14
 related:
   - ../how-to/present-frames.md
-  - ../../decisions/0066-sai-presentation-materials-and-deltas.md
+  - ../../explanation/decisions/0066-sai-presentation-materials-and-deltas.md
 ---
 
 # SAI native presentation feed
@@ -13,7 +13,7 @@ related:
 Header: `<x3d/sai_presentation.hpp>`, namespace
 `x3d::sai::experimental::native`. This is a native-only extension; the portable
 contract and `make_service()` are unchanged. Decision record:
-[ADR-0066](../../decisions/0066-sai-presentation-materials-and-deltas.md). Task
+[ADR-0066](../../explanation/decisions/0066-sai-presentation-materials-and-deltas.md). Task
 guide: [Present frames](../how-to/present-frames.md).
 
 ## Types

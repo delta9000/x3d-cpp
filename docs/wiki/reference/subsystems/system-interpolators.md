@@ -1,0 +1,148 @@
+---
+title: Interpolator System
+summary: Linear and spline interpolator systems for animating field values driven by TimeSensor fractions.
+tags: [subsystem, interpolators, animation, spline, linear]
+updated: 2026-06-20
+related:
+  - ../../explanation/architecture.md
+  - system-time.md
+  - event-cascade.md
+---
+
+# Interpolator System
+
+## Purpose
+
+- The Interpolator System animates scene-graph field values by responding to
+  `set_fraction` events (typically routed from a TimeSensor) and emitting
+  `value_changed` outputs through the event cascade.
+- It covers all thirteen nodes in ISO/IEC 19775-1 §19 (Interpolation
+  component): eight linear interpolators, three Hermite spline interpolators,
+  one Squad orientation interpolator, and one EaseInEaseOut fraction modifier.
+- The subsystem owns the math layer (key-span lookup, per-type lerp functions,
+  Hermite/Squad/ease algorithms) and the `System`-derived behavior wiring that
+  installs those math functions into node handlers at scene construction time.
+
+## Key files
+
+| File | Role |
+|---|---|
+| `runtime/events/Interpolation.hpp` | Shared linear-interpolation math: `KeySpan`/`locateKeySpan`, scalar/vector lerps (`lerpf`, `lerpVec2`, `lerpVec3`), HSV color conversion (`rgbToHsv`/`hsvToRgb`/`lerpColorHsv`), quaternion multiplication and SLERP (`Quat`, `quatMul`, `slerp`, `slerpRotation`, `slerpNormal`), and the generic dispatch templates `interpolateValue` and `interpolateMulti`. |
+| `runtime/events/SplineInterpolation.hpp` | Non-linear math: §19.2.4 Hermite spline (`hermiteSpline<T>`), §19.4.13 Squad quaternion interpolation (`squadOrientation`), §19.4.4 ease-in/ease-out fraction modifier (`easeInEaseOut`), and quaternion algebra helpers (`quatConj`, `quatLog`, `quatExp`, `squadIntermediate`). |
+| `runtime/events/InterpolatorSystem.hpp` | Two generic `System` subclasses: `InterpolatorSystem<NodeT,ValueT>` (single-value family) and `MultiInterpolatorSystem<NodeT,ElemT>` (multi-value / flat keyValue family). On attach they initialize output readback from the first authored keyValue without sending an event; their `set_fraction` handlers post later `value_changed` events through the cascade. |
+| `runtime/events/SplineInterpolatorSystem.hpp` | Three concrete `System` subclasses for the non-linear family: `SplineInterpolatorSystem<NodeT,ValueT>` (Hermite spline), `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` (emits `modifiedFraction_changed`). |
+| `runtime/events/InterpolatorRegistration.hpp` | `makeInterpolatorSystems()` — the single source of truth for the complete interpolator-system list. `attachInterpolators(scene, ctx)` (the production caller, declared in `runtime/events/X3DSceneBridge.hpp` and defined in `X3DSceneBridge.cpp`) walks the scene and calls each system's `attach` on every node. |
+| `runtime/events/NurbsInterpolatorSystem.hpp` | Three §27 systems reuse `runtime/extract/NurbsEval.hpp` for curve positions, tangent orientations, and surface positions/normals. |
+
+## Interfaces and seams
+
+### Exposed interface
+
+The public entry point for embedders is `attachInterpolators`, declared in `runtime/events/X3DSceneBridge.hpp`:
+
+```cpp
+// Call after ctx.buildSceneGraph(scene) to wire all interpolators.
+void attachInterpolators(Scene &scene, X3DExecutionContext &ctx);
+```
+
+Each system type is a subclass of `System` from `runtime/events/X3DSystem.hpp`:
+
+```cpp
+class System {
+public:
+  virtual ~System() = default;
+  virtual void attach(X3DNode *node, X3DExecutionContext &ctx) = 0;
+  virtual void update(double now, X3DExecutionContext &ctx) {}  // default no-op
+};
+```
+
+The two generic templates cover the full linear family:
+
+```cpp
+// Single-value: keyValue is std::vector<ValueT>, output is ValueT.
+template <typename NodeT, typename ValueT>
+class InterpolatorSystem : public System {
+public:
+  using LerpFn = std::function<ValueT(const ValueT &, const ValueT &, float)>;
+  explicit InterpolatorSystem(LerpFn lerp);
+  void attach(X3DNode *node, X3DExecutionContext &ctx) override;
+};
+
+// Multi-value: keyValue is flat std::vector<ElemT>, reshaped by numKeys.
+template <typename NodeT, typename ElemT>
+class MultiInterpolatorSystem : public System {
+public:
+  using LerpFn = std::function<ElemT(const ElemT &, const ElemT &, float)>;
+  explicit MultiInterpolatorSystem(LerpFn lerp);
+  void attach(X3DNode *node, X3DExecutionContext &ctx) override;
+};
+```
+
+The math layer is header-only and callable directly for unit testing:
+
+```cpp
+// Key-span lookup (Interpolation.hpp).
+KeySpan locateKeySpan(const MFFloat &key, float fraction);
+
+// Generic dispatch (Interpolation.hpp).
+template <typename T, typename Lerp>
+T interpolateValue(const MFFloat &key, const std::vector<T> &keyValue,
+                   float fraction, Lerp lerp);
+
+template <typename T, typename Lerp>
+std::vector<T> interpolateMulti(const MFFloat &key,
+                                const std::vector<T> &keyValue,
+                                float fraction, Lerp lerp);
+
+// Hermite spline (SplineInterpolation.hpp).
+template <typename T>
+T hermiteSpline(const MFFloat &key, const std::vector<T> &keyValue,
+                const std::vector<T> &keyVelocity, bool closed,
+                bool normalizeVelocity, float fraction);
+
+// Squad (SplineInterpolation.hpp).
+SFRotation squadOrientation(const MFFloat &key,
+                            const std::vector<SFRotation> &keyValue,
+                            float fraction);
+
+// EaseInEaseOut (SplineInterpolation.hpp).
+float easeInEaseOut(const MFFloat &key, const std::vector<SFVec2f> &eieo,
+                    float fraction);
+```
+
+### Seam points
+
+- `set_fraction` handler registration — `attach(node, ctx)` installs a `setOnSet_fractionHandler` lambda on the matched node. The lambda reads the node's `key`/`keyValue` fields, calls the math function, then calls `ctx.postOutputEvent(node, "value_changed", std::any(...))`. The [Event Cascade subsystem](event-cascade.md) delivers that event downstream through any ROUTEs.
+
+- `X3DExecutionContext` event queue — the subsystem uses `X3DExecutionContext::postEvent` for external inputs and `postOutputEvent` for generated outputOnly values. The cascade admits the output before changing source storage, notifying observers or routing it; all input occurrences remain separate. These are declared in `runtime/events/X3DExecutionContext.hpp`.
+
+- [TimeSensor System](system-time.md) as upstream source — in production, a TimeSensor emits `fraction_changed` (an `SFFloat`), which is ROUTEd to an interpolator's `set_fraction`. The Interpolator System does not depend on TimeSensor directly; the ROUTE graph wires them.
+
+- `attachInterpolators` scene-walk — `InterpolatorRegistration.hpp` provides `makeInterpolatorSystems()`. The production caller `attachInterpolators` in `runtime/events/X3DSceneBridge.cpp` offers every node in the scene to every system's `attach`; each system filters by `dynamic_cast<NodeT*>`, so the walk is safe to offer all nodes.
+
+### Spec-conformance annotations
+
+- Empty keys (§19.3.1): an interpolator with an empty `key` field must emit no `value_changed` event. All systems carry a live empty-key guard (`if (interp->getKey().empty()) return;`) checked at event time, so a later non-empty `key` re-enables emission without re-attaching.
+- Initial readback (§19.3.1): before a `set_fraction` input, output readback is the first authored keyValue (or first multi-value row). Linear, spline, and Squad attachment initialize that stored readback directly and emit no ROUTE event.
+
+- `SplineInterpolatorSystem`, `SquadOrientationInterpolatorSystem`, and `EaseInEaseOutSystem` handle spline, Squad, and fraction-easing nodes (§19.2.4, §19.4.10–13).
+
+- ColorInterpolator interpolates in HSV, not RGB, lerping hue along the shorter arc (Foley & van Dam conversion). `lerpColorHsv` in `Interpolation.hpp`.
+
+- OrientationInterpolator uses quaternion SLERP choosing the shorter path (negate quaternion when dot product < 0); falls back to NLERP when sin(ω) ≈ 0. Implemented as `slerpRotation` in `Interpolation.hpp`.
+
+- NormalInterpolator uses spherical SLERP (`slerpNormal`), renormalizing the result.
+
+- Hermite spline (`SplineInterpolation.hpp`): implements the §19.2.4 algorithm — Hermite basis (h00, h01, h10, h11), per-segment F+/F- non-uniform-interval tangent scaling, optional author `keyVelocity` (size 2 = endpoints only, size N = per-key), `normalizeVelocity` chord-length scaling, closed-loop key/value wrap, and open-curve zero-tangent endpoint overrides.
+
+- SquadOrientationInterpolator: Shoemake Squad in quaternion space (§19.4.13). When `normalizeVelocity` is TRUE, its quaternion-space angular tangents are scaled to the total key-path length as specified by §19.2.3; the FALSE path preserves the existing Squad calculation. N=2 reduces to plain SLERP.
+
+- NURBS interpolators (§27.4.6, §27.4.8, §27.4.10): `NurbsInterpolatorSystem.hpp` reads their coordinate-node control points and reuses the evaluator in `runtime/extract/NurbsEval.hpp`. Curve fractions map to the normalized knot domain; surface `SFVec2f` fractions select normalized u/v parameters. Invalid or degenerate definitions emit no output. Orientation maps local +Z to the increasing-parameter curve tangent.
+
+- EaseInEaseOut (§19.4.4): the ten-step algorithm; the eased local fraction is remapped to the global key domain so the output is directly usable as a downstream interpolator's `set_fraction`.
+
+## Related
+
+- [Event Cascade subsystem](event-cascade.md)
+- [TimeSensor System](system-time.md)
+- [Architecture](../../explanation/architecture.md)

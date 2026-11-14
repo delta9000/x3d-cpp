@@ -1,0 +1,141 @@
+---
+title: ROUTEs
+summary: Route model, field addressing, and route resolution over effective fields including dynamic Script fields.
+tags: [subsystem, routes, field-addressing, dynamic-fields]
+updated: 2026-09-29
+related:
+  - ../../explanation/architecture.md
+  - event-cascade.md
+  - ../../explanation/decisions/0014-dynamic-field-foundation.md
+---
+
+# ROUTEs
+
+## Purpose
+
+The ROUTEs subsystem owns the data model and resolution pipeline for X3D event routes — the declarative wiring that connects one node's output field to another's input field. It covers three separable concerns that together bridge authored intent all the way to the live event graph:
+
+1. Route data model (`Route` struct): encoding-neutral record of a ROUTE statement, keyed by DEF name strings with optional resolved weak-pointer endpoints.
+2. Field addressing (`FieldAddress`): identity of a routable endpoint — a raw observer `(node*, field-name)` pair — used by the event cascade to fan out events without owning nodes.
+3. Bridge and resolution (`buildRoutes`): translates a parsed `Scene`'s DEF-name routes into typed, validated edges in an `EventGraph` held by an `X3DExecutionContext`. This step also handles PROTO-interface redirects, pre-resolved PROTO-body-internal routes, and pre-resolved Inline-internal routes.
+
+A critical feature of the bridge is that field lookup always consults the node's *effective* field table — the union of generated static fields and author-declared dynamic Script fields — so author `<field>` declarations on `Script` nodes are first-class ROUTE endpoints (S1). Caveat: this is the *resolution* path — a ROUTE *into* a Script eventIn/inputOutput is registered/validated but not yet dispatched at tick time (`SCRIPT-EVENTIN`, open); a Script's own `outputOnly`/`inputOutput` writes *do* drive the cascade.
+
+## Key files
+
+| File / directory | Role |
+|---|---|
+| `runtime/X3DRoute.hpp` | `Route` struct: the encoding-neutral ROUTE data model |
+| `runtime/events/X3DFieldAddress.hpp` | `FieldAddress` struct: typed, hashable event endpoint `(node*, field)` |
+| `runtime/events/X3DEventGraph.hpp` | `EventGraph`: directed ROUTE table (source→sinks), including `resolveFieldAlias` for `set_xxx`/`xxx_changed` aliases |
+| `runtime/events/X3DSceneBridge.hpp` | `buildRoutes`, `BridgeResult`, `RouteError`: the Scene→EventGraph bridge and validation pipeline; its definitions, including the `effectiveFields()`-based endpoint lookup, are in `X3DSceneBridge.cpp` |
+| `runtime/events/DynamicField.hpp` | `DynamicFieldStore`, `AuthorFieldDecl`, `effectiveFields()`: the dynamic-field side-table that makes author Script fields visible to route resolution |
+| `runtime/X3DScene.hpp` | `Scene::routes`, `Scene::resolvedProtoRoutes`, `Scene::resolvedInlineRoutes`, `Scene::protoRedirects`, `Scene::resolveRoutes()` |
+
+## Interfaces and seams
+
+### Exposed interface
+
+```cpp
+// runtime/X3DRoute.hpp — encoding-neutral route record
+namespace x3d::runtime {
+struct Route {
+  std::string fromNode;              // DEF name of source node
+  std::string fromField;             // source field (outputOnly / inputOutput)
+  std::string toNode;                // DEF name of destination node
+  std::string toField;               // destination field (inputOnly / inputOutput)
+  std::weak_ptr<X3DNode> from;       // optional resolved source (filled by Scene::resolveRoutes)
+  std::weak_ptr<X3DNode> to;         // optional resolved sink
+};
+} // namespace x3d::runtime
+
+// runtime/events/X3DFieldAddress.hpp — routable event endpoint
+namespace x3d::runtime {
+struct FieldAddress {
+  X3DNode *node = nullptr;           // raw observer pointer (scene graph owns lifetime)
+  std::string field;                 // X3D field name (post-alias normalization)
+  bool operator==(const FieldAddress &) const;
+};
+} // namespace x3d::runtime
+// std::hash<FieldAddress> specialization also provided.
+
+// runtime/events/X3DEventGraph.hpp — directed ROUTE table
+namespace x3d::runtime {
+class EventGraph {
+public:
+  void addRoute(const FieldAddress &from, const FieldAddress &to);
+  void removeRoute(const FieldAddress &from, const FieldAddress &to);
+  const std::vector<FieldAddress> &sinks(const FieldAddress &from) const;
+  std::size_t routeCount() const;
+  void clear();
+};
+
+// Alias resolver — ISO/IEC 19775-1 §4.4.2.2
+std::string resolveFieldAlias(const X3DNode *node, const std::string &name);
+} // namespace x3d::runtime
+
+// runtime/events/X3DSceneBridge.hpp — bridge entry point
+namespace x3d::runtime {
+struct RouteError {
+  enum class Scope { Scene, ProtoBody, Inline };
+  std::size_t index;  // position within the route collection named by scope
+  std::string reason;
+  Scope scope = Scope::Scene;
+};
+struct BridgeResult { std::size_t routesAdded; std::vector<RouteError> rejected; bool ok() const; };
+
+BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx);
+// Also exposed as a convenience method:
+BridgeResult X3DExecutionContext::buildFrom(Scene &scene); // defined in X3DSceneBridge.cpp
+} // namespace x3d::runtime
+
+// runtime/events/DynamicField.hpp — effective field lookup
+namespace x3d::runtime {
+FieldTable effectiveFields(const X3DNode &node, const DynamicFieldStore &store);
+// Owners: *scene.authorFields, *declaration.authorFields, ctx.authorFields()
+} // namespace x3d::runtime
+```
+
+### Seam points
+
+- Codec readers → Scene::routes — all four codec readers (XML, ClassicVRML, VRML97, JSON) parse `<ROUTE>` / `ROUTE` statements and push `Route` structs (DEF names only, no resolved pointers) into `Scene::routes`. Resolved pointers are populated later by `Scene::resolveRoutes()` inside `buildRoutes`.
+
+- PROTO expander → Scene::resolvedProtoRoutes — when `X3DProtoExpand` clones a PROTO body it resolves body-internal ROUTEs against cloned nodes. A route to a nested PROTO interface follows its `IS` targets; both endpoints may fan out. The resulting physical endpoints are stored in `Scene::resolvedProtoRoutes`. `buildRoutes` validates their effective fields, aliases, direction, and type before registration. Clone nodes stay outside `scene.defs`.
+
+- Inline expander → Scene::resolvedInlineRoutes — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
+
+- DynamicFieldStore → effectiveFields — the endpoint lookup in `X3DSceneBridge.cpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
+
+- EventGraph → X3DEventCascade — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
+
+- SaiContext → EventGraph (dynamic ROUTE operations) — `SaiContext::addRoute` and `SaiContext::deleteRoute` call `ctx_.addRoute` / `ctx_.removeRoute` directly on the live graph (ISO/IEC 19775-1 §4.3.7, guarded by `directOutput==TRUE`). `addRoute` checks physical node fields, `set_`/`_changed` aliases, event direction, and matching types. It does not resolve nominal PROTO interfaces or their `IS` targets as the document-ROUTE bridge does. `X3DEventGraph::addRoute` itself stays unvalidated.
+
+### Validation rules enforced by buildRoutes
+
+`buildRoutes` applies four checks in order and returns diagnostics rather than throwing:
+
+1. Unresolved endpoint — `Route::from` or `Route::to` weak_ptr is expired (forward ref, IMPORT, unknown DEF): skipped silently; not counted as added or rejected.
+2. Unknown field — for an expanded PROTO, the declared interface is the public field table, even when its primary node has a field with the same name. An EXTERNPROTO instance uses its authored external interface. A recognized interface endpoint follows its `IS` targets; a route between two such endpoints uses every source/sink target pair. Other nodes use their effective field table. Every PROTO instance also exposes inherited `metadata` and its inputOutput aliases through the primary node's current metadata storage. An undeclared primary field is rejected.
+3. Direction — source must be `outputOnly` or `inputOutput`; sink must be `inputOnly` or `inputOutput`: else rejected.
+4. Type — `fromField.type` must equal `toField.type`; X3D performs no implicit field-type coercion across a ROUTE (ISO/IEC 19775-1 §4.4.8.2): else rejected.
+
+- The bridge checks declared PROTO interface direction and type, then checks
+  each physical target pair through `effectiveFields()`.
+- Pre-resolved PROTO-body and Inline routes receive the physical checks
+  without another PROTO redirect lookup.
+- `RouteError::scope` identifies `Scene`, `ProtoBody`, or `Inline`; `index` is
+  relative to that route collection.
+- Unconnected PROTO interface fields use their independent entries in the
+  Scene author-field store; this does not imply a general native SAI prototype
+  object model.
+
+## Related
+
+- [Architecture](../../explanation/architecture.md)
+- [event cascade](event-cascade.md)
+- [ADR-0014: Dynamic Field Foundation](../../explanation/decisions/0014-dynamic-field-foundation.md)
+- [Event Cascade subsystem](event-cascade.md)
+
+- ISO/IEC 19775-1 §4.4.2.2 — inputOutput field aliases (`set_xxx`, `xxx_changed`) implemented by `resolveFieldAlias`.
+- ISO/IEC 19775-1 §4.3.7 — dynamic `addRoute`/`deleteRoute` via the Script/SAI interface.
+- ISO/IEC 19775-1 §4.4.8.2 — no implicit field-type coercion across a ROUTE (exact type-tag match enforced by `buildRoutes`).

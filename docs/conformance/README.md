@@ -34,5 +34,5 @@ is optional. Keep open acceptance conditions and deferral reasons intact.
 Run `mise tasks` for register validation and regeneration tasks defined in
 [mise.toml](../../mise.toml). Do not edit generated outputs by hand.
 
-The [requirements audit](../wiki/guides/x3d4-requirements-audit.md) explains
+The [requirements audit](../wiki/reference/x3d4-requirements-audit.md) explains
 profile requirements and the limits of the generated status labels.

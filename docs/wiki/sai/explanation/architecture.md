@@ -4,9 +4,9 @@ summary: Why the SAI SDK has one provider-owned contract, what the frontend and 
 tags: [sai, explanation, architecture]
 updated: 2026-11-14
 related:
-  - ../../decisions/0076-fold-sai-into-x3d-cpp.md
-  - ../../decisions/0047-sai-sister-repo-split.md
-  - ../../subsystems/system-script-sai.md
+  - ../../explanation/decisions/0076-fold-sai-into-x3d-cpp.md
+  - ../../explanation/decisions/0047-sai-sister-repo-split.md
+  - ../../reference/subsystems/system-script-sai.md
 ---
 
 # SAI architecture: one contract, two backends
@@ -85,15 +85,15 @@ family. Their design is explained in
   SHA-pinned UOM. A change under `src/x3d_cpp_gen/` therefore also runs the
   `sai` CI job.
 - Script nodes use the separate in-process
-  [`SaiContext`](../../subsystems/system-script-sai.md). Its runtime pointers
+  [`SaiContext`](../../reference/subsystems/system-script-sai.md). Its runtime pointers
   are not portable service handles.
 
 ## History
 
 The kernel was split into a sister `x3d-sai` repository on 2026-07-19
-([ADR-0047](../../decisions/0047-sai-sister-repo-split.md), now superseded) and
+([ADR-0047](../../explanation/decisions/0047-sai-sister-repo-split.md), now superseded) and
 folded back with its history on 2026-11-11
-([ADR-0076](../../decisions/0076-fold-sai-into-x3d-cpp.md)). Commits before the
+([ADR-0076](../../explanation/decisions/0076-fold-sai-into-x3d-cpp.md)). Commits before the
 2026-07-19 seed commits are provenance, not a buildable sequence, so
 `git bisect` does not work back across that import boundary. The pre-split
 branch head is preserved as the tag `archive/sai-semantic-kernel`.

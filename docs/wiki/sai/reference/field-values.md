@@ -65,13 +65,14 @@ them. That is the current reference policy, not a claim that every encoding or
 renderer accepts them. Field-specific numeric bounds still apply to all
 rotation components.
 
-Sources: a normalized axis is required by
-[ISO/IEC 19775-1, 5.3.13](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html#SFRotationAndMFRotation),
-and the published C++ binding's
-[Annex A.4.21](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/abstracts.html#SFRotation)
-bounds axis components to [-1, 1]. Neither specifies a floating-point tolerance
-or requires rejection over normalization. The eight-epsilon window and the
-rejection policy are SDK choices.
+- Sources: a normalized axis is required by [ISO/IEC 19775-1,
+  5.3.13](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html#SFRotationAndMFRotation),
+  and the published C++ binding's [Annex
+  A.4.21](https://www.web3d.org/specifications/X3Dv4/ISO-IEC19777-4v3.3-IS/Part04/abstracts.html#SFRotation)
+  bounds axis components to [-1, 1].
+- Neither specifies a floating-point tolerance or requires rejection over
+  normalization.
+- The eight-epsilon window and the rejection policy are SDK choices.
 
 Implementation: `sai/include/x3d/sai/experimental/value_constraints.hpp`.
 Evidence: `sai/tests/rotation_constraints_test.cpp` (CTest

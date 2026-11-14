@@ -7,7 +7,7 @@ related:
   - ../how-to/use-the-native-backend.md
   - ../how-to/adopt-a-session.md
   - presentation-feed.md
-  - ../../decisions/0074-sai-adopt-session.md
+  - ../../explanation/decisions/0074-sai-adopt-session.md
 ---
 
 # Native SAI provider
@@ -68,7 +68,7 @@ through this adapter.
 
 `adopt_session` transfers a prepared `RuntimeSession` into an owning service.
 The decision record is
-[ADR-0074](../../decisions/0074-sai-adopt-session.md).
+[ADR-0074](../../explanation/decisions/0074-sai-adopt-session.md).
 
 ### Preconditions
 

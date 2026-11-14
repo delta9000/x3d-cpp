@@ -5,14 +5,14 @@ tags: [sai, reference, provider, routes]
 updated: 2026-11-14
 related:
   - ../how-to/add-a-live-route.md
-  - ../../decisions/0075-sai-live-route-addition.md
+  - ../../explanation/decisions/0075-sai-live-route-addition.md
 ---
 
 # SAI live ROUTEs
 
 `service_id::live_routes` is an optional version-1 capability, implemented by
 both bundled backends. The decision record is
-[ADR-0075](../../decisions/0075-sai-live-route-addition.md). For the task see
+[ADR-0075](../../explanation/decisions/0075-sai-live-route-addition.md). For the task see
 [Add a ROUTE to a live scene](../how-to/add-a-live-route.md).
 
 ## Operations

@@ -378,7 +378,7 @@ description = "(Re)build the x3d-cpp-code Qdrant collection from the C++ runtime
 run = "uv run python scripts/code_rag.py ingest"
 
 [tasks.docs-ingest]
-description = "(Re)build the x3d-cpp-docs Qdrant collection from the living docs (wiki/sdk/conformance)."
+description = "(Re)build the x3d-cpp-docs Qdrant collection from the living docs (wiki/conformance)."
 run = "uv run python scripts/docs_drift.py ingest"
 
 [tasks.docs-drift]

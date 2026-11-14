@@ -1,5 +1,5 @@
 // Physics backend boundary for ISO/IEC 19775-1 §37 RigidBodyPhysics.
-// See docs/wiki/decisions/0019-physics-seam.md.
+// See docs/wiki/explanation/decisions/0019-physics-seam.md.
 #ifndef X3D_RUNTIME_PHYSICS_BACKEND_HPP
 #define X3D_RUNTIME_PHYSICS_BACKEND_HPP
 
@@ -37,7 +37,7 @@ inline constexpr BodyHandle kInvalidBodyHandle = 0;
 inline constexpr ConstraintHandle kInvalidConstraintHandle = 0;
 
 /**
- * @brief Collision primitive parameters; see docs/wiki/decisions/0019-physics-seam.md.
+ * @brief Collision primitive parameters; see docs/wiki/explanation/decisions/0019-physics-seam.md.
  */
 struct ShapeDesc {
   enum class Kind { Box, Sphere, Cylinder };

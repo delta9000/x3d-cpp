@@ -33,7 +33,7 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 - **VRML-IMPORT-EXPORT-WRITE** [major/FIXED] — §ISO/IEC 19776-2, A.2: Classic writer emits IMPORT and EXPORT statements with their effective aliases.
 - **PROTO-EMPTY-OVERRIDE-WRITE** [major/FIXED] — §ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10: JSON and Classic writers retain explicit NULL and empty MFNode prototype overrides.
 - **NSN-1** [minor/CLOSED `9bb71c2`] — §9.4.3: LoadSensor not wired as an active System observing child URL-object load state per tick.
-  - Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.
+  - Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/reference/subsystems/system-loadsensor.md. Drives NSN-2..9.
 - **NSN-11** [minor/CLOSED] — §9.4.3, 9.4.1: Spec-literal Anchor children cases (b) replacement-world / (c) separate-window are not the SDK default; the headless default policy treats "#Name" as loaded iff a Viewpoint DEF exists and other Anchor urls as resolver load-request-acknowledged.
   - AnchorSystem now activates Anchors on click: '#Name' binds that viewpoint, any other url goes to the embedder's AnchorHandler with url + parameter, which implements the replacement-world / separate-window cases (events_misc_test).
 - **NSN-12** [minor/CLOSED] — §9.4.3: LoadSensor's per-child readiness check does not recurse into a watched Inline's own nested sub-Inlines.

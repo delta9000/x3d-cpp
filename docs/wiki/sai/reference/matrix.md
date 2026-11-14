@@ -199,16 +199,17 @@ Sources:
 
 ## Evidence
 
-`sai/tests/matrix_operations_test.cpp` (CTest `sai_matrix_operations`) covers
-all four matrix types: independently calculated nonsymmetric products and
-inverses, row swaps, noncommuting translations and scales, row and column
-vector action, full homogeneous `w` arithmetic, storage conversions, signed
-zero, wrong shapes and indices, precision preservation, the required rounding
-mode, and an exact-rational regression for multiplication error hidden by
-cancellation. Singular, inaccurate rounded-inverse, non-finite and out-of-range
-inputs have negative tests. Exact large translations, representable inverses of
-ill-conditioned matrices and extreme uniformly scaled identities have positive
-tests.
+- `sai/tests/matrix_operations_test.cpp` (CTest `sai_matrix_operations`)
+  covers all four matrix types: independently calculated nonsymmetric products
+  and inverses, row swaps, noncommuting translations and scales, row and
+  column vector action, full homogeneous `w` arithmetic, storage conversions,
+  signed zero, wrong shapes and indices, precision preservation, the required
+  rounding mode, and an exact-rational regression for multiplication error
+  hidden by cancellation.
+- Singular, inaccurate rounded-inverse, non-finite and out-of-range inputs
+  have negative tests.
+- Exact large translations, representable inverses of ill-conditioned matrices
+  and extreme uniformly scaled identities have positive tests.
 
 The test is standalone and needs no compiled SAI kernel. From `sai/`:
 

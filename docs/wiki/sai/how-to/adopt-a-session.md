@@ -5,7 +5,7 @@ tags: [sai, how-to, native]
 updated: 2026-11-14
 related:
   - ../reference/native-provider.md
-  - ../../decisions/0074-sai-adopt-session.md
+  - ../../explanation/decisions/0074-sai-adopt-session.md
 ---
 
 # Adopt a loaded session into the SAI
@@ -14,7 +14,7 @@ Use this when you already load scenes with the native SDK and want SAI access
 to the loaded graph: named lookup, field reads and writes, observation and live
 ROUTEs. The exact kind set and restrictions are in
 [Native provider](../reference/native-provider.md#adopted-scenes); the design
-is [ADR-0074](../../decisions/0074-sai-adopt-session.md).
+is [ADR-0074](../../explanation/decisions/0074-sai-adopt-session.md).
 
 ## Before you start
 

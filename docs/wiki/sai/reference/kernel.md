@@ -64,12 +64,13 @@ Local declarations have a separate declaration discovery API.
 Typed fields support `readable`, `writable`, `add_route`, `observe`, reads,
 writes and range edits through the same descriptor checks as dynamic handles.
 
-Generated tags and registries carry the same model fingerprint. Typed creation
-fails before producing a handle when provenance differs. A successful public
-mutation of a generated registry revokes that provenance, so mixed handwritten
-and generated descriptors cannot acquire generated typed handles. Typed reads
-report a structured `type_mismatch` and never expose variant access
-exceptions.
+- Generated tags and registries carry the same model fingerprint.
+- Typed creation fails before producing a handle when provenance differs.
+- A successful public mutation of a generated registry revokes that
+  provenance, so mixed handwritten and generated descriptors cannot acquire
+  generated typed handles.
+- Typed reads report a structured `type_mismatch` and never expose variant
+  access exceptions.
 
 ## Reads
 
@@ -272,12 +273,14 @@ staged edit or external host side effects.
 
 ## World replacement and loading
 
-World replacement and asynchronous completion are generation and request
-aware. Completion validates its ticket and installs the world atomically with
-respect to replacement and other completions. Success consumes the ticket, even
-for the current scene. A rejected replacement leaves the ticket retryable or
-cancellable while its original epoch remains current. The load API models only
-these cancellation and stale-completion rules.
+- World replacement and asynchronous completion are generation and request
+  aware.
+- Completion validates its ticket and installs the world atomically with
+  respect to replacement and other completions.
+- Success consumes the ticket, even for the current scene.
+- A rejected replacement leaves the ticket retryable or cancellable while its
+  original epoch remains current.
+- The load API models only these cancellation and stale-completion rules.
 
 ## Capabilities
 

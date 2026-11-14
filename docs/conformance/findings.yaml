@@ -131,7 +131,7 @@
   status: fixed
   wave: 1
   summary: prepareEvents() called exactly once per timestamp before ROUTE processing.
-  note: "SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend — SCR conformance is backend-independent. See ADR-0022 / docs/wiki/seam-status.md."
+  note: "SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend — SCR conformance is backend-independent. See ADR-0022 / docs/wiki/reference/seam-matrix.md."
 - id: SCR-002
   nodes: [Script]
   clause: "29.2.3"
@@ -463,7 +463,7 @@
 #    Box/Sphere, gravity, collision RESPONSE, Ball/SingleAxisHinge/Slider joints,
 #    pose route-out). It is PARTIAL: the findings below enumerate every §37 node /
 #    RigidBody / RigidBodyCollection field that is read-but-ignored or unsupported.
-#    See docs/wiki/subsystems/physics.md "§37 field & node coverage" for the matrix.
+#    See docs/wiki/reference/subsystems/physics.md "§37 field & node coverage" for the matrix.
 - id: CONF-RBP
   component: RigidBodyPhysics
   nodes: [CollisionSensor, Contact, CollisionCollection, CollisionSpace]
@@ -936,7 +936,7 @@
   wave: 4
   commit: 9bb71c2
   summary: LoadSensor not wired as an active System observing child URL-object load state per tick.
-  note: "Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9."
+  note: "Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/reference/subsystems/system-loadsensor.md. Drives NSN-2..9."
 - id: NSN-2
   nodes: [LoadSensor]
   clause: "9.4.3"
@@ -2565,7 +2565,7 @@
 
 # Published X3D 4.0 requirements audit, 2026-09-28, baseline a8aefc5.
 # Static source evidence; REQ-UNIT additionally reproduced via the rebuilt CLI.
-# Scope and acceptance cases: docs/wiki/guides/x3d4-requirements-audit.md.
+# Scope and acceptance cases: docs/wiki/reference/x3d4-requirements-audit.md.
 - id: REQ-UNIT
   nodes: [Transform, Viewpoint, Box]
   component: Core
