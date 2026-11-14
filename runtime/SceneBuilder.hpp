@@ -28,6 +28,7 @@
 #ifndef X3D_RUNTIME_SCENE_BUILDER_HPP
 #define X3D_RUNTIME_SCENE_BUILDER_HPP
 
+#include "FieldRead.hpp"
 #include "X3DDocument.hpp"
 #include "codecs/FieldValueIO.hpp"
 #include "x3d/core/X3DReflection.hpp"
@@ -62,12 +63,7 @@ inline std::string describe(const X3DNode &node) {
                      : node.nodeTypeName() + " '" + def + "'";
 }
 
-inline const FieldInfo *findField(const X3DNode &node,
-                                  const std::string &name) {
-  for (const FieldInfo &f : node.fields())
-    if (f.x3dName == name) return &f;
-  return nullptr;
-}
+using x3d::runtime::findField; // the one shared lookup (FieldRead.hpp)
 
 // A ROUTE may name an inputOutput field `f` as `set_f` or `f_changed`.
 inline const FieldInfo *findRouteField(const X3DNode &node,

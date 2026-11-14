@@ -322,7 +322,31 @@ public:
       if (q[3] < 1.0)
         node += ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
     }
-    attach(-1, node);
+    // Under an animated Transform, or with an animated location, the light
+    // is placed in its own frame so it moves with what drives it.
+    const bool moving = light.node && animatedTargets_.count(light.node);
+    Mat4 below = Mat4::identity();
+    const int parent = light.node ? animatedParent(light.path, below) : -1;
+    if (parent < 0 && !moving) {
+      attach(-1, node);
+      return;
+    }
+    node = "{\"extensions\":{\"KHR_lights_punctual\":{\"light\":" +
+           std::to_string(lights_.size() - 1) + "}}";
+    if (!light.node->getDEF().empty())
+      node += ",\"name\":" + quote(light.node->getDEF());
+    if (light.type != LightDesc::Type::Directional) {
+      const SFVec3f p =
+          geombounds::getVec3fLenient(*light.node, "location", {0, 0, 0});
+      node += ",\"translation\":" + array({p.x, p.y, p.z});
+    }
+    if (light.type != LightDesc::Type::Point) {
+      const auto q = aimQuaternion(
+          geombounds::getVec3fLenient(*light.node, "direction", {0, 0, -1}));
+      node += ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
+    }
+    const int index = attach(frameNode(parent, below, light.path), node);
+    if (moving) registerTarget(light.node, index);
   }
 
   void add(const GltfCamera &camera) {
@@ -349,12 +373,25 @@ public:
     std::string node =
         "{\"camera\":" + std::to_string(cameras_.size() - 1);
     if (!camera.name.empty()) node += ",\"name\":" + quote(camera.name);
-    if (camera.cameraToWorld.m != Mat4::identity().m) {
-      std::vector<std::string> cells;
-      for (float v : camera.cameraToWorld.m) cells.push_back(num(v));
-      node += ",\"matrix\":[" + join(cells) + "]";
+    const bool moving = camera.node && animatedTargets_.count(camera.node);
+    Mat4 below = Mat4::identity();
+    const int parent = camera.node ? animatedParent(camera.path, below) : -1;
+    if (moving) {
+      // Its own position and orientation are the animated properties.
+      const SFVec3f p =
+          geombounds::getVec3fLenient(*camera.node, "position", {0, 0, 10});
+      const auto q = quaternion(geombounds::getField<SFRotation>(
+          *camera.node, "orientation", {0, 0, 1, 0}));
+      node += ",\"translation\":" + array({p.x, p.y, p.z}) +
+              ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
+      registerTarget(camera.node,
+                     attach(frameNode(parent, below, camera.path), node));
+      return;
     }
-    attach(-1, node);
+    const Mat4 local = parent < 0 ? camera.cameraToWorld
+                                  : below.inverse() * camera.cameraToWorld;
+    if (!isIdentity(local)) node += "," + matrixJson(local);
+    attach(parent, node);
   }
 
   std::string finish() {
@@ -461,6 +498,27 @@ private:
     if (parent < 0) roots_.push_back(index);
     else nodes_[static_cast<std::size_t>(parent)].children.push_back(index);
     return index;
+  }
+
+  // The parent for a leaf (light, camera) that keeps its own local
+  // translation/rotation: `parent`, plus a matrix node for whatever plain
+  // Transforms lie between it and the leaf.
+  int frameNode(int parent, const Mat4 &below, const PathKey &path) {
+    const geo::GeoProjection &projection = *geo::builtinProjectionOwner();
+    Mat4 world = Mat4::identity();
+    for (const X3DNode *n : path)
+      if (TransformSystem::isTransform(n))
+        world = world * TransformSystem::localMatrix(n, projection);
+    const Mat4 frame = parent < 0 ? world : below.inverse() * world;
+    return isIdentity(frame) ? parent : attach(parent, "{" + matrixJson(frame));
+  }
+
+  // A leaf node that is itself an animation target.
+  void registerTarget(const X3DNode *target, int node) {
+    TransformInstance inst;
+    inst.trs = inst.scale = inst.tail = node;
+    inst.after = Mat4::identity();
+    targetInstances_[target].push_back(inst);
   }
 
   // Walk `path` and make sure every animated Transform on it exists as glTF
@@ -1007,6 +1065,23 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   const X3DExecutionContext &ctx = extractor.context();
   const X3DNode *bound = ctx.boundViewpoint();
   std::size_t skipped = 0;
+  // First placement of every node, as its ancestors (roots first).
+  std::unordered_map<const X3DNode *, PathKey> ancestors;
+  {
+    PathKey stack;
+    std::function<void(const X3DNode *)> rec = [&](const X3DNode *n) {
+      if (!n || stack.size() >= kMaxNestingDepth ||
+          !ancestors.emplace(n, stack).second)
+        return;
+      stack.push_back(n);
+      forEachChildNode(*n, [&](const FieldInfo &,
+                               const std::shared_ptr<X3DNode> &c) {
+        rec(c.get());
+      });
+      stack.pop_back();
+    };
+    for (const auto &root : extractor.scene().rootNodes) rec(root.get());
+  }
   x3d::runtime::detail::forEachNode(extractor.scene(), [&](X3DNode *n) {
     if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(n)) {
       ++skipped;
@@ -1028,6 +1103,10 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     cam.znear = nearDistance > 0 ? nearDistance : (ortho ? 0.0f : 0.1f);
     cam.zfar = farDistance > 0 ? farDistance : 0.0f;
     cam.ortho = ortho;
+    if (const auto placed = ancestors.find(n); placed != ancestors.end()) {
+      cam.node = n;
+      cam.path = placed->second;
+    }
     if (ortho) {
       const auto fov = geombounds::getField<std::vector<float>>(
           *n, "fieldOfView", {-1, -1, 1, 1});
@@ -1045,7 +1124,7 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   });
   if (report) report->skippedViewpoints = skipped;
 
-  // ---- animations: TimeSensor -> interpolator -> Transform ----
+  // ---- animations: TimeSensor -> interpolator -> Transform/viewpoint/light ----
   const Scene &scene = extractor.scene();
   auto endpoint = [&](const std::weak_ptr<X3DNode> &resolved,
                       const std::string &def) {
@@ -1081,15 +1160,21 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     const std::string dest = fieldName(route.toField);
     GltfAnimationChannel channel;
     channel.target = to.get();
-    bool ok = to->nodeTypeName() == "Transform";
+    const std::string sink = to->nodeTypeName();
+    const bool viewpoint = sink == "Viewpoint" || sink == "OrthoViewpoint";
+    const bool placedLight = sink == "PointLight" || sink == "SpotLight";
+    bool ok = sink == "Transform" || viewpoint || placedLight;
     if (ok && type == "PositionInterpolator" &&
-        (dest == "translation" || dest == "scale")) {
+        (sink == "Transform" ? dest == "translation" || dest == "scale"
+                             : dest == (viewpoint ? "position" : "location"))) {
       channel.path = dest == "scale" ? GltfAnimationChannel::Path::Scale
                                      : GltfAnimationChannel::Path::Translation;
       for (const SFVec3f &v : geombounds::getField<std::vector<SFVec3f>>(
                *from, "keyValue", {}))
         channel.values.insert(channel.values.end(), {v.x, v.y, v.z});
-    } else if (ok && type == "OrientationInterpolator" && dest == "rotation") {
+    } else if (ok && type == "OrientationInterpolator" &&
+               ((sink == "Transform" && dest == "rotation") ||
+                (viewpoint && dest == "orientation"))) {
       channel.path = GltfAnimationChannel::Path::Rotation;
       for (const SFRotation &v : geombounds::getField<std::vector<SFRotation>>(
                *from, "keyValue", {})) {

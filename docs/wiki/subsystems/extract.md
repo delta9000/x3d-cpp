@@ -492,6 +492,7 @@ form.
 | DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
 | PositionInterpolator / OrientationInterpolator routed to a Transform's `translation`, `scale` or `rotation` | A glTF animation: the Transform is kept as a node (see below), the interpolator's `key`/`keyValue` become a `LINEAR` sampler (rotations as quaternions), and key times are `key × cycleInterval` of the TimeSensor routed to the interpolator's `set_fraction`. One animation per TimeSensor, named by its DEF |
+| PositionInterpolator / OrientationInterpolator routed to a Viewpoint's or OrthoViewpoint's `position` / `orientation`, or a PositionInterpolator routed to a PointLight's or SpotLight's `location` | Channels in the same animation: the camera or light node carries the authored value as its `translation`/`rotation`, under a `matrix` node for the Transforms above it |
 
 Approximations: X3D light `intensity` is a unitless factor and is written
 unchanged as glTF intensity (lux or candela), so absolute brightness will not
@@ -531,14 +532,24 @@ matrix, so every shape's composed matrix at export time equals its
 `RenderItem::worldTransform`. A repeated `key` (an X3D jump) is nudged forward
 by one float step, because glTF sample times must strictly increase.
 
-Animation limits: only those three Transform fields. Interpolators that drive
-anything else (colours, scalars, coordinates, viewpoints, lights), chains
-through other nodes (sequencers, Scripts, EaseInEaseOut, followers), `center`
-and `scaleOrientation` animation, and H-Anim motion are not exported; dropped
-interpolator routes are counted in `skippedAnimationRoutes`, and a channel
-whose Transform has no exported shape under it in `skippedAnimationChannels`.
-glTF has no loop flag, so `TimeSensor.loop` is left to the viewer. Lights and
-cameras under an animated Transform stay where they were at export time.
+**Lights and cameras.** A light or viewpoint below an animated Transform is a
+child of that Transform's node, so it moves with it; one whose own `location`,
+`position` or `orientation` is animated keeps that value as its node's
+`translation`/`rotation` under a `matrix` node for its ancestors. Everything
+else is still a world-space root.
+
+Animation limits: core glTF animates only a node's translation, rotation and
+scale (and morph weights), so those are the channels written. Interpolators
+that drive colours, scalars (transparency, intensity, field of view) or a
+light's `direction` would need the `KHR_animation_pointer` extension, which
+most viewers do not load, and CoordinateInterpolators would need morph
+targets; they are not exported. Neither are chains through other nodes
+(sequencers, Scripts, EaseInEaseOut, followers), `center` and
+`scaleOrientation` animation, and H-Anim motion. Dropped interpolator routes
+are counted in `skippedAnimationRoutes`, and a channel whose target was not
+written (a Transform with nothing exported under it, a light that is off) in
+`skippedAnimationChannels`. glTF has no loop flag, so `TimeSensor.loop` is
+left to the viewer.
 
 The JSON and the PNG encoder are written by hand; the tests
 (`runtime/extract/tests/gltf_writer_test.cpp`) check the container and
