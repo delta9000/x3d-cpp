@@ -43,7 +43,7 @@ keeps unknown elements as opaque content, so XML to XML conversion preserves the
 
 ## Quick start
 
-Requires a C++20 compiler, CMake 3.21 or later, and Ninja.
+Requires a C++20 compiler, CMake 3.21+, and Ninja.
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
