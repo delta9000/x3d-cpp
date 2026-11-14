@@ -46,6 +46,7 @@ Three places skinning could happen:
 Option C.
 
 **Contract.** `runtime/hanim/HAnimSkin.hpp` defines it:
+
 - `SkinBinding` is compiled once per humanoid. It holds bind positions and
   normals, a CSR list of per-vertex influences (variable width, never capped at
   four, weights normalized per vertex), inverse bind matrices per joint in
@@ -72,6 +73,7 @@ HANIM-DISP: Segment displacers likewise deform the Segment's mesh at
 extraction, not its authored Coordinate.
 
 **Extraction.**
+
 - Skin Shapes carry a reference to their humanoid's binding plus, per emitted
   corner, the source coordinate index. That index is the remap the mesh
   builder previously discarded.

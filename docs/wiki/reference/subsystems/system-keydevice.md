@@ -69,8 +69,8 @@ public:
   ```
 
 - `KeyState` struct — owned by `X3DExecutionContext`; two parallel structures within it serve two consumers:
-  - `held` (unordered set of int) + `revision` (unsigned long) — read by `NavigationSystem` for continuous key-held detection; this system does not touch it.
-  - `events` (vector of `KeyState::KeyEvent`) — discrete press/release events pushed by the consumer and drained each tick by `KeyDeviceSensorSystem::update` via `ctx.clearKeyEvents()`.
+    - `held` (unordered set of int) + `revision` (unsigned long) — read by `NavigationSystem` for continuous key-held detection; this system does not touch it.
+    - `events` (vector of `KeyState::KeyEvent`) — discrete press/release events pushed by the consumer and drained each tick by `KeyDeviceSensorSystem::update` via `ctx.clearKeyEvents()`.
 
 - `KeyState::KeyEvent` — one of these tagged fields is set per event: `character` (non-empty UTF-8 string), `actionKey` (non-zero §21 Table 21.2 value), `modifier` (1/2/3), `terminator` (bool), or `deletion` (bool). Key codes in `held` are opaque ints; the consumer maps its native constants.
 

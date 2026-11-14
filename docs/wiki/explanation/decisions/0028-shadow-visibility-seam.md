@@ -72,6 +72,7 @@ GPU consumer ignores it and supplies a shadow-map-backed `ShadowQuery`.
 **4. Proof = structural invariants, not numeric agreement** (the ADR-0026
 spatial-audio pattern, because two shadow techniques legitimately disagree on
 bias/penumbra). A CI test asserts, over a fixture set, that any `ShadowQuery`:
+
 - returns `1` for every light when `shadows == FALSE` (the gate);
 - returns `< 1` for a point with a `castShadow` occluder squarely on the
   point→light segment, and `1` for an unobstructed point;

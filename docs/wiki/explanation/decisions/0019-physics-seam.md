@@ -30,12 +30,14 @@ Rigid-body physics is implemented as a **core engine-agnostic seam** (`runtime/p
 ## Consequences
 
 **Positive:**
+
 - The spec-correct core stays engine-agnostic: `PhysicsBackend.hpp`/`PhysicsSystem.hpp` carry zero Jolt types (a pImpl hides Jolt even from `JoltBackend.hpp`), so Bullet/PhysX/a custom integrator can fulfill the same seam by touching only `runtime/physics/jolt/` + CMake.
 - The default build is completely unaffected: flag OFF → no Jolt fetch, no link, `ctest` 150/150, golden zero-drift, zero engine symbols. The firewall is verifiable, like the ext/script patterns.
 - `sim` traces physics for free (the `attachPhysics` hook is filled), giving headless, deterministic, golden-gated physics regression in CI — a capability no other X3D tool has.
 - Consistency: physics is the third instance of the seam pattern (after `ScriptEngine` and the renderer `RenderItem` seam), reinforcing the architecture rather than adding a new shape.
 
 **Trade-offs / costs:**
+
 - A physics engine is a heavy optional dependency (Jolt ~136 TUs); turning the flag ON adds fetch + build time.
 - Determinism is per-host: Jolt's internal floats depend on microarchitecture (AVX2/FMA) **and on the job-system thread count** (`hardware_concurrency()-1`), so the committed golden trace is a **same-host, same-core-count** regression; the portable hard gate is the numeric-range behavioral assertions (`y≈5.1`, rest≈radius).
 - Build-dir staleness gotcha: flipping `X3D_CPP_BUILD_PHYSICS` ON over a cached-OFF build dir needs a re-configure before the backend links.

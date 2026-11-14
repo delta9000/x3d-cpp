@@ -70,6 +70,7 @@ fuzzer — must be **proven to fail when the property is violated** before its g
 ## Consequences
 
 **Positive:**
+
 - A vocabulary for codec fidelity beyond "it round-trips," with each property pinned by a fast,
   deterministic, CI-friendly test.
 - Reader regressions (not just writer regressions) in any encoding are caught: the cross-encoding case
@@ -78,6 +79,7 @@ fuzzer — must be **proven to fail when the property is violated** before its g
   tautologies.
 
 **Trade-offs:**
+
 - The randomized property fuzzer remains an opt-in discovery tool, not a CI gate (seed variance, needs
   a built binary). Its findings are banked as deterministic tests; no gate depends on it.
 - Fault-injection validation is extra up-front work per oracle, justified only for structural

@@ -47,11 +47,13 @@ The vendored `X3dUnifiedObjectModel-4.0.xml` stays byte-identical to upstream (n
 ## Consequences
 
 **Positive:**
+
 - ClassicVRML/VRML2 content keeps parsing; no content break.
 - Both nodes share one validation path and a uniform vec4 accessor.
 - Arity/ordering problems are surfaced as warnings instead of being silently stored.
 
 **Trade-offs:**
+
 - OrthoViewpoint callers still see a length-erased `MFFloat` member unless they use the convenience
   accessor — the API asymmetry with TextureProjectorParallel is reduced, not eliminated.
 - Establishes a reusable "MF-typed but fixed-arity" validation pattern that other fields may need.

@@ -84,6 +84,7 @@ Phase 4 of the material-shader plan proposed extracting `EnvironmentLight` (X3D 
 **This phase was reverted and is deferred.**  The blocking reason: `EnvironmentLight` is an X3D 4.1 node, not present in the 4.0 UOM from which `generated_cpp_bindings/` is generated.  The generated layer is committed as byte-identical golden files (ADR-0005).  A hand-authored `EnvironmentLight` binding would either (a) live outside `generated_cpp_bindings/` in an ad-hoc file — inconsistent with the generation model — or (b) require touching `generated_cpp_bindings/`, producing a new golden SHA and potentially invalidating the golden invariant.
 
 The path forward requires a defined architecture for X3D 4.1 extension nodes that either:
+
 - Extends the generator to handle versioned node additions without full golden-regeneration.
 - Defines a policy for hand-authored 4.1 bindings in a separate include tree outside the golden.
 

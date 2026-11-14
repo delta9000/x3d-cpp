@@ -123,4 +123,5 @@ Removed the S3 resolver, AWS SDK dependency, fixture helpers, build option,
 and service-backed CI job because no consumer selected this backend. The
 AssetResolver interface and file/HTTP/FTP implementations remain. The HTTP
 fixture and missing-asset cases remain in `x3d_assetresolver_swap`.
+
 - [Architecture](../architecture.md)

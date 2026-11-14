@@ -171,4 +171,5 @@ Removed the FreeType metrics backend, dependency, build option, parity
 cases, and dedicated CI job because no consumer selected this backend. The
 FontMetrics interface, stb metrics and atlas implementations, and their
 contract tests remain.
+
 - [Architecture](../architecture.md)

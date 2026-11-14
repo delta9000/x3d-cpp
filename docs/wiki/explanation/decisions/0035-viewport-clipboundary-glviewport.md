@@ -51,11 +51,13 @@ own projection into its region).
 ## Consequences
 
 **Positive:**
+
 - All renderers integrating against the runtime frame Viewport content identically.
 - Matches the node name and the layer-as-independent-view intent; serves the CAD quadrant use case.
 - Adds the missing ordering guard (`Viewport.hpp:89` currently validates range but not order).
 
 **Trade-offs:**
+
 - Fixes a spec-open choice in the engine; if 4.1 later mandates glScissor semantics this is superseded.
 - The runtime now owns a small derived geometry contract (`ViewportRegion`) that renderers must honor.
 

@@ -241,4 +241,5 @@ one of the two backends — that is a real regression, not test noise.
 Removed the miniaudio backend, dependency fetch, build option, and dedicated
 swap test and CI job because no consumer selected this backend. AudioBackend,
 SoundSystem, BuiltinDspBackend, and the sound component tests remain.
+
 - [Architecture](../architecture.md)

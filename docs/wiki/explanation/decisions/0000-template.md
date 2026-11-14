@@ -38,9 +38,11 @@ We decided to...
      List BOTH positive outcomes and trade-offs / costs. -->
 
 **Positive:**
+
 - ...
 
 **Trade-offs / costs:**
+
 - ...
 
 ## Related

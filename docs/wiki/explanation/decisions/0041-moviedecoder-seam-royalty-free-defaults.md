@@ -195,5 +195,6 @@ Removed the Theora decoder, libtheora/libogg dependency lookup, build option,
 and codec-specific contract cases because no consumer selected this backend.
 MovieDecoder, format routing, pl_mpeg, and the remaining lifecycle and
 composition tests remain.
+
 - [Architecture](../architecture.md)
 - [Texture decoding](../../reference/subsystems/system-texture-decode.md)

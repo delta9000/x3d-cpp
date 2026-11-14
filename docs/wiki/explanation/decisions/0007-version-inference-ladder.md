@@ -101,7 +101,7 @@ for VRML97 and any sub-3.0 version token:
 - `X3DDocument::version` struct default changed from `"4.0"` to `"3.0"`
   (`runtime/X3DDocument.hpp:78`), so unversioned files parsed by readers that
   do not emit a version token inherit the correct bare floor at the C++ layer too.
-  - **Refined 2026-07-18:** the floor no longer rides on the struct default —
+    - **Refined 2026-07-18:** the floor no longer rides on the struct default —
     every reader (Xml, Json, ClassicVrml/Vrml97) now assigns the `"3.0"` bare
     floor explicitly at document construction, and the struct default is back
     to `"4.0"` as the **authoring** default (a hand-built document targets the

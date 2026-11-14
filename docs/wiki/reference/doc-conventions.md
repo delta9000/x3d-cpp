@@ -43,7 +43,7 @@ Rules:
 |---|---|---|
 | `README.md`, `CONTRIBUTING.md` | The pitch, a quick start and links | Pointers into the tree; no reference material |
 | READMEs under `examples/`, `sai/`, `adapters/sai_provider/`, `tests/cmake/sai_*/` | What the directory is and one command | Short pointers into the tree |
-| READMEs under `examples/*/assets/` | Asset provenance and licensing | Stay with the assets |
+| READMEs under `examples/*/assets/` | Asset provenance, licensing and the recipe that regenerates the assets | Stay with the assets; how to run an example goes in `reference/examples/` |
 | `README.generator.md` | The PyPI package description for `x3d-cpp-gen` | Packaged metadata; keep self-contained |
 | `docs/conformance/` | The findings register and its generated view | Edit the YAML; never hand-edit generated files |
 | `sai/docs/conformance/` | The SAI service register and its baseline | Same |

@@ -85,6 +85,7 @@ std::vector<TextureRef> texturesOf(const X3DNode *appearance);
   material color for `Source::Tex3D` (no `sampler3D` path yet).
 
 Null/default rules:
+
 - `appearance == nullptr` → Unlit white (debug fallback, not spec-compliant).
 - Appearance present, `material == nullptr` → Unlit white + any `Appearance.texture` in the Emissive slot (§12.2.5 rule 4;  correction).
 - `Material` → Phong. `PhysicalMaterial` → Physical. `UnlitMaterial` → Unlit.
@@ -268,6 +269,7 @@ using AssetResolver = std::function<AssetResult(const std::string &url, AssetKin
 ```
 
 One type, two invocation contracts (documented in `AssetResolver.hpp`):
+
 - Contract A (render-time, texture/movie): `Status::Pending` is legal; consumer retries next frame.
 - Contract B (parse-time, Inline/EXTERNPROTO): must return `Ready` or `Failed` synchronously; `Pending` is incoherent.
 

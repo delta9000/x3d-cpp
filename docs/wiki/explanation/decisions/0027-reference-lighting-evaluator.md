@@ -39,11 +39,11 @@ pixel color — to the consumer. Two facts make that boundary need its own decis
 - **The conventions around that math are currently unpinned and divergent.** The
   reference consumers' `MaterialShader.hpp` (and the matching GLSL) carry several
   decisions that no ADR records and that disagree with each other:
-  - Phong **ambient squares diffuse** rather than being linear in it.
-  - Authored colors are **not sRGB-decoded**, while only the *lit* paths
+    - Phong **ambient squares diffuse** rather than being linear in it.
+    - Authored colors are **not sRGB-decoded**, while only the *lit* paths
     re-encode — so the same authored `0.8` renders differently through
     `UnlitMaterial` vs `Material`.
-  - The per-light **`shadowTest` is hardcoded to `1`** (the "no shadow backend
+    - The per-light **`shadowTest` is hardcoded to `1`** (the "no shadow backend
     wired" stand-in ADR-0028 describes), with no single place that owns applying
     it once ADR-0028's `ShadowQuery` seam lands.
 
@@ -62,22 +62,23 @@ elevated from "incidental code" to "the thing conformance is measured against."
 
 **2. The evaluator owns the unpinned conventions.** The following are decisions of
 this evaluator, pinned once, not per-consumer:
-   - **Color space: linear when PhysicalMaterial.** ISO 19775-1's lighting
-     clause says nothing about colour space, so this is chosen to balance spec
-     fidelity and appearance. PhysicalMaterial, glTF's material model, uses the
-     glTF linear workflow: factors are linear, colour textures are sRGB-decoded,
-     lighting is linear and the output is sRGB-encoded. Material (Phong) and
-     UnlitMaterial stay in display space, with no decode and no encode, so X3D
-     3.x content keeps the look it was authored for and the same authored
-     colour renders alike through Phong and Unlit. This matches common X3D
-     browser practice (e.g. Castle Game Engine's default).
-   - **Ambient term.** Linear in diffuse, exactly as §17 writes it:
-     `ambient_i = light.ambientIntensity × material.ambientIntensity ×
-     diffuseParameter`, not squared.
-   - **Shadow modulation.** The evaluator takes a per-light `visibility ∈ [0,1]`
-     (and `shadowIntensity`) and applies `shadowTestᵢ` exactly per §17. This is
-     the API surface ADR-0028's `ShadowQuery` seam feeds; the current hardcoded
-     `1` becomes the documented "no shadow backend wired" default.
+
+- **Color space: linear when PhysicalMaterial.** ISO 19775-1's lighting
+  clause says nothing about colour space, so this is chosen to balance spec
+  fidelity and appearance. PhysicalMaterial, glTF's material model, uses the
+  glTF linear workflow: factors are linear, colour textures are sRGB-decoded,
+  lighting is linear and the output is sRGB-encoded. Material (Phong) and
+  UnlitMaterial stay in display space, with no decode and no encode, so X3D
+  3.x content keeps the look it was authored for and the same authored
+  colour renders alike through Phong and Unlit. This matches common X3D
+  browser practice (e.g. Castle Game Engine's default).
+- **Ambient term.** Linear in diffuse, exactly as §17 writes it:
+  `ambient_i = light.ambientIntensity × material.ambientIntensity ×
+  diffuseParameter`, not squared.
+- **Shadow modulation.** The evaluator takes a per-light `visibility ∈ [0,1]`
+  (and `shadowIntensity`) and applies `shadowTestᵢ` exactly per §17. This is
+  the API surface ADR-0028's `ShadowQuery` seam feeds; the current hardcoded
+  `1` becomes the documented "no shadow backend wired" default.
 
 **3. Conformance is proven by value where the spec pins a value.** Unlike the
 shadow-*visibility* seam (ADR-0028, proven on structural invariants because the

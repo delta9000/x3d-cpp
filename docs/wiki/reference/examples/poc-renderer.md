@@ -31,17 +31,8 @@ related:
   (forward-compatible, 24-bit depth) loaded via glad
 - a `GL_KHR_debug` callback + a forced full-screen clear to the bound
   `Background` color (so a black screen is diagnosable)
-- a render loop that draws each extracted `RenderItem` lit — Lambert +
-  ambient, two-sided (`N = gl_FrontFacing ? N : -N`) — with `MaterialDesc`
-  color (diffuse/emissive/transparency, per-vertex `Color` override) and
-  per-draw back-face culling honoring `MeshData.ccw`/`solid`
-  (`projection * view * model`, `view = ctx.viewMatrix()`, a PoC perspective
-  built from `CameraDesc.fieldOfView`, near/far fit from
-  `extractor.sceneWorldBounds()`). Lights are the extractor's world-resolved
-  `LightDesc` directional, point, and spot lights (with per-fragment
-  radius, attenuation, and spot-cone evaluation) plus, per §23.4.4, the bound
-  `NavigationInfo` headlight (default true) as an additional camera-space light
-  whenever it is on, independent of the scene's own lights.
+- a render loop that draws each extracted `RenderItem` lit — Lambert + ambient, two-sided (`N = gl_FrontFacing ? N : -N`) — with `MaterialDesc` color (diffuse/emissive/transparency, per-vertex `Color` override) and per-draw back-face culling honoring `MeshData.ccw`/`solid` (`projection * view * model`, `view = ctx.viewMatrix()`, a PoC perspective built from `CameraDesc.fieldOfView`, near/far fit from `extractor.sceneWorldBounds()`).
+    - Lights are the extractor's world-resolved `LightDesc` directional, point, and spot lights (with per-fragment radius, attenuation, and spot-cone evaluation) plus, per §23.4.4, the bound `NavigationInfo` headlight (default true) as an additional camera-space light whenever it is on, independent of the scene's own lights.
 - an interactive Dear ImGui diagnostics overlay for frame timing, render-item
   counts, texture-cache counts, runtime time, a wireframe toggle, and the ImGui
   demo window; F1 toggles the panel. It is disabled for `--headless`, `--screenshot`, and `--animate`

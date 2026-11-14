@@ -110,13 +110,13 @@ Script source comes from the document, so this is the same exposure as above.
 - Within its budget a script could still allocate gigabytes, so
   `ScriptEngine::setMemoryLimit()` caps script heaps. The default is
   `kDefaultMemoryLimit` (256 MiB), and zero disables it.
-  - Duktape allocates through a counting allocator per script. Each block
+    - Duktape allocates through a counting allocator per script. Each block
     carries a size header, and the counts live in the heap udata `HeapState`
     alongside the deadline. Past the cap an allocation fails, Duktape collects
     garbage and retries, then raises "alloc failed".
-  - QuickJS uses `JS_SetMemoryLimit` on the shared runtime, so there the cap
+    - QuickJS uses `JS_SetMemoryLimit` on the shared runtime, so there the cap
     covers all of that backend's scripts together.
-  - Either way the out-of-memory error is contained like any script error.
+    - Either way the out-of-memory error is contained like any script error.
     T15h stops an allocate-forever handler at a 16 MiB cap (peak process RSS
     28 MB) well inside a 10 s budget, and the script keeps working.
 

@@ -39,10 +39,10 @@ ancestor, enters `children[whichChoice]` (none if `whichChoice < 0` or out of ra
 least one active path reaches it (union over DEF/USE, consistent with the existing union-of-boxes rule).
 
 - **ProximitySensor / VisibilitySensor / TransformSensor** tick only while in the active hierarchy.
-  - active→inactive edge (branch deselected / LOD level changes away): treated as *removed* — if
+    - active→inactive edge (branch deselected / LOD level changes away): treated as *removed* — if
     active, force `isActive=FALSE` and emit `exitTime` once (reuse `deactivateIfActive`,
     `ViewDependentSystem.hpp:101-107`), then suppress events.
-  - inactive→active edge (branch reselected): treated as *inserted* — re-evaluate this tick; emit
+    - inactive→active edge (branch reselected): treated as *inserted* — re-evaluate this tick; emit
     `isActive=TRUE` + `enterTime` if the condition holds; reset the change-gate state.
 - **Script and time-dependent nodes are NOT gated** — they keep initializing, running, and routing
   events in a dead branch, per §10.4.3.
@@ -53,11 +53,13 @@ requires an instantiated coordinate system a non-traversed branch does not have)
 ## Consequences
 
 **Positive:**
+
 - Removes the render-vs-sensor asymmetry; matches Xj3D/Contact and the natural reading of "removed
   from the transformation hierarchy".
 - Deterministic `isActive`/`enterTime`/`exitTime` edges on branch selection changes.
 
 **Trade-offs:**
+
 - Sensor enrolment must become reachability-aware (gate on the visibility-aware walk, or have
   `worldTransform` report active-path membership) — more bookkeeping per tick.
 - Multiply-instanced sensors with mixed active/inactive paths use strict union (the chosen convention).

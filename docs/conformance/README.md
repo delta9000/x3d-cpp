@@ -10,7 +10,7 @@ registers, then run `mise run conformance`. Never edit generated files by hand.
 | [profiles.yaml](profiles.yaml) | Profile-to-component requirements (edit) |
 | [sai-services.yaml](sai-services.yaml) | Native Script-SAI service coverage and test evidence (edit) |
 | [INDEX.md](INDEX.md), [components/](components/), [model.json](model.json) | Generated view |
-| [REPORT.md](REPORT.md) | Generated structural corpus report |
+| [REPORT.md](REPORT.md), [report.json](report.json) | Generated structural corpus report (`python -m x3d_cpp_gen.conformance.report`) |
 
 How to add, close or defer a finding:
 [Audit a requirement](../wiki/how-to/audit-a-requirement.md). What the view

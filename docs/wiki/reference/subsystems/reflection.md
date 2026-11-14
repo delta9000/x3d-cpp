@@ -132,7 +132,11 @@ public:
 
 - `FieldInfo::get` / `FieldInfo::set` thunks — bound by each node's generated `fields()` implementation. The thunks call the strongly-typed getter and unchecked setter (`getSize()`, `setSizeUnchecked()`) via `dynamic_cast` to the concrete node type, boxing/unboxing the value as `std::any`. Constrained `inputOutput` fields route their set thunk through the `set<Name>Unchecked()` path (the lenient read path); range enforcement stays in the public `set<Name>()`. `initializeOnly` fields also use the unchecked path (no public setter).
 
-- `FieldInfo::view` thunk — a plain function pointer emitted for every readable generated field. It returns the address of the member (through the field's `const T&` getter) and `&typeid(T)`, so `fieldPtr<T>` can hand out a type-checked `const T*` with no `std::any`, no copy and no `std::function` call. It is null for `inputOnly` fields and for fields with no stored member: synthesized author fields (`DynamicFieldStore`) and the hand-written `ExternalGeometry` table. `FieldRef<T>` falls back to `get` there. A borrowed pointer is valid while the node lives, and it reads the new value after a write (ADR-0049).
+- `FieldInfo::view` thunk — a plain function pointer emitted for every readable generated field.
+    - It returns the address of the member (through the field's `const T&` getter) and `&typeid(T)`, so `fieldPtr<T>` can hand out a type-checked `const T*` with no `std::any`, no copy and no `std::function` call.
+    - It is null for `inputOnly` fields and for fields with no stored member: synthesized author fields (`DynamicFieldStore`) and the hand-written `ExternalGeometry` table.
+    - `FieldRef<T>` falls back to `get` there.
+    - A borrowed pointer is valid while the node lives, and it reads the new value after a write (ADR-0049).
 
 - `FieldDescriptor::inherited_from` — when a field is inherited through a diamond base (`X3DNode`, `X3DGeometryNode`, etc.), `descriptors.py` records the ancestor in `inherited_from`. The thunk generator emits base-qualified calls (`X3DNode::getMetadata()`) to resolve the ambiguity, making the generated `.cpp` compile cleanly despite `public virtual` multiple inheritance.
 

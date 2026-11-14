@@ -47,6 +47,7 @@ Only underdetermined sections change; spines with ≥3 non-collinear distinct po
 ## Consequences
 
 **Positive:**
+
 - Deterministic, reproducible SCP for degenerate spines; agrees with conforming browsers (Harrier
   wings render correctly).
 - A cross-implementation edge-case comparison for this exact 2-point/undefined-orientation scenario
@@ -58,6 +59,7 @@ Only underdetermined sections change; spines with ≥3 non-collinear distinct po
 - Non-regressive on well-defined spines (B3/B6/TC3 acceptance unaffected).
 
 **Trade-offs:**
+
 - A choice the spec leaves open is now fixed in the engine; if 4.1 later mandates a different in-plane
   convention this ADR is superseded.
 

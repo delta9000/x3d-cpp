@@ -45,12 +45,12 @@ there was no way to read a large field without copying it, typed or not.
   hand-written `ExternalGeometry` table. It is the last `FieldInfo` member and
   defaults to null, so existing aggregate initializers still compile.
 - **Runtime helpers** (`runtime/FieldRead.hpp`):
-  - `fieldPtr<T>(node, field)` returns a borrowed `const T*`, or null if there
+    - `fieldPtr<T>(node, field)` returns a borrowed `const T*`, or null if there
     is no view or the type does not match. A mismatch asserts in debug builds.
-  - `FieldRef<T>` borrows when it can and otherwise boxes through `get`. It is
+    - `FieldRef<T>` borrows when it can and otherwise boxes through `get`. It is
     neither copyable nor movable, because its fallback pointer aims into its
     own box.
-  - `forEachChildNode(node, fn)` calls `fn(field, child)` for each non-null
+    - `forEachChildNode(node, fn)` calls `fn(field, child)` for each non-null
     SFNode/MFNode child and never copies a vector or a `shared_ptr`.
 - The duplicated SFNode/MFNode walks in the runtime now use
   `forEachChildNode` (TransformSystem, BoundsSystem, BindingSystem,

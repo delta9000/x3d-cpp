@@ -167,7 +167,14 @@ struct RenderDelta {
   When `lightsChanged` is set, re-read the cache and each placement's `lightsOf()`
   indices together.
 - `LightSystem` collects only lights reached through the same selected `Switch` child or distance-selected `LOD` level as geometry. It resolves locations and directions per path and scales PointLight/SpotLight radius through ancestor transforms (§17.4.2–3).
-- `LocalFogSystem` collects a bound-independent `LocalFog` for each enclosing grouping placement. `LocalFogDesc::scopePath` contains the complete root-to-enclosing-group node-pointer chain; matching requires an exact prefix of the item path. The longest matching prefix wins, so USE-shared enclosing groups keep their own world-scaled `visibilityRange`, including shared nested scopes. An empty scope path is scene-wide root fog. Disabled fogs are skipped, leaving the nearest outer enabled fog or global `Fog`; `RenderItem::localFog == -1` selects global `Fog`. Existing equal-scope tie behavior is retained: the last collected scoped fog wins, while the first root fog supplies the scene-wide fallback. The walk keeps its shared visit budget and depth cap and rejects containment back-edges without deduplicating separate USE paths. This does not change light scoping.
+- `LocalFogSystem` collects a bound-independent `LocalFog` for each enclosing grouping placement.
+    - `LocalFogDesc::scopePath` contains the complete root-to-enclosing-group node-pointer chain; matching requires an exact prefix of the item path.
+    - The longest matching prefix wins, so USE-shared enclosing groups keep their own world-scaled `visibilityRange`, including shared nested scopes.
+    - An empty scope path is scene-wide root fog.
+    - Disabled fogs are skipped, leaving the nearest outer enabled fog or global `Fog`; `RenderItem::localFog == -1` selects global `Fog`.
+    - Existing equal-scope tie behavior is retained: the last collected scoped fog wins, while the first root fog supplies the scene-wide fallback.
+    - The walk keeps its shared visit budget and depth cap and rejects containment back-edges without deduplicating separate USE paths.
+    - This does not change light scoping.
 
 - `clipPlanes` (`ClipPlaneList`) — the enabled `ClipPlane` nodes (§11.4.1) in scope for this placement, resolved to world space (a plane's half-space is invariant, so a consumer maps it into its own frame — e.g. eye space — as needed). A `ClipPlane` affects the *following siblings and their subtrees* within its parent grouping node, threaded down the walk as scoped state. Fixed capacity — `ClipPlaneList::kMaxClipPlanes = 6` (the Annex F.5 minimum); planes beyond the sixth are dropped. `enabled=false` planes are ignored.
 - `beyondVisibilityLimit` — hint: item origin is past `Viewpoint.farDistance` / `NavigationInfo.visibilityLimit`.

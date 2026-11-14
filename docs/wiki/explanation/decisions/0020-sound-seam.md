@@ -33,6 +33,7 @@ The full-featured production backend (LabSound — full C++ Web Audio: convolver
 ## Consequences
 
 **Positive:**
+
 - The third seam-pattern domain ships (after Script and Physics), reinforcing the architecture rather than adding a new shape. `AudioBackend` is a clean extension point: LabSound / miniaudio / a browser's Web Audio / a game-engine audio system each slot in without touching `AudioBackend.hpp` or `SoundSystem.hpp`.
 - The default build (`mise run build`, `ctest --preset dev`) is completely unaffected — no new dependency, no new flag, no fetch. The built-in DSP always tests.
 - Headless, deterministic, hardware-free audio testing: the `BuiltinDspBackend` renders byte-reproducible sample buffers, so the DSP tier asserts real correctness (440 Hz RMS ≈ 0.354; Goertzel@440 Hz >> @5 kHz; lowpass attenuation; param-animation monotonic RMS ramp) without any audio device.
@@ -40,6 +41,7 @@ The full-featured production backend (LabSound — full C++ Web Audio: convolver
 - The seam is purity-checked: `AudioBackend.hpp` and `SoundSystem.hpp` are grepped for DSP leakage (oscillator math / biquad / coefficients / phase / filter state) — there must be none; all DSP lives only in `BuiltinDspBackend.cpp`.
 
 **Trade-offs / costs:**
+
 - The built-in DSP is band-unlimited (naive waveforms, no PolyBLEP anti-aliasing). It is adequate for the v1 validation asserts (tone presence, filtering, gain). Anti-aliasing is a clean later refinement that does not change the seam.
 - `Lowshelf`/`Highshelf`/`Peaking` filter types fall back to pass-through in v1 (they need a dB-gain param the current `NodeParams` does not carry). These are named extension points — adding the param and completing those formulas changes only `BuiltinDspBackend.cpp` and `NodeParams`.
 - Spatialization (`SpatialSound`/`ListenerPointSource`) **shipped in Task 3**: `NodeKind::Panner`, positional `NodeParams` fields (source/listener positions + orientation vectors + distance model fields), `renderStereo`, and `DistanceModel` are part of the seam. `BuiltinDspBackend` implements equal-power pan (`gL=cos θ`, `gR=sin θ`) and three distance models (Linear/Inverse/Exponential) entirely backend-side from POSITIONS — no precomputed gain crosses the seam. `SoundSystem` resolves `SpatialSound`+`ListenerPointSource` pose into a `Panner` node (SDK-side plumbing: Rodrigues' rotation to derive `listenerForward`/`listenerUp`; no spatial computation). The miniaudio backend's `ma_spatializer` path shipped in ADR-0026 (Task 4); HRTF, Doppler, and the §16 Sound ellipsoid remain future work.

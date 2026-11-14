@@ -53,10 +53,12 @@ surfaces the data X_ITE keeps inside the GPU).
 ## Consequences
 
 **Positive:**
+
 - Displacers become observable and routable — the right behavior for a data-exposure runtime.
 - Neutral pose preserved (round-trip safe); recompute is order-independent and dirty-gated.
 
 **Trade-offs:**
+
 - Diverges from majority-browser (X_ITE) *data-model* behavior (which leaves `coord.point` untouched);
   the divergence is deliberate and recorded here.
 - Requires a new `DisplacerSystem` (the finding is `deferred` until it lands).

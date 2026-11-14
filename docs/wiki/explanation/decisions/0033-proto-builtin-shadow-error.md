@@ -52,6 +52,7 @@ registry, so they pass untouched — the check only rejects masquerade-as-a-core
 ## Consequences
 
 **Positive:**
+
 - Closes a silent built-in-subversion vector; built-in semantics become inviolable (composes with
   ADR-0001's firewall).
 - Deterministic resolution of the spec's "undefined" (built-in precedence), matching X_ITE and
@@ -64,6 +65,7 @@ registry, so they pass untouched — the check only rejects masquerade-as-a-core
 - Auditable via `ProtoWarning`, like recursion / unresolved-extern warnings.
 
 **Trade-offs:**
+
 - A collision check runs at every PROTO registration (negligible: one hash lookup).
 - Content that intentionally overrode a built-in via PROTO will lose that override (by design).
 

@@ -53,12 +53,14 @@ be corrected upstream, not the engine.
 ## Consequences
 
 **Positive:**
+
 - Conforms to SAI §4.5.2 and matches x3dom/X_ITE behavior (portability).
 - Removes the mid-cascade re-drive side-channel; event flow is predictable.
 - Low risk: the existing `sai_context_test.cpp:107-127` value-landing assertion still holds (only the
   routing semantics change).
 
 **Trade-offs:**
+
 - Content that (incorrectly) relied on directOutput writes triggering ROUTEs will not fire those
   ROUTEs — but such content was non-portable already.
 - `sai_context_test.cpp:107-127` must be extended to assert no ROUTE fans out from the written field.

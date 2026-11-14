@@ -21,6 +21,7 @@ Accepted
 The asset-import and scene-authoring workflow (Wave 3) introduced a requirement to construct X3D scene graphs programmatically from external assets (such as OBJ models or synthetic fixtures) and serialize them. 
 
 However, two architectural concerns arose:
+
 1. **Binary Footprint Bloat**: Importers or asset converters built on top of the SDK do not require full runtime behavior, event cascade propagation, scripting, audio, or physics engines. Pulling in these subsystems increases compile times, executable footprint, and memory overhead unnecessarily.
 2. **Subsystem Decoupling**: The serialization/authoring layer (document model, codec writers, range validation) should remain cleanly separated from the parsing/execution layer. A programmatically constructed scene should be serializable without pulling in parser dependencies (such as XML/JSON readers or PROTO resolvers).
 
@@ -35,8 +36,8 @@ We decided to partition the codebase to expose a slim, header-only target for au
    
 2. **Footprint Gate (`authoring-footprint.sh`)**:
    An automated gate runs under `mise run authoring-footprint` and CI. It compiles the `x3d_authoring_smoke` executable, which only links `x3d_cpp::authoring`. 
-   * **Symbol scan**: Using `nm`, the gate asserts that no symbols from forbidden subsystems (such as `SceneExtractor`, `X3DExecutionContext`, `parseDocument`, `parseFile`, `PhysicsWorld`, `ScriptSystem`, or `MeshBuilder`) are present in the compiled binary.
-   * **Size baseline**: The gate strips the binary and verifies that the `.text` section size does not exceed the baseline by more than 10%, flagging any transitive inclusion drift.
+    * **Symbol scan**: Using `nm`, the gate asserts that no symbols from forbidden subsystems (such as `SceneExtractor`, `X3DExecutionContext`, `parseDocument`, `parseFile`, `PhysicsWorld`, `ScriptSystem`, or `MeshBuilder`) are present in the compiled binary.
+    * **Size baseline**: The gate strips the binary and verifies that the `.text` section size does not exceed the baseline by more than 10%, flagging any transitive inclusion drift.
 
 3. **`x3d_asset_import` Integration CLI**:
    A command-line tool `x3d_asset_import` was created in `examples/asset_import/main.cpp` to tie the components together (backend loading → texture planning → scene graph emission → profile fitting → self-validation → serialization). For verification purposes, it implements a `--verify` flag which *does* use the full SDK parser (`x3d::codec::parseFile`) to round-trip and verify the generated X3D files. This dependency is quarantined solely in the tool's CLI wrapper (`main.cpp`), keeping the underlying `emit` library completely free of parser dependencies.
@@ -74,5 +75,6 @@ is removed: shared runtime libraries moved code outside that measurement, and
 the script fixed neither compiler nor optimization settings. The symbol scan
 and authoring linkage contract remain. There is no absolute size budget or
 `--write-baseline` workflow.
+
 - [Architecture](../architecture.md)
 - [Asset import](../../reference/subsystems/asset-import.md)

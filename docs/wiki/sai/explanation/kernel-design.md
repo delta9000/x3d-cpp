@@ -66,10 +66,10 @@ and host-only runtime output are different questions.
 
 ## Explicit removal, explicit boundaries
 
-Node removal is a staged, non-cascading mutation. Roots, node-valued fields,
-names, exports, routes and committed imports keep their targets until the
-caller removes or rewrites those references. Nothing disappears as a side
-effect.
+Node removal is a staged, non-cascading mutation, so nothing disappears as a
+side effect: every reference stays until the caller removes or rewrites it. The
+list of what keeps its target is in
+[Kernel: Node removal](../reference/kernel.md#node-removal).
 
 Execution-context boundaries have explicit ordered EXPORT/IMPORT apertures.
 Imported nodes and fields are distinct inspection-only proxy types. A parent

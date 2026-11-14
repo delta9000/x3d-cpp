@@ -177,6 +177,7 @@ The three ordinary writers emit the document's `profile` from `X3DDocument::prof
 ### Encoding-specific behaviors
 
 XmlWriter:
+
 - Value fields become XML attributes; `SFNode`/`MFNode` fields become child elements under the child's `containerField` name.
 - Enum fields use the `FieldInfo::getEnumString` thunk.
 - A `Script` node's inline source is emitted as a `<![CDATA[...]]>` text body rather than an attribute; author `<field>` declarations from the `DynamicFieldStore` are emitted as `<field>` child elements. A literal `]]>` in the source is split across consecutive CDATA sections (`xml::cdataEscape`; the reader concatenates them back — ENC-CDATA-SCRIPT).
@@ -184,6 +185,7 @@ XmlWriter:
 - Un-expanded `ProtoInstance`s that were not resolved (no graph node) are re-emitted from `scene.protoInstances` so they survive a round-trip.
 
 VrmlWriter:
+
 - Emits `#X3D V<version> utf8` header; sub-3.0 version tokens are floored to `3.0` (VP-2 conformance) by the shared `codec::headerVersion` (`VersionHeader.hpp`), which the XML and JSON writers also use for their `version` attribute.
 - MF values are always bracketed with `[... ]` to satisfy the ClassicVRML grammar (ISO/IEC 19776-2 `mfValue ::= '['... ']'` — bare runs truncate on reparse).
 - `SFBool`/`MFBool` tokens are uppercased to `TRUE`/`FALSE` (VRML convention, not XML/JSON).
@@ -193,6 +195,7 @@ VrmlWriter:
 - Case-A nested ProtoInstances inside a ProtoBody are injected into the parent body node's braces via `writeVrmlNestedFor` (PRF-3).
 
 JsonWriter:
+
 - Follows Web3D X3D-JSON schema conventions: value attributes are prefixed `@`; node-child slots are prefixed `-` and hold arrays.
 - SF structured types (vectors, colors, rotations) are serialized as JSON number arrays; scalars use native JSON types (numbers, booleans, strings).
 - MFString is a JSON string array.
@@ -201,6 +204,7 @@ JsonWriter:
 - Script inline source is emitted as `"#sourceText": [...]` (one element per line); author fields as a `"field": [...]` array member.
 
 CanonicalXmlWriter (X3DC14N):
+
 - Shares semantic graph construction with `XmlWriter`; keeps a separate renderer and explicit canonical policies, as amended in [ADR-0008](../../explanation/decisions/0008-canonicalize-source-provenance.md).
 - Attributes sorted alphabetically within each element; single-quote attribute delimiters.
 - Canonical escaping: `&amp;`, `&lt;`, `&gt;`, `&apos;` (not `&quot;` — single-quoted context).

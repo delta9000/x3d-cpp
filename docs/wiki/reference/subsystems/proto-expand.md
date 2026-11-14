@@ -136,14 +136,25 @@ Both `expandScene` and `expandInstance` are inline, header-only functions in `ru
 
 - `ProtoDeclarationResolver` callback — the single pluggable seam for EXTERNPROTO resolution. The default (`localFileProtoResolver` in `runtime/parse/X3DParse.hpp`) resolves file-relative urls, parses the target file, and returns its matching `ProtoDeclaration`. It skips http/https/urn urls (embedder-override territory) and uses a `thread_local` active-file stack to terminate cross-file EXTERN cycles. Embedders replace this with a network fetch, virtual FS, or content-addressable cache. The ext firewall wires its own resolver via `x3d::runtime::ext::install()` (see `runtime/ext/ExtResolver.hpp`), which intercepts ExternalGeometry URNs before falling through to the base resolver.
 
-- `protoResolverFrom` adapter — `runtime/parse/AssetProtoResolver.hpp` adapts the renderer-agnostic [`AssetResolver`](system-asset-io.md) seam into a `ProtoDeclarationResolver`, so an embedder can plug a routed http/s3 backend into parse-time expansion. `protoResolverFrom(AssetResolver, Encoding hint = Unknown)` walks each url in order, strips a `#ProtoName` fragment, fetches the document bytes (`AssetKind::ExternProto`), sniffs the encoding, parses with `parseDocument`, and returns the named declaration (fragment) or the document's first. `Failed` skips to the next candidate; `Pending` is a hard error at this parse-time call site (contract B) and yields null; it never throws. `urn:` resolves only when the injected resolver owns that scheme (e.g. a `makeSchemeRouter` with a `"urn"` entry). Like the default resolver, it keeps a `thread_local` set of urls currently being resolved, so a self- or mutually-referencing EXTERNPROTO terminates (a re-entered url resolves to null) instead of recursing without bound.
+- `protoResolverFrom` adapter — `runtime/parse/AssetProtoResolver.hpp` adapts the renderer-agnostic [`AssetResolver`](system-asset-io.md) seam into a `ProtoDeclarationResolver`, so an embedder can plug a routed http/s3 backend into parse-time expansion.
+    - `protoResolverFrom(AssetResolver, Encoding hint = Unknown)` walks each url in order, strips a `#ProtoName` fragment, fetches the document bytes (`AssetKind::ExternProto`), sniffs the encoding, parses with `parseDocument`, and returns the named declaration (fragment) or the document's first.
+    - `Failed` skips to the next candidate; `Pending` is a hard error at this parse-time call site (contract B) and yields null; it never throws.
+    - `urn:` resolves only when the injected resolver owns that scheme (e.g. a `makeSchemeRouter` with a `"urn"` entry).
+    - Like the default resolver, it keeps a `thread_local` set of urls currently being resolved, so a self- or mutually-referencing EXTERNPROTO terminates (a re-entered url resolves to null) instead of recursing without bound.
 
-- Scoped clone services — `ProtoDeclaration::createNode` supplies an optional fallback factory for that declaration. `deepClone` takes a `CloneContext` with source/destination author-field stores and the factory; no process-global hook exists. `ext::install()` returns a resolver-local declaration/factory, so enabling it does not change unrelated cloning. Declaration owners survive temporary source-document destruction. Author declarations and current boxed values are copied to fresh destination entries; SFNode/MFNode values use the same clone map as generated fields to preserve intra-instance sharing without pointing back into the source graph. Calls without a CloneContext copy generated fields only. This does not imply full native SAI prototype support. See [ADR-0057](../../explanation/decisions/0057-scene-owned-author-fields.md).
+- Scoped clone services — `ProtoDeclaration::createNode` supplies an optional fallback factory for that declaration.
+    - `deepClone` takes a `CloneContext` with source/destination author-field stores and the factory; no process-global hook exists.
+    - `ext::install()` returns a resolver-local declaration/factory, so enabling it does not change unrelated cloning.
+    - Declaration owners survive temporary source-document destruction.
+    - Author declarations and current boxed values are copied to fresh destination entries; SFNode/MFNode values use the same clone map as generated fields to preserve intra-instance sharing without pointing back into the source graph.
+    - Calls without a CloneContext copy generated fields only.
+    - This does not imply full native SAI prototype support.
+    - See [ADR-0057](../../explanation/decisions/0057-scene-owned-author-fields.md).
 
 - `Scene` expansion tables — `expandScene` writes to three `Scene` fields that other subsystems consume:
-  - `Scene::resolvedProtoRoutes` — body-internal ROUTEs pre-resolved to concrete cloned endpoints; the event cascade (`X3DEventCascade`) picks these up alongside scene-level ROUTEs.
-  - `Scene::protoRedirects` — maps each expanded primary node's interface event field to the IS-connected body endpoints; the scene bridge (`X3DSceneBridge`) consults this map when resolving external ROUTEs that target a proto instance.
-  - `Scene::expandedSources` — maps each expanded primary node back to its source `ProtoInstance`; codec writers consult this to re-emit `<ProtoInstance>` rather than the cloned body.
+    - `Scene::resolvedProtoRoutes` — body-internal ROUTEs pre-resolved to concrete cloned endpoints; the event cascade (`X3DEventCascade`) picks these up alongside scene-level ROUTEs.
+    - `Scene::protoRedirects` — maps each expanded primary node's interface event field to the IS-connected body endpoints; the scene bridge (`X3DSceneBridge`) consults this map when resolving external ROUTEs that target a proto instance.
+    - `Scene::expandedSources` — maps each expanded primary node back to its source `ProtoInstance`; codec writers consult this to re-emit `<ProtoInstance>` rather than the cloned body.
 
 `Scene::protoPeerNodes` retains non-rendered body peers. Standard runtime systems and the CLI's ScriptSystem enroll them alongside reachable scene nodes; extraction still traverses only rendered roots (§4.4.4.3).
 

@@ -119,4 +119,5 @@ instead of forcing values into the parent's cache. QuickJS's older CMake policy
 baseline needs `CMAKE_POLICY_DEFAULT_CMP0077=NEW` so its `option()` calls honor
 those values. The parent keeps its own `BUILD_SHARED_LIBS`, `ENABLE_INSTALL`,
 and `GENERATE_DEBUG_SYMBOLS` choices. Backend libraries remain static.
+
 - [Architecture](../architecture.md)

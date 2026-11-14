@@ -59,16 +59,9 @@ Two thin `MeshBuilder` arms read the X3D fields and call it:
 - `NurbsPatchSurface` → resolves the control net + `u*/v*` fields, calls
   `tessellateSurface`, and emits two triangles per grid cell as `Topology::Triangles`
   with populated analytic normals and implicit normalized `(u,v)` texcoords.
-- `NurbsSweptSurface` / `NurbsSwungSurface`  → read a 2D control curve
-  (`crossSectionCurve`/`profileCurve` and the swung `trajectoryCurve`) via
-  `tessellateCurve2D` — the shared evaluator lifted to z=0, with `ContourPolyline2D`
-  forced to its piecewise-linear order 2 — plus a 3D `trajectoryCurve` for the swept
-  case. `sweptSurfaceGrid` carries the cross-section in the frame perpendicular to the
-  trajectory tangent (a circle swept along a straight line is a cylinder);
-  `swungSurfaceGrid` builds the classic swung surface `S(u,v) = (px·tx, px·ty, py)`
-  (a line profile swung around a circle is a surface of revolution). Both emit the same
-  `Topology::Triangles` form as the patch surface (central-difference per-vertex normals,
-  unit-square texcoords) and honor `solid`/`ccw`/`tessellation`.
+- `NurbsSweptSurface` / `NurbsSwungSurface`  → read a 2D control curve (`crossSectionCurve`/`profileCurve` and the swung `trajectoryCurve`) via `tessellateCurve2D` — the shared evaluator lifted to z=0, with `ContourPolyline2D` forced to its piecewise-linear order 2 — plus a 3D `trajectoryCurve` for the swept case.
+    - `sweptSurfaceGrid` carries the cross-section in the frame perpendicular to the trajectory tangent (a circle swept along a straight line is a cylinder); `swungSurfaceGrid` builds the classic swung surface `S(u,v) = (px·tx, px·ty, py)` (a line profile swung around a circle is a surface of revolution).
+    - Both emit the same `Topology::Triangles` form as the patch surface (central-difference per-vertex normals, unit-square texcoords) and honor `solid`/`ccw`/`tessellation`.
 
 - All five flip to `true` in `recognizedGeometryType()` (kept in lockstep with
   the dispatch).

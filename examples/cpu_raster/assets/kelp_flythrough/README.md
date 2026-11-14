@@ -37,27 +37,5 @@ If you redistribute any render of this scene, credit NPS MOVES as above.
 
 ## Run it
 
-```sh
-# 1. Build the rasterizer (once):
-mise run cpuraster
-
-# 2. Fetch the exhibit into ./exhibit/ (needs wget):
-examples/cpu_raster/assets/kelp_flythrough/fetch_kelp.sh
-
-# 3a. One-shot, everything wired (fetch-if-needed + render + encode; needs ffmpeg):
-mise run kelp-flythrough        # -> kelp_flythrough.webm
-
-# 3b. …or drive the binary yourself — a still:
-build-cpuraster/examples/cpu_raster/x3d_cpu_raster \
-    examples/cpu_raster/assets/kelp_flythrough/flythrough_kelp.x3d -o kelp.png -w 800 -H 450
-
-# …or the animated flythrough (PPM frames -> your encoder):
-build-cpuraster/examples/cpu_raster/x3d_cpu_raster \
-    examples/cpu_raster/assets/kelp_flythrough/flythrough_kelp.x3d \
-    --animate --fps 30 --duration 12 -w 800 -H 450 --frames-dir /tmp/kelp
-```
-
-`--animate` runs the standard behavior runtime (TimeSensor + interpolators), so
-the kelp, fish, and pump mechanism move; a plain still freezes them in their
-authored rest pose. Note the exhibit's `ElevationGrid` rock floor renders solid
-thanks to the §13.3.4 surface-winding fix (conformance EXT-003).
+Steps and flags: [Kelp Forest flythrough](../../../../docs/wiki/reference/examples/cpu-raster.md#kelp-forest-flythrough)
+in the cpu_raster reference.

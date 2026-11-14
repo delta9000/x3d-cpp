@@ -113,16 +113,50 @@ in `assets/demos/` (all `loop="true"`):
 - `anim_dvd.x3d` — the X3D "DVD logo": a `Text` node driven by a `PositionInterpolator`
   with true edge reflections, tuned to graze a corner without hitting it (8 s loop).
 
-Encode them to WebM + animated-GIF heroes (needs `ffmpeg` with `libvpx-vp9`):
+Encode them to WebM and animated GIF (needs `ffmpeg` with `libvpx-vp9`):
 
 ```sh
-mise run demos     # -> docs/videos/demos/*.webm + docs/images/gallery/anim-*.gif
+mise run demos     # -> build-cpuraster/demos/*.webm + anim-*.gif (not committed)
 ```
 
 Regression is byte-exact and needs no ffmpeg: `demo_animation_test` renders fixed
 sample frames and compares them to committed golden PPMs
 (`tests/golden/demos/`). Regenerate goldens after an intentional visual change
 with `mise run demos-bless`.
+
+### Kelp Forest flythrough
+
+`assets/kelp_flythrough/flythrough_kelp.x3d` flies a bound `Viewpoint` through
+the third-party NPS/MOVES Kelp Forest Exhibit, which is fetched on demand and
+not committed. Provenance and the required credit are in
+`examples/cpu_raster/assets/kelp_flythrough/README.md`. The committed outputs are
+the README hero `docs/images/gallery/anim-kelp.gif` and
+`docs/videos/demos/kelp_flythrough.webm`.
+
+```sh
+# 1. Build the rasterizer (once):
+mise run cpuraster
+
+# 2. Fetch the exhibit into ./exhibit/ (needs wget):
+examples/cpu_raster/assets/kelp_flythrough/fetch_kelp.sh
+
+# 3a. One-shot, everything wired (fetch-if-needed + render + encode; needs ffmpeg):
+mise run kelp-flythrough        # -> kelp_flythrough.webm
+
+# 3b. …or drive the binary yourself — a still:
+build-cpuraster/examples/cpu_raster/x3d_cpu_raster \
+    examples/cpu_raster/assets/kelp_flythrough/flythrough_kelp.x3d -o kelp.png -w 800 -H 450
+
+# …or the animated flythrough (PPM frames -> your encoder):
+build-cpuraster/examples/cpu_raster/x3d_cpu_raster \
+    examples/cpu_raster/assets/kelp_flythrough/flythrough_kelp.x3d \
+    --animate --fps 30 --duration 12 -w 800 -H 450 --frames-dir /tmp/kelp
+```
+
+`--animate` runs the standard behavior runtime (TimeSensor + interpolators), so
+the kelp, fish, and pump mechanism move; a plain still freezes them in their
+authored rest pose. Note the exhibit's `ElevationGrid` rock floor renders solid
+thanks to the §13.3.4 surface-winding fix (conformance EXT-003).
 
 ## Layout
 

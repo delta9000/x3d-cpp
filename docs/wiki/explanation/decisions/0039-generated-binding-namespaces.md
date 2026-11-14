@@ -35,10 +35,10 @@ types and relocating the headers had to happen together.
 ## Decision
 
 - **Two namespaces, split by role** (mirrors the existing `x3d::*` layering):
-  - **`x3d::core`** — the foundational vocabulary: `SF*/MF*` value types (`X3Dtypes`),
+    - **`x3d::core`** — the foundational vocabulary: `SF*/MF*` value types (`X3Dtypes`),
     reflection primitives (`FieldInfo`/`FieldTable`/`NodeVisitor`/`RangeDiagnostic`/
     `X3DFieldType`/`AccessType`, `X3DReflection`), and the bounded enums (`X3Denums`).
-  - **`x3d::nodes`** — the `X3DNode` base, every abstract `X3D*Node`, all 685 concrete node
+    - **`x3d::nodes`** — the `X3DNode` base, every abstract `X3D*Node`, all 685 concrete node
     classes, the node factory, and the interface registry.
   The value types are used far more widely than the node classes (e.g. `SFVec3f` in ~146
   runtime files vs. ~76 for the most-used node) and a `SFVec3f` is **not** a node, so a single

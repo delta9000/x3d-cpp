@@ -122,10 +122,10 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 1. Walk the scene graph collecting `(parent, inlineNode)` pairs. A `visited` set prevents re-walking through USE-shared or cyclic containment structures (this guard is needed because `expandInlines()` runs before `breakContainmentCycles`). The walk also stops descending at `kMaxNestingDepth` : proto expansion can nest deeper than the parse-time cap, and the walk recurses on the native stack. Field values are read with `FieldRead.hpp`'s exception-free `fieldValueAs`, so an error inside the walk propagates instead of silently dropping a subtree.
 2. For each collected Inline with `load=TRUE`, call the resolver. On success:
-   - Wrap the child's `rootNodes` in a synthetic `Group` via `X3DNodeFactory::create("Group")`.
-   - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
-   - Record `scene.expandedInlines[group.get()] = inl` for writer round-trip.
-   - Replace the Inline node in its parent slot (`replaceInParent`), or in `scene.rootNodes` for root-level Inlines.
+    - Wrap the child's `rootNodes` in a synthetic `Group` via `X3DNodeFactory::create("Group")`.
+    - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.
+    - Record `scene.expandedInlines[group.get()] = inl` for writer round-trip.
+    - Replace the Inline node in its parent slot (`replaceInParent`), or in `scene.rootNodes` for root-level Inlines.
 3. `load=FALSE` Inlines stay in place. With an injected resolver, `InlineRuntimeSystem` runs this same expansion pass after a later `load=TRUE` event, enrolls the new subtree with live systems, and connects child and IMPORT routes. On unload it removes routes, queued events, aliases and per-node system state before restoring the original Inline. The extractor diffs a fresh topology snapshot on load, unload and replacement, reporting removed and added RenderItems.
 4. Child DEFs are never merged into `scene.defs`, enforcing ISO §9.4.2 DEF isolation.
 
