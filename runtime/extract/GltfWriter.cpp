@@ -1,6 +1,7 @@
 // GltfWriter.cpp — see GltfWriter.hpp for what is and is not exported.
 #include "GltfWriter.hpp"
 
+#include "TransformSystem.hpp"
 #include "X3DSceneBridge.hpp"
 #include "x3d/nodes/GeoViewpoint.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
@@ -13,7 +14,9 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <limits>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace x3d::runtime::extract {
 namespace {
@@ -175,6 +178,39 @@ std::array<double, 4> aimQuaternion(const SFVec3f &dir) {
   return {y / n, -x / n, 0.0, w / n};
 }
 
+// Axis-angle to a unit quaternion (x, y, z, w); a zero axis is no rotation.
+std::array<double, 4> quaternion(const SFRotation &r) {
+  const double len = std::sqrt(double(r.x) * r.x + double(r.y) * r.y +
+                               double(r.z) * r.z);
+  if (!(len > 1e-12) || !std::isfinite(len) || !std::isfinite(r.angle))
+    return {0, 0, 0, 1};
+  const double s = std::sin(r.angle * 0.5) / len;
+  return {r.x * s, r.y * s, r.z * s, std::cos(r.angle * 0.5)};
+}
+
+bool isIdentity(const Mat4 &m) { return m.m == Mat4::identity().m; }
+
+std::string matrixJson(const Mat4 &m) {
+  std::vector<std::string> cells;
+  for (float v : m.m) cells.push_back(num(v));
+  return "\"matrix\":[" + join(cells) + "]";
+}
+
+// A glTF node under construction: `body` is the object's members without the
+// closing brace, so children can be appended when everything is known.
+struct Node {
+  std::string body;
+  std::vector<int> children;
+};
+
+// One placement of an animated Transform, as the glTF nodes that realise it.
+struct TransformInstance {
+  int trs = -1;    // translation and rotation live here
+  int scale = -1;  // the node carrying scale (trs unless scaleOrientation is used)
+  int tail = -1;   // parent for content below the Transform
+  Mat4 after;      // estimated world matrix below this Transform
+};
+
 struct MeshAccessors {
   int position = -1, normal = -1, color = -1, indices = -1;
   std::vector<int> texcoords;
@@ -228,14 +264,28 @@ public:
     for (const X3DNode *n : item.path)
       if (n && !n->getDEF().empty()) name = n->getDEF();
     if (!name.empty()) node += ",\"name\":" + quote(name);
-    const auto &m = item.worldTransform.m;
-    if (item.worldTransform.m != Mat4::identity().m) {
-      std::vector<std::string> cells;
-      for (float v : m) cells.push_back(num(v));
-      node += ",\"matrix\":[" + join(cells) + "]";
-    }
-    nodes_.push_back(node + "}");
+
+    // Without an animated Transform above it the item is a root carrying its
+    // world matrix. Under one, it hangs off that Transform's node with
+    // whatever is left of its world matrix, so the composed matrix is still
+    // exactly item.worldTransform at export time.
+    Mat4 below = Mat4::identity();
+    const int parent = animatedParent(item.path, below);
+    const Mat4 local =
+        parent < 0 ? item.worldTransform : below.inverse() * item.worldTransform;
+    if (!isIdentity(local)) node += "," + matrixJson(local);
+    attach(parent, node);
+    ++itemNodes_;
     report_.triangles += acc.triangles;
+  }
+
+  // Declare the animations before any item is added: their targets decide
+  // which Transforms are kept as nodes.
+  void setAnimations(const std::vector<GltfAnimation> &animations) {
+    animations_ = &animations;
+    for (const GltfAnimation &animation : animations)
+      for (const GltfAnimationChannel &channel : animation.channels)
+        if (channel.target) animatedTargets_.insert(channel.target);
   }
 
   void add(const LightDesc &light) {
@@ -272,7 +322,7 @@ public:
       if (q[3] < 1.0)
         node += ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
     }
-    extraNodes_.push_back(node + "}");
+    attach(-1, node);
   }
 
   void add(const GltfCamera &camera) {
@@ -304,14 +354,24 @@ public:
       for (float v : camera.cameraToWorld.m) cells.push_back(num(v));
       node += ",\"matrix\":[" + join(cells) + "]";
     }
-    extraNodes_.push_back(node + "}");
+    attach(-1, node);
   }
 
   std::string finish() {
-    report_.nodes = nodes_.size();
+    writeAnimations();
+    report_.nodes = itemNodes_;
     report_.lights = lights_.size();
     report_.cameras = cameras_.size();
-    nodes_.insert(nodes_.end(), extraNodes_.begin(), extraNodes_.end());
+    std::vector<std::string> nodes;
+    for (const Node &n : nodes_) {
+      std::string json = n.body;
+      if (!n.children.empty()) {
+        std::vector<std::string> kids;
+        for (int c : n.children) kids.push_back(std::to_string(c));
+        json += ",\"children\":[" + join(kids) + "]";
+      }
+      nodes.push_back(json + "}");
+    }
     report_.meshes = meshes_.size();
     report_.materials = materials_.size();
     report_.textures = textures_.size();
@@ -328,8 +388,7 @@ public:
       top.push_back("\"extensions\":{\"KHR_lights_punctual\":{\"lights\":[" +
                     join(lights_) + "]}}");
     std::vector<std::string> roots;
-    for (std::size_t i = 0; i < nodes_.size(); ++i)
-      roots.push_back(std::to_string(i));
+    for (int r : roots_) roots.push_back(std::to_string(r));
     top.push_back("\"scene\":0");
     top.push_back(roots.empty() ? "\"scenes\":[{}]"
                                 : "\"scenes\":[{\"nodes\":[" + join(roots) +
@@ -338,13 +397,14 @@ public:
       if (!v.empty())
         top.push_back(std::string("\"") + name + "\":[" + join(v) + "]");
     };
-    section("nodes", nodes_);
+    section("nodes", nodes);
     section("meshes", meshes_);
     section("materials", materials_);
     section("textures", textures_);
     section("images", images_);
     section("samplers", samplers_);
     section("cameras", cameras_);
+    section("animations", animationJson_);
     section("accessors", accessors_);
     section("bufferViews", views_);
     if (!bin_.empty())
@@ -381,6 +441,7 @@ public:
 
 private:
   // Append little-endian floats / uint32s as a 4-byte-aligned buffer view.
+  // `target` 0 marks data that is not vertex data (animation samples).
   int view(const void *data, std::size_t bytes, int target) {
     while (bin_.size() % 4) bin_ += '\0';
     const std::size_t offset = bin_.size();
@@ -388,13 +449,193 @@ private:
     while (bin_.size() % 4) bin_ += '\0';
     views_.push_back("{\"buffer\":0,\"byteOffset\":" + std::to_string(offset) +
                      ",\"byteLength\":" + std::to_string(bytes) +
-                     ",\"target\":" + std::to_string(target) + "}");
+                     (target ? ",\"target\":" + std::to_string(target) : "") +
+                     "}");
     return static_cast<int>(views_.size()) - 1;
   }
 
+  // Add a node under `parent` (-1: a scene root) and return its index.
+  int attach(int parent, const std::string &body) {
+    nodes_.push_back(Node{body, {}});
+    const int index = static_cast<int>(nodes_.size()) - 1;
+    if (parent < 0) roots_.push_back(index);
+    else nodes_[static_cast<std::size_t>(parent)].children.push_back(index);
+    return index;
+  }
+
+  // Walk `path` and make sure every animated Transform on it exists as glTF
+  // nodes. Returns the node content below the last one hangs from (-1 if the
+  // path has none) and, in `below`, the estimated world matrix just below it.
+  //
+  // X3D: M = T * C * R * SR * S * SR^-1 * C^-1. glTF nodes are T*R*S, so:
+  //   trs   { translation T+C, rotation R, scale S }   and, if C != 0,
+  //   tail  { translation -C }
+  // or, with a scaleOrientation,
+  //   trs   { translation T+C, rotation R }
+  //   scale { rotation SR, scale S }
+  //   tail  { translation SR^-1(-C), rotation SR^-1 }
+  int animatedParent(const PathKey &path, Mat4 &below) {
+    if (animatedTargets_.empty()) return -1;
+    const geo::GeoProjection &projection = *geo::builtinProjectionOwner();
+    int parent = -1;
+    Mat4 world = Mat4::identity(); // estimate at the current path node
+    Mat4 since = Mat4::identity(); // accumulated since the last animated node
+    Mat4 anchor = Mat4::identity(); // world just below the last animated node
+    PathKey prefix;
+    for (const X3DNode *n : path) {
+      prefix.push_back(n);
+      if (!TransformSystem::isTransform(n)) continue;
+      if (!animatedTargets_.count(n)) {
+        const Mat4 local = TransformSystem::localMatrix(n, projection);
+        world = world * local;
+        since = since * local;
+        continue;
+      }
+      auto found = instances_.find(prefix);
+      if (found == instances_.end()) {
+        if (!isIdentity(since)) parent = attach(parent, "{" + matrixJson(since));
+        const SFVec3f t = geombounds::getVec3fLenient(*n, "translation", {0, 0, 0});
+        const SFVec3f c = geombounds::getVec3fLenient(*n, "center", {0, 0, 0});
+        const SFVec3f sc = geombounds::getVec3fLenient(*n, "scale", {1, 1, 1});
+        const SFRotation r =
+            geombounds::getField<SFRotation>(*n, "rotation", {0, 0, 1, 0});
+        const SFRotation so =
+            geombounds::getField<SFRotation>(*n, "scaleOrientation", {0, 0, 1, 0});
+        const SFRotation soInverse{so.x, so.y, so.z, -so.angle};
+        const bool oriented = quaternion(so)[3] < 1.0 - 1e-12;
+        const auto q = quaternion(r);
+
+        std::string trs = "{";
+        if (!n->getDEF().empty()) trs += "\"name\":" + quote(n->getDEF()) + ",";
+        trs += "\"translation\":" + array({double(t.x) + c.x, double(t.y) + c.y,
+                                           double(t.z) + c.z}) +
+               ",\"rotation\":" + array({q[0], q[1], q[2], q[3]});
+        const std::string scale = "\"scale\":" + array({sc.x, sc.y, sc.z});
+        TransformInstance inst;
+        if (!oriented) {
+          inst.trs = inst.scale = inst.tail = attach(parent, trs + "," + scale);
+          if (c.x != 0 || c.y != 0 || c.z != 0)
+            inst.tail = attach(inst.trs, "{\"translation\":" +
+                                             array({-double(c.x), -double(c.y),
+                                                    -double(c.z)}));
+        } else {
+          inst.trs = attach(parent, trs);
+          const auto qs = quaternion(so), qi = quaternion(soInverse);
+          inst.scale = attach(inst.trs, "{\"rotation\":" +
+                                            array({qs[0], qs[1], qs[2], qs[3]}) +
+                                            "," + scale);
+          const SFVec3f back = Mat4::rotation(soInverse)
+                                   .transformDirection({-c.x, -c.y, -c.z});
+          inst.tail = attach(inst.scale,
+                             "{\"translation\":" + array({back.x, back.y, back.z}) +
+                                 ",\"rotation\":" +
+                                 array({qi[0], qi[1], qi[2], qi[3]}));
+        }
+        // Exactly what those nodes compose to.
+        inst.after = world * Mat4::translation(t) * Mat4::translation(c) *
+                     Mat4::rotation(r) * Mat4::rotation(so) * Mat4::scale(sc) *
+                     Mat4::rotation(soInverse) *
+                     Mat4::translation({-c.x, -c.y, -c.z});
+        found = instances_.emplace(prefix, inst).first;
+        targetInstances_[n].push_back(inst);
+      }
+      parent = found->second.tail;
+      world = anchor = found->second.after;
+      since = Mat4::identity();
+    }
+    // Content hangs from the last animated node; any plain Transform between
+    // it and the item stays folded into the item's own matrix.
+    below = anchor;
+    return parent;
+  }
+
+  void writeAnimations() {
+    if (!animations_) return;
+    for (const GltfAnimation &animation : *animations_) {
+      std::vector<std::string> samplers, channels;
+      for (const GltfAnimationChannel &ch : animation.channels) {
+        const auto instances = targetInstances_.find(ch.target);
+        const std::size_t width =
+            ch.path == GltfAnimationChannel::Path::Rotation ? 4 : 3;
+        const std::size_t keys = ch.times.size();
+        if (instances == targetInstances_.end() || keys == 0 ||
+            ch.values.size() != keys * width) {
+          ++report_.skippedAnimationChannels;
+          continue;
+        }
+        // glTF wants strictly increasing times; X3D allows a repeated key
+        // for a jump. Nudge repeats forward by the smallest float step.
+        std::vector<float> times = ch.times;
+        for (std::size_t i = 0; i < keys; ++i) {
+          if (!std::isfinite(times[i]) || times[i] < 0) times[i] = 0;
+          if (i && times[i] <= times[i - 1])
+            times[i] = std::nextafter(times[i - 1],
+                                      std::numeric_limits<float>::max());
+        }
+        std::vector<float> values = ch.values;
+        if (ch.path == GltfAnimationChannel::Path::Translation) {
+          // The trs node's translation is T + center.
+          const SFVec3f c =
+              geombounds::getVec3fLenient(*ch.target, "center", {0, 0, 0});
+          for (std::size_t i = 0; i < keys; ++i) {
+            values[i * 3] += c.x;
+            values[i * 3 + 1] += c.y;
+            values[i * 3 + 2] += c.z;
+          }
+        } else if (ch.path == GltfAnimationChannel::Path::Rotation) {
+          // Unit length, and each key in the hemisphere of the one before.
+          for (std::size_t i = 0; i < keys; ++i) {
+            float *q = &values[i * 4];
+            const float len = std::sqrt(q[0] * q[0] + q[1] * q[1] +
+                                        q[2] * q[2] + q[3] * q[3]);
+            if (!(len > 1e-12f) || !std::isfinite(len)) {
+              q[0] = q[1] = q[2] = 0;
+              q[3] = 1;
+            } else {
+              for (int k = 0; k < 4; ++k) q[k] /= len;
+            }
+            if (i) {
+              const float *p = q - 4;
+              if (p[0] * q[0] + p[1] * q[1] + p[2] * q[2] + p[3] * q[3] < 0)
+                for (int k = 0; k < 4; ++k) q[k] = -q[k];
+            }
+          }
+        }
+        for (float &v : values)
+          if (!std::isfinite(v)) v = 0;
+        const int input = floatAccessor(times, 1, "SCALAR", true, 0);
+        const int output =
+            floatAccessor(values, static_cast<int>(width),
+                          width == 4 ? "VEC4" : "VEC3", false, 0);
+        samplers.push_back("{\"input\":" + std::to_string(input) +
+                           ",\"output\":" + std::to_string(output) +
+                           ",\"interpolation\":\"LINEAR\"}");
+        const char *path =
+            ch.path == GltfAnimationChannel::Path::Translation ? "translation"
+            : ch.path == GltfAnimationChannel::Path::Rotation ? "rotation"
+                                                              : "scale";
+        for (const TransformInstance &inst : instances->second) {
+          const int node = ch.path == GltfAnimationChannel::Path::Scale
+                               ? inst.scale : inst.trs;
+          channels.push_back("{\"sampler\":" +
+                             std::to_string(samplers.size() - 1) +
+                             ",\"target\":{\"node\":" + std::to_string(node) +
+                             ",\"path\":\"" + path + "\"}}");
+          ++report_.animationChannels;
+        }
+      }
+      if (channels.empty()) continue;
+      std::string json = "{";
+      if (!animation.name.empty()) json += "\"name\":" + quote(animation.name) + ",";
+      animationJson_.push_back(json + "\"channels\":[" + join(channels) +
+                               "],\"samplers\":[" + join(samplers) + "]}");
+    }
+    report_.animations = animationJson_.size();
+  }
+
   int floatAccessor(const std::vector<float> &data, int components,
-                    const char *type, bool bounds) {
-    const int v = view(data.data(), data.size() * sizeof(float), kArrayBuffer);
+                    const char *type, bool bounds, int target = kArrayBuffer) {
+    const int v = view(data.data(), data.size() * sizeof(float), target);
     const std::size_t count = data.size() / static_cast<std::size_t>(components);
     std::string a = "{\"bufferView\":" + std::to_string(v) +
                     ",\"componentType\":" + std::to_string(kFloat) +
@@ -718,8 +959,16 @@ private:
   const GltfWriteOptions &options_;
   GltfWriteReport &report_;
   std::string bin_;
-  std::vector<std::string> nodes_, meshes_, materials_, textures_, images_,
-      samplers_, accessors_, views_, lights_, cameras_, extraNodes_;
+  std::vector<Node> nodes_;
+  std::vector<int> roots_;
+  std::size_t itemNodes_ = 0;
+  std::vector<std::string> meshes_, materials_, textures_, images_, samplers_,
+      accessors_, views_, lights_, cameras_, animationJson_;
+  const std::vector<GltfAnimation> *animations_ = nullptr;
+  std::unordered_set<const X3DNode *> animatedTargets_;
+  std::map<PathKey, TransformInstance> instances_;
+  std::unordered_map<const X3DNode *, std::vector<TransformInstance>>
+      targetInstances_;
   std::unordered_map<std::string, int> embedded_, fileImages_;
   std::unordered_map<const TexturePixels *, int> decodedImages_;
   std::unordered_map<const MeshData *, MeshAccessors> meshAccessors_;
@@ -735,10 +984,14 @@ std::string writeGlb(const std::vector<const RenderItem *> &items,
                      const GltfWriteOptions &options, GltfWriteReport *report) {
   GltfWriteReport local;
   GltfWriteReport &r = report ? *report : local;
-  const std::size_t skippedViewpoints = r.skippedViewpoints;
+  // gltfExtrasFrom reports what it skipped before the writer runs; keep it.
+  const std::size_t skippedViewpoints = report ? r.skippedViewpoints : 0;
+  const std::size_t skippedRoutes = report ? r.skippedAnimationRoutes : 0;
   r = GltfWriteReport{};
-  if (report) r.skippedViewpoints = skippedViewpoints;
+  r.skippedViewpoints = skippedViewpoints;
+  r.skippedAnimationRoutes = skippedRoutes;
   Writer writer(options, r);
+  writer.setAnimations(extras.animations);
   for (const RenderItem *item : items)
     if (item) writer.add(*item);
   for (const LightDesc &light : extras.lights) writer.add(light);
@@ -791,6 +1044,100 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
       extras.cameras.push_back(std::move(cam));
   });
   if (report) report->skippedViewpoints = skipped;
+
+  // ---- animations: TimeSensor -> interpolator -> Transform ----
+  const Scene &scene = extractor.scene();
+  auto endpoint = [&](const std::weak_ptr<X3DNode> &resolved,
+                      const std::string &def) {
+    auto node = resolved.lock();
+    return node ? node : scene.resolve(def);
+  };
+  // "set_x" and "x_changed" both name field x.
+  auto fieldName = [](std::string f) {
+    if (f.rfind("set_", 0) == 0) f.erase(0, 4);
+    const std::string suffix = "_changed";
+    if (f.size() > suffix.size() &&
+        f.compare(f.size() - suffix.size(), suffix.size(), suffix) == 0)
+      f.erase(f.size() - suffix.size());
+    return f;
+  };
+  auto isInterpolator = [](const X3DNode &n) {
+    const std::string type = n.nodeTypeName();
+    const std::string tail = "Interpolator";
+    return type.size() > tail.size() &&
+           type.compare(type.size() - tail.size(), tail.size(), tail) == 0;
+  };
+
+  std::size_t skippedRoutes = 0;
+  std::vector<const X3DNode *> clocks; // animation order: first use
+  std::unordered_map<const X3DNode *, GltfAnimation> byClock;
+  for (const Route &route : scene.routes) {
+    const auto from = endpoint(route.from, route.fromNode);
+    const auto to = endpoint(route.to, route.toNode);
+    if (!from || !to || !isInterpolator(*from)) continue;
+    if (fieldName(route.fromField) != "value") continue;
+
+    const std::string type = from->nodeTypeName();
+    const std::string dest = fieldName(route.toField);
+    GltfAnimationChannel channel;
+    channel.target = to.get();
+    bool ok = to->nodeTypeName() == "Transform";
+    if (ok && type == "PositionInterpolator" &&
+        (dest == "translation" || dest == "scale")) {
+      channel.path = dest == "scale" ? GltfAnimationChannel::Path::Scale
+                                     : GltfAnimationChannel::Path::Translation;
+      for (const SFVec3f &v : geombounds::getField<std::vector<SFVec3f>>(
+               *from, "keyValue", {}))
+        channel.values.insert(channel.values.end(), {v.x, v.y, v.z});
+    } else if (ok && type == "OrientationInterpolator" && dest == "rotation") {
+      channel.path = GltfAnimationChannel::Path::Rotation;
+      for (const SFRotation &v : geombounds::getField<std::vector<SFRotation>>(
+               *from, "keyValue", {})) {
+        const auto q = quaternion(v);
+        channel.values.insert(channel.values.end(),
+                              {float(q[0]), float(q[1]), float(q[2]), float(q[3])});
+      }
+    } else {
+      ok = false;
+    }
+    const auto keys = geombounds::getField<std::vector<float>>(*from, "key", {});
+    const std::size_t width =
+        channel.path == GltfAnimationChannel::Path::Rotation ? 4 : 3;
+    if (!ok || keys.empty() || channel.values.size() != keys.size() * width) {
+      ++skippedRoutes;
+      continue;
+    }
+
+    // The TimeSensor driving this interpolator sets the time scale.
+    const X3DNode *clock = nullptr;
+    for (const Route &drive : scene.routes) {
+      const auto sink = endpoint(drive.to, drive.toNode);
+      if (sink != from || fieldName(drive.toField) != "fraction") continue;
+      const auto source = endpoint(drive.from, drive.fromNode);
+      if (source && source->nodeTypeName() == "TimeSensor" &&
+          fieldName(drive.fromField) == "fraction") {
+        clock = source.get();
+        break;
+      }
+    }
+    double duration = 1.0;
+    if (clock) {
+      duration = geombounds::getField<double>(*clock, "cycleInterval", 1.0);
+      if (!(duration > 0) || !std::isfinite(duration)) duration = 1.0;
+    }
+    for (float key : keys) channel.times.push_back(float(key * duration));
+
+    auto found = byClock.find(clock);
+    if (found == byClock.end()) {
+      clocks.push_back(clock);
+      found = byClock.emplace(clock, GltfAnimation{}).first;
+      if (clock) found->second.name = clock->getDEF();
+    }
+    found->second.channels.push_back(std::move(channel));
+  }
+  for (const X3DNode *clock : clocks)
+    extras.animations.push_back(std::move(byClock[clock]));
+  if (report) report->skippedAnimationRoutes = skippedRoutes;
   return extras;
 }
 

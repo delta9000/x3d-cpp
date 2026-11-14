@@ -373,6 +373,17 @@ check "extract -f glb to stdout is glTF" \
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" -f obj >/dev/null 2>&1; echo $?)
 check "extract unknown format exits 1" "$ec" "1"
 
+# An interpolator-driven Transform is exported as a glTF animation.
+anim_glb="$TD/sim_anim.glb"
+ec=$("$CLI" extract "$FIXTURES/sim-anim.x3d" -o "$anim_glb" 2>/dev/null; echo $?)
+check "extract animated scene exits 0" "$ec" "0"
+if grep -q -a '"animations":\[' "$anim_glb"; then
+    echo "ok:   extract .glb has an animation"
+else
+    echo "FAIL: extract .glb has no animation"
+    failures=$(( failures + 1 ))
+fi
+
 # A texture file next to the input is embedded, so the .glb still has its image
 # when it is written to another directory. The shape has no Material: the
 # texture is the unlit surface colour.

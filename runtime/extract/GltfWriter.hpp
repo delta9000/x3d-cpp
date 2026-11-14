@@ -31,7 +31,13 @@
 //     are flipped to glTF's top-left origin;
 //   - lights as KHR_lights_punctual (directional, point, spot), each on a node
 //     placed and aimed in world space;
-//   - Viewpoint and OrthoViewpoint nodes as cameras, the bound one first.
+//   - Viewpoint and OrthoViewpoint nodes as cameras, the bound one first;
+//   - animation: a Transform whose translation, rotation or scale is driven
+//     by a PositionInterpolator or OrientationInterpolator is kept as a glTF
+//     node (with helper nodes for center and scaleOrientation), and the
+//     interpolator's keys become a LINEAR sampler. One glTF animation per
+//     driving TimeSensor; its cycleInterval sets the duration. Shapes below
+//     an animated Transform are its children instead of world-matrix roots.
 //
 // Approximations to know about:
 //   - X3D light intensity is a unitless [0,1] factor; it is written unchanged
@@ -48,8 +54,14 @@
 // items, MovieTexture, MultiTexture, cube and 3D textures, textures on
 // generated texture coordinates, undecoded textures with no PNG/JPEG url,
 // specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
-// written as static meshes in the mesh's stored pose. Animation is not
-// exported.
+// written as static meshes in the mesh's stored pose.
+//
+// Animation limits: only the three Transform properties above are animated.
+// Interpolators driving anything else (colours, scalars, coordinates,
+// viewpoints, lights), chains through other nodes (sequencers, scripts,
+// EaseInEaseOut, followers), and H-Anim motion are not exported; routes out
+// of an interpolator that are dropped are counted. glTF has no loop flag, so
+// TimeSensor.loop is left to the viewer, and startTime is not carried.
 #ifndef X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
 #define X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
 
@@ -99,6 +111,16 @@ struct GltfWriteReport {
   std::size_t droppedBackMaterials = 0;
   std::size_t droppedShaders = 0;
   std::size_t skippedViewpoints = 0; ///< GeoViewpoint
+
+  std::size_t animations = 0;        ///< glTF animations written
+  std::size_t animationChannels = 0; ///< channels over all animations
+  /// Channels whose Transform is on no exported item's path, or whose key and
+  /// value counts disagree.
+  std::size_t skippedAnimationChannels = 0;
+  /// ROUTEs out of an interpolator that could not become a channel: any
+  /// interpolator other than Position/Orientation, or a destination that is
+  /// not a Transform's translation, rotation or scale.
+  std::size_t skippedAnimationRoutes = 0;
 };
 
 /// One camera to export. `cameraToWorld` places it; like an X3D viewpoint a
@@ -113,15 +135,37 @@ struct GltfCamera {
   float zfar = 0.0f;       ///< <= 0: infinite (perspective) / 10000 (ortho)
 };
 
+/// Keyframes for one property of one Transform.
+struct GltfAnimationChannel {
+  enum class Path { Translation, Rotation, Scale };
+  const X3DNode *target = nullptr; ///< the Transform node
+  Path path = Path::Translation;
+  std::vector<float> times;  ///< seconds, one per key, non-decreasing
+  /// 3 floats per key (translation, scale) or a quaternion x,y,z,w (rotation).
+  std::vector<float> values;
+};
+
+/// The channels that play together: in X3D terms, everything one TimeSensor
+/// drives.
+struct GltfAnimation {
+  std::string name;
+  std::vector<GltfAnimationChannel> channels;
+};
+
 /// Scene content beyond the render items.
 struct GltfSceneExtras {
   std::vector<LightDesc> lights;
   std::vector<GltfCamera> cameras;
+  std::vector<GltfAnimation> animations;
 };
 
-/// The lights and viewpoints of the extractor's scene: `extractor.lights()`
-/// and every Viewpoint/OrthoViewpoint, the bound one first. GeoViewpoints are
-/// counted in `report->skippedViewpoints`.
+/// The lights, viewpoints and animations of the extractor's scene:
+/// `extractor.lights()`; every Viewpoint/OrthoViewpoint, the bound one first
+/// (GeoViewpoints are counted in `report->skippedViewpoints`); and one
+/// animation per TimeSensor, from the ROUTEs
+/// TimeSensor.fraction_changed -> Position/OrientationInterpolator ->
+/// Transform.translation|rotation|scale. Key times are key * cycleInterval.
+/// Other interpolator routes are counted in `report->skippedAnimationRoutes`.
 GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
                                GltfWriteReport *report = nullptr);
 
