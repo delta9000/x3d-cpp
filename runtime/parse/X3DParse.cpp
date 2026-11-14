@@ -17,7 +17,6 @@
 #include <cmath>
 #include <cctype>
 #include <fstream>
-#include <sstream>
 #include <stdexcept>
 #include <unordered_set>
 #include <vector>
@@ -25,6 +24,37 @@
 namespace x3d::codec {
 
 namespace {
+
+struct ParseSession {
+  ParseLimits limits;
+  std::size_t depth = 0;
+  std::size_t bytes = 0;
+  void spend(std::size_t amount) {
+    if (amount > limits.maxInputBytes - bytes)
+      throw ParseResourceLimitError("parse: cumulative input byte limit exceeded");
+    bytes += amount;
+  }
+};
+thread_local ParseSession *activeSession = nullptr;
+struct ParseScope {
+  ParseSession local;
+  bool owns;
+  explicit ParseScope(const ParseLimits &limits)
+      : local{limits}, owns(activeSession == nullptr) {
+    if (owns) activeSession = &local;
+    if (activeSession->depth >= activeSession->limits.maxDocumentDepth) {
+      if (owns) activeSession = nullptr;
+      throw ParseResourceLimitError("parse: document include depth limit exceeded");
+    }
+    ++activeSession->depth;
+  }
+  ParseScope(const ParseScope &) = delete;
+  ParseScope &operator=(const ParseScope &) = delete;
+  ~ParseScope() {
+    --activeSession->depth;
+    if (owns) activeSession = nullptr;
+  }
+};
 
 // SEC-4 companion: RAII push/pop for the default resolvers' thread-local
 // active-file stack. A manual push_back/pop_back is balanced only on the happy
@@ -261,8 +291,8 @@ std::unique_ptr<X3DReader> makeReader(Encoding enc) {
   }
 }
 
-runtime::X3DDocument
-parseDocument(const std::string &text, Encoding hint,
+static runtime::X3DDocument
+parseDocumentImpl(const std::string &text, Encoding hint,
               const std::string &baseUrl,
               const ProtoDeclarationResolver &resolver,
               const runtime::InlineResolver &inlineResolver,
@@ -328,6 +358,16 @@ parseDocument(const std::string &text, Encoding hint,
   return doc;
 }
 
+runtime::X3DDocument parseDocument(
+    const std::string &text, Encoding hint, const std::string &baseUrl,
+    const ProtoDeclarationResolver &resolver,
+    const runtime::InlineResolver &inlineResolver,
+    const std::string &confineRoot, const ParseLimits &limits) {
+  ParseScope scope(limits);
+  activeSession->spend(text.size());
+  return parseDocumentImpl(text, hint, baseUrl, resolver, inlineResolver, confineRoot);
+}
+
 std::shared_ptr<runtime::ProtoDeclaration>
 localFileProtoResolver(const std::vector<std::string> &urls,
                        const std::string &baseUrl) {
@@ -359,6 +399,8 @@ localFileProtoResolver(const std::vector<std::string> &urls,
         found = sub.scene.findProto(frag);
       else if (!sub.scene.protoDeclarations.empty())
         found = sub.scene.protoDeclarations.front();
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &) {
       // lenient: fall through to the next candidate url
     }
@@ -393,6 +435,8 @@ localFileInlineResolver(const std::vector<std::string> &urls,
       runtime::X3DDocument sub =
           parseFile(path); // recurses (expands sub-Inlines)
       result = std::make_shared<runtime::Scene>(std::move(sub.scene));
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &) {
       // lenient: try the next candidate url
     }
@@ -403,7 +447,8 @@ localFileInlineResolver(const std::vector<std::string> &urls,
 }
 
 runtime::X3DDocument parseFile(const std::string &path,
-                               const std::string &confineRoot) {
+                               const std::string &confineRoot, const ParseLimits &limits) {
+  ParseScope scope(limits);
   // Establish the confinement root on the outermost call; inner resolver-driven
   // re-parses (activeConfineRoot already set) inherit it and restore nothing.
   const bool outermostConfine = detail::activeConfineRoot().empty();
@@ -418,13 +463,21 @@ runtime::X3DDocument parseFile(const std::string &path,
   std::ifstream in(path, std::ios::binary);
   if (!in)
     throw std::runtime_error("parseFile: cannot open file: " + path);
-  std::ostringstream ss;
-  ss << in.rdbuf();
-  std::string bytes = ss.str();
+  std::string bytes;
+  char chunk[8192];
+  while (in.read(chunk, sizeof(chunk)) || in.gcount()) {
+    const auto count = static_cast<std::size_t>(in.gcount());
+    activeSession->spend(count); // check before growing the input buffer
+    bytes.append(chunk, count);
+  }
+  if (in.bad()) throw std::runtime_error("parseFile: read failed: " + path);
   // Inflate first: sniffByExtension already strips .gz/.gzip and the inflated
   // bytes content-sniff correctly, so no further branching is needed below.
-  if (isGzip(bytes))
-    bytes = inflateGzip(bytes);
+  if (isGzip(bytes)) {
+    const auto remaining = activeSession->limits.maxInputBytes - activeSession->bytes;
+    bytes = inflateGzip(bytes, std::min(remaining, kMaxDecompressedBytes));
+    activeSession->spend(bytes.size());
+  }
   // Strip a leading UTF-8 BOM before sniffing/dispatch (see stripUtf8Bom). This
   // covers every encoding at the front door; parseDocument also strips, so this
   // is belt-and-suspenders and keeps sniff(path, bytes) BOM-insensitive.
@@ -446,27 +499,29 @@ runtime::X3DDocument parseFile(const std::string &path,
     detail::activeConfineRoot() =
         !confineRoot.empty() ? confineRoot
                              : (base.empty() ? std::string(".") : base);
-  return parseDocument(bytes, enc, base);
+  return parseDocumentImpl(bytes, enc, base, localFileProtoResolver,
+                           localFileInlineResolver, "");
 }
 
 std::function<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>(const std::string &)>
 makeStringSceneFactory() {
   return [](const std::string &text) {
-    const auto first = text.find_first_not_of(" \t\r\n");
+    std::string source = text;
+    stripUtf8Bom(source);
+    const auto first = source.find_first_not_of(" \t\r\n");
     if (first == std::string::npos)
       throw std::runtime_error("createX3DFromString: empty text");
-    std::string source = text;
     Encoding encoding = Encoding::Unknown;
-    if (text[first] == '<') {
+    if (source[first] == '<') {
       encoding = Encoding::XML;
-      if (text.find("<X3D") == std::string::npos)
-        source = "<X3D profile='Full' version='4.0'><Scene>" + text +
+      if (source.find("<X3D") == std::string::npos)
+        source = "<X3D profile='Full' version='4.0'><Scene>" + source +
                  "</Scene></X3D>";
-    } else if (text[first] == '{') {
+    } else if (source[first] == '{') {
       encoding = Encoding::JSON;
-    } else if (text[first] != '#') {
+    } else if (source[first] != '#') {
       encoding = Encoding::ClassicVRML;
-      source = "#X3D V4.0 utf8\nPROFILE Full\n" + text;
+      source = "#X3D V4.0 utf8\nPROFILE Full\n" + source;
     }
     // No file access from script-supplied text: both resolvers decline.
     const ProtoDeclarationResolver noProtos =
@@ -481,7 +536,8 @@ makeStringSceneFactory() {
         parseDocument(source, encoding, "", noProtos, noInlines);
     std::vector<std::shared_ptr<x3d::nodes::X3DNode>> roots;
     for (const auto &node : doc.scene.rootNodes)
-      if (node) roots.push_back(node);
+      if (node)
+        roots.push_back(node);
     if (roots.empty())
       throw std::runtime_error("createX3DFromString: the text contains no nodes");
     return roots;

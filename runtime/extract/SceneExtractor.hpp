@@ -118,12 +118,11 @@ struct RenderItem {
 
 // §42 texture projector scope (ADR-0061): a global projector lights every
 // placement; a scoped one only placements whose path passes through its
-// enclosing grouping node (a root-level projector lights the whole scene).
+// enclosing grouping placement (a root-level projector lights the whole scene).
 inline bool projectorApplies(const ProjectorDesc &p, const RenderItem &item) {
   if (p.global || !p.scopeRoot) return true;
-  for (const X3DNode *n : item.path)
-    if (n == p.scopeRoot) return true;
-  return false;
+  return p.scopePath.size() <= item.path.size() &&
+      std::equal(p.scopePath.begin(), p.scopePath.end(), item.path.begin());
 }
 
 class SceneExtractor {
@@ -202,7 +201,8 @@ private:
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
     lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                         ctx_.cameraWorldPosition(), &lightDeps_);
+                         ctx_.cameraWorldPosition(), &lightDeps_,
+                         ctx_.cameraWorldUp());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
@@ -413,12 +413,19 @@ public:
       delta.updatedMaterial.push_back(id);
     }
 
+    // Geometry refresh can replace many records. Build membership indices once,
+    // after those replacements, without changing publication order.
+    const std::unordered_set<RenderItemId> geometryRemoved(
+        delta.removed.begin(), delta.removed.end());
+    const std::unordered_set<RenderItemId> geometryAdded(
+        delta.added.begin(), delta.added.end());
+
     // Billboards depend on the tracked eye/up as well as scene fields. A camera
     // change does not dirty a scene node, so compare the affected placements
     // directly. Stable views retain both mesh payloads and transform uploads.
     for (RenderItemId id : billboardItems_) {
       if (!liveIds_.count(id) || transformSeen.count(id) ||
-          std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end())
+          geometryRemoved.count(id))
         continue;
       Mat4 world = worldAlongPath(items_[id].path, localXf);
       if (world.m != items_[id].worldTransform.m) {
@@ -429,8 +436,7 @@ public:
     }
 
     for (RenderItemId id = 0; id < items_.size(); ++id) {
-      if (std::find(delta.removed.begin(), delta.removed.end(), id) != delta.removed.end() ||
-          std::find(delta.added.begin(), delta.added.end(), id) != delta.added.end())
+      if (geometryRemoved.count(id) || geometryAdded.count(id))
         continue;
       if (!liveIds_.count(id)) continue;
       auto &rec = items_[id];
@@ -450,7 +456,9 @@ public:
     // Dependencies come from the light collection itself, so lights in subtrees
     // the geometry walk skips (visible=FALSE, Collision.proxy, GeoLOD rootNode)
     // and viewer-driven LOD choices there are covered too.
-    bool lightDirty = selectionChanged;
+    bool lightDirty = selectionChanged || (lightDeps_.viewDependent &&
+        (lightDeps_.eye != ctx_.cameraWorldPosition() ||
+         lightDeps_.up != ctx_.cameraWorldUp()));
     for (const X3DNode *n : dirty.changedNodes())
       if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
     for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
@@ -479,7 +487,8 @@ public:
     if (refreshLights) {
       LightSystem lightSystem;
       lights_ = lightSystem.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                                    ctx_.cameraWorldPosition());
+                                    ctx_.cameraWorldPosition(), nullptr,
+                                    ctx_.cameraWorldUp());
       for (RenderItemId id : liveIds_) tagLights(items_[id], items_[id].path);
     }
     const std::unordered_set<RenderItemId> added(delta.added.begin(), delta.added.end());
@@ -576,6 +585,11 @@ public:
   // localFog index here; -1 means no LocalFog applies (global Fog governs).
   const std::vector<LocalFogDesc> &snapshotLocalFogs() const { return localFogs_; }
 
+  // The context and scene this extractor reads, for helpers that need more
+  // than the render feed (GltfWriter collects every Viewpoint through them).
+  const X3DExecutionContext &context() const { return ctx_; }
+  const Scene &scene() const { return scene_; }
+
   // camera — the bound Viewpoint resolved for the frame. viewMatrix from the ctx
   // (first-path-resolved, documented). fieldOfView read reflection-generic; an
   // OrthoViewpoint is surfaced ortho=true with its MFFloat {l,b,r,t} fieldOfView.
@@ -606,7 +620,8 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition());
+    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition(),
+                      ctx_.cameraWorldUp());
   }
 
   // projectors — the active §42 texture projectors, world-resolved like
@@ -618,7 +633,8 @@ public:
     LightSystem ls;
     WalkBudget budget(meshOptions_.maxWalkVisits);
     std::vector<ProjectorDesc> out = ls.collectProjectors(
-        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition());
+        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition(),
+        ctx_.cameraWorldUp());
     for (ProjectorDesc &p : out) {
       std::vector<TextureRef> refs{std::move(p.texture)};
       resolveTextures(refs);
@@ -754,15 +770,25 @@ private:
         rec.shaderProgram = std::move(old.shaderProgram);
         rec.skin = std::move(old.skin);
       }
-    auto publish = [](std::vector<RenderItemId> &ids, RenderItemId id) {
-      if (std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
+    // Scalar refresh may already have published updates. Preserve that prefix
+    // and append each newly discovered update once, in the existing walk order.
+    std::unordered_set<RenderItemId> materialPublished(
+        delta.updatedMaterial.begin(), delta.updatedMaterial.end());
+    std::unordered_set<RenderItemId> skinPublished(
+        delta.updatedSkinPose.begin(), delta.updatedSkinPose.end());
+    std::unordered_set<RenderItemId> geometryPublished(
+        delta.updatedGeometry.begin(), delta.updatedGeometry.end());
+    auto publish = [](std::vector<RenderItemId> &ids,
+                      std::unordered_set<RenderItemId> &published,
+                      RenderItemId id) {
+      if (published.insert(id).second) ids.push_back(id);
     };
     for (RenderItemId id : next) {
       if (!oldLive.count(id)) { delta.added.push_back(id); continue; }
       const auto &old = before.at(id); const auto &now = items_[id];
       if (!(old.material == now.material) || old.shaderProgram != now.shaderProgram)
-        publish(delta.updatedMaterial, id);
-      if (old.skin != now.skin) publish(delta.updatedSkinPose, id);
+        publish(delta.updatedMaterial, materialPublished, id);
+      if (old.skin != now.skin) publish(delta.updatedSkinPose, skinPublished, id);
       // These descriptors have no narrow update channel. Only records whose
       // descriptors changed need remove-before-add publication.
       bool stateChanged = old.localFog != now.localFog || old.lights != now.lights ||
@@ -775,7 +801,7 @@ private:
       // External packed payloads are re-resolved by the walk, with no immutable
       // mesh cache to prove content equality.
       if (now.geometry_ext.is_packed() || old.geometry != now.geometry)
-        publish(delta.updatedGeometry, id);
+        publish(delta.updatedGeometry, geometryPublished, id);
     }
     // No cached payload may outlive its source dependencies. A field in an
     // inactive level does not reach the active reverse index, so a deselected
@@ -838,7 +864,8 @@ private:
     WalkBudget budget(kMaxGraphWalkVisits);
     lightDeps_.clear();
     auto out = ls.collect(scene_, ctx_.geoProjection(), budget,
-                          ctx_.cameraWorldPosition(), &lightDeps_);
+                          ctx_.cameraWorldPosition(), &lightDeps_,
+                         ctx_.cameraWorldUp());
     dropCoveredLightSelections();
     return out;
   }
@@ -1312,7 +1339,11 @@ private:
     if (geombounds::hasField(*n, "geometry")) {
       // Includes recognized-empty geometry: later revival must read current state.
       itemStateDeps_.insert(n);
-      if (auto geom = geombounds::getNode(*n, "geometry")) {
+      // A shape's geometry is an SFNode. RigidBody.geometry is an MFNode of
+      // collidables, which are walked as children, not meshed here.
+      std::shared_ptr<X3DNode> geom;
+      if (geombounds::readField(*n, "geometry", geom) ==
+              geombounds::FieldRead::Ok && geom) {
         bool recognized = false;
         // ADR-0045: build-once per distinct geometry node, not per placement.
         // ISO/IEC 19774-1 §6.6: the nearest enclosing Segment's displacers
@@ -1556,13 +1587,12 @@ private:
         // Global light: illuminates every placement.
         rec.lights.push_back(i);
       } else {
-        // Scoped light: illuminates geometry whose path includes the scopeRoot.
-        // L.scopeRoot is the enclosing grouping node; the item is in-scope iff
-        // that node appears on its PathKey (i.e. the shape is a sibling or
-        // descendant of the light inside that grouping node).
+        // Match the complete enclosing placement, not only its node identity:
+        // USE instances of one group can have differently transformed lights.
         if (L.scopeRoot) {
-          for (const X3DNode *n : path)
-            if (n == L.scopeRoot) { rec.lights.push_back(i); break; }
+          if (L.scopePath.size() <= path.size() &&
+              std::equal(L.scopePath.begin(), L.scopePath.end(), path.begin()))
+            rec.lights.push_back(i);
         }
         // scopeRoot == nullptr means the light had no enclosing grouping node
         // (it is a root-level node). By X3D spec a root-level non-global light

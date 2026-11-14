@@ -355,6 +355,51 @@ fi
 ec=$("$CLI" extract "$FIXTURE_SIMPLE" --unknown-flag >/dev/null 2>&1; echo $?)
 check "extract unknown option exits 1" "$ec" "1"
 
+# GLB output: chosen by the .glb extension or by -f glb.
+glb_out="$TD/simple_extract.glb"
+ec=$("$CLI" extract "$FIXTURE_SIMPLE" -o "$glb_out" 2>/dev/null; echo $?)
+check "extract to .glb exits 0" "$ec" "0"
+check "extract .glb starts with the glTF magic" "$(head -c 4 "$glb_out" 2>/dev/null)" "glTF"
+glb_len=$(od -A d -j 8 -N 4 -t u4 "$glb_out" 2>/dev/null | head -1 | awk '{print $2}')
+check "extract .glb header length matches the file" "$glb_len" "$(wc -c < "$glb_out" | tr -d ' ')"
+if grep -q '"POSITION"' "$glb_out"; then
+    echo "ok:   extract .glb has a POSITION attribute"
+else
+    echo "FAIL: extract .glb has no POSITION attribute"
+    failures=$(( failures + 1 ))
+fi
+check "extract -f glb to stdout is glTF" \
+    "$("$CLI" extract "$FIXTURE_SIMPLE" -f glb 2>/dev/null | head -c 4)" "glTF"
+ec=$("$CLI" extract "$FIXTURE_SIMPLE" -f obj >/dev/null 2>&1; echo $?)
+check "extract unknown format exits 1" "$ec" "1"
+
+# A texture file next to the input is embedded, so the .glb still has its image
+# when it is written to another directory. The shape has no Material: the
+# texture is the unlit surface colour.
+mkdir -p "$TD/tex_in" "$TD/tex_out"
+printf '\x89PNG\r\n\x1a\nfake-png-payload' > "$TD/tex_in/photo.png"
+cat > "$TD/tex_in/quad.x3d" <<'X3D'
+<X3D profile='Interchange' version='4.0'><Scene><Shape>
+<Appearance><ImageTexture url='"photo.png"'/></Appearance><Box/>
+</Shape></Scene></X3D>
+X3D
+ec=$("$CLI" extract "$TD/tex_in/quad.x3d" -o "$TD/tex_out/quad.glb" 2>/dev/null; echo $?)
+check "extract textured quad exits 0" "$ec" "0"
+for needle in '"baseColorTexture"' '"mimeType":"image/png"' 'fake-png-payload'; do
+    if grep -q -a "$needle" "$TD/tex_out/quad.glb"; then
+        echo "ok:   extract .glb contains $needle"
+    else
+        echo "FAIL: extract .glb lacks $needle"
+        failures=$(( failures + 1 ))
+    fi
+done
+if grep -q -a '"uri"' "$TD/tex_out/quad.glb"; then
+    echo "FAIL: extract .glb still references an external image"
+    failures=$(( failures + 1 ))
+else
+    echo "ok:   extract .glb has no external image reference"
+fi
+
 # x3d canonicalize subcommand
 
 ec=$("$CLI" canonicalize --help >/dev/null 2>&1; echo $?)
@@ -886,6 +931,40 @@ check "Interchange explicit MultiTexture inclusion" "$ec" "0"
 sed 's@<MultiTexture><PixelTexture image="1 1 3 0xffffff"/></MultiTexture>@<MovieTexture/>@' "$TD/interchange-multi.x3d" > "$TD/interchange-movie.x3d"
 ec=$("$CLI" validate "$TD/interchange-movie.x3d" >/dev/null 2>&1; echo $?)
 check "Interchange still excludes MovieTexture" "$ec" "3"
+
+# Conversions must not silently drop opaque/unsupported nodes or clobber output.
+cat > "$TD/unknown.x3d" <<'XML'
+<X3D version="4.1"><Scene><EnvironmentLight intensity="0.5"/></Scene></X3D>
+XML
+printf 'keep me' > "$TD/unknown.json"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown.json" >/dev/null 2>&1; echo $?)
+check "lossy XML to JSON rejected" "$ec" "2"
+check "rejected conversion leaves output untouched" "$(cat "$TD/unknown.json")" "keep me"
+ec=$("$CLI" convert "$TD/unknown.x3d" -f vrml >/dev/null 2>&1; echo $?)
+check "lossy XML to Classic rejected" "$ec" "2"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown-copy.x3d" >/dev/null 2>&1; echo $?)
+check "opaque XML to XML allowed" "$ec" "0"
+grep -q 'intensity="0.5"' "$TD/unknown-copy.x3d"
+check "opaque XML attributes retained" "$?" "0"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown.json" --allow-lossy >/dev/null 2>&1; echo $?)
+check "explicit lossy opt-in accepted" "$ec" "0"
+ec=$("$CLI" convert "$TD/unknown.json" -f xml >/dev/null 2>&1; echo $?)
+check "discarded JSON unknown node rejected even for XML output" "$ec" "2"
+cat > "$TD/unknown-statements.x3d" <<'XML'
+<X3D version="4.1"><Scene><EnvironmentLight><field name="foo" type="SFFloat" value="1"/></EnvironmentLight></Scene></X3D>
+XML
+ec=$("$CLI" convert "$TD/unknown-statements.x3d" -f xml >/dev/null 2>&1; echo $?)
+check "discarded XML statement rejected" "$ec" "2"
+
+cat > "$TD/unknown-proto-child.x3d" <<'XML'
+<X3D version="4.1"><Scene><ProtoDeclare name="P"><ProtoBody><Shape><EnvironmentLight intensity="0.5"/></Shape></ProtoBody></ProtoDeclare></Scene></X3D>
+XML
+printf 'keep proto output' > "$TD/unknown-proto-copy.x3d"
+ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -o "$TD/unknown-proto-copy.x3d" >/dev/null 2>&1; echo $?)
+check "discarded PROTO opaque child rejected even for XML output" "$ec" "2"
+check "rejected PROTO conversion leaves output untouched" "$(cat "$TD/unknown-proto-copy.x3d")" "keep proto output"
+ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -f xml --allow-lossy >/dev/null 2>&1; echo $?)
+check "discarded PROTO opaque child permits explicit lossy opt-in" "$ec" "0"
 
 echo ""
 if [[ "$failures" -gt 0 ]]; then

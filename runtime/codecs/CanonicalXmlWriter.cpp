@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "CanonicalXmlWriter.hpp"
 
 #include "FieldValueIO.hpp"
@@ -14,6 +15,7 @@
 namespace x3d::codec {
 
 std::string CanonicalXmlWriter::writeDocument(const runtime::X3DDocument &doc) {
+  requireUnnormalizedUnits(doc.scene);
   XmlGraphBuilder graph({.formatValue = canonFormatValue,
                          .authoredChildOrder = false,
                          .sortAttributes = true});
@@ -58,7 +60,7 @@ std::string CanonicalXmlWriter::writeDocument(const runtime::X3DDocument &doc) {
 
   // <Scene>
   xml::Element *scene = root->addChild("Scene");
-  graph.writeSceneInto(scene, doc.scene);
+  graph.writeSceneInto(scene, doc.scene, &doc.head.units);
 
   std::ostringstream os;
   os << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";

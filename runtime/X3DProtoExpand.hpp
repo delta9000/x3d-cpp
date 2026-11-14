@@ -4,6 +4,7 @@
 
 #include "FieldRead.hpp"
 #include "DynamicField.hpp"
+#include "RecursionLimits.hpp"
 #include "X3DProtoClone.hpp"
 #include "X3DProtoFieldOrder.hpp"
 #include "X3DScene.hpp"
@@ -579,6 +580,8 @@ expandInstance(ProtoInstance &inst, Scene &scene,
         else if (fi->type == X3DFieldType::MFNode)
           setScalar(&*fi, cloned, std::any(eff.nodeValue));
       }
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &) {
       warnings.push_back(
           {ProtoWarning::Kind::InterfaceMismatch, inst.name, is.protoField});
@@ -722,10 +725,36 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     if (targets == iface->targets.end()) return {};
     return {targets->second, pf->type};
   };
+  std::unordered_map<std::string, const Import *> bodyImports;
+  for (const auto &imp : decl->body.imports)
+    bodyImports[imp.as.empty() ? imp.importedDEF : imp.as] = &imp;
+  std::vector<DeferredProtoRoute> deferredRoutes;
+  auto deferredEndpoint = [&](const std::string &name, const std::string &field,
+                              bool source, const std::string &routeName) {
+    DeferredProtoEndpoint endpoint;
+    if (auto imp = bodyImports.find(name); imp != bodyImports.end()) {
+      if (auto inl = localDefs.find(imp->second->inlineDEF); inl != localDefs.end())
+        endpoint.inlineNode = inl->second.node;
+      endpoint.exportedName = imp->second->importedDEF;
+      endpoint.field = field;
+    } else {
+      const auto resolved = resolveBodyEndpoint(name, field, source, routeName);
+      endpoint.nominalType = resolved.nominalType;
+      for (const auto &target : resolved.targets)
+        endpoint.targets.emplace_back(target.targetNode, target.targetField);
+    }
+    return endpoint;
+  };
   for (const Route &route : decl->body.routes) {
     const std::string routeName =
         route.fromNode + "." + route.fromField + " TO " +
         route.toNode + "." + route.toField;
+    if (bodyImports.count(route.fromNode) || bodyImports.count(route.toNode)) {
+      deferredRoutes.push_back({{},
+          deferredEndpoint(route.fromNode, route.fromField, true, routeName),
+          deferredEndpoint(route.toNode, route.toField, false, routeName)});
+      continue;
+    }
     auto sources = resolveBodyEndpoint(route.fromNode, route.fromField,
                                        true, routeName);
     auto sinks = resolveBodyEndpoint(route.toNode, route.toField,
@@ -798,6 +827,10 @@ expandInstance(ProtoInstance &inst, Scene &scene,
     }
   }
   if (!primary) return nullptr;
+  for (auto &route : deferredRoutes) {
+    route.owner = primary;
+    scene.deferredProtoRoutes.push_back(std::move(route));
+  }
   primary->setDEF(inst.DEF);
   // Interface event redirects: an exposed event interface field maps to the
   // IS-connected body field(s). initializeOnly is value-only (handled above).
@@ -938,6 +971,8 @@ inline std::shared_ptr<X3DNode> instantiateBuiltin(const ProtoInstance &inst,
         fi->set(*node, fv.value);
         if (authored) authored->record(node, fv.name);
       }
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &) {
       warnings.push_back({ProtoWarning::Kind::InterfaceMismatch, inst.name, fv.name});
     }
@@ -1002,6 +1037,8 @@ inline void expandScene(Scene &scene,
             primary ? primary : placementTemplate;
         context.activeCallerTemplates.erase(placementTemplate);
       }
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &e) {
       if (placementTemplate) {
         context.callerResults[placementTemplate] = placementTemplate;
@@ -1017,6 +1054,8 @@ inline void expandScene(Scene &scene,
     try {
       node = proto_detail::materializeCallerNode(
           node, scene, resolver, baseUrl, rootGuard, warnings, context);
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &e) {
       warnings.push_back({ProtoWarning::Kind::InterfaceMismatch,
                           node ? node->nodeTypeName() : std::string{}, e.what()});

@@ -8,6 +8,7 @@
 #include "NodeBuilder.hpp"
 #include "x3d/nodes/Script.hpp"
 
+#include <cmath>
 #include <limits>
 
 namespace x3d::codec {
@@ -410,6 +411,7 @@ JsonReader::readJsonProtoDeclare(const json::Value &obj,
   if (const json::Value *bodyObj = obj.member("ProtoBody");
       bodyObj && bodyObj->isObject())
     readJsonProtoBody(*bodyObj, local, decl->body);
+  decl->body.imports = std::move(local.imports);
   decl->authorFields = std::move(local.authorFields);
   decl->authoredScalarFields = std::move(local.authoredScalarFields);
   scene.declareProto(decl);
@@ -459,6 +461,7 @@ void JsonReader::readJsonProtoBody(const json::Value &obj,
       out.recordNode(node);
     }
   }
+  readImports(obj.member("IMPORT"), scene);
   readRoutesInto(obj.member("ROUTE"), out.routes);
 }
 
@@ -771,8 +774,14 @@ int JsonReader::intMember(const json::Value &obj, const std::string &key,
   const json::Value *v = obj.member(key);
   if (!v)
     return fallback;
-  if (v->isNumber())
+  if (v->isNumber()) {
+    if (!std::isfinite(v->number) || std::trunc(v->number) != v->number ||
+        v->number < std::numeric_limits<int>::min() ||
+        v->number > std::numeric_limits<int>::max())
+      throw std::runtime_error(
+          "JSON integer member out of range or fractional: " + key);
     return static_cast<int>(v->number);
+  }
   if (v->isString())
     return parseInt(v->str);
   return fallback;

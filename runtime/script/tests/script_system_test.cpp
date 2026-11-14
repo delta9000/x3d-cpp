@@ -491,3 +491,24 @@ TEST_CASE("routed event invokes handler") {
                 "SCRIPT-EVENTIN: an inputOutput author field write invokes nothing");
   ctx.authorFields().erase(script);
 }
+
+TEST_CASE("resource limits are applied before script enrollment") {
+  X3DExecutionContext ctx;
+  Script script = makeScript();
+  auto engine = std::make_shared<MockScriptEngine>();
+  ScriptSystem system(engine, "test", "1");
+  system.setResourceLimits({8, 16, 2, 3});
+  system.attach(&script, ctx);
+  auto *sai = system.saiFor(&script);
+  CHECK_MESSAGE((sai && sai->resourceLimits().logBytes == 8 &&
+                 sai->resourceLimits().sceneCalls == 2),
+                "native quotas propagated on enrollment");
+  bool threw = false;
+  try {
+    system.setResourceLimits({});
+  } catch (const std::logic_error &) {
+    threw = true;
+  }
+  CHECK_MESSAGE((threw),
+                "changing system quotas after enrollment rejected explicitly");
+}

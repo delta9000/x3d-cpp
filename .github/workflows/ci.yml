@@ -243,7 +243,7 @@ jobs:
   cpp-fuzz:
     name: C++ fuzz gate (libFuzzer parseDocument)
     needs: changes
-    if: github.event_name != 'pull_request' && needs.changes.outputs.cpp == 'true'
+    if: needs.changes.outputs.cpp == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -264,7 +264,12 @@ jobs:
       # (and writes a crash-<hash> reproducer) on any ASan/UBSan finding, failing
       # the gate. -print_final_stats surfaces coverage/exec counts in the log.
       - name: Fuzz (bounded 60s smoke)
-        run: ./build-fuzz/x3d_parse_fuzz -max_total_time=60 -print_final_stats=1
+        run: |
+          mkdir -p build-fuzz/corpus
+          cp runtime/parse/tests/fuzz_corpus/*.x3d runtime/parse/tests/fuzz_corpus/*.x3dv runtime/parse/tests/fuzz_corpus/*.json build-fuzz/corpus/
+          ./build-fuzz/x3d_parse_fuzz build-fuzz/corpus \
+            -dict=runtime/parse/tests/x3d_fuzz.dict \
+            -max_total_time=60 -print_final_stats=1
 
   proj-swap:
     name: GeoProjection seam swap-test

@@ -381,6 +381,10 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_cpp::authoring)
     add_test(NAME x3d_authoring_link_contract
         COMMAND x3d_authoring_link_contract)
+    add_executable(x3d_authoring_builder
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/x3d/tests/authoring_builder_test.cpp")
+    target_link_libraries(x3d_authoring_builder PRIVATE x3d_cpp::authoring)
+    add_test(NAME x3d_authoring_builder COMMAND x3d_authoring_builder)
     add_executable(x3d_native_host_contract
         "${CMAKE_CURRENT_SOURCE_DIR}/examples/embed_minimal/native_host.cpp")
     target_link_libraries(x3d_native_host_contract PRIVATE x3d_cpp::sdk)
@@ -425,6 +429,18 @@ if(X3D_CPP_BUILD_TESTS)
                 -G "${CMAKE_GENERATOR}"
                 "-DCCACHE_PROGRAM=/bin/echo"
                 "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
+
+    # Configure-only regression: CI suite labels and build prerequisites must
+    # agree, with or without the optional examples/corpus tools.
+    foreach(_examples IN ITEMS on off)
+        add_test(NAME x3d_test_selection_examples_${_examples}
+            COMMAND "${CMAKE_COMMAND}"
+                    "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                    "-DFIXTURE_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_selection_${_examples}"
+                    "-DFIXTURE_GENERATOR=${CMAKE_GENERATOR}"
+                    "-DX3D_CPP_BUILD_EXAMPLES=${_examples}"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/test_selection/check.cmake")
+    endforeach()
 
     # §16 sound graph wiring and DSP samples run without an external backend.
     add_executable(x3d_sound_system

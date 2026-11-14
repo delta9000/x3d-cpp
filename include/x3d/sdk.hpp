@@ -28,6 +28,7 @@
 // Implementation headers (all reachable bare-name via the x3d_cpp include path).
 #include "X3DParse.hpp"
 #include "X3DCodecs.hpp"
+#include "SceneBuilder.hpp"
 #include "X3DRuntime.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
@@ -41,6 +42,7 @@
 #include "SceneExtractor.hpp"
 #include "RenderItem.hpp"
 #include "MeshBuilder.hpp"
+#include "GltfWriter.hpp"
 #include "AssetResolver.hpp"
 #include "TextureResolver.hpp"
 #include "FontMetrics.hpp"
@@ -99,6 +101,7 @@ using x3d::codec::XmlWriter;
 using x3d::codec::JsonWriter;
 using x3d::codec::VrmlWriter;
 using x3d::codec::CanonicalXmlWriter;
+using x3d::authoring::SceneBuilder; ///< checked scene construction (SceneBuilder.hpp)
 
 // Execution context (runtime / tick)
 // Construct one per loaded document, default-constructed. Setup order:
@@ -143,6 +146,9 @@ using x3d::runtime::extract::PathKeyEqual;
 using x3d::runtime::extract::GeomId; ///< in-process, baseline-scoped content key
 using x3d::runtime::extract::GeomIdHash;
 using x3d::runtime::extract::MeshData;
+using x3d::runtime::extract::writeGlb; ///< render items -> binary glTF 2.0
+using x3d::runtime::extract::GltfWriteOptions;
+using x3d::runtime::extract::GltfWriteReport;
 using x3d::runtime::extract::Topology;
 using x3d::runtime::extract::MaterialDesc;
 using x3d::runtime::extract::MaterialModel;

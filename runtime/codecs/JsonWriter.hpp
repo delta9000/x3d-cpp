@@ -24,6 +24,7 @@ struct ProtoBody;
 struct ProtoField;
 class ProtoInstance;
 class Scene;
+class AuthoredScalarFields;
 class DynamicFieldStore;
 class X3DDocument;
 } // namespace x3d::runtime
@@ -46,6 +47,7 @@ private:
   // Scene being written, for expandedSources lookup. Null for body-internal
   // fresh writers so proto expansion redirect is off inside proto bodies.
   const runtime::Scene *scene_ = nullptr;
+  const runtime::AuthoredScalarFields *unitDefaults_ = nullptr;
   const runtime::DynamicFieldStore *authorFields_ = nullptr;
   // Borrowed ProtoBody connections; null outside body serialization.
   const std::vector<runtime::IsConnection> *bodyIsc_ = nullptr;

@@ -68,6 +68,7 @@ public:
   // Body-internal ROUTEs of expanded instances, pre-resolved to concrete
   // endpoints (proto-local DEF scope; not registered in `defs`).
   std::vector<ResolvedProtoRoute> resolvedProtoRoutes;
+  std::vector<DeferredProtoRoute> deferredProtoRoutes;
 
   // Non-rendered peers of expanded PROTO bodies stay live (§4.4.4.3).
   std::vector<std::shared_ptr<X3DNode>> protoPeerNodes;
@@ -142,6 +143,10 @@ public:
   // Runtime normalization is per field and follows shared node identity. Marks
   // survive repeated builds and separate execution contexts without owning nodes.
   AuthoredScalarFields normalizedUnitFields;
+
+  // Writers cannot mix normalized values with retained authored UNIT metadata.
+  // Shared with shallow copies, whose nodes alias this scene's mutable graph.
+  std::shared_ptr<bool> hasNormalizedUnitValues = std::make_shared<bool>(false);
 
   // URL provenance follows weak node identity without changing authored URLs.
   // PROTO clones and retained Inline scenes preserve their source directory.

@@ -253,6 +253,8 @@ std::shared_ptr<Result> resolveDocument(Context &context,
                                           protoSource.begin(), protoSource.end());
         return selected;
       }
+    } catch (const ParseResourceLimitError &) {
+      throw;
     } catch (const std::exception &) {
       // Missing/unparseable candidates and backend failures remain lenient.
       if (context.pending) return nullptr;

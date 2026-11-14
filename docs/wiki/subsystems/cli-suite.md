@@ -23,6 +23,7 @@ The top-level CMake build produces `build/x3d`.
 | `x3d convert input -o output -f xml\|vrml\|json` | Parse a document and serialize it in the selected encoding |
 | `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, and profile-fit diagnostics |
 | `x3d extract input -o output.stl` | Export extracted triangle geometry as binary STL |
+| `x3d extract input -o output.glb` (or `-f glb`) | Export the extracted scene as binary glTF 2.0: nodes with world matrices, shared meshes, materials, textures (local PNG/JPEG files and PixelTextures embedded), lights, and viewpoints as cameras. See [glTF export](extract.md#gltf-export) for what is left out |
 | `x3d canonicalize input -o output.x3d` | Write canonical XML |
 | `x3d sim input --ticks 120` | Tick the behavior runtime and trace changed fields |
 
@@ -30,6 +31,12 @@ The top-level CMake build produces `build/x3d`.
 providing a separate VRML97 writer. Extraction uses the geometry supported by
 [MeshBuilder](extract.md); line and point items do not become STL triangles.
 Canonical output is described in [canonical XML](canonical-xml.md).
+
+`convert` rejects unknown-node data loss before opening its output file.
+XML-to-XML opaque-node preservation is permitted, but conversion to JSON or
+ClassicVRML is not lossless for those nodes. JSON/Classic reader discards also
+fail conversion. Pass `--allow-lossy` to opt in; diagnostics remain visible.
+This protects the CLI, not arbitrary direct calls to the lower-level writers.
 
 ## Validation
 

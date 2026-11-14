@@ -1,0 +1,1 @@
+{"X3D":{"@profile":"Immersive","@version":"4.0","Scene":{"-children":[{"Transform":{"@DEF":"T","@translation":[1,2,3],"-children":[{"Shape":{"-geometry":{"Box":{}}}}]}},{"Transform":{"@USE":"T"}},{"WorldInfo":{"@title":"Unicode \uD83D\uDE00"}}]}}}

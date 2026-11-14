@@ -11,6 +11,18 @@ related:
 
 # Codec Writers
 
+## UNIT normalization safety
+
+Parsed documents retain authored UNIT declarations and values for round-trip
+serialization. Runtime entry converts authored dimensional fields in place.
+Until conversion-aware output can also reconcile PROTO interfaces and canonical
+built-in defaults, document writers (and XML scene output) throw if nonidentity
+UNIT normalization has occurred. Serialize before runtime entry, or reparse the
+source into an independent document. A shallow Scene/document copy shares nodes
+and is not an independent authoring snapshot. Identity conversions and untouched
+built-in defaults do not trigger this guard. Node-only writer APIs lack Scene
+provenance and do not provide this document-level protection.
+
 ## Purpose
 
 The codec writers subsystem converts an in-memory `x3d::runtime::X3DDocument` (or a `Scene` / single node) into one of the three X3D encoding wire formats: X3D-XML (`.x3d`), ClassicVRML (`.x3dv`), and X3D-JSON (`.x3dj`). A fourth writer, `CanonicalXmlWriter`, produces the deterministic X3D Canonical Form (X3DC14N) used by the differential conformance gate. All four writers are driven purely by the generated reflection `FieldTable` and the `X3DNodeFactory`; none contain per-node code. The shared field-value formatting kernel (`FieldValueIO.hpp`) is the bidirectional text↔`std::any` bridge shared by the writers and the codec readers alike.

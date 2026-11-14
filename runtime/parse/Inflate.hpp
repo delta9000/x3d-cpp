@@ -130,8 +130,8 @@ inline std::string inflateGzip(std::string_view compressed,
     std::size_t out_size = cap;
     tinfl_status st = tinfl_decompress(
         &decomp, p + deflate_begin, &in_size,
-        reinterpret_cast<unsigned char *>(&out[0]),
-        reinterpret_cast<unsigned char *>(&out[0]), &out_size,
+        reinterpret_cast<unsigned char *>(out.data()),
+        reinterpret_cast<unsigned char *>(out.data()), &out_size,
         TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
     if (st == TINFL_STATUS_DONE) {
       out.resize(out_size);
@@ -142,7 +142,7 @@ inline std::string inflateGzip(std::string_view compressed,
       // ceiling the decompressed output exceeds the policy limit — reject it as
       // a decompression bomb rather than doubling the buffer toward OOM.
       if (cap >= maxOut)
-        throw std::runtime_error(
+        throw ParseResourceLimitError(
             "inflateGzip: decompressed size exceeds the kMaxDecompressedBytes "
             "cap (possible gzip decompression bomb)");
       cap = cap > maxOut / 2 ? maxOut : cap * 2; // grow, clamped to the ceiling

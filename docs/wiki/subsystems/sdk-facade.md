@@ -53,7 +53,9 @@ backend factories have their own headers and build options.
 ## Package boundaries
 
 `x3d_cpp::authoring` and `x3d/authoring.hpp` provide nodes, the document model,
-and writers without simulation or extraction. See [asset import](asset-import.md).
+`SceneBuilder`, and writers without simulation or extraction. See
+[asset import](asset-import.md#scenebuilder). `sdk.hpp` re-exports the builder as
+`sdk::SceneBuilder`.
 
 Extensions use `x3d/ext.hpp` and the separate opt-in extension target.
 See [the extension firewall](ext-firewall.md).

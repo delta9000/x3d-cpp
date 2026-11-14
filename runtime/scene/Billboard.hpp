@@ -34,7 +34,17 @@ inline Mat4 billboardLocalMatrix(const Mat4 &parentWorldM, const SFVec3f &camera
   const SFVec3f upL = vec3::normalizeOrZero(inv.transformDirection(viewerUpWorld), 1e-9f);
   const SFVec3f newZ = b2v;
   SFVec3f newX = vec3::cross(upL, newZ);
-  if (vec3::length(newX) < 1e-9f) newX = vec3::cross(SFVec3f{0, 1, 0}, newZ); // up ∥ b2v fallback
+  if (vec3::length(newX) < 1e-9f) {
+    // Roll is undefined when up is parallel to the viewing direction (or
+    // zero). Choose the least-aligned canonical axis to avoid a singular
+    // rotation.
+    const float ax = std::fabs(newZ.x), ay = std::fabs(newZ.y),
+                az = std::fabs(newZ.z);
+    const SFVec3f fallbackUp = ax <= ay && ax <= az ? SFVec3f{1, 0, 0}
+                               : ay <= az           ? SFVec3f{0, 1, 0}
+                                                    : SFVec3f{0, 0, 1};
+    newX = vec3::cross(fallbackUp, newZ);
+  }
   newX = vec3::normalizeOrZero(newX, 1e-9f);
   const SFVec3f newY = vec3::cross(newZ, newX);
   // Column-major basis: columns are images of local X,Y,Z. Build via Mat4 element layout.

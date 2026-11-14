@@ -198,3 +198,105 @@ TEST_CASE("delta oracle: lightsChanged exposes current cached descriptors and sc
   const std::size_t outsideCount = !current.empty() && current[0].global ? 1 : 0;
   CHECK(ex.item(1).lights.size() == outsideCount);
 }
+
+TEST_CASE("local lights and projectors retain their USE placement scope") {
+  auto shared = createX3DNode("Group");
+  auto light = createX3DNode("DirectionalLight");
+  auto projector = createX3DNode("TextureProjector");
+  setF(light, "global", std::any(false));
+  setF(projector, "global", std::any(false));
+  addChild(shared, light);
+  addChild(shared, projector);
+  addChild(shared, makeTriShape());
+  auto left = createX3DNode("Transform"), right = createX3DNode("Transform");
+  setF(right, "rotation", std::any(SFRotation{0, 1, 0, 1.57079632679f}));
+  addChild(left, shared);
+  addChild(right, shared);
+  Scene scene;
+  scene.addRootNode(left);
+  scene.addRootNode(right);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  REQUIRE(snap.added.size() == 2);
+  REQUIRE(ex.snapshotLights().size() == 2);
+  auto projectors = ex.projectors();
+  REQUIRE(projectors.size() == 2);
+  for (auto id : snap.added) {
+    const auto &item = ex.item(id);
+    REQUIRE(ex.lightsOf(id).size() == 1);
+    auto index = ex.lightsOf(id).front();
+    CHECK(ex.snapshotLights()[index].scopePath.front() == item.path.front());
+    unsigned applicable = 0;
+    for (const auto &p : projectors) {
+      if (extract::projectorApplies(p, item)) {
+        ++applicable;
+        CHECK(p.scopePath.front() == item.path.front());
+      }
+    }
+    CHECK(applicable == 1);
+  }
+}
+
+TEST_CASE("Billboard light and projector frames follow the tracked view") {
+  auto billboard = createX3DNode("Billboard");
+  auto light = createX3DNode("PointLight");
+  auto projector = createX3DNode("TextureProjector");
+  setF(light, "location", std::any(SFVec3f{0, 0, 1}));
+  setF(projector, "location", std::any(SFVec3f{0, 0, 1}));
+  addChild(billboard, light);
+  addChild(billboard, projector);
+  Scene scene;
+  scene.addRootNode(billboard);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.setHeadPose({0, 0, 10}, {0, 1, 0, 0});
+  ctx.tick(0.0);
+  extract::SceneExtractor ex(ctx, scene);
+  ex.fullSnapshot();
+  REQUIRE(ex.lights().size() == 1);
+  CHECK(ex.lights()[0].worldLocation.z == doctest::Approx(1));
+  ctx.setHeadPose({10, 0, 0}, {0, 1, 0, 0});
+  ctx.tick(0.1);
+  auto delta = ex.delta();
+  CHECK(delta.lightsChanged);
+  auto lights = ex.lights();
+  CHECK(lights[0].worldLocation.x == doctest::Approx(1));
+  CHECK(lights[0].worldLocation.z == doctest::Approx(0).epsilon(0.0001));
+  auto projectors = ex.projectors();
+  REQUIRE(projectors.size() == 1);
+  CHECK(projectors[0].worldLocation.x == doctest::Approx(1));
+  CHECK(projectors[0].worldLocation.z == doctest::Approx(0).epsilon(0.0001));
+  ctx.tick(0.2);
+  CHECK_FALSE(ex.delta().lightsChanged);
+}
+
+TEST_CASE("free Billboard lights invalidate on camera roll without eye motion") {
+  auto billboard = createX3DNode("Billboard");
+  setF(billboard, "axisOfRotation", std::any(SFVec3f{0, 0, 0}));
+  auto light = createX3DNode("PointLight");
+  setF(light, "location", std::any(SFVec3f{1, 0, 0}));
+  addChild(billboard, light);
+  Scene scene;
+  scene.addRootNode(billboard);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.setHeadPose({0, 0, 10}, {0, 1, 0, 0});
+  ctx.tick(0.0);
+  extract::SceneExtractor ex(ctx, scene);
+  ex.fullSnapshot();
+  REQUIRE(ex.snapshotLights().size() == 1);
+  CHECK(ex.snapshotLights()[0].worldLocation.x == doctest::Approx(1));
+  const auto eye = ctx.cameraWorldPosition();
+  ctx.setHeadPose({0, 0, 10}, {0, 0, 1, 1.57079632679f});
+  ctx.tick(0.1);
+  REQUIRE(ctx.cameraWorldPosition() == eye);
+  CHECK(ex.delta().lightsChanged);
+  REQUIRE(ex.snapshotLights().size() == 1);
+  CHECK(ex.snapshotLights()[0].worldLocation.x == doctest::Approx(0).epsilon(0.0001));
+  CHECK(std::fabs(ex.snapshotLights()[0].worldLocation.y) == doctest::Approx(1));
+  CHECK(ex.snapshotLights()[0].worldLocation == ex.lights()[0].worldLocation);
+  ctx.tick(0.2);
+  CHECK_FALSE(ex.delta().lightsChanged);
+}

@@ -7,6 +7,7 @@
 
 #include "X3DDocument.hpp"
 #include "X3DRangeValidate.hpp"
+#include "SceneBuilder.hpp"
 #include "codecs/X3DCodecs.hpp"
 // There is no single all-nodes umbrella header; X3DNodeFactory.hpp maps type
 // names to instances but does not expose concrete node classes. Include the
@@ -29,6 +30,7 @@ using x3d::codec::XmlWriter;
 using x3d::codec::JsonWriter;
 using x3d::codec::VrmlWriter;
 using x3d::codec::CanonicalXmlWriter;
+// SceneBuilder and Node<T> (SceneBuilder.hpp) are declared in this namespace.
 } // namespace x3d::authoring
 
 #endif // X3D_AUTHORING_HPP

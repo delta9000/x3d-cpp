@@ -14,6 +14,17 @@
 
 namespace x3d::codec {
 
+/// Shared by all synchronous nested parseFile/parseDocument calls, including
+/// custom resolvers. Counts the top-level document in depth. Input bytes include
+/// every attempted file read and memory document; gzip additionally charges its
+/// decoded bytes. Limits bound input work, not the resulting scene's heap size.
+/// Only the outermost call chooses limits; each independent call resets them.
+/// Exhaustion throws ParseResourceLimitError, never a recoverable URL warning.
+struct ParseLimits {
+  std::size_t maxDocumentDepth = 64;
+  std::size_t maxInputBytes = 256u * 1024u * 1024u;
+};
+
 /// Construct the reader for a known encoding, or null for Unknown.
 std::unique_ptr<X3DReader> makeReader(Encoding enc);
 
@@ -68,7 +79,8 @@ runtime::X3DDocument parseDocument(
     const std::string &baseUrl = "",
     const ProtoDeclarationResolver &resolver = localFileProtoResolver,
     const runtime::InlineResolver &inlineResolver = localFileInlineResolver,
-    const std::string &confineRoot = "");
+    const std::string &confineRoot = "",
+    const ParseLimits &limits = {});
 
 /// A parser for scene text created at run time (the SAI
 /// Browser.createX3DFromString / createVrmlFromString services; pass it to
@@ -95,7 +107,8 @@ makeStringSceneFactory();
 /// the root are rejected either way. Only the outermost parseFile establishes
 /// the root; nested re-parses driven by the resolvers inherit it.
 runtime::X3DDocument parseFile(const std::string &path,
-                             const std::string &confineRoot = "");
+                             const std::string &confineRoot = "",
+                             const ParseLimits &limits = {});
 
 } // namespace x3d::codec
 
