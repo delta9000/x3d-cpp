@@ -47,7 +47,6 @@ Rules:
 | `README.generator.md` | The PyPI package description for `x3d-cpp-gen` | Packaged metadata; keep self-contained |
 | `docs/conformance/` | The findings register and its generated view | Edit the YAML; never hand-edit generated files |
 | `sai/docs/conformance/` | The SAI service register and its baseline | Same |
-| `docs/audit/` | A dated security audit report | A point-in-time record; not maintained as current reference |
 | `CHANGELOG.md` | Release notes | |
 
 The old dated specs and plans (`docs/superpowers/`, `docs/plans/`,

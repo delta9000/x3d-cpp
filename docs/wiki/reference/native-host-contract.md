@@ -91,24 +91,16 @@ Don't assume subtree-cost updates. The dependency and replacement rules are in
 
 ### Switch and LOD selection changes
 
-A `Switch.whichChoice` or per-placement LOD selection change:
+- Unaffected placements keep their `RenderItemId`s and mesh payloads; only
+  placements entering or leaving the active selection appear in `removed` and
+  `added`.
+- An unedited level that leaves and re-enters comes back under the same
+  `GeomId`, so a `GeomId`-keyed upload cache can keep its buffers across LOD
+  boundary crossings.
 
-- keeps unaffected `RenderItemId`s and immutable mesh payloads
-- lists only placements entering or leaving the active selection in
-  `removed` and `added`
-- returns a level that left and re-entered without an edit under the same
-  `GeomId` and mesh, so a `GeomId`-keyed upload cache can keep its buffers
-  across LOD boundary crossings if it retains them for removed placements
-- gives a level edited while inactive a new `GeomId`
-- lists surviving placements whose material, shader or skin binding changed in
-  `updatedMaterial` or `updatedSkinPose`
-- lists records whose scoped light, fog or clip-plane state changed in both
-  `removed` and `added` with the same ID
-- sends `updatedGeometry` to surviving external packed placements
-
-Selection refresh walks the active scene within a budget, so its cost is not
-proportional to the changed subtree alone. See
-[ADR-0069](../explanation/decisions/0069-selection-deltas-and-cheap-ticks.md).
+The full rules, including which update channels a surviving placement gets,
+are in [view-dependent placements](subsystems/extract-deltas.md#view-dependent-placements)
+and [ADR-0069](../explanation/decisions/0069-selection-deltas-and-cheap-ticks.md).
 
 ### Light and environment flags
 

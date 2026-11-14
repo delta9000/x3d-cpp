@@ -1,7 +1,7 @@
 ---
 title: Add a CLI command
 summary: Extend CLI dispatch, argument handling, and observable tests.
-tags: [guide, cli]
+tags: [how-to, cli]
 updated: 2026-11-05
 related: []
 ---

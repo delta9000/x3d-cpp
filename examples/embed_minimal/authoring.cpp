@@ -1,4 +1,4 @@
-// The README "hello world" (§Quickstart 2), built against the slim authoring
+// The "Build a scene in code" hello world (docs/wiki/how-to/build-a-scene-in-code.md), built against the slim authoring
 // surface: x3d/authoring.hpp + the x3d_cpp::authoring target (no runtime, no
 // extraction). x3d/sdk.hpp re-exports the same builder as sdk::SceneBuilder.
 // verify_install_embed.sh runs this binary from a scratch dir and then feeds

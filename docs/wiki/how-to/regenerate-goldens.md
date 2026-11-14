@@ -1,12 +1,12 @@
 ---
-title: Golden regeneration
+title: Regenerate the golden bindings
 summary: Regenerate committed bindings after an intentional generator change.
-tags: [guide, golden]
+tags: [how-to, golden]
 updated: 2026-11-05
 related: []
 ---
 
-# Golden regeneration
+# Regenerate the golden bindings
 
 `generated_cpp_bindings/` contains committed C++ output from the generator.
 Change the templates, emitters, or input model rather than editing generated

@@ -1,12 +1,12 @@
 ---
-title: Using the RAGs
+title: Search with the RAG tools
 summary: Configure and query specification, C++, and documentation indexes.
-tags: [guide, rag]
+tags: [how-to, rag]
 updated: 2026-11-05
 related: []
 ---
 
-# Using the RAGs
+# Search with the RAG tools
 
 The search scripts locate evidence. Read the returned clause or source before
 making a capability claim. [Knowledge map](../reference/knowledge-map.md) identifies the

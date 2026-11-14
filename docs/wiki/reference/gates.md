@@ -1,7 +1,7 @@
 ---
 title: Gate system
 summary: What the verification gates check and where their definitions live.
-tags: [guide, gates]
+tags: [reference, gates]
 updated: 2026-11-05
 related: []
 ---

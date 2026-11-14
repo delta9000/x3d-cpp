@@ -55,16 +55,8 @@ The documentation lives in the x3d-cpp wiki under
 
 ## Relationship to the ISO C++ binding
 
-[ISO/IEC 19777-4](https://www.iso.org/standard/83753.html) is the published C++
-language binding for the SAI. It keeps the interface shape shared with the
-other SAI language bindings by design, so one abstract service description maps
-the same way into every language.
-
-This SDK maps the same abstract services (ISO/IEC 19775-2) onto idiomatic
-C++20. It is simply another way of doing it, shared to help the X3D ecosystem.
-It doesn't replace the standard and isn't source-compatible with 19777-4. The
-[service register](docs/conformance/SAI-BASELINE.md) cites the ISO clause behind
-each service, so anyone can compare the two. More in
+This SDK is another C++20 mapping of the abstract SAI services, shared to help
+the X3D ecosystem; it does not replace ISO/IEC 19777-4. See
 [Relationship to the ISO C++ binding](../docs/wiki/sai/explanation/iso-binding.md).
 
 ## Development

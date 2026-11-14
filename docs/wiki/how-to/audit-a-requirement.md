@@ -1,12 +1,12 @@
 ---
-title: Conformance audits
+title: Audit a requirement
 summary: Record normative requirements, code evidence, and unresolved behavior.
-tags: [guide, conformance]
+tags: [how-to, conformance]
 updated: 2026-11-05
 related: []
 ---
 
-# Conformance audits
+# Audit a requirement
 
 Conformance audits compare observable behavior with the applicable ISO clause.
 Structural validation, successful parsing, and detected System registration

@@ -3,7 +3,9 @@ title: Architecture
 summary: Layers and data flow from generated nodes to runtime consumers.
 tags: [architecture]
 updated: 2026-11-05
-related: []
+related:
+  - tick-model.md
+  - seams.md
 ---
 
 # Architecture
@@ -46,10 +48,10 @@ source metadata. `X3DExecutionContext` builds the scene indices and route graph.
 `System` implementations register behavior through `addSystem`; ScriptSystem
 also registers post-cascade hooks.
 
-A tick clears the previous dirty set, updates Systems and drains routed events
-until quiescence, runs post-cascade hooks, then propagates transforms and bounds.
-Field writes update node values through reflection or the scene-owned author
-field store. Transforms, bounds, and extraction caches live in side tables.
+What a tick does, and why the host drives it, is in
+[The tick model](tick-model.md). Field writes update node values through
+reflection or the scene-owned author field store; transforms, bounds and
+extraction caches live in side tables.
 Raw generated setters bypass the context's dirty tracking.
 
 See [Execution context](../reference/subsystems/execution-context.md),
@@ -77,7 +79,8 @@ scene round trips. See [Codec writers](../reference/subsystems/codecs-writers.md
 `include/x3d/sdk.hpp` re-exports the curated API. `RuntimeSession` owns a document,
 context, and extractor in dependency order. The host supplies time and input,
 consumes deltas, and wires optional resources and engines. The
-[seam matrix](../reference/seam-matrix.md) lists implementations and contract tests.
+[seam matrix](../reference/seam-matrix.md) lists implementations and contract tests;
+[Seams, ports and backends](seams.md) explains the split.
 
 Foreign-format and binary-geometry extensions live under `runtime/ext/` behind
 `X3D_CPP_BUILD_EXT`. Core code does not include that layer. The dependency rule
