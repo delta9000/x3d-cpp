@@ -40,8 +40,8 @@ conformance status lives in `docs/conformance/findings.yaml`.
 | [system-keydevice](subsystems/system-keydevice.md) | `runtime/events/KeyDeviceSensorSystem.hpp`, `runtime/events/KeyState.hpp` |
 | [system-loadsensor](subsystems/system-loadsensor.md) | `runtime/events/LoadSensorSystem.hpp`, `runtime/io/file/FileResolver.hpp` |
 | [system-script-sai](subsystems/system-script-sai.md) | `runtime/script/` |
-| [sai-sdk](subsystems/sai-sdk.md) | `sai/` |
-| [sai-provider](subsystems/sai-provider.md) | `adapters/sai_provider/`, `tests/cmake/sai_provider/`, `tests/cmake/sai_coexistence/`, `scripts/verify_sai_provider.sh`, `scripts/verify_sai_coexistence.sh` |
+| [SAI SDK](sai/index.md) | `sai/` |
+| [Native SAI provider](sai/reference/native-provider.md) | `adapters/sai_provider/`, `tests/cmake/sai_provider/`, `tests/cmake/sai_coexistence/`, `scripts/verify_sai_provider.sh`, `scripts/verify_sai_coexistence.sh` |
 | [system-asset-io](subsystems/system-asset-io.md) | `runtime/extract/AssetResolver.hpp`, `runtime/io/` |
 | [system-texture-decode](subsystems/system-texture-decode.md) | `runtime/extract/TextureResolver.hpp`, `runtime/extract/MultiFormatTextureResolver.hpp`, `runtime/io/stb/`, `runtime/io/wuffs/` |
 | [system-font-metrics](subsystems/system-font-metrics.md) | `runtime/extract/FontMetrics.hpp`, `runtime/io/stbtt/`, `runtime/io/tests/font_metrics_tests.cpp` |

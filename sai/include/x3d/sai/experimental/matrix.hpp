@@ -15,7 +15,7 @@ namespace x3d::sai::experimental {
 // Algebra on the existing owning SFMatrix values. Storage is row-major;
 // vector orientation is explicit and independent of that storage order.
 // All operations return new values and require no browser or compiled kernel.
-// See docs/matrix-operations.md for the source discrepancies and safety policy.
+// See docs/wiki/sai/reference/matrix.md for the source mapping and safety policy.
 template <class T, std::size_t N>
 concept supported_matrix =
     (std::same_as<T, float> || std::same_as<T, double>) && (N == 3 || N == 4);

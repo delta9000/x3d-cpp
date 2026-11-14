@@ -10,14 +10,14 @@ related:
   - ../decisions/0013-js-engine-choice.md
   - ../decisions/0014-dynamic-field-foundation.md
   - ../decisions/0022-scriptengine-second-backend-swap-test.md
-  - sai-sdk.md
+  - ../sai/index.md
   - ../decisions/0047-sai-sister-repo-split.md
 ---
 
 # Script / SAI Runtime
 
 `runtime/script/SaiContext.hpp` is the native Script-backend API. The
-[portable native provider](sai-provider.md) is separate and does not expose
+[portable native provider](../sai/reference/native-provider.md) is separate and does not expose
 Script nodes. Linking the packages does not connect their scenes.
 
 ## Purpose

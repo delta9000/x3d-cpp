@@ -42,7 +42,8 @@ struct metadata_catalog {
 
 // Returns owning runtime-field descriptors, not a lossless UOM/document model.
 // DEF/USE/IS and host class/id/CSS style are intentionally excluded. Text-style
-// fields on FontStyle/ScreenFontStyle remain. See docs/generated-field-projection.md.
+// fields on FontStyle/ScreenFontStyle remain. See
+// docs/wiki/sai/reference/generated-fields.md.
 // Bounds, enum-membership and reference/containment classification are not a
 // complete constraint model; unit_categories_complete also remains false.
 metadata_catalog generated_metadata_catalog();

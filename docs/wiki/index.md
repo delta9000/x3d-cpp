@@ -2,7 +2,7 @@
 title: x3d-cpp knowledge wiki
 summary: Runtime architecture, subsystem references, decisions, and guides.
 tags: [index]
-updated: 2026-11-05
+updated: 2026-11-14
 related: []
 ---
 
@@ -16,6 +16,7 @@ are separate consumers.
 |---|---|
 | [Architecture](architecture.md) | Layers and data flow |
 | [Native host integration](guides/native-host.md) | Session ownership, input, resources, and delta consumption |
+| [SAI SDK](sai/index.md) | The C++20 Scene Access Interface: tutorials, how-to guides, reference and explanation |
 | [Subsystem source map](coverage.md) | Primary code paths for each subsystem |
 | [Seam matrix](seam-status.md) | Interfaces, implementations, and contract tests |
 | [Knowledge map](knowledge-map.md) | Specification, implementation, and decision sources |

@@ -4,7 +4,7 @@ summary: Carry extracted materials and compare retained presentation frames by p
 tags: [adr, sai, provider, extraction]
 updated: 2026-10-18
 related:
-  - ../subsystems/sai-provider.md
+  - ../sai/reference/presentation-feed.md
 ---
 
 # ADR-0066: Native SAI presentation materials and frame deltas

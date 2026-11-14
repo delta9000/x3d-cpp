@@ -104,7 +104,7 @@ differs. See [ADR-0069](decisions/0069-selection-deltas-and-cheap-ticks.md).
 
 ## Portable SAI provider
 
-The native provider is checked against the [SAI SDK](subsystems/sai-sdk.md)'s
+The native provider is checked against the [SAI SDK](sai/index.md)'s
 reference provider (`sai_provider_reference`) and runs the SDK's shared
 named-node discovery checks (`sai_provider_native_runtime`). CI runs these on
 every C++ or SAI change (the `sai-adapter` job). It also supplies presentation
@@ -115,4 +115,4 @@ and queued live ROUTE addition. The provider defines no stable binary ABI. See
 [ADR-0067](decisions/0067-provider-named-node-discovery.md),
 [ADR-0074](decisions/0074-sai-adopt-session.md),
 [ADR-0075](decisions/0075-sai-live-route-addition.md), and the
-[provider guide](subsystems/sai-provider.md).
+[native provider reference](sai/reference/native-provider.md).

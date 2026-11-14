@@ -74,6 +74,29 @@ Decisions live in `docs/wiki/decisions/`. Use the `adr-template.md` template. Nu
 
 Subsystem pages live in `docs/wiki/subsystems/`. Use the `subsystem-template.md` template. The slug is the subsystem's canonical name (e.g. `cli-suite`, `event-cascade`, `extract`).
 
+## SAI documentation convention
+
+The SAI SDK's documentation is one tree, `docs/wiki/sai/`, organised by
+[Diataxis](https://diataxis.fr/): each page serves exactly one purpose.
+
+| Directory | A page there | Written as |
+|---|---|---|
+| `tutorials/` | Teaches by building something that works | Numbered steps with the expected output after each; no options, no digressions |
+| `how-to/` | Gets one named task done | Steps for a reader who already knows the basics; links to reference for the rules |
+| `reference/` | States exact behaviour | Tables and short bullets; no instructions, no rationale |
+| `explanation/` | Says why | Prose; no steps |
+
+Rules:
+
+- New SAI material goes into the matching directory, the `mkdocs.yml` nav and
+  the lists in `sai/index.md`. Do not add prose docs under `sai/docs/` (which
+  holds only the service register) or grow the READMEs under `sai/`,
+  `adapters/sai_provider/`, `examples/sai_host/` and `tests/cmake/sai_*/`;
+  those stay short pointers into the tree.
+- State a fact once, in reference, and link to it from the other three kinds.
+- If a page needs a second purpose, split it.
+- Prefer a table to a paragraph that lists cases.
+
 ## Accuracy rule
 
 Every factual claim in a wiki page (file path, function name, API, behavior) MUST be verifiable against the current codebase or a linked spec. No invented APIs or paths. Wave-2 verify stage cross-checks each page via `code_rag`/file reads.

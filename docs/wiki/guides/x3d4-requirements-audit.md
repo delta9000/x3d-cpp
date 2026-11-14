@@ -38,9 +38,9 @@ loaders, fonts, and enabled components.
 
 SAI (19775-2), language bindings (19777), and encodings (19776) need separate,
 versioned requirements lists. The SAI SDK is described by
-[its subsystem page](../subsystems/sai-sdk.md) and
+[its documentation](../sai/index.md) and
 [ADR-0076](../decisions/0076-fold-sai-into-x3d-cpp.md), and native SAI
-integration by the [provider subsystem](../subsystems/sai-provider.md).
+integration by the [native provider reference](../sai/reference/native-provider.md).
 
 ## Baseline coverage and source reconciliation
 

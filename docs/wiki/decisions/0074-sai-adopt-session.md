@@ -4,7 +4,7 @@ summary: Keep one authoritative runtime graph and one host extraction consumer.
 tags: [adr, sai, ownership, runtime]
 updated: 2026-10-20
 related:
-  - ../subsystems/sai-provider.md
+  - ../sai/reference/native-provider.md
   - ../subsystems/execution-context.md
 ---
 

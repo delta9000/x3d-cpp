@@ -120,6 +120,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Changed
 
+- **SAI documentation reorganised.** The SAI SDK and native provider docs are
+  now one tree, `docs/wiki/sai/`, split into tutorials, how-to guides,
+  reference and explanation. The topic pages under `sai/docs/` and the two
+  wiki subsystem pages moved there; `sai/docs/` keeps only the service
+  register, and the SAI READMEs are short pointers into the tree.
+
 - **OpenGL PoC MultiTexture limits lifted (REQ-MULTITEXTURE-2).** The unlit,
   Phong and PBR programs combine eight stages (was four) over eight UV sets
   (was four), and each stage and material texture slot samples its own UV set

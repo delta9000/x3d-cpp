@@ -77,8 +77,6 @@ nav:
           - Key-Device Sensor System: subsystems/system-keydevice.md
           - LoadSensor System: subsystems/system-loadsensor.md
           - Script / SAI Runtime: subsystems/system-script-sai.md
-          - SAI SDK (sai/): subsystems/sai-sdk.md
-          - Native SAI Provider: subsystems/sai-provider.md
           - Sensor Layer Overview: subsystems/sensors.md
           - Physics (RigidBody dynamics): subsystems/physics.md
           - Sound (§16 audio graph): subsystems/sound.md
@@ -99,6 +97,53 @@ nav:
           - CLI Suite: subsystems/cli-suite.md
           - Asset Import: subsystems/asset-import.md
           - Conformance Infrastructure: subsystems/conformance-infra.md
+  - SAI SDK:
+      - Overview: sai/index.md
+      - Tutorials:
+          - Animate your first scene: sai/tutorials/first-scene.md
+          - Run a scene on the native runtime: sai/tutorials/native-host.md
+      - How-to guides:
+          - Consume the SDK from CMake: sai/how-to/consume-the-sdk.md
+          - Run the host loop: sai/how-to/run-the-host-loop.md
+          - Add a ROUTE to a live scene: sai/how-to/add-a-live-route.md
+          - Find named nodes: sai/how-to/find-named-nodes.md
+          - Declare scene units and metadata: sai/how-to/declare-units-and-metadata.md
+          - Attach user data: sai/how-to/attach-user-data.md
+          - Build and link the native backend: sai/how-to/use-the-native-backend.md
+          - Adopt a loaded session: sai/how-to/adopt-a-session.md
+          - Present frames from the native feed: sai/how-to/present-frames.md
+          - Author with the reference kernel: sai/how-to/author-with-the-kernel.md
+          - Write a kernel runtime host: sai/how-to/write-a-kernel-runtime-host.md
+          - Publish browser information: sai/how-to/publish-browser-information.md
+          - Verify a change: sai/how-to/verify-a-change.md
+          - Update the service register: sai/how-to/update-the-service-register.md
+      - Reference:
+          - Packages, targets and headers: sai/reference/packages-and-targets.md
+          - Provider contract: sai/reference/provider-contract.md
+          - Submissions, turns and notifications: sai/reference/submissions.md
+          - Resource limits: sai/reference/resource-limits.md
+          - Live ROUTEs: sai/reference/live-routes.md
+          - Named nodes: sai/reference/named-nodes.md
+          - Scene units and metadata: sai/reference/scene-information.md
+          - User data: sai/reference/user-data.md
+          - Field values and validity: sai/reference/field-values.md
+          - Native provider: sai/reference/native-provider.md
+          - Presentation feed: sai/reference/presentation-feed.md
+          - Headless host example: sai/reference/host-example.md
+          - Reference kernel: sai/reference/kernel.md
+          - Kernel runtime evaluation: sai/reference/kernel-runtime.md
+          - Multi-field services: sai/reference/multi-field-services.md
+          - Browser services: sai/reference/browser-services.md
+          - Matrix algebra: sai/reference/matrix.md
+          - Generated field projection: sai/reference/generated-fields.md
+          - Service register: sai/reference/service-register.md
+          - Test suites and gates: sai/reference/test-suites.md
+      - Explanation:
+          - "Architecture: one contract, two backends": sai/explanation/architecture.md
+          - Relationship to the ISO C++ binding: sai/explanation/iso-binding.md
+          - Reference kernel design: sai/explanation/kernel-design.md
+          - Canonical units: sai/explanation/canonical-units.md
+          - Scope and limits: sai/explanation/scope-and-limits.md
   - Decisions (ADRs):
       - "ADR-0001: Ext Firewall": decisions/0001-ext-firewall.md
       - "ADR-0002: Event API for inputOnly Fields": decisions/0002-event-api-for-inputonly.md

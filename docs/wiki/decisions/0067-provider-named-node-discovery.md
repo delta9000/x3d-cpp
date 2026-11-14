@@ -4,7 +4,7 @@ summary: Read native DEF bindings through the portable provider contract.
 tags: [adr, sai, provider]
 updated: 2026-10-18
 related:
-  - ../subsystems/sai-provider.md
+  - ../sai/reference/named-nodes.md
 ---
 
 # ADR-0067: Provider named-node discovery

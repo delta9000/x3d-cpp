@@ -5,8 +5,8 @@ tags: [adr, sai, repository, build]
 updated: 2026-11-11
 related:
   - 0047-sai-sister-repo-split.md
-  - ../subsystems/sai-sdk.md
-  - ../subsystems/sai-provider.md
+  - ../sai/index.md
+  - ../sai/reference/native-provider.md
 ---
 
 # ADR-0076: Fold the SAI SDK back into x3d-cpp

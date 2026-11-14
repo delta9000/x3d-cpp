@@ -38,6 +38,11 @@ the only bridge. Its gates are `mise run sai-ci` (part of `ci`) and `mise run sa
 with `mise run sai-baseline`. `docs/conformance/sai-services.yaml` is the runtime's separate
 Script-SAI register.
 
+Its docs are one Diataxis tree, `docs/wiki/sai/` (tutorials, how-to, reference, explanation;
+rules in `docs/wiki/_conventions/CONVENTIONS.md`). Put new SAI material there. The READMEs
+under `sai/`, `adapters/sai_provider/`, `examples/sai_host/` and `tests/cmake/sai_*/` are short
+pointers into it, and `sai/docs/` holds only the register.
+
 ## Verify before claiming "shipped / covered"
 
 Don't relay doc language about what's done — read the code and list what's actually wired

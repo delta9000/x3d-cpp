@@ -4,7 +4,7 @@ summary: Admit live routes through the existing portable FIFO and install them b
 tags: [adr, sai, routes, runtime]
 updated: 2026-10-20
 related:
-  - ../subsystems/sai-provider.md
+  - ../sai/reference/live-routes.md
   - 0074-sai-adopt-session.md
 ---
 
