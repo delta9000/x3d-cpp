@@ -1,5 +1,5 @@
 ---
-title: "Jinja2 Emit Templates"
+title: Jinja2 emit templates
 summary: "Jinja2 templates that produce per-node C++ class headers, implementations, and test scaffolding from precomputed FieldDescriptor objects."
 tags: [subsystem, templates, jinja2, codegen]
 updated: 2026-06-20
@@ -10,15 +10,14 @@ related:
   - generated-bindings.md
 ---
 
-# Jinja2 Emit Templates
+# Jinja2 emit templates
 
 ## Purpose
 
-- The template subsystem is the final rendering stage of the generator
-  pipeline.
-- It holds three Jinja2 templates that are the authoritative source of the
-  text format for every generated C++ binding: a node class header, a node
-  class implementation, and a per-node value-asserting test.
+The template subsystem is the final rendering stage of the generator pipeline. It holds three Jinja2 templates that are the authoritative source of the text format for every generated C++ binding: a node class header, a node class implementation, and a per-node value-asserting test.
+
+## Behavior
+
 - The templates are intentionally thin — no type decisions live here.
 - All branching logic (C++ type strings, accessor names, constraint-check
   bodies, reflection table entries) is resolved upstream in
@@ -116,9 +115,9 @@ The `FieldDescriptor` objects passed as `fields()` and `reflection_fields` are p
 
 ## Related
 
-- [Generator Pipeline](generator.md)
+- [Generator pipeline](generator.md)
 - [Reflection](reflection.md)
-- [Generated Bindings](generated-bindings.md)
+- [Generated bindings](generated-bindings.md)
 - [Architecture](../../explanation/architecture.md)
 - [ADR-0005: Golden Files in Git](../../explanation/decisions/0005-golden-files-in-git.md)
 - [ADR-0006: Compiled Static Lib](../../explanation/decisions/0006-compiled-static-lib.md)

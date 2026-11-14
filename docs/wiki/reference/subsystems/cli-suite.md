@@ -84,8 +84,8 @@ Run `mise tasks` for the gate and fixture-generation tasks in
 ## Provenance and conformance
 
 Readers retain authored scalar-field presence and child order for writers and
-UNIT conversion. See [parse readers](parse-readers.md) and
-[codec writers](codecs-writers.md). Remaining fidelity and conformance gaps
+UNIT conversion. See [Parse readers](parse-readers.md) and
+[Codec writers](codecs-writers.md). Remaining fidelity and conformance gaps
 are recorded in the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml).
 
 ## Related

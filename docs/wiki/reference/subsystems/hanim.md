@@ -192,4 +192,4 @@ See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/
 
 ## Related
 
-- [Extraction Pipeline](extract.md)
+- [Extraction pipeline](extract.md)

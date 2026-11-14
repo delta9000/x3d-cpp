@@ -1,5 +1,5 @@
 ---
-title: Inline Expansion
+title: Inline expansion
 summary: Parse-time Inline expansion enabling foreign-asset ingestion and general sub-scene composition via the X3D Inline seam.
 tags: [subsystem, inline, expansion, ingestion, obj, gltf, parse-time]
 updated: 2026-06-20
@@ -13,11 +13,13 @@ related:
   - ../../explanation/decisions/0017-inline-expansion-parse-time.md
 ---
 
-# Inline Expansion
+# Inline expansion
 
 ## Purpose
 
 The Inline Expansion subsystem resolves `<Inline url='…'/>` nodes at parse time, loads and splices the referenced sub-scene into the parent scene graph, and preserves the Inline reference when writers serialize the expanded scene. Runtime loading uses the same expansion machinery with an injected resolver.
+
+## Behavior
 
 The subsystem owns four responsibilities:
 
@@ -120,7 +122,7 @@ The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw —
 
 ### Expansion mechanics
 
-1. Walk the scene graph collecting `(parent, inlineNode)` pairs. A `visited` set prevents re-walking through USE-shared or cyclic containment structures (this guard is needed because `expandInlines()` runs before `breakContainmentCycles`). The walk also stops descending at `kMaxNestingDepth` : proto expansion can nest deeper than the parse-time cap, and the walk recurses on the native stack. Field values are read with `FieldRead.hpp`'s exception-free `fieldValueAs`, so an error inside the walk propagates instead of silently dropping a subtree.
+1. Walk the scene graph collecting `(parent, inlineNode)` pairs. A `visited` set prevents re-walking through USE-shared or cyclic containment structures (this guard is needed because `expandInlines()` runs before `breakContainmentCycles`). The walk also stops descending at `kMaxNestingDepth`: proto expansion can nest deeper than the parse-time cap, and the walk recurses on the native stack. Field values are read with `FieldRead.hpp`'s exception-free `fieldValueAs`, so an error inside the walk propagates instead of silently dropping a subtree.
 2. For each collected Inline with `load=TRUE`, call the resolver. On success:
     - Wrap the child's `rootNodes` in a synthetic `Group` via `X3DNodeFactory::create("Group")`.
     - Call `hoistChildRoutes`: resolve the child's `routes` against the child's own `defs`, append concrete endpoints to `scene.resolvedInlineRoutes`. Also hoist any already-resolved `resolvedProtoRoutes` and `resolvedInlineRoutes` from nested expansions.

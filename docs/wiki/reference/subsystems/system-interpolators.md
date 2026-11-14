@@ -1,5 +1,5 @@
 ---
-title: Interpolator System
+title: Interpolators
 summary: Linear and spline interpolator systems for animating field values driven by TimeSensor fractions.
 tags: [subsystem, interpolators, animation, spline, linear]
 updated: 2026-06-20
@@ -9,19 +9,11 @@ related:
   - event-cascade.md
 ---
 
-# Interpolator System
+# Interpolators
 
 ## Purpose
 
-- The Interpolator System animates scene-graph field values by responding to
-  `set_fraction` events (typically routed from a TimeSensor) and emitting
-  `value_changed` outputs through the event cascade.
-- It covers all thirteen nodes in ISO/IEC 19775-1 §19 (Interpolation
-  component): eight linear interpolators, three Hermite spline interpolators,
-  one Squad orientation interpolator, and one EaseInEaseOut fraction modifier.
-- The subsystem owns the math layer (key-span lookup, per-type lerp functions,
-  Hermite/Squad/ease algorithms) and the `System`-derived behavior wiring that
-  installs those math functions into node handlers at scene construction time.
+The Interpolator System animates scene-graph field values by responding to `set_fraction` events (typically routed from a TimeSensor) and emitting `value_changed` outputs through the event cascade. It covers all thirteen nodes in ISO/IEC 19775-1 §19 (Interpolation component): eight linear interpolators, three Hermite spline interpolators, one Squad orientation interpolator, and one EaseInEaseOut fraction modifier. The subsystem owns the math layer (key-span lookup, per-type lerp functions, Hermite/Squad/ease algorithms) and the `System`-derived behavior wiring that installs those math functions into node handlers at scene construction time.
 
 ## Key files
 

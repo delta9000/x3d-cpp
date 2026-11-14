@@ -12,6 +12,9 @@ x3d-cpp is a headless C++20 X3D runtime SDK. It parses a scene, advances its
 behavior, and hands meshes, materials, lights and cameras to your renderer. The
 node bindings are generated from the X3D 4.0 Unified Object Model.
 
+New here? Work through [Load, run and extract your first scene](tutorials/first-scene.md),
+then read [Architecture](explanation/architecture.md).
+
 The documentation follows [Diataxis](https://diataxis.fr/). Pick the kind of
 page that matches what you need now.
 
@@ -51,23 +54,32 @@ Work on x3d-cpp:
 
 ## Reference
 
+Using the SDK:
+
 | Page | Contents |
 |---|---|
-| [SDK capabilities](reference/capabilities.md) | What the SDK surface covers, one row per capability |
+| [SDK capabilities](reference/capabilities.md) | What the SDK covers, one row per capability |
 | [Native host contract](reference/native-host-contract.md) | Session, mutation, delta, lifetime and resource rules |
 | [Seam matrix](reference/seam-matrix.md) | Interfaces, implementations and contract tests |
 | [API stability](reference/api-stability.md) | What 0.x releases promise |
 | [Examples](reference/examples/index.md) | Every example program and what it shows |
+
+Subsystem pages describe one part of the runtime each; the navigation groups
+them by layer, and the [source map](reference/source-map.md#subsystem-sources)
+lists them with their code paths.
+
+Working on x3d-cpp:
+
+| Page | Contents |
+|---|---|
 | [Build and mise tasks](reference/build-and-tasks.md) | Presets, targets, options and tooling |
 | [Gate system](reference/gates.md) | What each verification gate checks |
-| [Subsystem source map](reference/source-map.md) | Primary code paths, with a link to every subsystem page |
-| [Knowledge map](reference/knowledge-map.md) | Which source answers which question |
+| [Source map](reference/source-map.md) | Where to look for an answer, and each subsystem's code |
 | [X3D 4.0 requirements audit](reference/x3d4-requirements-audit.md) | Normative obligations and host acceptance scope |
 | [Documentation conventions](reference/doc-conventions.md) | Where pages go and how they are written |
 
-Subsystem pages live under `reference/subsystems/`; the navigation groups them
-by layer. Conformance status is not in this tree: `docs/conformance/findings.yaml`
-owns it, and `docs/conformance/INDEX.md` is its generated view.
+Conformance status is not in this tree: `docs/conformance/findings.yaml` owns
+it, and `docs/conformance/INDEX.md` is its generated view.
 
 ## Explanation
 

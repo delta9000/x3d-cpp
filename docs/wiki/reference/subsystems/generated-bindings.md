@@ -1,5 +1,5 @@
 ---
-title: Generated Bindings
+title: Generated bindings
 summary: The committed, golden-locked generated C++ node bindings that are the output artifact of the generator pipeline.
 tags: [subsystem, generated, bindings, golden, namespace]
 updated: 2026-07-17
@@ -14,16 +14,14 @@ related:
   - ../gates.md
 ---
 
-# Generated Bindings
+# Generated bindings
 
 ## Purpose
 
-- `generated_cpp_bindings/` is the committed C++ output of the generator
-  pipeline.
-- It provides a typed C++ class for every X3D-4.0 node, a full runtime
-  reflection layer (type-erased `FieldInfo` tables with get/set thunks), a
-  node factory, an interface registry, and the shared field-type and
-  enumeration headers.
+`generated_cpp_bindings/` is the committed C++ output of the generator pipeline. It provides a typed C++ class for every X3D-4.0 node, a full runtime reflection layer (type-erased `FieldInfo` tables with get/set thunks), a node factory, an interface registry, and the shared field-type and enumeration headers.
+
+## Behavior
+
 - Every other runtime subsystem — parse readers, codec writers, the event
   cascade, the extraction pipeline, and the SDK façade — depends on this layer
   as its only representation of X3D nodes.
@@ -143,7 +141,7 @@ public:
 - For live changes, use context input events or `writeField` and check its
   result.
 - Raw setter writes can leave cached bounds and extracted data stale.
-- See [execution context](execution-context.md).
+- See [Execution context](execution-context.md).
 
 ### Seam points
 
@@ -169,9 +167,9 @@ and runtime libraries static together. See `cmake/x3d/libraries.cmake`.
 
 - [ADR-0005: Golden Files in Git](../../explanation/decisions/0005-golden-files-in-git.md)
 - [ADR-0006: Compiled Static Lib](../../explanation/decisions/0006-compiled-static-lib.md)
-- [Generator Pipeline](generator.md)
+- [Generator pipeline](generator.md)
 - [Reflection](reflection.md)
-- [Scene Graph](scene-graph.md)
+- [Scene graph](scene-graph.md)
 - [Architecture](../../explanation/architecture.md)
 - [Gate System](../gates.md)
 - [ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes](../../explanation/decisions/0039-generated-binding-namespaces.md)

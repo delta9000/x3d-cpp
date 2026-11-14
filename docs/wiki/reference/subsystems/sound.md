@@ -1,5 +1,5 @@
 ---
-title: "Sound (§16 audio graph)"
+title: Sound
 summary: X3D Sound through the AudioBackend interface, SoundSystem, and dependency-free BuiltinDspBackend.
 tags: [subsystem, sound, seam, audio, genericity, swap-test]
 updated: 2026-09-29
@@ -15,16 +15,14 @@ related:
   - execution-context.md
 ---
 
-# Sound (§16 audio graph)
+# Sound
 
 ## Purpose
 
-- Animates the X3D §16 Sound component nodes (`OscillatorSource`,
-  `BiquadFilter`, `Gain`, `Delay`, `DynamicsCompressor`, `WaveShaper`,
-  `AudioDestination`, `SpatialSound`, `ListenerPointSource`, the classic
-  `Sound` + `AudioClip` pair of the Immersive profile, and
-  `BufferAudioSource`) by building and driving an audio-processing graph each
-  tick.
+Animates the X3D §16 Sound component nodes (`OscillatorSource`, `BiquadFilter`, `Gain`, `Delay`, `DynamicsCompressor`, `WaveShaper`, `AudioDestination`, `SpatialSound`, `ListenerPointSource`, the classic `Sound` + `AudioClip` pair of the Immersive profile, and `BufferAudioSource`) by building and driving an audio-processing graph each tick.
+
+## Behavior
+
 - It owns the boundary between the X3D §16 declarative node graph and a DSP
   engine, using the same seam pattern as [Physics](physics.md)
   (`PhysicsBackend`→Jolt) and [Script/SAI](system-script-sai.md)
@@ -161,7 +159,9 @@ public:
   sources stay silent.
 - `AudioDestination.gain` is applied at render; `maxChannelCount` remains
   unused by the mono renderer, and `StreamAudioDestination` is not built.
-- DynamicsCompressor (§16.4.9).
+
+#### DynamicsCompressor (§16.4.9)
+
 - `SoundSystem` builds it as a `NodeKind::Compressor` node —
   threshold/knee/ratio/attack/release plus the processing `gain`/`enabled` are
   pushed at build and re-read each tick.
@@ -170,7 +170,9 @@ public:
   `enabled=false` passes the input through.
 - `reduction` is outputOnly and is not posted: the seam has no per-node
   metering path (`createNode`/`connect`/`setParam`/`render` only).
-- Sound + AudioClip (Immersive).
+
+#### Sound + AudioClip (Immersive)
+
 - A `Sound` root builds `Destination ← Panner(Ellipsoid) ← source`.
 - Each tick `SoundSystem` pushes the `Sound`'s world location and direction,
   the ellipsoid lengths scaled by its world transform, `intensity`, and the
@@ -191,7 +193,9 @@ public:
   `io::wav::makeWavDecoder()`).
 - Not read: `Sound.priority`, `AudioClip.description`; HRTF and Doppler are
   deferred.
-- BufferAudioSource (§16.4.5).
+
+#### BufferAudioSource (§16.4.5)
+
 - Its authored `buffer` MFFloat is PCM, so `SoundSystem` feeds the same
   `Buffer` node an AudioClip decodes into — no decoder, resolver or fetch
   involved.
@@ -209,7 +213,9 @@ public:
 - Not wired: `loopStart`/`loopEnd` (the Buffer node wraps the whole buffer — a
   loop region would need a seam extension), the `X3DUrlObject`
   `url`/`description`, the `length` output, reversed (negative-rate) playback.
-- Sound + MovieTexture.
+
+#### Sound + MovieTexture
+
 - `SoundSystem::setMovieAudioDecoder` accepts an `AudioDecoder` callback for
   the movie's encoded bytes.
 - It resolves `MovieTexture.url` with `AssetKind::Movie`, creates one Buffer
@@ -243,7 +249,7 @@ Seam-purity rule for Panner: `buildPannerParams()` in `SoundSystem` resolves the
 ### Seam points
 
 - `AudioBackend` defines the engine interface. `BuiltinDspBackend` implements it without an external audio library. Hosts choose the backend at construction.
-- Param animation via the inbound cascade (no new mechanism) — An author routes an interpolator into `Gain.gain`; the existing [event cascade](event-cascade.md) writes the field; `SoundSystem::update` reads the current field each tick and pushes it via `setParam`. Identical to how `PhysicsSystem` reads node state — no new event mechanism.
+- Param animation via the inbound cascade (no new mechanism) — An author routes an interpolator into `Gain.gain`; the existing [Event cascade](event-cascade.md) writes the field; `SoundSystem::update` reads the current field each tick and pushes it via `setParam`. Identical to how `PhysicsSystem` reads node state — no new event mechanism.
 - `render` output is backend policy — a buffer here (headless testing); a real backend outputs to a device, a network stream, or another buffer. The seam makes the output target the backend's concern.
 
 ## Related
@@ -255,7 +261,7 @@ Seam-purity rule for Panner: `buildPannerParams()` in `SoundSystem` resolves the
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](../../explanation/decisions/0019-physics-seam.md)
 - [ADR-0001: Ext Firewall](../../explanation/decisions/0001-ext-firewall.md)
 - [Physics subsystem](physics.md)
-- [Script / SAI Runtime](system-script-sai.md)
-- [Event Cascade](event-cascade.md)
-- [Execution Context](execution-context.md)
+- [Script and SAI runtime](system-script-sai.md)
+- [Event cascade](event-cascade.md)
+- [Execution context](execution-context.md)
 - [Architecture](../../explanation/architecture.md)

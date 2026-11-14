@@ -1,5 +1,5 @@
 ---
-title: Script / SAI Runtime
+title: Script and SAI runtime
 summary: Script node runtime — ScriptEngine seam, SAI execution context, ECMAScript (Duktape) backend, and dynamic field marshalling.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
 updated: 2026-11-05
@@ -14,7 +14,7 @@ related:
   - ../../explanation/decisions/0047-sai-sister-repo-split.md
 ---
 
-# Script / SAI Runtime
+# Script and SAI runtime
 
 `runtime/script/SaiContext.hpp` is the native Script-backend API. The
 [portable native provider](../../sai/reference/native-provider.md) is separate and does not expose
@@ -22,12 +22,10 @@ Script nodes. Linking the packages does not connect their scenes.
 
 ## Purpose
 
-- The Script / SAI Runtime makes `Script` nodes execute.
-- It owns the full ISO/IEC 19775-1 §29.2 lifecycle (load → initialize →
-  prepareEvents → invoke → eventsProcessed → shutdown), enforces the
-  `directOutput` and `mustEvaluate` field gates, and exposes the in-process
-  Scene Access Interface (SAI) as the only sanctioned channel from script code
-  back into the running scene.
+The Script / SAI Runtime makes `Script` nodes execute. It owns the full ISO/IEC 19775-1 §29.2 lifecycle (load → initialize → prepareEvents → invoke → eventsProcessed → shutdown), enforces the `directOutput` and `mustEvaluate` field gates, and exposes the in-process Scene Access Interface (SAI) as the only sanctioned channel from script code back into the running scene.
+
+## Behavior
+
 - The subsystem is language-agnostic: the `ScriptEngine` abstract seam carries
   no scripting-language types, so a Lua, Python, or alternative ECMAScript
   backend could be substituted without touching the runtime.
@@ -56,7 +54,7 @@ Script nodes. Linking the packages does not connect their scenes.
   during cloning.
 - The XML reader reads SFNode/MFNode author-field defaults from child elements
   (USE included) and the XML writer re-emits a Script's node fields as
-  children; the JSON and ClassicVRML readers still leave them empty .
+  children; the JSON and ClassicVRML readers still leave them empty.
 - It does not claim full author-field IS, Script-language or SAI conformance.
 
 ## Key files
@@ -79,7 +77,7 @@ Script nodes. Linking the packages does not connect their scenes.
 
 `ScriptSystem` is registered with `X3DExecutionContext` via `addScriptSystem()`. Thereafter the context drives both phases each tick:
 
-- `ScriptSystem::update(now, ctx)` — called by the context's per-tick System pass; runs `prepareEvents` for every loaded script before any ROUTE processing (§29.2.5,  once-per-timestamp guard).
+- `ScriptSystem::update(now, ctx)` — called by the context's per-tick System pass; runs `prepareEvents` for every loaded script before any ROUTE processing (§29.2.5, once-per-timestamp guard).
 - `ScriptSystem::runEventsProcessed(ctx)` — called by the context after the cascade drain; flushes deferred (`mustEvaluate=FALSE`) inputs, then calls `eventsProcessed` at most once per script that received an event this cascade (§29.2.4).
 - `ScriptSystem::onAuthorInput(...)` — registered as a cascade author-input listener. A routed event on a Script `inputOnly` field calls `deliverInputEvent`, so the function of the same name runs (§29.2). A routed event on an `inputOutput` field refreshes the script's global via `ScriptEngine::updateField`. Embedders must not bridge author inputs to `deliverInputEvent` themselves, or each handler runs twice.
 
@@ -168,7 +166,7 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 
 - `DynamicFieldStore` / `effectiveFields()` — author `<field>` declarations captured by readers into `Scene::authorFields`, retained on declarations for PROTO templates (see [ADR-0014](../../explanation/decisions/0014-dynamic-field-foundation.md)). `SaiContext::findField()` calls `effectiveFields(node, ctx.authorFields())` to resolve author fields alongside static fields. `EcmaScriptBackend::seedAuthorGlobals()` reads author initial values into JS globals before `initialize()`; `readbackAuthorGlobals()` reads them back after every handler and posts them as cascade events so ROUTEs fan out. Readback uses the active cascade timestamp through `SaiContext`.
 
-- `Script.sourceCode` — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the  S1 closure).
+- `Script.sourceCode` — readers write inline `<![CDATA[...]]>` blocks / JSON source members / VRML body text into `Script.getSourceCode()`. `ScriptSystem::scriptSource()` prefers this over the `url` inline-scheme decode, enabling file-authored scripts (the S1 closure).
 
 - SFNode handles (`NodeHandleTable`) — script code never holds a C++ pointer.
     - Each backend interns a node into the per-script `SaiContext::nodeHandles()` table and hands the engine a small integer id.

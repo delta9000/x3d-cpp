@@ -115,7 +115,7 @@ subsystem pages, not ADRs.
 
 The slug is the subsystem's canonical name (for example `cli-suite`,
 `event-cascade`, `extract`). Add the page to the
-[subsystem source map](source-map.md) too.
+[source map](source-map.md#subsystem-sources) too.
 
 ## Accuracy
 

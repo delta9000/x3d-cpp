@@ -119,7 +119,7 @@ Evidence:
 ## Not the Script API
 
 The runtime's Script nodes use a different, in-process API, `SaiContext`,
-described in [Script / SAI Runtime](../reference/subsystems/system-script-sai.md). It
+described in [Script and SAI runtime](../reference/subsystems/system-script-sai.md). It
 does not expose provider handles, and linking both packages does not connect
 their scenes.
 

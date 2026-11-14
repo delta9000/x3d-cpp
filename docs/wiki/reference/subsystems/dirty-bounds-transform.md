@@ -1,5 +1,5 @@
 ---
-title: "Dirty Tracking, Transforms, and Bounds"
+title: Dirty tracking, transforms and bounds
 summary: Dirty-flag propagation, world-transform accumulation, and bounding-volume computation across the scene graph.
 tags: [subsystem, dirty-tracking, transforms, bounds, cycle-breaker]
 updated: 2026-09-30
@@ -10,20 +10,11 @@ related:
   - ../../explanation/decisions/0016-cycle-breaker.md
 ---
 
-# Dirty Tracking, Transforms, and Bounds
+# Dirty tracking, transforms and bounds
 
 ## Purpose
 
-- This subsystem records which nodes changed during a tick, propagates
-  world-space transforms down the transform hierarchy incrementally, and
-  maintains local-frame axis-aligned bounding boxes (AABBs) for every
-  scene-graph node.
-- It owns the contract that renderers and pick-systems can read the current
-  world matrix or AABB of any node via a side table without touching the node
-  object itself.
-- Malformed scenes containing containment cycles are sanitised once at
-  scene-build time by `CycleBreaker`, converting the graph to a DAG so every
-  downstream recursive walker is safe.
+This subsystem records which nodes changed during a tick, propagates world-space transforms down the transform hierarchy incrementally, and maintains local-frame axis-aligned bounding boxes (AABBs) for every scene-graph node. It owns the contract that renderers and pick-systems can read the current world matrix or AABB of any node via a side table without touching the node object itself. Malformed scenes containing containment cycles are sanitised once at scene-build time by `CycleBreaker`, converting the graph to a DAG so every downstream recursive walker is safe.
 
 ## Key files
 
@@ -96,7 +87,7 @@ Key properties:
 - Incremental propagation — `TransformSystem::propagate` visits two kinds of change.
     - For a `DirtyLocalTransform` it finds the minimal set of subtree roots (dirtied, no dirtied ancestor) and re-accumulates world matrices down from each.
     - For a `DirtyChildren` (any `SFNode`/`MFNode` field, including `Shape.geometry`, or `visible` changing active traversal) it re-walks only that node's changed direct children: new children (and their whole subtrees, across every DEF/USE edge) are indexed and their worlds computed, removed children are dropped when no other parent still reaches them, and unchanged children are left untouched — `reindexChildren` (`runtime/scene/TransformSystem.hpp`).
-    - The render-item extractor separately takes one replacement snapshot for structural dirtiness (see [Extraction](extract-deltas.md#structural-delta-replacement-contract)).
+    - The render-item extractor separately takes one replacement snapshot for structural dirtiness (see [Extraction delta contracts](extract-deltas.md#structural-delta-replacement-contract)).
     - Removing an edge to a still-shared subtree triggers one transform-index rebuild from live roots, so non-Transform descendants and flattened Transform edges also get current ancestor frames.
     - Switch/LOD selection changes are marked `DirtyActiveChild`, which leaves the transform and bounds indexes in place.
     - The transform index caches unchanged descendant local matrices, so moving an ancestor recomposes only authored local changes; the cache refreshes on `DirtyLocalTransform` or `DirtyField`, and a GeoLocation/GeoTransform `geoSystem` write is classified `DirtyLocalTransform` so the geo frame is recomposed in the same tick.
@@ -127,6 +118,6 @@ Key properties:
 - [ADR-0016: Containment Cycles Severed Once at Scene Build](../../explanation/decisions/0016-cycle-breaker.md)
 - [ADR-0011: ECS-Flavored, Not ECS](../../explanation/decisions/0011-ecs-flavored-not-ecs.md)
 - [ADR-0009: sim snapshot-diff](../../explanation/decisions/0009-sim-snapshot-diff.md)
-- [Scene Graph](scene-graph.md)
+- [Scene graph](scene-graph.md)
 - [Math](math.md)
 - [Architecture](../../explanation/architecture.md)

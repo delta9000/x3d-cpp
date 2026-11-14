@@ -1,5 +1,5 @@
 ---
-title: Scene Graph
+title: Scene graph
 summary: Runtime core scene graph — DEF/USE sharing, document/scene model, and the structural systems that traverse it (transform, bounds, binding, pick, dirty-tracking, cycle safety, view-dependent).
 tags: [subsystem, scene-graph, runtime, def-use]
 updated: 2026-09-29
@@ -13,11 +13,13 @@ related:
   - system-pointing.md
 ---
 
-# Scene Graph
+# Scene graph
 
 ## Purpose
 
-The scene graph subsystem owns the parsed world, its structural indices, and cycle handling:
+The scene graph subsystem owns the parsed world, its structural indices and cycle handling.
+
+## Behavior
 
 1. Document and scene model — `X3DDocument` wraps an entire `<X3D>` element: header metadata, profile/version, the root `Scene`, and per-parse diagnostics (range warnings, proto warnings, inline warnings). `Scene` holds the root-node vector, the DEF symbol table, ROUTEs, PROTO/ExternPROTO declarations, and IMPORT/EXPORT statements. DEF/USE semantics are identity-sharing: a USE resolves to the exact same `std::shared_ptr<X3DNode>` registered by the prior DEF — no cloning, no indirection object.
 
@@ -25,7 +27,7 @@ The scene graph subsystem owns the parsed world, its structural indices, and cyc
 
 3. Cycle safety — malformed input can produce containment cycles (a node reachable from its own ancestor, e.g. `<X DEF='a' USE='a'/>`). `CycleBreaker` severs back-edges once at parse time, severing detected back-edges. Walkers retain their own visited sets and traversal budgets.
 
-The subsystem does not own the event cascade, route propagation, or per-tick behavioral semantics — those live in [Execution Context](execution-context.md).
+The subsystem does not own the event cascade, route propagation, or per-tick behavioral semantics — those live in [Execution context](execution-context.md).
 
 ## Key files
 
@@ -111,7 +113,7 @@ int severed = x3d::runtime::breakContainmentCycles(scene);
 
 - DEF/USE identity seam — `Scene::define(name, shared_ptr<X3DNode>)` and `Scene::resolve(name)` are the contract that readers write and the codec writers read. A writer emits `DEF=` on the first encounter and `USE=` on subsequent shared-ptr occurrences; the reader rebuilds the shared identity by calling `resolve()` at USE sites.
 
-- `X3DExecutionContext` owner — the execution context (see [Execution Context](execution-context.md)) owns all the side-table systems (`TransformSystem`, `BoundsSystem`, `BindingSystem`, `DirtyTracker`, `PickSystem`) and calls `buildIndex` / `buildBounds` / `enrollScene` after parse and `propagate` after each tick.
+- `X3DExecutionContext` owner — the execution context (see [Execution context](execution-context.md)) owns all the side-table systems (`TransformSystem`, `BoundsSystem`, `BindingSystem`, `DirtyTracker`, `PickSystem`) and calls `buildIndex` / `buildBounds` / `enrollScene` after parse and `propagate` after each tick.
 
 - `BindingSystem` Poster + Clock — `BindingSystem::enrollScene(scene, Poster, Clock)` accepts callbacks so the system can post `isBound` / `bindTime` events into the cascade without an include dependency on `X3DExecutionContext`. The execution context supplies `[this](node, field, val){ postEvent(node, field, val); }` as the poster.
 
@@ -127,9 +129,9 @@ int severed = x3d::runtime::breakContainmentCycles(scene);
 
 - [Architecture](../../explanation/architecture.md)
 - [Dirty, Bounds, Transform](dirty-bounds-transform.md)
-- [Execution Context](execution-context.md)
+- [Execution context](execution-context.md)
 - [Extract](extract.md)
-- [View-Dependent System](system-viewdependent.md)
+- [View-dependent behavior](system-viewdependent.md)
 - [Viewpoint Binding](system-viewpointbind.md)
 - [Pointing-Device Sensors](system-pointing.md)
 - [ADR-0016: Cycle Breaker](../../explanation/decisions/0016-cycle-breaker.md)

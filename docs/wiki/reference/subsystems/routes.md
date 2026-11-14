@@ -13,7 +13,11 @@ related:
 
 ## Purpose
 
-The ROUTEs subsystem owns the data model and resolution pipeline for X3D event routes — the declarative wiring that connects one node's output field to another's input field. It covers three separable concerns that together bridge authored intent all the way to the live event graph:
+The ROUTEs subsystem owns the data model and resolution pipeline for X3D event routes — the declarative wiring that connects one node's output field to another's input field.
+
+## Behavior
+
+It covers three separable concerns that together bridge authored intent all the way to the live event graph:
 
 1. Route data model (`Route` struct): encoding-neutral record of a ROUTE statement, keyed by DEF name strings with optional resolved weak-pointer endpoints.
 2. Field addressing (`FieldAddress`): identity of a routable endpoint — a raw observer `(node*, field-name)` pair — used by the event cascade to fan out events without owning nodes.
@@ -132,7 +136,7 @@ FieldTable effectiveFields(const X3DNode &node, const DynamicFieldStore &store);
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [event cascade](event-cascade.md)
+- [Event cascade](event-cascade.md)
 - [ADR-0014: Dynamic Field Foundation](../../explanation/decisions/0014-dynamic-field-foundation.md)
 - [Event Cascade subsystem](event-cascade.md)
 

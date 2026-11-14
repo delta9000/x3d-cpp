@@ -83,4 +83,4 @@ std::string xml = sdk::XmlWriter{}.writeDocument(doc);
 
 The contracts are in
 [Execution context](../reference/subsystems/execution-context.md) and
-[Extraction](../reference/subsystems/extract.md).
+[Extraction pipeline](../reference/subsystems/extract.md).

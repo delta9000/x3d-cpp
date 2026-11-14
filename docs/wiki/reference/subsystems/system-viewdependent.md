@@ -1,5 +1,5 @@
 ---
-title: View-Dependent System
+title: View-dependent behavior
 summary: LOD level selection, ProximitySensor/VisibilitySensor/TransformSensor events, and Billboard view-facing rotation — the subsystem that couples the scene graph to the bound viewer each tick.
 tags: [subsystem, view-dependent, lod, visibility, transform-sensor, billboard, sensors]
 updated: 2026-06-25
@@ -12,7 +12,7 @@ related:
   - sensors.md
 ---
 
-# View-Dependent System
+# View-dependent behavior
 
 The View-Dependent System is the runtime subsystem that re-evaluates every scene-graph node whose correct behavior depends on the current viewer pose. It runs once per tick from the bound `Viewpoint` and is responsible for three distinct behaviors:
 
@@ -24,7 +24,7 @@ The View-Dependent System is the runtime subsystem that re-evaluates every scene
     - Pose outputs from ProximitySensor include the exit instant; `centerOfRotation_changed` requires LOOKAT in the bound NavigationInfo.
     - Disabling an active Proximity or Visibility sensor emits `isActive=FALSE` without `exitTime`.
     - Sensors reachable only through a non-selected `Switch` child or inactive `LOD` level are treated as removed from the hierarchy (ADR-0034): `update` computes active-path reachability from the scene roots each tick and deactivates any attached sensor it does not reach.
-    - ProximitySensor `enterTime`/`exitTime` are the interpolated boundary-crossing times along the viewer's straight-line motion between ticks ; VisibilitySensor uses the tick `now`.
+    - ProximitySensor `enterTime`/`exitTime` are the interpolated boundary-crossing times along the viewer's straight-line motion between ticks; VisibilitySensor uses the tick `now`.
 3. Billboard rotation math — a standalone, header-only helper that computes the local rotation matrix that faces a Billboard node toward the viewer; consumed directly by `SceneExtractor` and `PickSystem` during their per-path walks.
 
 The split between tick-time (LOD events, sensor edges) and render-time (Billboard rotation, LOD child selection for rendering) is intentional and documented: the `ViewDependentSystem` class owns the event side; the free function `billboardLocalMatrix` and the inline `lodSelectLevel` are used at extract/pick time. This avoids a dependency cycle between `SceneExtractor`, `PickSystem`, and the execution context.
@@ -111,8 +111,8 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 
 ### Seam points
 
-- `X3DExecutionContext` (query side) — `update` reads `ctx.cameraWorldPosition()`, `ctx.viewMatrix()`, `ctx.worldTransform(node)`, `ctx.cameraWorldUp()`, and `ctx.boundViewpoint()` to obtain viewer pose and per-node world transforms. All of these are provided by [Execution Context](execution-context.md).
-- `ctx.postEvent(node, field, value)` — all sensor and `level_changed` events are posted through the cascade; the cascade propagates them along any routes that consume them. See [Event Cascade](event-cascade.md).
+- `X3DExecutionContext` (query side) — `update` reads `ctx.cameraWorldPosition()`, `ctx.viewMatrix()`, `ctx.worldTransform(node)`, `ctx.cameraWorldUp()`, and `ctx.boundViewpoint()` to obtain viewer pose and per-node world transforms. All of these are provided by [Execution context](execution-context.md).
+- `ctx.postEvent(node, field, value)` — all sensor and `level_changed` events are posted through the cascade; the cascade propagates them along any routes that consume them. See [Event cascade](event-cascade.md).
 - `attachViewDependent` (production wiring) — is declared in `runtime/events/X3DSceneBridge.hpp` and defined in `X3DSceneBridge.cpp`, so `ViewDependentSystem.hpp` stays out of the header chain (`X3DExecutionContext.hpp` → `PickSystem.hpp` → `Billboard.hpp`) and cannot close an include cycle. The caller invokes `attachViewDependent(scene, ctx)` after `ctx.buildSceneGraph(scene)`.
 - `SceneExtractor` (Billboard + LOD render-time) — `SceneExtractor` includes `Billboard.hpp` directly and calls `billboardLocalMatrix` during its per-path DFS walk (line ~497 of `runtime/extract/SceneExtractor.hpp`). It also calls `lodSelectLevel` during the LOD child-selection pass. These are render-time, per-path decisions; the `ViewDependentSystem` tick handles only the event side. See [Extract](extract.md).
 - `PickSystem` (Billboard render-time) — `PickSystem` also includes `Billboard.hpp` and applies `billboardLocalMatrix` so ray-pick resolves against the view-rotated geometry, not the unrotated local frame.
@@ -123,8 +123,8 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Execution Context](execution-context.md)
+- [Execution context](execution-context.md)
 - [Dirty Bounds / Transform](dirty-bounds-transform.md)
-- [Sensors](sensors.md)
+- [Sensors overview](sensors.md)
 - [Extract](extract.md)
 - [ViewpointBind System](system-viewpointbind.md)

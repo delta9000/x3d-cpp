@@ -1,5 +1,5 @@
 ---
-title: Key-Device Sensor System
+title: Key-device sensors
 summary: Time-driven system that drains the per-tick KeyState event queue and emits ISO/IEC 19775-1 §21 outputs to every enabled KeySensor and StringSensor.
 tags: [subsystem, key-device, keysensor, stringsensor, keyboard, key-state, events]
 updated: 2026-09-26
@@ -11,7 +11,7 @@ related:
   - execution-context.md
 ---
 
-# Key-Device Sensor System
+# Key-device sensors
 
 ## Purpose
 
@@ -115,9 +115,9 @@ other enabled key device sensor (KDS-6), through an
 ## Related
 
 - [Sensors overview](sensors.md)
-- [Pointing-Device Sensor System](system-pointing.md)
-- [Navigation System](system-navigation.md)
-- [Execution Context](execution-context.md)
+- [Pointing-device sensors](system-pointing.md)
+- [Navigation](system-navigation.md)
+- [Execution context](execution-context.md)
 - [Architecture](../../explanation/architecture.md)
 
 - ISO/IEC 19775-1 §21 "Key device sensor component" — specifies `KeySensor` (§21.4.1), `StringSensor` (§21.4.2), action-key values (Table 21.2), and `X3DKeyDeviceSensorNode` abstract type.

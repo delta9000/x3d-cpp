@@ -84,5 +84,5 @@ contains the transport decision and its amendment.
 - [Architecture](../../explanation/architecture.md)
 - [Seam matrix](../seam-matrix.md)
 - [ADR-0022: Second ScriptEngine Backend (QuickJS) + Behavioral Swap-Test as the Genericity Proof](../../explanation/decisions/0022-scriptengine-second-backend-swap-test.md)
-- [Extraction Pipeline](extract.md)
-- [Ext Firewall](ext-firewall.md)
+- [Extraction pipeline](extract.md)
+- [Ext firewall](ext-firewall.md)

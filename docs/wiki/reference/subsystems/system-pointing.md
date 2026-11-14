@@ -1,5 +1,5 @@
 ---
-title: Pointing-Device Sensor System
+title: Pointing-device sensors
 summary: TouchSensor and drag sensors (PlaneSensor, SphereSensor, CylinderSensor) — pointer hit-test, grab lifecycle, and drag math, wired through the pointer input seam.
 tags: [subsystem, pointing, touchsensor, drag, plane-sensor, sphere-sensor, cylinder-sensor, events]
 updated: 2026-09-26
@@ -12,11 +12,13 @@ related:
   - event-cascade.md
 ---
 
-# Pointing-Device Sensor System
+# Pointing-device sensors
 
 ## Purpose
 
 This subsystem drives the four X3D pointing-device sensors — `TouchSensor`, `PlaneSensor`, `SphereSensor`, and `CylinderSensor` — from a world-space pointer bearing supplied by the consumer (embedder) each tick.
+
+## Behavior
 
 It owns three concerns:
 
@@ -240,7 +242,7 @@ A sensor is considered enabled via `X3DSensorNode::getEnabled()`. A disabled sen
 
 - [Architecture overview](../../explanation/architecture.md)
 - [Sensors overview](sensors.md)
-- [Key-device sensor system](system-keydevice.md)
+- [Key-device sensors](system-keydevice.md)
 - [Dirty-bounds-transform](dirty-bounds-transform.md)
 - [Execution context](execution-context.md)
 - [Event cascade](event-cascade.md)

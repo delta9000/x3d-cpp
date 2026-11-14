@@ -12,14 +12,7 @@ related:
 
 ## Purpose
 
-- X3D Geospatial nodes (§25) author positions in a spatial reference frame
-  named by their `geoSystem` field rather than in X3D Cartesian space.
-- This subsystem converts those coordinates into earth-fixed geocentric metres
-  and then into the X3D world of the node — relative to its GeoOrigin, if it
-  has one — so that geometry, transforms, the camera and sensors all see
-  ordinary local coordinates.
-- The design is
-  [ADR-0053](../../explanation/decisions/0053-geo-projection-seam.md).
+X3D Geospatial nodes (§25) author positions in a spatial reference frame named by their `geoSystem` field rather than in X3D Cartesian space. This subsystem converts those coordinates into earth-fixed geocentric metres and then into the X3D world of the node — relative to its GeoOrigin, if it has one — so that geometry, transforms, the camera and sensors all see ordinary local coordinates. The design is [ADR-0053](../../explanation/decisions/0053-geo-projection-seam.md).
 
 ## Key files
 

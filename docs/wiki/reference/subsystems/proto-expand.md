@@ -1,5 +1,5 @@
 ---
-title: "PROTO/EXTERNPROTO Expansion"
+title: PROTO and EXTERNPROTO expansion
 summary: Clones and splices PROTO/EXTERNPROTO instances into the live scene graph after parsing, forwarding field values and wiring IS-connections.
 tags: [subsystem, proto, externproto, expansion, is-connection]
 updated: 2026-09-29
@@ -11,15 +11,14 @@ related:
   - execution-context.md
 ---
 
-# PROTO/EXTERNPROTO Expansion
+# PROTO and EXTERNPROTO expansion
 
 ## Purpose
 
-- PROTO/EXTERNPROTO expansion is the post-parse pass that turns structural
-  prototype records into live scene-graph nodes.
-- After any reader (XML, VRML, JSON, Classic VRML) has built the raw document,
-  the scene holds `ProtoInstance` records but the node graph has no expanded
-  content from them.
+PROTO/EXTERNPROTO expansion is the post-parse pass that turns structural prototype records into live scene-graph nodes. After any reader (XML, VRML, JSON, Classic VRML) has built the raw document, the scene holds `ProtoInstance` records but the node graph has no expanded content from them.
+
+## Behavior
+
 - The expansion subsystem iterates those records, deep-clones the prototype
   body for each instance, forwards `initializeOnly`/`inputOutput` field values
   through IS-connections, pre-resolves body-internal ROUTEs to concrete cloned

@@ -1,5 +1,5 @@
 ---
-title: "Extraction delta contracts"
+title: Extraction delta contracts
 summary: "What each kind of scene change costs and reports through RenderDelta: update cost, content identity, selection, structural and scoped replacement, visibility hints and geometry liveness."
 tags: [subsystem, extract, render-delta]
 updated: 2026-11-14

@@ -1,5 +1,5 @@
 ---
-title: Math Core
+title: Math core
 summary: SF*-native math module (Mat4, Aabb, Ray, Intersect) — no external math library in the core runtime.
 tags: [subsystem, math, mat4, aabb, ray, intersect]
 updated: 2026-11-05
@@ -8,18 +8,13 @@ related:
   - ../../explanation/decisions/0012-no-external-math-lib.md
 ---
 
-# Math Core
+# Math core
 
 ## Purpose
 
-- The Math Core subsystem provides all geometry and linear-algebra primitives
-  the runtime needs — world-transform composition, axis-aligned bounding
-  volumes, ray construction, and ray-vs-primitive intersection tests.
-- It carries zero external dependencies: no GLM, no Eigen, no third-party
-  headers.
-- Every type is defined over `SFVec3f` and `SFRotation` (the native X3D field
-  types from `X3Dtypes.hpp`), so the math module speaks the same vocabulary as
-  the node layer without an adapter.
+The Math Core subsystem provides all geometry and linear-algebra primitives the runtime needs — world-transform composition, axis-aligned bounding volumes, ray construction, and ray-vs-primitive intersection tests. It carries zero external dependencies: no GLM, no Eigen, no third-party headers. Every type is defined over `SFVec3f` and `SFRotation` (the native X3D field types from `X3Dtypes.hpp`), so the math module speaks the same vocabulary as the node layer without an adapter.
+
+## Behavior
 
 The boundary this module owns: anything that takes two or more SF*/MF* values and computes a geometric result belongs here. Anything that reads scene-graph state or drives the event loop does not. Other subsystems import these headers directly; the math layer has no awareness of them.
 

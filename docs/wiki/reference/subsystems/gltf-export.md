@@ -1,5 +1,5 @@
 ---
-title: "glTF export"
+title: glTF export
 summary: "writeGlb: how extracted render items become a binary glTF 2.0 file and what is left out."
 tags: [subsystem, extract, gltf, export]
 updated: 2026-11-14
@@ -10,7 +10,7 @@ related:
 
 # glTF export
 
-The items come from the [extraction pipeline](extract.md); the command-line
+The items come from the [Extraction pipeline](extract.md); the command-line
 entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 
 - `extract::writeGlb(extractor, snapshot.added, options, &report)` (also

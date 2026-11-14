@@ -1,5 +1,5 @@
 ---
-title: Conformance Infrastructure
+title: Conformance infrastructure
 summary: Conformance validator, prose-anchor manifests, fidelity metrics, corpus audit/sweep, and the conformance view generator.
 tags: [subsystem, conformance, validator, corpus-audit, conformance-view]
 updated: 2026-06-20
@@ -8,13 +8,16 @@ related:
   - cli-suite.md
 ---
 
-# Conformance Infrastructure
+# Conformance infrastructure
 
 ## Purpose
 
 The conformance infrastructure joins structural checks, generated-source checks, and behavioral findings. These signals record evidence and gaps; they do not certify ISO 19775-1 conformance.
 
-- Axis 1 — Structural (L2 validator).
+## Behavior
+
+### Axis 1 — Structural (L2 validator)
+
 - A Python validator derives a per-version criteria oracle directly from the
   ISO Unified Object Model (UOM) XML.
 - It checks each document against the UOM-extracted manifest for its own
@@ -24,7 +27,9 @@ The conformance infrastructure joins structural checks, generated-source checks,
 - The structural report (`docs/conformance/REPORT.md`) over the full
   16,866-file conformance archive returns 99.66% structurally clean against
   per-file oracles.
-- Axis 2 — Behavioral (conformance view).
+
+### Axis 2 — Behavioral (conformance view)
+
 - A findings register (`docs/conformance/findings.yaml`) records author-judged
   behavioral gaps referenced to ISO 19775-1 clause numbers.
 - A view generator (`scripts/conformance_view.py`) auto-derives code FACTS
@@ -34,7 +39,9 @@ The conformance infrastructure joins structural checks, generated-source checks,
   `components/`).
 - The split prevents judgments from rotting into stale code claims and vice
   versa.
-- Axis 3 — Oracle-free (corpus audit + sweep).
+
+### Axis 3 — Oracle-free (corpus audit + sweep)
+
 - Two C++ tools drive the full X3D conformance archive through the `x3d::sdk`
   façade.
 - The sweep (`corpus_sweep`) verifies the full parse-extract-tick pipeline at

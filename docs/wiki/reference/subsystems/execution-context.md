@@ -1,5 +1,5 @@
 ---
-title: Execution Context
+title: Execution context
 summary: Per-tick driver, field-write seam, and scene bridge that coordinate the runtime event loop.
 tags: [subsystem, execution-context, tick, runtime, events]
 updated: 2026-10-07
@@ -12,15 +12,14 @@ related:
   - system-script-sai.md
 ---
 
-# Execution Context
+# Execution context
 
 ## Purpose
 
-- The Execution Context is the object a browser or SDK consumer drives each
-  frame.
-- It aggregates the route graph, the event cascade, the System registry, and
-  all scene-level subsystems (transform hierarchy, bounds, binding stacks,
-  pick, pointer, keyboard, head pose) into a single tick-addressable unit.
+The Execution Context is the object a browser or SDK consumer drives each frame. It aggregates the route graph, the event cascade, the System registry, and all scene-level subsystems (transform hierarchy, bounds, binding stacks, pick, pointer, keyboard, head pose) into a single tick-addressable unit.
+
+## Behavior
+
 - Calling `tick(now)` is the sole entry point into the live event loop: it
   advances the clock, lets every registered System emit time-driven events,
   runs the event cascade to quiescence, fires post-cascade hooks (Script

@@ -1,5 +1,5 @@
 ---
-title: Viewpoint Binding System
+title: Viewpoint binding
 summary: Binding stacks for Viewpoint, NavigationInfo, Background, and Fog — ISO 19775-1 §23 bind semantics, bind-time offset rules, and animated viewpoint transitions.
 tags: [subsystem, viewpoint, binding-stack, navigation-info, background, fog]
 updated: 2026-10-10
@@ -11,7 +11,7 @@ related:
   - event-cascade.md
 ---
 
-# Viewpoint Binding System
+# Viewpoint binding
 
 The Viewpoint Binding System implements the ISO/IEC 19775-1 §23.3.1 "Viewpoint
 binding" rules for all four bindable categories: Viewpoint (and OrthoViewpoint),
@@ -22,17 +22,17 @@ viewpoint transition.
 
 ## Purpose
 
-X3D defines a shared "binding stack" for each category of bindable node. At most
-one node per category is bound at any time; `set_bind TRUE` pushes a node to the
-top and makes it the active entry; `set_bind FALSE` pops it and restores the
-previous top. The subsystem realises this protocol and enforces three additional
-invariants required by the spec:
+X3D defines a shared "binding stack" for each category of bindable node. At most one node per category is bound at any time; `set_bind TRUE` pushes a node to the top and makes it the active entry; `set_bind FALSE` pops it and restores the previous top.
+
+## Behavior
+
+The subsystem realises this protocol and enforces three additional invariants required by the spec:
 
 - Authored fields are never mutated by navigation or by a bind (§23.2.3). The user offset is process-local runtime state kept separately in
   `ViewpointOffset`, accumulated in `viewpointOffset(vp).local` inside
   `X3DExecutionContext`.
 
-- Bind-time offset rules : when a viewpoint becomes bound,
+- Bind-time offset rules: when a viewpoint becomes bound,
   `ViewpointBindSystem` decides what happens to its stored offset based on
   `jump` and `retainUserOffsets`. If `jump=false` the effective camera does not
   move across the bind; if `jump=true` and `retainUserOffsets=false` the offset
@@ -62,7 +62,7 @@ default-bind, and `set_bind` handler wiring), and `ViewpointBindSystem`
 |---|---|
 | `runtime/scene/BindingStack.hpp` | `BindingStack` — one bindable category's LIFO stack; top = bound node; emits `(node, bool)` events through a caller-supplied `Emit` callback on every transition |
 | `runtime/scene/BindingSystem.hpp` | `BindingSystem` — owns one `BindingStack` per category; walks the scene on `enrollScene`, wires each bindable node's `set_bind` handler, and default-binds the first of each category on `bindDefaults()` |
-| `runtime/events/ViewpointBindSystem.hpp` | `ViewpointBindSystem` + free function `attachViewpointBind` — post-cascade hook; applies jump/retainUserOffsets offset rules, starts/advances animated transitions, dispatches  NavigationInfo bind-chain |
+| `runtime/events/ViewpointBindSystem.hpp` | `ViewpointBindSystem` + free function `attachViewpointBind` — post-cascade hook; applies jump/retainUserOffsets offset rules, starts/advances animated transitions, dispatches the NavigationInfo bind chain |
 | `runtime/events/ViewpointOffset.hpp` | `ViewpointOffset` — a single `Mat4 local` field: the per-viewpoint relative viewing transformation (§23.3.1); process-local, not part of the scene graph |
 | `runtime/events/X3DExecutionContext.hpp` | Owns `BindingSystem bindings_`, `HeadPose head_`, and `std::unordered_map<X3DNode*, ViewpointOffset> offsets_`; exposes the full view-matrix seam and the binding query API consumed by renderers and navigation |
 
@@ -214,7 +214,7 @@ layer-local binding or navigation. See the
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Execution Context](execution-context.md)
-- [Navigation System](system-navigation.md)
-- [View-Dependent System](system-viewdependent.md)
-- [Event Cascade](event-cascade.md)
+- [Execution context](execution-context.md)
+- [Navigation](system-navigation.md)
+- [View-dependent behavior](system-viewdependent.md)
+- [Event cascade](event-cascade.md)

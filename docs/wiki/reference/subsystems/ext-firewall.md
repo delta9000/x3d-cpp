@@ -1,5 +1,5 @@
 ---
-title: "Ext Firewall"
+title: Ext firewall
 summary: The ext firewall isolates binary-mesh, STL, ExternalGeometry, and physical room/device input code behind a quarantined directory, a one-way dependency, and an opt-in CMake flag, so core stays free of nonstandard nodes and transforms.
 tags: [subsystem, ext-firewall, binary, stl, external-geometry, externproto, cave]
 updated: 2026-11-05
@@ -10,19 +10,14 @@ related:
   - ../../explanation/decisions/0068-room-frame-sensor-composition.md
 ---
 
-# Ext Firewall
+# Ext firewall
 
 ## Purpose
 
-- The extension firewall isolates opt-in foreign geometry under
-  `runtime/ext/`.
-- Core headers do not include that directory.
-- Optional resource backends live separately under `runtime/io/` and other
-  subsystem directories.
-- The boundary problem it solves: the VR CAVE consumer needs typed binary
-  geometry (`PackedMesh`) routed via an `ExternalGeometry` dialect node, but
-  the generated bindings, golden layer, and conformance gate must remain ISO
-  19775-1-pure.
+The extension firewall isolates opt-in foreign geometry under `runtime/ext/`. Core headers do not include that directory. Optional resource backends live separately under `runtime/io/` and other subsystem directories. The boundary problem it solves: the VR CAVE consumer needs typed binary geometry (`PackedMesh`) routed via an `ExternalGeometry` dialect node, but the generated bindings, golden layer, and conformance gate must remain ISO 19775-1-pure.
+
+## Behavior
+
 - The firewall makes that containment structural: a one-way dependency (ext
   may include core; core must never include ext), an opt-in CMake flag
   (`X3D_CPP_BUILD_EXT`, default `OFF`), and a resolver seam that the embedder

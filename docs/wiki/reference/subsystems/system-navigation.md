@@ -1,5 +1,5 @@
 ---
-title: Navigation System
+title: Navigation
 summary: EXAMINE, FLY, WALK, LOOKAT and NONE navigation modes, avatar collision (Collision node) and terrain following, plus head-pose integration for the CAVE consumer.
 tags: [subsystem, navigation, examine, fly, walk, lookat, collision, head-pose]
 updated: 2026-11-05
@@ -10,16 +10,14 @@ related:
   - execution-context.md
 ---
 
-# Navigation System
+# Navigation
 
 ## Purpose
 
-- The Navigation System drives the bound Viewpoint from the consumer-supplied
-  input seam each tick.
-- It reads the `PointerState` drag deltas and `KeyState` held keys together
-  with the bound `NavigationInfo` and mutates the bound Viewpoint's *user
-  offset* — never the authored `position`/`orientation` fields (ISO/IEC
-  19775-1:2023 §23.2.3).
+The Navigation System drives the bound Viewpoint from the consumer-supplied input seam each tick. It reads the `PointerState` drag deltas and `KeyState` held keys together with the bound `NavigationInfo` and mutates the bound Viewpoint's *user offset* — never the authored `position`/`orientation` fields (ISO/IEC 19775-1:2023 §23.2.3).
+
+## Behavior
+
 - It implements EXAMINE orbiting, FLY translation, WALK with terrain following
   and gravity, LOOKAT framing, and NONE.
 - FLY and WALK use collision checks; EXAMINE and LOOKAT do not.
@@ -79,7 +77,7 @@ struct HeadPose {
 
 - `X3DExecutionContext::pointerState()` — `PointerState` struct: `present`, `buttonDown`, `ray` (world-space `Ray`, used for picking/LOOKAT), `screenX`/`screenY` (normalized cursor, x right / y up), and `revision`. Navigation forms its drag deltas from `screenX`/`screenY` — the camera-independent screen cursor the consumer feeds via `ctx.setPointerScreen(x, y)` — not from the ray. The ray is recomputed from the camera each frame, so using it would feed orbit back on itself (a single click spins the view) and scale rotation by the scene's near-plane size. See [Pointing System](system-pointing.md) for how the consumer populates this.
 
-- `X3DExecutionContext::keyState()` — `KeyState` holding set via `ctx.setKey(kKey*, bool)`. FLY mode polls `ks.isHeld(kKeyForward)` etc. each tick. See [Key-Device Sensor System](system-keydevice.md).
+- `X3DExecutionContext::keyState()` — `KeyState` holding set via `ctx.setKey(kKey*, bool)`. FLY mode polls `ks.isHeld(kKeyForward)` etc. each tick. See [Key-device sensors](system-keydevice.md).
 
 - `X3DExecutionContext::viewpointOffset(vp)` / `setViewpointOffset(vp, off)` — reads and writes the `ViewpointOffset` (a `Mat4 local`) for a given viewpoint node. Navigation accumulates the orbit / fly / lookat delta here; it is composited as `worldOf(vp) · authoredPose · navOffset · headPose` by the execution context to form the final camera matrix.
 
@@ -138,7 +136,7 @@ FLY and WALK moves are collision-checked; EXAMINE orbits and LOOKAT transitions 
 
 ## Related
 
-- [Execution Context](execution-context.md)
+- [Execution context](execution-context.md)
 - [Viewpoint Bind System](system-viewpointbind.md)
 - [Pointing System](system-pointing.md)
 - [Architecture](../../explanation/architecture.md)

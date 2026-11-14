@@ -9,7 +9,7 @@ related: []
 # Search with the RAG tools
 
 The search scripts locate evidence. Read the returned clause or source before
-making a capability claim. [Knowledge map](../reference/knowledge-map.md) identifies the
+making a capability claim. The [source map](../reference/source-map.md
 sources that own specifications, decisions, and conformance status.
 
 ## Configuration

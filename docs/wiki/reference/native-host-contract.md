@@ -87,7 +87,7 @@ API clip conventions.
 | Node-reference edit in the same tick as a selection change | Replacement snapshot |
 
 Don't assume subtree-cost updates. The dependency and replacement rules are in
-[Extraction](subsystems/extract.md).
+[Extraction pipeline](subsystems/extract.md).
 
 ### Switch and LOD selection changes
 

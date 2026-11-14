@@ -21,7 +21,7 @@ using FontMetrics = std::function<GlyphResult(const FontKey&)>;
 
 `FontKey` selects a family, style, and codepoint. `GlyphResult` carries `Ready`,
 `Pending`, or `Failed` and `GlyphMetrics`. Layout uses these metrics without
-opening font files. See [text extraction](extract-text.md) for layout rules.
+opening font files. See [Text extraction](extract-text.md) for layout rules.
 
 ## Metrics contract
 
@@ -47,7 +47,7 @@ caches them by path. Missing families, missing glyphs, and unsupported styles
 fail. The metrics implementation accepts PLAIN faces.
 
 `makeStbttGlyphAtlas` supplies the atlas path described in
-[text extraction](extract-text.md#optional-glyph-atlas). Font buffers outlive
+[Text extraction](extract-text.md#optional-glyph-atlas). Font buffers outlive
 the stb font structures that refer to them.
 
 `runtime/io/tests/font_metrics_tests.cpp` covers metrics and failure cases;

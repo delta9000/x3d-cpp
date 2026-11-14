@@ -1,5 +1,5 @@
 ---
-title: Time System
+title: Time
 summary: TimeSensor system and the time-dependent node base that drives all time-indexed behaviors.
 tags: [subsystem, time, timesensor, time-dependent]
 updated: 2026-09-26
@@ -11,19 +11,11 @@ related:
   - sensors.md
 ---
 
-# Time System
+# Time
 
 ## Purpose
 
-- The Time System advances time-dependent nodes one tick at a time and emits
-  their spec-mandated output events into the cascade.
-- It owns the X3D clock state machine for every node that carries
-  `startTime`/`stopTime`/`pauseTime`/`resumeTime` fields
-  (`X3DTimeDependentNode`), driving the full lifecycle: idle → active →
-  (paused) → deactivated.
-- For the `TimeSensor` node specifically it also computes and posts
-  `fraction_changed`, `time`, `cycleTime`, and `elapsedTime` on every relevant
-  tick edge.
+The Time System advances time-dependent nodes one tick at a time and emits their spec-mandated output events into the cascade. It owns the X3D clock state machine for every node that carries `startTime`/`stopTime`/`pauseTime`/`resumeTime` fields (`X3DTimeDependentNode`), driving the full lifecycle: idle → active → (paused) → deactivated. For the `TimeSensor` node specifically it also computes and posts `fraction_changed`, `time`, `cycleTime`, and `elapsedTime` on every relevant tick edge.
 
 ## Key files
 
@@ -33,7 +25,7 @@ related:
 | `runtime/events/TimeSensorSystem.hpp` | Concrete `X3DTimeDependentSystem` for `TimeSensor`. Guards `attach` to `TimeSensor*`, reads `enabled`/`loop`/`cycleInterval`, and implements `emitCycleOutputs` (→ `fraction_changed`, `time`) and `emitCycleTime` (→ `cycleTime`). |
 | `runtime/events/X3DSystem.hpp` | `System` base class — defines `attach(node, ctx)` and the default no-op `update(now, ctx)`. `X3DTimeDependentSystem` inherits from `System`. |
 | `runtime/events/tests/timesensor_test.cpp` | Lifecycle edge-case test suite (doctest case `timesensor_test` in the `x3d_events_tests` target). |
-| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for  and the  clock/input cases in `x3d_events_tests`. |
+| `runtime/events/tests/timesensor_rtc_test.cpp` | Regression suite for TimeSensor clock and input edge cases in `x3d_events_tests`. |
 | `runtime/events/tests/animation_test.cpp` | End-to-end animation chain test using `TimeSensorSystem` (doctest case `animation_test` in the `x3d_events_tests` target). |
 
 ## Interfaces and seams
@@ -54,7 +46,7 @@ sys->attach(timeSensorNode, ctx);
 // sys->update(now, ctx);  // called by X3DExecutionContext::tick(now)
 ```
 
-`X3DExecutionContext::tick(now)` calls `update(now, ctx)` on every registered system before draining the event cascade. The system posts all output events via `ctx.postEvent(node, "<fieldName>", value)`, so downstream ROUTEs fire in the same timestamp quantum (see [Event Cascade](event-cascade.md) and [Routes](routes.md)).
+`X3DExecutionContext::tick(now)` calls `update(now, ctx)` on every registered system before draining the event cascade. The system posts all output events via `ctx.postEvent(node, "<fieldName>", value)`, so downstream ROUTEs fire in the same timestamp quantum (see [Event cascade](event-cascade.md) and [ROUTEs](routes.md)).
 
 ### Per-node state
 
@@ -75,14 +67,14 @@ State lives in the system, never on the node — the node and its reflection `Fi
 
 ### Seam points
 
-- `X3DExecutionContext::addSystem` / `tick` — The execution context drives the system on every tick. See [Execution Context](execution-context.md).
+- `X3DExecutionContext::addSystem` / `tick` — The execution context drives the system on every tick. See [Execution context](execution-context.md).
 - `emitCycleOutputs` (virtual hook) — Derived systems override this to emit their node-specific continuous outputs each active, unpaused tick. `TimeSensorSystem` emits `time` and `fraction_changed` here.
 - `emitCycleTime` (virtual hook) — Derived systems override this to emit a cycle-start pulse. `TimeSensorSystem` emits `cycleTime` here.
-- `readEnabled` / `readLoop` / `readCycleInterval` (virtual reads) — Overridable per node type. `MediaTimeSystem` (`runtime/events/MediaTimeSystem.hpp`, attached by `attachStandardRuntime`) uses them for `AudioClip` and `MovieTexture`: `enabled`, `loop`, and a cycle of one media pass, `duration_changed` divided by the pitch or speed captured at activation; active `set_pitch` and `set_speed` deliveries are ignored. An unknown duration (-1 before load) plays until `stopTime` . A consumer that opens a movie calls `reportMovieDuration(ctx, movie, seconds)` once its duration is known; this posts `duration_changed` through the event cascade and supplies the lifecycle clock.
+- `readEnabled` / `readLoop` / `readCycleInterval` (virtual reads) — Overridable per node type. `MediaTimeSystem` (`runtime/events/MediaTimeSystem.hpp`, attached by `attachStandardRuntime`) uses them for `AudioClip` and `MovieTexture`: `enabled`, `loop`, and a cycle of one media pass, `duration_changed` divided by the pitch or speed captured at activation; active `set_pitch` and `set_speed` deliveries are ignored. An unknown duration (-1 before load) plays until `stopTime`. A consumer that opens a movie calls `reportMovieDuration(ctx, movie, seconds)` once its duration is known; this posts `duration_changed` through the event cascade and supplies the lifecycle clock.
 - Timing input filter — The shared base registers a filter with the execution context when a node is attached. It rejects active `startTime` and `stopTime <= startTime` input events before the cascade writes or routes them (§8.2.4.3). This covers TimeSensor, AudioClip, MovieTexture, and SoundTimeSystem's v4 sound nodes; ordered stop-then-start restart remains accepted. `MediaTimeSystem` adds its own filter on the same hook for active `set_pitch` / `set_speed`.
-- `ctx.postEvent` — All output writes go through `X3DExecutionContext::postEvent`; the cascade fans them out to connected ROUTEs in the same tick. See [Routes](routes.md).
-- Interpolator downstream — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolator System](system-interpolators.md).
-- Sensor layer — `TimeSensorSystem` is one of the sensor-like systems registered through the `System` pattern. See [Sensors](sensors.md).
+- `ctx.postEvent` — All output writes go through `X3DExecutionContext::postEvent`; the cascade fans them out to connected ROUTEs in the same tick. See [ROUTEs](routes.md).
+- Interpolator downstream — `fraction_changed` from `TimeSensorSystem` is the canonical clock signal that drives interpolators. See [Interpolators](system-interpolators.md).
+- Sensor layer — `TimeSensorSystem` is one of the sensor-like systems registered through the `System` pattern. See [Sensors overview](sensors.md).
 
 ## Time origin (absolute epoch vs. application-relative)
 

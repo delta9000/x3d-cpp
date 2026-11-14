@@ -59,82 +59,83 @@ nav:
           - Search with the RAG tools: how-to/search-with-the-rags.md
           - Report a bug with a scene: how-to/report-a-bug.md
   - Reference:
-      - SDK capabilities: reference/capabilities.md
-      - Native host contract: reference/native-host-contract.md
-      - Seam matrix: reference/seam-matrix.md
-      - API stability: reference/api-stability.md
+      - Using the SDK:
+          - SDK capabilities: reference/capabilities.md
+          - Native host contract: reference/native-host-contract.md
+          - Seam matrix: reference/seam-matrix.md
+          - API stability: reference/api-stability.md
       - Examples:
           - Overview: reference/examples/index.md
           - Headless CPU rasterizer: reference/examples/cpu-raster.md
           - PoC OpenGL renderer: reference/examples/poc-renderer.md
           - Headless SVG projector: reference/examples/x3d2svg.md
           - Asset import converter: reference/examples/asset-import.md
-      - Build and mise tasks: reference/build-and-tasks.md
-      - Gate system: reference/gates.md
-      - Subsystem source map: reference/source-map.md
-      - Knowledge map: reference/knowledge-map.md
-      - Documentation conventions: reference/doc-conventions.md
-      - X3D 4.0 requirements audit: reference/x3d4-requirements-audit.md
       - Subsystems:
-          - Subsystem page template: reference/subsystems/_template.md
-          - Generator & Bindings:
-              - Generator Pipeline: reference/subsystems/generator.md
-              - Jinja2 Emit Templates: reference/subsystems/templates.md
-              - Generated Bindings: reference/subsystems/generated-bindings.md
-              - Reflection Layer: reference/subsystems/reflection.md
-          - Runtime Core:
-              - Scene Graph: reference/subsystems/scene-graph.md
-              - Execution Context: reference/subsystems/execution-context.md
-              - Activation Ownership: reference/subsystems/activation-ownership.md
-              - Dirty Tracking, Transforms, and Bounds: reference/subsystems/dirty-bounds-transform.md
-              - Math Core: reference/subsystems/math.md
-              - H-Anim: reference/subsystems/hanim.md
-          - Codecs & Parse:
-              - Codec Writers: reference/subsystems/codecs-writers.md
-              - Canonical XML Writer: reference/subsystems/canonical-xml.md
-              - Parse Readers: reference/subsystems/parse-readers.md
-              - Asset Loader Policy: reference/subsystems/asset-loader-policy.md
-              - PROTO/EXTERNPROTO Expansion: reference/subsystems/proto-expand.md
-              - Inline Expansion: reference/subsystems/inline-expand.md
-          - Event / Behavior Runtime:
-              - Event Cascade: reference/subsystems/event-cascade.md
+          - Generator and bindings:
+              - Generator pipeline: reference/subsystems/generator.md
+              - Jinja2 emit templates: reference/subsystems/templates.md
+              - Generated bindings: reference/subsystems/generated-bindings.md
+              - Reflection layer: reference/subsystems/reflection.md
+          - Runtime core:
+              - Scene graph: reference/subsystems/scene-graph.md
+              - Execution context: reference/subsystems/execution-context.md
+              - Activation ownership: reference/subsystems/activation-ownership.md
+              - Dirty tracking, transforms and bounds: reference/subsystems/dirty-bounds-transform.md
+              - Math core: reference/subsystems/math.md
+          - Codecs and parsing:
+              - Parse readers: reference/subsystems/parse-readers.md
+              - Asset loader policy: reference/subsystems/asset-loader-policy.md
+              - PROTO and EXTERNPROTO expansion: reference/subsystems/proto-expand.md
+              - Inline expansion: reference/subsystems/inline-expand.md
+              - Codec writers: reference/subsystems/codecs-writers.md
+              - Canonical XML writer: reference/subsystems/canonical-xml.md
+          - Events and behavior:
+              - Event cascade: reference/subsystems/event-cascade.md
               - ROUTEs: reference/subsystems/routes.md
-              - Time System: reference/subsystems/system-time.md
-              - Interpolator System: reference/subsystems/system-interpolators.md
-              - Followers System: reference/subsystems/system-followers.md
+              - Time: reference/subsystems/system-time.md
+              - Interpolators: reference/subsystems/system-interpolators.md
+              - Followers: reference/subsystems/system-followers.md
+              - Event utilities: reference/subsystems/system-eventutility.md
+              - Script and SAI runtime: reference/subsystems/system-script-sai.md
               - Geospatial: reference/subsystems/geospatial.md
-              - EventUtility System: reference/subsystems/system-eventutility.md
-              - View-Dependent System: reference/subsystems/system-viewdependent.md
-              - Viewpoint Binding System: reference/subsystems/system-viewpointbind.md
-              - Navigation System: reference/subsystems/system-navigation.md
-              - Pointing-Device Sensor System: reference/subsystems/system-pointing.md
-              - Key-Device Sensor System: reference/subsystems/system-keydevice.md
-              - LoadSensor System: reference/subsystems/system-loadsensor.md
-              - Script / SAI Runtime: reference/subsystems/system-script-sai.md
-              - Sensor Layer Overview: reference/subsystems/sensors.md
-              - Physics (RigidBody dynamics): reference/subsystems/physics.md
-              - Sound (§16 audio graph): reference/subsystems/sound.md
-          - Extract:
-              - Extraction Pipeline: reference/subsystems/extract.md
-              - Extraction Delta Contracts: reference/subsystems/extract-deltas.md
-              - Geometry Extraction: reference/subsystems/extract-geometry.md
-              - glTF Export: reference/subsystems/gltf-export.md
-              - H-Anim Extraction: reference/subsystems/hanim.md
-              - Texture, Material, and Light Extraction: reference/subsystems/extract-textures.md
-              - Materials (§12 discriminated union + backMaterial): reference/subsystems/materials.md
-              - Shaders (ComposedShader + binding plan): reference/subsystems/shaders.md
-              - Text Extraction: reference/subsystems/extract-text.md
-              - Topology Classification: reference/subsystems/extract-topology.md
-          - Boundaries & Consumers:
-              - Ext Firewall: reference/subsystems/ext-firewall.md
-              - Room and Device Input: reference/subsystems/room-and-device-input.md
-              - Asset Resolver / IO Seam: reference/subsystems/system-asset-io.md
-              - Texture Decode Seam: reference/subsystems/system-texture-decode.md
-              - Font Metrics Seam: reference/subsystems/system-font-metrics.md
-              - SDK Facade: reference/subsystems/sdk-facade.md
-              - CLI Suite: reference/subsystems/cli-suite.md
-              - Asset Import: reference/subsystems/asset-import.md
-              - Conformance Infrastructure: reference/subsystems/conformance-infra.md
+              - H-Anim: reference/subsystems/hanim.md
+              - Rigid-body physics: reference/subsystems/physics.md
+              - Sound: reference/subsystems/sound.md
+          - Sensors, viewing and navigation:
+              - Sensors overview: reference/subsystems/sensors.md
+              - Pointing-device sensors: reference/subsystems/system-pointing.md
+              - Key-device sensors: reference/subsystems/system-keydevice.md
+              - LoadSensor: reference/subsystems/system-loadsensor.md
+              - View-dependent behavior: reference/subsystems/system-viewdependent.md
+              - Viewpoint binding: reference/subsystems/system-viewpointbind.md
+              - Navigation: reference/subsystems/system-navigation.md
+              - Room and device input: reference/subsystems/room-and-device-input.md
+          - Extraction:
+              - Extraction pipeline: reference/subsystems/extract.md
+              - Extraction delta contracts: reference/subsystems/extract-deltas.md
+              - Geometry extraction: reference/subsystems/extract-geometry.md
+              - Topology classification: reference/subsystems/extract-topology.md
+              - Texture, material and light extraction: reference/subsystems/extract-textures.md
+              - Materials: reference/subsystems/materials.md
+              - Shaders: reference/subsystems/shaders.md
+              - Text extraction: reference/subsystems/extract-text.md
+              - glTF export: reference/subsystems/gltf-export.md
+          - Seams and consumers:
+              - Ext firewall: reference/subsystems/ext-firewall.md
+              - Asset resolution: reference/subsystems/system-asset-io.md
+              - Texture decoding: reference/subsystems/system-texture-decode.md
+              - Font metrics: reference/subsystems/system-font-metrics.md
+              - SDK facade: reference/subsystems/sdk-facade.md
+              - CLI suite: reference/subsystems/cli-suite.md
+              - Asset import: reference/subsystems/asset-import.md
+              - Conformance infrastructure: reference/subsystems/conformance-infra.md
+      - Working on x3d-cpp:
+          - Build and mise tasks: reference/build-and-tasks.md
+          - Gate system: reference/gates.md
+          - Source map: reference/source-map.md
+          - X3D 4.0 requirements audit: reference/x3d4-requirements-audit.md
+          - Documentation conventions: reference/doc-conventions.md
+          - Subsystem page template: reference/subsystems/_template.md
   - Explanation:
       - Architecture: explanation/architecture.md
       - The tick model: explanation/tick-model.md
@@ -223,41 +224,49 @@ nav:
           - Animate your first scene: sai/tutorials/first-scene.md
           - Run a scene on the native runtime: sai/tutorials/native-host.md
       - How-to guides:
-          - Consume the SDK from CMake: sai/how-to/consume-the-sdk.md
-          - Run the host loop: sai/how-to/run-the-host-loop.md
-          - Add a ROUTE to a live scene: sai/how-to/add-a-live-route.md
-          - Find named nodes: sai/how-to/find-named-nodes.md
-          - Declare scene units and metadata: sai/how-to/declare-units-and-metadata.md
-          - Attach user data: sai/how-to/attach-user-data.md
-          - Build and link the native backend: sai/how-to/use-the-native-backend.md
-          - Adopt a loaded session: sai/how-to/adopt-a-session.md
-          - Present frames from the native feed: sai/how-to/present-frames.md
-          - Author with the reference kernel: sai/how-to/author-with-the-kernel.md
-          - Write a kernel runtime host: sai/how-to/write-a-kernel-runtime-host.md
-          - Publish browser information: sai/how-to/publish-browser-information.md
-          - Verify a change: sai/how-to/verify-a-change.md
-          - Update the service register: sai/how-to/update-the-service-register.md
+          - Portable contract:
+              - Consume the SDK from CMake: sai/how-to/consume-the-sdk.md
+              - Run the host loop: sai/how-to/run-the-host-loop.md
+              - Add a ROUTE to a live scene: sai/how-to/add-a-live-route.md
+              - Find named nodes: sai/how-to/find-named-nodes.md
+              - Declare scene units and metadata: sai/how-to/declare-units-and-metadata.md
+              - Attach user data: sai/how-to/attach-user-data.md
+          - Native backend:
+              - Build and link the native backend: sai/how-to/use-the-native-backend.md
+              - Adopt a loaded session: sai/how-to/adopt-a-session.md
+              - Present frames from the native feed: sai/how-to/present-frames.md
+          - Reference kernel extensions:
+              - Author and inspect with the reference kernel: sai/how-to/author-with-the-kernel.md
+              - Evaluate events with a kernel runtime host: sai/how-to/write-a-kernel-runtime-host.md
+              - Publish browser information: sai/how-to/publish-browser-information.md
+          - Working on the SDK:
+              - Verify a change: sai/how-to/verify-a-change.md
+              - Update the service register: sai/how-to/update-the-service-register.md
       - Reference:
-          - Packages, targets and headers: sai/reference/packages-and-targets.md
-          - Provider contract: sai/reference/provider-contract.md
-          - Submissions, turns and notifications: sai/reference/submissions.md
-          - Resource limits: sai/reference/resource-limits.md
-          - Live ROUTEs: sai/reference/live-routes.md
-          - Named nodes: sai/reference/named-nodes.md
-          - Scene units and metadata: sai/reference/scene-information.md
-          - User data: sai/reference/user-data.md
-          - Field values and validity: sai/reference/field-values.md
-          - Native provider: sai/reference/native-provider.md
-          - Presentation feed: sai/reference/presentation-feed.md
-          - Headless host example: sai/reference/host-example.md
-          - Reference kernel: sai/reference/kernel.md
-          - Kernel runtime evaluation: sai/reference/kernel-runtime.md
-          - Multi-field services: sai/reference/multi-field-services.md
-          - Browser services: sai/reference/browser-services.md
-          - Matrix algebra: sai/reference/matrix.md
-          - Generated field projection: sai/reference/generated-fields.md
-          - Service register: sai/reference/service-register.md
-          - Test suites and gates: sai/reference/test-suites.md
+          - Portable contract:
+              - Packages, targets and headers: sai/reference/packages-and-targets.md
+              - Provider contract: sai/reference/provider-contract.md
+              - Submissions, turns and notifications: sai/reference/submissions.md
+              - Resource limits: sai/reference/resource-limits.md
+              - Live ROUTEs: sai/reference/live-routes.md
+              - Named nodes: sai/reference/named-nodes.md
+              - Scene units and metadata: sai/reference/scene-information.md
+              - User data: sai/reference/user-data.md
+              - Field values and validity: sai/reference/field-values.md
+          - Native backend:
+              - Native provider: sai/reference/native-provider.md
+              - Presentation feed: sai/reference/presentation-feed.md
+              - Headless host example: sai/reference/host-example.md
+          - Reference kernel extensions:
+              - Reference kernel: sai/reference/kernel.md
+              - Kernel runtime evaluation: sai/reference/kernel-runtime.md
+              - Multi-field services: sai/reference/multi-field-services.md
+              - Browser services: sai/reference/browser-services.md
+              - Matrix algebra: sai/reference/matrix.md
+              - Generated field projection: sai/reference/generated-fields.md
+          - Evidence:
+              - Service register: sai/reference/service-register.md
+              - Test suites and gates: sai/reference/test-suites.md
       - Explanation:
           - "Architecture: one contract, two backends": sai/explanation/architecture.md
           - Relationship to the ISO C++ binding: sai/explanation/iso-binding.md

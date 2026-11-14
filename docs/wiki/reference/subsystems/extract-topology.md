@@ -1,5 +1,5 @@
 ---
-title: Topology Classification
+title: Topology classification
 summary: Minimal enum that classifies extracted mesh primitives as Triangles, Lines, or Points so the extraction pipeline and renderers agree on draw mode without an ad-hoc integer.
 tags: [subsystem, extract, topology, mesh, lines, points]
 updated: 2026-06-20
@@ -8,11 +8,13 @@ related:
   - extract.md
 ---
 
-# Topology Classification
+# Topology classification
 
 ## Purpose
 
 `Topology` is a three-value scoped enum that labels the draw mode of every mesh the extraction pipeline produces. It answers the question "what primitive does each run of indices describe?" so `MeshBuilder`, `PackedMesh`, `MeshData`, and consumer renderers all share a single vocabulary without encoding the answer as a raw integer or a boolean pair.
+
+## Behavior
 
 The enum was factored into its own header (Phase 1 / B4) so both the AoS path (`MeshData` in `RenderItem.hpp`) and the binary-slab path (`PackedMesh`) can depend on it without either depending on the other. The default value `Triangles` was chosen so every mesh that existed before B4 remains byte-for-byte unchanged — no existing golden output was touched.
 

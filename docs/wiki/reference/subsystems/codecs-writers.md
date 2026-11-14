@@ -1,5 +1,5 @@
 ---
-title: Codec Writers
+title: Codec writers
 summary: XML, VRML, and JSON serialization writers plus field-value IO — the full set of output codecs.
 tags: [subsystem, codecs, writers, xml, vrml, json, serialization]
 updated: 2026-11-05
@@ -9,33 +9,14 @@ related:
   - parse-readers.md
 ---
 
-# Codec Writers
-
-## UNIT normalization safety
-
-- Parsed documents retain authored UNIT declarations and values for round-trip
-  serialization.
-- Runtime entry converts authored dimensional fields in place.
-- Until conversion-aware output can also reconcile PROTO interfaces and
-  canonical built-in defaults, document writers (and XML scene output) throw
-  if nonidentity UNIT normalization has occurred.
-- Serialize before runtime entry, or reparse the source into an independent
-  document.
-- A shallow Scene/document copy shares nodes and is not an independent
-  authoring snapshot.
-- Identity conversions and untouched built-in defaults do not trigger this
-  guard.
-- Node-only writer APIs lack Scene provenance and do not provide this
-  document-level protection.
+# Codec writers
 
 ## Purpose
 
-- The codec writers subsystem converts an in-memory
-  `x3d::runtime::X3DDocument` (or a `Scene` / single node) into one of the
-  three X3D encoding wire formats: X3D-XML (`.x3d`), ClassicVRML (`.x3dv`),
-  and X3D-JSON (`.x3dj`).
-- A fourth writer, `CanonicalXmlWriter`, produces the deterministic X3D
-  Canonical Form (X3DC14N) used by the differential conformance gate.
+The codec writers subsystem converts an in-memory `x3d::runtime::X3DDocument` (or a `Scene` / single node) into one of the three X3D encoding wire formats: X3D-XML (`.x3d`), ClassicVRML (`.x3dv`), and X3D-JSON (`.x3dj`). A fourth writer, `CanonicalXmlWriter`, produces the deterministic X3D Canonical Form (X3DC14N) used by the differential conformance gate.
+
+## Behavior
+
 - All four writers are driven purely by the generated reflection `FieldTable`
   and the `X3DNodeFactory`; none contain per-node code.
 - The shared field-value formatting kernel (`FieldValueIO.hpp`) is the
@@ -63,6 +44,23 @@ ordinary node prefix by moving the declaration before that prefix. It preserves
 child order and sharing, and refuses this rewrite when the prefix contains a
 prototype instance or declaration. See [PROTO expansion](proto-expand.md) for
 the remaining cross-encoding ordering limits.
+
+## UNIT normalization safety
+
+- Parsed documents retain authored UNIT declarations and values for round-trip
+  serialization.
+- Runtime entry converts authored dimensional fields in place.
+- Until conversion-aware output can also reconcile PROTO interfaces and
+  canonical built-in defaults, document writers (and XML scene output) throw
+  if nonidentity UNIT normalization has occurred.
+- Serialize before runtime entry, or reparse the source into an independent
+  document.
+- A shallow Scene/document copy shares nodes and is not an independent
+  authoring snapshot.
+- Identity conversions and untouched built-in defaults do not trigger this
+  guard.
+- Node-only writer APIs lack Scene provenance and do not provide this
+  document-level protection.
 
 ## Key files
 
@@ -151,7 +149,8 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
 2. DEF/USE deduplication. Node identity (raw pointer) is tracked in an `unordered_set<const X3DNode *>`. The first emission of a shared node writes a `DEF`; all subsequent references emit a `USE` reference with no fields or children.
 3. PROTO / Inline round-trip redirect. Before emitting a node the writer checks `scene.expandedSources` (for expanded `ProtoInstance`s) and `scene.expandedInlines` (for expanded `Inline` nodes). If a match is found, the original captured source structure is re-emitted instead of the expansion, so the written output can be re-parsed to re-expand rather than serializing the expanded tree.
 
-- Unknown nodes.
+#### Unknown nodes
+
 - `XmlGraphBuilder` re-emits a `runtime::UnknownNode` exactly as the XML
   reader kept it: authored attributes in order, its own `containerField`,
   character data and children, plus any entries in `Scene::opaqueChildren` for
@@ -210,7 +209,7 @@ CanonicalXmlWriter (X3DC14N):
 - Canonical escaping: `&amp;`, `&lt;`, `&gt;`, `&apos;` (not `&quot;` — single-quoted context).
 - Adds DOCTYPE line (`<!DOCTYPE X3D PUBLIC "ISO//Web3D//DTD X3D <ver>//EN"...>`) and `xmlns:xsd` / `xsd:noNamespaceSchemaLocation` on `<X3D>`.
 - Number formatting via `canonFmtFloat` / `canonFmtDouble`: shortest round-trip representation (`std::to_chars` with `chars_format::general`). Integers emit without a decimal point for floats; doubles always retain a decimal point (e.g. `0.0` not `0`) per X3DJSAIL behavior.
-- See [Canonical XML Writer](canonical-xml.md) for the full X3DC14N page.
+- See [Canonical XML writer](canonical-xml.md) for the full X3DC14N page.
 
 ### Seam points
 
@@ -224,6 +223,6 @@ CanonicalXmlWriter (X3DC14N):
 
 ## Related
 
-- [Canonical XML Writer](canonical-xml.md)
+- [Canonical XML writer](canonical-xml.md)
 - [Codec Readers](parse-readers.md)
 - [Architecture](../../explanation/architecture.md)

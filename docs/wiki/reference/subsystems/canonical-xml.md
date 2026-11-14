@@ -1,5 +1,5 @@
 ---
-title: Canonical XML Writer
+title: Canonical XML writer
 summary: X3D canonical-XML writer (X3DC14N) for byte-stable, deterministic output used by the canonicalize gate.
 tags: [subsystem, canonical, xml, x3dc14n, canonicalize]
 updated: 2026-11-05
@@ -9,7 +9,7 @@ related:
   - ../../explanation/decisions/0008-canonicalize-source-provenance.md
 ---
 
-# Canonical XML Writer
+# Canonical XML writer
 
 The Canonical XML Writer serializes the runtime document model to X3D Canonical Form (X3DC14N): a deterministic, byte-stable XML dialect whose rules are derived from X3DJSAIL's `-canonical` mode. Its purpose is to give the toolchain a fixed-point output that can be compared byte-for-byte across runs, tools, and versions — the foundation of the `x3d canonicalize` command and the canon-gate regression suite.
 
@@ -23,7 +23,11 @@ The Canonical XML Writer serializes the runtime document model to X3D Canonical 
 
 ## Purpose
 
-X3D files produced by different authoring tools vary arbitrarily in attribute order, number precision, whitespace, and quote style. Downstream diff-based gates need a deterministic normal form. `CanonicalXmlWriter` enforces eight X3DC14N rules:
+X3D files produced by different authoring tools vary arbitrarily in attribute order, number precision, whitespace, and quote style. Downstream diff-based gates need a deterministic normal form.
+
+## Behavior
+
+`CanonicalXmlWriter` enforces eight X3DC14N rules:
 
 1. XML prolog: `<?xml version="1.0" encoding="UTF-8"?>`
 2. Version-appropriate X3D DOCTYPE line (covers 3.x and 4.x).
@@ -121,5 +125,5 @@ body nodes share a fresh declaration-local builder with the same policy.
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Codec Writers](codecs-writers.md)
+- [Codec writers](codecs-writers.md)
 - [ADR-0008: Canonicalize Source-Provenance Handling](../../explanation/decisions/0008-canonicalize-source-provenance.md)

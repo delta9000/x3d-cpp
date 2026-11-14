@@ -1,15 +1,30 @@
 ---
-title: Subsystem source map
-summary: Primary source paths for subsystem pages.
+title: Source map
+summary: Where to look for each kind of question, and the primary source paths behind every subsystem page.
 tags: [reference]
 updated: 2026-11-05
 related: []
 ---
 
-# Subsystem source map
+# Source map
 
-Use the wiki navigation for the page index. This map contains source paths;
-conformance status lives in `docs/conformance/findings.yaml`.
+## Where to look
+
+| Question | Source |
+|---|---|
+| What does the standard require? | Versioned ISO prose; `spec_rag.py` locates clauses and UOM metadata |
+| Where is the behavior implemented? | Current C++ source; `code_rag.py` locates symbols |
+| How does a subsystem work? | The subsystem page, found through the table below |
+| Why was a design chosen? | The decision records (ADRs) |
+| What conformance gaps remain? | `docs/conformance/findings.yaml` and its generated view |
+| What can I run? | `mise tasks`, described in [Build and mise tasks](build-and-tasks.md) |
+| Which docs might a code change affect? | `mise run docs-drift`, then source review |
+
+[Search with the RAG tools](../how-to/search-with-the-rags.md) covers the search
+scripts. The old dated specs and plans are at
+[commit db23737](https://github.com/delta9000/x3d-cpp/tree/db23737f43f9ec16d983583834c40c70c810bf63/docs).
+
+## Subsystem sources
 
 | Subsystem page | Primary sources |
 |---|---|
@@ -29,11 +44,11 @@ conformance status lives in `docs/conformance/findings.yaml`.
 | [proto-expand](subsystems/proto-expand.md) | `runtime/X3DProtoExpand.hpp`, `runtime/X3DProtoClone.hpp`, `runtime/X3DProto.hpp`, `runtime/parse/X3DProtoResolver.hpp` |
 | [inline-expand](subsystems/inline-expand.md) | `runtime/InlineExpand.hpp`, `runtime/events/InlineRuntimeSystem.hpp`, `runtime/X3DImportExport.hpp` |
 | [event-cascade](subsystems/event-cascade.md) | `runtime/events/X3DEventCascade.hpp`, `runtime/events/X3DEventGraph.hpp`, `runtime/events/X3DFieldAddress.hpp` |
-| [routes](subsystems/routes.md) | `runtime/X3DRoute.hpp`, `runtime/events/DynamicField.hpp` |
+| [ROUTEs](subsystems/routes.md) | `runtime/X3DRoute.hpp`, `runtime/events/DynamicField.hpp` |
 | [system-time](subsystems/system-time.md) | `runtime/events/TimeSensorSystem.hpp`, `runtime/events/X3DTimeDependentSystem.hpp` |
 | [system-interpolators](subsystems/system-interpolators.md) | `runtime/events/InterpolatorSystem.hpp`, `runtime/events/Interpolation.hpp`, `runtime/events/SplineInterpolatorSystem.hpp`, `runtime/events/SplineInterpolation.hpp`, `runtime/events/InterpolatorRegistration.hpp` |
 | [system-followers](subsystems/system-followers.md) | `runtime/events/FollowerSystem.hpp`, `runtime/events/FollowerArith.hpp`, `runtime/events/FollowerRegistration.hpp` |
-| [geospatial](subsystems/geospatial.md) | `runtime/math/GeoProjection.hpp`, `runtime/math/GeoFrame.hpp`, `runtime/scene/GeoNodes.hpp`, `runtime/io/proj/` |
+| [Geospatial](subsystems/geospatial.md) | `runtime/math/GeoProjection.hpp`, `runtime/math/GeoFrame.hpp`, `runtime/scene/GeoNodes.hpp`, `runtime/io/proj/` |
 | [system-eventutility](subsystems/system-eventutility.md) | `runtime/events/EventUtilitySystem.hpp` |
 | [system-viewdependent](subsystems/system-viewdependent.md) | `runtime/scene/ViewDependentSystem.hpp`, `runtime/scene/Billboard.hpp` |
 | [system-viewpointbind](subsystems/system-viewpointbind.md) | `runtime/events/ViewpointBindSystem.hpp`, `runtime/scene/BindingSystem.hpp`, `runtime/scene/BindingStack.hpp`, `runtime/events/ViewpointOffset.hpp` |

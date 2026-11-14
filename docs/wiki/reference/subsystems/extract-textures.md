@@ -1,5 +1,5 @@
 ---
-title: Texture, Material, and Light Extraction
+title: Texture, material and light extraction
 summary: Texture descriptor extraction, material system, light extraction, and the asset-resolver seam used by rendering consumers.
 tags: [subsystem, extract, textures, materials, lights, asset-resolver]
 updated: 2026-11-05
@@ -9,13 +9,14 @@ related:
   - ext-firewall.md
 ---
 
-# Texture, Material, and Light Extraction
+# Texture, material and light extraction
 
 ## Purpose
 
-This subsystem converts the scene graph's Appearance, material, and light nodes into flat, renderer-ready descriptors that a consumer can read without touching generated bindings or spec internals. It owns three distinct extraction concerns:
+This subsystem converts the scene graph's Appearance, material, and light nodes into flat, renderer-ready descriptors that a consumer can read without touching generated bindings or spec internals. It owns three distinct extraction concerns: Material: `materialOf(appearance)` in `MaterialSystem.hpp` dispatches on the material node type (Material/PhysicalMaterial/UnlitMaterial) and produces a tagged `MaterialDesc` with texture slots populated. Texture slot precedence (material-borne slots win over legacy `Appearance.texture`) is enforced here, not in the caller.
 
-- Material: `materialOf(appearance)` in `MaterialSystem.hpp` dispatches on the material node type (Material/PhysicalMaterial/UnlitMaterial) and produces a tagged `MaterialDesc` with texture slots populated. Texture slot precedence (material-borne slots win over legacy `Appearance.texture`) is enforced here, not in the caller.
+## Behavior
+
 - Texture: `MaterialSystem` fills sampler state with `extendedSamplerOf()`.
   `TextureExtract.hpp` adds §18.4.8 procedural coordinate generation descriptors
   (`texCoordGenOf()`), bakes §18.4.10 UV transforms across coordinate sets
@@ -87,7 +88,7 @@ std::vector<TextureRef> texturesOf(const X3DNode *appearance);
 Null/default rules:
 
 - `appearance == nullptr` → Unlit white (debug fallback, not spec-compliant).
-- Appearance present, `material == nullptr` → Unlit white + any `Appearance.texture` in the Emissive slot (§12.2.5 rule 4;  correction).
+- Appearance present, `material == nullptr` → Unlit white + any `Appearance.texture` in the Emissive slot (§12.2.5 rule 4; the MAT-001 correction).
 - `Material` → Phong. `PhysicalMaterial` → Physical. `UnlitMaterial` → Unlit.
 
 Texture enrichment
@@ -167,10 +168,12 @@ void enrichTextureRefs(std::vector<TextureRef> &refs,
   (`examples/poc_renderer/shaders/texgen.glsl`, the same noise and refraction
   choices) and applies the generated-coordinate transform; `texgen_gl_test.py`
   covers the camera-space modes and the issue #140 reflection vector,
-  `texgen_local_gl_test.py` the local, noise and refraction modes ( fixed).
+  `texgen_local_gl_test.py` the local, noise and refraction modes.
 - Like the CPU, it gives each texture slot and MultiTexture stage its own
   generator or UV set.
-- Cube-map environment textures (§34).
+
+#### Cube-map environment textures (§34)
+
 - A `Source::Cube` ref (ComposedCubeMapTexture) in the base-colour slot or a
   MultiTexture stage is sampled by direction in both hosts: the generator's
   full (s, t, r) vector, or with no generator the camera-space reflection
@@ -192,8 +195,10 @@ void enrichTextureRefs(std::vector<TextureRef> &refs,
   that use it, and keeps them while `update` is NONE.
 - `GeneratedCubeMapSystem` resets NEXT_FRAME_ONLY to NONE at the start of the
   following tick (cpu_raster `GeneratedCubeCache`; the GL PoC keeps a
-  six-layer render target per node).  lists the other limits.
-- Texture projectors (§42).
+  six-layer render target per node). Finding REQ-CUBE in `docs/conformance/findings.yaml` lists the other limits.
+
+#### Texture projectors (§42)
+
 - `SceneExtractor::projectors()` returns one world-resolved `ProjectorDesc`
   per active projector: colour, intensity, ambientIntensity, location,
   direction, up vector, view and projection matrices, near/far and parallel
@@ -233,7 +238,9 @@ void enrichTextureRefs(std::vector<TextureRef> &refs,
 - Without generated levels, mip filters fall back to their corresponding
   base-level filter.
 - Anisotropy is clamped to the supported maximum of 16.
-- MultiTexture stage combining (§18.4.3).
+
+#### MultiTexture stage combining (§18.4.3)
+
 - `MaterialSystem::appendSlot` retains stage controls and channel identity.
 - The CPU combines every Table 18.3 mode, including BLEND*, DOTPRODUCT3 and
   MODULATEALPHA/MODULATEINV operations, with separate RGB/alpha mode tokens.
@@ -306,5 +313,5 @@ the returned frame. `x3d_plmpeg` provides MPEG-1 decoding when
 
 - [ADR-0015: Extraction Pull Per Path](../../explanation/decisions/0015-extraction-pull-per-path.md)
 - [Architecture](../../explanation/architecture.md)
-- [Extraction Pipeline](extract.md)
-- [Ext Firewall](ext-firewall.md)
+- [Extraction pipeline](extract.md)
+- [Ext firewall](ext-firewall.md)

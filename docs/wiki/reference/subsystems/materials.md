@@ -1,5 +1,5 @@
 ---
-title: "Materials (§12 Shape + Appearance)"
+title: Materials
 summary: "MaterialDesc discriminated union (Phong/Physical/Unlit), backMaterial two-sided support, multi-UV texCoordMapping, and ORM channel-packing docs — the extraction seam between X3D Appearance nodes and the renderer-facing descriptor."
 tags: [subsystem, materials, extract, appearance, pbr, phong]
 updated: 2026-09-26
@@ -10,7 +10,7 @@ related:
   - ../../explanation/decisions/0021-material-shader-design.md
 ---
 
-# Materials (§12 Shape + Appearance)
+# Materials
 
 ## Purpose
 
@@ -152,6 +152,6 @@ Gamma / sRGB stance: the SDK emits colors in the space they were authored.  X3D 
 ## Related
 
 - [ADR-0021: Material + Shader Design](../../explanation/decisions/0021-material-shader-design.md)
-- [Texture, Material, and Light Extraction](extract-textures.md)
+- [Texture, material and light extraction](extract-textures.md)
 - [Shaders subsystem](shaders.md)
 - [Architecture](../../explanation/architecture.md)

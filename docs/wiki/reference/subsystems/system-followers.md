@@ -1,5 +1,5 @@
 ---
-title: Followers System
+title: Followers
 summary: §39 Followers component runtime — Damper (IIR cascade) and Chaser (FIR tap sum) smoothing of field values, all 14 node types.
 tags: [subsystem, followers, damper, chaser, animation]
 updated: 2026-06-21
@@ -9,17 +9,14 @@ related:
   - event-cascade.md
 ---
 
-# Followers System
+# Followers
 
 ## Purpose
 
-- The Followers System animates scene-graph field values by *smoothing* a
-  stream of `set_destination` events toward their target, rather than sampling
-  a keyframe table the way the [Interpolator System](system-interpolators.md)
-  does.
-- It covers all fourteen nodes of ISO/IEC 19775-1 §39 (Followers component) —
-  seven value types, each as a Damper (a critically-shaped IIR low-pass) and a
-  Chaser (a fixed-duration FIR tap sum).
+The Followers System animates scene-graph field values by *smoothing* a stream of `set_destination` events toward their target, rather than sampling a keyframe table the way the [interpolators](system-interpolators.md) do. It covers all fourteen nodes of ISO/IEC 19775-1 §39 (Followers component) — seven value types, each as a Damper (a critically-shaped IIR low-pass) and a Chaser (a fixed-duration FIR tap sum).
+
+## Behavior
+
 - A follower has no `key`/`keyValue`; it holds an output and chases a moving
   `set_destination`, emitting `value_changed` each tick while in transition
   and toggling `isActive` at the transition boundaries.
@@ -61,7 +58,7 @@ DamperSystem<TexCoordDamper2D, MFVec2f>    ChaserSystem<TexCoordChaser2D, MFVec2
 ### Seam points
 
 - `set_destination` / `set_value` handler registration — `attach(node, ctx)` installs `setOnSet_destinationHandler` and `setOnSet_valueHandler` lambdas (matched by `dynamic_cast<NodeT*>`, so the scene-walk is safe to offer every node). `set_destination` updates the target and activates the transition; `set_value` snaps the output and stops it.
-- Dual write on output — each emission both calls the node's own `emitValue_changed` / `emitIsActive` setter and `ctx.postEvent(node, "value_changed"|"isActive", …)` to seed the [event cascade](event-cascade.md), so downstream ROUTEs fire. This matches the Interpolator System's `postEvent` path.
+- Dual write on output — each emission both calls the node's own `emitValue_changed` / `emitIsActive` setter and `ctx.postEvent(node, "value_changed"|"isActive", …)` to seed the [Event cascade](event-cascade.md), so downstream ROUTEs fire. This matches the Interpolator System's `postEvent` path.
 - `attachFollowers` scene-walk — mirrors `attachInterpolators`; `makeFollowerSystems()` is the registry, `attachFollowers` in `X3DSceneBridge.cpp` is the production wiring.
 
 ### Spec-conformance annotations
@@ -74,6 +71,6 @@ DamperSystem<TexCoordDamper2D, MFVec2f>    ChaserSystem<TexCoordChaser2D, MFVec2
 
 ## Related
 
-- [Interpolator System](system-interpolators.md)
+- [Interpolators](system-interpolators.md)
 - [Event Cascade subsystem](event-cascade.md)
 - [Architecture](../../explanation/architecture.md)

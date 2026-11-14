@@ -1,5 +1,5 @@
 ---
-title: Event Cascade
+title: Event cascade
 summary: Per-tick event propagation engine — route-loop deduplication and timestamp quantum enforcement.
 tags: [subsystem, event-cascade, routes, tick, dedup]
 updated: 2026-10-07
@@ -9,7 +9,7 @@ related:
   - execution-context.md
 ---
 
-# Event Cascade
+# Event cascade
 
 The event cascade engine propagates field events along the ROUTE graph within a
 single logical timestamp. It owns breadth-first delivery, per-ROUTE guards,
@@ -168,6 +168,6 @@ See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Routes](routes.md)
-- [Execution Context](execution-context.md)
+- [ROUTEs](routes.md)
+- [Execution context](execution-context.md)
 - [ADR-0009: sim snapshot-diff](../../explanation/decisions/0009-sim-snapshot-diff.md)

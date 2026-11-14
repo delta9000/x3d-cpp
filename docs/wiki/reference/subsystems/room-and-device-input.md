@@ -1,5 +1,5 @@
 ---
-title: "Room and device input"
+title: Room and device input
 summary: "The opt-in physical-room and tracked-device sensor nodes: interfaces, coordinate and lifecycle contract, host submission, RoomGroup placement and the portable fallback."
 tags: [subsystem, ext, sensors, tracking]
 updated: 2026-11-14

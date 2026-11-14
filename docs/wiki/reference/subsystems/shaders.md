@@ -1,5 +1,5 @@
 ---
-title: "Shaders (selection, program descriptors + binding plan)"
+title: Shaders
 summary: "§31 shaders end to end: selectShader picks each Appearance's first valid GLSL ComposedShader/ProgramShader and SceneExtractor puts it on RenderItem::shaderProgram; ShaderSystem emits isSelected/isValid and handles activate; ShaderUniformVocabulary + buildBindingPlan classify uniforms; cpu_raster and the GL PoC run the program."
 tags: [subsystem, shaders, extract, composedshader, vocab, binding-plan]
 updated: 2026-10-10
@@ -10,21 +10,11 @@ related:
   - ../../explanation/decisions/0021-material-shader-design.md
 ---
 
-# Shaders (selection, program descriptors + binding plan)
+# Shaders
 
 ## Purpose
 
-- This subsystem carries §31 programmable shaders from the scene graph to a
-  renderer.
-- `selectShader()` (`runtime/extract/ShaderExtract.hpp`) chooses each
-  Appearance's program, `SceneExtractor` puts it on
-  `RenderItem::shaderProgram`, and `ShaderSystem`
-  (`runtime/events/ShaderSystem.hpp`) reports the choice to the scene as
-  `isSelected`/`isValid` events.
-- A consumer binds the program and calls `buildBindingPlan()` to classify each
-  uniform name into three buckets: vocab match (a known semantic from the
-  vocabulary header), author field (a `<field>` declared on the shader), or
-  unrecognized (a diagnostic with a nearest-vocab suggestion).
+This subsystem carries §31 programmable shaders from the scene graph to a renderer. `selectShader()` (`runtime/extract/ShaderExtract.hpp`) chooses each Appearance's program, `SceneExtractor` puts it on `RenderItem::shaderProgram`, and `ShaderSystem` (`runtime/events/ShaderSystem.hpp`) reports the choice to the scene as `isSelected`/`isValid` events. A consumer binds the program and calls `buildBindingPlan()` to classify each uniform name into three buckets: vocab match (a known semantic from the vocabulary header), author field (a `<field>` declared on the shader), or unrecognized (a diagnostic with a nearest-vocab suggestion).
 
 ## Selection and sources (§31.2.2.3, §31.2.4)
 
@@ -144,7 +134,7 @@ A non-null `ShaderProgramDesc` on a `RenderItem` signals the consumer to bind th
   on the next delta.
 - `buildBindingPlan()` matches an array uniform reported as `name[0]` to the
   field `name`.
-- Both reference hosts bind all of these .
+- Both reference hosts bind all of these.
 - Cube and 3D sampler uniforms, geometry/tessellation stages and node-valued
   fields outside XML are open.
 
@@ -254,5 +244,5 @@ emission; the OpenGL PoC retains the remaining limitations recorded in the ledge
 
 - [ADR-0021: Material + Shader Design](../../explanation/decisions/0021-material-shader-design.md)
 - [Materials subsystem](materials.md)
-- [Texture, Material, and Light Extraction](extract-textures.md)
+- [Texture, material and light extraction](extract-textures.md)
 - [Architecture](../../explanation/architecture.md)

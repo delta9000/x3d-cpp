@@ -1,5 +1,5 @@
 ---
-title: Parse Readers
+title: Parse readers
 summary: Parse frontend — XML, VRML97, Classic VRML, and JSON readers; node builder; encoding sniffing; version-inference ladder.
 tags: [subsystem, parse, readers, xml, vrml, json, version-inference]
 updated: 2026-11-11
@@ -13,21 +13,21 @@ related:
   - ../../explanation/decisions/0014-dynamic-field-foundation.md
 ---
 
-# Parse Readers
+# Parse readers
 
 ## Purpose
 
-- The parse frontend turns raw X3D bytes — in any of four encodings (XML,
-  Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the
-  runtime document model (`x3d::runtime::X3DDocument`).
-- It owns encoding detection, version inference, node and field population via
-  the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO
-  structural capture, IMPORT/EXPORT, and Script author-field capture (` S1`).
+The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classic VRML, VRML97, JSON) and optionally gzip-compressed — into the runtime document model (`x3d::runtime::X3DDocument`). It owns encoding detection, version inference, node and field population via the reflection layer, DEF/USE identity, ROUTE capture, PROTO/EXTERNPROTO structural capture, IMPORT/EXPORT, and Script author-field capture (the S1 seam).
+
+## Behavior
+
 - After the document is built it triggers PROTO/Inline expansion through
   injectable resolver seams.
 - Unknown node types and unknown field names are skipped gracefully
   (lenient-read policy); only unrecoverable malformation throws.
-- Input-hardening (DoS guards).
+
+### Input-hardening (DoS guards)
+
 - The recursive-descent readers descend attacker-controlled structure, so each
   caps nesting depth against a shared ceiling (`runtime/RecursionLimits.hpp`,
   `x3d::kMaxNestingDepth` = 1000): the XML tokenizer
@@ -200,6 +200,6 @@ How Inline and EXTERNPROTO loads are confined, bounded and reported is in
 - [Proto Expand](proto-expand.md)
 - [Inline Expand](inline-expand.md)
 - [Codecs Writers](codecs-writers.md)
-- [Scene Graph](scene-graph.md)
+- [Scene graph](scene-graph.md)
 - [ADR-0062](../../explanation/decisions/0062-classic-prototype-metadata-comments.md)
 - [Architecture](../../explanation/architecture.md)

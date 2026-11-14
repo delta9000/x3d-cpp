@@ -1,5 +1,5 @@
 ---
-title: SDK façade
+title: SDK facade
 summary: The single public header consumers include — x3d::sdk — which re-exports the curated v1 embedder surface from namespace x3d::sdk.
 tags: [subsystem, sdk, facade, public-api]
 updated: 2026-10-18
@@ -10,7 +10,7 @@ related:
   - ../gates.md
 ---
 
-# SDK façade
+# SDK facade
 
 Include `x3d/sdk.hpp` and link `x3d_cpp::sdk`. The façade re-exports selected
 runtime types into `x3d::sdk` and adds the header-only
@@ -21,12 +21,12 @@ The linked node and runtime libraries supply compiled definitions.
 ## Loading and execution
 
 Use `parseFile` for local-file loading or `parseDocument` with explicit
-resolvers for host-controlled loading. See [parse readers](parse-readers.md).
+resolvers for host-controlled loading. See [Parse readers](parse-readers.md).
 
 `RuntimeSession::create` owns a document, context, and extractor and attaches
 the standard runtime. Call `fullSnapshot()` once, then `tick(now)` and
 `delta()` from the host loop. Low-level `X3DExecutionContext` and
-`SceneExtractor` remain available. See [execution context](execution-context.md)
+`SceneExtractor` remain available. See [Execution context](execution-context.md)
 and [extraction](extract.md) for lifetime, mutation, and delta contracts.
 
 ## Resource interfaces
@@ -54,7 +54,7 @@ backend factories have their own headers and build options.
 
 `x3d_cpp::authoring` and `x3d/authoring.hpp` provide nodes, the document model,
 `SceneBuilder`, and writers without simulation or extraction. See
-[asset import](asset-import.md#scenebuilder). `sdk.hpp` re-exports the builder as
+[Asset import](asset-import.md#scenebuilder). `sdk.hpp` re-exports the builder as
 `sdk::SceneBuilder`.
 
 Extensions use `x3d/ext.hpp` and the separate opt-in extension target.

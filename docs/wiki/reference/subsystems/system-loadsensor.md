@@ -1,5 +1,5 @@
 ---
-title: LoadSensor System
+title: LoadSensor
 summary: LoadSensor as a live X3DNetworkSensorNode — a time-driven System that observes each sensor's watched X3DUrlObject children through the AssetResolver seam and emits isActive/isLoaded/loadTime/progress per §9.4.3.
 tags: [subsystem, loadsensor, networking, asset-resolver, sensors]
 updated: 2026-09-26
@@ -12,7 +12,7 @@ related:
   - ../../explanation/decisions/0046-loadsensor-assetresolver-oracle.md
 ---
 
-# LoadSensor System
+# LoadSensor
 
 The LoadSensor System implements ISO/IEC 19775-1 §9.4.3 `LoadSensor` — the
 Networking node that generates events as its watched `children` (any
@@ -33,13 +33,13 @@ Design rationale is in
 
 ## Purpose
 
-- `LoadSensorSystem` is a time-driven `System`: it does its work in
-  `update(now, ctx)`, called every tick.
-- Per-sensor state lives in a map owned by the system — never on the node,
-  which stays pure data.
-- Each tick, per enabled sensor, it refreshes the watch set from `children`,
-  polls each still-loading child through the injected `AssetResolver`,
-  aggregates, and emits the spec's event edges.
+`LoadSensorSystem` implements the LoadSensor node (§9.4.3). It watches the
+URL loads of the sensor's children through the injected `AssetResolver` and
+emits `isActive`, `progress`, `isLoaded` and `loadTime`.
+
+## Behavior
+
+`LoadSensorSystem` is a time-driven `System`: it does its work in `update(now, ctx)`, called every tick. Per-sensor state lives in a map owned by the system — never on the node, which stays pure data. Each tick, per enabled sensor, it refreshes the watch set from `children`, polls each still-loading child through the injected `AssetResolver`, aggregates, and emits the spec's event edges.
 
 ### Event emission table (§9.4.3)
 
@@ -49,7 +49,7 @@ Design rationale is in
 | Progress change while active | `progress=newValue` |
 | Terminal success (all watched children Ready) | `isLoaded=TRUE`, `loadTime=now`, `progress=1`, `isActive=FALSE` |
 | Terminal failure (any child Failed, or timeout) | `isLoaded=FALSE`, `isActive=FALSE` |
-| First-evaluation all-Ready  | `isLoaded=TRUE`, `loadTime=now`, `progress=1` — no isActive pulse |
+| First-evaluation all-Ready | `isLoaded=TRUE`, `loadTime=now`, `progress=1` — no isActive pulse |
 | `enabled` → FALSE while active | `isActive=FALSE` only; state resets, re-enable starts fresh |
 
 `progress` is `readyCount / watchedCount` over unique watched children, emitted
@@ -75,11 +75,11 @@ Each watched, non-pre-seeded child runs
 ### Rulings (spec-silent edges)
 
 - R3 — empty `url` + `load=TRUE` → vacuous `Ready`.
-- R4 — an  reset never emits `isLoaded=FALSE` by itself.
+- R4 — a url-change reset never emits `isLoaded=FALSE` by itself.
 - R5 — duplicate `USE` children dedupe by pointer; `progress` denominator
   counts unique children.
 - R6 — empty watch set → vacuous first-evaluation success burst.
-- R7 — first-evaluation-all-Ready emits the  burst with no `isActive`
+- R7 — first-evaluation-all-Ready emits the success burst with no `isActive`
   pulse.
 - R8 — an Inline counts as loaded only when it and every nested
   sub-Inline it asks to load (`load` TRUE) have loaded. Parse-time expansion
@@ -173,6 +173,6 @@ See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/
 - [ADR-0046](../../explanation/decisions/0046-loadsensor-assetresolver-oracle.md)
 - [Asset Resolver / IO Seam](system-asset-io.md)
 - [Inline Expand](inline-expand.md)
-- [Execution Context](execution-context.md)
+- [Execution context](execution-context.md)
 - [Architecture](../../explanation/architecture.md)
-- [Event Cascade](event-cascade.md)
+- [Event cascade](event-cascade.md)

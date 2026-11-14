@@ -63,7 +63,7 @@ See [Execution context](../reference/subsystems/execution-context.md),
 `SceneExtractor` produces an initial snapshot and subsequent `RenderDelta`
 changes. Placement identity and world transforms are per path. Shared mesh
 payloads let several placements reuse geometry. Consumers own rendering and
-resource upload. [Extraction](../reference/subsystems/extract.md) owns the incremental
+resource upload. [Extraction pipeline](../reference/subsystems/extract.md) owns the incremental
 contract; [Native host integration](../reference/native-host-contract.md) covers consumption
 and lifetime.
 

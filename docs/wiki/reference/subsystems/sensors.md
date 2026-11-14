@@ -1,5 +1,5 @@
 ---
-title: Sensor Layer Overview
+title: Sensors overview
 summary: Cross-cutting view of the sensor layer — time, pointing, key, and visibility/transform sensor wiring via the System registry.
 tags: [subsystem, sensors, cross-cutting]
 updated: 2026-06-22
@@ -13,15 +13,13 @@ related:
   - system-viewdependent.md
 ---
 
-# Sensor Layer Overview
+# Sensors overview
 
 ## Purpose
 
-The sensor layer is the collection of behavior Systems that translate external
-stimuli (clock ticks, pointer motion, keyboard input, viewer position) into X3D
-field events. Sensors are the upstream end of the X3D event model: they post
-events into the execution context, and the cascade fans those events to
-interpolators, scripts, and field-driven transforms.
+The sensor layer is the collection of behavior Systems that translate external stimuli (clock ticks, pointer motion, keyboard input, viewer position) into X3D field events. Sensors are the upstream end of the X3D event model: they post events into the execution context, and the cascade fans those events to interpolators, scripts, and field-driven transforms.
+
+## Behavior
 
 Every sensor family is implemented as a `System` (see
 `runtime/events/X3DSystem.hpp`). A System is the unit that a browser registers
@@ -98,11 +96,11 @@ go through the cascade seam.
 
 - `X3DExecutionContext::addSystem` / `tick` — the sole entry point. The
   context calls `sys->update(now, ctx)` for every registered System before each
-  cascade drain. See [Execution Context](execution-context.md).
+  cascade drain. See [Execution context](execution-context.md).
 
 - `ctx.postEvent` — all sensor output events flow here. The cascade
   delivers them to ROUTE sinks in the same tick.
-  See [Event Cascade](event-cascade.md).
+  See [Event cascade](event-cascade.md).
 
 - `ctx.pointerState()` — `PointingSensorSystem` reads `PointerState`
   (`revision`, `ray`, `buttonDown`, `present`) that the browser writes between
@@ -141,12 +139,12 @@ go through the cascade seam.
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Execution Context](execution-context.md)
-- [Event Cascade](event-cascade.md)
-- [Time System](system-time.md)
-- [Pointing-Device Sensor System](system-pointing.md)
-- [Key-Device Sensor System](system-keydevice.md)
-- [View-Dependent System](system-viewdependent.md)
+- [Execution context](execution-context.md)
+- [Event cascade](event-cascade.md)
+- [Time](system-time.md)
+- [Pointing-device sensors](system-pointing.md)
+- [Key-device sensors](system-keydevice.md)
+- [View-dependent behavior](system-viewdependent.md)
 
 - ISO/IEC 19775-1 §8.2.4 — `X3DTimeDependentNode` clock semantics (activation/deactivation gating, `set_startTime` ignored while active, pause/resume).
 - ISO/IEC 19775-1 §8.4.1 — `TimeSensor` field semantics (`fraction_changed` boundary rule, `cycleTime` definition).

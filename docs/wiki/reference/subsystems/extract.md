@@ -1,5 +1,5 @@
 ---
-title: Extraction Pipeline
+title: Extraction pipeline
 summary: SceneExtractor → MeshBuilder → PackedMesh + RenderItem — the pull-based geometry extraction seam for renderers.
 tags: [subsystem, extract, scene-extractor, mesh-builder, packed-mesh, render-item, nurbs]
 updated: 2026-09-30
@@ -14,7 +14,7 @@ related:
   - ../../explanation/decisions/0040-nurbs-tessellation-first-party.md
 ---
 
-# Extraction Pipeline
+# Extraction pipeline
 
 - The extraction pipeline converts a live X3D scene graph into
   renderer-consumable descriptors without coupling the SDK to any graphics
@@ -28,11 +28,10 @@ related:
 
 ## Purpose
 
-- The pipeline answers one question per frame: "given the current scene graph
-  state, what needs to be drawn, and how has that changed since last frame?"
-  It produces flat, POD-only descriptors (`RenderItem`, `MeshData`,
-  `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`) that a renderer
-  can consume without parsing X3D nodes directly.
+The pipeline answers one question per frame: "given the current scene graph state, what needs to be drawn, and how has that changed since last frame?" It produces flat, POD-only descriptors (`RenderItem`, `MeshData`, `MaterialDesc`, `LightDesc`, `CameraDesc`, `BackgroundDesc`) that a renderer can consume without parsing X3D nodes directly.
+
+## Behavior
+
 - The split between a full snapshot (frame 0 and scene-reload) and an
   incremental `delta()` keeps geometry, material, and TRS refreshes
   proportional to the affected items.

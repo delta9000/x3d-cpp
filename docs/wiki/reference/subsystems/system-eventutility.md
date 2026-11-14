@@ -1,5 +1,5 @@
 ---
-title: EventUtility System
+title: Event utilities
 summary: EventUtility nodes — BooleanFilter/Sequencer/Toggle/Trigger and IntegerSequencer for wiring logic without scripting.
 tags: [subsystem, event-utility, boolean-filter, sequencer, toggle, trigger]
 updated: 2026-09-26
@@ -10,7 +10,7 @@ related:
   - execution-context.md
 ---
 
-# EventUtility System
+# Event utilities
 
 The EventUtility System implements the ISO/IEC 19775-1 §30 Event Utilities
 component — a cluster of seven node types that wire boolean/integer logic and
@@ -18,6 +18,11 @@ stepwise sequencing directly via ROUTEs, without requiring an ECMAScript
 `Script`.
 
 ## Purpose
+
+The event utilities are the seven §30 nodes that trigger, filter, toggle and
+sequence events without a Script. Each runs as an event-driven `System`.
+
+## Behavior
 
 The subsystem attaches handlers to these generated node types:
 
@@ -155,6 +160,6 @@ See the [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/
 ## Related
 
 - [Architecture](../../explanation/architecture.md)
-- [Event Cascade](event-cascade.md)
-- [Routes](routes.md)
-- [Execution Context](execution-context.md)
+- [Event cascade](event-cascade.md)
+- [ROUTEs](routes.md)
+- [Execution context](execution-context.md)

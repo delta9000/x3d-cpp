@@ -1,5 +1,5 @@
 ---
-title: Reflection Layer
+title: Reflection layer
 summary: Field descriptors, reflection thunks, and the node factory/registry that enable generic traversal and codec IO without per-node code.
 tags: [subsystem, reflection, descriptors, factory, registry, codegen]
 updated: 2026-09-26
@@ -16,11 +16,15 @@ related:
   - ../../explanation/decisions/0049-zero-copy-field-reads.md
 ---
 
-# Reflection Layer
+# Reflection layer
 
 ## Purpose
 
-The reflection layer is the glue between the strongly-typed generated C++ node bindings and every piece of code that must operate on nodes generically — codecs, parse readers, route resolution, the Script/SAI runtime, and extraction. It answers three questions at runtime without requiring per-node code in the caller:
+The reflection layer is the glue between the strongly-typed generated C++ node bindings and every piece of code that must operate on nodes generically — codecs, parse readers, route resolution, the Script/SAI runtime, and extraction.
+
+## Behavior
+
+It answers three questions at runtime without requiring per-node code in the caller:
 
 1. What fields does this node have, and how do I read or write them? — answered by the `FieldTable` / `FieldInfo` mechanism emitted into every node's `.cpp`.
 2. What abstract interfaces does a named node type implement? — answered by `X3DInterfaceRegistry` (transitive closure of abstract ancestor types).
@@ -157,8 +161,8 @@ public:
 - [ADR-0005: Golden Files in Git](../../explanation/decisions/0005-golden-files-in-git.md)
 - [ADR-0014: Dynamic Field Foundation](../../explanation/decisions/0014-dynamic-field-foundation.md)
 - [Architecture](../../explanation/architecture.md)
-- [Generated Bindings](generated-bindings.md)
+- [Generated bindings](generated-bindings.md)
 - [Generator](generator.md)
 - [Codecs / Writers](codecs-writers.md)
 - [Parse / Readers](parse-readers.md)
-- [Routes](routes.md)
+- [ROUTEs](routes.md)

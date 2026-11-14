@@ -1,5 +1,5 @@
 ---
-title: Generator Pipeline
+title: Generator pipeline
 summary: Reads the X3D Unified Object Model (UOM) XML and emits C++ bindings via a parse → model → emit pipeline.
 tags: [subsystem, generator, codegen, python]
 updated: 2026-06-20
@@ -10,15 +10,14 @@ related:
   - reflection.md
 ---
 
-# Generator Pipeline
+# Generator pipeline
 
 ## Purpose
 
-- The generator pipeline is the Python-side code-generation layer.
-- It reads the X3D Unified Object Model (UOM) XML specification, builds an
-  in-memory IR of every node and field, resolves the full inheritance graph,
-  and writes a set of C++ source files that are committed as the golden
-  binding tree.
+The generator pipeline is the Python-side code-generation layer. It reads the X3D Unified Object Model (UOM) XML specification, builds an in-memory IR of every node and field, resolves the full inheritance graph, and writes a set of C++ source files that are committed as the golden binding tree.
+
+## Behavior
+
 - Every downstream runtime capability — reflection, the node factory, the
   interface registry, range constraints, bounded enumerations — is emitted
   here from data, not from hand-written code.
@@ -102,7 +101,7 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 - [Architecture](../../explanation/architecture.md)
 - [Templates](templates.md)
-- [Generated Bindings](generated-bindings.md)
+- [Generated bindings](generated-bindings.md)
 - [Reflection](reflection.md)
 - [ADR-0005: Golden Files in Git](../../explanation/decisions/0005-golden-files-in-git.md)
 - [ADR-0004: Virtual Mixins](../../explanation/decisions/0004-virtual-mixins.md)

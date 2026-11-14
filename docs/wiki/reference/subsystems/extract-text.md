@@ -1,5 +1,5 @@
 ---
-title: Text Extraction
+title: Text extraction
 summary: Text node extraction and layout via the font-metrics seam — converts X3D Text/FontStyle into renderable glyph-quad geometry.
 tags: [subsystem, extract, text, font-metrics, text-layout]
 updated: 2026-09-30
@@ -11,20 +11,11 @@ related:
   - sdk-facade.md
 ---
 
-# Text Extraction
+# Text extraction
 
 ## Purpose
 
-- This subsystem converts X3D `Text` and `FontStyle` nodes into renderable
-  geometry.
-- It owns three responsibilities: (1) running the §15 layout engine to place
-  per-line baselines and compute block bounds, (2) emitting one CCW glyph quad
-  per codepoint into a `MeshData` with `isGlyphMesh=true`, and (3) writing the
-  `Text` node's `outputOnly` fields (`textBounds`, `lineBounds`, `origin`)
-  back via reflection.
-- The SDK never opens font files or calls a rasterizer — the consumer supplies
-  all glyph metrics and atlas UV coordinates through the `FontMetrics`
-  callback seam.
+This subsystem converts X3D `Text` and `FontStyle` nodes into renderable geometry. It owns three responsibilities: (1) running the §15 layout engine to place per-line baselines and compute block bounds, (2) emitting one CCW glyph quad per codepoint into a `MeshData` with `isGlyphMesh=true`, and (3) writing the `Text` node's `outputOnly` fields (`textBounds`, `lineBounds`, `origin`) back via reflection. The SDK never opens font files or calls a rasterizer — the consumer supplies all glyph metrics and atlas UV coordinates through the `FontMetrics` callback seam.
 
 ## Key files
 
@@ -148,7 +139,7 @@ int setTextOutputs(X3DNode& textNode, const TextLayoutResult& layout);
 
 ## FontMetrics seam
 
-See [font metrics](system-font-metrics.md) for the callback, adapter contract,
+See [Font metrics](system-font-metrics.md) for the callback, adapter contract,
 and metrics backend configuration.
 
 ### Optional glyph atlas
@@ -191,8 +182,8 @@ ctest --test-dir build-font --output-on-failure -R x3d_text
 
 ## Related
 
-- [Extraction Pipeline](extract.md)
+- [Extraction pipeline](extract.md)
 - [Texture Extraction](extract-textures.md)
-- [Generated Bindings](generated-bindings.md)
-- [SDK Façade](sdk-facade.md)
+- [Generated bindings](generated-bindings.md)
+- [SDK facade](sdk-facade.md)
 - [Architecture](../../explanation/architecture.md)
