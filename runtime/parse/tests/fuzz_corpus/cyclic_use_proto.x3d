@@ -1,0 +1,5 @@
+<X3D version="4.0"><Scene>
+<ProtoDeclare name="P"><ProtoInterface><field name="kids" type="MFNode" accessType="inputOutput"/></ProtoInterface>
+<ProtoBody><Group><IS><connect nodeField="children" protoField="kids"/></IS></Group></ProtoBody></ProtoDeclare>
+<Transform DEF="A"><ProtoInstance name="P"><fieldValue name="kids"><Transform USE="A"/></fieldValue></ProtoInstance></Transform>
+</Scene></X3D>

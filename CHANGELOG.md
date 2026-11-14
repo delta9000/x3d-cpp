@@ -159,6 +159,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Enclosing USE leak.** A USE inside the body of the node it names, such as
+  `DEF A Transform { children [ USE A ] }` or the same node as a ProtoInstance
+  `fieldValue` nested in it, made the node contain itself and leaked the
+  document when it was only parsed. The XML, ClassicVRML, VRML97 and JSON
+  readers now drop that USE and report a `CyclicUse` reader warning, shown by
+  `x3d validate` as a `use` diagnostic. Found by the libFuzzer gate.
 - **Duktape string fields.** SFString and MFString values preserve their explicit
   lengths in both directions, retaining embedded NULs and the text after them.
 - **QuickJS allocation errors.** Returning multi-value fields and newly created

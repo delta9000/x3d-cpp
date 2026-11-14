@@ -3144,6 +3144,22 @@
     cli-gate verdict excludes `value` until its X3DJSAIL baseline is refreshed.
     Tests: x3d_parse_tests value_syntax_test.
 
+- id: READ-CYCLIC-USE
+  nodes: [Transform, Group]
+  component: Core
+  clause: "ISO/IEC 19775-1 4.4.3 (DEF/USE semantics)"
+  severity: major
+  status: fixed
+  summary: A USE inside the body of the node it names (`DEF A Transform { children [ USE A ] }`, or the same node as a nested ProtoInstance fieldValue) was attached, so the node contained itself. The shared_ptr cycle leaked any document that was parsed but not passed to buildSceneGraph, where breakContainmentCycles runs. Found by the libFuzzer parseDocument gate.
+  note: >-
+    Every reader keeps each DEF'd node whose body is being read open on a
+    thread-local set (OpenNodeScope) and refuses to attach an open node as a
+    child, as an XML unknown element's child, or as a ProtoInstance fieldValue
+    node. The USE is dropped with ReaderWarning{Kind::CyclicUse}; `x3d validate`
+    reports it under the `use` category. A Script or shader author field may
+    still name its own node (the value lives in the DynamicFieldStore). Tests:
+    x3d_parse_tests cyclic_use_test; fuzz seeds cyclic_use*.
+
 - id: VALIDATE-ROUTES
   nodes: [TimeSensor, Transform]
   component: Core

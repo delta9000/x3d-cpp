@@ -49,6 +49,7 @@ categories:
 | `route` | error | A ROUTE whose endpoint DEF does not exist (IMPORTed names exempt), or that the runtime bridge rejects for an unknown field, access type or field-type mismatch (`checkRoutes`). |
 | `range` | warning | An out-of-range value (`collectRangeWarnings`). |
 | `proto`, `inline`, `node`, `profile` | warning or error | Expansion, reader-recovery and profile-fit diagnostics. |
+| `use` | warning | A USE inside the body of the node it names, which the reader dropped because the node would contain itself. |
 | `dup-meta`, `unused-proto`, `ifs-coord-index`, `ils-coord-index` | warning | Checks shared with the X3DJSAIL differential gate. |
 
 A `node` warning for an unknown element means the XML reader kept it as opaque

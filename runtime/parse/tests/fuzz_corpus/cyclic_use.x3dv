@@ -1,0 +1,2 @@
+#X3D V4.0 utf8
+DEF A Transform { children [ USE A ] }

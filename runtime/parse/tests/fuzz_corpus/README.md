@@ -2,7 +2,9 @@
 
 Small hand-authored inputs exercise XML, ClassicVRML and JSON, including PROTO,
 IS, ROUTE, DEF/USE, opaque nodes and malformed Unicode recovery. The malformed
-surrogate fixture intentionally is not a Unicode-valid scene. These are seeds,
+surrogate fixture intentionally is not a Unicode-valid scene. The `cyclic_use*`
+seeds are the fuzzer's leak reproducers: a USE inside the body of the node it
+names, which every reader must drop. These are seeds,
 not a substitute for behavioral assertions or the larger conformance corpus.
 
 Run from the repository root after building the `fuzz` preset:

@@ -209,11 +209,13 @@ inline void collectDiagnostics(const sdk::X3DDocument &doc, std::vector<Diag> &d
         diags.push_back({"inline", "warning", msg});
     }
 
-    // 3b. Reader-recovery diagnostics (unknown node element, coerced profile).
+    // 3b. Reader-recovery diagnostics (unknown node element, coerced profile,
+    // coerced value, dropped cyclic USE).
     for (const auto &w : doc.readerWarnings) {
         using Kind = x3d::runtime::ReaderWarning::Kind;
         const char *cat = w.kind == Kind::UnknownNode ? "node"
                           : w.kind == Kind::Value     ? "value"
+                          : w.kind == Kind::CyclicUse ? "use"
                                                       : "profile";
         diags.push_back({cat, "warning", w.detail});
     }
