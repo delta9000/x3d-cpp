@@ -493,8 +493,11 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
       duk_push_number(ctx, has ? std::any_cast<SFDouble>(v) : 0.0); return;
     case X3DFieldType::SFTime:
       duk_push_number(ctx, has ? std::any_cast<SFTime>(v) : 0.0); return;
-    case X3DFieldType::SFString:
-      duk_push_string(ctx, has ? std::any_cast<SFString>(v).c_str() : ""); return;
+    case X3DFieldType::SFString: {
+      SFString s = has ? std::any_cast<SFString>(v) : SFString{};
+      duk_push_lstring(ctx, s.data(), s.size());
+      return;
+    }
     // structured SF
     case X3DFieldType::SFVec2f:
       pushSFVec2f(ctx, has ? std::any_cast<SFVec2f>(v) : SFVec2f{}); return;
@@ -547,7 +550,7 @@ void EcmaScriptBackend::pushValue(duk_context *ctx, const std::any &v,
     case X3DFieldType::MFString: {
       MFString d = has ? std::any_cast<MFString>(v) : MFString{};
       pushMF(ctx, d, [](duk_context *c, const std::string &s) {
-        duk_push_string(c, s.c_str());
+        duk_push_lstring(c, s.data(), s.size());
       });
       return;
     }
@@ -668,8 +671,11 @@ std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
       return SFDouble(duk_to_number(ctx, i));
     case X3DFieldType::SFTime:
       return SFTime(duk_to_number(ctx, i));
-    case X3DFieldType::SFString:
-      return SFString(duk_to_string(ctx, i) ? duk_to_string(ctx, i) : "");
+    case X3DFieldType::SFString: {
+      duk_size_t length = 0;
+      const char *s = duk_to_lstring(ctx, i, &length);
+      return SFString(s ? s : "", length);
+    }
     case X3DFieldType::SFVec2f: return toSFVec2f(ctx, i);
     case X3DFieldType::SFVec2d: return toSFVec2d(ctx, i);
     case X3DFieldType::SFVec3f: return toSFVec3f(ctx, i);
@@ -703,8 +709,9 @@ std::any EcmaScriptBackend::toValue(duk_context *ctx, duk_idx_t i,
       });
     case X3DFieldType::MFString:
       return toMF<MFString>(ctx, i, [](duk_context *c, duk_idx_t j) {
-        const char *s = duk_to_string(c, j);
-        return SFString(s ? s : "");
+        duk_size_t length = 0;
+        const char *s = duk_to_lstring(c, j, &length);
+        return SFString(s ? s : "", length);
       });
     case X3DFieldType::MFColor:
       return toMF<MFColor>(ctx, i, toSFColor);
@@ -933,14 +940,15 @@ duk_ret_t routeOp(duk_context *ctx, const char *name, Op op) {
 // so both `nodes[0]` and the SAI `scene.rootNodes` spelling work.
 duk_ret_t browser_createFromString(duk_context *ctx) {
   SaiContext *sai = saiOf(ctx);
-  const char *text = duk_to_string(ctx, 0);
+  duk_size_t length = 0;
+  const char *text = duk_to_lstring(ctx, 0, &length);
   char err[256] = {0};
   MFNode nodes;
   if (!sai) {
     std::snprintf(err, sizeof err, "no browser");
   } else {
     try {
-      nodes = sai->createX3DFromString(text ? text : "");
+      nodes = sai->createX3DFromString(std::string(text ? text : "", length));
     } catch (const std::exception &e) {
       std::snprintf(err, sizeof err, "%s", e.what());
       if (!err[0]) std::snprintf(err, sizeof err, "failed");
