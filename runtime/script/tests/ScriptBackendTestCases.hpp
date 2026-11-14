@@ -202,6 +202,12 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     check(std::any_cast<SFString>(
               roundTrip(backend, SFString("héllo"), X3DFieldType::SFString)) == "héllo",
           "T12: SFString round-trips (UTF-8)");
+    {
+      SFString in = SFString("héllo") + '\0' + "tail";
+      auto out = std::any_cast<SFString>(
+          roundTrip(backend, in, X3DFieldType::SFString));
+      check(out == in, "T12: SFString round-trips with an embedded NUL");
+    }
 
     // structured SF
     {
@@ -263,6 +269,13 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
       MFString in{"a", "bb", "ccc"};
       auto out = std::any_cast<MFString>(roundTrip(backend, in, X3DFieldType::MFString));
       check(out.size() == 3 && out[2] == "ccc", "T12: MFString round-trips");
+    }
+    {
+      MFString in{"", SFString("left") + '\0' + "right", "tail"};
+      auto out = std::any_cast<MFString>(
+          roundTrip(backend, in, X3DFieldType::MFString));
+      check(out == in,
+            "T12: MFString round-trips empty and embedded-NUL strings");
     }
     {
       MFVec3f in{{1, 0, 0}, {0, 1, 0}};
@@ -1130,8 +1143,10 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     Fixture fix;
     fix.script.setDirectOutputUnchecked(true);
     std::string seenText;
+    std::vector<std::string> seenSources;
     fix.sai.setSceneFactory([&](const std::string &text) {
       seenText = text;
+      seenSources.push_back(text);
       if (text == "bad") throw std::runtime_error("parse error");
       auto made = std::make_shared<Transform>();
       made->setTranslation(SFVec3f{4, 5, 6});
@@ -1160,10 +1175,12 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
         madeX = scene[0].translation.x;
         json = '' + scene[0] + JSON.stringify(scene);
         group.children = scene.rootNodes;
+        Browser.createVrmlFromString('<Transform/>\u0000<Shape/>');
         badThrew = false;
         try { Browser.createVrmlFromString('bad'); } catch (e) { badThrew = true; }
       }
-    )JS", fix.sai);
+    )JS",
+                                  fix.sai);
     check(h != kInvalidScriptHandle, "create: script loads");
     if (h != kInvalidScriptHandle) {
       backend.initialize(h);
@@ -1189,6 +1206,11 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
       std::any bad = store.getValue(fix.script, "badThrew");
       check(bad.has_value() && std::any_cast<bool>(bad) && seenText == "bad",
             "create: a factory error becomes a catchable script error");
+      check(seenSources.size() == 3 &&
+                seenSources[1] ==
+                    std::string("<Transform/>") + '\0' + "<Shape/>",
+            "create: the factory receives the full string, including embedded "
+            "NUL");
       backend.shutdown(h);
     }
     store.erase(fix.script);
@@ -1247,6 +1269,48 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     fix.ctx.authorFields().erase(fix.script);
   }
 
+  // Allocating the returned node handles must either finish or throw; a heap
+  // limit must never turn a successful factory result into a partial array.
+  {
+    backend.setMemoryLimit(std::size_t{1} << 20);
+    backend.setCallBudget(std::chrono::seconds(60));
+    Fixture fix;
+    fix.sai.setSceneFactory([](const std::string &) {
+      return MFNode(32768, std::make_shared<Transform>());
+    });
+    auto &store = fix.ctx.authorFields();
+    store.addAuthorField(fix.script, AuthorFieldDecl{"caught",
+                                                     X3DFieldType::SFBool,
+                                                     AccessType::OutputOnly,
+                                                     {}});
+    store.addAuthorField(fix.script, AuthorFieldDecl{"alive",
+                                                     X3DFieldType::SFBool,
+                                                     AccessType::OutputOnly,
+                                                     {}});
+    ScriptHandle h =
+        backend.load(fix.script,
+                     "function initialize() { caught = false;"
+                     " try { Browser.createX3DFromString('<Transform/>'); }"
+                     " catch (e) { caught = true; } }"
+                     "function fine(v, t) { alive = true; }",
+                     fix.sai);
+    check(h != kInvalidScriptHandle, "create: limited-heap script loads");
+    if (h != kInvalidScriptHandle) {
+      backend.initialize(h);
+      std::any caught = store.getValue(fix.script, "caught");
+      check(caught.has_value() && std::any_cast<bool>(caught),
+            "create: exhausting memory while returning nodes throws");
+      backend.invoke(h, "fine", std::any{}, X3DFieldType::SFBool, 0.0);
+      std::any alive = store.getValue(fix.script, "alive");
+      check(alive.has_value() && std::any_cast<bool>(alive),
+            "create: the script recovers after node conversion runs out of "
+            "memory");
+      backend.shutdown(h);
+    }
+    store.erase(fix.script);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
+    backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+  }
 }
 
 } // namespace script_backend_tests

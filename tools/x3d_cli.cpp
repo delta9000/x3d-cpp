@@ -39,6 +39,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -498,13 +499,24 @@ int cmdValidate(const std::vector<std::string> &args) {
 // cmdExtract
 
 int cmdExtract(const std::vector<std::string> &args) {
-    // x3d extract <in> [-o out.stl]
+    // x3d extract <in> [-o out.stl|out.glb] [-f stl|glb]
     static const char *kUsage =
-        "usage: x3d extract <input> [-o <output.stl>]\n"
+        "usage: x3d extract <input> [-o <output.stl|output.glb>] [-f stl|glb]\n"
         "\n"
-        "  Export the tessellated geometry of an X3D scene to a single merged\n"
-        "  binary STL file (world-space, one triangle soup).\n"
+        "  Export the tessellated geometry of an X3D scene. The format is -f, else\n"
+        "  the -o extension (.glb), else STL.\n"
         "\n"
+        "  glb: binary glTF 2.0. One node per placed shape with its world\n"
+        "  matrix, shared meshes for DEF/USE, normals, texture coordinates,\n"
+        "  vertex colours, lines and points, and materials (PhysicalMaterial\n"
+        "  directly, Material approximated, UnlitMaterial as\n"
+        "  KHR_materials_unlit). Local PNG/JPEG ImageTexture files and\n"
+        "  PixelTextures are embedded; an image that cannot be read is left as a\n"
+        "  url reference. Lights are written as\n"
+        "  KHR_lights_punctual and Viewpoints/OrthoViewpoints as cameras.\n"
+        "  Not exported: movie, multi, cube and 3D textures, animation, skinning.\n"
+        "\n"
+        "  stl: a single merged binary STL file (world-space, one triangle soup).\n"
         "  The STL is produced by running the full SceneExtractor pipeline\n"
         "  (parse → buildSceneGraph → fullSnapshot) and baking every RenderItem's\n"
         "  local-frame triangles to world space using its per-path world transform.\n"
@@ -517,7 +529,7 @@ int cmdExtract(const std::vector<std::string> &args) {
         "    -o <output.stl>  write to file (binary); stdout if omitted\n"
         "\n"
         "  Exit codes:\n"
-        "    0  ok (including zero-geometry scenes — valid empty STL)\n"
+        "    0  ok (including zero-geometry scenes — valid empty STL/GLB)\n"
         "    1  usage error\n"
         "    2  parse / IO failure\n";
 
@@ -532,6 +544,7 @@ int cmdExtract(const std::vector<std::string> &args) {
 
     std::string inPath;
     std::string outPath;
+    std::string format;
 
     for (int i = 0; i < static_cast<int>(args.size()); ++i) {
         const std::string &a = args[static_cast<size_t>(i)];
@@ -541,6 +554,16 @@ int cmdExtract(const std::vector<std::string> &args) {
                 return 1;
             }
             outPath = args[static_cast<size_t>(++i)];
+        } else if (a == "-f") {
+            if (i + 1 >= static_cast<int>(args.size())) {
+                std::cerr << "error: -f requires an argument\n" << kUsage;
+                return 1;
+            }
+            format = args[static_cast<size_t>(++i)];
+            if (format != "stl" && format != "glb") {
+                std::cerr << "error: unknown format: " << format << "\n" << kUsage;
+                return 1;
+            }
         } else if (!a.empty() && a[0] == '-') {
             std::cerr << "error: unknown option: " << a << "\n" << kUsage;
             return 1;
@@ -556,6 +579,13 @@ int cmdExtract(const std::vector<std::string> &args) {
         std::cerr << "error: missing input file\n" << kUsage;
         return 1;
     }
+    if (format.empty()) {
+        const auto dot = outPath.rfind('.');
+        std::string ext = dot == std::string::npos ? "" : outPath.substr(dot);
+        for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        format = ext == ".glb" ? "glb" : "stl";
+    }
+    const bool glb = format == "glb";
 
     // Parse.
     sdk::X3DDocument doc;
@@ -568,6 +598,8 @@ int cmdExtract(const std::vector<std::string> &args) {
     surfaceWarnings(doc);
 
     // Build scene graph + extract.
+    std::string glbBytes;
+    sdk::GltfWriteReport glbReport;
     std::vector<SFVec3f> positions; // world-space, 3 per tri.
     std::vector<SFVec3f> normals;   // world-space per-vertex normals (3 per tri).
     std::map<std::string, int> skipped;
@@ -584,8 +616,36 @@ int cmdExtract(const std::vector<std::string> &args) {
         // Gather skipped geometry types.
         skipped = ex.skippedGeometryCounts();
 
+        if (glb) {
+            // Embed local PNG/JPEG texture files so the .glb does not depend on
+            // where it is written. A url is resolved against the document its
+            // texture node came from, else against the input file.
+            sdk::GltfWriteOptions glbOptions;
+            glbOptions.readImage = [&inPath](const std::string &url,
+                                             const std::string &baseUrl) {
+                std::string path = url.substr(0, url.find_first_of("?#"));
+                if (path.rfind("file://", 0) == 0) path.erase(0, 7);
+                else if (path.find("://") != std::string::npos) return std::string();
+                std::string base = baseUrl.empty() ? inPath : baseUrl;
+                if (base.rfind("file://", 0) == 0) base.erase(0, 7);
+                if (base.find("://") != std::string::npos) return std::string();
+                std::filesystem::path file(path);
+                if (file.is_relative()) {
+                    // A base url may name the document or its directory.
+                    std::error_code ec;
+                    std::filesystem::path dir(base);
+                    if (!std::filesystem::is_directory(dir, ec)) dir = dir.parent_path();
+                    file = dir / file;
+                }
+                std::ifstream in(file, std::ios::binary);
+                if (!in) return std::string();
+                return std::string(std::istreambuf_iterator<char>(in), {});
+            };
+            glbBytes = sdk::writeGlb(ex, frame0.added, glbOptions, &glbReport);
+        }
+
         // For each RenderItem, transform its local-frame triangles to world space.
-        for (sdk::RenderItemId id : frame0.added) {
+        for (sdk::RenderItemId id : glb ? std::vector<sdk::RenderItemId>{} : frame0.added) {
             const sdk::RenderItem &item = ex.item(id);
             const sdk::MeshData &mesh = *item.mesh;
             const sdk::Mat4 &W = item.worldTransform;
@@ -620,14 +680,29 @@ int cmdExtract(const std::vector<std::string> &args) {
                   << "' (" << kv.second << " instance(s)) — not supported by MeshBuilder\n";
     }
 
-    const std::size_t triCount = positions.size() / 3;
-    if (triCount == 0)
-        std::cerr << "note: no geometry found in '" << inPath << "' — writing empty STL\n";
+    const std::size_t triCount = glb ? glbReport.triangles : positions.size() / 3;
+    if (glb ? glbReport.nodes == 0 : triCount == 0)
+        std::cerr << "note: no geometry found in '" << inPath << "' — writing empty "
+                  << (glb ? "GLB" : "STL") << "\n";
+    if (glb) {
+        auto note = [](std::size_t n, const char *what) {
+            if (n) std::cerr << "note: " << n << " " << what << "\n";
+        };
+        note(glbReport.externalImages, "texture(s) left as url references (file not found, or not local)");
+        note(glbReport.droppedTextures, "texture(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG image)");
+        note(glbReport.unmappedTextureSlots, "texture(s) in a slot glTF has no property for (specular, shininess, ambient, or lighting maps of an unlit surface)");
+        note(glbReport.skippedViewpoints, "GeoViewpoint(s) not exported");
+        note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
+        note(glbReport.staticSkins, "skinned item(s) exported as static meshes");
+        note(glbReport.droppedBackMaterials, "back material(s) not exported");
+        note(glbReport.droppedShaders, "author shader(s) not exported");
+    }
 
-    // Write binary STL.
+    // Write binary STL (or hand over the GLB).
     std::string stlBytes;
     try {
-        stlBytes = x3d::cli::writeStlBinary(positions, normals);
+        stlBytes = glb ? std::move(glbBytes)
+                       : x3d::cli::writeStlBinary(positions, normals);
     } catch (const std::exception &e) {
         std::cerr << "error: STL serialization failed: " << e.what() << "\n";
         return 2;
@@ -652,7 +727,13 @@ int cmdExtract(const std::vector<std::string> &args) {
         return 2;
     }
 
-    std::cerr << "extract: " << triCount << " triangle(s) written"
+    std::cerr << "extract: ";
+    if (glb)
+        std::cerr << glbReport.nodes << " node(s), " << glbReport.meshes
+                  << " mesh(es), " << glbReport.materials << " material(s), "
+                  << glbReport.textures << " texture(s), " << glbReport.lights
+                  << " light(s), " << glbReport.cameras << " camera(s), ";
+    std::cerr << triCount << " triangle(s) written"
               << (outPath.empty() ? " (stdout)" : " to '" + outPath + "'") << "\n";
     return 0;
 }
@@ -1040,7 +1121,7 @@ int cmdSim(const std::vector<std::string> &args) {
 static const SubCmd kCmds[] = {
     {"convert",     "Convert an X3D scene between encodings",       cmdConvert},
     {"validate",    "Validate an X3D scene and report diagnostics", cmdValidate},
-    {"extract",     "Export X3D geometry to a binary STL file",     cmdExtract},
+    {"extract",     "Export X3D geometry to binary STL or glTF (.glb)", cmdExtract},
     {"canonicalize","Emit the X3D Canonical Form (X3DC14N)",        cmdCanonicalize},
     // sim: headless behavior simulation / field-change trace
     {"sim",         "Headless behavior simulation + field-change trace", cmdSim},
@@ -1056,7 +1137,7 @@ static const char *kTopUsage =
     "subcommands:\n"
     "  convert      Convert an X3D scene between encodings\n"
     "  validate     Validate an X3D scene and report diagnostics\n"
-    "  extract      Export X3D geometry to a binary STL file\n"
+    "  extract      Export X3D geometry to binary STL or glTF (.glb)\n"
     "  canonicalize Emit the X3D Canonical Form (X3DC14N)\n"
     "  sim          Headless behavior simulation + field-change trace\n"
     "\n"

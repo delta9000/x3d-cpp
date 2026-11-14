@@ -2110,7 +2110,9 @@
     ScriptEngine::setMemoryLimit (default 256 MiB). Duktape uses a counting allocator per script; QuickJS uses
     JS_SetMemoryLimit on its shared runtime, so there it caps the scripts' combined heap. Past the cap an
     allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests:
-    ecmascript/quickjs backend T15h. This is a JavaScript-heap limit, not a whole-process sandbox.
+    ecmascript/quickjs backend T15h, plus shared "create" cases that force a heap-cap
+    failure while converting factory roots and verify catchable errors and recovery. This is a
+    JavaScript-heap limit, not a whole-process sandbox.
     SaiContext separately bounds captured Browser.print output and cumulative scene-creation
     source bytes, attempts and retained roots; ScriptSystem::setResourceLimits configures these
     before enrollment. Logs truncate with logTruncated() diagnostics; exhausted creation quotas
@@ -3189,7 +3191,9 @@
     receiver first (Open Inventor / X_ITE convention; the standard's text is
     ambiguous). Not covered: SFMatrix3f/4f methods and VrmlMatrix (matrices stay
     flat arrays), SFNode/MFNode construction from a string. Tests:
-    ecmascript/quickjs backend "field types" cases.
+    ecmascript/quickjs backend "field types" cases. SFString/MFString values
+    retain embedded NUL bytes across the engine boundary (shared backend T12
+    round-trip cases).
 
 - id: SCRIPT-BROWSER-SERVICES
   nodes: [Script]
@@ -3206,6 +3210,8 @@
     created text are dropped, and Inline/EXTERNPROTO urls in it are not fetched.
     A host that sets no factory gets a thrown error. Tests: ecmascript/quickjs
     backend "create" cases, x3d_parse_tests string_scene_factory_test.
+    Source strings reach the factory with their explicit byte length, including
+    embedded NULs; the default factory strips a UTF-8 BOM before encoding detection.
 
 - id: SCRIPT-SFNODE-FIELD-ACCESS
   nodes: [Script]

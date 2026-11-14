@@ -8,6 +8,29 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **glTF export.** `sdk::writeGlb(extractor, snapshot.added)` and
+  `x3d extract scene.x3d -o scene.glb` (or `-f glb`) write the extracted scene
+  as binary glTF 2.0: one node per placed shape with its world matrix, meshes
+  shared across DEF/USE, normals, texture coordinates, vertex colours, lines
+  and points, and materials (`PhysicalMaterial` directly, `Material`
+  approximated, `UnlitMaterial` as `KHR_materials_unlit`). PNG/JPEG
+  `ImageTexture` files are embedded (the CLI reads them; SDK hosts pass
+  `GltfWriteOptions::readImage`) or referenced by url; `PixelTexture`s and
+  host-decoded images are embedded as PNG. Textures on unlit surfaces become
+  the base colour texture. Lights are written as `KHR_lights_punctual` and
+  `Viewpoint`/`OrthoViewpoint` nodes as cameras. Not exported: movie, multi,
+  cube and 3D textures, skins, animation; `GltfWriteReport` counts what was
+  dropped. Light intensity has no unit conversion.
+- **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and
+  `sdk::SceneBuilder`) gains a fluent builder:
+  `b.add<Transform>().def("T").add<Shape>().add<Sphere>()`,
+  `node.set("translation", "0 1 0")`, `b.route(clock, "fraction_changed", interp,
+  "set_fraction")`. A child goes into the field its containerField names, and an
+  unknown field, malformed value, duplicate DEF, or a ROUTE with the wrong
+  direction or mismatched types throws `std::invalid_argument` where it is
+  written. Nodes can also be created by X3D type name. Header-only
+  (`runtime/SceneBuilder.hpp`); child node types and value ranges are not
+  checked by the builder.
 - **Scripts can create scene content (SCRIPT-BROWSER-SERVICES, partial).**
   `Browser.createX3DFromString` and `Browser.createVrmlFromString` parse a
   document or fragment and return the new nodes, which a `directOutput` script
@@ -133,6 +156,22 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Duktape string fields.** SFString and MFString values preserve their explicit
+  lengths in both directions, retaining embedded NULs and the text after them.
+- **QuickJS allocation errors.** Returning multi-value fields and newly created
+  scene roots releases partial arrays and propagates allocation failures, so
+  exhausting the script heap cannot appear to succeed with an incomplete result.
+- **Docs-drift service failures.** Advisory suggestions retain literal citation
+  results and clearly mark semantic checks unavailable when the embedding
+  service or vector store cannot be reached.
+- **Scene-source string boundaries.** Both script engines pass the complete
+  `createX3DFromString`/`createVrmlFromString` source to the host factory,
+  including bytes after embedded NULs. The default factory handles a leading
+  UTF-8 BOM before choosing the input encoding.
+- **`x3d extract` on physics scenes in debug builds.** The extractor read
+  `RigidBody.geometry` (an MFNode of collidables) as a shape's SFNode geometry,
+  which tripped a type assertion in debug builds; release builds were
+  unaffected. It now reads only SFNode geometry.
 - **Shader texture and array uniforms (REQ-SHADER-2).** `ShaderFieldBinding`
   now carries MF author fields as array `elements` and SFNode/MFNode texture
   fields as resolved `textures`, refreshed when the field or its texture

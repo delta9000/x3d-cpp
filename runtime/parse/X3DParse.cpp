@@ -505,21 +505,22 @@ runtime::X3DDocument parseFile(const std::string &path,
 std::function<std::vector<std::shared_ptr<x3d::nodes::X3DNode>>(const std::string &)>
 makeStringSceneFactory() {
   return [](const std::string &text) {
-    const auto first = text.find_first_not_of(" \t\r\n");
+    std::string source = text;
+    stripUtf8Bom(source);
+    const auto first = source.find_first_not_of(" \t\r\n");
     if (first == std::string::npos)
       throw std::runtime_error("createX3DFromString: empty text");
-    std::string source = text;
     Encoding encoding = Encoding::Unknown;
-    if (text[first] == '<') {
+    if (source[first] == '<') {
       encoding = Encoding::XML;
-      if (text.find("<X3D") == std::string::npos)
-        source = "<X3D profile='Full' version='4.0'><Scene>" + text +
+      if (source.find("<X3D") == std::string::npos)
+        source = "<X3D profile='Full' version='4.0'><Scene>" + source +
                  "</Scene></X3D>";
-    } else if (text[first] == '{') {
+    } else if (source[first] == '{') {
       encoding = Encoding::JSON;
-    } else if (text[first] != '#') {
+    } else if (source[first] != '#') {
       encoding = Encoding::ClassicVRML;
-      source = "#X3D V4.0 utf8\nPROFILE Full\n" + text;
+      source = "#X3D V4.0 utf8\nPROFILE Full\n" + source;
     }
     // No file access from script-supplied text: both resolvers decline.
     const ProtoDeclarationResolver noProtos =
@@ -534,7 +535,8 @@ makeStringSceneFactory() {
         parseDocument(source, encoding, "", noProtos, noInlines);
     std::vector<std::shared_ptr<x3d::nodes::X3DNode>> roots;
     for (const auto &node : doc.scene.rootNodes)
-      if (node) roots.push_back(node);
+      if (node)
+        roots.push_back(node);
     if (roots.empty())
       throw std::runtime_error("createX3DFromString: the text contains no nodes");
     return roots;

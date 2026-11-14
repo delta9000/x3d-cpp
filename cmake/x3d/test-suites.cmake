@@ -33,6 +33,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sdk_node_inspection
         x3d_inline_confine
         x3d_authoring_link_contract
+        x3d_authoring_builder
         x3d_native_host_contract
         x3d_sound_system
         x3d_sound_immersive
@@ -113,6 +114,7 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_sdk_node_inspection
         x3d_inline_confine
         x3d_authoring_link_contract
+        x3d_authoring_builder
         x3d_native_host_contract
         x3d_sound_system
         x3d_sound_immersive

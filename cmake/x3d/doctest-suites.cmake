@@ -137,6 +137,7 @@ endif()
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_extract_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_test.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/gltf_writer_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_delta_perf_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_instancing_test.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/scene_extractor_delta_contract_test.cpp"
