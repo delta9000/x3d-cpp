@@ -28,6 +28,7 @@
 #ifndef X3D_RUNTIME_SCENE_BUILDER_HPP
 #define X3D_RUNTIME_SCENE_BUILDER_HPP
 
+#include "FieldRead.hpp"
 #include "X3DDocument.hpp"
 #include "codecs/FieldValueIO.hpp"
 #include "x3d/core/X3DReflection.hpp"
@@ -51,6 +52,7 @@ using x3d::core::AccessType;
 using x3d::core::FieldInfo;
 using x3d::core::X3DFieldType;
 using x3d::nodes::X3DNode;
+using x3d::runtime::findField;
 
 [[noreturn]] inline void fail(const std::string &what) {
   throw std::invalid_argument("SceneBuilder: " + what);
@@ -60,13 +62,6 @@ inline std::string describe(const X3DNode &node) {
   const std::string def = node.getDEF();
   return def.empty() ? node.nodeTypeName()
                      : node.nodeTypeName() + " '" + def + "'";
-}
-
-inline const FieldInfo *findField(const X3DNode &node,
-                                  const std::string &name) {
-  for (const FieldInfo &f : node.fields())
-    if (f.x3dName == name) return &f;
-  return nullptr;
 }
 
 // A ROUTE may name an inputOutput field `f` as `set_f` or `f_changed`.
