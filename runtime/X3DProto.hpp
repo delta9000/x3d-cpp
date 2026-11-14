@@ -117,7 +117,9 @@ struct InlineWarning {
 struct ReaderWarning {
   // Value: a malformed authored value the lenient reader coerced (bad number
   // token, wrong tuple arity, trailing partial MF tuple); see checkValueSyntax.
-  enum class Kind { UnknownNode, ProfileCoerced, Value };
+  // CyclicUse: a USE inside the body of the node it names, dropped because
+  // attaching it would make the node contain itself.
+  enum class Kind { UnknownNode, ProfileCoerced, Value, CyclicUse };
   Kind kind;
   std::string detail;
   // Unknown XML content is retained for XML writing only. Other recovery may

@@ -1,0 +1,4 @@
+{"X3D":{"@version":"4.0","Scene":{"-children":[
+{"ProtoDeclare":{"@name":"P","ProtoInterface":{"field":[{"@name":"kids","@type":"MFNode","@accessType":"inputOutput"}]},
+ "ProtoBody":{"-children":[{"Group":{"IS":{"connect":[{"@nodeField":"children","@protoField":"kids"}]}}}]}}},
+{"Transform":{"@DEF":"A","-children":[{"ProtoInstance":{"@name":"P","fieldValue":[{"@name":"kids","-children":[{"Transform":{"@USE":"A"}}]}]}}]}}]}}}

@@ -7,6 +7,7 @@
 #include "DynamicField.hpp"
 #include "FieldAliases.hpp"
 #include "FieldValueIO.hpp"
+#include "OpenNodeScope.hpp"
 #include "ProtoNameMaps.hpp"
 #include "x3d/nodes/Script.hpp"
 #include "x3d/nodes/ShaderPart.hpp"
@@ -186,6 +187,9 @@ private:
     const std::string def = node->getDEF();
     if (!def.empty())
       scene.define(def, node);
+    // Keep a DEF'd node open while its subtree is read, so a USE of it inside
+    // the subtree is not attached (the node would contain itself).
+    OpenNodeScope open(def.empty() ? nullptr : node.get());
 
     // inside a ProtoBody, record any <IS><connect/></IS> block carried by
     // this node element (at any depth) as an IsConnection bound to the just-built
@@ -305,7 +309,10 @@ private:
                    "> inside PROTO discarded (opaque child slot not retained)"});
         continue;
       }
-      attachChild(*node, table, slot, childEl->name, child, &scene);
+      if (!attachChild(*node, table, slot, childEl->name, child, &scene)) {
+        noteEnclosingUse(readerWarnings_, *child);
+        continue;
+      }
       if (currentProtoBody)
         currentProtoBody->recordChildNode(node, slot, child);
     }
@@ -344,6 +351,7 @@ private:
     node->text = el.text;
     if (!node->getDEF().empty())
       scene.define(node->getDEF(), node);
+    OpenNodeScope open(node->getDEF().empty() ? nullptr : node.get());
     for (const auto &childEl : el.children) {
       if (childEl->name == "ROUTE") {
         auto &routes = currentProtoBody ? currentProtoBody->routes : scene.routes;
@@ -364,6 +372,10 @@ private:
       auto child = readNode(*childEl, scene, currentProtoBody);
       if (!child)
         continue;
+      if (isOpenNode(child.get())) {
+        noteEnclosingUse(readerWarnings_, *child);
+        continue;
+      }
       node->children.push_back({childEl->attrOr("containerField", ""), child});
     }
     return node;
@@ -660,7 +672,7 @@ private:
           else
             n = readNode(*nc, scene);
           if (n) {
-            fv.nodeValue.push_back(n);
+            pushNodeValue(fv.nodeValue, std::move(n), readerWarnings_);
             hasNodeChild = true;
           }
         }
@@ -728,11 +740,16 @@ private:
   ///   1) the field whose containerField == the child's containerField attr;
   ///   2) failing that (no attr), the field named after the child's slot;
   ///   3) failing that, the parent's first node field (best-effort).
-  static void attachChild(X3DNode &parent, const FieldTable &table,
+  ///
+  /// Returns false, attaching nothing, when `child` is still open (a USE of an
+  /// enclosing node; see OpenNodeScope.hpp).
+  static bool attachChild(X3DNode &parent, const FieldTable &table,
                           const std::string &slot,
                           const std::string & /*childTypeName*/,
                           const std::shared_ptr<X3DNode> &child,
                           runtime::Scene *scene = nullptr) {
+    if (isOpenNode(child.get()))
+      return false;
     const FieldInfo *target = nullptr;
     if (!slot.empty()) {
       for (const FieldInfo &f : table) {
@@ -776,7 +793,7 @@ private:
       }
     }
     if (!target || !target->isWritable())
-      return;
+      return true;
 
     if (target->type == X3DFieldType::SFNode) {
       target->set(parent, std::any(child));
@@ -792,7 +809,7 @@ private:
       if (!target->isReadable()) {
         xmlReaderWarn("skipping child for set-only MFNode field '" +
                       target->x3dName + "' (no getter; cannot append)");
-        return;
+        return true;
       }
       std::any cur = target->get(parent);
       auto vec = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(cur);
@@ -802,6 +819,7 @@ private:
 
     if (scene)
       scene->recordChildField(&parent, target->x3dName);
+    return true;
   }
 
   static const FieldInfo *findField(const FieldTable &table,

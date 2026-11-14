@@ -1,6 +1,7 @@
 #include "NodeBuilder.hpp"
 
 #include "FieldValueIO.hpp"
+#include "OpenNodeScope.hpp"
 #include "VrmlTokenizer.hpp"
 #include "X3DRuntime.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
@@ -44,9 +45,11 @@ bool applyField(x3d::nodes::X3DNode &node, std::string_view x3dName,
   return true;
 }
 
-void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
+bool attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
                  const std::shared_ptr<x3d::nodes::X3DNode> &child,
                  runtime::Scene *scene) {
+  if (isOpenNode(child.get()))
+    return false;
   const FieldTable &table = parent.fields();
   const FieldInfo *target = nullptr;
   if (!slot.empty()) {
@@ -82,7 +85,7 @@ void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
     }
   }
   if (!target || !target->isWritable())
-    return;
+    return true;
 
   if (target->type == X3DFieldType::SFNode) {
     target->set(parent, std::any(child));
@@ -96,6 +99,7 @@ void attachChild(x3d::nodes::X3DNode &parent, std::string_view slot,
 
   if (scene)
     scene->recordChildField(&parent, target->x3dName);
+  return true;
 }
 
 void defineDef(runtime::Scene &scene, std::string_view def,
