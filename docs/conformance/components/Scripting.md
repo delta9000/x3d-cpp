@@ -21,7 +21,7 @@ _Generated. Levels 1 · 1 nodes · profiles: Immersive, Full._
 - **DELTA-DIRECTOUTPUT-AUTHOR** [major/FIXED] — §ISO/IEC 19775-1 §29.2.6, §31.2.4: Script directOutput writes to shader author fields notify dirty tracking and update extracted uniforms.
   - SaiContext uses the dirty-aware execution-context write for static and author fields, retaining direct value mutation semantics. Type-mismatched author writes leave values and dirtiness unchanged. Tests: shader_selection_test.cpp directOutput author uniform writes reach the render delta.
 - **SCR-001** [major/FIXED] — §29.2.5: prepareEvents() called exactly once per timestamp before ROUTE processing.
-  - SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend — SCR conformance is backend-independent. See ADR-0022 / docs/wiki/seam-status.md.
+  - SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend — SCR conformance is backend-independent. See ADR-0022 / docs/wiki/reference/seam-matrix.md.
 - **SCR-002** [major/FIXED] — §29.2.3: shutdown() invoked on world unload (~ScriptSystem teardown).
 - **SCR-003** [major/FIXED] — §29.2.4: eventsProcessed() JS-global outputs read back into the cascade.
 - **SCR-004** [major/FIXED] — §29.2.5: prepareEvents() JS-global outputs read back into the cascade.

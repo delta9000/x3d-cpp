@@ -8526,7 +8526,7 @@
       "nodes": [
         "Script"
       ],
-      "note": "SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend \u2014 SCR conformance is backend-independent. See ADR-0022 / docs/wiki/seam-status.md.",
+      "note": "SCR-* are behavioral claims about the ScriptEngine seam, not Duktape-specific; the x3d_quickjs_swap test re-verifies they hold identically under the second (QuickJS) backend \u2014 SCR conformance is backend-independent. See ADR-0022 / docs/wiki/reference/seam-matrix.md.",
       "severity": "major",
       "status": "fixed",
       "summary": "prepareEvents() called exactly once per timestamp before ROUTE processing.",
@@ -9707,7 +9707,7 @@
       "nodes": [
         "LoadSensor"
       ],
-      "note": "Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/subsystems/system-loadsensor.md. Drives NSN-2..9.",
+      "note": "Closed by LoadSensorSystem (runtime/events/LoadSensorSystem.hpp): a time-driven System over the AssetResolver seam (ADR-0023, ADR-0046). Wired by attachStandardRuntime/attachFullRuntime. See docs/wiki/reference/subsystems/system-loadsensor.md. Drives NSN-2..9.",
       "severity": "minor",
       "status": "closed",
       "summary": "LoadSensor not wired as an active System observing child URL-object load state per tick.",

@@ -173,14 +173,15 @@ description = "Authoring slim-target gate: reject excluded subsystem symbols."
 run = "scripts/authoring-footprint.sh"
 
 [tasks.demos]
-description = "Render the interpolator demo scenes to WebM (docs/videos/demos/) + animated GIF heroes (docs/images/gallery/anim-*.gif). Needs ffmpeg (libvpx-vp9). Depends on the cpuraster build."
+description = "Render the interpolator demo scenes to WebM + animated GIF under build-cpuraster/demos/ (not committed). Needs ffmpeg (libvpx-vp9). Depends on the cpuraster build."
 run = """
 set -euo pipefail
 cmake -S . -B build-cpuraster -G Ninja -DX3D_CPP_BUILD_CPURASTER=ON -DX3D_CPP_BUILD_STB=ON
 cmake --build build-cpuraster
 command -v ffmpeg >/dev/null || { echo "demos: ffmpeg not found (install ffmpeg with libvpx-vp9)"; exit 1; }
 BIN=build-cpuraster/examples/cpu_raster/x3d_cpu_raster
-mkdir -p docs/videos/demos docs/images/gallery
+OUT=build-cpuraster/demos
+mkdir -p "$OUT"
 trap 'rm -rf "${work:-}"' EXIT
 # name:scene:duration — duration matches each scene's cycleInterval for a seamless loop.
 for entry in position:anim_position:4 orientation:anim_orientation:4 color:anim_color:4 dvd:anim_dvd:8; do
@@ -190,15 +191,15 @@ for entry in position:anim_position:4 orientation:anim_orientation:4 color:anim_
       --animate --fps 30 --duration "$dur" -w 640 -H 360 --frames-dir "$work"
   # Full-quality VP9 WebM.
   ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" \
-      -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 0 -crf 32 "docs/videos/demos/${out}.webm"
-  # Lean animated-GIF hero (480px, 20fps, per-clip palette) for inline README autoplay.
+      -c:v libvpx-vp9 -pix_fmt yuv420p -b:v 0 -crf 32 "$OUT/${out}.webm"
+  # Lean animated GIF (480px, 20fps, per-clip palette).
   ffmpeg -y -hide_banner -loglevel error -i "$work/frame_%04d.ppm" \
       -vf "fps=20,scale=480:-1:flags=lanczos,palettegen=stats_mode=full" "$work/pal.png"
   ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frame_%04d.ppm" -i "$work/pal.png" \
       -lavfi "fps=20,scale=480:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
-      "docs/images/gallery/anim-${out}.gif"
+      "$OUT/anim-${out}.gif"
   rm -rf "$work"
-  echo "wrote docs/videos/demos/${out}.webm + docs/images/gallery/anim-${out}.gif"
+  echo "wrote $OUT/${out}.webm + $OUT/anim-${out}.gif"
 done
 """
 
@@ -378,7 +379,7 @@ description = "(Re)build the x3d-cpp-code Qdrant collection from the C++ runtime
 run = "uv run python scripts/code_rag.py ingest"
 
 [tasks.docs-ingest]
-description = "(Re)build the x3d-cpp-docs Qdrant collection from the living docs (wiki/sdk/conformance)."
+description = "(Re)build the x3d-cpp-docs Qdrant collection from the living docs (wiki/conformance)."
 run = "uv run python scripts/docs_drift.py ingest"
 
 [tasks.docs-drift]

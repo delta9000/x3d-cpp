@@ -1,5 +1,5 @@
 // Drive §37 rigid-body dynamics through PhysicsBackend and post integrated poses
-// as RigidBody events. See docs/wiki/decisions/0019-physics-seam.md.
+// as RigidBody events. See docs/wiki/explanation/decisions/0019-physics-seam.md.
 #ifndef X3D_RUNTIME_PHYSICS_SYSTEM_HPP
 #define X3D_RUNTIME_PHYSICS_SYSTEM_HPP
 

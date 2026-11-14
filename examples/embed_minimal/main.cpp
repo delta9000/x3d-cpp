@@ -1,4 +1,4 @@
-// The README render-consumer example (§Quickstart 2): RuntimeSession +
+// The README quick-start render consumer: RuntimeSession +
 // fullSnapshot upload, then tick + delta. Consumes the hello.x3d the authoring
 // half writes (scene path overridable via argv[1]), "uploads" by printing, and
 // runs three fixed ticks in place of a real frame loop. Exit code asserts the

@@ -1,144 +1,73 @@
 # x3d-cpp SAI SDK
 
-A modern C++20 Scene Access Interface for X3D, built around one provider-owned
-contract for setup authoring and host-driven execution. Applications use
-`<x3d/sai/experimental/provider.hpp>` and `x3d::sai::experimental::provider`;
-the selected backend owns the actual scene. The frontend has no reference-kernel
-or x3d-cpp scene dependency.
+A modern C++20 Scene Access Interface for X3D. Applications program against one
+contract, `provider::service` in `<x3d/sai/experimental/provider.hpp>`, and pick
+a backend at construction:
 
-Two backends implement the contract today: the reference backend in this
-directory and the native backend in
-[`adapters/sai_provider`](../adapters/sai_provider/), which drives a real
-x3d-cpp `RuntimeSession`. They share handles, values, errors, gates, receipts
-and event-delivery rules, and the same behavioural oracle checks both. Each
-backend advertises the node types and services it supports, so check
-`service.supported()` rather than assuming the whole ISO SAI. The namespace is
-`experimental` because the API can still change between 0.x releases, and it
-makes no binary ABI promise.
+- the **reference backend** in this directory (`x3d::sai_reference_provider`)
+- the **native backend** in [`adapters/sai_provider`](../adapters/sai_provider/)
+  (`x3d_cpp::sai_provider`), which drives a real x3d-cpp `RuntimeSession`
 
-## Relationship to the ISO C++ binding
+The namespace is `experimental`: the API can change between 0.x releases and
+makes no binary ABI promise. Each backend advertises what it supports, so check
+`service.supported()` rather than assuming the whole ISO SAI.
 
-[ISO/IEC 19777-4](https://www.iso.org/standard/83753.html) is the published C++
-language binding for the SAI. Its interfaces keep the shape shared with the
-other SAI language bindings, notably Java (ISO/IEC 19777-2): accessor pairs
-such as `getUserData`/`setUserData`, an `X3DField` class hierarchy, and a
-`CObject` user-data type. That parallel structure is a deliberate choice: it
-lets one abstract service description map the same way into every language.
+## Try it
 
-This SDK explores a different trade-off. It maps the same abstract services
-(ISO/IEC 19775-2) onto idiomatic C++20: owning values, `result<T>` errors,
-distinct strong types, and handles whose authority the provider checks. It is
-simply another way of doing it, shared to help the X3D ecosystem. It doesn't
-replace the standard and isn't source-compatible with 19777-4. The
-[service register](docs/conformance/SAI-BASELINE.md) cites the ISO clause behind
-each service, so anyone can compare the two.
+From the x3d-cpp checkout:
 
-Where a topic page notes that our reading of the published text differs, or
-that the text leaves a policy open, it records the choice this SDK made. It is
-not a defect claim.
+```sh
+mise run sai-hello
+```
 
-## Build and consume
+This builds and runs [`examples/provider_scene.cpp`](examples/provider_scene.cpp)
+and prints `reference-kernel: translation = 5 0 0`.
 
-Requires C++20 and CMake 3.24 or newer:
+## Use it
+
+Requires C++20 and CMake 3.24 or newer.
 
 ```sh
 cmake -S . -B build-sdk -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Release
-cmake --build build-sdk --parallel 1
+cmake --build build-sdk --parallel 3
 cmake --install build-sdk --prefix /path/to/sdk
 ```
 
-Run the ordinary provider example from the x3d-cpp checkout with `mise run sai-hello`.
-It creates a Transform containing a Shape and Box, routes a PositionInterpolator
-into the transform, pumps one input, and drains its notification. The task builds
-only the example and its dependencies, using one compile job by default.
-[The example](examples/provider_scene.cpp) keeps application operations in a
-function accepting `provider::service &`; backend selection happens in `main`.
-
-For an installed reference backend, configure your application with
-`-DCMAKE_PREFIX_PATH=/path/to/sdk` and use:
-
 ```cmake
 find_package(x3d_sai CONFIG REQUIRED)
-add_executable(application main.cpp)
 target_link_libraries(application PRIVATE x3d::sai_reference_provider)
 ```
 
-`make_reference_provider(resource_limits = {})` returns an owning
-`provider::service`. A native application instead uses the
-[native provider](../adapters/sai_provider/),
-`find_package(x3d_cpp_sai CONFIG REQUIRED)`, and `x3d_cpp::sai_provider`.
-Its header is `<x3d/sai_provider.hpp>` and its factory is
-`x3d::sai::experimental::native::make_service(resource_limits = {})`. Subsequent
-scene, field and event operations use the same provider contract.
-The native-only `make_presented_scene()` factory additionally binds one ordinary
-scene to an owned mesh/transform feed. Its
-[headless host example](../examples/sai_host/)
-replays explicit local input and retains immutable frames through shutdown; it
-does not add a renderer or event loop to the portable service.
+## Documentation
 
-Public targets:
+The documentation lives in the x3d-cpp wiki under
+[`docs/wiki/sai/`](../docs/wiki/sai/index.md) (`mise run docs` to browse it).
 
-- `x3d::sai`: the compiled provider-neutral frontend
-- `x3d::sai_provider`: an alias of that same target, not another interface
-- `x3d::sai_reference_provider`: the reference implementation
-- `x3d::sai_provider_fixture`: the shared behavioral test oracle
-- `x3d::sai_reference_kernel` and `x3d::sai_reference_metadata`: explicit
-  reference-only snapshot/editor/runtime extensions
+| If you want to | Start with |
+|---|---|
+| Learn the API | [Animate your first scene](../docs/wiki/sai/tutorials/first-scene.md) |
+| Link the SDK into a project | [Consume the SDK from CMake](../docs/wiki/sai/how-to/consume-the-sdk.md) |
+| Drive a scene from a host | [Run the host loop](../docs/wiki/sai/how-to/run-the-host-loop.md) |
+| Look up exact behaviour | [Provider contract](../docs/wiki/sai/reference/provider-contract.md) |
+| See targets and headers | [Packages, targets and headers](../docs/wiki/sai/reference/packages-and-targets.md) |
+| Understand the design | [Architecture](../docs/wiki/sai/explanation/architecture.md) |
+| Know what is not covered | [Scope and limits](../docs/wiki/sai/explanation/scope-and-limits.md) |
 
-To consume a source checkout, replace `find_package` with
-`add_subdirectory(path/to/x3d-cpp/sai sai EXCLUDE_FROM_ALL)` and keep the same
-link target. CMake then builds the SDK dependencies selected by your
-application. Installed packages are relocatable and carry C++20/thread
-requirements. The ordinary x3d-cpp runtime build does not add this directory;
-only the native provider depends on it. The earlier offline and hosted adapter
-APIs were consolidated into this one contract.
+## Relationship to the ISO C++ binding
 
-## Start with the contract
-
-[Portable contract and operation matrix](docs/portable-contract.md) describes
-identity, setup/live access, gates, failure effects, callbacks and resource
-budgets. [Runtime details](docs/hosted-runtime.md) and the
-[coverage migration ledger](docs/provider-fixture-coverage-ledger.md) explain
-which earlier assertions were retained or deliberately replaced.
-
-A client creates a scene/context, creates supported nodes, authors fields and
-routes, then activates the same scene. The same node/field handles remain valid.
-Live input is enqueued through a client, processed only by an explicit host pump,
-and observed through a separate notification drain. An owning receipt records
-submission outcome even after the service closes; accepted does not mean applied.
-No renderer, window, hidden clock, resource access or event loop is installed.
-
-Inspect backend capabilities and each field's supported flag. Node component
-membership tags are schema facts, not complete component/profile support claims.
-The current backends support general construction within their advertised slice;
-there is no required test-only scene bootstrap in the application interface.
-
-## Reference implementation and standards
-
-The [reference-kernel guide](docs/reference-kernel-guide.md) describes optional
-atomic editors, immutable snapshots, strict-time kernel sessions and stateful
-runtime checkpoints. These are not requirements imposed on another backend.
-The generated field keys and exact field-kind vocabulary remain shared.
-
-The [service register](docs/conformance/SAI-BASELINE.md) tracks each ISO SAI
-service as implemented, partial or planned, with the tests that back it. Normal
-register checks validate consistency and run in CI. `mise run sai-conformance`
-is the opt-in convergence report: it lists every service and falsification test
-still to finish and exits non-zero until none remain.
+This SDK is another C++20 mapping of the abstract SAI services, shared to help
+the X3D ecosystem; it does not replace ISO/IEC 19777-4. See
+[Relationship to the ISO C++ binding](../docs/wiki/sai/explanation/iso-binding.md).
 
 ## Development
 
-The generator (`x3d-sai-gen`) adds the SAI emitters on top of x3d-cpp's
-generator front end (`x3d-cpp-gen`: UOM parser, type model, field descriptors)
-and reads its vendored Web3D UOM, checked against a SHA-256 pin. Python and
-generation are not needed by installed C++ applications. From the x3d-cpp checkout run
-`mise run sai-ci` (UOM pin, generator determinism, registers, generator pytest,
-CMake build and CTest); `mise run ci` includes it. `mise run sai-provider`
-checks the native provider against this directory in source and relocated
-installed modes, and `mise run ci-all` includes that proof.
+`sai/` is its own CMake project and uv package; the ordinary x3d-cpp runtime
+build does not add it. From the x3d-cpp checkout:
 
-This SDK lived in a separate `x3d-sai` repository from 2026-07-19 to 2026-11-11
-and was folded back into x3d-cpp with its history
-([ADR-0076](../docs/wiki/decisions/0076-fold-sai-into-x3d-cpp.md)). Earlier
-provenance commits are not all buildable. `sai/` remains its own CMake project
-and uv package, so it still builds and installs on its own.
+| Task | Does |
+|---|---|
+| `mise run sai-ci` | UOM pin, generator determinism, registers, pytest, build, CTest (part of `mise run ci`) |
+| `mise run sai-provider` | Native backend against this directory (part of `mise run ci-all`) |
+| `mise run sai-baseline` | Regenerate [`docs/conformance/SAI-BASELINE.md`](docs/conformance/SAI-BASELINE.md) |
+
+See [Verify a change](../docs/wiki/sai/how-to/verify-a-change.md).

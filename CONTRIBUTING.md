@@ -1,95 +1,20 @@
 # Contributing to x3d-cpp
 
-## Build and run the fast gate
+Branch off `main`, make the change, get `mise run ci` green, update the docs
+in the same diff, and open a pull request. To-dos are plain GitHub issues.
+Gaps against the X3D specification go in
+[`docs/conformance/findings.yaml`](docs/conformance/findings.yaml) instead.
 
-x3d-cpp is a normal CMake package — see [Build and install](README.md#build-and-install):
+| Task | Guide |
+|---|---|
+| Build, run the gates and update the docs | [Verify a change](docs/wiki/how-to/verify-a-change.md) |
+| Report a bug or a security problem | [Report a bug with a scene](docs/wiki/how-to/report-a-bug.md) |
+| Know what a release may break | [API stability](docs/wiki/reference/api-stability.md) |
+| Change the generator output | [Regenerate the golden bindings](docs/wiki/how-to/regenerate-goldens.md) |
+| Write or move documentation | [Documentation conventions](docs/wiki/reference/doc-conventions.md) |
+| Work on the SAI SDK | [Verify a change (SAI)](docs/wiki/sai/how-to/verify-a-change.md) |
 
-```bash
-cmake -S . -B build -G Ninja && cmake --build build
-```
-
-Contributors additionally use [mise](https://mise.jdx.dev) as a task runner:
-
-```bash
-mise run build   # configure + build + ctest (dev preset)
-mise run ci      # tests, golden, conformance, coverage, build, cli-gate
-```
-
-`mise run ci` mirrors the required CI gates (the workflow runs them as separate
-jobs, not as this aggregate). Get it green before opening a PR.
-
-Two things `mise run ci` does **not** cover, so run them by hand when relevant:
-
-```bash
-mise run validate-examples   # the out-of-SDK renderer consumers (cpu_raster + poc_renderer)
-mise run docs-drift working  # which docs your change may have staled
-```
-
-When changing generated header ownership, exported include paths or the SAI
-boundary, also run the runtime/SAI SDK consumer check against `sai/`:
-
-```bash
-bash scripts/verify_sai_coexistence.sh
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh
-```
-
-It checks all header/link orders from source and from a relocated common install
-prefix. See the [consumer test contract](tests/cmake/sai_coexistence/README.md).
-It is deliberately separate from the runtime build: a normal x3d-cpp build
-does not add `sai/`. The SAI SDK's own gates are `mise run sai-ci` (part of
-`mise run ci`) and `mise run sai-provider` (part of `mise run ci-all`).
-
-`mise run docs-drift` needs `X3D_QDRANT_URL` set; without it, it falls back to
-`localhost:6333` and fails.
-
-## API stability at 0.x
-
-x3d-cpp is pre-1.0. The promise is deliberately narrow:
-
-- **Patch releases (0.1.0 → 0.1.1) are *intended* to preserve API and ABI.** The
-  installed CMake package declares `SameMinorVersion` and the shared libraries
-  carry `SOVERSION 0.1`, so a consumer that found 0.1.0 accepts 0.1.1 and is
-  rejected by 0.2.0 at both configure time and load time. This is intent backed
-  by convention, **not** a proof: there is no ABI checker in CI yet. If you
-  depend on it, pin exactly.
-- **Minor releases (0.1.x → 0.2.0) may break both API and ABI.**
-- Symbols in `include/x3d/sdk.hpp` marked `[STABLE]` are frozen pre-v2; those
-  marked `[EXPERIMENTAL]` may gain fields. Per-seam state lives in
-  [`docs/wiki/seam-status.md`](docs/wiki/seam-status.md) — there is no blanket
-  answer.
-
-Installed CMake target names are also not one promise. `x3d_cpp::sdk`,
-`x3d_cpp::authoring` and `x3d_cpp::x3d_cpp` are documented entry points;
-`x3d_cpp::headers`, `x3d_cpp::nodes`, `x3d_cpp::authoring_runtime` and
-`x3d_cpp::runtime` exist so the export set resolves and may be restructured.
-
-## Reporting a bug with a scene
-
-Attach a **minimal** X3D reproduction: the smallest scene that still shows the
-problem, with textures and Inlines removed unless they *are* the bug. State the
-encoding (XML / ClassicVRML / VRML97 / JSON), the X3D version, and what you
-expected the parser, the tick, or the extraction to do.
-
-Note the two version axes — the node layer is generated from the X3D **4.0**
-UOM, while the parser reads **3.0–4.1** encodings. A 4.1 scene parses, but
-4.1-only nodes the 4.0 UOM does not define are not in the generated node layer.
-
-The SDK parses untrusted input, so parser crashes, unbounded memory growth,
-hangs, and unexpected file access are **security-relevant**. Private
-vulnerability reporting is not yet enabled on this repository; until it is,
-please contact the maintainer directly rather than opening a public issue.
-
-## PR checklist
-
-See [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). In
-short: a conformance claim you can point at, a test that fails without your
-change (or an honest N/A), and the docs updated in the same diff.
-
-Docs are part of the diff — the living docs have drifted from the code before,
-and `mise run docs-drift` exists because of it.
-
-## How work is tracked
-
-To-dos are plain GitHub issues. Behavioral / spec-conformance gaps go in
-[`docs/conformance/findings.yaml`](docs/conformance/findings.yaml) instead. Branch off
-`main`, get `mise run ci` green, open a PR.
+The pull request checklist is
+[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md): a
+conformance claim you can point at, a test that fails without your change (or
+a stated N/A), and the docs updated in the same diff.

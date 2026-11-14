@@ -7,7 +7,7 @@ process doesn't. Task runner is **mise** (`mise tasks`); the in-repo wiki (`docs
 Work is: branch off `main`, make the change, `mise run ci` green, docs updated in the same
 diff, PR. To-dos are plain GitHub issues; conformance gaps go in
 `docs/conformance/findings.yaml`. No specs, plans, or cards required — write an ADR
-(`docs/wiki/decisions/NNNN-*.md`) only when you make a binding design decision.
+(`docs/wiki/explanation/decisions/NNNN-*.md`) only when you make a binding design decision.
 
 ## Docs are part of the diff
 
@@ -18,10 +18,10 @@ contact reporting shipped; Followers shipped with no page). When you change `run
 1. Run `mise run docs-drift` (uncommitted work; or `working` / `<rev>`). Check the `CITES`
    hits first; a `[NEW FILE]` with no citations probably needs a page. Advisory only.
 2. Update what it flags in the same change:
-   - `docs/wiki/subsystems/<name>.md` (new subsystem → new page + `mkdocs.yml` nav)
+   - `docs/wiki/reference/subsystems/<name>.md` (new subsystem → new page + `mkdocs.yml` nav)
    - `docs/conformance/findings.yaml`, then `mise run conformance` (never hand-edit the
      generated `.md`)
-   - `docs/sdk/v1-capabilities.md`
+   - `docs/wiki/reference/capabilities.md`
    - root `NOTICE` if you added a third-party dependency or backend
 3. If symbols moved: `mise run code-ingest` / `mise run docs-ingest`.
 
@@ -37,6 +37,20 @@ the only bridge. Its gates are `mise run sai-ci` (part of `ci`) and `mise run sa
 (part of `ci-all`). Its service register is `sai/docs/conformance/`; regenerate the baseline
 with `mise run sai-baseline`. `docs/conformance/sai-services.yaml` is the runtime's separate
 Script-SAI register.
+
+Its docs are the `docs/wiki/sai/` part of the documentation tree (below). The READMEs under
+`sai/`, `adapters/sai_provider/`, `examples/sai_host/` and `tests/cmake/sai_*/` are short
+pointers into it, and `sai/docs/` holds only the register.
+
+## Documentation layout
+
+All prose docs are one Diataxis tree under `docs/wiki/`: `tutorials/`, `how-to/`,
+`reference/` (subsystem pages in `reference/subsystems/`, example pages in
+`reference/examples/`) and `explanation/` (ADRs in `explanation/decisions/`), with the SAI SDK
+as the same four directories under `sai/`. Rules are in
+`docs/wiki/reference/doc-conventions.md`. One purpose per page; state a fact once in reference;
+tables over paragraphs. `README.md`, `CONTRIBUTING.md` and the example READMEs are pointers
+into the tree; don't grow them.
 
 ## Verify before claiming "shipped / covered"
 

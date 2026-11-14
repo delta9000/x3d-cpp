@@ -1,6 +1,6 @@
 # ISO/IEC 19775-2 abstract-service inventory mapped to the intended modern C++
 # surface. This is a convergence register, not a claim that ISO/IEC 19777-4's
-# legacy class layout should be reproduced.
+# class layout should be reproduced.
 #
 # support:
 #   implemented  complete portable SAI behavior with executable coverage

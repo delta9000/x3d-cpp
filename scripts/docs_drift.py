@@ -24,7 +24,7 @@ Subcommands (run via `uv run python scripts/docs_drift.py`):
                                   (uncommitted vs HEAD, incl. untracked), OR 'auto'
                                   (default: working if the tree is dirty, else HEAD)
 
-Living docs = docs/wiki/, docs/sdk/, docs/conformance/.
+Living docs = docs/wiki/, docs/conformance/.
 
 Embeddings + vector store are shared with code_rag.py and configured through the
 same X3D_EMBED_URL / X3D_QDRANT_URL environment variables (see code_rag.py's
@@ -46,7 +46,7 @@ DOC_TASK = ("Given a description of a code change, retrieve the documentation "
             "section that describes the affected runtime behavior.")
 
 # Living-doc roots (relative to repo).
-DOC_ROOTS = ("docs/wiki", "docs/sdk", "docs/conformance")
+DOC_ROOTS = ("docs/wiki", "docs/conformance")
 # Changed-code roots that have docs worth checking. generated bindings are
 # machine-emitted (their "doc" is the generator), so they are excluded; so is
 # vendored third-party code (not ours to document). examples/ is included so the

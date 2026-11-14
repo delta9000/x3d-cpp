@@ -382,7 +382,7 @@ localFileProtoResolver(const std::vector<std::string> &urls,
         url.rfind("urn:", 0) == 0)
       continue; // embedder override territory; default resolver stays local
     // Reject absolute paths and root escapes; canonical paths give stable cycle keys.
-    // See docs/wiki/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
+    // See docs/wiki/explanation/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
     auto confined =
         confineLocalIncludePath(url, baseUrl, detail::activeConfineRoot());
     if (!confined)

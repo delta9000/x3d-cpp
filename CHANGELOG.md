@@ -2,7 +2,7 @@
 
 Notable changes to x3d-cpp. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning is [SemVer](https://semver.org) with the 0.x caveats in
-[CONTRIBUTING.md](CONTRIBUTING.md#api-stability-at-0x).
+[API stability](docs/wiki/reference/api-stability.md).
 
 ## [Unreleased]
 
@@ -119,6 +119,21 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   arithmetic stays out of `x3d::core` per ADR-0012.
 
 ### Changed
+
+- **One documentation tree.** All prose docs now live under `docs/wiki/`,
+  organised by Diataxis: `tutorials/`, `how-to/`, `reference/` (subsystem
+  pages in `reference/subsystems/`, example pages in `reference/examples/`)
+  and `explanation/` (ADRs in `explanation/decisions/`), with the SAI SDK as
+  the same four directories under `sai/`. `docs/sdk/`, `docs/wiki/guides/`,
+  `docs/wiki/subsystems/` and `docs/wiki/decisions/` moved into it, the
+  README, CONTRIBUTING and example READMEs became pointers, and two runtime
+  tutorials and nine how-to guides were added. Paths cited in code comments
+  were updated; the rules are in `docs/wiki/reference/doc-conventions.md`.
+- **SAI documentation reorganised.** The SAI SDK and native provider docs are
+  now one tree, `docs/wiki/sai/`, split into tutorials, how-to guides,
+  reference and explanation. The topic pages under `sai/docs/` and the two
+  wiki subsystem pages moved there; `sai/docs/` keeps only the service
+  register, and the SAI READMEs are short pointers into the tree.
 
 - **OpenGL PoC MultiTexture limits lifted (REQ-MULTITEXTURE-2).** The unlit,
   Phong and PBR programs combine eight stages (was four) over eight UV sets
