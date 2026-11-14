@@ -23,7 +23,7 @@ The scene graph subsystem owns the parsed world, its structural indices, and cyc
 
 2. Structural side-systems — a family of stateless-per-node systems (`TransformSystem`, `BoundsSystem`, `BindingSystem`, `PickSystem`, `DirtyTracker`, `CycleBreaker`, `ViewDependentSystem`, `Billboard`) that traverse the graph via its SFNode/MFNode reflection fields without touching node internals. All state lives in side tables keyed by `const X3DNode*`.
 
-3. Cycle safety — malformed input can produce containment cycles (a node reachable from its own ancestor, e.g. `<X DEF='a' USE='a'/>`). `CycleBreaker` severs back-edges once at parse time, severing detected back-edges. Walkers retain their own visited sets and traversal budgets.
+3. Cycle safety — the readers drop a USE that names an enclosing node (see [Parse readers](parse-readers.md)), so a parsed document has no containment cycle. A cycle can still be built through the API or SAI (a node reachable from its own ancestor). `CycleBreaker` severs such back-edges once in `buildSceneGraph`. Walkers retain their own visited sets and traversal budgets.
 
 The subsystem does not own the event cascade, route propagation, or per-tick behavioral semantics — those live in [Execution Context](../subsystems/execution-context.md).
 

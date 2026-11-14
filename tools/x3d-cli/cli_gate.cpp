@@ -103,7 +103,8 @@ static std::string ourValidate(const std::string &path, std::string &reason,
         const auto &d = diags.front();
         if (d.category == "inline")
             reason = "inline: " + doc.inlineWarnings.front().detail;
-        else if (d.category == "node" || d.category == "profile")
+        else if (d.category == "node" || d.category == "profile" ||
+                 d.category == "use")
             reason = "reader: " + d.message;
         else if (d.category == "dup-meta")
             reason = "dup-meta: duplicate <meta> statement";
