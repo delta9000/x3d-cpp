@@ -17,6 +17,7 @@
 #include <cerrno>
 #include <sys/inotify.h>
 #include <unistd.h>
+#include "InlineExpand.hpp"
 #endif
 
 namespace {

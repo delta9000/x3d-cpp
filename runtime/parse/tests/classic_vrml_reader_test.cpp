@@ -16,6 +16,7 @@
 // Driven entirely through reflection getters + the runtime model; no per-node
 // codec code. Exit 0 on success, nonzero on any failed assertion.
 
+#include "doctest/doctest.h"
 #include "ClassicVrmlReader.hpp"
 #include "X3DParse.hpp" // parseDocument front door (content-sniffs ClassicVRML)
 #include "X3DProto.hpp"
@@ -49,31 +50,18 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 bool approx(double a, double b, double eps = 1e-4) {
   return std::fabs(a - b) <= eps;
 }
 
-// The fixtures dir is passed as argv[1] (CMake sets it); fall back to a path
+// The fixtures dir is passed as X3D_TEST_DATA_DIR (CMake sets it); fall back to a path
 // relative to this source file's build layout.
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
   if (!in) {
-    std::cerr << "FAIL: cannot open fixture: " << path << "\n";
-    ++failures;
+    FAIL_CHECK("cannot open fixture: " << path);
     return {};
   }
   std::ostringstream ss;
@@ -85,74 +73,70 @@ template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
   return std::dynamic_pointer_cast<T>(n);
 }
 // Corpus fixture 1: ship.x3dv — smallest sanity (header + Shape{ Box }).
-void testShipFixture() {
+TEST_CASE("ship fixture") {
   std::string text = readFile(g_dataDir + "/ship.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.version == "3.0", "ship: version 3.0 from header line");
-  check(doc.profile == runtime::Profile::Immersive, "ship: PROFILE Immersive");
-  check(doc.scene.rootNodes.size() == 1, "ship: one root node");
+  CHECK_MESSAGE((doc.version == "3.0"), "ship: version 3.0 from header line");
+  CHECK_MESSAGE((doc.profile == runtime::Profile::Immersive), "ship: PROFILE Immersive");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "ship: one root node");
 
   auto shape =
       as<Shape>(doc.scene.rootNodes.empty() ? nullptr : doc.scene.rootNodes[0]);
-  check(static_cast<bool>(shape), "ship: root is a Shape");
+  CHECK_MESSAGE((static_cast<bool>(shape)), "ship: root is a Shape");
   if (shape) {
     auto box = as<Box>(shape->getGeometry());
-    check(static_cast<bool>(box),
-          "ship: Shape.geometry is a Box (SFNode child)");
+    CHECK_MESSAGE((static_cast<bool>(box)), "ship: Shape.geometry is a Box (SFNode child)");
     // Readers populate initializeOnly fields through reflection setters.
     if (box)
-      check(approx(box->getSize().x, 20.f),
-            "ship: Box.size loaded from initializeOnly field (20 5 5)");
+      CHECK_MESSAGE((approx(box->getSize().x, 20.f)), "ship: Box.size loaded from initializeOnly field (20 5 5)");
   }
 }
 // Corpus fixture 2: HelloWorld.x3dv — the canonical happy path. Exercises
 // META lists (incl. escaped quotes), MFString, nested SFNode/MFNode children,
 // DEF/USE shared Material identity, and field values.
-void testHelloWorldFixture() {
+TEST_CASE("hello world fixture") {
   std::string text = readFile(g_dataDir + "/HelloWorld.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.version == "3.3", "hello: version 3.3");
-  check(doc.profile == runtime::Profile::Immersive, "hello: PROFILE Immersive");
+  CHECK_MESSAGE((doc.version == "3.3"), "hello: version 3.3");
+  CHECK_MESSAGE((doc.profile == runtime::Profile::Immersive), "hello: PROFILE Immersive");
   // META list survived (the file has many; one carries an escaped quote).
-  check(doc.head.meta.size() >= 3, "hello: META statements captured");
+  CHECK_MESSAGE((doc.head.meta.size() >= 3), "hello: META statements captured");
   bool titleFound = false;
   for (const auto &m : doc.head.meta)
     if (m.name == "title" && m.content == "HelloWorld.x3d")
       titleFound = true;
-  check(titleFound, "hello: META title == HelloWorld.x3d");
+  CHECK_MESSAGE((titleFound), "hello: META title == HelloWorld.x3d");
 
   // Roots: NavigationInfo, WorldInfo, Group (in document order).
-  check(doc.scene.rootNodes.size() == 3, "hello: three root nodes");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 3), "hello: three root nodes");
   if (doc.scene.rootNodes.size() == 3) {
-    check(static_cast<bool>(as<NavigationInfo>(doc.scene.rootNodes[0])),
-          "hello: root[0] NavigationInfo");
+    CHECK_MESSAGE((static_cast<bool>(as<NavigationInfo>(doc.scene.rootNodes[0]))), "hello: root[0] NavigationInfo");
     auto wi = as<WorldInfo>(doc.scene.rootNodes[1]);
-    check(static_cast<bool>(wi), "hello: root[1] WorldInfo");
+    CHECK_MESSAGE((static_cast<bool>(wi)), "hello: root[1] WorldInfo");
     if (wi)
-      check(wi->getTitle() == "Hello World!", "hello: WorldInfo.title");
+      CHECK_MESSAGE((wi->getTitle() == "Hello World!"), "hello: WorldInfo.title");
 
     auto group = as<Group>(doc.scene.rootNodes[2]);
-    check(static_cast<bool>(group), "hello: root[2] Group");
+    CHECK_MESSAGE((static_cast<bool>(group)), "hello: root[2] Group");
     if (group) {
       const auto &kids = group->getChildren();
       // Viewpoint + two Transforms.
-      check(kids.size() == 3, "hello: Group has 3 children");
+      CHECK_MESSAGE((kids.size() == 3), "hello: Group has 3 children");
     }
   }
 
   // DEF/USE: MaterialOffWhite is DEF'd in the first Transform's Shape and USE'd
   // in the second Transform's Shape. Both must be the same shared_ptr.
   auto matDef = doc.scene.resolve("MaterialOffWhite");
-  check(static_cast<bool>(matDef), "hello: DEF MaterialOffWhite registered");
+  CHECK_MESSAGE((static_cast<bool>(matDef)), "hello: DEF MaterialOffWhite registered");
   if (auto mat = as<Material>(matDef)) {
     SFColor c = mat->getDiffuseColor();
-    check(approx(c.r, 0.980392) && approx(c.g, 0.976471) &&
-              approx(c.b, 0.964706),
-          "hello: MaterialOffWhite.diffuseColor parsed");
+    CHECK_MESSAGE((approx(c.r, 0.980392) && approx(c.g, 0.976471) &&
+              approx(c.b, 0.964706)), "hello: MaterialOffWhite.diffuseColor parsed");
   }
 
   // Walk to the two Shapes and confirm the shared Material identity.
@@ -177,86 +161,79 @@ void testHelloWorldFixture() {
       }
     }
   }
-  check(m1 && m2 && m1.get() == m2.get(),
-        "hello: DEF/USE Material is one shared_ptr across two Shapes");
+  CHECK_MESSAGE((m1 && m2 && m1.get() == m2.get()), "hello: DEF/USE Material is one shared_ptr across two Shapes");
 
   // ImageTexture MFString url with multiple entries (DEF ImageCloudlessEarth).
   if (auto tex = as<ImageTexture>(doc.scene.resolve("ImageCloudlessEarth"))) {
-    check(tex->getUrl().size() >= 2, "hello: ImageTexture.url MFString list");
-    check(tex->getUrl()[0] == "earth-topo.png",
-          "hello: ImageTexture.url[0] == earth-topo.png");
+    CHECK_MESSAGE((tex->getUrl().size() >= 2), "hello: ImageTexture.url MFString list");
+    CHECK_MESSAGE((tex->getUrl()[0] == "earth-topo.png"), "hello: ImageTexture.url[0] == earth-topo.png");
   }
 }
 // Corpus fixture 3: AddDynamicRoutes.x3dv — Script node carried as data with an
 // inline interface declaration (`inputOnly SFTime touchTime`) consumed, then a
 // real field (url). Exercises the access-type-led interface-decl path.
-void testScriptFixture() {
+TEST_CASE("script fixture") {
   std::string text = readFile(g_dataDir + "/AddDynamicRoutes.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.version == "3.0", "script: version 3.0");
+  CHECK_MESSAGE((doc.version == "3.0"), "script: version 3.0");
   // PROFILE is commented out in this fixture (`#PROFILE Immersive`), so it
   // stays at the default.
-  check(doc.scene.rootNodes.size() == 1,
-        "script: one root node (DEF SC Script)");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "script: one root node (DEF SC Script)");
   if (!doc.scene.rootNodes.empty()) {
     auto sc = doc.scene.rootNodes[0];
-    check(static_cast<bool>(sc), "script: Script node created");
+    CHECK_MESSAGE((static_cast<bool>(sc)), "script: Script node created");
     if (sc) {
-      check(sc->getDEF() == "SC", "script: DEF SC captured");
-      check(sc->nodeTypeName() == "Script", "script: node type is Script");
+      CHECK_MESSAGE((sc->getDEF() == "SC"), "script: DEF SC captured");
+      CHECK_MESSAGE((sc->nodeTypeName() == "Script"), "script: node type is Script");
       // The interface declaration `inputOnly SFTime touchTime` was consumed;
       // the real `url` MFString field still parsed.
       const FieldInfo *urlF = nullptr;
       for (const FieldInfo &f : sc->fields())
         if (f.x3dName == "url")
           urlF = &f;
-      check(urlF != nullptr, "script: Script has a url field");
+      CHECK_MESSAGE((urlF != nullptr), "script: Script has a url field");
       if (urlF && urlF->isReadable()) {
         auto v = urlF->get(*sc);
         auto urls = std::any_cast<std::vector<std::string>>(v);
-        check(urls.size() == 1 && urls[0] == "SAIExample4.class",
-              "script: url == [\"SAIExample4.class\"] after skipping the "
+        CHECK_MESSAGE((urls.size() == 1 && urls[0] == "SAIExample4.class"), "script: url == [\"SAIExample4.class\"] after skipping the "
               "interface decl");
       }
     }
   }
-  check(doc.scene.resolve("SC") != nullptr,
-        "script: DEF SC resolvable in scene table");
+  CHECK_MESSAGE((doc.scene.resolve("SC") != nullptr), "script: DEF SC resolvable in scene table");
 }
 // Corpus fixture 4: animated_patch.x3dv — large MF arrays (multi-line, no
 // commas), DEF'd nodes, and two ROUTEs that resolve to DEF'd endpoints.
-void testNurbsFixture() {
+TEST_CASE("nurbs fixture") {
   std::string text = readFile(g_dataDir + "/animated_patch.x3dv");
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.version == "3.1", "nurbs: version 3.1");
+  CHECK_MESSAGE((doc.version == "3.1"), "nurbs: version 3.1");
 
   // DEF'd nodes reachable by name.
   auto patch = as<NurbsPatchSurface>(doc.scene.resolve("NurbsPatchSurface"));
-  check(static_cast<bool>(patch), "nurbs: DEF NurbsPatchSurface resolvable");
+  CHECK_MESSAGE((static_cast<bool>(patch)), "nurbs: DEF NurbsPatchSurface resolvable");
   if (patch) {
     // `weight` is an inputOutput MFDouble that spans multiple physical lines
     // with no commas (16 values). Asserting its size proves the multi-line MF
     // token re-join. (uKnot/uDimension/uOrder are initializeOnly => read-only
     // in this model; controlPoint is an SFNode in X3D4 but written as a raw
     // coordinate list in this X3D3.1 fixture, so it is tolerated/skipped.)
-    check(patch->getWeight().size() == 16,
-          "nurbs: weight has 16 MFDouble elements (multi-line MF re-join)");
+    CHECK_MESSAGE((patch->getWeight().size() == 16), "nurbs: weight has 16 MFDouble elements (multi-line MF re-join)");
   }
 
   auto ts = as<TimeSensor>(doc.scene.resolve("TimeSource"));
-  check(static_cast<bool>(ts), "nurbs: DEF TimeSource resolvable");
+  CHECK_MESSAGE((static_cast<bool>(ts)), "nurbs: DEF TimeSource resolvable");
   if (ts) {
-    check(approx(ts->getCycleInterval(), 2.0),
-          "nurbs: TimeSource.cycleInterval == 2.0");
-    check(ts->getLoop() == true, "nurbs: TimeSource.loop == TRUE");
+    CHECK_MESSAGE((approx(ts->getCycleInterval(), 2.0)), "nurbs: TimeSource.cycleInterval == 2.0");
+    CHECK_MESSAGE((ts->getLoop() == true), "nurbs: TimeSource.loop == TRUE");
   }
 
   // Two ROUTEs survive and resolve to the DEF'd nodes.
-  check(doc.scene.routes.size() == 2, "nurbs: two ROUTEs captured");
+  CHECK_MESSAGE((doc.scene.routes.size() == 2), "nurbs: two ROUTEs captured");
   bool route1 = false, route2 = false;
   for (const auto &r : doc.scene.routes) {
     if (r.fromNode == "TimeSource" && r.fromField == "fraction_changed" &&
@@ -266,18 +243,16 @@ void testNurbsFixture() {
         r.toNode == "NurbsPatchSurface" && r.toField == "set_controlPoint")
       route2 = true;
   }
-  check(route1, "nurbs: ROUTE TimeSource.fraction_changed -> CI.setTime");
-  check(route2,
-        "nurbs: ROUTE CI.value_changed -> NurbsPatchSurface.set_controlPoint");
+  CHECK_MESSAGE((route1), "nurbs: ROUTE TimeSource.fraction_changed -> CI.setTime");
+  CHECK_MESSAGE((route2), "nurbs: ROUTE CI.value_changed -> NurbsPatchSurface.set_controlPoint");
   // resolveRoutes() wired the from/to weak_ptrs for resolvable endpoints.
   for (const auto &r : doc.scene.routes) {
     if (r.fromNode == "TimeSource")
-      check(r.from.lock().get() == ts.get(),
-            "nurbs: ROUTE.from resolved to TimeSource node");
+      CHECK_MESSAGE((r.from.lock().get() == ts.get()), "nurbs: ROUTE.from resolved to TimeSource node");
   }
 }
 // Hand-authored grammar snippets.
-void testHeaderStatements() {
+TEST_CASE("header statements") {
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
                           "COMPONENT NURBS:3\n"
@@ -287,23 +262,19 @@ void testHeaderStatements() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(src);
 
-  check(doc.version == "4.0", "hdr: version 4.0");
-  check(doc.profile == runtime::Profile::Interchange,
-        "hdr: PROFILE Interchange");
-  check(doc.head.components.size() == 1 &&
+  CHECK_MESSAGE((doc.version == "4.0"), "hdr: version 4.0");
+  CHECK_MESSAGE((doc.profile == runtime::Profile::Interchange), "hdr: PROFILE Interchange");
+  CHECK_MESSAGE((doc.head.components.size() == 1 &&
             doc.head.components[0].name == "NURBS" &&
-            doc.head.components[0].level == 3,
-        "hdr: COMPONENT NURBS:3");
-  check(doc.head.units.size() == 1 && doc.head.units[0].category == "length" &&
+            doc.head.components[0].level == 3), "hdr: COMPONENT NURBS:3");
+  CHECK_MESSAGE((doc.head.units.size() == 1 && doc.head.units[0].category == "length" &&
             doc.head.units[0].name == "kilometer" &&
-            approx(doc.head.units[0].conversionFactor, 1000.0),
-        "hdr: UNIT length kilometer 1000");
-  check(doc.head.meta.size() == 1 && doc.head.meta[0].name == "title" &&
-            doc.head.meta[0].content == "snippet",
-        "hdr: META title snippet");
+            approx(doc.head.units[0].conversionFactor, 1000.0)), "hdr: UNIT length kilometer 1000");
+  CHECK_MESSAGE((doc.head.meta.size() == 1 && doc.head.meta[0].name == "title" &&
+            doc.head.meta[0].content == "snippet"), "hdr: META title snippet");
 }
 
-void testDefUseIdentity() {
+TEST_CASE("def use identity") {
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
                           "Group {\n"
@@ -315,24 +286,22 @@ void testDefUseIdentity() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(src);
   auto group = as<Group>(doc.scene.rootNodes.at(0));
-  check(static_cast<bool>(group), "defuse: root Group");
+  CHECK_MESSAGE((static_cast<bool>(group)), "defuse: root Group");
   if (group) {
     const auto &kids = group->getChildren();
-    check(kids.size() == 2, "defuse: two children (DEF + USE)");
+    CHECK_MESSAGE((kids.size() == 2), ("defuse: two children (DEF + USE)"));
     if (kids.size() == 2) {
-      check(kids[0].get() == kids[1].get(),
-            "defuse: USE A shares the DEF A shared_ptr (identity)");
+      CHECK_MESSAGE((kids[0].get() == kids[1].get()), "defuse: USE A shares the DEF A shared_ptr (identity)");
       auto tr = as<Transform>(kids[0]);
       if (tr) {
         SFVec3f t = tr->getTranslation();
-        check(approx(t.x, 1) && approx(t.y, 2) && approx(t.z, 3),
-              "defuse: DEF A translation 1 2 3");
+        CHECK_MESSAGE((approx(t.x, 1) && approx(t.y, 2) && approx(t.z, 3)), "defuse: DEF A translation 1 2 3");
       }
     }
   }
 }
 
-void testMfReJoin() {
+TEST_CASE("mf re join") {
   // Mixed comma+whitespace, bracketed, and MFString quote preservation.
   const std::string src = "#X3D V4.0 utf8\n"
                           "PROFILE Interchange\n"
@@ -345,18 +314,16 @@ void testMfReJoin() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(src);
   auto wi = as<WorldInfo>(doc.scene.rootNodes.at(0));
-  check(static_cast<bool>(wi), "mf: WorldInfo root");
+  CHECK_MESSAGE((static_cast<bool>(wi)), "mf: WorldInfo root");
   if (wi) {
     const auto &info = wi->getInfo();
-    check(info.size() == 2 && info[0] == "alpha beta" && info[1] == "gamma",
-          "mf: MFString preserves quotes across comma+whitespace");
+    CHECK_MESSAGE((info.size() == 2 && info[0] == "alpha beta" && info[1] == "gamma"), ("mf: MFString preserves quotes across comma+whitespace"));
   }
   auto patch = as<NurbsPatchSurface>(doc.scene.rootNodes.at(1));
-  check(static_cast<bool>(patch), "mf: NurbsPatchSurface root");
+  CHECK_MESSAGE((static_cast<bool>(patch)), "mf: NurbsPatchSurface root");
   if (patch)
     // `weight` is inputOutput MFDouble (writable). Mixed comma+whitespace.
-    check(patch->getWeight().size() == 8,
-          "mf: MFDouble re-join across mixed comma+whitespace == 8 elements");
+    CHECK_MESSAGE((patch->getWeight().size() == 8), ("mf: MFDouble re-join across mixed comma+whitespace == 8 elements"));
 }
 
 void testRouteAndImportExport() {
@@ -370,25 +337,21 @@ void testRouteAndImportExport() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(src);
 
-  check(doc.scene.routes.size() == 1, "route: one ROUTE");
+  CHECK_MESSAGE((doc.scene.routes.size() == 1), "route: one ROUTE");
   if (!doc.scene.routes.empty()) {
     const auto &r = doc.scene.routes[0];
-    check(r.fromNode == "TS" && r.fromField == "fraction_changed" &&
-              r.toNode == "XF" && r.toField == "set_translation",
-          "route: endpoints split on '.'");
-    check(r.from.lock() == doc.scene.resolve("TS") &&
-              r.to.lock() == doc.scene.resolve("XF"),
-          "route: resolveRoutes() wired both endpoints");
+    CHECK_MESSAGE((r.fromNode == "TS" && r.fromField == "fraction_changed" &&
+              r.toNode == "XF" && r.toField == "set_translation"), "route: endpoints split on '.'");
+    CHECK_MESSAGE((r.from.lock() == doc.scene.resolve("TS") &&
+              r.to.lock() == doc.scene.resolve("XF")), "route: resolveRoutes() wired both endpoints");
   }
-  check(doc.scene.imports.size() == 1 &&
+  CHECK_MESSAGE((doc.scene.imports.size() == 1 &&
             doc.scene.imports[0].inlineDEF == "InlineScene" &&
             doc.scene.imports[0].importedDEF == "Clock" &&
-            doc.scene.imports[0].as == "RemoteClock",
-        "route: IMPORT inlineDEF.importedDEF AS local");
-  check(doc.scene.exports.size() == 1 &&
+            doc.scene.imports[0].as == "RemoteClock"), "route: IMPORT inlineDEF.importedDEF AS local");
+  CHECK_MESSAGE((doc.scene.exports.size() == 1 &&
             doc.scene.exports[0].localDEF == "XF" &&
-            doc.scene.exports[0].as == "PublicXF",
-        "route: EXPORT localDEF AS name");
+            doc.scene.exports[0].as == "PublicXF"), "route: EXPORT localDEF AS name");
 }
 
 // IMPORT/EXPORT statement variants: the single-line dot form, the non-standard
@@ -396,7 +359,7 @@ void testRouteAndImportExport() {
 // bleeds an inline `{ }` body (defensive recovery, no throw). Corpus evidence:
 // stylesheets/java/examples/SmokeTestProgramOutput_CommandLine.{wrl,x3dv} use
 // the block form for both IMPORT and EXPORT.
-void testImportVariants() {
+TEST_CASE("import variants") {
   // 1. Single-line dot form (the baseline already covered by
   //    testRouteAndImportExport, re-asserted here for the variant matrix).
   {
@@ -405,11 +368,10 @@ void testImportVariants() {
                             "IMPORT Inl.Imported AS Local\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src);
-    check(doc.scene.imports.size() == 1 &&
+    CHECK_MESSAGE((doc.scene.imports.size() == 1 &&
               doc.scene.imports[0].inlineDEF == "Inl" &&
               doc.scene.imports[0].importedDEF == "Imported" &&
-              doc.scene.imports[0].as == "Local",
-          "import: single-line dot form");
+              doc.scene.imports[0].as == "Local"), "import: single-line dot form");
   }
 
   // 2. Block form with keys in any order (matches the corpus ordering:
@@ -425,14 +387,12 @@ void testImportVariants() {
                             "Group { }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src);
-    check(doc.scene.imports.size() == 1 &&
+    CHECK_MESSAGE((doc.scene.imports.size() == 1 &&
               doc.scene.imports[0].inlineDEF == "Inl" &&
               doc.scene.imports[0].importedDEF == "Imported" &&
-              doc.scene.imports[0].as == "Local",
-          "import: block form, keys reordered, same Import");
-    check(doc.scene.rootNodes.size() == 1 &&
-              static_cast<bool>(as<Group>(doc.scene.rootNodes[0])),
-          "import: statement after block IMPORT still reached (Group)");
+              doc.scene.imports[0].as == "Local"), "import: block form, keys reordered, same Import");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1 &&
+              static_cast<bool>(as<Group>(doc.scene.rootNodes[0]))), "import: statement after block IMPORT still reached (Group)");
   }
 
   // 3. Block EXPORT form (sibling category present in the same corpus file).
@@ -445,10 +405,9 @@ void testImportVariants() {
                             "}\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src);
-    check(doc.scene.exports.size() == 1 &&
+    CHECK_MESSAGE((doc.scene.exports.size() == 1 &&
               doc.scene.exports[0].localDEF == "Local" &&
-              doc.scene.exports[0].as == "Exported",
-          "export: block form, keys reordered");
+              doc.scene.exports[0].as == "Exported"), "export: block form, keys reordered");
   }
 
   // 4. Malformed single-line IMPORT followed by a stray inline `{ }` body:
@@ -461,13 +420,11 @@ void testImportVariants() {
                             "Group { }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src);
-    check(doc.scene.imports.size() == 1 &&
+    CHECK_MESSAGE((doc.scene.imports.size() == 1 &&
               doc.scene.imports[0].inlineDEF == "Inl" &&
-              doc.scene.imports[0].importedDEF == "Imported",
-          "import: single-line + stray '{' body recovered (no throw)");
-    check(doc.scene.rootNodes.size() == 1 &&
-              static_cast<bool>(as<Group>(doc.scene.rootNodes[0])),
-          "import: statement after recovered IMPORT still reached (Group)");
+              doc.scene.imports[0].importedDEF == "Imported"), ("import: single-line + stray '{' body recovered (no throw)"));
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1 &&
+              static_cast<bool>(as<Group>(doc.scene.rootNodes[0]))), "import: statement after recovered IMPORT still reached (Group)");
   }
 
   // 5. Block form with an unknown key (forward-compat tolerance): the unknown
@@ -482,14 +439,13 @@ void testImportVariants() {
                             "}\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src);
-    check(doc.scene.imports.size() == 1 &&
+    CHECK_MESSAGE((doc.scene.imports.size() == 1 &&
               doc.scene.imports[0].inlineDEF == "Inl" &&
-              doc.scene.imports[0].importedDEF == "Imported",
-          "import: block form ignores unknown key");
+              doc.scene.imports[0].importedDEF == "Imported"), "import: block form ignores unknown key");
   }
 }
 
-void testProto() {
+TEST_CASE("proto") {
   const std::string src =
       "#X3D V4.0 utf8\n"
       "PROFILE Interchange\n"
@@ -509,54 +465,44 @@ void testProto() {
   ClassicVrmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(src);
 
-  check(doc.scene.protoDeclarations.size() == 1, "proto: one PROTO declared");
+  CHECK_MESSAGE((doc.scene.protoDeclarations.size() == 1), "proto: one PROTO declared");
   if (!doc.scene.protoDeclarations.empty()) {
     auto p = doc.scene.protoDeclarations[0];
-    check(p->name == "Widget", "proto: name Widget");
-    check(p->interface.size() == 3, "proto: 3 interface fields");
+    CHECK_MESSAGE((p->name == "Widget"), "proto: name Widget");
+    CHECK_MESSAGE((p->interface.size() == 3), "proto: 3 interface fields");
     if (p->interface.size() == 3) {
-      check(p->interface[0].name == "size" &&
+      CHECK_MESSAGE((p->interface[0].name == "size" &&
                 p->interface[0].type == X3DFieldType::SFVec3f &&
-                p->interface[0].access == AccessType::InputOutput,
-            "proto: field[0] size SFVec3f inputOutput (with default)");
-      check(p->interface[1].access == AccessType::InputOnly,
-            "proto: field[1] eventIn -> InputOnly alias");
-      check(p->interface[2].access == AccessType::InitializeOnly,
-            "proto: field[2] field -> InitializeOnly alias");
+                p->interface[0].access == AccessType::InputOutput), "proto: field[0] size SFVec3f inputOutput (with default)");
+      CHECK_MESSAGE((p->interface[1].access == AccessType::InputOnly), "proto: field[1] eventIn -> InputOnly alias");
+      CHECK_MESSAGE((p->interface[2].access == AccessType::InitializeOnly), "proto: field[2] field -> InitializeOnly alias");
     }
-    check(p->body.nodes.size() == 1, "proto: body has one primary node");
+    CHECK_MESSAGE((p->body.nodes.size() == 1), "proto: body has one primary node");
     if (!p->body.nodes.empty())
-      check(static_cast<bool>(as<Transform>(p->body.nodes[0])),
-            "proto: body primary node is the Transform (IS captured+skipped)");
+      CHECK_MESSAGE((static_cast<bool>(as<Transform>(p->body.nodes[0]))), ("proto: body primary node is the Transform (IS captured+skipped)"));
   }
 
-  check(doc.scene.externProtoDeclarations.size() == 1,
-        "proto: one EXTERNPROTO declared");
+  CHECK_MESSAGE((doc.scene.externProtoDeclarations.size() == 1), "proto: one EXTERNPROTO declared");
   if (!doc.scene.externProtoDeclarations.empty()) {
     auto e = doc.scene.externProtoDeclarations[0];
-    check(e->name == "Gadget", "proto: EXTERNPROTO name Gadget");
-    check(e->url.size() == 1 && e->url[0] == "gadget.x3d#Gadget",
-          "proto: EXTERNPROTO url captured");
-    check(e->interface.size() == 1,
-          "proto: EXTERNPROTO interface (no default)");
+    CHECK_MESSAGE((e->name == "Gadget"), "proto: EXTERNPROTO name Gadget");
+    CHECK_MESSAGE((e->url.size() == 1 && e->url[0] == "gadget.x3d#Gadget"), "proto: EXTERNPROTO url captured");
+    CHECK_MESSAGE((e->interface.size() == 1), "proto: EXTERNPROTO interface (no default)");
   }
 
   // The `Widget { size 2 2 2 }` is a proto instance, carried as scene data and
   // not inserted as a node (factory has no Widget type).
-  check(doc.scene.protoInstances.size() == 1,
-        "proto: one ProtoInstance carried as data");
+  CHECK_MESSAGE((doc.scene.protoInstances.size() == 1), "proto: one ProtoInstance carried as data");
   if (!doc.scene.protoInstances.empty()) {
     const auto &inst = doc.scene.protoInstances[0];
-    check(inst.name == "Widget", "proto: instance is a Widget");
-    check(inst.declaration && inst.declaration->name == "Widget",
-          "proto: instance resolved to its declaration");
-    check(inst.fieldValues.size() == 1 && inst.fieldValues[0].name == "size",
-          "proto: instance carries the size override");
+    CHECK_MESSAGE((inst.name == "Widget"), "proto: instance is a Widget");
+    CHECK_MESSAGE((inst.declaration && inst.declaration->name == "Widget"), "proto: instance resolved to its declaration");
+    CHECK_MESSAGE((inst.fieldValues.size() == 1 && inst.fieldValues[0].name == "size"), "proto: instance carries the size override");
   }
 }
 
 // Body IS connections retain their target node; nested instances retain parent slots.
-void protoIsCaptureTest() {
+TEST_CASE("proto is capture test") {
   const char *src =
       "#X3D V4.0 utf8\n"
       "PROTO Param [ initializeOnly SFVec3f size 2 2 2 ] {\n"
@@ -566,51 +512,40 @@ void protoIsCaptureTest() {
   ClassicVrmlReader reader;
   auto doc = reader.readDocument(src);
   auto &scene = doc.scene;
-  check(scene.protoDeclarations.size() == 1,
-        "proto-is: one ProtoDeclare captured");
+  CHECK_MESSAGE((scene.protoDeclarations.size() == 1), "proto-is: one ProtoDeclare captured");
   auto &decl = *scene.protoDeclarations[0];
-  check(decl.body.isConnections.size() == 1,
-        "proto-is: one IS connection captured");
+  CHECK_MESSAGE((decl.body.isConnections.size() == 1), "proto-is: one IS connection captured");
   if (decl.body.isConnections.size() == 1) {
-    check(decl.body.isConnections[0].nodeField == "size",
-          "proto-is: IS nodeField=size");
-    check(decl.body.isConnections[0].protoField == "size",
-          "proto-is: IS protoField=size");
-    check(decl.body.isConnections[0].node &&
-              decl.body.isConnections[0].node->nodeTypeName() == "Box",
-          "proto-is: IS bound to the Box body node");
+    CHECK_MESSAGE((decl.body.isConnections[0].nodeField == "size"), "proto-is: IS nodeField=size");
+    CHECK_MESSAGE((decl.body.isConnections[0].protoField == "size"), "proto-is: IS protoField=size");
+    CHECK_MESSAGE((decl.body.isConnections[0].node &&
+              decl.body.isConnections[0].node->nodeTypeName() == "Box"), "proto-is: IS bound to the Box body node");
   }
-  check(scene.protoInstances.size() == 1,
-        "proto-is: one ProtoInstance captured");
+  CHECK_MESSAGE((scene.protoInstances.size() == 1), "proto-is: one ProtoInstance captured");
   if (scene.protoInstances.size() == 1) {
     auto &inst = scene.protoInstances[0];
-    check(!inst.parent.expired(), "proto-is: instance has a parent");
-    check(!inst.parent.expired() &&
-              inst.parent.lock()->nodeTypeName() == "Transform",
-          "proto-is: parent is Transform");
-    check(inst.parentField == "children",
-          "proto-is: instance parentField=children");
+    CHECK_MESSAGE((!inst.parent.expired()), "proto-is: instance has a parent");
+    CHECK_MESSAGE((!inst.parent.expired() &&
+              inst.parent.lock()->nodeTypeName() == "Transform"), "proto-is: parent is Transform");
+    CHECK_MESSAGE((inst.parentField == "children"), "proto-is: instance parentField=children");
   }
 }
 
-void testFrontDoorSniff() {
+TEST_CASE("front door sniff") {
   // parseDocument with no hint must content-sniff `#X3D V…` as ClassicVRML and
   // dispatch to the new reader.
   const std::string src =
       "#X3D V4.0 utf8\nPROFILE Interchange\nShape { geometry Box { } }\n";
   runtime::X3DDocument doc = codec::parseDocument(src);
-  check(doc.scene.rootNodes.size() == 1,
-        "frontdoor: parseDocument sniffs ClassicVRML and parses it");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "frontdoor: parseDocument sniffs ClassicVRML and parses it");
   if (!doc.scene.rootNodes.empty())
-    check(static_cast<bool>(as<Shape>(doc.scene.rootNodes[0])),
-          "frontdoor: produced a Shape via the front door");
+    CHECK_MESSAGE((static_cast<bool>(as<Shape>(doc.scene.rootNodes[0]))), "frontdoor: produced a Shape via the front door");
 
   auto reader = codec::makeReader(Encoding::ClassicVRML);
-  check(reader && reader->encoding() == Encoding::ClassicVRML,
-        "frontdoor: makeReader(ClassicVRML) yields a ClassicVrmlReader");
+  CHECK_MESSAGE((reader && reader->encoding() == Encoding::ClassicVRML), "frontdoor: makeReader(ClassicVRML) yields a ClassicVrmlReader");
 }
 
-void testUnknownNodeSkipped() {
+TEST_CASE("unknown node skipped") {
   const std::string src =
       "#X3D V4.0 utf8\n"
       "PROFILE Interchange\n"
@@ -620,14 +555,12 @@ void testUnknownNodeSkipped() {
   runtime::X3DDocument doc = reader.readDocument(src);
   // The unknown node and its whole balanced body are skipped; the Shape after
   // it still parses.
-  check(doc.scene.rootNodes.size() == 1,
-        "skip: unknown node skipped, following Shape kept");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "skip: unknown node skipped, following Shape kept");
   if (!doc.scene.rootNodes.empty()) {
     auto sh = as<Shape>(doc.scene.rootNodes[0]);
-    check(static_cast<bool>(sh), "skip: surviving node is the Shape");
+    CHECK_MESSAGE((static_cast<bool>(sh)), "skip: surviving node is the Shape");
     if (sh)
-      check(static_cast<bool>(as<Box>(sh->getGeometry())),
-            "skip: Shape after the unknown node still has its Box geometry");
+      CHECK_MESSAGE((static_cast<bool>(as<Box>(sh->getGeometry()))), "skip: Shape after the unknown node still has its Box geometry");
   }
 }
 // Recoverable malformation (parser-gap Fix 2): a node whose type name is a
@@ -641,7 +574,7 @@ void testUnknownNodeSkipped() {
 //   * embedded ROUTE / EXTERNPROTO statements inside an MFNode list,
 //   * a node-valued proto-instance field whose declaration is unknown,
 //   * a raw `[ ... ]` value assigned to an SFNode-typed proto field.
-void testRecoverableMalformation() {
+TEST_CASE("recoverable malformation") {
   // (a) Empty MFNode list + a stray scalar list where nodes are expected: both
   // degrade to "no children", and the sibling Shape after them is still parsed.
   {
@@ -657,16 +590,12 @@ void testRecoverableMalformation() {
         "Shape { geometry Box { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.rootNodes.size() == 3,
-          "recover: empty/scalar MFNode lists parsed, 3 roots kept");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 3), "recover: empty/scalar MFNode lists parsed, 3 roots kept");
     auto g0 = as<Group>(doc.scene.rootNodes.at(0));
     auto g1 = as<Group>(doc.scene.rootNodes.at(1));
-    check(g0 && g0->getChildren().empty(),
-          "recover: empty MFNode list -> 0 children");
-    check(g1 && g1->getChildren().empty(),
-          "recover: scalar-in-MFNode list -> 0 children (value skipped)");
-    check(static_cast<bool>(as<Shape>(doc.scene.rootNodes.at(2))),
-          "recover: Shape after malformed lists still parsed");
+    CHECK_MESSAGE((g0 && g0->getChildren().empty()), "recover: empty MFNode list -> 0 children");
+    CHECK_MESSAGE((g1 && g1->getChildren().empty()), "recover: scalar-in-MFNode list -> 0 children (value skipped)");
+    CHECK_MESSAGE((static_cast<bool>(as<Shape>(doc.scene.rootNodes.at(2)))), "recover: Shape after malformed lists still parsed");
   }
 
   // (b) An unknown node type used without a `{ }` body inside a Group's
@@ -684,12 +613,10 @@ void testRecoverableMalformation() {
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
     auto g = as<Group>(doc.scene.rootNodes.at(0));
-    check(static_cast<bool>(g), "recover: Group with bodiless unknown node");
-    check(g && g->getChildren().size() == 1,
-          "recover: bodiless unknown node skipped, sibling Shape kept");
+    CHECK_MESSAGE((static_cast<bool>(g)), "recover: Group with bodiless unknown node");
+    CHECK_MESSAGE((g && g->getChildren().size() == 1), "recover: bodiless unknown node skipped, sibling Shape kept");
     if (g && g->getChildren().size() == 1)
-      check(static_cast<bool>(as<Shape>(g->getChildren()[0])),
-            "recover: surviving child is the Shape");
+      CHECK_MESSAGE((static_cast<bool>(as<Shape>(g->getChildren()[0]))), "recover: surviving child is the Shape");
   }
 
   // (c) Embedded ROUTE + EXTERNPROTO statements inside an MFNode list: handled
@@ -710,12 +637,9 @@ void testRecoverableMalformation() {
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
     auto g = as<Group>(doc.scene.rootNodes.at(0));
-    check(g && g->getChildren().size() == 2,
-          "recover: embedded ROUTE/EXTERNPROTO skipped, both Transforms kept");
-    check(doc.scene.routes.size() == 1,
-          "recover: ROUTE inside MFNode list captured at scene level");
-    check(doc.scene.externProtoDeclarations.size() == 1,
-          "recover: EXTERNPROTO inside MFNode list declared");
+    CHECK_MESSAGE((g && g->getChildren().size() == 2), "recover: embedded ROUTE/EXTERNPROTO skipped, both Transforms kept");
+    CHECK_MESSAGE((doc.scene.routes.size() == 1), "recover: ROUTE inside MFNode list captured at scene level");
+    CHECK_MESSAGE((doc.scene.externProtoDeclarations.size() == 1), "recover: EXTERNPROTO inside MFNode list declared");
   }
 
   // (d) A proto instance whose node-valued field's declaration is unknown: the
@@ -731,26 +655,19 @@ void testRecoverableMalformation() {
                             "MyProto { shape DEF S Shape { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.protoDeclarations.size() == 1,
-          "recover: PROTO MyProto declared");
-    check(doc.scene.protoInstances.size() == 1,
-          "recover: MyProto instance carried (not expanded)");
+    CHECK_MESSAGE((doc.scene.protoDeclarations.size() == 1), "recover: PROTO MyProto declared");
+    CHECK_MESSAGE((doc.scene.protoInstances.size() == 1), "recover: MyProto instance carried (not expanded)");
     if (!doc.scene.protoInstances.empty()) {
       const auto &inst = doc.scene.protoInstances[0];
-      check(inst.name == "MyProto", "recover: instance is a MyProto");
-      check(inst.declaration && inst.declaration->name == "MyProto",
-            "recover: instance resolved to its declaration");
-      check(inst.fieldValues.size() == 1 && inst.fieldValues[0].name == "shape",
-            "recover: instance carries the 'shape' field value");
+      CHECK_MESSAGE((inst.name == "MyProto"), "recover: instance is a MyProto");
+      CHECK_MESSAGE((inst.declaration && inst.declaration->name == "MyProto"), "recover: instance resolved to its declaration");
+      CHECK_MESSAGE((inst.fieldValues.size() == 1 && inst.fieldValues[0].name == "shape"), "recover: instance carries the 'shape' field value");
       if (!inst.fieldValues.empty()) {
-        check(inst.fieldValues[0].nodeValue.size() == 1,
-              "recover: 'shape' captured as one structural node value");
+        CHECK_MESSAGE((inst.fieldValues[0].nodeValue.size() == 1), "recover: 'shape' captured as one structural node value");
         if (inst.fieldValues[0].nodeValue.size() == 1) {
           auto child = inst.fieldValues[0].nodeValue[0];
-          check(static_cast<bool>(as<Shape>(child)),
-                "recover: captured node value is a Shape (structural)");
-          check(child && child->getDEF() == "S",
-                "recover: captured child carries DEF 'S' (not expanded)");
+          CHECK_MESSAGE((static_cast<bool>(as<Shape>(child))), "recover: captured node value is a Shape (structural)");
+          CHECK_MESSAGE((child && child->getDEF() == "S"), "recover: captured child carries DEF 'S' (not expanded)");
         }
       }
     }
@@ -770,25 +687,19 @@ void testRecoverableMalformation() {
         "Shape { geometry Box { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.protoInstances.size() == 1,
-          "recover: Surf instance carried despite raw [..] SFNode value");
-    check(doc.scene.rootNodes.size() == 2,
-          "recover: Surf placeholder and following Shape keep authored root order");
+    CHECK_MESSAGE((doc.scene.protoInstances.size() == 1), "recover: Surf instance carried despite raw [..] SFNode value");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2), "recover: Surf placeholder and following Shape keep authored root order");
     if (doc.scene.rootNodes.size() == 2) {
       auto placeholder =
           std::dynamic_pointer_cast<runtime::ProtoInstanceTemplate>(doc.scene.rootNodes[0]);
-      check(placeholder && placeholder->instance.name == "Surf",
-            "recover: raw Surf keeps a structural placeholder in its root slot");
+      CHECK_MESSAGE((placeholder && placeholder->instance.name == "Surf"), "recover: raw Surf keeps a structural placeholder in its root slot");
       if (doc.scene.protoInstances.size() == 1)
-        check(doc.scene.protoInstances[0].hasPlacementTemplate() &&
-                  doc.scene.protoInstances[0].placementTemplate.lock() == placeholder,
-              "recover: Surf record links to its exact root placeholder");
+        CHECK_MESSAGE((doc.scene.protoInstances[0].hasPlacementTemplate() &&
+                  doc.scene.protoInstances[0].placementTemplate.lock() == placeholder), "recover: Surf record links to its exact root placeholder");
       auto shape = as<Shape>(doc.scene.rootNodes[1]);
-      check(static_cast<bool>(shape),
-            "recover: Shape after raw-value proto instance still parsed");
+      CHECK_MESSAGE((static_cast<bool>(shape)), "recover: Shape after raw-value proto instance still parsed");
       if (shape)
-        check(static_cast<bool>(as<Box>(shape->getGeometry())),
-              "recover: following Shape retains Box geometry");
+        CHECK_MESSAGE((static_cast<bool>(as<Box>(shape->getGeometry()))), "recover: following Shape retains Box geometry");
     }
   }
 }
@@ -804,7 +715,7 @@ void testRecoverableMalformation() {
 //   (d) a child node missing its '}' inside an MFNode list, the array's ']'
 //       arriving at the node-body field position -> node closed, list ']'
 //       consumed, document continues.
-void testStrayCloserAndImplicitChildRecovery() {
+TEST_CASE("stray closer and implicit child recovery") {
   // (a) Stray prose: a real type name (`Box`) appears as a bare word not
   // followed by '{' (the comment-leak shape from AddDynamicRoutes.x3dv). It is
   // ignored as a stray token; the following words drain word-by-word; the real
@@ -816,11 +727,9 @@ void testStrayCloserAndImplicitChildRecovery() {
                             "Shape { geometry Sphere { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.rootNodes.size() == 1,
-          "recover(a): stray 'Box' prose word ignored, trailing Shape kept");
-    check(!doc.scene.rootNodes.empty() &&
-              static_cast<bool>(as<Shape>(doc.scene.rootNodes[0])),
-          "recover(a): surviving root is the Shape");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "recover(a): stray 'Box' prose word ignored, trailing Shape kept");
+    CHECK_MESSAGE((!doc.scene.rootNodes.empty() &&
+              static_cast<bool>(as<Shape>(doc.scene.rootNodes[0]))), "recover(a): surviving root is the Shape");
   }
 
   // (a') A DEF before a missing-'{' type still throws (DEF is an unambiguous
@@ -836,7 +745,7 @@ void testStrayCloserAndImplicitChildRecovery() {
     } catch (const std::exception &) {
       threw = true;
     }
-    check(threw, "recover(a'): DEF + missing '{' still throws (not masked)");
+    CHECK_MESSAGE((threw), ("recover(a'): DEF + missing '{' still throws (not masked)"));
   }
 
   // (b) Implicit-containerField child: a node type written directly where a
@@ -852,12 +761,10 @@ void testStrayCloserAndImplicitChildRecovery() {
                             "Shape { geometry Sphere { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.rootNodes.size() == 2,
-          "recover(b): implicit-child Group + trailing Shape both parsed");
-    check(doc.scene.rootNodes.size() == 2 &&
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2), ("recover(b): implicit-child Group + trailing Shape both parsed"));
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2 &&
               static_cast<bool>(as<Group>(doc.scene.rootNodes[0])) &&
-              static_cast<bool>(as<Shape>(doc.scene.rootNodes[1])),
-          "recover(b): node graph stays aligned (no brace desync)");
+              static_cast<bool>(as<Shape>(doc.scene.rootNodes[1]))), "recover(b): node graph stays aligned (no brace desync)");
   }
 
   // (c) Stray ']' at field-name position: an MFNode list (`skin [ ... ]`) whose
@@ -875,11 +782,9 @@ void testStrayCloserAndImplicitChildRecovery() {
                             "Shape { geometry Sphere { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.rootNodes.size() == 2,
-          "recover(c): stray ']' resync — Group + trailing Shape both parsed");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2), ("recover(c): stray ']' resync — Group + trailing Shape both parsed"));
     auto g = as<Group>(doc.scene.rootNodes.at(0));
-    check(g && g->getChildren().size() == 1,
-          "recover(c): the one Shape child still attached");
+    CHECK_MESSAGE((g && g->getChildren().size() == 1), "recover(c): the one Shape child still attached");
   }
 
   // (d) Child node missing its '}' inside an MFNode list (the
@@ -897,44 +802,14 @@ void testStrayCloserAndImplicitChildRecovery() {
                             "Shape { geometry Sphere { } }\n";
     ClassicVrmlReader reader;
     runtime::X3DDocument doc = reader.readDocument(src); // must not throw
-    check(doc.scene.rootNodes.size() == 2,
-          "recover(d): missing-'}' child closed, both roots parsed");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 2), "recover(d): missing-'}' child closed, both roots parsed");
     auto g = as<Group>(doc.scene.resolve("G"));
-    check(static_cast<bool>(g),
-          "recover(d): DEF G Group recovered despite unclosed child");
+    CHECK_MESSAGE((static_cast<bool>(g)), "recover(d): DEF G Group recovered despite unclosed child");
   }
 }
 
 } // namespace
 
-int main(int argc, char **argv) {
-  if (argc > 1)
-    g_dataDir = argv[1];
-  else
-    g_dataDir = "runtime/parse/tests/data/x3dv";
-
-  std::cout << "===== ClassicVRML: corpus fixtures =====\n";
-  testShipFixture();
-  testHelloWorldFixture();
-  testScriptFixture();
-  testNurbsFixture();
-  std::cout << "===== ClassicVRML: grammar snippets =====\n";
-  testHeaderStatements();
-  testDefUseIdentity();
-  testMfReJoin();
+TEST_CASE("route and import export") {
   testRouteAndImportExport();
-  testImportVariants();
-  testProto();
-  protoIsCaptureTest();
-  testFrontDoorSniff();
-  testUnknownNodeSkipped();
-  testRecoverableMalformation();
-  testStrayCloserAndImplicitChildRecovery();
-
-  if (failures == 0) {
-    std::cout << "\nALL CLASSICVRML READER CHECKS PASSED\n";
-    return 0;
-  }
-  std::cerr << "\n" << failures << " CHECK(S) FAILED\n";
-  return 1;
 }

@@ -185,7 +185,7 @@ tightening; downstream applications need a rebuild and call-site audit.
 | File | Role |
 |---|---|
 | `runtime/events/X3DExecutionContext.hpp` | Primary type: owns route graph, cascade, System list, post-cascade hooks, and all scene-level subsystem instances; exposes `tick()`, `buildSceneGraph`, `buildFrom`, `postEvent`, `writeField`, and pull surfaces |
-| `runtime/events/X3DSceneBridge.hpp` | Free functions that bridge a parsed `Scene`'s DEF-named ROUTEs onto a context (`buildRoutes`), and convenience attach helpers for view-dependent, interpolator, event-utility, and key-device Systems |
+| `runtime/events/X3DSceneBridge.hpp` | Free functions that bridge a parsed `Scene`'s DEF-named ROUTEs onto a context (`buildRoutes`), and convenience attach helpers for view-dependent, interpolator, event-utility, and key-device Systems. Declarations only: the definitions are compiled once in `X3DSceneBridge.cpp` (part of `x3d_cpp_runtime`), so including the bridge no longer pulls in every system header. Include a system's own header to use the object an `attach*` helper returns. |
 | `runtime/events/CallbackLifetime.hpp` | Weak serial callback leases, terminal revocation and in-flight teardown checks |
 | `runtime/events/X3DSystem.hpp` | `System` — the current behavior-family abstraction; `attach(node, ctx)` + `update(now, ctx)` |
 

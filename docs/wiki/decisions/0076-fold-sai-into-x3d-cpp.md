@@ -74,7 +74,7 @@ The SAI SDK moves back into this repository as `sai/`, with its full history (a
 - PR #187's x3d-sai pin (`adapters/sai_provider/x3d-sai.rev`) and token-gated
   `sai-adapter` job are superseded by the in-tree job. Whichever of #187 and this change
   merges second drops them.
-- `sai/docs/plans/` joins `docs/plans/` as a frozen archive.
+- `sai/docs/plans/` joins `docs/plans/` as a frozen archive. (Both were later removed from the tree; they remain in git history at `db23737`.)
 
 ## Alternatives rejected
 

@@ -7,21 +7,14 @@
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-static void addChild(const std::shared_ptr<X3DNode>& parent,
-                     const std::shared_ptr<X3DNode>& child) {
-  for (auto& f : parent->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto kids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*parent));
-      kids.push_back(child); f.set(*parent, std::any(std::move(kids))); return;
-    }
-}
+using x3d::test::addChild;
+using x3d::test::feq;
 
 TEST_CASE("m2a_tick_test") {
   auto root = createX3DNode("Transform");

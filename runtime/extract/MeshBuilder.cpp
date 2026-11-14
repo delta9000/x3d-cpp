@@ -388,12 +388,6 @@ void emitTri(MeshData &m, const SFVec3f &a, const SFVec3f &b, const SFVec3f &c,
   m.texcoords.push_back(tc);
 }
 
-SFVec3f normalize(const SFVec3f &v) {
-  const float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-  if (len <= 0.0f)
-    return SFVec3f{0.0f, 0.0f, 0.0f};
-  return SFVec3f{v.x / len, v.y / len, v.z / len};
-}
 
 float seamShiftedS(int j, int n) {
   float s = static_cast<float>(j) / static_cast<float>(n) + 0.5f;
@@ -459,7 +453,7 @@ void tessellateSphere(MeshData &m, float radius, int rings, int segments) {
     // Outward radial direction; +Y at i=0, -Y at i=rings.
     return SFVec3f{sinPhi * std::sin(theta), cosPhi, sinPhi * std::cos(theta)};
   };
-  // default texcoords . s wraps 0..1 CCW-from-above with the seam
+  // Default texcoords: s wraps 0..1 CCW-from-above with the seam
   // at the back (-Z meridian, §13.3.7), via seamShiftedS + the per-slice wrap
   // fix. t = 0 at the -Y (south) pole .. 1 at the +Y (north) pole. Since phi
   // runs 0 at +Y to pi at -Y, t = 1 - i/rings.
@@ -515,9 +509,9 @@ void tessellateCone(MeshData &m, float bottomRadius, float height, int slices,
   const auto sideNormal = [&](int j) {
     const float a =
         2.0f * pi * static_cast<float>(j) / static_cast<float>(slices);
-    return normalize(SFVec3f{nR * std::sin(a), nY, nR * std::cos(a)});
+    return vec3::normalizeOrZero(SFVec3f{nR * std::sin(a), nY, nR * std::cos(a)});
   };
-  // default texcoords . Side: s wraps CCW-from-above with the seam
+  // Default texcoords. Side: s wraps CCW-from-above with the seam
   // at the back (-Z, §13.3.2) via seamShiftedS + per-slice wrap fix; t = 0 at
   // the base rim .. 1 at the apex. Bottom cap: a circle inscribed in [0,1]^2
   // centred at (0.5,0.5); the cap is right side up when the cone's top is
@@ -533,7 +527,7 @@ void tessellateCone(MeshData &m, float bottomRadius, float height, int slices,
       const SFVec3f b0 = ring(j), b1 = ring(j + 1);
       const SFVec3f nb0 = sideNormal(j), nb1 = sideNormal(j + 1);
       // Apex normal = average of the two adjacent base normals (seam-stable).
-      const SFVec3f na = normalize(
+      const SFVec3f na = vec3::normalizeOrZero(
           SFVec3f{(nb0.x + nb1.x) * 0.5f, nb0.y, (nb0.z + nb1.z) * 0.5f});
       float sL = seamShiftedS(j, slices), sR = seamShiftedS(j + 1, slices);
       if (sR <= sL)
@@ -570,7 +564,7 @@ void tessellateCylinder(MeshData &m, float radius, float height, int slices,
   const auto at = [&](const SFVec3f &d, float y) {
     return SFVec3f{d.x * radius, y, d.z * radius};
   };
-  // default texcoords . Side: s wraps CCW-from-above with the seam
+  // Default texcoords. Side: s wraps CCW-from-above with the seam
   // at the back (-Z, §13.3.3) via seamShiftedS + per-slice wrap fix; t = 0 at
   // the bottom rim .. 1 at the top rim. Caps: a circle inscribed in [0,1]^2
   // centred at (0.5,0.5). The top is right side up when the cylinder top tilts
@@ -619,29 +613,18 @@ void tessellateCylinder(MeshData &m, float radius, float height, int slices,
   }
 }
 
-SFVec3f vsub(const SFVec3f &a, const SFVec3f &b) {
-  return SFVec3f{a.x - b.x, a.y - b.y, a.z - b.z};
-}
 
-SFVec3f vcross(const SFVec3f &a, const SFVec3f &b) {
-  return SFVec3f{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z,
-                 a.x * b.y - a.y * b.x};
-}
 
-float vdot(const SFVec3f &a, const SFVec3f &b) {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
-}
 
-float vlen(const SFVec3f &a) { return std::sqrt(vdot(a, a)); }
 
 SFVec3f rotateAxisAngle(const SFVec3f &v, const SFVec3f &axis, float angle) {
-  const float len = vlen(axis);
+  const float len = vec3::length(axis);
   if (len <= 1e-12f || angle == 0.0f)
     return v; // identity rotation.
   const SFVec3f k{axis.x / len, axis.y / len, axis.z / len};
   const float c = std::cos(angle), s = std::sin(angle);
-  const SFVec3f kxv = vcross(k, v);
-  const float kdv = vdot(k, v);
+  const SFVec3f kxv = vec3::cross(k, v);
+  const float kdv = vec3::dot(k, v);
   return SFVec3f{v.x * c + kxv.x * s + k.x * kdv * (1.0f - c),
                  v.y * c + kxv.y * s + k.y * kdv * (1.0f - c),
                  v.z * c + kxv.z * s + k.z * kdv * (1.0f - c)};
@@ -662,7 +645,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   // cross-section (first vertex coincides with last) per the spec.
   const float eps = 1e-7f;
   const auto coincident3 = [&](const SFVec3f &a, const SFVec3f &b) {
-    return vlen(vsub(a, b)) < eps;
+    return vec3::length(vec3::sub(a, b)) < eps;
   };
   const bool spineClosed = coincident3(spine[0], spine[ns - 1]);
   const bool csClosed =
@@ -716,16 +699,16 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     SFVec3f t{0, 0, 0};
     if (i == 0) {
       if (spineClosed) // wrap: avg(last-edge, first-edge)
-        t = vsub(spine[1], spine[ns - 2]);
+        t = vec3::sub(spine[1], spine[ns - 2]);
       else
-        t = vsub(spine[1], spine[0]);
+        t = vec3::sub(spine[1], spine[0]);
     } else if (i == ns - 1) {
       if (spineClosed)
-        t = vsub(spine[1], spine[ns - 2]);
+        t = vec3::sub(spine[1], spine[ns - 2]);
       else
-        t = vsub(spine[ns - 1], spine[ns - 2]);
+        t = vec3::sub(spine[ns - 1], spine[ns - 2]);
     } else {
-      t = vsub(spine[i + 1], spine[i - 1]); // avg of in/out edges
+      t = vec3::sub(spine[i + 1], spine[i - 1]); // avg of in/out edges
     }
     return t;
   };
@@ -733,10 +716,10 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   // First pass: tangents (Y). Degenerate => inherit previous.
   for (int i = 0; i < ns; ++i) {
     SFVec3f t = tangentAt(i);
-    if (vlen(t) < eps) {
+    if (vec3::length(t) < eps) {
       axY[i] = haveY ? prevY : SFVec3f{0, 1, 0};
     } else {
-      const float l = vlen(t);
+      const float l = vec3::length(t);
       axY[i] = SFVec3f{t.x / l, t.y / l, t.z / l};
       prevY = axY[i];
       haveY = true;
@@ -750,19 +733,19 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   for (int i = 0; i < ns; ++i) {
     SFVec3f z{0, 0, 0};
     if (i > 0 && i < ns - 1) {
-      z = vcross(vsub(spine[i + 1], spine[i]), vsub(spine[i - 1], spine[i]));
+      z = vec3::cross(vec3::sub(spine[i + 1], spine[i]), vec3::sub(spine[i - 1], spine[i]));
     } else if (spineClosed) {
       // endpoints of a closed spine: use the wrap neighbours.
       const int ip = (i == 0) ? ns - 2 : i - 1;
       const int in = (i == ns - 1) ? 1 : i + 1;
-      z = vcross(vsub(spine[in], spine[i]), vsub(spine[ip], spine[i]));
+      z = vec3::cross(vec3::sub(spine[in], spine[i]), vec3::sub(spine[ip], spine[i]));
     }
-    if (vlen(z) < eps) {
+    if (vec3::length(z) < eps) {
       axZ[i] = haveZ ? prevZ : SFVec3f{0, 0, 0}; // resolve below if never seen.
     } else {
-      const float l = vlen(z);
+      const float l = vec3::length(z);
       SFVec3f zn{z.x / l, z.y / l, z.z / l};
-      if (haveZ && vdot(zn, prevZ) < 0.0f)
+      if (haveZ && vec3::dot(zn, prevZ) < 0.0f)
         zn = SFVec3f{-zn.x, -zn.y, -zn.z}; // keep frame from inverting.
       axZ[i] = zn;
       prevZ = zn;
@@ -777,13 +760,13 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
   if (!haveZ) {
     const SFVec3f y = axY[0]; // unit spine tangent.
     const auto projPerp = [&](const SFVec3f &v) {
-      const float d = vdot(v, y);
+      const float d = vec3::dot(v, y);
       return SFVec3f{v.x - d * y.x, v.y - d * y.y, v.z - d * y.z};
     };
     SFVec3f z = projPerp(SFVec3f{0, 0, 1});
-    if (vlen(z) < eps) // Y ∥ modelZ -> project modelX instead.
+    if (vec3::length(z) < eps) // Y ∥ modelZ -> project modelX instead.
       z = projPerp(SFVec3f{1, 0, 0});
-    const float l = vlen(z);
+    const float l = vec3::length(z);
     z = (l > eps) ? SFVec3f{z.x / l, z.y / l, z.z / l} : SFVec3f{0, 0, 1};
     for (int i = 0; i < ns; ++i)
       axZ[i] = z;
@@ -792,33 +775,33 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     // degenerate).
     SFVec3f fill{0, 0, 0};
     for (int i = 0; i < ns; ++i)
-      if (vlen(axZ[i]) >= eps) {
+      if (vec3::length(axZ[i]) >= eps) {
         fill = axZ[i];
         break;
       }
-    if (vlen(fill) < eps)
+    if (vec3::length(fill) < eps)
       fill = SFVec3f{0, 0, 1};
     for (int i = 0; i < ns; ++i)
-      if (vlen(axZ[i]) < eps)
+      if (vec3::length(axZ[i]) < eps)
         axZ[i] = fill;
   }
 
   // X = Y x Z (re-orthogonalize so the frame stays right-handed even when the
   // raw spine-plane Z is not exactly perpendicular to the averaged tangent Y).
   for (int i = 0; i < ns; ++i) {
-    SFVec3f x = vcross(axY[i], axZ[i]);
-    float l = vlen(x);
+    SFVec3f x = vec3::cross(axY[i], axZ[i]);
+    float l = vec3::length(x);
     if (l < eps) { // Y and Z parallel — rebuild an arbitrary perpendicular.
       const SFVec3f &y = axY[i];
       SFVec3f ref =
           (std::fabs(y.y) < 0.9f) ? SFVec3f{0, 1, 0} : SFVec3f{1, 0, 0};
-      x = vcross(y, ref);
-      l = vlen(x);
+      x = vec3::cross(y, ref);
+      l = vec3::length(x);
     }
     axX[i] = (l > eps) ? SFVec3f{x.x / l, x.y / l, x.z / l} : SFVec3f{1, 0, 0};
     // Re-derive Z = X x Y to guarantee orthonormality.
-    SFVec3f z = vcross(axX[i], axY[i]);
-    float lz = vlen(z);
+    SFVec3f z = vec3::cross(axX[i], axY[i]);
+    float lz = vec3::length(z);
     axZ[i] = (lz > eps) ? SFVec3f{z.x / lz, z.y / lz, z.z / lz} : axZ[i];
   }
 
@@ -881,7 +864,7 @@ void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
     // T: accumulated spine length, normalized to total spine length.
     float spAccum = 0.0f;
     for (int i = 1; i < ns; ++i) {
-      spAccum += vlen(vsub(spine[i], spine[i - 1]));
+      spAccum += vec3::length(vec3::sub(spine[i], spine[i - 1]));
       tParam[i] = spAccum;
     }
     const float spTotal = spAccum;
@@ -1144,8 +1127,8 @@ bool buildGeometry2D(MeshData &m, const X3DNode &geom, const std::string &t) {
                      SFVec3f{v[i + 2].x, v[i + 2].y, 0.0f});
     // Authored texCoord wins; else the §14 bounding-box default. (The 4.0
     // binding carries no texCoord field for TriangleSet2D, so in practice the
-    // default path runs; the authored branch keeps the seam honest if a future
-    // binding adds it.)
+    // default path runs; the authored branch covers a future
+    // binding that adds it.)
     const auto uvs = [&] {
       if (auto tc = getNode(geom, "texCoord"))
         return getField<std::vector<SFVec2f>>(*tc, "point", {});

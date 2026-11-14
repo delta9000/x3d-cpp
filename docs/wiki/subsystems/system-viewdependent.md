@@ -40,7 +40,7 @@ these feed the same camera queries. Set the pose before ticking. See
 | File / directory | Role |
 |---|---|
 | `runtime/scene/ViewDependentSystem.hpp` | `ViewDependentSystem` class (a `System`): `attach`, `update`, sensor/LOD tracking, observer seams |
-| `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1) + `viewdep::` math helpers (`sub`, `dot`, `cross`, `len`, `norm`); no `X3DExecutionContext` dependency |
+| `runtime/scene/Billboard.hpp` | `billboardLocalMatrix` free function (§23.4.1), using `runtime/math/Vec3.hpp`; no `X3DExecutionContext` dependency |
 | `runtime/events/X3DSceneBridge.hpp` | `attachViewDependent(Scene&, X3DExecutionContext&)` — production wiring: scene walk + per-node `attach` call |
 | `runtime/scene/tests/view_dependent_test.cpp` | Full unit test suite (31 test functions, one `main`); doctest case `view_dependent_test` in the `x3d_geometry_scene` target |
 
@@ -103,7 +103,7 @@ int lodSelectLevel(const X3DNode &lod, float distToCenter);
 
 - `X3DExecutionContext` (query side) — `update` reads `ctx.cameraWorldPosition()`, `ctx.viewMatrix()`, `ctx.worldTransform(node)`, `ctx.cameraWorldUp()`, and `ctx.boundViewpoint()` to obtain viewer pose and per-node world transforms. All of these are provided by [Execution Context](execution-context.md).
 - `ctx.postEvent(node, field, value)` — all sensor and `level_changed` events are posted through the cascade; the cascade propagates them along any routes that consume them. See [Event Cascade](event-cascade.md).
-- `attachViewDependent` (production wiring) — lives in `runtime/events/X3DSceneBridge.hpp` rather than in `X3DSceneBridge.hpp` itself to avoid an include cycle (`X3DExecutionContext.hpp` → `PickSystem.hpp` → `Billboard.hpp`; pulling `ViewDependentSystem.hpp` into that chain would close the loop). The caller invokes `attachViewDependent(scene, ctx)` after `ctx.buildSceneGraph(scene)`.
+- `attachViewDependent` (production wiring) — is declared in `runtime/events/X3DSceneBridge.hpp` and defined in `X3DSceneBridge.cpp`, so `ViewDependentSystem.hpp` stays out of the header chain (`X3DExecutionContext.hpp` → `PickSystem.hpp` → `Billboard.hpp`) and cannot close an include cycle. The caller invokes `attachViewDependent(scene, ctx)` after `ctx.buildSceneGraph(scene)`.
 - `SceneExtractor` (Billboard + LOD render-time) — `SceneExtractor` includes `Billboard.hpp` directly and calls `billboardLocalMatrix` during its per-path DFS walk (line ~497 of `runtime/extract/SceneExtractor.hpp`). It also calls `lodSelectLevel` during the LOD child-selection pass. These are render-time, per-path decisions; the `ViewDependentSystem` tick handles only the event side. See [Extract](extract.md).
 - `PickSystem` (Billboard render-time) — `PickSystem` also includes `Billboard.hpp` and applies `billboardLocalMatrix` so ray-pick resolves against the view-rotated geometry, not the unrotated local frame.
 - `ViewVolume` frustum seam — renderers call `vds->setViewVolume({true, aspect})` each frame to supply the camera aspect ratio; `VisibilitySensor` builds the six view-frustum planes from `boundViewpoint().fieldOfView` (the smaller of the horizontal/vertical angles, §23.4.6) and tests the sensor's world-space box against them.

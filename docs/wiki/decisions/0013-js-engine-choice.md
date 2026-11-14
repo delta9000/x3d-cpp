@@ -42,7 +42,7 @@ Given those forces, the choices in the realistic set were:
 | V8 | Not embeddable as a source drop | BSD-3 | Full | ~30 MB .so |
 | SpiderMonkey | Not embeddable as a source drop | MPL-2.0 | Full | Large |
 
-The Script/SAI design spec (`docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md`,
+The Script/SAI design spec ([`docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md),
 §8.2) documents the deliberate choice: *"Duktape 2.7.0 is already vendored…
 ES5.1+, no IO deps, matches the `runtime/parse/tinfl.h` bundled-permissive-dep
 pattern. QuickJS/V8 remain swap-in via the seam."*
@@ -111,7 +111,7 @@ engine-independent and do not need modification to add another backend.
 
 - [Architecture](../architecture.md)
 - [Script/SAI subsystem](../subsystems/system-script-sai.md)
-- Design spec: `docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md` (§8, §4.2)
+- Design spec: [`docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-16-script-sai-runtime-design.md) (§8, §4.2)
 - Implementation: `runtime/script/ScriptEngine.hpp`, `runtime/script/EcmaScriptBackend.hpp`, `runtime/script/ScriptSystem.hpp`
 - Vendor license: `runtime/script/vendor/duktape/DUKTAPE_LICENSE.txt` (MIT)
 - Spec reference: ISO/IEC 19775-1 §29.1 (language-agnostic mandate), §29.2 (lifecycle), ISO/IEC 19777-1 (ECMAScript binding)

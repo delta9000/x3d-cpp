@@ -1,4 +1,5 @@
 // Reparsing converted Inline/EXTERNPROTO scenes preserves the source base URL.
+#include "doctest/doctest.h"
 #include "scene_equiv.hpp"
 #include "x3d/sdk.hpp"
 #include "Encoding.hpp"
@@ -12,17 +13,6 @@
 
 namespace fs = std::filesystem;
 namespace sdk = x3d::sdk;
-
-static int failures = 0;
-
-static void check(bool cond, const std::string &name) {
-    if (!cond) {
-        std::cerr << "FAIL: " << name << "\n";
-        ++failures;
-    } else {
-        std::cout << "ok:   " << name << "\n";
-    }
-}
 
 static void writeFile(const fs::path &p, const std::string &body) {
     std::ofstream f(p);
@@ -52,7 +42,7 @@ static bool roundtripEquiv(const std::string &srcPath, const std::string &enc,
     return x3d_cli::sceneEquivalent(src.scene, rt.scene, why);
 }
 
-int main() {
+TEST_CASE("relative Inline and EXTERNPROTO urls survive a gate roundtrip") {
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     fs::path dir = fs::temp_directory_path() /
                    ("x3d_gate_baseurl_" + std::to_string(stamp));
@@ -102,22 +92,15 @@ int main() {
     for (const std::string enc : {"xml", "json"}) {
         std::string why;
         bool a = roundtripEquiv((dir / "inline_parent.x3d").string(), enc, why);
-        check(a, "Inline(load=TRUE) sibling roundtrip equivalent (" + enc + ")" +
-                     (a ? "" : ": " + why));
+        CHECK_MESSAGE((a), ("Inline(load=TRUE) sibling roundtrip equivalent (" + enc + ")" +
+                     (a ? "" : ": " + why)));
 
         why.clear();
         bool b = roundtripEquiv((dir / "extern_parent.x3d").string(), enc, why);
-        check(b, "scene-root EXTERNPROTO sibling roundtrip equivalent (" + enc +
-                     ")" + (b ? "" : ": " + why));
+        CHECK_MESSAGE((b), ("scene-root EXTERNPROTO sibling roundtrip equivalent (" + enc +
+                     ")" + (b ? "" : ": " + why)));
     }
 
     std::error_code ec;
     fs::remove_all(dir, ec);
-
-    if (failures) {
-        std::cerr << failures << " check(s) failed\n";
-        return 1;
-    }
-    std::cout << "All gate baseUrl roundtrip checks passed.\n";
-    return 0;
 }

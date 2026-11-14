@@ -152,7 +152,7 @@ public:
   /// does not predict an existing grab or reserve a later press. Nodes are
   /// borrowed from the scene; discard picks/results before removing their nodes.
   std::vector<X3DNode *> pointingSensors(const PickResult &pick) const {
-    return PointingSensorSystem::resolve(pick);
+    return resolvePointingSensors(pick);
   }
 
 private:

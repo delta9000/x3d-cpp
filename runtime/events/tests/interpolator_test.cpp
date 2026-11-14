@@ -6,7 +6,6 @@
 // and one off-key value and asserts the emitted value reaches the sink. A final
 // scene test drives several interpolators from one source fraction (fan-out) to
 // prove they coexist in a single cascade.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "GeoPositionInterpolatorSystem.hpp"
@@ -35,7 +34,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 constexpr float kEps = 1e-4f;
 bool feq(float a, float b) { return std::fabs(a - b) <= kEps; }
 

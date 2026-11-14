@@ -7,6 +7,7 @@
 #include "X3DScene.hpp"
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode definition
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -14,23 +15,13 @@
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
+using x3d::test::addChild;
+using x3d::test::feq;
 
 // helper: set a Transform's translation via reflection (the data-layer setter).
 static void setTranslation(const std::shared_ptr<X3DNode>& n, SFVec3f v) {
   for (auto& f : n->fields())
     if (f.x3dName == "translation" && f.set) { f.set(*n, std::any(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode>& parent,
-                     const std::shared_ptr<X3DNode>& child) {
-  for (auto& f : parent->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto kids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*parent));
-      kids.push_back(child);
-      f.set(*parent, std::any(std::move(kids)));
-      return;
-    }
 }
 static void removeChild(const std::shared_ptr<X3DNode>& parent,
                         const std::shared_ptr<X3DNode>& child) {

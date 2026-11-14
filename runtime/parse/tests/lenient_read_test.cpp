@@ -4,7 +4,6 @@
 // so a whole document never fails to load over one bad field. The typed setX
 // API stays strict (throws std::out_of_range) for programmatic callers.
 //
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DParse.hpp"
 
@@ -18,7 +17,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // The reflection set thunk (used by every reader) is non-validating: it keeps an
 // out-of-range value instead of throwing.
 void test_reflection_set_is_lenient() {

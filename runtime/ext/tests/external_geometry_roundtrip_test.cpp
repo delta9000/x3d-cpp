@@ -1,4 +1,5 @@
 // ExternalGeometry EXTERNPROTO expansion and round-trip serialization.
+#include "doctest/doctest.h"
 #include "ExtResolver.hpp"        // x3d::runtime::ext::install()
 #include "ExternalGeometry.hpp"   // x3d::runtime::ext::ExternalGeometry
 
@@ -6,7 +7,6 @@
 #include "X3DParse.hpp"           // x3d::codec::parseDocument, Encoding
 #include "X3DCodecs.hpp"          // x3d::codec::XmlWriter
 
-#include <cassert>
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -32,7 +32,7 @@ static const char* kDoc = R"(<?xml version="1.0" encoding="UTF-8"?>
 </X3D>
 )";
 
-int main() {
+TEST_CASE("ExternalGeometry ProtoInstance through install()") {
     using namespace x3d::runtime;
     using namespace x3d::runtime::ext;
     using namespace x3d::codec;
@@ -48,10 +48,10 @@ int main() {
             std::fprintf(stderr, "  [%s] %s\n", w.instanceName.c_str(), w.detail.c_str());
         }
     }
-    assert(doc.protoWarnings.empty() && "Expected zero proto warnings after expansion with install()");
+    REQUIRE((doc.protoWarnings.empty() && "Expected zero proto warnings after expansion with install()"));
 
     // Scene root should have at least one node (Shape)
-    assert(!doc.scene.rootNodes.empty() && "Expected at least one root node (Shape)");
+    REQUIRE((!doc.scene.rootNodes.empty() && "Expected at least one root node (Shape)"));
 
     // ExternalGeometry node in graph — find it in expandedSources
 
@@ -71,7 +71,7 @@ int main() {
                 std::fprintf(stderr, "  expanded: %s\n", kv.first->nodeTypeName().c_str());
         }
     }
-    assert(eg_node != nullptr && "Expected an ExternalGeometry node in expandedSources");
+    REQUIRE((eg_node != nullptr && "Expected an ExternalGeometry node in expandedSources"));
 
     // url must carry the fieldValue override
     if (eg_node->getUrl().size() != 1) {
@@ -79,36 +79,36 @@ int main() {
         for (const auto& u : eg_node->getUrl())
             std::fprintf(stderr, "  url: [%s]\n", u.c_str());
     }
-    assert(eg_node->getUrl().size() == 1 && "url must have exactly one entry");
-    assert(eg_node->getUrl()[0] == "chair.stl" && "url[0] must be 'chair.stl'");
+    REQUIRE((eg_node->getUrl().size() == 1 && "url must have exactly one entry"));
+    REQUIRE((eg_node->getUrl()[0] == "chair.stl" && "url[0] must be 'chair.stl'"));
 
-    // expandedSources maps the primary back to its ProtoInstance
+    SUBCASE("expandedSources maps the node back to its ProtoInstance") {
+        // expandedSources maps the primary back to its ProtoInstance
 
-    {
         auto it = doc.scene.expandedSources.find(eg_node);
-        assert(it != doc.scene.expandedSources.end() && "expandedSources must map the EG node");
-        assert(it->second.name == "ExternalGeometry" && "Instance name must be 'ExternalGeometry'");
+        REQUIRE((it != doc.scene.expandedSources.end() && "expandedSources must map the EG node"));
+        REQUIRE((it->second.name == "ExternalGeometry" && "Instance name must be 'ExternalGeometry'"));
     }
 
-    // round-trip via XmlWriter re-emits ProtoInstance, not raw node
+    SUBCASE("XmlWriter re-emits the ProtoInstance") {
+        // round-trip via XmlWriter re-emits ProtoInstance, not raw node
 
-    {
         XmlWriter writer;
         std::string xml = writer.writeDocument(doc);
 
         // Must re-emit ExternProtoDeclare (preserved in scene.externProtoDeclarations)
-        assert(xml.find("ExternProtoDeclare") != std::string::npos &&
-               "Round-trip must re-emit <ExternProtoDeclare>");
-        assert(xml.find("urn:x3d-cpp-gen:ext:ExternalGeometry") != std::string::npos &&
-               "Round-trip must include the URN in ExternProtoDeclare url");
+        REQUIRE((xml.find("ExternProtoDeclare") != std::string::npos &&
+               "Round-trip must re-emit <ExternProtoDeclare>"));
+        REQUIRE((xml.find("urn:x3d-cpp-gen:ext:ExternalGeometry") != std::string::npos &&
+               "Round-trip must include the URN in ExternProtoDeclare url"));
 
         // Must re-emit ProtoInstance (via expandedSources redirect)
-        assert(xml.find("ProtoInstance") != std::string::npos &&
-               "Round-trip must re-emit <ProtoInstance> (not raw <ExternalGeometry>)");
+        REQUIRE((xml.find("ProtoInstance") != std::string::npos &&
+               "Round-trip must re-emit <ProtoInstance> (not raw <ExternalGeometry>)"));
 
         // Must re-emit fieldValue for url
-        assert(xml.find("fieldValue") != std::string::npos &&
-               "Round-trip must re-emit <fieldValue name='url'>");
+        REQUIRE((xml.find("fieldValue") != std::string::npos &&
+               "Round-trip must re-emit <fieldValue name='url'>"));
 
         // Raw ExternalGeometry opening tag would look like "<ExternalGeometry "
         // "<ExternalGeometry/>" or "<ExternalGeometry\n". This should not appear
@@ -134,16 +134,16 @@ int main() {
             if (has_raw_tag) {
                 std::fprintf(stderr, "Round-trip XML:\n%s\n", xml.c_str());
             }
-            assert(!has_raw_tag && "Round-trip must NOT emit raw <ExternalGeometry> element");
+            REQUIRE((!has_raw_tag && "Round-trip must NOT emit raw <ExternalGeometry> element"));
         }
     }
 
-    // firewall-degradation — parse the same doc without install().
-    //   The ExternProto must stay unexpanded, an UnresolvedExtern warning must
-    //   be recorded, and the round-trip must still emit <ExternProtoDeclare> +
-    //   <ProtoInstance> (not a raw <ExternalGeometry> element).
+    SUBCASE("without install() the ExternProto stays unexpanded and still round-trips") {
+        // firewall-degradation — parse the same doc without install().
+        //   The ExternProto must stay unexpanded, an UnresolvedExtern warning must
+        //   be recorded, and the round-trip must still emit <ExternProtoDeclare> +
+        //   <ProtoInstance> (not a raw <ExternalGeometry> element).
 
-    {
         // Parse with a no-op resolver (returns nullptr for everything) so the
         // URN is unresolvable — simulates the "no ext module installed" case.
         ProtoDeclarationResolver no_resolver =
@@ -166,17 +166,17 @@ int main() {
             for (const auto& w : doc2.protoWarnings)
                 std::fprintf(stderr, "  [%s] %s\n", w.instanceName.c_str(), w.detail.c_str());
         }
-        assert(has_unresolved &&
-               "Degradation (no install): must record UnresolvedExtern for 'ExternalGeometry'");
+        REQUIRE((has_unresolved &&
+               "Degradation (no install): must record UnresolvedExtern for 'ExternalGeometry'"));
 
         // Must not crash; round-trip must preserve ExternProtoDeclare + ProtoInstance.
         XmlWriter writer2;
         std::string xml2 = writer2.writeDocument(doc2);
 
-        assert(xml2.find("ExternProtoDeclare") != std::string::npos &&
-               "Degradation round-trip must re-emit <ExternProtoDeclare>");
-        assert(xml2.find("ProtoInstance") != std::string::npos &&
-               "Degradation round-trip must re-emit <ProtoInstance>");
+        REQUIRE((xml2.find("ExternProtoDeclare") != std::string::npos &&
+               "Degradation round-trip must re-emit <ExternProtoDeclare>"));
+        REQUIRE((xml2.find("ProtoInstance") != std::string::npos &&
+               "Degradation round-trip must re-emit <ProtoInstance>"));
 
         // Must not emit a raw <ExternalGeometry> opening tag.
         {
@@ -192,17 +192,17 @@ int main() {
                 pos2 += kTag2.size();
             }
             if (raw2) std::fprintf(stderr, "Degradation round-trip XML:\n%s\n", xml2.c_str());
-            assert(!raw2 && "Degradation round-trip must NOT emit raw <ExternalGeometry> element");
+            REQUIRE((!raw2 && "Degradation round-trip must NOT emit raw <ExternalGeometry> element"));
         }
 
         std::fprintf(stderr, "TEST 5a PASS: no-install path degraded gracefully (UnresolvedExtern + clean round-trip)\n");
     }
 
-    // delegation — install() resolver delegates non-matching URNs to base.
-    //   Use a stub base resolver that records whether it was called, then confirm
-    //   a non-ExternalGeometry URN reaches the stub.
+    SUBCASE("install() delegates other URNs to the base resolver") {
+        // delegation — install() resolver delegates non-matching URNs to base.
+        //   Use a stub base resolver that records whether it was called, then confirm
+        //   a non-ExternalGeometry URN reaches the stub.
 
-    {
         bool stub_called = false;
         // Stub resolver: records invocations, never returns a real decl.
         auto stub = [&stub_called](const std::vector<std::string>& /*urls*/,
@@ -217,20 +217,18 @@ int main() {
         // Call with a non-matching URN — must reach the stub.
         std::vector<std::string> other_urls = {"urn:some:other:proto", "OtherProto.x3d"};
         auto result = delegating_resolver(other_urls, "");
-        assert(stub_called && "Delegation: non-matching URN must reach the stub base resolver");
-        assert(result == nullptr && "Delegation: stub returns nullptr for unknown URN");
+        REQUIRE((stub_called && "Delegation: non-matching URN must reach the stub base resolver"));
+        REQUIRE((result == nullptr && "Delegation: stub returns nullptr for unknown URN"));
 
         // Call with our matching URN — must not reach the stub.
         stub_called = false;
         std::vector<std::string> our_urls = {kExternalGeometryUrn};
         auto eg_decl = delegating_resolver(our_urls, "");
-        assert(!stub_called && "Delegation: matching URN must be intercepted, not forwarded to stub");
-        assert(eg_decl != nullptr && "Delegation: matching URN must return the EG ProtoDeclaration");
-        assert(eg_decl->name == "ExternalGeometry" &&
-               "Delegation: returned decl must be 'ExternalGeometry'");
+        REQUIRE((!stub_called && "Delegation: matching URN must be intercepted, not forwarded to stub"));
+        REQUIRE((eg_decl != nullptr && "Delegation: matching URN must return the EG ProtoDeclaration"));
+        REQUIRE((eg_decl->name == "ExternalGeometry" &&
+               "Delegation: returned decl must be 'ExternalGeometry'"));
 
         std::fprintf(stderr, "TEST 5b PASS: install() delegates non-matching URN to base; intercepts own URN\n");
     }
-
-    return 0;
 }

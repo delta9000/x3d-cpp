@@ -70,7 +70,7 @@ public:
                    const std::any &value, X3DFieldType type) override;
 
 private:
-  // pImpl: every JSRuntime / JSContext / JSValue lives here, in the.cpp, so
+  // pImpl: every JSRuntime / JSContext / JSValue lives here, in the .cpp, so
   // this header never names a QuickJS type.
   struct Impl;
   std::unique_ptr<Impl> impl_;

@@ -1,6 +1,7 @@
 // Gzip output and attacker-controlled ISIZE reservations are bounded by
 // kMaxDecompressedBytes, overridable per call through maxOut.
 
+#include "doctest/doctest.h"
 #include "Inflate.hpp"
 #include "RecursionLimits.hpp"
 
@@ -13,17 +14,6 @@
 using namespace x3d::codec;
 
 namespace {
-
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 // Wrap `payload` in a valid gzip stream using a single STORED (uncompressed)
 // DEFLATE block. tinfl inflates this like any gzip, and a stored block lets us
 // pick the exact decompressed size by hand. `payload.size()` must be < 65536.
@@ -62,30 +52,22 @@ bool throwsInflate(const std::string &gz, std::size_t maxOut) {
 
 } // namespace
 
-int main() {
+TEST_CASE("inflateGzip caps decompressed output") {
   const std::string payload(4096, 'A');
   const std::string gz = gzipStored(payload);
 
   // Sanity: a legitimate stream inflates to its payload under the default cap.
-  check(inflateGzip(gz) == payload,
-        "stored-block gzip inflates to the original payload");
+  CHECK_MESSAGE((inflateGzip(gz) == payload), "stored-block gzip inflates to the original payload");
 
   // output larger than the cap throws rather than growing unbounded.
-  check(throwsInflate(gz, 1024),
-        "inflateGzip throws when the output would exceed maxOut");
+  CHECK_MESSAGE((throwsInflate(gz, 1024)),
+                "inflateGzip throws when the output would exceed maxOut");
 
   // A cap at or above the true output size still inflates successfully.
-  check(inflateGzip(gz, 8192) == payload,
-        "inflateGzip honors a maxOut above the output size");
+  CHECK_MESSAGE((inflateGzip(gz, 8192) == payload),
+                "inflateGzip honors a maxOut above the output size");
 
   // The default cap is the shared, generous kMaxDecompressedBytes constant.
-  check(x3d::kMaxDecompressedBytes >= (1u << 20),
-        "kMaxDecompressedBytes default is generous (>= 1 MiB)");
-
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all inflate_bomb checks passed\n";
-  return 0;
+  CHECK_MESSAGE((x3d::kMaxDecompressedBytes >= (1u << 20)),
+                "kMaxDecompressedBytes default is generous (>= 1 MiB)");
 }

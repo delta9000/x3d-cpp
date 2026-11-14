@@ -368,7 +368,7 @@ private:
     }
     return node;
   }
-  // Script author-field capture .
+  // Script author-field capture.
 
   /// Capture a <Script> element's author <field name accessType type value>
   /// children into the per-node DynamicFieldStore, and its <![CDATA[...]]> body

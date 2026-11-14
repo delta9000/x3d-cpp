@@ -9,6 +9,7 @@
 #include "x3d/nodes/X3DBackgroundNode.hpp"
 
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 
 #include <any>
 #include <memory>
@@ -18,13 +19,10 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using x3d::test::setF;
 using extract::TextureRef;
 
 namespace {
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 std::shared_ptr<X3DNode> image(const std::string &url) {
   auto t = createX3DNode("ImageTexture");
   setF(t, "url", std::any(MFString{url}));

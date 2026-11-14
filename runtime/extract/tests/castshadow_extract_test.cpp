@@ -9,20 +9,14 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <memory>
 #include <vector>
 
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) {
-      f.set(*n, std::move(v));
-      return;
-    }
-}
+using x3d::test::setF;
 
 // A geometry-bearing Shape over a one-triangle TriangleSet (emits one item).
 static std::shared_ptr<X3DNode> makeTriShape() {

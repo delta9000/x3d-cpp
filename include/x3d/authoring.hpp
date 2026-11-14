@@ -1,7 +1,7 @@
 // Slim authoring surface: construct an X3D scene graph, range-validate it, and
 // serialize it. Deliberately excludes parse, execution context, extraction,
 // physics, script, sound, and IO seams. See
-// docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md §6.
+// x3d-cpp@db23737:docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md §6.
 #ifndef X3D_AUTHORING_HPP
 #define X3D_AUTHORING_HPP
 

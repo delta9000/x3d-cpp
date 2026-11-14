@@ -1,5 +1,6 @@
 // ComposedShader author fields and inline ShaderPart source survive XML round-trips.
 
+#include "doctest/doctest.h"
 #include "DynamicField.hpp"
 #include "X3DCodecs.hpp"
 #include "X3DRuntime.hpp"
@@ -19,18 +20,6 @@ namespace runtime = x3d::runtime;
 namespace codec = x3d::codec;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 const char *sampleXml() {
   return R"X3D(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
@@ -68,15 +57,14 @@ std::shared_ptr<ComposedShader> findComposedShader(const runtime::Scene &scene) 
 
 } // namespace
 
-int main() {
+TEST_CASE("XML ComposedShader keeps author fields and per-stage source") {
   codec::XmlReader reader;
   runtime::X3DDocument doc = reader.readDocument(sampleXml());
 
   auto cs = findComposedShader(doc.scene);
-  check(cs != nullptr, "ComposedShader parsed under Shape.appearance.shaders");
+  CHECK_MESSAGE((cs != nullptr), "ComposedShader parsed under Shape.appearance.shaders");
   if (!cs) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
+    return;
   }
 
   // (1) Author <field> landed in the DynamicFieldStore.
@@ -84,7 +72,7 @@ int main() {
   for (const FieldInfo &fi : doc.scene.authorFields->authorFields(*cs))
     if (fi.x3dName == "tint" && fi.type == X3DFieldType::SFColor)
       hasTint = true;
-  check(hasTint, "author <field> 'tint' (SFColor) captured into the store");
+  CHECK_MESSAGE((hasTint), "author <field> 'tint' (SFColor) captured into the store");
 
   // (2) ShaderPart CDATA captured into sourceCode, per stage.
   bool vsOk = false, fsOk = false;
@@ -96,13 +84,6 @@ int main() {
     if (type == "VERTEX")   vsOk = hasSrc;
     if (type == "FRAGMENT") fsOk = hasSrc;
   }
-  check(vsOk, "VERTEX ShaderPart CDATA captured into sourceCode");
-  check(fsOk, "FRAGMENT ShaderPart CDATA captured into sourceCode");
-
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all XML ComposedShader capture tests passed\n";
-  return 0;
+  CHECK_MESSAGE((vsOk), "VERTEX ShaderPart CDATA captured into sourceCode");
+  CHECK_MESSAGE((fsOk), "FRAGMENT ShaderPart CDATA captured into sourceCode");
 }

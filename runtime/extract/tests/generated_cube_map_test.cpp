@@ -1,4 +1,4 @@
-// generated_cube_map_test.cpp — , §34.4.2 GeneratedCubeMapTexture.
+// generated_cube_map_test.cpp — §34.4.2 GeneratedCubeMapTexture.
 //
 // The extractor surfaces a generated cube (TextureRef::generatedCube: node,
 // update, size) for the consumer to render, and GeneratedCubeMapSystem resets
@@ -17,7 +17,6 @@ using extract::TextureRef;
 using Update = x3d::core::GeneratedCubeMapTextureUpdateChoices;
 
 namespace {
-
 const TextureRef *cubeRef(RuntimeSession &s) {
   for (extract::RenderItemId id = 0; id < s.extractor().itemCount(); ++id)
     for (const TextureRef &t : s.extractor().item(id).material.textures)

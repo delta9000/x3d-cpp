@@ -15,7 +15,7 @@
 //      (order-independent).
 //
 // What is not compared (by design):
-//   - Proto/ExternProto declarations (not load-bearing for render equivalence).
+//   - Proto/ExternProto declarations (irrelevant to render equivalence).
 //   - IMPORT/EXPORT statements (seam-side, not yet exercised by roundtrip).
 //   - Inline expansion metadata (writer re-emits the Inline stub correctly).
 //   - expandedSources / resolvedProtoRoutes (internal plumbing, not authored).

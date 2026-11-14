@@ -208,7 +208,7 @@ private:
   // declarations, an extra `}` from a malformed sibling, a leading `[`, or a
   // raw scalar where this (newer) model exposes an SFNode/MFNode field. Returns
   // true if it recognized and consumed such a non-node item (so the caller's
-  // loop should `continue`); false if `peek()` genuinely begins a node and
+  // loop should `continue`); false if `peek()` begins a node and
   // `parseNode` should run. Never throws.
   bool skipNonNodeListItem(
       VrmlTokenizer &tok, runtime::Scene &scene,

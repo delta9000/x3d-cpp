@@ -113,7 +113,7 @@ void XmlWriter::render(const xml::Element &el, std::ostringstream &os,
   }
   // Character content (e.g. a Script's inline source) is emitted as a CDATA
   // section so special characters need no escaping and the reader recovers it
-  // verbatim from Element.text . Empty text is skipped above.
+  // verbatim from Element.text. Empty text is skipped above.
   if (!el.text.empty()) {
     indent(os, depth + 1);
     os << "<![CDATA[" << xml::cdataEscape(el.text) << "]]>\n";

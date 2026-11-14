@@ -128,7 +128,7 @@ result-returning service rejects an empty/moved-from wrapper with `stale_handle`
 and its own operation name before touching service state. This does not change
 the preconditions of older raw host-extension methods such as `current_scene()`.
 
-## Rendering properties and honest capabilities
+## Rendering properties and capabilities
 
 The rendering report starts empty. Absence means no supported report is
 available. Host publication validates the reserved Table 6.5 properties:

@@ -14,6 +14,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <string>
@@ -23,13 +24,9 @@ using namespace x3d::core;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::nodes;
+using x3d::test::setF;
 
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-5f; }
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 
 TEST_CASE("FillProperties descriptor defaults, authored fields, and copies") {
   auto app = createX3DNode("Appearance");
@@ -121,7 +118,7 @@ TEST_CASE("material_system_test") {
     CHECK((feq(m.toRGBA().a, 1.0f)));
   }
 
-  // present Appearance, null material => Unlit white (; §12.4.2,
+  // present Appearance, null material => Unlit white (§12.4.2,
   //     §12.2.5 rule 4: equivalent to a default UnlitMaterial, lighting off)
   {
     auto app = createX3DNode("Appearance");
@@ -133,7 +130,7 @@ TEST_CASE("material_system_test") {
            feq(m.emissive.b, 1.0f)));
   }
   // null material: Appearance.texture acts as the emissive (unlit) texture
-  // ( part 2; §12.2.5 rule 4)
+  // (§12.2.5 rule 4)
   {
     auto tex = createX3DNode("ImageTexture");
     setF(tex, "url", std::any(MFString{"u.png"}));

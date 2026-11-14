@@ -7,7 +7,7 @@
 //   - SquadOrientationInterpolatorSystem: §19.4.13 Squad on rotations.
 //   - EaseInEaseOutSystem: §19.4.4 fraction modifier (emits modifiedFraction_changed).
 // Each wires the node's inputOnly handler in attach(), mirroring InterpolatorSystem.
-// Empty-key emits no event for the interpolator nodes (§19.3.1,).
+// Empty-key emits no event for the interpolator nodes (§19.3.1).
 #ifndef X3D_RUNTIME_SPLINE_INTERPOLATOR_SYSTEM_HPP
 #define X3D_RUNTIME_SPLINE_INTERPOLATOR_SYSTEM_HPP
 

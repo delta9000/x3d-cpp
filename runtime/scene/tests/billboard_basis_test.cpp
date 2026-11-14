@@ -8,7 +8,7 @@ using namespace x3d::runtime;
 
 namespace {
 void checkRotation(const Mat4 &m, const SFVec3f &viewDirection) {
-  using namespace viewdep;
+  using namespace vec3;
   const auto x = m.transformDirection({1, 0, 0});
   const auto y = m.transformDirection({0, 1, 0});
   const auto z = m.transformDirection({0, 0, 1});
@@ -20,7 +20,7 @@ void checkRotation(const Mat4 &m, const SFVec3f &viewDirection) {
   CHECK(dot(x, z) == doctest::Approx(0.0f).epsilon(1e-5));
   CHECK(dot(y, z) == doctest::Approx(0.0f).epsilon(1e-5));
   CHECK(dot(cross(x, y), z) == doctest::Approx(1.0f));
-  CHECK(dot(z, norm(viewDirection)) == doctest::Approx(1.0f));
+  CHECK(dot(z, normalize(viewDirection)) == doctest::Approx(1.0f));
 }
 }
 

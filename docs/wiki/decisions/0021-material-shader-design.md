@@ -112,5 +112,5 @@ Until that architecture is defined, IBL stays deferred.  The vocabulary entries 
 - [Texture, Material, and Light Extraction](../subsystems/extract-textures.md)
 - [ADR-0005: Golden Files Committed to Git](0005-golden-files-in-git.md)
 - [ADR-0015: Extraction as Pull over an Incremental Dirty Set](0015-extraction-pull-per-path.md)
-- Design spec: `docs/superpowers/specs/2026-06-21-material-shader-design.md`
+- Design spec: [`docs/superpowers/specs/2026-06-21-material-shader-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-21-material-shader-design.md)
 - Key headers: `runtime/extract/RenderItem.hpp`, `runtime/extract/MaterialSystem.hpp`, `runtime/extract/ShaderUniformVocabulary.hpp`, `runtime/extract/ShaderBindingPlan.hpp`

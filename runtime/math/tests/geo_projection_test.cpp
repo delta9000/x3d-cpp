@@ -5,12 +5,14 @@
 #include "GeoFrame.hpp"
 
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 
 #include <cmath>
 #include <string>
 #include <vector>
 
 using namespace x3d::runtime::geo;
+using x3d::test::setF;
 using x3d::core::SFVec3d;
 using x3d::core::SFVec3f;
 using x3d::runtime::Mat4;
@@ -209,10 +211,6 @@ TEST_CASE("geo: invalid input is rejected, never NaN") {
 #include <memory>
 
 namespace {
-void setF(const std::shared_ptr<x3d::nodes::X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 } // namespace
 
 TEST_CASE("geo: node glue converts through the node's geoSystem and GeoOrigin") {

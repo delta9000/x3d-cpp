@@ -1,5 +1,6 @@
-// Pass the fixture directory as argv[1], or run from the repository root.
+// Pass the fixture directory as X3D_TEST_DATA_DIR, or run from the repository root.
 
+#include "doctest/doctest.h"
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
 #include "TimeSensorSystem.hpp"
@@ -29,25 +30,13 @@ using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }
 
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 
-std::string g_dataDir;
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
@@ -59,7 +48,7 @@ std::string readFile(const std::string &path) {
 // (1) Validation
 // Build a Scene programmatically with one valid route and one of each invalid
 // kind, plus a dangling-DEF route. Bridge it and assert the diagnostics.
-void test_route_validation() {
+TEST_CASE("route validation") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   auto mover = std::make_shared<Transform>();
@@ -89,8 +78,8 @@ void test_route_validation() {
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
 
-  check(r.routesAdded == 1, "exactly one valid route added");
-  check(r.rejected.size() == 5, "five routes rejected (dangling not counted)");
+  CHECK_MESSAGE((r.routesAdded == 1), "exactly one valid route added");
+  CHECK_MESSAGE((r.rejected.size() == 5), "five routes rejected (dangling not counted)");
 
   // The rejected indices are 1..5 (0 valid, 6 silently skipped).
   bool got1 = false, got2 = false, got3 = false, got4 = false, got5 = false;
@@ -105,18 +94,18 @@ void test_route_validation() {
       got4 = true;
     if (e.index == 5)
       got5 = true;
-    check(!e.reason.empty(), "rejected route carries a reason");
+    CHECK_MESSAGE((!e.reason.empty()), "rejected route carries a reason");
   }
-  check(got1, "unknown source field rejected (index 1)");
-  check(got2, "unknown sink field rejected (index 2)");
-  check(got3, "route to outputOnly sink rejected (index 3)");
-  check(got4, "route from inputOnly source rejected (index 4)");
-  check(got5, "type-mismatch route rejected (index 5)");
-  check(r.ok() == false, "BridgeResult::ok() false when routes rejected");
+  CHECK_MESSAGE((got1), "unknown source field rejected (index 1)");
+  CHECK_MESSAGE((got2), "unknown sink field rejected (index 2)");
+  CHECK_MESSAGE((got3), "route to outputOnly sink rejected (index 3)");
+  CHECK_MESSAGE((got4), "route from inputOnly source rejected (index 4)");
+  CHECK_MESSAGE((got5), "type-mismatch route rejected (index 5)");
+  CHECK_MESSAGE((r.ok() == false), "BridgeResult::ok() false when routes rejected");
 }
 
 // A scene whose every route is valid yields ok() == true and no rejects.
-void test_all_valid_ok() {
+TEST_CASE("all valid ok") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   auto mover = std::make_shared<Transform>();
@@ -131,25 +120,25 @@ void test_all_valid_ok() {
 
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
-  check(r.routesAdded == 2, "both valid routes added");
-  check(r.ok(), "BridgeResult::ok() true when nothing rejected");
+  CHECK_MESSAGE((r.routesAdded == 2), "both valid routes added");
+  CHECK_MESSAGE((r.ok()), "BridgeResult::ok() true when nothing rejected");
 }
 
 // (2) Load a document with ROUTEs and tick it
-void test_load_and_tick() {
+TEST_CASE("load and tick") {
   std::string text = readFile(g_dataDir + "/animated_transform.x3dv");
-  check(!text.empty(), "fixture animated_transform.x3dv loaded");
+  CHECK_MESSAGE((!text.empty()), "fixture animated_transform.x3dv loaded");
 
   X3DDocument doc = x3d::codec::parseDocument(text);
   Scene &scene = doc.scene;
 
-  check(scene.routes.size() == 2, "two ROUTEs parsed from the document");
+  CHECK_MESSAGE((scene.routes.size() == 2), "two ROUTEs parsed from the document");
 
   // Bridge the DEF-named ROUTEs onto a fresh execution context in one call.
   X3DExecutionContext ctx;
   BridgeResult r = ctx.buildFrom(scene);
-  check(r.routesAdded == 2, "both document ROUTEs bridged");
-  check(r.ok(), "no ROUTEs rejected from the loaded document");
+  CHECK_MESSAGE((r.routesAdded == 2), "both document ROUTEs bridged");
+  CHECK_MESSAGE((r.ok()), "no ROUTEs rejected from the loaded document");
 
   // Resolve the DEF'd nodes and attach the reference behaviors. The behaviors
   // act on the same node pointers the bridge addressed (the Scene owns them).
@@ -157,7 +146,7 @@ void test_load_and_tick() {
   auto path =
       std::dynamic_pointer_cast<PositionInterpolator>(scene.resolve("Path"));
   auto mover = std::dynamic_pointer_cast<Transform>(scene.resolve("Mover"));
-  check(clock && path && mover, "DEF table resolves Clock/Path/Mover by type");
+  CHECK_MESSAGE((clock && path && mover), "DEF table resolves Clock/Path/Mover by type");
   if (!(clock && path && mover)) {
     return;
   }
@@ -172,24 +161,24 @@ void test_load_and_tick() {
 
   // t=0 -> fraction 0 -> value (0,0,0).
   ctx.tick(0.0);
-  check(veq(tr(mover), 0, 0, 0), "tick(0): translation at curve start (0,0,0)");
+  CHECK_MESSAGE((veq(tr(mover), 0, 0, 0)), "tick(0): translation at curve start (0,0,0)");
 
   // t=1 -> fraction 0.25 -> halfway on the first segment -> (5,0,0).
   ctx.tick(1.0);
-  check(veq(tr(mover), 5, 0, 0), "tick(1): translation animated to (5,0,0)");
+  CHECK_MESSAGE((veq(tr(mover), 5, 0, 0)), "tick(1): translation animated to (5,0,0)");
 
   // t=2 -> fraction 0.5 -> mid keyValue -> (10,0,0).
   ctx.tick(2.0);
-  check(veq(tr(mover), 10, 0, 0), "tick(2): translation animated to (10,0,0)");
+  CHECK_MESSAGE((veq(tr(mover), 10, 0, 0)), "tick(2): translation animated to (10,0,0)");
 
   // t=4 -> cycle-boundary fraction 1 -> final keyValue (0,0,0).
   ctx.tick(4.0);
-  check(veq(tr(mover), 0, 0, 0), "tick(4): loop wraps back to (0,0,0)");
+  CHECK_MESSAGE((veq(tr(mover), 0, 0, 0)), "tick(4): loop wraps back to (0,0,0)");
 }
 
 // A ROUTE whose sink is an initializeOnly field must be rejected: the field is
 // Data-layer writable initializeOnly fields are not routable event sinks.
-void testInitializeOnlyNotRoutableSink() {
+TEST_CASE("initialize only not routable sink") {
   Scene scene;
   auto ts = createX3DNode("TimeSensor");
   auto sphere = createX3DNode("Sphere");
@@ -201,8 +190,8 @@ void testInitializeOnlyNotRoutableSink() {
 
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
-  check(r.routesAdded == 0, "initializeOnly: route to radius not added");
-  check(r.rejected.size() == 1, "initializeOnly: route to radius rejected");
+  CHECK_MESSAGE((r.routesAdded == 0), "initializeOnly: route to radius not added");
+  CHECK_MESSAGE((r.rejected.size() == 1), "initializeOnly: route to radius rejected");
 }
 
 // Proto interface event redirect + pre-resolved body-route registration.
@@ -216,7 +205,7 @@ void testInitializeOnlyNotRoutableSink() {
 //     redirected onto the cloned body endpoints (sink and source side), not
 //     rejected as unknown fields;
 //   - a body-internal ROUTE is registered directly from resolvedProtoRoutes.
-void testProtoRouteRedirect() {
+TEST_CASE("proto route redirect") {
   Scene scene;
 
   auto decl = std::make_shared<ProtoDeclaration>();
@@ -273,16 +262,14 @@ void testProtoRouteRedirect() {
     if (r.reason.find("fraction") != std::string::npos ||
         r.reason.find("'out'") != std::string::npos)
       rejectedInterfaceField = true;
-  check(!rejectedInterfaceField,
-        "proto redirect: interface fields not rejected");
+  CHECK_MESSAGE((!rejectedInterfaceField), "proto redirect: interface fields not rejected");
   // 1 pre-resolved body route + 2 redirected external routes.
-  check(res.routesAdded == 3,
-        "proto redirect: 3 routes added (body route + sink + source redirect)");
+  CHECK_MESSAGE((res.routesAdded == 3), ("proto redirect: 3 routes added (body route + sink + source redirect)"));
 }
 
 // Body ROUTEs name the nested instance's declared interface, even when its
 // physical primary has a different field name. Each Outer gets private clones.
-void testNestedProtoBodyRoutes() {
+TEST_CASE("nested proto body routes") {
   const std::string xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -317,10 +304,10 @@ DEF O2 Outer { }
     auto doc = x3d::codec::parseDocument(source, encoding);
     auto o1 = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O1"));
     auto o2 = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O2"));
-    check(o1 && o2 && o1 != o2, name + ": two Outer primaries expanded");
+    CHECK_MESSAGE((o1 && o2 && o1 != o2), (name + ": two Outer primaries expanded"));
     if (!(o1 && o2) || o1->getChildren().size() != 3 ||
         o2->getChildren().size() != 3) {
-      check(false, name + ": ordered nested/ordinary children retained");
+      CHECK_MESSAGE((false), (name + ": ordered nested/ordinary children retained"));
       continue;
     }
     auto a1 = std::dynamic_pointer_cast<Transform>(o1->getChildren()[0]);
@@ -329,31 +316,26 @@ DEF O2 Outer { }
     auto a2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[0]);
     auto mid2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[1]);
     auto b2 = std::dynamic_pointer_cast<Transform>(o2->getChildren()[2]);
-    check(a1 && mid1 && b1 && a2 && mid2 && b2,
-          name + ": nested interface endpoints have concrete Transform primaries");
+    CHECK_MESSAGE((a1 && mid1 && b1 && a2 && mid2 && b2), (name + ": nested interface endpoints have concrete Transform primaries"));
     if (!(a1 && mid1 && b1 && a2 && mid2 && b2)) continue;
     X3DExecutionContext ctx;
     auto bridge = buildRoutes(doc.scene, ctx);
-    check(bridge.rejected.empty(), name + ": valid nested body ROUTEs accepted");
-    check(bridge.routesAdded == 6,
-          name + ": all ordinary and two-nested-endpoint routes bridged per instance");
+    CHECK_MESSAGE((bridge.rejected.empty()), (name + ": valid nested body ROUTEs accepted"));
+    CHECK_MESSAGE((bridge.routesAdded == 6), (name + ": all ordinary and two-nested-endpoint routes bridged per instance"));
     ctx.postEvent(a1.get(), "translation_changed", std::any(SFVec3f{3, 4, 5}));
     ctx.tick(0.0);
-    check(veq(tr(mid1), 3, 4, 5) && veq(tr(b1), 3, 4, 5),
-          name + ": nested source reaches ordinary sink and nested sink");
-    check(veq(tr(mid2), 0, 0, 0) && veq(tr(b2), 0, 0, 0),
-          name + ": first Outer cannot deliver into second Outer's private nodes");
+    CHECK_MESSAGE((veq(tr(mid1), 3, 4, 5) && veq(tr(b1), 3, 4, 5)), (name + ": nested source reaches ordinary sink and nested sink"));
+    CHECK_MESSAGE((veq(tr(mid2), 0, 0, 0) && veq(tr(b2), 0, 0, 0)), (name + ": first Outer cannot deliver into second Outer's private nodes"));
     ctx.postEvent(mid2.get(), "translation_changed", std::any(SFVec3f{6, 7, 8}));
     ctx.tick(1.0);
-    check(veq(tr(b2), 6, 7, 8) && veq(tr(b1), 3, 4, 5),
-          name + ": ordinary source reaches only its own nested sink");
+    CHECK_MESSAGE((veq(tr(b2), 6, 7, 8) && veq(tr(b1), 3, 4, 5)), (name + ": ordinary source reaches only its own nested sink"));
   }
 }
 
 // A direct first nested instance is also the Outer primary. Body-local A must
 // retain its own interface route mapping while scene routes see only Outer's
 // exposed names; the underlying Transform.translation is private.
-void testNestedFirstPrimaryAndEventIsAliases() {
+TEST_CASE("nested first primary and event is aliases") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -401,35 +383,27 @@ void testNestedFirstPrimaryAndEventIsAliases() {
     if (peer && peer->getDEF() == "PhysicalSource")
       physicalSource = std::dynamic_pointer_cast<Transform>(peer);
   }
-  check(driver && primary && ordinary && physicalSink && physicalSource &&
-            ext && hidden,
-        "nested-first: first inner primary and ordinary peer are expanded");
+  CHECK_MESSAGE((driver && primary && ordinary && physicalSink && physicalSource &&
+            ext && hidden), "nested-first: first inner primary and ordinary peer are expanded");
   if (!(driver && primary && ordinary && physicalSink && physicalSource &&
         ext && hidden)) return;
   X3DExecutionContext ctx;
   auto bridge = buildRoutes(doc.scene, ctx);
-  check(bridge.routesAdded == 5,
-        "nested-first: body routes and two exposed outer interface routes bridged");
-  check(!bridge.rejected.empty(),
-        "nested-first: underlying primary-native field is hidden by Outer interface");
+  CHECK_MESSAGE((bridge.routesAdded == 5), "nested-first: body routes and two exposed outer interface routes bridged");
+  CHECK_MESSAGE((!bridge.rejected.empty()), "nested-first: underlying primary-native field is hidden by Outer interface");
   ctx.postEvent(driver.get(), "translation_changed", std::any(SFVec3f{4, 5, 6}));
   ctx.tick(0.0);
-  check(veq(tr(primary), 4, 5, 6),
-        "nested-first: inputOnly IS alias delivers through Outer and Inner");
-  check(veq(tr(ordinary), 4, 5, 6) && veq(tr(ext), 4, 5, 6),
-        "nested-first: body ROUTE and outputOnly IS alias deliver events");
-  check(veq(tr(physicalSink), 4, 5, 6),
-        "nested-first: separate physical set_translation IS target receives event");
+  CHECK_MESSAGE((veq(tr(primary), 4, 5, 6)), "nested-first: inputOnly IS alias delivers through Outer and Inner");
+  CHECK_MESSAGE((veq(tr(ordinary), 4, 5, 6) && veq(tr(ext), 4, 5, 6)), "nested-first: body ROUTE and outputOnly IS alias deliver events");
+  CHECK_MESSAGE((veq(tr(physicalSink), 4, 5, 6)), "nested-first: separate physical set_translation IS target receives event");
   ctx.postEvent(physicalSource.get(), "translation_changed",
                 std::any(SFVec3f{7, 8, 9}));
   ctx.tick(1.0);
-  check(veq(tr(ordinary), 7, 8, 9) && veq(tr(physicalSink), 7, 8, 9),
-        "nested-first: separate physical translation_changed IS source delivers");
-  check(veq(tr(hidden), 0, 0, 0),
-        "nested-first: native field route cannot bypass nominal Outer interface");
+  CHECK_MESSAGE((veq(tr(ordinary), 7, 8, 9) && veq(tr(physicalSink), 7, 8, 9)), "nested-first: separate physical translation_changed IS source delivers");
+  CHECK_MESSAGE((veq(tr(hidden), 0, 0, 0)), "nested-first: native field route cannot bypass nominal Outer interface");
 }
 
-void testNestedProtoRouteValidation() {
+TEST_CASE("nested proto route validation") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -452,17 +426,15 @@ void testNestedProtoRouteValidation() {
 </Scene></X3D>)";
   auto doc = x3d::codec::parseDocument(xml);
   auto outer = std::dynamic_pointer_cast<Group>(doc.scene.resolve("O"));
-  check(outer && outer->getChildren().size() == 3,
-        "invalid nested routes: endpoints survive expansion");
+  CHECK_MESSAGE((outer && outer->getChildren().size() == 3), "invalid nested routes: endpoints survive expansion");
   if (!outer || outer->getChildren().size() != 3) return;
   auto a = std::dynamic_pointer_cast<Transform>(outer->getChildren()[0]);
   auto b = std::dynamic_pointer_cast<Transform>(outer->getChildren()[1]);
-  check(a && b, "invalid nested routes: concrete primaries exist");
+  CHECK_MESSAGE((a && b), "invalid nested routes: concrete primaries exist");
   if (!(a && b)) return;
   X3DExecutionContext ctx;
   auto bridge = buildRoutes(doc.scene, ctx);
-  check(bridge.routesAdded == 0,
-        "invalid nested routes: wrong direction and type add no edges");
+  CHECK_MESSAGE((bridge.routesAdded == 0), "invalid nested routes: wrong direction and type add no edges");
   auto warnedFor = [&](const std::string &route) {
     for (const auto &warning : doc.protoWarnings)
       if (warning.detail.find(route) != std::string::npos) return true;
@@ -470,19 +442,15 @@ void testNestedProtoRouteValidation() {
       if (error.reason.find(route) != std::string::npos) return true;
     return false;
   };
-  check(warnedFor("A.set_shift TO B.inShift"),
-        "invalid nested routes: input-only set_shift source diagnosed");
-  check(warnedFor("A.outShift TO B.shift_changed"),
-        "invalid nested routes: output-only shift_changed sink diagnosed");
-  check(warnedFor("A.outShift TO Clock.set_startTime"),
-        "invalid nested routes: SFVec3f to SFTime mismatch diagnosed");
+  CHECK_MESSAGE((warnedFor("A.set_shift TO B.inShift")), "invalid nested routes: input-only set_shift source diagnosed");
+  CHECK_MESSAGE((warnedFor("A.outShift TO B.shift_changed")), "invalid nested routes: output-only shift_changed sink diagnosed");
+  CHECK_MESSAGE((warnedFor("A.outShift TO Clock.set_startTime")), "invalid nested routes: SFVec3f to SFTime mismatch diagnosed");
   ctx.postEvent(a.get(), "translation_changed", std::any(SFVec3f{9, 8, 7}));
   ctx.tick(0.0);
-  check(veq(tr(b), 0, 0, 0),
-        "invalid nested routes: no value reaches outputOnly sink");
+  CHECK_MESSAGE((veq(tr(b), 0, 0, 0)), "invalid nested routes: no value reaches outputOnly sink");
 }
 
-void testInheritedProtoMetadataRoutes() {
+TEST_CASE("inherited proto metadata routes") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Inner'><ProtoBody><Transform/></ProtoBody></ProtoDeclare>
 <ProtoDeclare name='Outer'><ProtoBody>
@@ -507,25 +475,22 @@ void testInheritedProtoMetadataRoutes() {
     if (peer && peer->getDEF() == "B")
       nestedSink = std::dynamic_pointer_cast<Transform>(peer);
   }
-  check(driver && primary && ordinary && nestedSink && external,
-        "metadata: scene and nested PROTO endpoints expanded");
+  CHECK_MESSAGE((driver && primary && ordinary && nestedSink && external), "metadata: scene and nested PROTO endpoints expanded");
   if (!(driver && primary && ordinary && nestedSink && external)) return;
   X3DExecutionContext ctx;
   auto bridge = buildRoutes(doc.scene, ctx);
-  check(bridge.routesAdded == 4 && bridge.rejected.empty(),
-        "metadata: inherited PROTO source/sink aliases bridge at both scopes");
+  CHECK_MESSAGE((bridge.routesAdded == 4 && bridge.rejected.empty()), "metadata: inherited PROTO source/sink aliases bridge at both scopes");
   auto metadata = createX3DNode("MetadataString");
-  check(!!metadata, "metadata: MetadataString value constructed");
+  CHECK_MESSAGE((!!metadata), "metadata: MetadataString value constructed");
   if (!metadata) return;
   ctx.postEvent(driver.get(), "metadata_changed", std::any(SFNode{metadata}));
   ctx.tick(0.0);
-  check(primary->getMetadata() == metadata && ordinary->getMetadata() == metadata &&
+  CHECK_MESSAGE((primary->getMetadata() == metadata && ordinary->getMetadata() == metadata &&
             nestedSink->getMetadata() == metadata &&
-            external->getMetadata() == metadata,
-        "metadata: event reaches outer primary, body ROUTEs, and scene sink");
+            external->getMetadata() == metadata), "metadata: event reaches outer primary, body ROUTEs, and scene sink");
 }
 
-void testSceneProtoToProtoRoute() {
+TEST_CASE("scene proto to proto route") {
   const char *xml = R"(<X3D version='4.0'><Scene>
 <ProtoDeclare name='Mover'><ProtoInterface>
 <field name='shift' type='SFVec3f' accessType='inputOutput' value='0 0 0'/>
@@ -538,17 +503,14 @@ void testSceneProtoToProtoRoute() {
   auto doc = x3d::codec::parseDocument(xml);
   auto first = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("P1"));
   auto second = std::dynamic_pointer_cast<Transform>(doc.scene.resolve("P2"));
-  check(first && second && first != second,
-        "scene PROTO-to-PROTO: two private primaries expanded");
+  CHECK_MESSAGE((first && second && first != second), "scene PROTO-to-PROTO: two private primaries expanded");
   if (!(first && second)) return;
   X3DExecutionContext ctx;
   auto bridge = buildRoutes(doc.scene, ctx);
-  check(bridge.routesAdded == 1 && bridge.rejected.empty(),
-        "scene PROTO-to-PROTO: both nominal interface aliases accepted");
+  CHECK_MESSAGE((bridge.routesAdded == 1 && bridge.rejected.empty()), "scene PROTO-to-PROTO: both nominal interface aliases accepted");
   ctx.postEvent(first.get(), "translation_changed", std::any(SFVec3f{2, 3, 4}));
   ctx.tick(0.0);
-  check(veq(tr(second), 2, 3, 4),
-        "scene PROTO-to-PROTO: event reaches second declared interface");
+  CHECK_MESSAGE((veq(tr(second), 2, 3, 4)), "scene PROTO-to-PROTO: event reaches second declared interface");
 }
 
 } // namespace
@@ -556,7 +518,7 @@ void testSceneProtoToProtoRoute() {
 // §4.4.2.2: an inputOutput field zzz is addressable as set_zzz (sink) and
 // zzz_changed (source). Document ROUTEs using the aliases must wire and
 // deliver; the aliases are side-specific.
-void testInputOutputAliases() {
+TEST_CASE("input output aliases") {
   auto clock = std::make_shared<TimeSensor>();
   auto interp = std::make_shared<PositionInterpolator>();
   interp->setKey({0, 1});
@@ -576,37 +538,10 @@ void testInputOutputAliases() {
   scene.routes.emplace_back("Path", "value_changed", "Follower", "translation_changed");
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
-  check(r.routesAdded == 2, "set_/_changed alias routes added");
-  check(r.rejected.size() == 2, "wrong-side aliases rejected");
+  CHECK_MESSAGE((r.routesAdded == 2), "set_/_changed alias routes added");
+  CHECK_MESSAGE((r.rejected.size() == 2), "wrong-side aliases rejected");
   ctx.postEvent(interp.get(), "value_changed", std::any(SFVec3f{1, 0, 0}));
   ctx.tick(0.0);
-  check(veq(tr(mover), 1, 0, 0), "set_translation alias delivers");
-  check(veq(tr(follower), 1, 0, 0), "translation_changed alias fans out");
-}
-
-int main(int argc, char **argv) {
-  if (argc > 1) {
-    g_dataDir = argv[1];
-  } else {
-    g_dataDir = "runtime/parse/tests/data/x3dv";
-  }
-
-  test_route_validation();
-  test_all_valid_ok();
-  test_load_and_tick();
-  testInitializeOnlyNotRoutableSink();
-  testProtoRouteRedirect();
-  testNestedProtoBodyRoutes();
-  testNestedFirstPrimaryAndEventIsAliases();
-  testNestedProtoRouteValidation();
-  testInheritedProtoMetadataRoutes();
-  testSceneProtoToProtoRoute();
-  testInputOutputAliases();
-
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all scene-bridge tests passed\n";
-  return 0;
+  CHECK_MESSAGE((veq(tr(mover), 1, 0, 0)), "set_translation alias delivers");
+  CHECK_MESSAGE((veq(tr(follower), 1, 0, 0)), "translation_changed alias fans out");
 }

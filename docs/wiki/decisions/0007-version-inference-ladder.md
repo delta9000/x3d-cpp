@@ -38,7 +38,7 @@ Silently falling through to `"4.0"` was wrong because the corpus is dominated by
 files). Defaulting to 4.0 would produce false failures on valid 3.x content.
 Defaulting to 4.0 was therefore the wrong choice as a floor.
 
-The design forces from `docs/superpowers/specs/2026-06-13-m3-versioning-design.md`
+The design forces from [`docs/superpowers/specs/2026-06-13-m3-versioning-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-13-m3-versioning-design.md)
 (§1 and §8) established three requirements:
 
 1. **Deterministic resolution:** every file must produce exactly one version
@@ -151,7 +151,7 @@ specifies a `VERSION_MAPPED_FROM_VRML97` stamp for conformance reports
   known profiles; an unknown profile name falls through to the bare 3.0 floor.
   The table must be maintained when new profiles appear in later spec revisions.
 - **`VERSION_MAPPED_FROM_VRML97` stamp not yet wired into the conformance report**
-  (logged as VP2-L1 in the deprecated, historical `docs/superpowers/BACKLOG.md`). The floor is applied
+  (logged as VP2-L1 in the deprecated, historical [`docs/superpowers/BACKLOG.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/BACKLOG.md)). The floor is applied
   correctly in C++; the report-level stamp is a follow-up.
 - **VRML97 node/field dialect mapping** (the `Vrml97Dialect` rename table in
   `runtime/parse/Vrml97Dialect.hpp`) covers the known 606-file corpus. Any
@@ -163,6 +163,6 @@ specifies a `VERSION_MAPPED_FROM_VRML97` stamp for conformance reports
 - [Architecture](../architecture.md)
 - [Parse Readers subsystem](../subsystems/parse-readers.md)
 
-Design record: `docs/superpowers/specs/2026-06-13-m3-versioning-design.md` (§1, §8, §9b VP-2).
-Implementation plan: `docs/superpowers/plans/2026-06-16-m3-vp2-version-inference.md`.
+Design record: [`docs/superpowers/specs/2026-06-13-m3-versioning-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-13-m3-versioning-design.md) (§1, §8, §9b VP-2).
+Implementation plan: [`docs/superpowers/plans/2026-06-16-m3-vp2-version-inference.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/plans/2026-06-16-m3-vp2-version-inference.md).
 Backlog follow-ups (VP2-L1/L2): the [GitHub Project](https://github.com/users/delta9000/projects/2).

@@ -373,7 +373,7 @@ public:
         // Every generated setter does an unchecked any_cast<T>. Contain it here:
         // a caller mistake must not propagate as an exception out of a write the
         // SDK invited them to make. The field is unchanged (the cast throws
-        // before assignment), so skipping classifyDirty keeps the tracker honest.
+        // before assignment), so classifyDirty is skipped.
         return FieldWriteResult::TypeMismatch;
       }
       onFieldWritten(FieldAddress{node, field}, std::move(retained));

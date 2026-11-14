@@ -3,6 +3,7 @@
 // attach enrols a CollisionSensor; update drains the backend, resolves body
 // handles to the scene's RigidBody/CollidableShape nodes, and the reporter emits
 // CollisionSensor.contacts over the cascade. No physics engine required.
+#include "doctest/doctest.h"
 #include "PhysicsSystem.hpp"
 
 #include "X3DExecutionContext.hpp"
@@ -22,13 +23,6 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) { std::printf("FAIL: %s\n", msg); ++g_failures; }             \
-    else { std::printf("ok:   %s\n", msg); }                                   \
-  } while (0)
 
 // A minimal backend: addBody hands out 1,2,3...; step is a no-op; drainContacts
 // reports a persistent contact between handles 1 and 2 on every drain (models
@@ -88,7 +82,7 @@ makeBody(std::shared_ptr<CollidableShape> &outShape) {
   return body;
 }
 
-int main() {
+TEST_CASE("PhysicsSystem routes backend contacts to a CollisionSensor") {
   std::shared_ptr<CollidableShape> shapeA, shapeB;
   auto bodyA = makeBody(shapeA);
   auto bodyB = makeBody(shapeB);
@@ -112,13 +106,12 @@ int main() {
   ctx.tick(t);                 // t=0: establish clock, no dt
   for (int i = 0; i < 3; ++i) { t += 1.0 / 60.0; ctx.tick(t); }
 
-  CHECK(sensor->getContacts().size() == 1, "PhysicsSystem -> sensor got 1 contact");
-  CHECK(sensor->getIsActive() == true, "sensor isActive after wired contact");
+  CHECK_MESSAGE((sensor->getContacts().size() == 1), "PhysicsSystem -> sensor got 1 contact");
+  CHECK_MESSAGE((sensor->getIsActive() == true), "sensor isActive after wired contact");
   auto cs = sensor->getContacts();
   auto *c = cs.empty() ? nullptr : dynamic_cast<Contact *>(cs[0].get());
-  CHECK(c && c->getBody1().get() == bodyA.get(),
-        "Contact.body1 resolved to the scene RigidBody");
-  CHECK(c && c->getGeometry2().get() == shapeB.get(),
-        "Contact.geometry2 resolved to the scene CollidableShape");
-  return g_failures == 0 ? 0 : 1;
+  CHECK_MESSAGE((c && c->getBody1().get() == bodyA.get()),
+                "Contact.body1 resolved to the scene RigidBody");
+  CHECK_MESSAGE((c && c->getGeometry2().get() == shapeB.get()),
+                "Contact.geometry2 resolved to the scene CollidableShape");
 }

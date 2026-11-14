@@ -72,9 +72,9 @@ The STL write path (`tools/x3d-cli/stl_write.hpp`) stays core-side: it takes `Pa
 
 - [Architecture](../architecture.md)
 - Ingestion roadmap memory: `~/.claude/projects/.../memory/x3d-cpp-gen-ingestion-roadmap.md` — full decision trail including the spike, the abstraction pivot (BinaryGeometry → ExternalGeometry), and ratification
-- Dated design spec: `docs/superpowers/specs/2026-06-19-binary-geometry-extension-design.md` — the consolidated design document; cites ISO 19775-1 §4.4.5.1 and the EXTERNPROTO extension point
+- Dated design spec: [`docs/superpowers/specs/2026-06-19-binary-geometry-extension-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-19-binary-geometry-extension-design.md) — the consolidated design document; cites ISO 19775-1 §4.4.5.1 and the EXTERNPROTO extension point
 - `runtime/ext/ExternalGeometry.hpp` — the firewall boundary comment ("Core MUST NEVER include this file") and namespace declaration
 - `runtime/ext/ExtResolver.hpp` — `install()` function and URN interception
 - `runtime/ext/ExternalGeometryResolver.hpp` — lazy materialization seam; bridges firewall via core-typed `std::function`
-- `runtime/ext/codecs/StlReader.hpp` — first codec; the one-way dep comment ("ext→core") is load-bearing documentation
+- `runtime/ext/codecs/StlReader.hpp` — first codec; the one-way dep comment ("ext→core") documents the dependency direction
 - `cmake/x3d/options.cmake` (option declaration) and `cmake/x3d/ext.cmake` (quarantine block + ext tests)

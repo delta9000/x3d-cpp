@@ -14,7 +14,7 @@ if(X3D_CPP_BUILD_PROJ)
         enable_testing()
         add_executable(x3d_proj_geo_swap
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj/tests/proj_geo_swap_test.cpp")
-        target_link_libraries(x3d_proj_geo_swap PRIVATE x3d_proj)
+        target_link_libraries(x3d_proj_geo_swap PRIVATE x3d_proj x3d_doctest_main)
         target_compile_definitions(x3d_proj_geo_swap PRIVATE
             X3D_PROJ_TEST_GRID="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/proj/tests/sample_geoid.gtx")
         add_test(NAME x3d_proj_geo_swap COMMAND x3d_proj_geo_swap)
@@ -70,14 +70,14 @@ if(X3D_CPP_BUILD_PHYSICS)
         # (a) JoltBackend free-fall + rest-on-ground + determinism (engine proof).
         add_executable(x3d_physics_jolt_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/jolt_backend_test.cpp")
-        target_link_libraries(x3d_physics_jolt_test PRIVATE x3d_physics_jolt)
+        target_link_libraries(x3d_physics_jolt_test PRIVATE x3d_physics_jolt x3d_doctest_main)
         add_test(NAME x3d_physics_jolt COMMAND x3d_physics_jolt_test)
 
         # (b) PhysicsSystem unit: §37 scene -> attach + tick -> RigidBody.position
         #     updated and position_changed delivered to a routed Transform.
         add_executable(x3d_physics_system_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/physics/tests/physics_system_test.cpp")
-        target_link_libraries(x3d_physics_system_test PRIVATE x3d_physics_jolt)
+        target_link_libraries(x3d_physics_system_test PRIVATE x3d_physics_jolt x3d_doctest_main)
         add_test(NAME x3d_physics_system COMMAND x3d_physics_system_test)
     endif()
 endif()
@@ -145,11 +145,11 @@ if(X3D_CPP_BUILD_CURL)
         enable_testing()
         add_executable(x3d_assetresolver_backend_a_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/curl/tests/asset_resolver_backend_a_test.cpp")
-        target_link_libraries(x3d_assetresolver_backend_a_test PRIVATE x3d_curl)
+        target_link_libraries(x3d_assetresolver_backend_a_test PRIVATE x3d_curl x3d_doctest_main)
         add_test(NAME x3d_assetresolver_backend_a COMMAND x3d_assetresolver_backend_a_test)
         add_executable(x3d_http_address_guard_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/curl/tests/http_address_guard_test.cpp")
-        target_link_libraries(x3d_http_address_guard_test PRIVATE x3d_cpp::x3d_cpp CURL::libcurl)
+        target_link_libraries(x3d_http_address_guard_test PRIVATE x3d_cpp::x3d_cpp CURL::libcurl x3d_doctest_main)
         add_test(NAME x3d_http_address_guard COMMAND x3d_http_address_guard_test)
     endif()
 endif()
@@ -159,7 +159,7 @@ if(TARGET x3d_curl AND X3D_CPP_BUILD_TESTS)
     enable_testing()
     add_executable(x3d_assetresolver_swap
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/asset_resolver_swap_test.cpp")
-    target_link_libraries(x3d_assetresolver_swap PRIVATE x3d_curl)
+    target_link_libraries(x3d_assetresolver_swap PRIVATE x3d_curl x3d_doctest_main)
     target_compile_definitions(x3d_assetresolver_swap PRIVATE
         FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/io/tests/fixtures")
     add_test(NAME x3d_assetresolver_swap COMMAND x3d_assetresolver_swap)

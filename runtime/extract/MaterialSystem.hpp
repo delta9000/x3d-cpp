@@ -80,7 +80,7 @@ inline TextureRef refOf(const std::shared_ptr<X3DNode> &texNode,
     if (geombounds::getField<bool>(*texNode, "load", true))
       ref.url = geombounds::getField<MFString>(*texNode, "url", {});
   } else if (t == "ComposedCubeMapTexture") {
-    // §34.4.1: six SFNode face textures, no url ().
+    // §34.4.1: six SFNode face textures, no url.
     ref.source = TextureRef::Source::Cube;
     for (const char *face : {"frontTexture", "backTexture", "leftTexture", "rightTexture",
                              "topTexture", "bottomTexture"})
@@ -282,7 +282,7 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
   if (!material) {
     // Present Appearance, material=NULL => equivalent to a default UnlitMaterial:
     // lighting off, unlit object colour white (1,1,1), and Appearance.texture acts
-    // as the emissive (unlit) texture (; §12.4.2, §12.2.5 rule 4).
+    // as the emissive (unlit) texture (§12.4.2, §12.2.5 rule 4).
     m.model = MaterialModel::Unlit;
     m.emissive = SFColor{1.0f, 1.0f, 1.0f};
     for (TextureRef tr : texturesOf(appearance)) {
@@ -358,7 +358,7 @@ inline MaterialDesc materialOf(const X3DNode *appearance) {
 }
 
 // texturesOf — collect the Appearance's textures with material-slot precedence
-// over the legacy Appearance.texture .
+// over the legacy Appearance.texture.
 //
 //   * A material-borne texture slot wins: Material exposes diffuse/emissive/
 //     normal/occlusion/specular textures; PhysicalMaterial exposes base/

@@ -1283,7 +1283,7 @@
   note: "Fixed: FontStyle.family is read as the MFString it is (the enum-token read returned nothing, so every Text used SERIF) and resolved with resolveFontFamily — the first family the FontMetrics backend supports, else SERIF (text_extract_test family fallback)."
 
 # ── Decision/critic residue migrated from the deprecated BACKLOG (2026-06-22) ─
-# These four were tracked only in docs/superpowers/BACKLOG.md (CONF-TDN1V +
+# These four were tracked only in x3d-cpp@db23737:docs/superpowers/BACKLOG.md (CONF-TDN1V +
 # CONF-CRITIC's three unchecked behaviors). They have no engineering-deferral
 # home, so they move here on backlog deprecation. See git history of BACKLOG.md.
 - id: CONF-TDN1V
@@ -1320,7 +1320,7 @@
 
 # ── 2026-06-25 Three-RAG conformance-walk sweep (all 36 components) ──────────
 # High-severity gaps surfaced by the full per-component walk. Evidence cited at
-# file:line. See docs/superpowers/2026-06-25-conformance-walk-sweep.md.
+# file:line. See x3d-cpp@db23737:docs/superpowers/2026-06-25-conformance-walk-sweep.md.
 
 - id: ENV-10
   nodes: [Fog]

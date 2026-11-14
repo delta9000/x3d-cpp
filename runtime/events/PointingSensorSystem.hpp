@@ -27,6 +27,7 @@
 #include "GeoNodes.hpp"
 #include "GeometryBounds.hpp" // geombounds::getField (reflection-generic reads)
 #include "Mat4.hpp"
+#include "Vec3.hpp"
 #include "PickSystem.hpp"
 #include "Ray.hpp"
 #include "X3DExecutionContext.hpp"
@@ -317,7 +318,7 @@ private:
     // transpose(inv(inv(M))) = transpose(M). (PickSystem does the local→world
     // direction by transpose(inv(M)); this is the mirror for world→local.)
     const SFVec3f localNormal =
-        normalize(upperTranspose(M).transformDirection(pick.normal));
+        vec3::normalize(upperTranspose(M).transformDirection(pick.normal));
     ctx.postEvent(ts, "hitPoint_changed", std::any(SFVec3f{localPoint}));
     ctx.postEvent(ts, "hitNormal_changed", std::any(SFVec3f{localNormal}));
     ctx.postEvent(ts, "hitTexCoord_changed", std::any(SFVec2f{pick.texCoord}));
@@ -424,10 +425,6 @@ private:
     return r;
   }
 
-  static SFVec3f normalize(const SFVec3f &v) {
-    float l = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    return l > 1e-12f ? SFVec3f{v.x / l, v.y / l, v.z / l} : v;
-  }
 
   // cross-tick state
   unsigned long lastRevision_ = static_cast<unsigned long>(-1); // force 1st run

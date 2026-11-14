@@ -8,7 +8,7 @@
 // default resolver is the null stub (Failed); an app injects a real backend —
 // e.g. the CLI wires io::file::makeFileResolver (path-confined local files; ADR-0038),
 // which stays out of the public SDK headers.
-// Design: docs/superpowers/specs/2026-07-17-loadsensor-design.md.
+// Design: x3d-cpp@db23737:docs/superpowers/specs/2026-07-17-loadsensor-design.md.
 #ifndef X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 #define X3D_RUNTIME_LOAD_SENSOR_SYSTEM_HPP
 

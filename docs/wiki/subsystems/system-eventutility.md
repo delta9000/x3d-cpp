@@ -42,7 +42,7 @@ on one `toggle_changed` with the final value. An explicit `set_toggle`
 is ordinary inputOutput delivery; when it and a later TRUE land in one cascade,
 the outgoing ROUTE keeps the per-timestamp cap every inputOutput field has.
 
-Sequencers send one `value_changed` per key interval (§30.2.4,). The
+Sequencers send one `value_changed` per key interval (§30.2.4). The
 system remembers the interval of the last fraction that emitted; a later
 fraction in the same interval is silent. `next`/`previous` and edits to `key` or
 `keyValue` forget that interval, so the next fraction emits even if it lands in
@@ -99,7 +99,7 @@ std::size_t sequencerStepIndex(const MFFloat &key, float t);
 
 } // namespace x3d::runtime
 
-// Production wiring — the normal call site (in X3DSceneBridge.hpp):
+// Production wiring, declared in X3DSceneBridge.hpp:
 void attachEventUtilities(Scene &scene, X3DExecutionContext &ctx);
 ```
 

@@ -15,6 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "RecursionLimits.hpp"
 
 namespace x3d::codec {
 

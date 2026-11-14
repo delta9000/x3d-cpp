@@ -46,7 +46,7 @@ Rigid-body physics is implemented as a **core engine-agnostic seam** (`runtime/p
 - [Architecture](../architecture.md) — where the physics seam sits in the System set + the seam table.
 - [Physics subsystem](../subsystems/physics.md) — the implementation detail.
 - [ADR-0001: Ext Firewall](../decisions/0001-ext-firewall.md) — the sibling one-way isolation pattern for foreign code.
-- Spec: `docs/superpowers/specs/2026-06-20-physics-jolt-seam-design.md`.
+- Spec: [`docs/superpowers/specs/2026-06-20-physics-jolt-seam-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-physics-jolt-seam-design.md).
 
 ## Amendment (2026-11-05)
 

@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // pointer_arbitration_test.cpp — the per-tick "pointer consumed by a sensor"
 // flag on X3DExecutionContext (nav-vs-sensor arbitration seam). Default false;
 // settable within a tick; reset to false at the start of each tick().
@@ -18,20 +19,8 @@ using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
-}
+using x3d::test::setF;
+using x3d::test::addChild;
 
 static void test_pointing_sets_flag() {
   auto group = std::make_shared<Group>();

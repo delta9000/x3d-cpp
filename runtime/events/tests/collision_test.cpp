@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // collision_test.cpp — avatar collision in NavigationSystem (ISO/IEC 19775-1
 // §23.4.2 Collision, §23.4.4 NavigationInfo avatarSize/`WALK`). Builds small
 // scenes in code, holds the forward/back keys, ticks, and reads the effective
@@ -33,24 +34,14 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d;
 using namespace x3d::runtime;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 2e-2f) { return std::fabs(a - b) < e; }
 
 using NodeP = std::shared_ptr<X3DNode>;
 
-void setF(const NodeP &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-void addChild(const NodeP &p, const NodeP &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<NodeP>>(f.get(*p));
-      k.push_back(c); f.set(*p, std::any(std::move(k))); return;
-    }
-}
 // A Box shape of `size` centred at `at`.
 NodeP boxAt(SFVec3f size, SFVec3f at) {
   auto box = createX3DNode("Box");
@@ -200,5 +191,4 @@ TEST_CASE("collision_test") {
     run(w->ctx, 0.0, 1.0);
     CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("lines: an IndexedLineSet is not collidable"));
   }
-
 }

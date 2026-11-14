@@ -6,6 +6,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -14,18 +15,11 @@ using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using x3d::test::setF;
+using x3d::test::feq;
 
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 static bool vecEq(const SFVec3f &a, const SFVec3f &b) {
   return feq(a.x, b.x) && feq(a.y, b.y) && feq(a.z, b.z);
-}
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) {
-      f.set(*n, std::move(v));
-      return;
-    }
 }
 
 static std::shared_ptr<X3DNode> makeCoord(std::vector<SFVec3f> pts) {
@@ -195,7 +189,7 @@ TEST_CASE("mesh_builder_b6_test") {
     setF(flat, "zDimension", std::any(3));
     setF(flat, "xSpacing", std::any(1.0f));
     setF(flat, "zSpacing", std::any(1.0f));
-    // A non-planar bump so face normals genuinely differ cell-to-cell.
+    // A non-planar bump so face normals differ cell-to-cell.
     setF(flat, "height",
          std::any(std::vector<float>{0, 0, 0, 0, 2, 0, 0, 0, 0}));
     MeshData a = buildLocalMesh(flat.get(), geo::builtinProjection());

@@ -103,8 +103,8 @@ std::vector<std::string> ClassicVrmlReader::splitOnSpace(std::string_view line) 
 
 void ClassicVrmlReader::parseHeaderLine(const std::vector<std::string> &parts,
                                         runtime::X3DDocument &doc) {
-  // A `#VRML`/`#VRML97` payload is VRML97 — floor to the X3D 3.0 baseline
-  // (). X3D has no V2.0/V1.0, so never let such a token reach a writer.
+  // A `#VRML`/`#VRML97` payload is VRML97 — floor to the X3D 3.0 baseline.
+  // X3D has no V2.0/V1.0, so never let such a token reach a writer.
   if (!parts.empty() && (parts[0] == "#VRML" || parts[0] == "#VRML97")) {
     doc.version = "3.0";
     return;
@@ -293,7 +293,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   auto node = build::beginNode(rawTypeName);
   if (!node) {
     // Unknown node type (a forward/undeclared EXTERNPROTO name used as a
-    // node, or a genuinely unknown type). If a `{` body follows, consume the
+    // node, or an unknown type). If a `{` body follows, consume the
     // balanced block and skip it. If no `{` follows (e.g. an EXTERNPROTO
     // whose declaration is mid-file, or a malformed body), warn and return
     // without consuming a block so the caller keeps going. If a value-shaped
@@ -326,7 +326,7 @@ ClassicVrmlReader::parseNode(VrmlTokenizer &tok, runtime::Scene &scene,
   // over-count '}'), the body had a missing/swallowed '}': consume the '}' if
   // present, otherwise warn and leave the closer for the enclosing container
   // (the MFNode list's expectPunct(']'), or the parent body). Gate the
-  // leniency on a stray-closer being ahead so a genuinely truncated document
+  // leniency on a stray-closer being ahead so a truncated document
   // (any other token / EOF) still throws via expectPunct.
   if (tok.peek().isPunct('}')) {
     tok.next();

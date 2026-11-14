@@ -27,7 +27,7 @@ The `x3d canonicalize` command (Task D in the CLI suite) emits the X3D Canonical
 
 **The Java oracle (X3DJSAIL `-canonical`) uses JDK 25.** `X3dCanonicalizer` requires class file version 69 (Java 25). The oracle is invoked by explicit path (`$(mise where java@temurin-25.0.3+9.0.LTS)/bin/java`) during golden-gen and is never activated project-wide. This means the oracle cannot be in the CI loop; the gate must be Java-free. The tiered differential gate (`canon_gate.cpp`) therefore makes idempotence (tier-1, always Java-free) the hard CI gate, tolerant-diff agreement with committed X3DJSAIL golden fixtures (tier-2) the baseline-locked structural gate, and byte-exact match (tier-3) an informative stretch metric only.
 
-The spec (`docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md`) approved this direction after a de-risk run confirmed that JDK 25 produces `x3dCanonicalizer.isCanonical()=true` and that the observed X3DC14N form (single-quote delimiters, alphabetically sorted attributes, 2-space indent, minimal number format, DOCTYPE line) is stable.
+The spec ([`docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md)) approved this direction after a de-risk run confirmed that JDK 25 produces `x3dCanonicalizer.isCanonical()=true` and that the observed X3DC14N form (single-quote delimiters, alphabetically sorted attributes, 2-space indent, minimal number format, DOCTYPE line) is stable.
 
 ## Decision
 
@@ -88,7 +88,7 @@ handling remain as decided above.
 - [Architecture](../architecture.md)
 - [CLI Suite](../subsystems/cli-suite.md)
 - [Canonical XML writer subsystem](../subsystems/canonical-xml.md)
-- Design spec: `docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md` — full de-risk findings, tiered-gate design, and X3DC14N observed form
+- Design spec: [`docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-x3d-canonicalize-design.md) — full de-risk findings, tiered-gate design, and X3DC14N observed form
 - `runtime/codecs/CanonicalXmlWriter.hpp` — the canonical serializer; `canonFmtFloat`, `canonFmtDouble`, `canonEscape`, `x3dDoctype`, `CanonicalXmlWriter::writeDocument`
 - `runtime/codecs/XmlWriter.hpp` — the default writer; shares graph construction with `CanonicalXmlWriter` under the amendment above
 - `tools/x3d_cli.cpp` (`cmdCanonicalize`) — CLI entry point; shows `parseFile` + `CanonicalXmlWriter` wiring

@@ -4,11 +4,12 @@
 #include "Intersect.hpp"
 #include "Interpolation.hpp"
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <numbers>
 using namespace x3d::runtime;
+using x3d::test::feq;
 
-static bool feq(float a, float b, float eps = 1e-4f) { return std::fabs(a - b) < eps; }
 static bool veq(const SFVec3f& a, const SFVec3f& b, float eps = 1e-4f) {
   return feq(a.x,b.x,eps) && feq(a.y,b.y,eps) && feq(a.z,b.z,eps);
 }

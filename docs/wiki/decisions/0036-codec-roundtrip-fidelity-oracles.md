@@ -79,6 +79,6 @@ fuzzer — must be **proven to fail when the property is violated** before its g
 
 **Trade-offs:**
 - The randomized property fuzzer remains an opt-in discovery tool, not a CI gate (seed variance, needs
-  a built binary). Its findings are banked as deterministic tests; it is not itself load-bearing.
+  a built binary). Its findings are banked as deterministic tests; no gate depends on it.
 - Fault-injection validation is extra up-front work per oracle, justified only for structural
   properties where a silently-passing check would hide real data loss.

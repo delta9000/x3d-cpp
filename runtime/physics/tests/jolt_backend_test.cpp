@@ -6,6 +6,7 @@
 //       to rest at ~the sphere radius above the ground top (does not tunnel).
 //   (3) determinism: two identical sims produce bit-identical final positions.
 
+#include "doctest/doctest.h"
 #include "JoltBackend.hpp"
 
 #include <algorithm>
@@ -16,15 +17,6 @@
 #include <cstring>
 
 using namespace x3d::runtime;
-
-static int g_failures = 0;
-#define CHECK(cond, msg)                                                        \
-  do {                                                                          \
-    if (!(cond)) {                                                              \
-      std::fprintf(stderr, "FAIL: %s (%s:%d)\n", msg, __FILE__, __LINE__);      \
-      ++g_failures;                                                             \
-    }                                                                           \
-  } while (0)
 
 static const SFRotation kNoRot{0, 0, 1, 0};
 static const SFVec3f kZero{0, 0, 0};
@@ -45,82 +37,82 @@ static float freeFallFinalY() {
   return pos.y;
 }
 
-int main() {
+TEST_CASE("free fall matches the analytic solution") {
   // (1) Free-fall correctness.
-  {
-    float y = freeFallFinalY();
-    std::fprintf(stderr, "free-fall y after 1s = %f (expected ~5.1)\n", y);
-    CHECK(std::fabs(y - 5.1f) < 0.25f, "free-fall y near 5.1");
-  }
+  float y = freeFallFinalY();
+  std::fprintf(stderr, "free-fall y after 1s = %f (expected ~5.1)\n", y);
+  CHECK_MESSAGE((std::fabs(y - 5.1f) < 0.25f), "free-fall y near 5.1");
+}
 
+TEST_CASE("a sphere comes to rest on a fixed box") {
   // (2) Rest-on-ground: a sphere (r=0.5) dropped onto a fixed thin box at y=0.
-  {
-    JoltBackend backend;
-    WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
-    // Fixed ground: a wide, thin box centered at y=0; its top surface is y=0.1.
-    backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
-                    MassProperties{/*mass*/ 0.0f},
-                    /*fixed*/ true, SFVec3f{0, 0, 0}, kNoRot, kZero, kZero);
-    BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
-                                      MassProperties{/*mass*/ 1.0f},
-                                      /*fixed*/ false,
-                                      SFVec3f{0, 3, 0}, kNoRot, kZero, kZero);
-    for (int i = 0; i < 180; ++i)  // 3 s — plenty to fall + settle
-      backend.step(world, 1.0 / 60.0);
-    SFVec3f pos{0, 0, 0};
-    SFRotation ori = kNoRot;
-    backend.getBodyTransform(world, ball, pos, ori);
-    std::fprintf(stderr, "rest-on-ground ball y = %f (expected ~0.6)\n", pos.y);
-    // Ground top at 0.1 + sphere radius 0.5 = 0.6 center height.
-    CHECK(pos.y > 0.45f && pos.y < 0.8f, "ball rests on ground near y=0.6");
-  }
+  JoltBackend backend;
+  WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
+  // Fixed ground: a wide, thin box centered at y=0; its top surface is y=0.1.
+  backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
+                  MassProperties{/*mass*/ 0.0f},
+                  /*fixed*/ true, SFVec3f{0, 0, 0}, kNoRot, kZero, kZero);
+  BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
+                                    MassProperties{/*mass*/ 1.0f},
+                                    /*fixed*/ false,
+                                    SFVec3f{0, 3, 0}, kNoRot, kZero, kZero);
+  for (int i = 0; i < 180; ++i)  // 3 s — plenty to fall + settle
+    backend.step(world, 1.0 / 60.0);
+  SFVec3f pos{0, 0, 0};
+  SFRotation ori = kNoRot;
+  backend.getBodyTransform(world, ball, pos, ori);
+  std::fprintf(stderr, "rest-on-ground ball y = %f (expected ~0.6)\n", pos.y);
+  // Ground top at 0.1 + sphere radius 0.5 = 0.6 center height.
+  CHECK_MESSAGE((pos.y > 0.45f && pos.y < 0.8f), "ball rests on ground near y=0.6");
+}
 
+TEST_CASE("two identical free-fall runs are bit-identical") {
   // (3) Determinism: two identical free-fall sims => bit-identical final y.
-  {
-    float y1 = freeFallFinalY();
-    float y2 = freeFallFinalY();
-    CHECK(std::memcmp(&y1, &y2, sizeof(float)) == 0,
-          "two identical sims are bit-identical");
-  }
+  float y1 = freeFallFinalY();
+  float y2 = freeFallFinalY();
+  CHECK_MESSAGE((std::memcmp(&y1, &y2, sizeof(float)) == 0),
+                "two identical sims are bit-identical");
+}
 
+TEST_CASE("a PointConstraint pendulum holds its length and swings") {
   // (4) PointConstraint pendulum: a dynamic ball pinned to a world anchor at the
   //     origin, started 1 unit to the side, swings under gravity. The constraint
   //     must hold the bob ~1 unit from the anchor throughout (it does not fall
   //     freely, does not fly off) and the bob must actually swing (y drops, x
   //     moves toward the anchor).
-  {
-    JoltBackend backend;
-    WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
-    const SFVec3f anchor{0, 0, 0};
-    BodyHandle bob = backend.addBody(world, ShapeDesc::sphere(0.1f),
-                                     MassProperties{1.0f}, false,
-                                     SFVec3f{1, 0, 0}, kNoRot, kZero, kZero);
-    ConstraintDesc d;
-    d.kind = ConstraintDesc::Kind::Ball;
-    d.bodyA = bob;
-    d.bodyB = kInvalidBodyHandle;  // bind to world
-    d.anchor = anchor;
-    ConstraintHandle ch = backend.addConstraint(world, d);
-    CHECK(ch != kInvalidConstraintHandle, "point constraint created");
+  JoltBackend backend;
+  WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
+  const SFVec3f anchor{0, 0, 0};
+  BodyHandle bob = backend.addBody(world, ShapeDesc::sphere(0.1f),
+                                   MassProperties{1.0f}, false,
+                                   SFVec3f{1, 0, 0}, kNoRot, kZero, kZero);
+  ConstraintDesc d;
+  d.kind = ConstraintDesc::Kind::Ball;
+  d.bodyA = bob;
+  d.bodyB = kInvalidBodyHandle;  // bind to world
+  d.anchor = anchor;
+  ConstraintHandle ch = backend.addConstraint(world, d);
+  CHECK_MESSAGE((ch != kInvalidConstraintHandle), "point constraint created");
 
-    float maxDistErr = 0.0f, minY = 0.0f, maxX = -1e9f;
-    for (int i = 0; i < 120; ++i) {
-      backend.step(world, 1.0 / 60.0);
-      SFVec3f p{0, 0, 0};
-      SFRotation o = kNoRot;
-      backend.getBodyTransform(world, bob, p, o);
-      float dist = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-      maxDistErr = std::max(maxDistErr, std::fabs(dist - 1.0f));
-      minY = std::min(minY, p.y);
-      maxX = std::max(maxX, p.x);
-    }
-    std::fprintf(stderr,
-                 "pendulum(point): maxDistErr=%f minY=%f (must swing down)\n",
-                 maxDistErr, minY);
-    CHECK(maxDistErr < 0.05f, "point pendulum stays ~1 unit from anchor");
-    CHECK(minY < -0.3f, "point pendulum swings down (y drops well below start)");
+  float maxDistErr = 0.0f, minY = 0.0f, maxX = -1e9f;
+  for (int i = 0; i < 120; ++i) {
+    backend.step(world, 1.0 / 60.0);
+    SFVec3f p{0, 0, 0};
+    SFRotation o = kNoRot;
+    backend.getBodyTransform(world, bob, p, o);
+    float dist = std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    maxDistErr = std::max(maxDistErr, std::fabs(dist - 1.0f));
+    minY = std::min(minY, p.y);
+    maxX = std::max(maxX, p.x);
   }
+  std::fprintf(stderr,
+               "pendulum(point): maxDistErr=%f minY=%f (must swing down)\n",
+               maxDistErr, minY);
+  CHECK_MESSAGE((maxDistErr < 0.05f), "point pendulum stays ~1 unit from anchor");
+  CHECK_MESSAGE((minY < -0.3f), "point pendulum swings down (y drops well below start)");
+}
 
+TEST_CASE("a locked hinge holds while a free hinge swings") {
   // (5) HingeConstraint, free vs limited: two bobs hinged at the origin about z,
   //     each started horizontally at +x. A free hinge (limits ±pi) swings down to
   //     the bottom (y -> ~-1). A locked hinge (minLimit == maxLimit == 0 — the
@@ -140,8 +132,8 @@ int main() {
     d.axis = SFVec3f{0, 0, 1};  // hinge about z
     d.minLimit = minLim;
     d.maxLimit = maxLim;
-    CHECK(backend.addConstraint(world, d) != kInvalidConstraintHandle,
-          "hinge constraint created");
+    CHECK_MESSAGE((backend.addConstraint(world, d) != kInvalidConstraintHandle),
+                  "hinge constraint created");
     float maxDistErr = 0.0f, minY = 0.0f;
     for (int i = 0; i < 240; ++i) {  // 4s — plenty to settle
       backend.step(world, 1.0 / 60.0);
@@ -152,7 +144,7 @@ int main() {
                             std::fabs(std::sqrt(p.x * p.x + p.y * p.y) - 1.0f));
       minY = std::min(minY, p.y);
     }
-    CHECK(maxDistErr < 0.05f, "hinge bob stays ~1 unit from anchor");
+    CHECK_MESSAGE((maxDistErr < 0.05f), "hinge bob stays ~1 unit from anchor");
     return minY;
   };
   {
@@ -162,12 +154,13 @@ int main() {
     std::fprintf(stderr,
                  "hinge: free minY=%f (~-1) vs locked minY=%f (~0, stopped)\n",
                  freeMinY, lockedMinY);
-    CHECK(freeMinY < -0.9f, "free hinge swings to the bottom (~-1)");
-    CHECK(lockedMinY > -0.2f, "locked hinge limit stops the swing (~0)");
-    CHECK(freeMinY < lockedMinY - 0.5f,
-          "the limit demonstrably restricts the swing");
+    CHECK_MESSAGE((freeMinY < -0.9f), "free hinge swings to the bottom (~-1)");
+    CHECK_MESSAGE((lockedMinY > -0.2f), "locked hinge limit stops the swing (~0)");
+    CHECK_MESSAGE((freeMinY < lockedMinY - 0.5f), "the limit demonstrably restricts the swing");
   }
+}
 
+TEST_CASE("asymmetric hinge limits keep the §37 sign") {
   // (6) Asymmetric but spec-valid hinge limits (minAngle <= 0 <= maxAngle, so the
   //     initial pose is in range — §37: limits are measured from the initial
   //     position). This proves §37 minAngle/maxAngle map to Jolt with the correct
@@ -177,109 +170,102 @@ int main() {
   //     angle down, so it must rest at the -0.3 lower stop and never pass it.
   //     (A symmetric range like the free/locked cases above can't catch a sign
   //     error — only an asymmetric one can.)
-  {
+  JoltBackend backend;
+  WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
+  BodyHandle bob = backend.addBody(world, ShapeDesc::sphere(0.1f),
+                                   MassProperties{1.0f}, false,
+                                   SFVec3f{1, 0, 0}, kNoRot, kZero, kZero);
+  ConstraintDesc d;
+  d.kind = ConstraintDesc::Kind::Hinge;
+  d.bodyA = bob;
+  d.bodyB = kInvalidBodyHandle;
+  d.anchor = SFVec3f{0, 0, 0};
+  d.axis = SFVec3f{0, 0, 1};
+  d.minLimit = -0.3f;
+  d.maxLimit = 1.0f;
+  CHECK_MESSAGE((backend.addConstraint(world, d) != kInvalidConstraintHandle),
+                "asymmetric hinge constraint created");
+  float finalAngle = 0.0f, minAngle = 1e9f;
+  for (int i = 0; i < 240; ++i) {  // 4s — settle against the lower stop
+    backend.step(world, 1.0 / 60.0);
+    SFVec3f p{0, 0, 0};
+    SFRotation o = kNoRot;
+    backend.getBodyTransform(world, bob, p, o);
+    finalAngle = std::atan2(p.y, p.x);
+    minAngle = std::min(minAngle, finalAngle);
+  }
+  std::fprintf(stderr,
+               "asym hinge [-0.3,1.0]: final=%f min=%f (expect rest ~-0.3)\n",
+               finalAngle, minAngle);
+  CHECK_MESSAGE((finalAngle > -0.45f && finalAngle < -0.15f),
+                "asymmetric hinge rests at the -0.3 lower stop (correct sign)");
+  // The soft limit permits a small transient overshoot as the bob swings into
+  // it; a sign bug would instead let it swing all the way to ~-1.0..-1.35.
+  CHECK_MESSAGE((minAngle > -0.7f),
+                "asymmetric hinge does not swing far past the -0.3 stop (no sign flip)");
+}
+
+TEST_CASE("per-contact bounce raises the rebound") {
+  // (6) Per-contact restitution: a sphere dropped onto the ground rebounds clearly
+  //     higher with bounce 0.8 than with restitution left at Jolt's default (0).
+  auto reboundApex = [](float restitution) {
     JoltBackend backend;
     WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
-    BodyHandle bob = backend.addBody(world, ShapeDesc::sphere(0.1f),
-                                     MassProperties{1.0f}, false,
-                                     SFVec3f{1, 0, 0}, kNoRot, kZero, kZero);
-    ConstraintDesc d;
-    d.kind = ConstraintDesc::Kind::Hinge;
-    d.bodyA = bob;
-    d.bodyB = kInvalidBodyHandle;
-    d.anchor = SFVec3f{0, 0, 0};
-    d.axis = SFVec3f{0, 0, 1};
-    d.minLimit = -0.3f;
-    d.maxLimit = 1.0f;
-    CHECK(backend.addConstraint(world, d) != kInvalidConstraintHandle,
-          "asymmetric hinge constraint created");
-    float finalAngle = 0.0f, minAngle = 1e9f;
-    for (int i = 0; i < 240; ++i) {  // 4s — settle against the lower stop
+    backend.setContactResponse(world, /*friction*/ -1.0f, restitution);
+    backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
+                    MassProperties{0.0f}, true, SFVec3f{0, 0, 0}, kNoRot, kZero,
+                    kZero);
+    BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
+                                      MassProperties{1.0f}, false,
+                                      SFVec3f{0, 3, 0}, kNoRot, kZero, kZero);
+    float apex = 0.0f;
+    bool landed = false;
+    for (int i = 0; i < 180; ++i) {
       backend.step(world, 1.0 / 60.0);
       SFVec3f p{0, 0, 0};
       SFRotation o = kNoRot;
-      backend.getBodyTransform(world, bob, p, o);
-      finalAngle = std::atan2(p.y, p.x);
-      minAngle = std::min(minAngle, finalAngle);
+      backend.getBodyTransform(world, ball, p, o);
+      if (p.y < 0.8f) landed = true;           // reached the ground
+      if (landed) apex = std::max(apex, p.y);   // highest rebound after landing
     }
-    std::fprintf(stderr,
-                 "asym hinge [-0.3,1.0]: final=%f min=%f (expect rest ~-0.3)\n",
-                 finalAngle, minAngle);
-    CHECK(finalAngle > -0.45f && finalAngle < -0.15f,
-          "asymmetric hinge rests at the -0.3 lower stop (correct sign)");
-    // The soft limit permits a small transient overshoot as the bob swings into
-    // it; a sign bug would instead let it swing all the way to ~-1.0..-1.35.
-    CHECK(minAngle > -0.7f,
-          "asymmetric hinge does not swing far past the -0.3 stop (no sign flip)");
-  }
+    return apex;
+  };
+  float bouncy = reboundApex(0.8f);
+  float dead = reboundApex(-1.0f);  // unset -> Jolt default restitution 0
+  std::fprintf(stderr, "bounce apex: restitution0.8=%.3f vs default=%.3f\n",
+               bouncy, dead);
+  CHECK_MESSAGE((bouncy > 1.0f), "restitution 0.8 sphere rebounds high (>1)");
+  CHECK_MESSAGE((dead < 0.85f), "default-restitution sphere does not bounce (settles)");  // Jolt leaves a small impulse residual (~0.79) even at restitution 0; 0.85 is above it, well below a real bounce.
+  CHECK_MESSAGE((bouncy > dead + 0.4f), "authored restitution clearly increases rebound");
+}
 
-  // (6) Per-contact restitution: a sphere dropped onto the ground rebounds clearly
-  //     higher with bounce 0.8 than with restitution left at Jolt's default (0).
-  {
-    auto reboundApex = [](float restitution) {
-      JoltBackend backend;
-      WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
-      backend.setContactResponse(world, /*friction*/ -1.0f, restitution);
-      backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
-                      MassProperties{0.0f}, true, SFVec3f{0, 0, 0}, kNoRot, kZero,
-                      kZero);
-      BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
-                                        MassProperties{1.0f}, false,
-                                        SFVec3f{0, 3, 0}, kNoRot, kZero, kZero);
-      float apex = 0.0f;
-      bool landed = false;
-      for (int i = 0; i < 180; ++i) {
-        backend.step(world, 1.0 / 60.0);
-        SFVec3f p{0, 0, 0};
-        SFRotation o = kNoRot;
-        backend.getBodyTransform(world, ball, p, o);
-        if (p.y < 0.8f) landed = true;           // reached the ground
-        if (landed) apex = std::max(apex, p.y);   // highest rebound after landing
-      }
-      return apex;
-    };
-    float bouncy = reboundApex(0.8f);
-    float dead = reboundApex(-1.0f);  // unset -> Jolt default restitution 0
-    std::fprintf(stderr, "bounce apex: restitution0.8=%.3f vs default=%.3f\n",
-                 bouncy, dead);
-    CHECK(bouncy > 1.0f, "restitution 0.8 sphere rebounds high (>1)");
-    CHECK(dead < 0.85f, "default-restitution sphere does not bounce (settles)");  // Jolt leaves a small impulse residual (~0.79) even at restitution 0; 0.85 is above it, well below a real bounce.
-    CHECK(bouncy > dead + 0.4f, "authored restitution clearly increases rebound");
-  }
-
+TEST_CASE("autoDisable lets a resting body sleep") {
   // (7) Sleeping / auto-disable (§37 autoDisable). A ball resting on the ground:
   //     with allow-sleeping ON (world + body) and a short disableTime it goes to
   //     sleep (isBodyActive false); with allow-sleeping off it keeps integrating
   //     (isBodyActive stays true) after the very same number of steps.
-  {
-    auto restIsActiveAfter = [](bool allowSleeping) {
-      JoltBackend backend;
-      WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
-      // disableTime 0.1 s -> Jolt mTimeBeforeSleep; -1 leaves the velocity default.
-      backend.setSleepSettings(world, allowSleeping, 0.1f, -1.0f);
-      backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
-                      MassProperties{0.0f}, true, SFVec3f{0, 0, 0}, kNoRot, kZero,
-                      kZero);
-      BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
-                                        MassProperties{1.0f}, false,
-                                        SFVec3f{0, 0.65f, 0}, kNoRot, kZero, kZero);
-      backend.setBodyAllowSleeping(world, ball, allowSleeping);
-      for (int i = 0; i < 180; ++i)  // 3 s — settle well past disableTime
-        backend.step(world, 1.0 / 60.0);
-      return backend.isBodyActive(world, ball);
-    };
-    bool neverSleepsActive = restIsActiveAfter(false);
-    bool maySleepActive = restIsActiveAfter(true);
-    std::fprintf(stderr,
-                 "rest body: autoDisable=false active=%d, autoDisable=true active=%d\n",
-                 neverSleepsActive ? 1 : 0, maySleepActive ? 1 : 0);
-    CHECK(neverSleepsActive,
-          "autoDisable=false body at rest never sleeps (still active)");
-    CHECK(!maySleepActive,
-          "autoDisable=true + disableTime=0.1 body at rest sleeps");
-  }
-
-  if (g_failures == 0)
-    std::fprintf(stderr, "jolt_backend_test: ALL PASS\n");
-  return g_failures == 0 ? 0 : 1;
+  auto restIsActiveAfter = [](bool allowSleeping) {
+    JoltBackend backend;
+    WorldHandle world = backend.createWorld(SFVec3f{0, -9.8f, 0});
+    // disableTime 0.1 s -> Jolt mTimeBeforeSleep; -1 leaves the velocity default.
+    backend.setSleepSettings(world, allowSleeping, 0.1f, -1.0f);
+    backend.addBody(world, ShapeDesc::box(SFVec3f{10, 0.1f, 10}),
+                    MassProperties{0.0f}, true, SFVec3f{0, 0, 0}, kNoRot, kZero,
+                    kZero);
+    BodyHandle ball = backend.addBody(world, ShapeDesc::sphere(0.5f),
+                                      MassProperties{1.0f}, false,
+                                      SFVec3f{0, 0.65f, 0}, kNoRot, kZero, kZero);
+    backend.setBodyAllowSleeping(world, ball, allowSleeping);
+    for (int i = 0; i < 180; ++i)  // 3 s — settle well past disableTime
+      backend.step(world, 1.0 / 60.0);
+    return backend.isBodyActive(world, ball);
+  };
+  bool neverSleepsActive = restIsActiveAfter(false);
+  bool maySleepActive = restIsActiveAfter(true);
+  std::fprintf(stderr,
+               "rest body: autoDisable=false active=%d, autoDisable=true active=%d\n",
+               neverSleepsActive ? 1 : 0, maySleepActive ? 1 : 0);
+  CHECK_MESSAGE((neverSleepsActive),
+                "autoDisable=false body at rest never sleeps (still active)");
+  CHECK_MESSAGE((!maySleepActive), ("autoDisable=true + disableTime=0.1 body at rest sleeps"));
 }

@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // events_misc_test.cpp — regression tests for small event-model gaps:
 //   §30.4.6 an integerKey write re-emits triggerValue (same value too)
 //   §21.2   enabling a key device sensor disables the others
@@ -36,23 +37,13 @@ using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 namespace {
-
 bool deq(double a, double b, double e = 1e-6) { return std::fabs(a - b) <= e; }
 
 using NodeP = std::shared_ptr<X3DNode>;
-void setF(const NodeP &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-void addChild(const NodeP &p, const NodeP &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<NodeP>>(f.get(*p));
-      k.push_back(c); f.set(*p, std::any(std::move(k))); return;
-    }
-}
 
 void test_integer_trigger_key_write() {
   auto trig = std::make_shared<IntegerTrigger>();
@@ -307,7 +298,6 @@ TEST_CASE("events_misc_test") {
   test_nested_inline_readiness();
   test_anchor_activation();
   test_anchor_loadsensor_waits_for_viewpoint_bind();
-
 }
 
 TEST_CASE("structural removal retires listeners before node address reuse") {

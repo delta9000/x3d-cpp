@@ -23,7 +23,7 @@ This subsystem mirrors the shape of the Interpolator System: a small arithmetic 
 |---|---|
 | `runtime/events/FollowerArith.hpp` | Per-type arithmetic the two systems are generic over: `FollowerArith<T>::lerp` / `dist` / `reshapeLike` for `float`, `SFVec2f`, `SFVec3f`, `SFColor`, and `SFRotation` (rotation `lerp` is `slerpRotation`; `dist` is the geodesic angle). `MFFollowerArith<Elem>` provides element-wise `lerp`/`dist` and the length-reconciling `reshapeLike` for the `MFVec3f`/`MFVec2f` (Coordinate/TexCoord) types. |
 | `runtime/events/FollowerSystem.hpp` | Two generic `System` templates: `DamperSystem<NodeT,ValueT>` (§39.3.2 IIR damper cascade) and `ChaserSystem<NodeT,ValueT>` (§39.3.1 FIR tap sum). Each installs `set_destination` / `set_value` handlers on attach and drives outputs in `update(now, ctx)`. |
-| `runtime/events/FollowerRegistration.hpp` | `makeFollowerSystems()` — the single source of truth for the 14-system list (7 types × Damper + Chaser). `attachFollowers(scene, ctx)` (defined in `runtime/events/X3DSceneBridge.hpp`) is the production caller that walks the scene and offers every node to each system's `attach`. |
+| `runtime/events/FollowerRegistration.hpp` | `makeFollowerSystems()` — the single source of truth for the 14-system list (7 types × Damper + Chaser). `attachFollowers(scene, ctx)` (declared in `runtime/events/X3DSceneBridge.hpp`, defined in `X3DSceneBridge.cpp`) is the production caller that walks the scene and offers every node to each system's `attach`. |
 
 ## Interfaces and seams
 
@@ -53,7 +53,7 @@ DamperSystem<TexCoordDamper2D, MFVec2f>    ChaserSystem<TexCoordChaser2D, MFVec2
 
 - `set_destination` / `set_value` handler registration — `attach(node, ctx)` installs `setOnSet_destinationHandler` and `setOnSet_valueHandler` lambdas (matched by `dynamic_cast<NodeT*>`, so the scene-walk is safe to offer every node). `set_destination` updates the target and activates the transition; `set_value` snaps the output and stops it.
 - Dual write on output — each emission both calls the node's own `emitValue_changed` / `emitIsActive` setter and `ctx.postEvent(node, "value_changed"|"isActive", …)` to seed the [event cascade](event-cascade.md), so downstream ROUTEs fire. This matches the Interpolator System's `postEvent` path.
-- `attachFollowers` scene-walk — mirrors `attachInterpolators`; `makeFollowerSystems()` is the registry, `attachFollowers` in `X3DSceneBridge.hpp` is the production wiring.
+- `attachFollowers` scene-walk — mirrors `attachInterpolators`; `makeFollowerSystems()` is the registry, `attachFollowers` in `X3DSceneBridge.cpp` is the production wiring.
 
 ### Spec-conformance annotations
 

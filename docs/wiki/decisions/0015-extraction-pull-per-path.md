@@ -88,8 +88,8 @@ We decided that:
 - [Architecture](../architecture.md)
 - [Extract subsystem](../subsystems/extract.md) — `runtime/extract/SceneExtractor.hpp`, `MeshBuilder.hpp`, `RenderItem.hpp`, `PackedMesh.hpp`; the full layer-A implementation
 - [Dirty bounds and transform](../subsystems/dirty-bounds-transform.md) — `runtime/scene/DirtyTracker.hpp`, `TransformSystem.hpp`, `BoundsSystem.hpp`; the dirty-set machinery whose one-tick clear is the structural precondition for the pull contract
-- Design spec: `docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md` — the authoritative M2.5 design; the "Decisions resolved" section names each sub-decision and cites the code-verified constraints
-- `runtime/extract/SceneExtractor.hpp` — the implementation; the file-top comment block restates the per-path identity and one-delta-per-tick contract as load-bearing inline documentation
+- Design spec: [`docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-14-m25-extraction-poc-renderer-design.md) — the authoritative M2.5 design; the "Decisions resolved" section names each sub-decision and cites the code-verified constraints
+- `runtime/extract/SceneExtractor.hpp` — the implementation; the file-top comment block restates the per-path identity and one-delta-per-tick contract
 - `runtime/events/X3DExecutionContext.hpp` — `tick()` at line 206 where `dirty_.clear()` establishes the one-tick dirty window; `dirtyTracker()` accessor; `classifyDirty` binding at line 86
 - `runtime/scene/TransformSystem.hpp` — `world_` (the first-path-only table); lines 101–108 comment documents the documented approximation and defers to the extractor for per-path correctness
 - `runtime/scene/PickSystem.hpp` — `worldOfRec` is the prior art proving that fresh per-path accumulation is feasible and already correct in the codebase

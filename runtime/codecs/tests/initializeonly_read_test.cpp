@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <functional>
 #include <memory>
+#include "x3d/nodes/X3DNodeFactory.hpp"
 using namespace x3d::core;
 using namespace x3d::nodes;
 namespace runtime = x3d::runtime;

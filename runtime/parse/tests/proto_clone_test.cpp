@@ -29,7 +29,7 @@ static void cloneTest() {
   auto out = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(cKids->get(*clone));
   CHECK((out.size() == 2));
   CHECK((out[0].get() == out[1].get()));      // USE sharing preserved
-  CHECK((out[0].get() != shape.get()));        // genuinely a clone
+  CHECK((out[0].get() != shape.get()));        // a distinct clone
   CHECK((out[0]->getDEF() == "S"));            // DEF copied
 }
 

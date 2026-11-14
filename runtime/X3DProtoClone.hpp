@@ -43,7 +43,7 @@ deepClone(const std::shared_ptr<x3d::nodes::X3DNode> &src,
   // A resolver may opt this declaration into extension cloning only.
   if (!dst && context.createNode)
     dst = context.createNode(src->nodeTypeName());
-  if (!dst) return nullptr;                            // genuinely unknown type: drop
+  if (!dst) return nullptr;                            // unknown type: drop
   cloneMap[src.get()] = dst;
   dst->setDEF(src->getDEF());
 

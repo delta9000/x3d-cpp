@@ -26,6 +26,7 @@
 #include <cassert>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <typeinfo>
 #include <vector>
 
@@ -77,6 +78,13 @@ private:
   std::any box_;
   const T *ptr_ = nullptr;
 };
+
+/// The field named `name` in `n`'s reflected table, or null.
+inline const x3d::core::FieldInfo *findField(const x3d::nodes::X3DNode &n, std::string_view name) {
+  for (const auto &f : n.fields())
+    if (f.x3dName == name) return &f;
+  return nullptr;
+}
 
 /// Call `fn(field, child)` for every non-null child in `n`'s readable SFNode
 /// and MFNode fields, in field-table order (`child` is a

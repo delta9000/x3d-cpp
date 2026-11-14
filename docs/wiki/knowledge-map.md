@@ -23,5 +23,6 @@ Use the source appropriate to the question:
 [Using the RAGs](guides/rags.md) owns configuration, commands, and index-refresh
 instructions.
 
-`docs/superpowers/` and `docs/plans/` are frozen design archives. Use current
-subsystem pages and ADRs for present behavior and decisions.
+The old dated specs and plans were removed from the tree; browse them at
+[commit db23737](https://github.com/delta9000/x3d-cpp/tree/db23737f43f9ec16d983583834c40c70c810bf63/docs). Use current subsystem pages and ADRs for present
+behavior and decisions.

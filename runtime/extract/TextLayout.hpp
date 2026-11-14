@@ -269,7 +269,7 @@ inline TextLayoutResult computeTextLayout(
                 firstBaselineMinor = static_cast<float>(N - 1) * baselineStep
                                    - metrics[N - 1].descender;
             } else {
-                // Top of last line at Y=0 (block entirely below Y=0), .
+                // Top of last line at Y=0 (block entirely below Y=0).
                 // Lines stack up (topToBottom=F): last baseline =
                 // first + (N-1)*baselineStep; top of last line =
                 // last baseline + ascender[N-1] = 0

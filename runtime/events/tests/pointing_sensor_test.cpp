@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // Pointing-device outputs and coordinate frames (§20.4.4, §20.2.1, §20.2.3).
 
 #include "PointingSensorSystem.hpp"
@@ -29,25 +30,13 @@ using namespace x3d;
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
 
 // Reflection field setter / child-append helpers (mirror m2d_tick_test).
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
-}
 
 std::shared_ptr<X3DNode> boxShape(SFVec3f size = {2, 2, 2}) {
   auto shape = std::make_shared<Shape>();

@@ -1,5 +1,6 @@
 #include "GeoFrame.hpp"
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // navigation_test.cpp — NavigationSystem driving the bound Viewpoint from
 // the input seam (pointer-drag + KeyState) and the bound NavigationInfo, per
 // ISO/IEC 19775-1 §23.2.3 / §23.3.1 / §23.4.4 (modes `EXAMINE` / `FLY` / `LOOKAT` /
@@ -16,7 +17,6 @@
 //       emits transitionComplete; centerOfRotation is set to the bbox center.
 //   (4) `NONE` is inert (no pose change on drag/keys).
 //   (5) Switching NavigationInfo.type switches behavior (`NONE` -> `EXAMINE`).
-// Exit code 0 on success; nonzero on any failed check.
 
 #include "NavigationSystem.hpp"
 #include "X3DDocument.hpp" // inline Scene::addRootNode
@@ -39,22 +39,11 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d;
 using namespace x3d::runtime;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 namespace {
-
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
-
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c); f.set(*p, std::any(std::move(k))); return;
-    }
-}
 
 float dist(const SFVec3f &a, const SFVec3f &b) {
   float dx = a.x-b.x, dy = a.y-b.y, dz = a.z-b.z;

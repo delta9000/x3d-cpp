@@ -21,7 +21,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 // Relay: inputOutput SFVec3f value (no is) over a Group body. Source drives it;
 // Dest receives the relayed value_changed.
 const char *kRelayXml = R"(<X3D version='4.0'><Scene>
@@ -283,7 +282,6 @@ TEST_CASE("proto_interface_state_test") {
   test_nested_siblings_do_not_overwrite();
   test_shared_primary_keeps_both();
   test_externproto_unconnected_field();
-
 }
 
 TEST_CASE("unconnected PROTO MFNode interface relays node identity and empty values") {
@@ -339,11 +337,11 @@ TEST_CASE("unconnected PROTO SFNode interface relays node identity and NULL") {
   CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
       doc.scene.authorFields->getValue(*relay, "value")) == geometry);
   CHECK(std::any_cast<std::shared_ptr<X3DNode>>(
-      proto_detail::findField(*dest, "geometry")->get(*dest)) == geometry);
+      findField(*dest, "geometry")->get(*dest)) == geometry);
   ctx.postEvent(source.get(), "geometry", std::any(std::shared_ptr<X3DNode>{}));
   ctx.tick(1.0);
   CHECK_FALSE(std::any_cast<std::shared_ptr<X3DNode>>(
-      proto_detail::findField(*dest, "geometry")->get(*dest)));
+      findField(*dest, "geometry")->get(*dest)));
 }
 
 TEST_CASE("unconnected PROTO node defaults are private but caller overrides retain sharing") {

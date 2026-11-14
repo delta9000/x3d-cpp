@@ -7,6 +7,7 @@
 #include "FontMetrics.hpp"
 #include "GeoProjection.hpp"
 #include "NurbsEval.hpp"
+#include "Vec3.hpp"
 #include "PackedMesh.hpp"
 #include "RecursionLimits.hpp"
 #include "RenderItem.hpp"
@@ -51,7 +52,7 @@ struct MeshBuildOptions {
   // ceiling on node-visits per fullSnapshot() walk (extractor + light
   // collection). Bounds an acyclic "doubling DAG" fan-out (2^depth paths) that
   // would otherwise emit billions of RenderItems/LightDescs. Default is far
-  // above any legitimate placement count; raise it for a genuinely huge scene
+  // above any legitimate placement count; raise it for a huge scene
   // (and check SceneExtractor::budgetExceeded() to detect truncation).
   std::size_t maxWalkVisits = kMaxGraphWalkVisits;
 
@@ -74,7 +75,7 @@ struct MeshBuildOptions {
 
 namespace mesh_detail {
 
-// Promote an SFColor to SFColorRGBA with alpha = 1 .
+// Promote an SFColor to SFColorRGBA with alpha = 1.
 SFColorRGBA promote(const SFColor &c);
 
 // Geometric (flat) normal of a triangle (a,b,c). Returns {0,0,0} for a
@@ -232,6 +233,7 @@ AttrResolvers buildAttrs(const X3DNode &geom);
 // the exact same cull rule as an extracted mesh (front = CCW, solid => cull
 // back). ccw/solid are carried verbatim by buildLocalMesh from the node fields
 // (primitive defaults solid=true).
+//
 // Push one CCW triangle (a,b,c) with its three already-outward corner normals
 // and its three per-corner default texcoords. The analytic primitives
 // carry no texCoord field, so the spec's per-primitive UV mapping is always
@@ -240,8 +242,6 @@ AttrResolvers buildAttrs(const X3DNode &geom);
 void emitTri(MeshData &m, const SFVec3f &a, const SFVec3f &b, const SFVec3f &c,
              const SFVec3f &na, const SFVec3f &nb, const SFVec3f &nc,
              const SFVec2f &ta, const SFVec2f &tb, const SFVec2f &tc);
-
-SFVec3f normalize(const SFVec3f &v);
 
 // default longitudinal texture S for the analytic primitives. ISO/IEC
 // 19775-1 §13.3.2/3/7 place the vertical texture seam at the back (X=0 plane,
@@ -376,6 +376,9 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
   m.hasColors = !m.colors.empty();
 }
 
+// Rotate v about a (already-normalized) axis by `angle` radians (Rodrigues).
+SFVec3f rotateAxisAngle(const SFVec3f &v, const SFVec3f &axis, float angle);
+
 // EXTRUSION. Sweep a 2D crossSection along a 3D spine, building a
 // Spine-aligned Cross-section Coordinate (SCP) frame at every spine point per
 // the X3D spec (19.4.5 / 13.3.5):
@@ -415,13 +418,6 @@ inline void emitHeightGrid(MeshData &m, int xDim, int zDim, PosFn pos,
 // length / total spine length. begin/end caps: the cross-section's own 2D
 // coords normalized to the cross-section bbox. Emitted per expanded corner,
 // parallel to positions (and reordered in lockstep with the ccw winding swap).
-SFVec3f vsub(const SFVec3f &a, const SFVec3f &b);
-SFVec3f vcross(const SFVec3f &a, const SFVec3f &b);
-float vdot(const SFVec3f &a, const SFVec3f &b);
-float vlen(const SFVec3f &a);
-
-// Rotate v about a (already-normalized) axis by `angle` radians (Rodrigues).
-SFVec3f rotateAxisAngle(const SFVec3f &v, const SFVec3f &axis, float angle);
 
 void tessellateExtrusion(MeshData &m, const std::vector<SFVec2f> &crossSection,
                          const std::vector<SFVec3f> &spine,

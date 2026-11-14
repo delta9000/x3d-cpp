@@ -9,9 +9,8 @@
 // content tree) admits `../` that stays within it. Both still block absolute
 // paths and escapes above the root.
 // Hermetic: builds a temp directory layout, asserts, tears it down.
-//
-// Exit code 0 on success; nonzero on any failed assertion.
 
+#include "doctest/doctest.h"
 #include "PathConfine.hpp"
 
 #include <filesystem>
@@ -23,17 +22,6 @@ using namespace x3d::codec;
 namespace fs = std::filesystem;
 
 namespace {
-
-int failures = 0;
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 void touch(const fs::path &p) {
   fs::create_directories(p.parent_path());
   std::ofstream(p) << "<X3D/>\n";
@@ -41,7 +29,7 @@ void touch(const fs::path &p) {
 
 } // namespace
 
-int main() {
+TEST_CASE("confineLocalIncludePath") {
   // <root>/Content/{base/{ok.x3d, sub/deep.x3d}, Tools/proto.x3d}  and a file
   // <root>/outside.x3d that sits above the Content tree.
   const fs::path root = fs::temp_directory_path() / "x3d_path_confine_test";
@@ -53,36 +41,38 @@ int main() {
   touch(root / "outside.x3d");
   const std::string base = (root / "Content" / "base").string();
   const std::string content = (root / "Content").string();
-  // includes within the source subtree resolve.
-  check(confineLocalIncludePath("ok.x3d", base, base).has_value(),
-        "tight root: sibling within source dir resolves");
-  check(confineLocalIncludePath("sub/deep.x3d", base, base).has_value(),
-        "tight root: subdirectory within source dir resolves");
-  // `../` cross-directory and absolute are rejected under a tight root.
-  check(!confineLocalIncludePath("../Tools/proto.x3d", base, base).has_value(),
-        "tight root: ../ cross-directory ref is blocked");
-  check(!confineLocalIncludePath("/etc/passwd", base, base).has_value(),
-        "tight root: absolute path is blocked");
-  // `../` is admitted when it stays within the broader root...
-  check(confineLocalIncludePath("../Tools/proto.x3d", base, content).has_value(),
-        "broad root: ../ within the content tree resolves");
-  // ...but absolute paths and escapes above the root are still rejected.
-  check(!confineLocalIncludePath("../../outside.x3d", base, content).has_value(),
-        "broad root: escape above the content root is blocked");
-  check(!confineLocalIncludePath("/etc/passwd", base, content).has_value(),
-        "broad root: absolute path is still blocked");
-  const auto a = confineLocalIncludePath("ok.x3d", base, base);
-  const auto b = confineLocalIncludePath("./ok.x3d", base, base);
-  const auto c = confineLocalIncludePath("sub/../ok.x3d", base, base);
-  check(a && b && c && *a == *b && *b == *c,
-        "./x, x and y/../x canonicalize to one cycle-guard key");
+
+  SUBCASE("a tight root admits the source subtree only") {
+    // includes within the source subtree resolve.
+    CHECK_MESSAGE((confineLocalIncludePath("ok.x3d", base, base).has_value()),
+                  "tight root: sibling within source dir resolves");
+    CHECK_MESSAGE((confineLocalIncludePath("sub/deep.x3d", base, base).has_value()),
+                  "tight root: subdirectory within source dir resolves");
+    // `../` cross-directory and absolute are rejected under a tight root.
+    CHECK_MESSAGE((!confineLocalIncludePath("../Tools/proto.x3d", base, base).has_value()),
+                  "tight root: ../ cross-directory ref is blocked");
+    CHECK_MESSAGE((!confineLocalIncludePath("/etc/passwd", base, base).has_value()),
+                  "tight root: absolute path is blocked");
+  }
+
+  SUBCASE("a broad root admits ../ inside it but not escapes") {
+    // `../` is admitted when it stays within the broader root...
+    CHECK_MESSAGE((confineLocalIncludePath("../Tools/proto.x3d", base, content).has_value()),
+                  "broad root: ../ within the content tree resolves");
+    // ...but absolute paths and escapes above the root are still rejected.
+    CHECK_MESSAGE((!confineLocalIncludePath("../../outside.x3d", base, content).has_value()),
+                  "broad root: escape above the content root is blocked");
+    CHECK_MESSAGE((!confineLocalIncludePath("/etc/passwd", base, content).has_value()),
+                  "broad root: absolute path is still blocked");
+  }
+
+  SUBCASE("equivalent spellings canonicalize to one key") {
+    const auto a = confineLocalIncludePath("ok.x3d", base, base);
+    const auto b = confineLocalIncludePath("./ok.x3d", base, base);
+    const auto c = confineLocalIncludePath("sub/../ok.x3d", base, base);
+    CHECK_MESSAGE((a && b && c && *a == *b && *b == *c),
+                  "./x, x and y/../x canonicalize to one cycle-guard key");
+  }
 
   fs::remove_all(root, ec);
-
-  if (failures) {
-    std::cerr << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "all path_confine checks passed\n";
-  return 0;
 }

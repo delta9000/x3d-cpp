@@ -1,18 +1,11 @@
 #include "doctest/doctest.h"
-// cascade_conformance_test.cpp
-// Conformance regressions for the event-model semantics the BACKLOG gates on the
-// Script/SAI un-tabling push (docs/superpowers/BACKLOG.md rows,):
-//   the cascade enforced per-ROUTE dedup but not the spec's per-FIELD
-//           cap: "a node produces at most one event per field per timestamp"
-//           (ISO 19775-1 §4.4.8.3). Fan-in (two ROUTEs into one field) must
-//           deliver ONCE; a cyclic graph must produce each field at most once.
-//   X3DExecutionContext::tick did a single pass (systems update ->
-//           cascade drain -> propagate). §4.4.8.3 requires re-evaluating
-//           steps 2-3 until a pass produces no new events, so a sensor whose
-//           input is driven by a route from a LATER-ordered sensor resolves
-//           within one tick instead of lagging a frame. Termination is bounded
-//           by the per-field cap.
-// Exit code 0 on success; nonzero on any failed assertion.
+// cascade_conformance_test.cpp — event-model regressions (ISO 19775-1 §4.4.8.3):
+//   - per-FIELD cap: a node produces at most one event per field per timestamp,
+//     so fan-in (two ROUTEs into one field) delivers once and a cycle produces
+//     each field at most once (per-ROUTE dedup alone is not enough);
+//   - steps 2-3 repeat until a pass produces no new events, so a sensor driven
+//     by a route from a later-ordered sensor resolves within one tick instead of
+//     lagging a frame. The per-field cap bounds termination.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
@@ -33,7 +26,6 @@ using namespace x3d::core;
 namespace xn = x3d::nodes;
 
 namespace {
-
 SFVec3f tr(const std::shared_ptr<xn::Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;

@@ -8,7 +8,6 @@
 // The EventGraph must store routes normalized, and EventCascade::deliver +
 // the per-field cap must also normalize so that alias and canonical name
 // share the same field identity within a timestamp.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
@@ -26,7 +25,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;

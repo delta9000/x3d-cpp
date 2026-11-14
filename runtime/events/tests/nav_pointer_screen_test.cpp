@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // nav_pointer_screen_test.cpp — regression for the interactive mouse-nav blow-up.
 // `EXAMINE`/`FLY` drag must be driven by the camera-independent normalized screen
 // pointer (ctx.setPointerScreen), not by the world-space ray origin. The world
@@ -27,13 +28,9 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
+using x3d::test::setF;
 
 namespace {
-
-void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
 float dist(const SFVec3f &a, const SFVec3f &b) {
   float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
   return std::sqrt(dx * dx + dy * dy + dz * dz);

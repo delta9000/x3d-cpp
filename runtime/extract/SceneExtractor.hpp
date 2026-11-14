@@ -23,6 +23,7 @@
 #include "TextureExtract.hpp"
 #include "TextureResolver.hpp"
 #include "TransformSystem.hpp"
+#include "Vec3.hpp"
 #include "ViewDependentSystem.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/X3DNode.hpp"
@@ -1027,7 +1028,7 @@ private:
     if (!(inputs.limit > 0)) return false;
     const SFVec3f origin = world.transformPoint(SFVec3f{0, 0, 0});
     // An origin-distance hint only: this does not test bounds or a frustum.
-    return viewdep::len(viewdep::sub(origin, inputs.eye)) > inputs.limit;
+    return vec3::length(vec3::sub(origin, inputs.eye)) > inputs.limit;
   }
 
   bool visibilityHintsChanged(const VisibilityInputs &inputs, LocalXfCache &cache) {
@@ -1984,7 +1985,7 @@ private:
   // the scoped-state twin of lights_ (but per-walk-scoped, not snapshot-global).
   std::vector<ClipPlaneDesc> activeClips_;
 
-  // The three reverse indices + the interior-node entry-matrix cache ( inputs).
+  // The three reverse indices + the interior-node entry-matrix cache.
   DepMap transformDeps_;
   std::unordered_set<RenderItemId> billboardItems_;
   std::unordered_map<PathKey, const X3DNode *, PathKeyHash, PathKeyEqual> selectionPlacements_;

@@ -89,7 +89,7 @@ Byte-equal PCM output is therefore **not** a valid goal. The swap-test instead a
 |---|---|---|
 | RMS level | ±2% | Same signal energy — both backends deliver the expected amplitude |
 | Goertzel magnitude at signal frequency | ±5% | Same dominant spectral content |
-| F2 (passband Goertzel @ 440 Hz) in-band | ±15% | Honest RBJ-vs-independent-derivation delta at the filter knee |
+| F2 (passband Goertzel @ 440 Hz) in-band | ±15% | RBJ-vs-independent-derivation delta at the filter knee |
 
 The ±15% F2 bound is deliberately wide and explicitly documented: it reflects the
 RBJ-vs-Butterworth filter-law difference at the filter knee (both implementations
@@ -176,7 +176,7 @@ Concretely, for the `AudioBackend` seam:
   miniaudio's dual-license means the default SDK stays MIT-clean; the flag-gated backend
   adds a Unlicense/MIT-0 option.
 
-## Scope honesty (what this ADR explicitly does NOT prove)
+## Scope (what this ADR does not prove)
 
 The synthesis proof is **tight** (numeric spectral agreement). The spatial proof is
 **real but coarse**: two structurally different panning laws agree on physical invariants,
@@ -218,7 +218,7 @@ one of the two backends — that is a real regression, not test noise.
   byte-equal gate or the synthesis-chain RMS gate. Documented explicitly.
 - One more vendored single-file library in the build tree; the Unlicense/MIT-0 dual license
   means no license compatibility concern for any downstream.
-- The `±15%` F2 bound on the filter-knee metric is wide. It reflects the honest RBJ-vs-
+- The `±15%` F2 bound on the filter-knee metric is wide. It reflects the real RBJ-vs-
   Butterworth delta. If a future backend uses a tighter filter derivation, the bound can
   be narrowed.
 - SND-3 (spatialization) moves to PARTIAL: the synthesis chain and distance models are
@@ -234,7 +234,7 @@ one of the two backends — that is a real regression, not test noise.
   — the original pattern ADR.
 - [ADR-0020: Sound via an Engine-Agnostic AudioBackend Seam](0020-sound-seam.md)
   — established the seam and BuiltinDspBackend; this ADR completes the genericity proof.
-- Design spec: `docs/superpowers/specs/2026-06-24-audio-seam-genericity-design.md`.
+- Design spec: [`docs/superpowers/specs/2026-06-24-audio-seam-genericity-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-24-audio-seam-genericity-design.md).
 
 ## Amendment (2026-11-05)
 

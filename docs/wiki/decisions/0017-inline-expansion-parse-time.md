@@ -75,8 +75,8 @@ We decided to build foreign-asset ingestion as two decoupled specs, foundation f
 - [Architecture](../architecture.md)
 - [Inline Expansion subsystem](../subsystems/inline-expand.md) — the subsystem page covering `runtime/InlineExpand.hpp`, `localFileInlineResolver`, and the `Scene::expandedInlines`/`resolvedInlineRoutes` data model
 - [ADR-0001: External-Code Firewall](0001-ext-firewall.md) — companion decision: binary geometry stays behind EXTERNPROTO + opt-in firewall; Inline handles scene-level sources (glTF, OBJ+MTL), ExternalGeometry handles single-mesh sources (STL, PLY)
-- Design spec: `docs/superpowers/specs/2026-06-19-inline-expansion-design.md` — the approved Spec 1 design (context, architecture, field/edge-case table, success criteria)
-- Ingestion roadmap memory: `docs/superpowers/` — ongoing decisions on Spec 2 (OBJ converter), binary/glTF routing, ExternalGeometry node; see `x3d-cpp-gen-ingestion-roadmap.md` in project memory
+- Design spec: [`docs/superpowers/specs/2026-06-19-inline-expansion-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-19-inline-expansion-design.md) — the approved Spec 1 design (context, architecture, field/edge-case table, success criteria)
+- Ingestion roadmap memory: [`docs/superpowers/`](https://github.com/delta9000/x3d-cpp/tree/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers) — ongoing decisions on Spec 2 (OBJ converter), binary/glTF routing, ExternalGeometry node; see `x3d-cpp-gen-ingestion-roadmap.md` in project memory
 - `runtime/InlineExpand.hpp` — `expandInlines()` implementation; the `InlineResolver` type alias; `inline_detail::hoistChildRoutes()` and `makeGroup()`
 - `runtime/parse/X3DParse.hpp` — `parseDocument()` call site (lines 127–131); `localFileInlineResolver` default resolver with `thread_local` cycle-detection stack
 - `runtime/X3DScene.hpp` — `Scene::expandedInlines` (writer redirect map) and `Scene::resolvedInlineRoutes` (hoisted child routes)

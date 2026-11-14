@@ -22,6 +22,7 @@
 // Driven entirely through reflection getters + the runtime model; no per-node
 // codec code. Exit 0 on success, nonzero on any failed assertion.
 
+#include "doctest/doctest.h"
 #include "JsonReader.hpp"
 #include "JsonWriter.hpp" // codecs/JsonWriter (round-trip symmetry)
 #include "X3DParse.hpp"   // parseDocument front door (content-sniffs JSON)
@@ -50,30 +51,17 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 bool approx(double a, double b, double eps = 1e-4) {
   return std::fabs(a - b) <= eps;
 }
 
-// The fixtures dir is passed as argv[1] (CMake sets it).
-std::string g_dataDir;
+// The fixtures dir is passed as X3D_TEST_DATA_DIR (CMake sets it).
+std::string g_dataDir = X3D_TEST_DATA_DIR;
 
 std::string readFile(const std::string &path) {
   std::ifstream in(path, std::ios::binary);
   if (!in) {
-    std::cerr << "FAIL: cannot open fixture: " << path << "\n";
-    ++failures;
+    FAIL_CHECK("cannot open fixture: " << path);
     return {};
   }
   std::ostringstream ss;
@@ -136,14 +124,14 @@ void collect(const std::shared_ptr<X3DNode> &n,
 }
 // Corpus fixture 1: HelloWorld.json — header metadata, MFString, nested
 // SF/MFNode children, DEF/USE shared Material identity.
-void testHelloWorldFixture() {
+TEST_CASE("hello world fixture") {
   std::string text = readFile(g_dataDir + "/HelloWorld.json");
   JsonReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.profile == runtime::Profile::Immersive, "hello: profile Immersive");
-  check(doc.version == "3.3", "hello: version 3.3");
-  check(doc.head.meta.size() >= 10, "hello: many <meta> recovered");
+  CHECK_MESSAGE((doc.profile == runtime::Profile::Immersive), "hello: profile Immersive");
+  CHECK_MESSAGE((doc.version == "3.3"), "hello: version 3.3");
+  CHECK_MESSAGE((doc.head.meta.size() >= 10), "hello: many <meta> recovered");
 
   // The first meta is title=HelloWorld.x3d (preserved order).
   bool sawTitle = false;
@@ -156,17 +144,16 @@ void testHelloWorldFixture() {
     if (m.content.find("\"Hello,_World!\"") != std::string::npos)
       sawEmbeddedQuote = true;
   }
-  check(sawTitle, "hello: meta title round-trips");
-  check(sawEmbeddedQuote,
-        "hello: meta content embedded-quote survives escaping");
+  CHECK_MESSAGE((sawTitle), "hello: meta title round-trips");
+  CHECK_MESSAGE((sawEmbeddedQuote), "hello: meta content embedded-quote survives escaping");
 
-  check(doc.scene.rootNodes.size() == 3, "hello: three root nodes");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 3), "hello: three root nodes");
 
   // DEF/USE: the DEF'd Material and the USE'd Material must be the same object.
   std::vector<std::shared_ptr<Material>> mats;
   for (const auto &root : doc.scene.rootNodes)
     collect<Material>(root, mats);
-  check(mats.size() >= 2, "hello: at least two Material references reachable");
+  CHECK_MESSAGE((mats.size() >= 2), "hello: at least two Material references reachable");
   if (mats.size() >= 2) {
     // All references named MaterialOffWhite resolve to one shared pointer.
     std::shared_ptr<Material> defd;
@@ -175,46 +162,41 @@ void testHelloWorldFixture() {
         defd = m;
         break;
       }
-    check(static_cast<bool>(defd), "hello: DEF'd Material found");
+    CHECK_MESSAGE((static_cast<bool>(defd)), "hello: DEF'd Material found");
     int sharing = 0;
     for (const auto &m : mats)
       if (m == defd)
         ++sharing;
-    check(sharing >= 2,
-          "hello: USE shares the DEF'd Material pointer (identity)");
+    CHECK_MESSAGE((sharing >= 2), "hello: USE shares the DEF'd Material pointer (identity)");
   }
 
   // A representative value field on the DEF'd Material (diffuseColor).
   for (const auto &m : mats)
     if (m->getDEF() == "MaterialOffWhite") {
       auto c = m->getDiffuseColor();
-      check(approx(c.r, 0.980392) && approx(c.g, 0.976471) &&
-                approx(c.b, 0.964706),
-            "hello: Material.diffuseColor value parsed (SFColor array)");
+      CHECK_MESSAGE((approx(c.r, 0.980392) && approx(c.g, 0.976471) &&
+                approx(c.b, 0.964706)), "hello: Material.diffuseColor value parsed (SFColor array)");
       break;
     }
 }
 // Corpus fixture 2: spinning_cube.json — DEF/USE, ROUTEs, enums/bools, MF
 // arrays (key/keyValue), TimeSensor + OrientationInterpolator animation wiring.
-void testSpinningCubeFixture() {
+TEST_CASE("spinning cube fixture") {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
   JsonReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
 
-  check(doc.version == "4.0", "cube: version 4.0");
-  check(doc.scene.rootNodes.size() == 6, "cube: six root nodes");
+  CHECK_MESSAGE((doc.version == "4.0"), "cube: version 4.0");
+  CHECK_MESSAGE((doc.scene.rootNodes.size() == 6), "cube: six root nodes");
 
-  check(doc.scene.routes.size() == 2, "cube: two ROUTEs recovered");
+  CHECK_MESSAGE((doc.scene.routes.size() == 2), "cube: two ROUTEs recovered");
   if (doc.scene.routes.size() == 2) {
     const auto &r0 = doc.scene.routes[0];
-    check(r0.fromNode == "Clock" && r0.fromField == "fraction_changed" &&
-              r0.toNode == "Spinner" && r0.toField == "set_fraction",
-          "cube: ROUTE 0 endpoints (Clock.fraction_changed -> Spinner)");
+    CHECK_MESSAGE((r0.fromNode == "Clock" && r0.fromField == "fraction_changed" &&
+              r0.toNode == "Spinner" && r0.toField == "set_fraction"), "cube: ROUTE 0 endpoints (Clock.fraction_changed -> Spinner)");
     // resolveRoutes() (run inside readDocument) bound the endpoints.
-    check(!doc.scene.routes[0].from.expired(),
-          "cube: ROUTE 0 source DEF resolved to a node");
-    check(!doc.scene.routes[1].to.expired(),
-          "cube: ROUTE 1 sink DEF (CubeTransform) resolved to a node");
+    CHECK_MESSAGE((!doc.scene.routes[0].from.expired()), "cube: ROUTE 0 source DEF resolved to a node");
+    CHECK_MESSAGE((!doc.scene.routes[1].to.expired()), "cube: ROUTE 1 sink DEF (CubeTransform) resolved to a node");
   }
 
   // Bool + SFTime scalar on the TimeSensor.
@@ -224,11 +206,10 @@ void testSpinningCubeFixture() {
       clock = t;
       break;
     }
-  check(static_cast<bool>(clock), "cube: TimeSensor reached");
+  CHECK_MESSAGE((static_cast<bool>(clock)), "cube: TimeSensor reached");
   if (clock) {
-    check(clock->getLoop() == true, "cube: TimeSensor.loop=true (SFBool)");
-    check(approx(clock->getCycleInterval(), 4.0),
-          "cube: TimeSensor.cycleInterval=4 (SFTime)");
+    CHECK_MESSAGE((clock->getLoop() == true), "cube: TimeSensor.loop=true (SFBool)");
+    CHECK_MESSAGE((approx(clock->getCycleInterval(), 4.0)), "cube: TimeSensor.cycleInterval=4 (SFTime)");
   }
 
   // MF arrays on the interpolator: key (MFFloat, 3) and keyValue (MFRotation,
@@ -239,32 +220,28 @@ void testSpinningCubeFixture() {
       spinner = s;
       break;
     }
-  check(static_cast<bool>(spinner), "cube: OrientationInterpolator reached");
+  CHECK_MESSAGE((static_cast<bool>(spinner)), "cube: OrientationInterpolator reached");
   if (spinner) {
-    check(spinner->getKey().size() == 3, "cube: key MFFloat has 3 entries");
+    CHECK_MESSAGE((spinner->getKey().size() == 3), "cube: key MFFloat has 3 entries");
     if (spinner->getKey().size() == 3)
-      check(approx(spinner->getKey()[1], 0.5),
-            "cube: key[1]=0.5 (MF numeric array element)");
-    check(spinner->getKeyValue().size() == 3,
-          "cube: keyValue MFRotation has 3 rotations");
+      CHECK_MESSAGE((approx(spinner->getKey()[1], 0.5)), "cube: key[1]=0.5 (MF numeric array element)");
+    CHECK_MESSAGE((spinner->getKeyValue().size() == 3), "cube: keyValue MFRotation has 3 rotations");
     if (spinner->getKeyValue().size() == 3)
-      check(approx(spinner->getKeyValue()[2].angle, 6.28318, 1e-3),
-            "cube: keyValue[2].angle ~ 2pi (MFRotation element)");
+      CHECK_MESSAGE((approx(spinner->getKeyValue()[2].angle, 6.28318, 1e-3)), "cube: keyValue[2].angle ~ 2pi (MFRotation element)");
   }
 }
 // Round-trip symmetry: JsonWriter(JsonReader(text)) == text, byte-for-byte,
-// for both fixtures. This is the load-bearing read/write symmetry assertion.
+// for both fixtures. This is the read/write symmetry assertion.
 void testRoundTripByteStable(const std::string &name) {
   std::string text = readFile(g_dataDir + "/" + name);
   JsonReader reader;
   runtime::X3DDocument doc = reader.readDocument(text);
   codec::JsonWriter writer;
   std::string again = writer.writeDocument(doc);
-  check(again == text,
-        "round-trip: JsonWriter(JsonReader(" + name + ")) is byte-stable");
+  CHECK_MESSAGE((again == text), ("round-trip: JsonWriter(JsonReader(" + name + ")) is byte-stable"));
 }
 // Hand-authored snippets: isolate specific value shapes and scene members.
-void testHandAuthoredSnippets() {
+TEST_CASE("hand authored snippets") {
   // SFString vs MFString (with an embedded escaped quote), bool, MF numeric.
   {
     const std::string j = R"({"X3D":{"@profile":"Immersive","@version":"4.0",
@@ -274,18 +251,16 @@ void testHandAuthoredSnippets() {
       ]}}})";
     JsonReader reader;
     runtime::X3DDocument doc = reader.readDocument(j);
-    check(doc.scene.rootNodes.size() == 1, "snippet: one WorldInfo");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "snippet: one WorldInfo");
     auto wi = as<WorldInfo>(doc.scene.rootNodes[0]);
-    check(static_cast<bool>(wi), "snippet: root is WorldInfo");
+    CHECK_MESSAGE((static_cast<bool>(wi)), "snippet: root is WorldInfo");
     if (wi) {
-      check(wi->getTitle() == "a \"quoted\" title",
-            "snippet: SFString with embedded quotes round-trips");
+      CHECK_MESSAGE((wi->getTitle() == "a \"quoted\" title"), "snippet: SFString with embedded quotes round-trips");
       auto info = wi->getInfo();
-      check(info.size() == 2, "snippet: MFString has 2 elements");
+      CHECK_MESSAGE((info.size() == 2), "snippet: MFString has 2 elements");
       if (info.size() == 2) {
-        check(info[0] == "line one", "snippet: MFString[0]");
-        check(info[1] == "two \"q\"",
-              "snippet: MFString[1] embedded quote preserved");
+        CHECK_MESSAGE((info[0] == "line one"), "snippet: MFString[0]");
+        CHECK_MESSAGE((info[1] == "two \"q\""), "snippet: MFString[1] embedded quote preserved");
       }
     }
   }
@@ -305,12 +280,10 @@ void testHandAuthoredSnippets() {
     std::vector<std::shared_ptr<Material>> mats;
     for (const auto &r : doc.scene.rootNodes)
       collect<Material>(r, mats);
-    check(mats.size() == 2, "snippet: two Material references");
+    CHECK_MESSAGE((mats.size() == 2), "snippet: two Material references");
     if (mats.size() == 2) {
-      check(mats[0] == mats[1],
-            "snippet: USE shares the DEF'd Material pointer");
-      check(approx(mats[0]->getDiffuseColor().r, 1.0),
-            "snippet: DEF Material value visible through USE alias");
+      CHECK_MESSAGE((mats[0] == mats[1]), "snippet: USE shares the DEF'd Material pointer");
+      CHECK_MESSAGE((approx(mats[0]->getDiffuseColor().r, 1.0)), "snippet: DEF Material value visible through USE alias");
     }
   }
 
@@ -332,55 +305,34 @@ void testHandAuthoredSnippets() {
       }}})";
     JsonReader reader;
     runtime::X3DDocument doc = reader.readDocument(j);
-    check(doc.head.components.size() == 1 &&
-              doc.head.components[0].name == "NURBS",
-          "snippet: head component recovered");
-    check(doc.head.units.size() == 1 &&
-              approx(doc.head.units[0].conversionFactor, 1000.0),
-          "snippet: head unit conversionFactor recovered");
-    check(doc.head.meta.size() == 1 && doc.head.meta[0].content == "corpus",
-          "snippet: head meta recovered");
-    check(doc.scene.routes.size() == 1 && doc.scene.routes[0].fromNode == "T",
-          "snippet: scene ROUTE member recovered");
-    check(doc.scene.imports.size() == 1 && doc.scene.imports[0].as == "Bar",
-          "snippet: scene IMPORT member recovered");
-    check(doc.scene.exports.size() == 1 && doc.scene.exports[0].localDEF == "X",
-          "snippet: scene EXPORT member recovered");
+    CHECK_MESSAGE((doc.head.components.size() == 1 &&
+              doc.head.components[0].name == "NURBS"), "snippet: head component recovered");
+    CHECK_MESSAGE((doc.head.units.size() == 1 &&
+              approx(doc.head.units[0].conversionFactor, 1000.0)), "snippet: head unit conversionFactor recovered");
+    CHECK_MESSAGE((doc.head.meta.size() == 1 && doc.head.meta[0].content == "corpus"), "snippet: head meta recovered");
+    CHECK_MESSAGE((doc.scene.routes.size() == 1 && doc.scene.routes[0].fromNode == "T"), "snippet: scene ROUTE member recovered");
+    CHECK_MESSAGE((doc.scene.imports.size() == 1 && doc.scene.imports[0].as == "Bar"), "snippet: scene IMPORT member recovered");
+    CHECK_MESSAGE((doc.scene.exports.size() == 1 && doc.scene.exports[0].localDEF == "X"), "snippet: scene EXPORT member recovered");
   }
 }
 // Front-door dispatch: parseDocument with no hint must sniff JSON by content
 // and produce the same document the explicit JsonReader does.
-void testFrontDoorDispatch() {
+TEST_CASE("front door dispatch") {
   std::string text = readFile(g_dataDir + "/spinning_cube.json");
-  check(codec::sniffByContent(text) == Encoding::JSON,
-        "frontdoor: content sniffs as JSON");
+  CHECK_MESSAGE((codec::sniffByContent(text) == Encoding::JSON), "frontdoor: content sniffs as JSON");
   runtime::X3DDocument viaFront = codec::parseDocument(text);
   JsonReader reader;
   runtime::X3DDocument viaReader = reader.readDocument(text);
-  check(viaFront.scene.rootNodes.size() == viaReader.scene.rootNodes.size() &&
-            viaFront.scene.routes.size() == viaReader.scene.routes.size(),
-        "frontdoor: parseDocument(JSON) matches explicit JsonReader");
+  CHECK_MESSAGE((viaFront.scene.rootNodes.size() == viaReader.scene.rootNodes.size() &&
+            viaFront.scene.routes.size() == viaReader.scene.routes.size()), "frontdoor: parseDocument(JSON) matches explicit JsonReader");
 }
 
 } // namespace
 
-int main(int argc, char **argv) {
-  if (argc > 1)
-    g_dataDir = argv[1];
-  else
-    g_dataDir = "runtime/parse/tests/data/json";
-
-  testHelloWorldFixture();
-  testSpinningCubeFixture();
+TEST_CASE("round trip byte stable: HelloWorld.json") {
   testRoundTripByteStable("HelloWorld.json");
-  testRoundTripByteStable("spinning_cube.json");
-  testHandAuthoredSnippets();
-  testFrontDoorDispatch();
+}
 
-  if (failures == 0) {
-    std::cout << "\nALL JSON READER TESTS PASSED\n";
-    return 0;
-  }
-  std::cerr << "\n" << failures << " JSON READER TEST(S) FAILED\n";
-  return 1;
+TEST_CASE("round trip byte stable: spinning_cube.json") {
+  testRoundTripByteStable("spinning_cube.json");
 }

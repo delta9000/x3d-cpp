@@ -7,17 +7,14 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <memory>
 #include <vector>
 
 using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+using x3d::test::setF;
 
 static std::shared_ptr<X3DNode> makeTriShape() {
   auto coord = createX3DNode("Coordinate");

@@ -56,6 +56,12 @@
 #if defined(__unix__)
 #include <sys/wait.h>
 #include <unistd.h>
+#include "EventUtilitySystem.hpp"
+#include "FollowerRegistration.hpp"
+#include "InterpolatorRegistration.hpp"
+#include "KeyDeviceSensorSystem.hpp"
+#include "TimeSensorSystem.hpp"
+#include "HAnimMotionSystem.hpp"
 #endif
 
 using namespace x3d::core;

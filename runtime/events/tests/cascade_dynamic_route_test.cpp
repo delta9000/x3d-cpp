@@ -4,7 +4,6 @@
 // iterator/reference invalidation), dynamically-added routes are honored on the
 // next cascade, and EventGraph::removeRoute stops delivery (dynamic rerouting,
 // X3D 19775-1 §4.3.7).
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
@@ -22,7 +21,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;

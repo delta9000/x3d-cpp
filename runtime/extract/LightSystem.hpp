@@ -9,6 +9,7 @@
 #include "GeometryBounds.hpp"
 #include "Mat4.hpp"
 #include "RecursionLimits.hpp"
+#include "Vec3.hpp"
 #include "RenderItem.hpp"
 #include "TransformSystem.hpp"
 #include "LODSelection.hpp"
@@ -152,11 +153,6 @@ private:
     return LightDesc::Type::Directional;
   }
 
-  static SFVec3f normalize(const SFVec3f &v) {
-    float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-    if (len <= 1e-12f) return v; // degenerate; hand back as-is.
-    return SFVec3f{v.x / len, v.y / len, v.z / len};
-  }
 
   // `leaf(node, world, scopeRoot, path)` collects a light-like node and returns true
   // to stop the descent there.
@@ -254,7 +250,7 @@ private:
     // Directional/Spot carry a direction; world-resolve (w=0) + renormalize.
     if (type == LightDesc::Type::Directional || type == LightDesc::Type::Spot) {
       SFVec3f dir = geombounds::getField<SFVec3f>(n, "direction", SFVec3f{0, 0, -1});
-      L.worldDirection = normalize(worldM.transformDirection(dir));
+      L.worldDirection = vec3::normalize(worldM.transformDirection(dir));
     }
     // Point/Spot carry a location/attenuation/radius; world-resolve location.
     if (type == LightDesc::Type::Point || type == LightDesc::Type::Spot) {
@@ -267,10 +263,7 @@ private:
       const SFVec3f sx = worldM.transformDirection({1, 0, 0});
       const SFVec3f sy = worldM.transformDirection({0, 1, 0});
       const SFVec3f sz = worldM.transformDirection({0, 0, 1});
-      const auto length = [](const SFVec3f &v) {
-        return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-      };
-      L.radius = radius * std::max({length(sx), length(sy), length(sz)});
+      L.radius = radius * std::max({vec3::length(sx), vec3::length(sy), vec3::length(sz)});
     }
     // Spot-only beam parameters.
     if (type == LightDesc::Type::Spot) {
@@ -280,10 +273,6 @@ private:
     return L;
   }
 
-  static SFVec3f cross(const SFVec3f &a, const SFVec3f &b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
-  }
-  static float length(const SFVec3f &v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
 
   // §42.4: the projector frame is location/direction/upVector in the node's
   // local frame (ADR-0061). upVector (perspective only; parallel has none)
@@ -302,26 +291,26 @@ private:
     P.global = geombounds::getField<bool>(n, "global", true);
     P.scopeRoot = scopeRoot;
 
-    SFVec3f dir = normalize(geombounds::getField<SFVec3f>(n, "direction", SFVec3f{0, 0, 1}));
-    if (length(dir) <= 1e-6f) dir = {0, 0, 1};
+    SFVec3f dir = vec3::normalize(geombounds::getField<SFVec3f>(n, "direction", SFVec3f{0, 0, 1}));
+    if (vec3::length(dir) <= 1e-6f) dir = {0, 0, 1};
     SFVec3f up = parallel ? SFVec3f{0, 1, 0}
                           : geombounds::getField<SFVec3f>(n, "upVector", SFVec3f{0, 0, 1});
     for (const SFVec3f &candidate : {up, SFVec3f{0, 1, 0}, SFVec3f{0, 0, 1}}) {
       up = candidate;
-      if (length(cross(dir, up)) > 1e-4f * std::max(length(up), 1e-6f)) break;
+      if (vec3::length(vec3::cross(dir, up)) > 1e-4f * std::max(vec3::length(up), 1e-6f)) break;
     }
-    const SFVec3f right = normalize(cross(dir, up));
-    const SFVec3f trueUp = cross(right, dir);
+    const SFVec3f right = vec3::normalize(vec3::cross(dir, up));
+    const SFVec3f trueUp = vec3::cross(right, dir);
 
     const SFVec3f loc = geombounds::getField<SFVec3f>(n, "location", SFVec3f{0, 0, 0});
     P.worldLocation = worldM.transformPoint(loc);
     const SFVec3f wd = worldM.transformDirection(dir);
     const SFVec3f wu = worldM.transformDirection(trueUp);
     const SFVec3f wr = worldM.transformDirection(right);
-    const float depthScale = length(wd), upScale = length(wu), rightScale = length(wr);
-    P.worldDirection = normalize(wd);
-    const SFVec3f r = normalize(cross(P.worldDirection, wu));
-    P.worldUp = cross(r, P.worldDirection);
+    const float depthScale = vec3::length(wd), upScale = vec3::length(wu), rightScale = vec3::length(wr);
+    P.worldDirection = vec3::normalize(wd);
+    const SFVec3f r = vec3::normalize(vec3::cross(P.worldDirection, wu));
+    P.worldUp = vec3::cross(r, P.worldDirection);
 
     const float nearD = geombounds::getField<float>(n, "nearDistance", -1.0f);
     const float farD = geombounds::getField<float>(n, "farDistance", -1.0f);

@@ -7,22 +7,16 @@
 #include "X3DDocument.hpp"
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-static void setF(const std::shared_ptr<X3DNode>& n, const char* name, std::any v) {
-  for (auto& f : n->fields()) if (f.x3dName == name && f.set) { f.set(*n, std::move(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode>& p, const std::shared_ptr<X3DNode>& c) {
-  for (auto& f : p->fields()) if (f.x3dName == "children" && f.set) {
-    auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-    k.push_back(c); f.set(*p, std::any(std::move(k))); return;
-  }
-}
+using x3d::test::setF;
+using x3d::test::addChild;
+using x3d::test::feq;
 
 TEST_CASE("bounds_shared_subgraph_test") {
   // leaf Group > Shape > Box(size 2); local bounds [-1,1].

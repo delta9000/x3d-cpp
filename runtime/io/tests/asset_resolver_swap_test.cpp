@@ -1,4 +1,5 @@
 // HTTP fixture bytes and missing-asset contract through AssetResolver.
+#include "doctest/doctest.h"
 #include "AssetResolver.hpp"
 #include "HttpResolver.hpp"
 
@@ -9,7 +10,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -167,7 +167,7 @@ std::vector<std::uint8_t> readFile(const std::string &p) {
   return std::vector<std::uint8_t>(s.begin(), s.end());
 }
 
-int main() {
+TEST_CASE("HTTP resolver serves fixture bytes and fails on a missing file") {
   // Locate fixtures relative to the binary's working dir (ctest sets cwd to
   // the build dir). The CMake target passes the source dir as a compile def.
 #ifndef FIXTURES_DIR
@@ -183,31 +183,29 @@ int main() {
   // 1. Start HTTP server.
   FixtureServer srv(FIXTURES_DIR);
   int port = srv.start();
-  assert(port > 0);
+  REQUIRE((port > 0));
   std::cerr << "[swap-test] HTTP server on http://127.0.0.1:" << port << "\n";
 
   // 2. Resolve backend A (libcurl HTTP). The fixture server is on 127.0.0.1,
-  //    so opt in to private-network destinations ( default blocks them).
+  //    so opt in to private-network destinations (the default blocks them).
   auto backendA = x3d::runtime::io::curl::makeHttpResolver(
       x3d::runtime::io::curl::HttpResolverOptions{
           /*allowPrivateNetworks=*/true});
-  assert(static_cast<bool>(backendA));
+  REQUIRE((static_cast<bool>(backendA)));
 
   for (const auto &p : fixtures) {
     auto fname = p.substr(p.find_last_of('/') + 1);
     std::string url = "http://127.0.0.1:" + std::to_string(port) + "/" + fname;
     AssetResult r = backendA(url, AssetKind::Texture);
-    assert(r.ready());
+    REQUIRE((r.ready()));
     auto expected = readFile(p);
-    assert(r.bytes.size() == expected.size());
-    assert(std::equal(r.bytes.begin(), r.bytes.end(), expected.begin()));
+    REQUIRE((r.bytes.size() == expected.size()));
+    REQUIRE((std::equal(r.bytes.begin(), r.bytes.end(), expected.begin())));
   }
 
   AssetResult missing = backendA("http://127.0.0.1:" + std::to_string(port) +
                                      "/does-not-exist.bin",
                                  AssetKind::Texture);
-  assert(missing.failed());
-  assert(missing.bytes.empty());
-  std::cerr << "[asset-resolver] HTTP fixtures and missing-asset contract OK\n";
-  return 0;
+  REQUIRE((missing.failed()));
+  REQUIRE((missing.bytes.empty()));
 }

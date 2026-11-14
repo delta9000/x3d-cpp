@@ -32,6 +32,7 @@
 #include "PointerState.hpp"
 #include "Ray.hpp"
 #include "ViewpointOffset.hpp"
+#include "Vec3.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSystem.hpp"
 
@@ -197,25 +198,13 @@ private:
     return Mode::Examine;
   }
 
-  // vector helpers
-  static SFVec3f sub(const SFVec3f &a, const SFVec3f &b) { return {a.x-b.x, a.y-b.y, a.z-b.z}; }
-  static SFVec3f add(const SFVec3f &a, const SFVec3f &b) { return {a.x+b.x, a.y+b.y, a.z+b.z}; }
-  static SFVec3f mul(const SFVec3f &a, float s) { return {a.x*s, a.y*s, a.z*s}; }
-  static float len(const SFVec3f &v) { return std::sqrt(v.x*v.x+v.y*v.y+v.z*v.z); }
-  static SFVec3f norm(const SFVec3f &v) {
-    float l = len(v); return l > 1e-12f ? SFVec3f{v.x/l, v.y/l, v.z/l} : v;
-  }
-  static SFVec3f cross(const SFVec3f &a, const SFVec3f &b) {
-    return {a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x};
-  }
-  static float dot(const SFVec3f &a, const SFVec3f &b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
 
   // user-offset I/O
   // Navigation reads the effective local eye (authored pose ∘ offset) and writes
   // a new offset — it never touches the authored position/orientation (§23.2.3).
   static Mat4 poseOf(X3DNode *vp, const geo::GeoProjection &projection) {
     // GeoViewpoint.position is SFVec3d; read leniently so a bound GeoViewpoint
-    // isn't pinned to the origin .
+    // isn't pinned to the origin.
     if (dynamic_cast<const x3d::nodes::GeoViewpoint *>(vp) != nullptr) {
       Mat4 frame;
       if (geo::tangentFrameOf(*vp, geo::fieldOf<SFVec3d>(*vp, "position", {0,0,0}), frame, projection))
@@ -264,7 +253,7 @@ private:
   // yawed right (horizontal, no y-component). Used to seed flyYaw_/flyPitch_
   // when entering `FLY` mode or binding a new viewpoint.
   static void decomposeLookRotation(const Quat &q, float &yaw, float &pitch) {
-    SFVec3f f = norm(rotateByQuat(q, SFVec3f{0,0,-1})); // camera forward
+    SFVec3f f = vec3::normalize(rotateByQuat(q, SFVec3f{0,0,-1})); // camera forward
     yaw = std::atan2(-f.x, -f.z);                        // angle about world Y
     float fy = f.y;
     if (fy > 1.0f) fy = 1.0f;
@@ -275,11 +264,11 @@ private:
   // Build an orientation (SFRotation, rotation from default -Z look) so that the
   // camera looks along view_dir with +Y up (Gram-Schmidt). §5.3.13.
   static SFRotation lookRotation(const SFVec3f &viewDir, const SFVec3f &upHint) {
-    SFVec3f f = norm(viewDir);                 // forward = -Z of camera
-    SFVec3f r = cross(f, upHint);              // f x up = +X
-    if (len(r) < 1e-5f) r = cross(f, SFVec3f{1,0,0}); // gimbal fallback
-    r = norm(r);
-    SFVec3f u = norm(cross(r, f));             // reorthogonalize up
+    SFVec3f f = vec3::normalize(viewDir);                 // forward = -Z of camera
+    SFVec3f r = vec3::cross(f, upHint);              // f x up = +X
+    if (vec3::length(r) < 1e-5f) r = vec3::cross(f, SFVec3f{1,0,0}); // gimbal fallback
+    r = vec3::normalize(r);
+    SFVec3f u = vec3::normalize(vec3::cross(r, f));             // reorthogonalize up
     // Camera basis columns: X=r, Y=u, Z=-f (camera looks down -Z).
     Mat4 m = Mat4::identity();
     m.m[0]=r.x;  m.m[1]=r.y;  m.m[2]=r.z;
@@ -294,21 +283,21 @@ private:
   void examineOrbit(X3DExecutionContext &ctx, X3DNode *vp, float dx, float dy) {
     const SFVec3f C = cor(vp, ctx.geoProjection());
     SFVec3f P = effPos(ctx, vp);
-    SFVec3f arm = sub(P, C);
-    if (len(arm) < 1e-4f) return; // eye at pivot: singular, skip.
+    SFVec3f arm = vec3::sub(P, C);
+    if (vec3::length(arm) < 1e-4f) return; // eye at pivot: singular, skip.
     const SFVec3f up{0,1,0};
 
     Quat Ryaw = axisAngleQuat(up, -dx * kRotScale);
-    SFVec3f right = norm(cross(arm, up));
+    SFVec3f right = vec3::normalize(vec3::cross(arm, up));
     Quat R = Ryaw;
     // Skip pitch near the pole (arm ~ parallel to up).
-    if (std::fabs(dot(norm(arm), up)) < 0.999f && (dy != 0.0f)) {
+    if (std::fabs(vec3::dot(vec3::normalize(arm), up)) < 0.999f && (dy != 0.0f)) {
       Quat Rpitch = axisAngleQuat(right, -dy * kRotScale);
       R = quatMul(Ryaw, Rpitch);
     }
     SFVec3f armNew = rotateByQuat(R, arm);
-    SFVec3f Pnew = add(C, armNew);
-    SFRotation Onew = lookRotation(sub(C, Pnew), up);
+    SFVec3f Pnew = vec3::add(C, armNew);
+    SFRotation Onew = lookRotation(vec3::sub(C, Pnew), up);
 
     commitEye(ctx, vp, Pnew, Onew); // accumulate into the offset (not the fields)
   }
@@ -345,7 +334,7 @@ private:
     // Reconstruct the roll-free orientation.
     if (changed) {
       Quat Ryaw = axisAngleQuat(up, flyYaw_);
-      SFVec3f right = norm(rotateByQuat(Ryaw, SFVec3f{1,0,0}));
+      SFVec3f right = vec3::normalize(rotateByQuat(Ryaw, SFVec3f{1,0,0}));
       Quat Rpitch = axisAngleQuat(right, flyPitch_);
       q = quatMul(Rpitch, Ryaw);
     }
@@ -365,14 +354,14 @@ private:
     float fwdIn = (ks.isHeld(kKeyForward) ? 1.0f : 0.0f) - (ks.isHeld(kKeyBack) ? 1.0f : 0.0f);
     float strIn = (ks.isHeld(kKeyRight) ? 1.0f : 0.0f) - (ks.isHeld(kKeyLeft) ? 1.0f : 0.0f);
     if ((fwdIn != 0.0f || strIn != 0.0f) && speed > 0.0f && dt > 0.0) {
-      SFVec3f fwd = norm(rotateByQuat(q, SFVec3f{0,0,-1}));
-      SFVec3f right = norm(rotateByQuat(q, SFVec3f{1,0,0}));
+      SFVec3f fwd = vec3::normalize(rotateByQuat(q, SFVec3f{0,0,-1}));
+      SFVec3f right = vec3::normalize(rotateByQuat(q, SFVec3f{1,0,0}));
       if (walk) { // stay on the ground plane: drop the local-up component
-        fwd = norm(SFVec3f{fwd.x, 0.0f, fwd.z});
-        right = norm(SFVec3f{right.x, 0.0f, right.z});
+        fwd = vec3::normalize(SFVec3f{fwd.x, 0.0f, fwd.z});
+        right = vec3::normalize(SFVec3f{right.x, 0.0f, right.z});
       }
-      SFVec3f step = add(mul(fwd, fwdIn), mul(right, strIn));
-      const SFVec3f target = add(P, mul(step, speed * static_cast<float>(dt)));
+      SFVec3f step = vec3::add(vec3::scale(fwd, fwdIn), vec3::scale(right, strIn));
+      const SFVec3f target = vec3::add(P, vec3::scale(step, speed * static_cast<float>(dt)));
       P = resolveMove(ctx, vp, nav, P, target, walk);
       changed = true;
     }
@@ -446,9 +435,9 @@ private:
   static Frame frameOf(X3DExecutionContext &ctx, X3DNode *vp) {
     Frame f;
     f.world = ctx.worldOf(vp);
-    f.scale = len(f.world.transformDirection(SFVec3f{1, 0, 0}));
+    f.scale = vec3::length(f.world.transformDirection(SFVec3f{1, 0, 0}));
     if (f.scale < 1e-12f) f.scale = 1.0f;
-    f.up = norm(f.world.transformDirection(SFVec3f{0, 1, 0}));
+    f.up = vec3::normalize(f.world.transformDirection(SFVec3f{0, 1, 0}));
     return f;
   }
   // avatarSize is scaled by the bound viewpoint's transform hierarchy, so the
@@ -483,12 +472,12 @@ private:
     const Avatar a = avatarOf(nav, f.scale, geoAvatarFactor_);
     const SFVec3f from = f.world.transformPoint(fromL);
     const SFVec3f to = f.world.transformPoint(toL);
-    const SFVec3f mv = sub(to, from);
-    const float d = len(mv);
+    const SFVec3f mv = vec3::sub(to, from);
+    const float d = vec3::length(mv);
     if (d < 1e-7f) return toL;
-    const SFVec3f dir = mul(mv, 1.0f / d);
+    const SFVec3f dir = vec3::scale(mv, 1.0f / d);
     std::vector<SFVec3f> origins{from};
-    if (walk && a.height > a.step) origins.push_back(sub(from, mul(f.up, a.height - a.step)));
+    if (walk && a.height > a.step) origins.push_back(vec3::sub(from, vec3::scale(f.up, a.height - a.step)));
     float allowed = d;
     for (const SFVec3f &o : origins) {
       std::vector<X3DNode *> groups;
@@ -500,7 +489,7 @@ private:
       haveBlockedDir_ = true;
     }
     if (allowed >= d) return toL;
-    return f.world.inverse().transformPoint(add(from, mul(dir, allowed)));
+    return f.world.inverse().transformPoint(vec3::add(from, vec3::scale(dir, allowed)));
   }
 
   // `WALK`: keep the eye avatarSize[1] above the ground below it. Rising ground
@@ -512,7 +501,7 @@ private:
     const Frame f = frameOf(ctx, vp);
     const Avatar a = avatarOf(nav, f.scale, geoAvatarFactor_);
     const SFVec3f eye = f.world.transformPoint(P);
-    const SFVec3f down = mul(f.up, -1.0f);
+    const SFVec3f down = vec3::scale(f.up, -1.0f);
     PickResult g = ctx.collide(Ray{eye, down}, a.height * kGroundSearch);
     if (!g.hit) { fallSpeed_ = 0.0; return false; }
     float shift = 0.0f;
@@ -527,7 +516,7 @@ private:
       fallSpeed_ = 0.0;
     }
     if (shift == 0.0f) return false;
-    P = f.world.inverse().transformPoint(add(eye, mul(f.up, shift)));
+    P = f.world.inverse().transformPoint(vec3::add(eye, vec3::scale(f.up, shift)));
     return true;
   }
 
@@ -569,30 +558,30 @@ private:
     Aabb wb = ctx.worldBounds(pick.node);
     SFVec3f center{(wb.min.x+wb.max.x)*0.5f, (wb.min.y+wb.max.y)*0.5f, (wb.min.z+wb.max.z)*0.5f};
     SFVec3f half{(wb.max.x-wb.min.x)*0.5f, (wb.max.y-wb.min.y)*0.5f, (wb.max.z-wb.min.z)*0.5f};
-    float radius = len(half);
+    float radius = vec3::length(half);
     if (radius < 1e-4f) radius = 1.0f; // degenerate bbox fallback.
 
     SFVec3f camWorld = ctx.cameraWorldPosition();
-    SFVec3f dir = sub(center, camWorld);
-    if (len(dir) < 1e-5f) {
+    SFVec3f dir = vec3::sub(center, camWorld);
+    if (vec3::length(dir) < 1e-5f) {
       // Camera at center: keep current look direction.
       Quat q = quatFromRotation(effOri(ctx, vp));
       dir = rotateByQuat(q, SFVec3f{0,0,-1});
     }
-    dir = norm(dir);
+    dir = vec3::normalize(dir);
 
     float fov = geombounds::getField<float>(*vp, "fieldOfView", kPi * 0.25f);
     if (fov <= 0.0f || fov >= kPi) fov = kPi * 0.25f;
     float d = radius / std::tan(fov * 0.5f);
-    SFVec3f targetWorld = sub(center, mul(dir, d));
+    SFVec3f targetWorld = vec3::sub(center, vec3::scale(dir, d));
 
     // World -> viewpoint-local (parent) frame.
     Mat4 parentInv = ctx.worldOf(vp).inverse();
     SFVec3f targetLocal = parentInv.transformPoint(targetWorld);
     SFVec3f centerLocal = parentInv.transformPoint(center);
     // Local look dir from the target toward the center, in local frame.
-    SFVec3f dirLocal = norm(sub(centerLocal, targetLocal));
-    SFVec3f upLocal = norm(parentInv.transformDirection(SFVec3f{0,1,0}));
+    SFVec3f dirLocal = vec3::normalize(vec3::sub(centerLocal, targetLocal));
+    SFVec3f upLocal = vec3::normalize(parentInv.transformDirection(SFVec3f{0,1,0}));
     SFRotation targetOri = lookRotation(dirLocal, upLocal);
 
     // Set the pivot for subsequent `EXAMINE` in the bound viewpoint's own frame.

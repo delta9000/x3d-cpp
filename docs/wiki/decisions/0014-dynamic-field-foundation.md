@@ -33,7 +33,7 @@ Two structural constraints shaped the choice:
 - **`X3DNode::fields()` is `virtual const FieldTable&` returning a reference to a function-local `static` table** — one table shared across all instances of a type. It cannot hold per-instance author fields; a per-instance channel is required.
 - **The `std::any` field-value channel already exists.** `FieldInfo.get`/`set` thunks box and unbox values through `std::any` (defined in `generated_cpp_bindings/x3d/core/X3DReflection.hpp`). Author field values can reuse this same channel exactly, so routing and cascade delivery treat author fields identically to generated ones.
 
-The early spec (`docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md`) proposed placing `std::vector<DynamicFieldSlot> userFields_` on the `X3DNode` base and emitting the additions via the class template (Option A). That approach was revisited before implementation. See the decision below.
+The early spec ([`docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md)) proposed placing `std::vector<DynamicFieldSlot> userFields_` on the `X3DNode` base and emitting the additions via the class template (Option A). That approach was revisited before implementation. See the decision below.
 
 ## Decision
 
@@ -71,7 +71,7 @@ The type-safety guard `anyMatchesFieldType` (added 2026-06-17, AUD-MEM-1) valida
 - [Architecture](../architecture.md)
 - [Script / SAI Runtime subsystem](../subsystems/system-script-sai.md)
 - [Routes subsystem](../subsystems/routes.md)
-- Implementation spec: `docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md`
-- Un-tabling design (Phase 0–2 fan-out plan): `docs/superpowers/specs/2026-06-17-script-cdata-untabling-design.md`
+- Implementation spec: [`docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-05-dynamic-field-foundation-spec.md)
+- Un-tabling design (Phase 0–2 fan-out plan): [`docs/superpowers/specs/2026-06-17-script-cdata-untabling-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-17-script-cdata-untabling-design.md)
 - Runtime header: `runtime/events/DynamicField.hpp`
 - Consuming sites: `runtime/events/X3DSceneBridge.hpp` (`detail::findField`), `runtime/script/SaiContext.hpp` (`findField`)

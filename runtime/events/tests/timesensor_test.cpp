@@ -16,7 +16,6 @@
 //   - pause/resume: elapsedTime/fraction exclude the paused span; isPaused
 //   edges.
 //   - cycleInterval <= 0 guard: non-looping sensor deactivates after one tick.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "TimeSensorSystem.hpp"
 #include "X3DExecutionContext.hpp"
@@ -33,7 +32,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 constexpr double kEps = 1e-6;
 bool deq(double a, double b) { return std::fabs(a - b) <= kEps; }
 

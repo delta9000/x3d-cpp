@@ -129,4 +129,4 @@ Concretely, for the `TextureResolver` decode seam:
   — the fetch half of the texture pipeline; this ADR is the decode half.
 - [ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test](0022-scriptengine-second-backend-swap-test.md)
   — the original pattern.
-- Design spec: `docs/superpowers/specs/2026-06-23-textureresolver-decode-design.md`.
+- Design spec: [`docs/superpowers/specs/2026-06-23-textureresolver-decode-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-23-textureresolver-decode-design.md).

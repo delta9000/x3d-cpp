@@ -52,4 +52,4 @@ The full-featured production backend (LabSound — full C++ Web Audio: convolver
 - [Sound subsystem](../subsystems/sound.md) — the implementation detail.
 - [ADR-0019: Physics via a Flag-Gated Engine Backend](0019-physics-seam.md) — the seam sibling; the key distinction from this ADR is that physics requires a flag-gated external dependency (Jolt) while sound's default backend is dependency-free.
 - [ADR-0001: Ext Firewall](0001-ext-firewall.md) — the one-way isolation pattern that LabSound (when added) will follow.
-- Spec: `docs/superpowers/specs/2026-06-20-sound-seam-design.md`
+- Spec: [`docs/superpowers/specs/2026-06-20-sound-seam-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-20-sound-seam-design.md)

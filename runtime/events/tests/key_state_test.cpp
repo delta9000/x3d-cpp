@@ -7,7 +7,6 @@
 //   5. Multiple different keys accumulate independently.
 //   6. X3DExecutionContext::setKey delegates to keyState() and bumps revision.
 //   7. keyState() const accessor reflects updates made via ctx.setKey.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "KeyState.hpp"
 #include "X3DExecutionContext.hpp"

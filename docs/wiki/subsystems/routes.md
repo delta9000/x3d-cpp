@@ -28,7 +28,7 @@ A critical feature of the bridge is that field lookup always consults the node's
 | `runtime/X3DRoute.hpp` | `Route` struct: the encoding-neutral ROUTE data model |
 | `runtime/events/X3DFieldAddress.hpp` | `FieldAddress` struct: typed, hashable event endpoint `(node*, field)` |
 | `runtime/events/X3DEventGraph.hpp` | `EventGraph`: directed ROUTE table (source→sinks), including `resolveFieldAlias` for `set_xxx`/`xxx_changed` aliases |
-| `runtime/events/X3DSceneBridge.hpp` | `buildRoutes`, `BridgeResult`, `RouteError`: the Scene→EventGraph bridge and validation pipeline; also `detail::findField` using `effectiveFields()` |
+| `runtime/events/X3DSceneBridge.hpp` | `buildRoutes`, `BridgeResult`, `RouteError`: the Scene→EventGraph bridge and validation pipeline; its definitions, including the `effectiveFields()`-based endpoint lookup, are in `X3DSceneBridge.cpp` |
 | `runtime/events/DynamicField.hpp` | `DynamicFieldStore`, `AuthorFieldDecl`, `effectiveFields()`: the dynamic-field side-table that makes author Script fields visible to route resolution |
 | `runtime/X3DScene.hpp` | `Scene::routes`, `Scene::resolvedProtoRoutes`, `Scene::resolvedInlineRoutes`, `Scene::protoRedirects`, `Scene::resolveRoutes()` |
 
@@ -86,7 +86,7 @@ struct BridgeResult { std::size_t routesAdded; std::vector<RouteError> rejected;
 
 BridgeResult buildRoutes(Scene &scene, X3DExecutionContext &ctx);
 // Also exposed as a convenience method:
-BridgeResult X3DExecutionContext::buildFrom(Scene &scene); // defined in X3DSceneBridge.hpp
+BridgeResult X3DExecutionContext::buildFrom(Scene &scene); // defined in X3DSceneBridge.cpp
 } // namespace x3d::runtime
 
 // runtime/events/DynamicField.hpp — effective field lookup
@@ -104,7 +104,7 @@ FieldTable effectiveFields(const X3DNode &node, const DynamicFieldStore &store);
 
 - Inline expander → Scene::resolvedInlineRoutes — `InlineExpand` stores inlined-scene-internal ROUTEs in `Scene::resolvedInlineRoutes`. The bridge validates these physical endpoints with the same field checks. Routes installed later by `InlineRuntimeSystem` follow a separate path.
 
-- DynamicFieldStore → effectiveFields — `detail::findField` in `X3DSceneBridge.hpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
+- DynamicFieldStore → effectiveFields — the endpoint lookup in `X3DSceneBridge.cpp` calls `effectiveFields(node, ctx.authorFields())`, concatenating generated `fields()` with the explicit owner's author fields. This makes Script author `<field>` declarations first-class ROUTE endpoints (S1 dynamic-field seam).
 
 - EventGraph → X3DEventCascade — after `buildRoutes` populates the `EventGraph` inside `X3DExecutionContext`, the event cascade consults `EventGraph::sinks()` on each tick to propagate field changes across edges. The cascade holds the graph by reference; nodes are never owned.
 

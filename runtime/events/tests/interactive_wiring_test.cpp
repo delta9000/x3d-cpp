@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 // interactive_wiring_test.cpp — headless interaction acceptance gate (no GL).
 // Proves attachInteractive wires both systems so that (a) a click fires a
 // TouchSensor through the cascade, (b) WASD drives `FLY` navigation, and (c) a
@@ -16,28 +17,18 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include "NavigationSystem.hpp"
 
 using namespace x3d;
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
+using x3d::test::setF;
+using x3d::test::addChild;
 
 static bool sameMatrix(const Mat4 &a, const Mat4 &b) {
   for (int i = 0; i < 16; ++i) if (std::fabs(a.m[i] - b.m[i]) > 1e-6f) return false;
   return true;
-}
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
-static void addChild(const std::shared_ptr<X3DNode> &p, const std::shared_ptr<X3DNode> &c) {
-  for (auto &f : p->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto k = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*p));
-      k.push_back(c);
-      f.set(*p, std::any(std::move(k)));
-      return;
-    }
 }
 
 TEST_CASE("interactive_wiring_test") {

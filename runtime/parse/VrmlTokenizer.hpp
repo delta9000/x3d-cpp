@@ -161,7 +161,7 @@ private:
         if (src_[pos_] == '\\' && pos_ + 1 < src_.size() &&
             (src_[pos_ + 1] == '"' || src_[pos_ + 1] == '\\')) {
           // ISO 19776-2 defines exactly two escapes: \" and \\. Any other \x
-          // keeps its backslash .
+          // keeps its backslash.
           str += src_[pos_ + 1];
           bump();
           bump();

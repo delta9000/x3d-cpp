@@ -25,8 +25,9 @@ contact reporting shipped; Followers shipped with no page). When you change `run
    - root `NOTICE` if you added a third-party dependency or backend
 3. If symbols moved: `mise run code-ingest` / `mise run docs-ingest`.
 
-`docs/superpowers/`, `docs/plans/` and `sai/docs/plans/` are a frozen archive of old specs and
-plans. Cite them, don't edit them, don't add to them.
+The old dated specs and plans (`docs/superpowers/`, `docs/plans/`, `sai/docs/plans/`) were removed
+from the tree; they live in git history at `db23737`. Don't recreate them: decisions go in ADRs,
+behaviour in subsystem pages.
 
 ## SAI SDK (`sai/`)
 

@@ -1,4 +1,5 @@
 // Author-field marshalling and routed output behavior.
+#include "doctest/doctest.h"
 #include "EcmaScriptBackend.hpp"
 #include "ScriptSystem.hpp"
 
@@ -22,18 +23,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
-
 bool nearly(double a, double b) { return std::fabs(a - b) < 1e-5; }
 
 bool veq(const SFVec3f &a, float x, float y, float z) {
@@ -54,7 +43,7 @@ AuthorFieldDecl decl(const std::string &name, X3DFieldType type,
 // source from sourceCode (the CDATA destination), not url. A Script with an
 //     empty url but a non-empty sourceCode must still load + initialize.
 
-void testSourceFromSourceCode() {
+TEST_CASE("source from source code") {
   X3DExecutionContext ctx;
   Script script;
   // No url at all — only sourceCode carries the body (the reader-CDATA path).
@@ -67,16 +56,16 @@ void testSourceFromSourceCode() {
   sys->attach(&script, ctx);
 
   SaiContext *sai = sys->saiFor(&script);
-  check(sai != nullptr, "T1: SAI surface exists for the sourceCode Script");
-  check(sys->handleFor(&script) != kInvalidScriptHandle,
-        "T1: Script with sourceCode (empty url) loaded a handle");
-  check(sai && sai->log() == "init-from-sourceCode",
-        "T1: initialize() ran from Script.sourceCode (CDATA path)");
+  CHECK_MESSAGE((sai != nullptr), "T1: SAI surface exists for the sourceCode Script");
+  CHECK_MESSAGE((sys->handleFor(&script) != kInvalidScriptHandle),
+                "T1: Script with sourceCode (empty url) loaded a handle");
+  CHECK_MESSAGE((sai && sai->log() == "init-from-sourceCode"),
+                "T1: initialize() ran from Script.sourceCode (CDATA path)");
 }
 
 // sourceCode takes precedence over url when both are present.
 
-void testSourceCodePrecedence() {
+TEST_CASE("source code precedence") {
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -88,13 +77,13 @@ void testSourceCodePrecedence() {
   sys->attach(&script, ctx);
 
   SaiContext *sai = sys->saiFor(&script);
-  check(sai && sai->log() == "SRC",
-        "T2: sourceCode preferred over url when both present");
+  CHECK_MESSAGE((sai && sai->log() == "SRC"),
+                "T2: sourceCode preferred over url when both present");
 }
 
 // url fallback still works when sourceCode is empty (no regression).
 
-void testUrlFallback() {
+TEST_CASE("url fallback") {
   X3DExecutionContext ctx;
   Script script;
   script.setUrl(MFString{"ecmascript:function initialize(){Browser.print('URL');}"});
@@ -105,14 +94,14 @@ void testUrlFallback() {
   sys->attach(&script, ctx);
 
   SaiContext *sai = sys->saiFor(&script);
-  check(sai && sai->log() == "URL",
-        "T3: url inline scheme still decodes when sourceCode empty");
+  CHECK_MESSAGE((sai && sai->log() == "URL"),
+                "T3: url inline scheme still decodes when sourceCode empty");
 }
 
 // initialize() seeds JS globals from author-field initialValue. An
 //     initializeOnly author field's boxed default is visible to the script.
 
-void testInitialValueSeeding() {
+TEST_CASE("initial value seeding") {
   X3DExecutionContext ctx;
   Script script;
   script.setSourceCode(
@@ -129,8 +118,8 @@ void testInitialValueSeeding() {
   sys->attach(&script, ctx);
 
   SaiContext *sai = sys->saiFor(&script);
-  check(sai && sai->log() == "seed=0.5",
-        "T4: initialize() saw the author field's boxed initialValue as a global");
+  CHECK_MESSAGE((sai && sai->log() == "seed=0.5"),
+                "T4: initialize() saw the author field's boxed initialValue as a global");
 }
 
 // An author inputOnly event drives the handler, the
@@ -141,7 +130,7 @@ void testInitialValueSeeding() {
 //     constructed programmatically via the same seams a reader would use) whose
 //     author field, written by its own handler, drives the cascade.
 
-void testAuthorOutputDrivesRoute() {
+TEST_CASE("author output drives route") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -173,8 +162,8 @@ void testAuthorOutputDrivesRoute() {
   auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
   ctx.addScriptSystem(sys);
   sys->attach(&script, ctx);
-  check(sys->handleFor(&script) != kInvalidScriptHandle,
-        "T5: author-field Script loaded from sourceCode");
+  CHECK_MESSAGE((sys->handleFor(&script) != kInvalidScriptHandle),
+                "T5: author-field Script loaded from sourceCode");
 
   // ROUTE: script.position_changed -> target.translation. (Programmatic so the
   // test does not depend on a codec reader resolving the author endpoint.)
@@ -188,22 +177,22 @@ void testAuthorOutputDrivesRoute() {
                          X3DFieldType::SFFloat, 1.0);
   ctx.process();  // drain the cascade the author output produced
 
-  check(veq(target.getTranslation(), 4, 4, 4),
-        "T5: author outputOnly write drove the ROUTE to target.translation");
+  CHECK_MESSAGE((veq(target.getTranslation(), 4, 4, 4)),
+                "T5: author outputOnly write drove the ROUTE to target.translation");
 
   // The store also holds the written-back author-field value.
   std::any stored = ctx.authorFields().getValue(script, "position_changed");
-  check(stored.has_value(), "T5: author outputOnly value written back to store");
+  CHECK_MESSAGE((stored.has_value()), "T5: author outputOnly value written back to store");
   if (stored.has_value()) {
     auto v = std::any_cast<SFVec3f>(stored);
-    check(veq(v, 4, 4, 4), "T5: store holds the (4,4,4) author output value");
+    CHECK_MESSAGE((veq(v, 4, 4, 4)), "T5: store holds the (4,4,4) author output value");
   }
 }
 
 // an inputOutput author field round-trips — the handler reads its seeded
 //     value, mutates it, and the mutation is read back into the store + emitted.
 
-void testInputOutputAuthorField() {
+TEST_CASE("input output author field") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -229,8 +218,8 @@ void testInputOutputAuthorField() {
   ctx.process();
 
   std::any stored = ctx.authorFields().getValue(script, "count");
-  check(stored.has_value() && std::any_cast<SFInt32>(stored) == 15,
-        "T6: inputOutput author field seeded(10)+bump(5) -> 15 read back to store");
+  CHECK_MESSAGE((stored.has_value() && std::any_cast<SFInt32>(stored) == 15),
+                ("T6: inputOutput author field seeded(10)+bump(5) -> 15 read back to store"));
 }
 
 // a script's prepareEvents() that writes an author outputOnly
@@ -239,7 +228,7 @@ void testInputOutputAuthorField() {
 //     confirms prepareEvents actually ran (so a red is the missing readback,
 //     not a missing call).
 
-void testPrepareEventsAuthorOutput() {
+TEST_CASE("prepare events author output") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -269,16 +258,16 @@ void testPrepareEventsAuthorOutput() {
   ctx.tick(1.0); // drives the prepareEvents phase + drains the cascade
 
   SaiContext *sai = sys->saiFor(&script);
-  check(sai && sai->log() == "pe", "T7: prepareEvents() ran during tick");
-  check(veq(target.getTranslation(), 7, 7, 7),
-        "T7: prepareEvents() author output read back + drove ROUTE (SCR-004)");
+  CHECK_MESSAGE((sai && sai->log() == "pe"), "T7: prepareEvents() ran during tick");
+  CHECK_MESSAGE((veq(target.getTranslation(), 7, 7, 7)),
+                ("T7: prepareEvents() author output read back + drove ROUTE (SCR-004)"));
 }
 
 // SFMatrix author fields marshal both directions. A script that
 //     copies an inputOnly SFMatrix4f to an outputOnly SFMatrix4f must round-trip
 // all 16 components.
 
-void testMatrixFieldMarshalling() {
+TEST_CASE("matrix field marshalling") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -308,7 +297,7 @@ void testMatrixFieldMarshalling() {
   ctx.process();
 
   std::any stored = ctx.authorFields().getValue(script, "m_changed");
-  check(stored.has_value(), "scr006: SFMatrix4f author output written back");
+  CHECK_MESSAGE((stored.has_value()), "scr006: SFMatrix4f author output written back");
   bool ok = stored.has_value();
   if (ok) {
     auto m = std::any_cast<SFMatrix4f>(stored);
@@ -316,14 +305,14 @@ void testMatrixFieldMarshalling() {
       for (int c = 0; c < 4; ++c)
         if (!nearly(m.matrix[r][c], in.matrix[r][c])) ok = false;
   }
-  check(ok, "scr006: SFMatrix4f round-trips through JS (1..16 preserved)");
+  CHECK_MESSAGE((ok), "scr006: SFMatrix4f round-trips through JS (1..16 preserved)");
 }
 
 // a script's eventsProcessed() that writes an author outputOnly
 //     field must have that write read back + emitted (§29.2.4). mustEvaluate
 //     FALSE defers the input to the batch so eventsProcessed fires this tick.
 
-void testEventsProcessedAuthorOutput() {
+TEST_CASE("events processed author output") {
   X3DExecutionContext ctx;
 
   Script script;
@@ -353,27 +342,8 @@ void testEventsProcessedAuthorOutput() {
                          X3DFieldType::SFFloat, 1.0);
   ctx.tick(1.0); // flush deferred -> eventsProcessed -> readback -> ROUTE
 
-  check(veq(target.getTranslation(), 9, 9, 9),
-        "scr003: eventsProcessed() author output read back + drove ROUTE");
+  CHECK_MESSAGE((veq(target.getTranslation(), 9, 9, 9)),
+                ("scr003: eventsProcessed() author output read back + drove ROUTE"));
 }
 
 } // namespace
-
-int main() {
-  testSourceFromSourceCode();
-  testSourceCodePrecedence();
-  testUrlFallback();
-  testInitialValueSeeding();
-  testAuthorOutputDrivesRoute();
-  testInputOutputAuthorField();
-  testPrepareEventsAuthorOutput();
-  testMatrixFieldMarshalling();
-  testEventsProcessedAuthorOutput();
-
-  if (failures == 0) {
-    std::cout << "ALL SCRIPT AUTHOR RUNTIME TESTS PASSED\n";
-    return 0;
-  }
-  std::cerr << failures << " script author runtime test(s) FAILED\n";
-  return 1;
-}

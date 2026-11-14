@@ -74,7 +74,7 @@ without any resolver, so the null default swallows nothing they cover.
 
 ### 3. One resolver call per child per tick, made idempotent
 
-Blocking honesty: v1 backends are synchronous, so a resolver call can block a
+Blocking: v1 backends are synchronous, so a resolver call can block a
 tick. The system bounds this to **at most one resolver call per still-loading
 child per tick**, and asks each URL candidate at most once ever — `Ready` is
 memoized **system-wide per URL** (the ADR-0045 Ready-only-memo precedent),

@@ -14,25 +14,15 @@
 #include "X3DDocument.hpp" // out-of-line Scene::addRootNode
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <string>
 using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-
-static void addChild(const std::shared_ptr<X3DNode>& parent,
-                     const std::shared_ptr<X3DNode>& child) {
-  for (auto& f : parent->fields())
-    if (f.x3dName == "children" && f.set) {
-      auto kids = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(f.get(*parent));
-      kids.push_back(child);
-      f.set(*parent, std::any(std::move(kids)));
-      return;
-    }
-}
+using x3d::test::addChild;
+using x3d::test::feq;
 
 template <typename T>
 static T getField(X3DNode& n, const char* name) {

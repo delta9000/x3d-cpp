@@ -4,6 +4,7 @@
 
 #include "HAnimSkin.hpp" // permits this implementation header's isolation check
 #include "TransformSystem.hpp"
+#include "Vec3.hpp"
 #include "x3d/nodes/Coordinate.hpp"
 #include "x3d/nodes/CoordinateDouble.hpp"
 #include "x3d/nodes/Normal.hpp"
@@ -42,11 +43,9 @@ inline std::vector<SFVec3f> points(const Ptr &n) {
     for (const auto &p : c->getPoint()) out.push_back({float(p.x), float(p.y), float(p.z)});
   return out;
 }
-inline SFVec3f add(SFVec3f a, SFVec3f b) { return {a.x+b.x,a.y+b.y,a.z+b.z}; }
-inline SFVec3f mul(SFVec3f a, float s) { return {a.x*s,a.y*s,a.z*s}; }
 inline SFVec3f unit(SFVec3f a, SFVec3f fallback) {
   float length = std::sqrt(a.x*a.x+a.y*a.y+a.z*a.z);
-  return length > 0 && std::isfinite(length) ? mul(a,1/length) : fallback;
+  return length > 0 && std::isfinite(length) ? vec3::scale(a,1/length) : fallback;
 }
 inline SFVec3f normalByInverse(const Mat4 &m, SFVec3f n) {
   return {m.m[0]*n.x+m.m[1]*n.y+m.m[2]*n.z,
@@ -68,7 +67,7 @@ inline SFVec3f deformNormalWithCoordinate(const SkinBinding &b,
   for (auto k = first; k < last; ++k) {
     const auto &in = b.influences[k];
     if (in.joint < inversePalette.size())
-      sum = add(sum, mul(normalByInverse(inversePalette[in.joint], bind), in.weight));
+      sum = vec3::add(sum, vec3::scale(normalByInverse(inversePalette[in.joint], bind), in.weight));
   }
   return unit(sum, bind);
 }
@@ -243,9 +242,9 @@ inline void deform(const SkinBinding &b,const SkinPose &pose,std::vector<SFVec3f
     for (size_t k=first;k<last;++k) {
       const auto &in=b.influences[k];
       if (in.joint>=pose.palette.size()) continue;
-      p=add(p,mul(pose.palette[in.joint].transformPoint(b.bindPositions[i]),in.weight));
+      p=vec3::add(p,vec3::scale(pose.palette[in.joint].transformPoint(b.bindPositions[i]),in.weight));
       if (normals && i<normals->size())
-        n=add(n,mul(normalByInverse(inverse[in.joint],b.bindNormals[i]),in.weight));
+        n=vec3::add(n,vec3::scale(normalByInverse(inverse[in.joint],b.bindNormals[i]),in.weight));
     }
     positions[i]=p;
     if (normals && i<normals->size()) (*normals)[i]=unit(n,b.bindNormals[i]);
@@ -256,8 +255,8 @@ inline void deform(const SkinBinding &b,const SkinPose &pose,std::vector<SFVec3f
     if (item.joint>=pose.jointMatrix.size()) continue;
     for (size_t k=0;k<item.index.size();++k)
       if (item.index[k]<positions.size())
-        positions[item.index[k]]=add(positions[item.index[k]],
-          mul(pose.jointMatrix[item.joint].transformDirection(item.displacement[k]),pose.displacerWeight[d]));
+        positions[item.index[k]]=vec3::add(positions[item.index[k]],
+          vec3::scale(pose.jointMatrix[item.joint].transformDirection(item.displacement[k]),pose.displacerWeight[d]));
   }
 }
 
@@ -275,7 +274,7 @@ inline bool displaceSegmentPoints(const X3DNode &segmentNode, const X3DNode &coo
     const auto &ds=d->getDisplacements();
     for (size_t k=0;k<std::min(ids.size(),ds.size());++k)
       if (ids[k]>=0 && size_t(ids[k])<points.size()) {
-        points[ids[k]]=add(points[ids[k]],mul(ds[k],d->getWeight())); changed=true;
+        points[ids[k]]=vec3::add(points[ids[k]],vec3::scale(ds[k],d->getWeight())); changed=true;
       }
   }
   return changed;

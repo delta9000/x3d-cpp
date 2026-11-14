@@ -129,7 +129,7 @@ struct ChildLoadPlan { bool watch = true; bool vacuousReady = false;
                        extract::AssetKind kind = extract::AssetKind::Inline; };
 using ChildLoadPolicy = std::function<ChildLoadPlan(X3DNode* child, const Scene&)>;
 
-// Production wiring (X3DSceneBridge.hpp):
+// Production wiring (declared in X3DSceneBridge.hpp, defined in X3DSceneBridge.cpp):
 std::shared_ptr<LoadSensorSystem>
 attachLoadSensors(Scene&, X3DExecutionContext&,
                   extract::AssetResolver = nullptr);

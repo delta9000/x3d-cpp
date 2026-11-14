@@ -251,8 +251,8 @@ created by a callback wait for a later drain; recursive drains are rejected.
 
 Checked arithmetic detects overflow; zero-length payloads still consume their
 write/field-name storage. Predictable full queues reject before backend entry
-without losing earlier accepted work. Overflow discovered during execution has
-honest partial/unknown effects and a faulted activation, not silent event loss.
+without losing earlier accepted work. Overflow discovered during execution reports
+partial/unknown effects and a faulted activation, not silent event loss.
 Cancelled registrations are reclaimed on owner-thread cleanup. Retired scene
 records and terminal request history are not kept in immortal indexes.
 

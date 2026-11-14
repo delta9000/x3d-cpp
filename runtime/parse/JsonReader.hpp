@@ -92,7 +92,7 @@ private:
   void collectJsonIsConnections(const json::Value &wrapper,
                                 const std::shared_ptr<X3DNode> &node,
                                 runtime::ProtoBody &out);
-  // Script author interface .
+  // Script author interface.
   /// Capture author field declarations and Script inline source
   /// (ISO/IEC 19776-5 Annex A). The node's identity keys the
   /// DynamicFieldStore. Author decls live under the un-prefixed "field" member

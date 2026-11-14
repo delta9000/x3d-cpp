@@ -1,5 +1,6 @@
 // Encoding detection, tokenization, reflected value collection, and reader dispatch.
 
+#include "doctest/doctest.h"
 #include "X3DParse.hpp"
 
 #include "FieldValueIO.hpp"
@@ -31,17 +32,6 @@ using namespace x3d::nodes;
 using x3d::codec::Encoding;
 
 namespace {
-
-int failures = 0;
-
-void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 runtime::X3DDocument buildSampleDocument() {
   runtime::X3DDocument doc;
   doc.version = "4.0";
@@ -74,100 +64,79 @@ runtime::X3DDocument buildSampleDocument() {
   return doc;
 }
 
-void testSniffing() {
+TEST_CASE("sniffing") {
   using x3d::codec::sniff;
   using x3d::codec::sniffByContent;
   using x3d::codec::sniffByExtension;
 
   // Extension sniffing.
-  check(sniffByExtension("scene.x3d") == Encoding::XML, "ext .x3d -> XML");
-  check(sniffByExtension("scene.x3dv") == Encoding::ClassicVRML,
-        "ext .x3dv -> ClassicVRML");
-  check(sniffByExtension("scene.wrl") == Encoding::VRML97,
-        "ext .wrl -> VRML97");
-  check(sniffByExtension("scene.json") == Encoding::JSON, "ext .json -> JSON");
-  check(sniffByExtension("/a/b/SCENE.X3DV") == Encoding::ClassicVRML,
-        "ext is case-insensitive");
-  check(sniffByExtension("model.wrl.gz") == Encoding::VRML97,
-        "ext strips .gz suffix");
-  check(sniffByExtension("noext") == Encoding::Unknown,
-        "ext unknown -> Unknown");
+  CHECK_MESSAGE((sniffByExtension("scene.x3d") == Encoding::XML), "ext .x3d -> XML");
+  CHECK_MESSAGE((sniffByExtension("scene.x3dv") == Encoding::ClassicVRML), "ext .x3dv -> ClassicVRML");
+  CHECK_MESSAGE((sniffByExtension("scene.wrl") == Encoding::VRML97), "ext .wrl -> VRML97");
+  CHECK_MESSAGE((sniffByExtension("scene.json") == Encoding::JSON), "ext .json -> JSON");
+  CHECK_MESSAGE((sniffByExtension("/a/b/SCENE.X3DV") == Encoding::ClassicVRML), "ext is case-insensitive");
+  CHECK_MESSAGE((sniffByExtension("model.wrl.gz") == Encoding::VRML97), "ext strips .gz suffix");
+  CHECK_MESSAGE((sniffByExtension("noext") == Encoding::Unknown), "ext unknown -> Unknown");
 
   // Content sniffing.
-  check(sniffByContent("#VRML V2.0 utf8\n") == Encoding::VRML97,
-        "content #VRML V2.0 -> VRML97");
-  check(sniffByContent("#VRML V1.0 ascii\n") == Encoding::VRML97,
-        "content #VRML V1.0 -> VRML97 (best-effort)");
-  check(sniffByContent("#X3D V4.0 utf8\n") == Encoding::ClassicVRML,
-        "content #X3D V4 -> ClassicVRML");
-  check(sniffByContent("#X3D V3.3 utf8\n") == Encoding::ClassicVRML,
-        "content #X3D V3 -> ClassicVRML");
-  check(sniffByContent("<?xml version=\"1.0\"?><X3D/>") == Encoding::XML,
-        "content <?xml -> XML");
-  check(sniffByContent("<X3D profile='Interchange'></X3D>") == Encoding::XML,
-        "content <X3D -> XML");
-  check(sniffByContent("  \n  {\"X3D\":{}}") == Encoding::JSON,
-        "content { ... \"X3D\" -> JSON (after whitespace)");
-  check(sniffByContent("\xEF\xBB\xBF<?xml ?>") == Encoding::XML,
-        "content skips UTF-8 BOM");
-  check(sniffByContent("{ \"other\": 1 }") == Encoding::Unknown,
-        "content bare {} without X3D key -> Unknown");
+  CHECK_MESSAGE((sniffByContent("#VRML V2.0 utf8\n") == Encoding::VRML97), "content #VRML V2.0 -> VRML97");
+  CHECK_MESSAGE((sniffByContent("#VRML V1.0 ascii\n") == Encoding::VRML97), "content #VRML V1.0 -> VRML97 (best-effort)");
+  CHECK_MESSAGE((sniffByContent("#X3D V4.0 utf8\n") == Encoding::ClassicVRML), "content #X3D V4 -> ClassicVRML");
+  CHECK_MESSAGE((sniffByContent("#X3D V3.3 utf8\n") == Encoding::ClassicVRML), "content #X3D V3 -> ClassicVRML");
+  CHECK_MESSAGE((sniffByContent("<?xml version=\"1.0\"?><X3D/>") == Encoding::XML), ("content <?xml -> XML"));
+  CHECK_MESSAGE((sniffByContent("<X3D profile='Interchange'></X3D>") == Encoding::XML), "content <X3D -> XML");
+  CHECK_MESSAGE((sniffByContent("  \n  {\"X3D\":{}}") == Encoding::JSON), "content { ... \"X3D\" -> JSON (after whitespace)");
+  CHECK_MESSAGE((sniffByContent("\xEF\xBB\xBF<?xml ?>") == Encoding::XML), "content skips UTF-8 BOM");
+  CHECK_MESSAGE((sniffByContent("{ \"other\": 1 }") == Encoding::Unknown), "content bare {} without X3D key -> Unknown");
 
   // gzip detection.
   std::string gz = std::string("\x1f\x8b\x08\x00", 4);
-  check(x3d::codec::isGzip(gz), "gzip magic detected");
-  check(sniffByContent(gz) == Encoding::Unknown,
-        "gzip content -> Unknown (caller inflates)");
+  CHECK_MESSAGE((x3d::codec::isGzip(gz)), "gzip magic detected");
+  CHECK_MESSAGE((sniffByContent(gz) == Encoding::Unknown), "gzip content -> Unknown (caller inflates)");
 
   // Combined: content overrides a wrong extension.
-  check(sniff("mislabeled.wrl", "#X3D V4.0 utf8\n") == Encoding::ClassicVRML,
-        "content overrides wrong .wrl extension (really ClassicVRML)");
-  check(sniff("noext.dat", "<?xml ?><X3D/>") == Encoding::XML,
-        "content classifies an extensionless file");
+  CHECK_MESSAGE((sniff("mislabeled.wrl", "#X3D V4.0 utf8\n") == Encoding::ClassicVRML), "content overrides wrong .wrl extension (really ClassicVRML)");
+  CHECK_MESSAGE((sniff("noext.dat", "<?xml ?><X3D/>") == Encoding::XML), "content classifies an extensionless file");
   // Combined: extension is the fallback when content is inconclusive.
-  check(sniff("scene.json", "{\"unrecognized\":true}") == Encoding::JSON,
-        "extension is the fallback when content is inconclusive");
+  CHECK_MESSAGE((sniff("scene.json", "{\"unrecognized\":true}") == Encoding::JSON), "extension is the fallback when content is inconclusive");
 }
 
-void testTokenizer() {
+TEST_CASE("tokenizer") {
   using x3d::codec::VrmlToken;
   using x3d::codec::VrmlTokenizer;
 
   // Punctuation, identifiers, numbers, comma==whitespace, comments.
   VrmlTokenizer t("Shape { # a comment\n geometry Box { size 2, 2 2 } }");
-  check(t.next().isWord("Shape"), "tok: Shape identifier");
-  check(t.next().isPunct('{'), "tok: { punct");
-  check(t.next().isWord("geometry"), "tok: geometry (comment skipped)");
-  check(t.next().isWord("Box"), "tok: Box identifier");
-  check(t.next().isPunct('{'), "tok: nested { punct");
-  check(t.next().isWord("size"), "tok: size identifier");
+  CHECK_MESSAGE((t.next().isWord("Shape")), "tok: Shape identifier");
+  CHECK_MESSAGE((t.next().isPunct('{')), "tok: { punct");
+  CHECK_MESSAGE((t.next().isWord("geometry")), "tok: geometry (comment skipped)");
+  CHECK_MESSAGE((t.next().isWord("Box")), "tok: Box identifier");
+  CHECK_MESSAGE((t.next().isPunct('{')), "tok: nested { punct");
+  CHECK_MESSAGE((t.next().isWord("size")), "tok: size identifier");
   VrmlToken n1 = t.next();
-  check(n1.kind == VrmlToken::Kind::Number && n1.text == "2",
-        "tok: number 2 (comma is whitespace)");
-  check(t.next().text == "2", "tok: number 2 again");
-  check(t.next().text == "2", "tok: number 2 third");
-  check(t.next().isPunct('}'), "tok: } punct");
-  check(t.next().isPunct('}'), "tok: outer } punct");
-  check(t.atEnd(), "tok: stream exhausted");
+  CHECK_MESSAGE((n1.kind == VrmlToken::Kind::Number && n1.text == "2"), "tok: number 2 (comma is whitespace)");
+  CHECK_MESSAGE((t.next().text == "2"), "tok: number 2 again");
+  CHECK_MESSAGE((t.next().text == "2"), "tok: number 2 third");
+  CHECK_MESSAGE((t.next().isPunct('}')), "tok: } punct");
+  CHECK_MESSAGE((t.next().isPunct('}')), "tok: outer } punct");
+  CHECK_MESSAGE((t.atEnd()), "tok: stream exhausted");
 
   // Quoted string unescape + isString flag.
   VrmlTokenizer s(R"(name "he said \"hi\" \\ end")");
-  check(s.next().isWord("name"), "tok: bare word before string");
+  CHECK_MESSAGE((s.next().isWord("name")), "tok: bare word before string");
   VrmlToken str = s.next();
-  check(str.kind == VrmlToken::Kind::String && str.isString,
-        "tok: quoted string flagged isString");
-  check(str.text == "he said \"hi\" \\ end",
-        "tok: string escapes unescaped to: he said \"hi\" \\ end");
+  CHECK_MESSAGE((str.kind == VrmlToken::Kind::String && str.isString), "tok: quoted string flagged isString");
+  CHECK_MESSAGE((str.text == "he said \"hi\" \\ end"), "tok: string escapes unescaped to: he said \"hi\" \\ end");
 
   // Header-line skip.
   VrmlTokenizer h("#X3D V4.0 utf8\nPROFILE Interchange\n",
                   /*firstLineIsHeader=*/true);
-  check(h.next().isWord("PROFILE"), "tok: first header line skipped");
-  check(h.next().isWord("Interchange"), "tok: PROFILE arg");
-  check(h.atEnd(), "tok: body exhausted after header skip");
+  CHECK_MESSAGE((h.next().isWord("PROFILE")), "tok: first header line skipped");
+  CHECK_MESSAGE((h.next().isWord("Interchange")), "tok: PROFILE arg");
+  CHECK_MESSAGE((h.atEnd()), "tok: body exhausted after header skip");
 }
 
-void testCollectFieldValue() {
+TEST_CASE("collect field value") {
   namespace b = x3d::codec::build;
   using x3d::codec::VrmlTokenizer;
 
@@ -175,21 +144,20 @@ void testCollectFieldValue() {
   {
     VrmlTokenizer t("2.5 rest");
     std::string w = b::collectFieldValue(t, X3DFieldType::SFFloat);
-    check(w == "2.5", "collect SFFloat: one token");
-    check(t.peek().isWord("rest"), "collect SFFloat: stops after one token");
+    CHECK_MESSAGE((w == "2.5"), "collect SFFloat: one token");
+    CHECK_MESSAGE((t.peek().isWord("rest")), "collect SFFloat: stops after one token");
     auto v = x3d::codec::parseValue(X3DFieldType::SFFloat, w);
-    check(std::any_cast<float>(v) == 2.5f, "collect SFFloat: parses to 2.5");
+    CHECK_MESSAGE((std::any_cast<float>(v) == 2.5f), "collect SFFloat: parses to 2.5");
   }
   // SF struct: N component tokens.
   {
     VrmlTokenizer t("1 2 3 next");
     std::string w = b::collectFieldValue(t, X3DFieldType::SFVec3f);
-    check(w == "1 2 3", "collect SFVec3f: three tokens joined");
+    CHECK_MESSAGE((w == "1 2 3"), "collect SFVec3f: three tokens joined");
     auto v = std::any_cast<SFVec3f>(
         x3d::codec::parseValue(X3DFieldType::SFVec3f, w));
-    check(v.x == 1 && v.y == 2 && v.z == 3,
-          "collect SFVec3f: parses to (1,2,3)");
-    check(t.peek().isWord("next"), "collect SFVec3f: stops after 3 tokens");
+    CHECK_MESSAGE((v.x == 1 && v.y == 2 && v.z == 3), "collect SFVec3f: parses to (1,2,3)");
+    CHECK_MESSAGE((t.peek().isWord("next")), "collect SFVec3f: stops after 3 tokens");
   }
   // SFString: one quoted token, re-quoted for parseValue.
   {
@@ -197,8 +165,8 @@ void testCollectFieldValue() {
     std::string w = b::collectFieldValue(t, X3DFieldType::SFString);
     auto v = std::any_cast<std::string>(
         x3d::codec::parseValue(X3DFieldType::SFString, w));
-    check(v == "hello world", "collect SFString: 'hello world'");
-    check(t.peek().isWord("tail"), "collect SFString: stops after the string");
+    CHECK_MESSAGE((v == "hello world"), "collect SFString: 'hello world'");
+    CHECK_MESSAGE((t.peek().isWord("tail")), "collect SFString: stops after the string");
   }
   // MFInt32: bracketed run.
   {
@@ -206,9 +174,8 @@ void testCollectFieldValue() {
     std::string w = b::collectFieldValue(t, X3DFieldType::MFInt32);
     auto v = std::any_cast<std::vector<int>>(
         x3d::codec::parseValue(X3DFieldType::MFInt32, w));
-    check(v.size() == 4 && v[0] == 1 && v[3] == 4,
-          "collect MFInt32: [1 2 3 4]");
-    check(t.peek().isWord("after"), "collect MFInt32: consumes the brackets");
+    CHECK_MESSAGE((v.size() == 4 && v[0] == 1 && v[3] == 4), "collect MFInt32: [1 2 3 4]");
+    CHECK_MESSAGE((t.peek().isWord("after")), "collect MFInt32: consumes the brackets");
   }
   // MF*: a single bare element without brackets (VRML one-element MF).
   {
@@ -216,9 +183,8 @@ void testCollectFieldValue() {
     std::string w = b::collectFieldValue(t, X3DFieldType::MFRotation);
     auto v = std::any_cast<std::vector<SFRotation>>(
         x3d::codec::parseValue(X3DFieldType::MFRotation, w));
-    check(v.size() == 1 && v[0].z == 1, "collect MFRotation: bare 4-tuple");
-    check(t.peek().isWord("done"),
-          "collect MFRotation: bare element consumes exactly 4 tokens");
+    CHECK_MESSAGE((v.size() == 1 && v[0].z == 1), "collect MFRotation: bare 4-tuple");
+    CHECK_MESSAGE((t.peek().isWord("done")), "collect MFRotation: bare element consumes exactly 4 tokens");
   }
   // MFString: quotes preserved per element.
   {
@@ -226,12 +192,11 @@ void testCollectFieldValue() {
     std::string w = b::collectFieldValue(t, X3DFieldType::MFString);
     auto v = std::any_cast<std::vector<std::string>>(
         x3d::codec::parseValue(X3DFieldType::MFString, w));
-    check(v.size() == 2 && v[0] == "a b" && v[1] == "c",
-          "collect MFString: preserves per-element quoting");
+    CHECK_MESSAGE((v.size() == 2 && v[0] == "a b" && v[1] == "c"), "collect MFString: preserves per-element quoting");
   }
 }
 
-void testXmlAdapterAndFrontDoor() {
+TEST_CASE("xml adapter and front door") {
   runtime::X3DDocument doc = buildSampleDocument();
   codec::XmlWriter writer;
   std::string xml = writer.writeDocument(doc);
@@ -242,7 +207,7 @@ void testXmlAdapterAndFrontDoor() {
 
   // Through the adapter.
   codec::XmlReaderAdapter adapter;
-  check(adapter.encoding() == Encoding::XML, "adapter reports XML encoding");
+  CHECK_MESSAGE((adapter.encoding() == Encoding::XML), "adapter reports XML encoding");
   runtime::X3DDocument viaAdapter = adapter.readDocument(xml);
 
   // Through the front door with no hint (must sniff XML and pick the adapter).
@@ -252,42 +217,38 @@ void testXmlAdapterAndFrontDoor() {
   std::string sRaw = writer.writeDocument(viaRaw);
   std::string sAdapter = writer.writeDocument(viaAdapter);
   std::string sFront = writer.writeDocument(viaFrontDoor);
-  check(sAdapter == sRaw, "XmlReaderAdapter == raw XmlReader (serialized)");
-  check(sFront == sRaw, "parseDocument(no hint) == raw XmlReader (serialized)");
+  CHECK_MESSAGE((sAdapter == sRaw), "XmlReaderAdapter == raw XmlReader (serialized)");
+  CHECK_MESSAGE((sFront == sRaw), "parseDocument(no hint) == raw XmlReader (serialized)");
 
   // Structural spot checks on the adapter's output.
-  check(viaAdapter.scene.rootNodes.size() == 1, "adapter: one root node");
-  check(viaAdapter.scene.routes.size() == 1, "adapter: ROUTE survived");
-  check(viaAdapter.head.meta.size() == 1 &&
-            viaAdapter.head.meta[0].name == "title",
-        "adapter: head meta survived");
+  CHECK_MESSAGE((viaAdapter.scene.rootNodes.size() == 1), "adapter: one root node");
+  CHECK_MESSAGE((viaAdapter.scene.routes.size() == 1), "adapter: ROUTE survived");
+  CHECK_MESSAGE((viaAdapter.head.meta.size() == 1 &&
+            viaAdapter.head.meta[0].name == "title"), "adapter: head meta survived");
 
   // DEF/USE identity: both shapes share one Appearance shared_ptr.
   auto root =
       std::dynamic_pointer_cast<Transform>(viaAdapter.scene.rootNodes[0]);
-  check(static_cast<bool>(root), "adapter: root is a Transform");
+  CHECK_MESSAGE((static_cast<bool>(root)), "adapter: root is a Transform");
   if (root) {
     const auto &kids = root->getChildren();
-    check(kids.size() == 2, "adapter: transform has two children");
+    CHECK_MESSAGE((kids.size() == 2), "adapter: transform has two children");
     if (kids.size() == 2) {
       auto s1 = std::dynamic_pointer_cast<Shape>(kids[0]);
       auto s2 = std::dynamic_pointer_cast<Shape>(kids[1]);
-      check(s1 && s2 && s1->getAppearance() && s2->getAppearance() &&
-                s1->getAppearance().get() == s2->getAppearance().get(),
-            "adapter: DEF/USE Appearance is one shared_ptr");
+      CHECK_MESSAGE((s1 && s2 && s1->getAppearance() && s2->getAppearance() &&
+                s1->getAppearance().get() == s2->getAppearance().get()), "adapter: DEF/USE Appearance is one shared_ptr");
     }
   }
 
   {
     auto jsonReader = codec::makeReader(Encoding::JSON);
-    check(jsonReader && jsonReader->encoding() == Encoding::JSON,
-          "makeReader(JSON) returns a JSON reader (WS-D landed)");
+    CHECK_MESSAGE((jsonReader && jsonReader->encoding() == Encoding::JSON), "makeReader(JSON) returns a JSON reader (WS-D landed)");
   }
 
   {
     auto vrmlReader = codec::makeReader(Encoding::VRML97);
-    check(vrmlReader && vrmlReader->encoding() == Encoding::VRML97,
-          "makeReader(VRML97) returns a VRML97 reader (WS-C landed)");
+    CHECK_MESSAGE((vrmlReader && vrmlReader->encoding() == Encoding::VRML97), "makeReader(VRML97) returns a VRML97 reader (WS-C landed)");
   }
 
   // Unknown-after-sniff throws.
@@ -297,10 +258,10 @@ void testXmlAdapterAndFrontDoor() {
   } catch (const std::runtime_error &) {
     threw = true;
   }
-  check(threw, "parseDocument throws on unrecognizable content");
+  CHECK_MESSAGE((threw), "parseDocument throws on unrecognizable content");
 }
 // Lenient recovery for BOM, nested quotes, and write-only MFNode fields.
-void testLenientReadFixes() {
+TEST_CASE("lenient read fixes") {
   // Strip the UTF-8 BOM before XML sniffing and parsing.
   {
     const std::string bom = "\xEF\xBB\xBF";
@@ -316,16 +277,14 @@ void testLenientReadFixes() {
       threw = true;
       std::cerr << "  (BOM parse threw: " << e.what() << ")\n";
     }
-    check(!threw, "BOM: UTF-8 BOM-prefixed XML parses without throwing");
-    check(doc.scene.rootNodes.size() == 1,
-          "BOM: BOM-prefixed document yields the one root node");
-    check(doc.version == "3.0", "BOM: version attribute read past the BOM");
+    CHECK_MESSAGE((!threw), "BOM: UTF-8 BOM-prefixed XML parses without throwing");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "BOM: BOM-prefixed document yields the one root node");
+    CHECK_MESSAGE((doc.version == "3.0"), "BOM: version attribute read past the BOM");
 
     // And the same content without a BOM is byte-identical in outcome (the
     // strip is a no-op when no BOM is present).
     runtime::X3DDocument plain = codec::parseDocument(xml.substr(bom.size()));
-    check(plain.scene.rootNodes.size() == doc.scene.rootNodes.size(),
-          "BOM: with/without BOM produce the same root count");
+    CHECK_MESSAGE((plain.scene.rootNodes.size() == doc.scene.rootNodes.size()), "BOM: with/without BOM produce the same root count");
   }
 
   // An inner same-kind quote extends the value to the last quote before tag close.
@@ -342,14 +301,12 @@ void testLenientReadFixes() {
       threw = true;
       std::cerr << "  (nested-quote parse threw: " << e.what() << ")\n";
     }
-    check(!threw, "attr-recovery: inner same-quote value does not throw");
-    check(doc.scene.rootNodes.size() == 1,
-          "attr-recovery: document past the bad attribute still parses");
+    CHECK_MESSAGE((!threw), "attr-recovery: inner same-quote value does not throw");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "attr-recovery: document past the bad attribute still parses");
     bool gotMeta = doc.head.meta.size() == 1 &&
                    doc.head.meta[0].name == "description" &&
                    doc.head.meta[0].content == "it's a test";
-    check(gotMeta,
-          "attr-recovery: widened value captured the full \"it's a test\"");
+    CHECK_MESSAGE((gotMeta), "attr-recovery: widened value captured the full \"it's a test\"");
 
     // A well-formed single-quoted value (no inner quote) is byte-identical: the
     // recovery path must not fire for valid XML.
@@ -358,9 +315,8 @@ void testLenientReadFixes() {
         "<meta name='description' content='plain text' />"
         "</head><Scene/></X3D>";
     runtime::X3DDocument okDoc = codec::parseDocument(ok, Encoding::XML);
-    check(okDoc.head.meta.size() == 1 &&
-              okDoc.head.meta[0].content == "plain text",
-          "attr-recovery: well-formed value is unchanged (no false trigger)");
+    CHECK_MESSAGE((okDoc.head.meta.size() == 1 &&
+              okDoc.head.meta[0].content == "plain text"), "attr-recovery: well-formed value is unchanged (no false trigger)");
   }
 
   // A child without containerField must not call an inputOnly sink's missing getter.
@@ -379,10 +335,8 @@ void testLenientReadFixes() {
       threw = true;
       std::cerr << "  (NURBS guard parse threw: " << e.what() << ")\n";
     }
-    check(!threw,
-          "NURBS guard: Contour2D w/o containerField does not crash/throw");
-    check(doc.scene.rootNodes.size() == 1,
-          "NURBS guard: the Shape root still parses");
+    CHECK_MESSAGE((!threw), "NURBS guard: Contour2D w/o containerField does not crash/throw");
+    CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), "NURBS guard: the Shape root still parses");
   }
 }
 
@@ -410,10 +364,9 @@ void testGzipInflate(const std::string &dataDir) {
         0x0b, 0xf2, 0xf5, 0x51, 0x08, 0x33, 0xd2, 0x33, 0x50, 0x28, 0x2d, 0x49,
         0xb3, 0xe0, 0x02, 0x00, 0x01, 0x4b, 0x9f, 0x68, 0x10, 0x00, 0x00, 0x00};
     std::string gz(reinterpret_cast<const char *>(kGz), sizeof(kGz));
-    check(x3d::codec::isGzip(gz), "gzip: in-memory fixture has gzip magic");
+    CHECK_MESSAGE((x3d::codec::isGzip(gz)), "gzip: in-memory fixture has gzip magic");
     std::string text = x3d::codec::inflateGzip(gz);
-    check(text == "#VRML V2.0 utf8\n",
-          "gzip: inflateGzip recovers exact #VRML header line");
+    CHECK_MESSAGE((text == "#VRML V2.0 utf8\n"), "gzip: inflateGzip recovers exact #VRML header line");
   }
 
   if (dataDir.empty()) {
@@ -438,15 +391,13 @@ void testGzipInflate(const std::string &dataDir) {
 
   for (const auto &c : cases) {
     std::string raw = readBinaryFile(c.gz);
-    check(!raw.empty() && x3d::codec::isGzip(raw),
-          "gzip: " + c.label + " fixture present and gzip-magic");
+    CHECK_MESSAGE((!raw.empty() && x3d::codec::isGzip(raw)), ("gzip: " + c.label + " fixture present and gzip-magic"));
     if (raw.empty())
       continue;
 
     // (1) inflateGzip header check.
     std::string inflated = x3d::codec::inflateGzip(raw);
-    check(inflated.compare(0, c.headPfx.size(), c.headPfx) == 0,
-          "gzip: " + c.label + " inflates to a " + c.headPfx + " header");
+    CHECK_MESSAGE((inflated.compare(0, c.headPfx.size(), c.headPfx) == 0), ("gzip: " + c.label + " inflates to a " + c.headPfx + " header"));
 
     // (2) parseFile(.gz) parity with parseFile(uncompressed sibling).
     bool threw = false;
@@ -460,67 +411,41 @@ void testGzipInflate(const std::string &dataDir) {
       threw = true;
       std::cerr << "  (exception: " << e.what() << ")\n";
     }
-    check(!threw, "gzip: " + c.label + " parseFile did not throw");
-    check(!sCompressed.empty(),
-          "gzip: " + c.label + " parseFile produced a document");
-    check(sCompressed == sPlain,
-          "gzip: " + c.label +
-              " parseFile(.gz) == parseFile(uncompressed sibling)");
+    CHECK_MESSAGE((!threw), ("gzip: " + c.label + " parseFile did not throw"));
+    CHECK_MESSAGE((!sCompressed.empty()), ("gzip: " + c.label + " parseFile produced a document"));
+    CHECK_MESSAGE((sCompressed == sPlain), ("gzip: " + c.label +
+              " parseFile(.gz) == parseFile(uncompressed sibling)"));
   }
 }
 
 // A no-containerField child must attach to the parent field named by the
 // CHILD's default containerField, not be dropped onto an arbitrary slot. The
 // canonical case: <Contour2D/> under <NurbsTrimmedSurface> -> trimmingContour.
-void testDefaultContainerFieldRouting() {
-  std::cout << "----- default containerField routing -----\n";
+TEST_CASE("default container field routing") {
   const std::string xml =
       "<X3D profile='Immersive' version='3.3'><Scene>"
       "<Shape><NurbsTrimmedSurface><Contour2D/></NurbsTrimmedSurface></Shape>"
       "</Scene></X3D>";
   runtime::X3DDocument doc = codec::parseDocument(xml, Encoding::XML);
-  check(!doc.scene.rootNodes.empty(), "routing: document has a root");
+  CHECK_MESSAGE((!doc.scene.rootNodes.empty()), "routing: document has a root");
   auto shape = doc.scene.rootNodes.empty()
                    ? nullptr
                    : std::dynamic_pointer_cast<Shape>(doc.scene.rootNodes[0]);
-  check(shape != nullptr, "routing: root is a Shape");
+  CHECK_MESSAGE((shape != nullptr), "routing: root is a Shape");
   auto nts = shape ? std::dynamic_pointer_cast<NurbsTrimmedSurface>(
                          shape->getGeometry())
                    : nullptr;
-  check(nts != nullptr, "routing: Shape.geometry is a NurbsTrimmedSurface");
+  CHECK_MESSAGE((nts != nullptr), "routing: Shape.geometry is a NurbsTrimmedSurface");
   if (nts) {
     MFNode contours = nts->getTrimmingContour();
-    check(contours.size() == 1,
-          "routing: Contour2D landed in trimmingContour (size==1)");
+    CHECK_MESSAGE((contours.size() == 1), "routing: Contour2D landed in trimmingContour (size==1)");
     if (contours.size() == 1)
-      check(std::dynamic_pointer_cast<Contour2D>(contours[0]) != nullptr,
-            "routing: the trimmingContour child is a Contour2D");
+      CHECK_MESSAGE((std::dynamic_pointer_cast<Contour2D>(contours[0]) != nullptr), "routing: the trimmingContour child is a Contour2D");
   }
 }
 
 } // namespace
 
-int main(int argc, char **argv) {
-  const std::string dataDir = (argc > 1) ? argv[1] : "";
-  std::cout << "===== WS-A: sniffing =====\n";
-  testSniffing();
-  std::cout << "===== WS-A: VrmlTokenizer =====\n";
-  testTokenizer();
-  std::cout << "===== WS-A: collectFieldValue =====\n";
-  testCollectFieldValue();
-  std::cout << "===== WS-A: XmlReaderAdapter + parseDocument =====\n";
-  testXmlAdapterAndFrontDoor();
-  std::cout << "===== Fix 1: gzip inflate before sniffing =====\n";
-  testGzipInflate(dataDir);
-  std::cout << "===== Lenient read: BOM + nested-quote + set-only guard =====\n";
-  testLenientReadFixes();
-  std::cout << "===== Default containerField routing =====\n";
-  testDefaultContainerFieldRouting();
-
-  if (failures == 0) {
-    std::cout << "\nALL WS-A PARSE FRONT-END CHECKS PASSED\n";
-    return 0;
-  }
-  std::cerr << "\n" << failures << " CHECK(S) FAILED\n";
-  return 1;
+TEST_CASE("gzip inflate") {
+  testGzipInflate(X3D_TEST_DATA_DIR);
 }

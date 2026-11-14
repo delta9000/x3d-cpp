@@ -26,7 +26,7 @@ By the time M2 scene-graph work reached M2b (bounding volumes, `BoundsSystem`) a
 
 **Math is the *consumer's* choice at the seam.** The M2.5 extraction API emits `RenderItem` and `PackedMesh` as plain spec-typed data. The embedder (the CAVE consumer, or any renderer) adapts that data into its own math: GLM, Eigen, a game-engine math lib, or a SIMD intrinsic layer. That choice belongs to the consumer, not to the SDK. If the SDK imposed GLM, every consumer that didn't use GLM would carry an unused dependency.
 
-**Eigen has a legitimate future scope: numerics-heavy subsystems.** HAnim IK solvers, RigidBodyPhysics, and NURBS fitting are genuinely Eigen-appropriate workloads. The policy does not ban Eigen from the project; it scopes it to those subsystems, isolated from the hot core path.
+**Eigen has a legitimate future scope: numerics-heavy subsystems.** HAnim IK solvers, RigidBodyPhysics, and NURBS fitting are Eigen-appropriate workloads. The policy does not ban Eigen from the project; it scopes it to those subsystems, isolated from the hot core path.
 
 The decision was confirmed by the user on 2026-06-13 (recorded in the project memory decisions file, math-policy paragraph).
 
@@ -72,5 +72,5 @@ Eigen is permitted, scoped to numerics-heavy subsystem targets only (HAnim IK, R
 - `runtime/math/Ray.hpp` — ray type; used by `PickSystem` and navigation
 - `runtime/math/Intersect.hpp` — ray-vs-primitive tests for the X3D §13.3 primitive set
 - `runtime/events/Interpolation.hpp` — `Quat`, `quatFromRotation`, `rotationFromQuat`; shared with interpolator system
-- `docs/superpowers/specs/2026-06-13-m2b-bounding-volumes-design.md` — M2b design where `Aabb` and `Mat4` were first introduced; first context where the no-external-math policy was articulated
-- `docs/superpowers/specs/2026-06-13-m2d-picking-navigation-design.md` — M2d design; `Intersect.hpp` primitives; seam-boundary conventions first stated
+- [`docs/superpowers/specs/2026-06-13-m2b-bounding-volumes-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-13-m2b-bounding-volumes-design.md) — M2b design where `Aabb` and `Mat4` were first introduced; first context where the no-external-math policy was articulated
+- [`docs/superpowers/specs/2026-06-13-m2d-picking-navigation-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-06-13-m2d-picking-navigation-design.md) — M2d design; `Intersect.hpp` primitives; seam-boundary conventions first stated

@@ -6,6 +6,7 @@
 
 #include <any>
 #include "doctest/doctest.h"
+#include "scene_test_helpers.hpp"
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -14,13 +15,8 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
-
-static bool feq(float a, float b) { return std::fabs(a - b) < 1e-4f; }
-
-static void setF(const std::shared_ptr<X3DNode> &n, const char *nm, std::any v) {
-  for (auto &f : n->fields())
-    if (f.x3dName == nm && f.set) { f.set(*n, std::move(v)); return; }
-}
+using x3d::test::setF;
+using x3d::test::feq;
 
 // Does any expanded corner carry exactly UV (s,t)?
 static bool hasUv(const MeshData &m, float s, float t) {

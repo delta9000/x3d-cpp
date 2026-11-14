@@ -5,7 +5,6 @@
 // PositionInterpolator, whose value_changed ROUTEs to a Transform's translation.
 // This exercises every layer: clock -> system update -> outputOnly emit ->
 // cascade -> inputOnly handler -> outputOnly emit -> cascade -> inputOutput sink.
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "InterpolatorSystem.hpp"
 #include "Interpolation.hpp"
@@ -25,7 +24,6 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 
 namespace {
-
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;
 }

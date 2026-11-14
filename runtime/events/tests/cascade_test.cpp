@@ -4,7 +4,6 @@
 // programmatically, wires ROUTEs, posts initial events, runs the cascade, and
 // asserts values propagate with X3D single-timestamp semantics (fan-out +
 // per-route loop-breaking).
-// Exit code 0 on success; nonzero on any failed assertion.
 
 #include "X3DEventCascade.hpp"
 #include "X3DEventGraph.hpp"
@@ -22,7 +21,6 @@ using namespace x3d::nodes;
 using namespace x3d::runtime;
 
 namespace {
-
 SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 bool veq(const SFVec3f &a, float x, float y, float z) {
   return a.x == x && a.y == y && a.z == z;

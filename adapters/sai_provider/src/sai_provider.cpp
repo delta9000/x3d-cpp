@@ -1,5 +1,6 @@
 #include "x3d/sai_provider.hpp"
 #include "x3d/sai_presentation.hpp"
+#include "InterpolatorRegistration.hpp"
 #include "RuntimeSession.hpp"
 #include "x3d/nodes/Box.hpp"
 #include "x3d/nodes/PositionInterpolator.hpp"

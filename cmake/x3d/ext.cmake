@@ -33,7 +33,7 @@ if(X3D_CPP_BUILD_EXT)
 
         add_executable(x3d_ext_stl_reader
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/stl_reader_test.cpp")
-        target_link_libraries(x3d_ext_stl_reader PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_ext_stl_reader PRIVATE x3d_cpp::ext x3d_doctest_main)
         add_test(NAME x3d_ext_stl_reader COMMAND x3d_ext_stl_reader)
 
         # STL writer round-trip test: writeStlBinary → parseStlBinary (bit-exact).
@@ -42,7 +42,7 @@ if(X3D_CPP_BUILD_EXT)
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli/stl_write_test.cpp")
         target_include_directories(x3d_stl_write_test PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
-        target_link_libraries(x3d_stl_write_test PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_stl_write_test PRIVATE x3d_cpp::ext x3d_doctest_main)
         add_test(NAME x3d_stl_write_test COMMAND x3d_stl_write_test)
 
         # Extract self-oracle: X3D → writeStlBinary → parseStlBinary → compare.
@@ -59,18 +59,18 @@ if(X3D_CPP_BUILD_EXT)
 
         add_executable(x3d_ext_external_geometry_node
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_node_test.cpp")
-        target_link_libraries(x3d_ext_external_geometry_node PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_ext_external_geometry_node PRIVATE x3d_cpp::ext x3d_doctest_main)
         add_test(NAME x3d_ext_external_geometry_node COMMAND x3d_ext_external_geometry_node)
 
         add_executable(x3d_ext_external_geometry_roundtrip
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_roundtrip_test.cpp")
-        target_link_libraries(x3d_ext_external_geometry_roundtrip PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_ext_external_geometry_roundtrip PRIVATE x3d_cpp::ext x3d_doctest_main)
         add_test(NAME x3d_ext_external_geometry_roundtrip COMMAND x3d_ext_external_geometry_roundtrip)
 
         # Lazy ExternalGeometry materialization.
         add_executable(x3d_ext_external_geometry_e2e
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/external_geometry_e2e_test.cpp")
-        target_link_libraries(x3d_ext_external_geometry_e2e PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_ext_external_geometry_e2e PRIVATE x3d_cpp::ext x3d_doctest_main)
         add_test(NAME x3d_ext_external_geometry_e2e COMMAND x3d_ext_external_geometry_e2e)
 
         add_executable(x3d_ext_cave_tests

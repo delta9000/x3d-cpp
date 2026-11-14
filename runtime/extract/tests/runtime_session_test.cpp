@@ -10,13 +10,13 @@
 
 #include <memory>
 #include <string>
+#include "InlineExpand.hpp"
 
 using namespace x3d::runtime;
 using namespace x3d::runtime::extract;
 using namespace x3d::core;
 
 namespace {
-
 // A Transform driven by a TimeSensor->PositionInterpolator ROUTE chain: renders
 // from buildSceneGraph, but only animates if buildFrom resolved the ROUTEs.
 const char *kScene = R"X3D(<?xml version="1.0" encoding="UTF-8"?>
@@ -86,8 +86,8 @@ TEST_CASE("RuntimeSession: equivalent to the low-level path, not a policy layer"
 TEST_CASE("RuntimeSession: build order does NOT matter (buildFrom first is fine)") {
   // Pins the fact the session's doc comment asserts: the two builds write
   // disjoint state and commute. If this ever stops being true, the session's
-  // "you cannot get the order wrong" claim becomes load-bearing rather than
-  // convenient -- and this test is where that shows up.
+  // "you cannot get the order wrong" claim becomes a requirement rather than
+  // a convenience -- and this test is where that shows up.
   X3DDocument doc = parse();
   X3DExecutionContext ctx;
   ctx.buildFrom(doc.scene);      // REVERSED order...

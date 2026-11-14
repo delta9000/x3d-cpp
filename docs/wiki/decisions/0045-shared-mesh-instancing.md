@@ -65,7 +65,7 @@ measurement confirmed it understated the problem (rebuild, not just duplicate).
 `SceneExtractor` gains a content-keyed build cache that is the single call site
 of `buildLocalMesh()`.
 
-Three properties are load-bearing:
+Three properties matter:
 
 1. **Shared** — one allocation per distinct content, co-owned by every placement.
    Host RAM becomes O(distinct content), matching what `GeomId` already claimed.
@@ -134,7 +134,7 @@ instancing (one placement still costs one build).
 at every consumer read site — mechanical, loud, and impossible to get silently
 wrong. At 0.1.0 with no tag, no ABI checker, and `CONTRIBUTING.md` already
 advising exact pinning, a clean break is preferable to a compatibility shim that
-would have to keep a by-value copy alive to be honest.
+would have to keep a by-value copy alive to stay correct.
 
 ### Why not resource handles + resource tables?
 
