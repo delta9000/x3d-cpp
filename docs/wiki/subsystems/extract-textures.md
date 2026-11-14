@@ -124,7 +124,7 @@ Lights
 std::vector<LightDesc> collect(const Scene &scene);
 ```
 
-Returns all active (`on == true`) lights. The CPU consumes eight authored lights in addition to the optional headlight, and applies per-light triangle occlusion when `shadows` is true; `castShadow`, visibility and `shadowIntensity` affect that query. World direction and location are resolved into the returned `LightDesc` fields. The `global` flag and `scopeRoot` pointer are carried verbatim from the authored node — not promoted or interpreted.
+Returns all active (`on == true`) lights. The CPU consumes eight authored lights in addition to the optional headlight, and applies per-light triangle occlusion when `shadows` is true; `castShadow`, visibility and `shadowIntensity` affect that query. World direction and location are resolved into the returned `LightDesc` fields. The `global` flag and `scopeRoot` pointer are carried verbatim from the authored node — not promoted or interpreted. `node` and `path` name the light node and its ancestors for that placement (the glTF exporter uses them to keep a light under an animated Transform).
 
 Asset resolver (bytes seam)
 
