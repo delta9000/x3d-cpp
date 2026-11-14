@@ -5,6 +5,7 @@
 #define X3D_RUNTIME_EXTRACT_LIGHT_SYSTEM_HPP
 
 #include "FieldRead.hpp"
+#include "Billboard.hpp"
 #include "GeometryBounds.hpp"
 #include "Mat4.hpp"
 #include "RecursionLimits.hpp"
@@ -39,7 +40,10 @@ struct LightDependencies {
     const X3DNode *selected = nullptr;
   };
   std::vector<Selection> lodSelections;
-  void clear() { nodes.clear(); lodSelections.clear(); }
+  // Billboard frames depend on both tracked eye and camera roll.
+  bool viewDependent = false;
+  SFVec3f eye{}, up{};
+  void clear() { nodes.clear(); lodSelections.clear(); viewDependent = false; }
 };
 
 class LightSystem {
@@ -54,9 +58,10 @@ public:
 
   std::vector<LightDesc> collect(const Scene &scene,
                                 const geo::GeoProjection &projection,
-                                const SFVec3f &eyeWorld) {
+                                const SFVec3f &eyeWorld,
+                                const SFVec3f &upWorld = {0, 1, 0}) {
     WalkBudget budget(kMaxGraphWalkVisits);
-    return collect(scene, projection, budget, eyeWorld);
+    return collect(scene, projection, budget, eyeWorld, nullptr, upWorld);
   }
 
   // collect against a shared node-visit budget — the extractor threads the
@@ -71,15 +76,22 @@ public:
   std::vector<LightDesc> collect(const Scene &scene,
                                 const geo::GeoProjection &projection,
                                 WalkBudget &budget, const SFVec3f &eyeWorld,
-                                LightDependencies *deps = nullptr) {
+                                LightDependencies *deps = nullptr,
+                                const SFVec3f &upWorld = {0, 1, 0}) {
+    if (deps) { deps->eye = eyeWorld; deps->up = upWorld; }
     std::vector<LightDesc> out;
-    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot) {
+    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
+                    const PathKey &path) {
       bool isLight = false;
       LightDesc::Type type = lightType(n->nodeTypeName(), isLight);
       if (!isLight) return false;
       // on==true gate (spec default true) — skip disabled lights entirely.
-      if (geombounds::getField<bool>(*n, "on", true))
+      if (geombounds::getField<bool>(*n, "on", true)) {
         out.push_back(makeLight(*n, type, worldM, scopeRoot));
+        if (scopeRoot)
+          out.back().scopePath.assign(path.begin(),
+              std::find(path.rbegin(), path.rend(), scopeRoot).base());
+      }
       return true; // a light bears no children; nothing below it to scope.
     };
     for (const auto &root : scene.rootNodes) {
@@ -87,7 +99,7 @@ public:
       // A root light has no enclosing grouping node => scopeRoot null.
       std::vector<const X3DNode *> path;
       walk(root.get(), Mat4::identity(), /*scopeRoot=*/nullptr, leaf, budget,
-           eyeWorld, projection, 0, deps, &path);
+           eyeWorld, projection, 0, deps, &path, upWorld);
     }
     return out;
   }
@@ -98,19 +110,28 @@ public:
   std::vector<ProjectorDesc> collectProjectors(const Scene &scene,
                                                const geo::GeoProjection &projection,
                                                WalkBudget &budget,
-                                               const SFVec3f &eyeWorld) {
+                                               const SFVec3f &eyeWorld,
+                                               const SFVec3f &upWorld = {0, 1, 0}) {
     std::vector<ProjectorDesc> out;
-    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot) {
+    auto leaf = [&](const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
+                    const PathKey &path) {
       const std::string t = n->nodeTypeName();
       if (t != "TextureProjector" && t != "TextureProjectorParallel") return false;
-      if (geombounds::getField<bool>(*n, "on", true))
+      if (geombounds::getField<bool>(*n, "on", true)) {
         out.push_back(makeProjector(*n, t == "TextureProjectorParallel", worldM,
                                     scopeRoot));
+        if (scopeRoot)
+          out.back().scopePath.assign(path.begin(),
+              std::find(path.rbegin(), path.rend(), scopeRoot).base());
+      }
       return true;
     };
     for (const auto &root : scene.rootNodes)
-      if (root)
-        walk(root.get(), Mat4::identity(), nullptr, leaf, budget, eyeWorld, projection);
+      if (root) {
+        PathKey path;
+        walk(root.get(), Mat4::identity(), nullptr, leaf, budget, eyeWorld, projection,
+             0, nullptr, &path, upWorld);
+      }
     return out;
   }
 
@@ -137,17 +158,18 @@ private:
     return SFVec3f{v.x / len, v.y / len, v.z / len};
   }
 
-  // `leaf(node, world, scopeRoot)` collects a light-like node and returns true
+  // `leaf(node, world, scopeRoot, path)` collects a light-like node and returns true
   // to stop the descent there.
-  // With `deps`, `path` is the root..parent chain and the walk records what
-  // it read (LightDependencies).
+  // `path` is always the root..parent chain, including untracked collections.
+  // With `deps`, the walk also records what it read (LightDependencies).
   template <typename Leaf>
   void walk(const X3DNode *n, const Mat4 &worldM, const X3DNode *scopeRoot,
             Leaf &leaf, WalkBudget &budget,
             const SFVec3f &eyeWorld,
             const geo::GeoProjection &projection,
-            std::size_t depth = 0, LightDependencies *deps = nullptr,
-            std::vector<const X3DNode *> *path = nullptr) {
+            std::size_t depth, LightDependencies *deps,
+            std::vector<const X3DNode *> *path,
+            const SFVec3f &upWorld) {
     if (!n) return;
     // bound total node-visits so a wide acyclic ("doubling DAG") light
     // fan-out collects a bounded number of LightDescs (the shared budget makes
@@ -160,12 +182,17 @@ private:
     Mat4 here = TransformSystem::isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
-    const bool track = deps && path;
+    if (n->nodeTypeName() == "Billboard") {
+      here = worldM * billboardLocalMatrix(worldM, eyeWorld, upWorld,
+          geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0}));
+      if (deps) deps->viewDependent = true;
+    }
+    const bool track = deps != nullptr;
     auto record = [&] {
       deps->nodes.insert(path->begin(), path->end());
       deps->nodes.insert(n);
     };
-    if (leaf(n, here, scopeRoot)) {
+    if (leaf(n, here, scopeRoot, *path)) {
       if (track) record();
       return;
     }
@@ -183,20 +210,20 @@ private:
           deps->lodSelections.push_back({*path, child.get()});
           deps->lodSelections.back().path.push_back(n);
         }
-        path->push_back(n);
       }
+      path->push_back(n);
       if (child)
         walk(child.get(), here, childScope, leaf, budget, eyeWorld, projection,
-             depth + 1, deps, path);
-      if (track) path->pop_back();
+             depth + 1, deps, path, upWorld);
+      path->pop_back();
       return;
     }
-    if (track) path->push_back(n);
+    path->push_back(n);
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
       walk(c.get(), here, childScope, leaf, budget, eyeWorld, projection, depth + 1,
-           deps, path);
+           deps, path, upWorld);
     });
-    if (track) path->pop_back();
+    path->pop_back();
   }
 
   // Read every light field reflection-generic by spec name; world-resolve the

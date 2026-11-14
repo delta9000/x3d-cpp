@@ -1,0 +1,1 @@
+<X3D version="4.1"><Scene><Transform><EnvironmentLight DEF="E" intensity="0.5"><ImageCubeMapTexture containerField="diffuseTexture" url='"sky.png"'/></EnvironmentLight></Transform><EnvironmentLight USE="E"/></Scene></X3D>

@@ -932,6 +932,40 @@ sed 's@<MultiTexture><PixelTexture image="1 1 3 0xffffff"/></MultiTexture>@<Movi
 ec=$("$CLI" validate "$TD/interchange-movie.x3d" >/dev/null 2>&1; echo $?)
 check "Interchange still excludes MovieTexture" "$ec" "3"
 
+# Conversions must not silently drop opaque/unsupported nodes or clobber output.
+cat > "$TD/unknown.x3d" <<'XML'
+<X3D version="4.1"><Scene><EnvironmentLight intensity="0.5"/></Scene></X3D>
+XML
+printf 'keep me' > "$TD/unknown.json"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown.json" >/dev/null 2>&1; echo $?)
+check "lossy XML to JSON rejected" "$ec" "2"
+check "rejected conversion leaves output untouched" "$(cat "$TD/unknown.json")" "keep me"
+ec=$("$CLI" convert "$TD/unknown.x3d" -f vrml >/dev/null 2>&1; echo $?)
+check "lossy XML to Classic rejected" "$ec" "2"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown-copy.x3d" >/dev/null 2>&1; echo $?)
+check "opaque XML to XML allowed" "$ec" "0"
+grep -q 'intensity="0.5"' "$TD/unknown-copy.x3d"
+check "opaque XML attributes retained" "$?" "0"
+ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown.json" --allow-lossy >/dev/null 2>&1; echo $?)
+check "explicit lossy opt-in accepted" "$ec" "0"
+ec=$("$CLI" convert "$TD/unknown.json" -f xml >/dev/null 2>&1; echo $?)
+check "discarded JSON unknown node rejected even for XML output" "$ec" "2"
+cat > "$TD/unknown-statements.x3d" <<'XML'
+<X3D version="4.1"><Scene><EnvironmentLight><field name="foo" type="SFFloat" value="1"/></EnvironmentLight></Scene></X3D>
+XML
+ec=$("$CLI" convert "$TD/unknown-statements.x3d" -f xml >/dev/null 2>&1; echo $?)
+check "discarded XML statement rejected" "$ec" "2"
+
+cat > "$TD/unknown-proto-child.x3d" <<'XML'
+<X3D version="4.1"><Scene><ProtoDeclare name="P"><ProtoBody><Shape><EnvironmentLight intensity="0.5"/></Shape></ProtoBody></ProtoDeclare></Scene></X3D>
+XML
+printf 'keep proto output' > "$TD/unknown-proto-copy.x3d"
+ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -o "$TD/unknown-proto-copy.x3d" >/dev/null 2>&1; echo $?)
+check "discarded PROTO opaque child rejected even for XML output" "$ec" "2"
+check "rejected PROTO conversion leaves output untouched" "$(cat "$TD/unknown-proto-copy.x3d")" "keep proto output"
+ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -f xml --allow-lossy >/dev/null 2>&1; echo $?)
+check "discarded PROTO opaque child permits explicit lossy opt-in" "$ec" "0"
+
 echo ""
 if [[ "$failures" -gt 0 ]]; then
     echo "x3d_cli_test: $failures failure(s)"

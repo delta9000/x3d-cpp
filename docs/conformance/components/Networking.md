@@ -10,8 +10,6 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
 
 ## Findings
 
-- **PROTO-BODY-IMPORT-MODEL** [minor/OPEN] — §ISO/IEC 19775-1 9.2.5: Prototype-local IMPORT records are lost across all encodings because ProtoBody has no imports collection.
-  - Readers collect prototype-local imports in a temporary Scene, but the shared ProtoBody model cannot retain them. Extending that model and expansion is separate from capturing JSON statement wrappers.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.
@@ -46,4 +44,6 @@ _Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
   - LoadSensor now waits until the Anchor's #Viewpoint target is actually bound, and ignores Anchor.load as required by §9.4.1. Regression: events_misc_test checks unbound then bound target with load FALSE.
 - **IACC-4** [minor/FIXED] — §9.4.1: A RuntimeSession host could not receive Anchor activations whose url is not an in-scene viewpoint.
   - AnchorSystem already bound "#Name" viewpoints and called an optional handler for other urls, but attachInteractive created the system without exposing it. SessionOptions::anchorHandler (and an attachInteractive parameter) now install the handler, which receives the url and parameter lists. The headless runtime still loads nothing itself. Test: interactive_profile_test Anchor case.
+- **PROTO-BODY-IMPORT-MODEL** [minor/FIXED] — §ISO/IEC 19775-1 9.2.5: Prototype-local IMPORT records round-trip and body ROUTEs bind within each instance's Inline scope.
+  - Deferred endpoint identities bind after Inline loading without publishing aliases in enclosing DEF tables. Explicit exports and exported PROTO interfaces are resolved with access/type checks; unload removes concrete edges, and reload rebinds them. Auxiliary ProtoBody Inline roots are included. Tests: proto_roundtrip_test.cpp and proto_import_runtime_test.cpp (two-instance isolation, bidirectional events, deferred loading, nested unload, and peer-root reload).
 

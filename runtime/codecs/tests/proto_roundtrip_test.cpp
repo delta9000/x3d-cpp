@@ -6,6 +6,9 @@
 // rather than serializing the spliced-in Box.
 #include "X3DParse.hpp"
 #include "XmlWriter.hpp"
+#include "CanonicalXmlWriter.hpp"
+#include "JsonWriter.hpp"
+#include "VrmlWriter.hpp"
 
 #include "doctest/doctest.h"
 #include <string>
@@ -36,4 +39,63 @@ TEST_CASE("proto_roundtrip_test") {
   }
 
   return;
+}
+
+TEST_CASE("ProtoBody IMPORT aliases survive every encoding without leaking scope") {
+  const std::string xml = R"(<X3D version="4.0"><Scene>
+    <ProtoDeclare name="P"><ProtoBody>
+      <Group/><Inline DEF="Source"/>
+      <IMPORT inlineDEF="Source" importedDEF="Clock" AS="LocalClock"/>
+      <IMPORT inlineDEF="Source" importedDEF="Other"/>
+      <ROUTE fromNode="LocalClock" fromField="time" toNode="Target" toField="set_time"/>
+    </ProtoBody></ProtoDeclare>
+    </Scene></X3D>)";
+  const auto original = codec::parseDocument(xml);
+  const std::vector<std::string> encoded = {
+      codec::XmlWriter().writeDocument(original),
+      codec::CanonicalXmlWriter().writeDocument(original),
+      codec::JsonWriter().writeDocument(original),
+      codec::VrmlWriter().writeDocument(original)};
+  for (const auto &text : encoded) {
+    CAPTURE(text);
+    const auto doc = codec::parseDocument(text);
+    CHECK(doc.scene.imports.empty());
+    const auto proto = doc.scene.findProto("P");
+    REQUIRE(proto);
+    REQUIRE(proto->body.imports.size() == 2);
+    CHECK(proto->body.imports[0].inlineDEF == "Source");
+    CHECK(proto->body.imports[0].importedDEF == "Clock");
+    CHECK(proto->body.imports[0].as == "LocalClock");
+    CHECK(proto->body.imports[1].importedDEF == "Other");
+    CHECK(proto->body.imports[1].as.empty());
+    REQUIRE(proto->body.routes.size() == 1);
+    CHECK(proto->body.routes[0].fromNode == "LocalClock");
+  }
+}
+
+
+TEST_CASE("JSON child-wrapped IMPORT stays in its prototype scope") {
+  const auto doc = codec::parseDocument(R"({"X3D":{"@version":"4.0","Scene":{"-children":[
+    {"ProtoDeclare":{"@name":"P","ProtoBody":{"-children":[
+      {"Group":{}},
+      {"IMPORT":{"@inlineDEF":"Source","@importedDEF":"Clock","@AS":"Local"}},
+      {"ProtoDeclare":{"@name":"Nested","ProtoBody":{"-children":[
+        {"Group":{}},{"IMPORT":{"@inlineDEF":"Inner","@importedDEF":"Other"}}
+      ]}}}
+    ]}}}
+  ]}}})");
+  CHECK(doc.scene.imports.empty());
+  const auto p = doc.scene.findProto("P");
+  REQUIRE(p);
+  REQUIRE(p->body.imports.size() == 1);
+  CHECK(p->body.imports[0].as == "Local");
+  bool foundNested = false;
+  for (const auto &entry : p->body.orderedStatements()) {
+    if (entry.proto && entry.proto->name == "Nested") {
+      foundNested = true;
+      REQUIRE(entry.proto->body.imports.size() == 1);
+      CHECK(entry.proto->body.imports[0].inlineDEF == "Inner");
+    }
+  }
+  CHECK(foundNested);
 }

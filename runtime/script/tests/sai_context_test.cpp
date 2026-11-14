@@ -318,9 +318,62 @@ void testSeamWithMock() {
         "invoke recorded the event name and timestamp");
 }
 
+void testNativeBudgets() {
+  X3DExecutionContext ctx;
+  Script script;
+  SaiContext sai(ctx, script, "test", "1");
+  sai.setResourceLimits({8, 6, 3, 2});
+  sai.print("hello"); sai.print("world"); sai.print("ignored");
+  check(sai.log() == "hellowor" && sai.logTruncated(), "bounded cumulative log");
+  unsigned calls = 0;
+  std::weak_ptr<X3DNode> rejected;
+  sai.setSceneFactory([&](const std::string &text) {
+    ++calls;
+    auto node = std::make_shared<Transform>();
+    rejected = node;
+    return text == "two" ? MFNode{node, std::make_shared<Transform>()} : MFNode{node};
+  });
+  auto first = sai.createX3DFromString("one");
+  bool threw = false;
+  try { sai.createX3DFromString("two"); } catch (const std::length_error &) { threw = true; }
+  check(threw && rejected.expired(), "over-budget batch is not partly retained");
+  threw = false;
+  try { sai.createX3DFromString("x"); } catch (const std::length_error &) { threw = true; }
+  check(threw && calls == 2, "source budget rejects before host factory");
+  check(first[0] != nullptr, "earlier roots survive rejected batch");
+  threw = false;
+  try { sai.setResourceLimits({0, 0, 0, 0}); }
+  catch (const std::invalid_argument &) { threw = true; }
+  check(threw && sai.resourceLimits().logBytes == 8,
+        "lowering quotas below usage fails without changing limits");
+  SaiContext failing(ctx, script, "test", "1");
+  failing.setResourceLimits({0, 10, 1, 2});
+  unsigned failedCalls = 0;
+  failing.setSceneFactory([&](const std::string &) -> MFNode {
+    ++failedCalls;
+    throw std::runtime_error("parse failure");
+  });
+  try { failing.createX3DFromString("bad"); } catch (const std::runtime_error &) {}
+  threw = false;
+  try { failing.createX3DFromString("bad"); }
+  catch (const std::length_error &) { threw = true; }
+  check(threw && failedCalls == 1, "failed factory calls consume attempt quota");
+  SaiContext empty(ctx, script, "test", "1");
+  empty.setResourceLimits({0, 0, 2, 1});
+  calls = 0;
+  empty.setSceneFactory([&](const std::string &) { ++calls; return MFNode{}; });
+  empty.createX3DFromString(""); empty.createX3DFromString("");
+  threw = false;
+  try { empty.createX3DFromString(""); } catch (const std::length_error &) { threw = true; }
+  check(threw && calls == 2, "empty-source calls cannot bypass lifetime budget");
+  empty.print("x");
+  check(empty.log().empty() && empty.logTruncated(), "zero log quota discards output");
+}
+
 } // namespace
 
 int main() {
+  testNativeBudgets();
   testAuthorFieldOwnerIsolation();
   testFieldRoundTrip();
   testDirectOutputGate();

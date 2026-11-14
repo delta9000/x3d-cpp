@@ -16,11 +16,13 @@ FORBIDDEN_AGGREGATE_TARGETS = {
     "x3d_canon_gate",
     "x3d_header_isolation",
     "x3d_parse_fuzz",
+    "x3d_assetresolver_swap",
+    "x3d_quickjs_swap",
+}
+SDK_EXAMPLE_TARGETS = {
     "x3d_example_01_load_validate_convert",
     "x3d_example_02_extract_render_feed",
     "x3d_example_03_attach_behavior_tick",
-    "x3d_assetresolver_swap",
-    "x3d_quickjs_swap",
 }
 DEFAULT_DOCTEST_TARGETS = {
     "x3d_geometry_scene_tests",
@@ -103,7 +105,7 @@ def normal_ctest_executable_targets(build_dir: Path) -> set[str]:
         if command.parent.resolve() != build_dir.resolve():
             continue
         target = command.name
-        if target == "x3d_cpp_all_headers" or target.startswith("x3d_example_"):
+        if target == "x3d_cpp_all_headers":
             continue
         targets.add(target)
     # Shell-driven tests still need their owning binaries in both aggregates.
@@ -136,6 +138,7 @@ def test_behavior_and_sanitizer_aggregates_cover_normal_ctest_executables(
     behavior = query_target_inputs(configured_ci, "x3d_behavior_tests")
     sanitizer = query_target_inputs(configured_ci, "x3d_sanitizer_tests")
 
+    assert SDK_EXAMPLE_TARGETS <= expected
     assert behavior == expected
     assert sanitizer == expected
     assert not behavior.intersection(FORBIDDEN_AGGREGATE_TARGETS)

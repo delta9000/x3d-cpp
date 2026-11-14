@@ -17,6 +17,7 @@
 #include "DynamicField.hpp"
 #include "X3DHeader.hpp"
 #include "X3DRoute.hpp"
+#include "X3DImportExport.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <any>
@@ -27,6 +28,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace x3d::nodes { class X3DNode; }
@@ -74,6 +76,20 @@ struct ProtoRedirect {
   std::string targetField;
 };
 
+// Deferred body ROUTEs retain identity, not DEF strings in the enclosing scene.
+// Weak references let unloading an enclosing Inline release its entire scope.
+struct DeferredProtoEndpoint {
+  std::vector<std::pair<std::weak_ptr<X3DNode>, std::string>> targets;
+  std::weak_ptr<X3DNode> inlineNode;
+  std::string exportedName;
+  std::string field;
+  std::optional<X3DFieldType> nominalType;
+};
+struct DeferredProtoRoute {
+  std::weak_ptr<X3DNode> owner;
+  DeferredProtoEndpoint source, sink;
+};
+
 /// Non-fatal PROTO diagnostic, collected into X3DDocument.protoWarnings.
 struct ProtoWarning {
   enum class Kind {
@@ -104,6 +120,9 @@ struct ReaderWarning {
   enum class Kind { UnknownNode, ProfileCoerced, Value };
   Kind kind;
   std::string detail;
+  // Unknown XML content is retained for XML writing only. Other recovery may
+  // discard data; consumers such as convert must not mistake it for lossless IO.
+  bool preservedForXml = false;
 };
 
 /**
@@ -159,6 +178,8 @@ inline const ProtoField *findProtoRouteField(
 struct ProtoBody {
   std::vector<std::shared_ptr<X3DNode>> nodes;
   std::vector<Route> routes;
+  // IMPORT aliases belong to this declaration, never the enclosing Scene.
+  std::vector<Import> imports;
   std::vector<IsConnection> isConnections;
   // ProtoInstances that appear inside this body (template). Each carries its
   // placement (parent = an original body node, or empty for a direct body-root

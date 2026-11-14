@@ -74,6 +74,13 @@ public:
     for (auto &entry : scripts_) entry->sai.setSceneFactory(sceneFactory_);
   }
 
+  /// Set native quotas before enrolling scripts, so top-level code is covered.
+  void setResourceLimits(SaiContext::ResourceLimits limits) {
+    if (!scripts_.empty())
+      throw std::logic_error("ScriptSystem: set resource limits before enrollment");
+    resourceLimits_ = limits;
+  }
+
   /**
    * @brief Teardown: shut down every still-loaded script (§29.2.3).
    * @details Destroying the ScriptSystem (e.g. with its execution context) is
@@ -114,6 +121,7 @@ public:
     if (!e) {
       scripts_.push_back(std::make_unique<Entry>(ctx, *script, name_, version_));
       scripts_.back()->sai.setSceneFactory(sceneFactory_);
+      scripts_.back()->sai.setResourceLimits(resourceLimits_);
       e = scripts_.back().get();
     }
     if (script->getLoad()) {
@@ -546,6 +554,7 @@ private:
   std::string version_;
   extract::AssetResolver resolver_;
   SaiContext::SceneFactory sceneFactory_;
+  SaiContext::ResourceLimits resourceLimits_;
   std::vector<std::unique_ptr<Entry>> scripts_;
   // §29.2.5 once-per-timestamp guard for the prepareEvents phase.
   bool havePrepared_ = false;

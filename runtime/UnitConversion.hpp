@@ -173,6 +173,7 @@ inline void normalize(Scene &scene, std::unordered_set<const X3DNode *> &seen) {
               v->y = static_cast<float>(v->y / f);
               v->z = static_cast<float>(v->z / (f * f));
               field.set(*node, value);
+              *scene.hasNormalizedUnitValues = true;
             }
           } else if (auto *box = std::any_cast<SFVec3f>(&value);
                      box && field.x3dName == "bboxSize" &&
@@ -183,6 +184,7 @@ inline void normalize(Scene &scene, std::unordered_set<const X3DNode *> &seen) {
                      convert<SFVec3f>(value, f) || convert<SFVec3d>(value, f) ||
                      convert<SFRotation>(value, f) || convert<SFMatrix3f>(value, f)) {
             field.set(*node, value);
+            *scene.hasNormalizedUnitValues = true;
           }
         }
         scene.normalizedUnitFields.record(node, field.x3dName);

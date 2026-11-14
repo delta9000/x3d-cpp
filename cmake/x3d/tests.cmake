@@ -441,6 +441,18 @@ if(X3D_CPP_BUILD_TESTS)
                 "-DCCACHE_PROGRAM=/bin/echo"
                 "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 
+    # Configure-only regression: CI suite labels and build prerequisites must
+    # agree, with or without the optional examples/corpus tools.
+    foreach(_examples IN ITEMS on off)
+        add_test(NAME x3d_test_selection_examples_${_examples}
+            COMMAND "${CMAKE_COMMAND}"
+                    "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                    "-DFIXTURE_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/test_selection_${_examples}"
+                    "-DFIXTURE_GENERATOR=${CMAKE_GENERATOR}"
+                    "-DX3D_CPP_BUILD_EXAMPLES=${_examples}"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/test_selection/check.cmake")
+    endforeach()
+
     # §16 sound graph wiring and DSP samples run without an external backend.
     add_executable(x3d_sound_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"

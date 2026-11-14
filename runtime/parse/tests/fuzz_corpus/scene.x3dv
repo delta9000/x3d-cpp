@@ -1,0 +1,10 @@
+#X3D V4.0 utf8
+PROFILE Immersive
+PROTO Mover [ inputOutput SFVec3f position 0 0 0 ] {
+  Transform { translation IS position children [ Shape { geometry Box {} } ] }
+}
+DEF P Mover {}
+DEF Clock TimeSensor {}
+DEF Motion PositionInterpolator { key [0 1] keyValue [0 0 0, 1 2 3] }
+ROUTE Clock.fraction_changed TO Motion.set_fraction
+ROUTE Motion.value_changed TO P.position

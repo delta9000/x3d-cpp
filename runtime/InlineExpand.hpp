@@ -122,6 +122,110 @@ inline bool replaceInParent(X3DNode &parent, const X3DNode *target,
   return false;
 }
 
+// IMPORT only exposes explicit EXPORT names, never arbitrary child DEFs.
+inline std::shared_ptr<X3DNode> exportedNode(Scene &child, const std::string &name) {
+  for (const auto &exp : child.exports)
+    if ((exp.as.empty() ? exp.localDEF : exp.as) == name && !exp.localDEF.empty())
+      return child.resolve(exp.localDEF);
+  return {};
+}
+
+// Rebind after each Inline load. Concrete routes removed by unload are recreated;
+// already-live routes are left alone, so repeated calls do not duplicate edges.
+inline void wireProtoImports(Scene &scene) {
+  if (scene.deferredProtoRoutes.empty()) return;
+  struct Endpoint {
+    std::vector<ProtoRedirect> targets;
+    std::optional<X3DFieldType> type;
+  };
+  auto resolve = [&](const DeferredProtoEndpoint &input, bool source) -> Endpoint {
+    Endpoint output{{}, input.nominalType};
+    if (input.exportedName.empty()) {
+      for (const auto &[weak, field] : input.targets)
+        if (auto node = weak.lock()) output.targets.push_back({node, field});
+      return output;
+    }
+    auto inl = input.inlineNode.lock();
+    if (!inl) return {};
+    const auto found = scene.expandedInlineScenes.find(inl.get());
+    if (found == scene.expandedInlineScenes.end() || !found->second) return {};
+    auto &child = *found->second;
+    auto node = exportedNode(child, input.exportedName);
+    if (!node) return {};
+    auto instance = child.expandedSources.find(node.get());
+    if (instance != child.expandedSources.end() &&
+        (instance->second.declaration || instance->second.externDeclaration) &&
+        input.field != "metadata" && input.field != "set_metadata" &&
+        input.field != "metadata_changed") {
+      const auto &inst = instance->second;
+      const auto &fields = inst.externDeclaration ? inst.externDeclaration->interface
+                                                  : inst.declaration->interface;
+      const auto *field = findProtoRouteField(fields, input.field, source);
+      if (!field || (source ? field->access != AccessType::OutputOnly &&
+                                  field->access != AccessType::InputOutput
+                            : field->access != AccessType::InputOnly &&
+                                  field->access != AccessType::InputOutput)) return {};
+      output.type = field->type;
+      auto redirects = child.protoRedirects.find(node.get());
+      if (redirects != child.protoRedirects.end()) {
+        auto targets = redirects->second.find(field->name);
+        if (targets != redirects->second.end()) output.targets = targets->second;
+      }
+      if (output.targets.empty()) output.targets.push_back({node, field->name});
+    } else {
+      output.targets.push_back({node, input.field});
+    }
+    return output;
+  };
+  auto physical = [&](const ProtoRedirect &target, bool source,
+                      std::optional<X3DFieldType> nominal) -> std::optional<FieldInfo> {
+    if (!target.targetNode) return {};
+    auto field = proto_detail::findIsBodyField(*target.targetNode, target.targetField,
+        source ? AccessType::OutputOnly : AccessType::InputOnly, *scene.authorFields);
+    if (!field || (nominal && field->type != *nominal)) return {};
+    if (source ? field->access != AccessType::OutputOnly && field->access != AccessType::InputOutput
+               : field->access != AccessType::InputOnly && field->access != AccessType::InputOutput)
+      return {};
+    return field;
+  };
+  struct RouteKey {
+    const X3DNode *from, *to;
+    std::string fromField, toField;
+    bool operator==(const RouteKey &) const = default;
+  };
+  struct RouteHash {
+    std::size_t operator()(const RouteKey &key) const {
+      auto h = std::hash<const X3DNode *>{}(key.from);
+      auto mix = [&](std::size_t value) { h ^= value + 0x9e3779b9 + (h << 6) + (h >> 2); };
+      mix(std::hash<const X3DNode *>{}(key.to));
+      mix(std::hash<std::string>{}(key.fromField));
+      mix(std::hash<std::string>{}(key.toField));
+      return h;
+    }
+  };
+  std::unordered_set<RouteKey, RouteHash> published;
+  for (const auto &route : scene.resolvedInlineRoutes)
+    published.insert({route.from.get(), route.to.get(), route.fromField, route.toField});
+  for (const auto &route : scene.deferredProtoRoutes) {
+    if (route.owner.expired()) continue;
+    const auto sources = resolve(route.source, true);
+    const auto sinks = resolve(route.sink, false);
+    if (sources.type && sinks.type && sources.type != sinks.type) continue;
+    for (const auto &source : sources.targets) {
+      const auto from = physical(source, true, sources.type);
+      if (!from) continue;
+      for (const auto &sink : sinks.targets) {
+        const auto to = physical(sink, false, sinks.type);
+        if (!to || from->type != to->type) continue;
+        if (published.insert({source.targetNode.get(), sink.targetNode.get(),
+                              from->x3dName, to->x3dName}).second)
+          scene.resolvedInlineRoutes.push_back(
+              {source.targetNode, from->x3dName, sink.targetNode, to->x3dName});
+      }
+    }
+  }
+}
+
 } // namespace inline_detail
 
 /// Expand every load=TRUE Inline in `scene`. Lenient: failures become warnings.
@@ -154,10 +258,12 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
           else walk(c, depth + 1);
         });
       };
-  for (auto &r : scene.rootNodes) {
-    if (r && dynamic_cast<const x3d::nodes::Inline *>(r.get()) != nullptr) rootInlines.push_back(r);
-    else walk(r, 0);
-  }
+  for (const auto *roots : {&scene.rootNodes, &scene.protoPeerNodes})
+    for (const auto &r : *roots) {
+      if (r && dynamic_cast<const x3d::nodes::Inline *>(r.get()) != nullptr) {
+        if (walked.insert(r.get()).second) rootInlines.push_back(r);
+      } else walk(r, 0);
+    }
 
   auto expandOne = [&](const std::shared_ptr<X3DNode> &inl,
                        X3DNode *parent /* null => scene root */) {
@@ -188,6 +294,8 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     scene.authorFields->importFrom(*child->authorFields);
     auto group = makeGroup(child->rootNodes);
     hoistChildRoutes(*child, scene.resolvedInlineRoutes);
+    scene.deferredProtoRoutes.insert(scene.deferredProtoRoutes.end(),
+        child->deferredProtoRoutes.begin(), child->deferredProtoRoutes.end());
     scene.nodeBaseUrls.insert(child->nodeBaseUrls.begin(), child->nodeBaseUrls.end());
     scene.deferredInlineResolvers.insert(child->deferredInlineResolvers.begin(),
                                         child->deferredInlineResolvers.end());
@@ -204,8 +312,9 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
     if (parent) {
       replaceInParent(*parent, inl.get(), group);
     } else {
-      for (auto &r : scene.rootNodes)
-        if (r.get() == inl.get()) { r = group; break; }
+      for (auto *roots : {&scene.rootNodes, &scene.protoPeerNodes})
+        for (auto &r : *roots)
+          if (r.get() == inl.get()) r = group;
     }
     if (onExpanded) onExpanded(parent, group);
   };
@@ -217,7 +326,7 @@ inline void expandInlines(Scene &scene, const InlineResolver &resolver,
 /// Wire <IMPORT inlineDEF=... importedDEF=... AS=...> statements to the named
 /// Inline's exported node (§9.2 / §4.4.6 — the sanctioned cross-Inline escape
 /// hatch). For each import, resolve the imported name inside the Inline's
-/// expanded child scene (an <EXPORT AS> alias first, else a child DEF) and
+/// expanded child scene through an explicit EXPORT (using AS when present), and
 /// register the local alias in `scene.defs` so a later resolveRoutes() binds a
 /// ROUTE that names it. Lenient: an Inline that was not expanded (load=FALSE,
 /// unresolved url) or an imported name with no matching child node leaves the
@@ -234,23 +343,13 @@ inline void wireInlineImports(Scene &scene) {
     if (childIt == scene.expandedInlineScenes.end() || !childIt->second)
       continue;
     Scene &child = *childIt->second;
-    // §9.2.5: only names explicitly exported by the child are importable.
-    std::string childName;
-    for (const Export &ex : child.exports) {
-      if ((ex.as.empty() ? ex.localDEF : ex.as) == imp.importedDEF &&
-          !ex.localDEF.empty()) {
-        childName = ex.localDEF;
-        break;
-      }
-    }
-    if (childName.empty())
-      continue;
-    auto node = child.resolve(childName);
+    auto node = inline_detail::exportedNode(child, imp.importedDEF);
     if (!node)
       continue;
     const std::string alias = imp.as.empty() ? imp.importedDEF : imp.as;
     scene.defs[alias] = node;
   }
+  inline_detail::wireProtoImports(scene);
 }
 
 } // namespace x3d::runtime

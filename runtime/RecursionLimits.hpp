@@ -12,6 +12,13 @@
 
 namespace x3d {
 
+// Fatal input-resource exhaustion must not be treated as a missing URL by
+// lenient include resolvers or PROTO expansion.
+class ParseResourceLimitError : public std::runtime_error {
+public:
+  using std::runtime_error::runtime_error;
+};
+
 inline constexpr std::size_t kMaxNestingDepth = 1000;
 
 // Cap gzip output and initial reservation at 256 MiB to bound decompression

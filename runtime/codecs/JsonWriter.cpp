@@ -1,3 +1,4 @@
+#include "UnitSerialization.hpp"
 #include "JsonWriter.hpp"
 #include "JsonString.hpp"
 #include "X3DProtoFieldOrder.hpp"
@@ -20,9 +21,12 @@ namespace x3d::codec {
 using x3d::nodes::X3DNodeFactory;
 
 std::string JsonWriter::writeDocument(const runtime::X3DDocument &doc) {
+  requireUnnormalizedUnits(doc.scene);
   seen_.clear();
   defaults_.clear();
   scene_ = &doc.scene;
+  unitDefaults_ = authoredUnitDefaults(doc.scene.authoredScalarFields,
+                                       doc.head.units);
   authorFields_ = doc.scene.authorFields.get();
   std::ostringstream os;
   os << "{\n";
@@ -338,6 +342,10 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   JsonWriter bodyWriter;
   bodyWriter.bodyNested_ = &d.body.nestedInstances;
   bodyWriter.authorFields_ = d.authorFields.get();
+  // Raw readers do not snapshot sourceUnits; inherit the document's need to
+  // retain authored defaults as well as honoring declaration-local units.
+  bodyWriter.unitDefaults_ = unitDefaults_ ? &d.authoredScalarFields
+      : authoredUnitDefaults(d.authoredScalarFields, d.sourceUnits);
   bodyWriter.bodyIsc_ = &d.body.isConnections;
   bodyWriter.bodyOrder_ = &d.body;
   pad(os, depth);
@@ -412,6 +420,26 @@ void JsonWriter::writeJsonProtoDeclare(std::ostringstream &os,
   os << "\n";
   pad(os, depth + 2);
   os << "]";
+
+  if (!d.body.imports.empty()) {
+    os << ",\n";
+    pad(os, depth + 2);
+    os << "\"IMPORT\": [\n";
+    for (std::size_t i = 0; i < d.body.imports.size(); ++i) {
+      const auto &imp = d.body.imports[i];
+      pad(os, depth + 3);
+      os << "{ \"@inlineDEF\": " << jstr(imp.inlineDEF)
+         << ", \"@importedDEF\": " << jstr(imp.importedDEF);
+      if (!imp.as.empty())
+        os << ", \"@AS\": " << jstr(imp.as);
+      os << " }";
+      if (i + 1 < d.body.imports.size())
+        os << ",";
+      os << "\n";
+    }
+    pad(os, depth + 2);
+    os << "]";
+  }
 
   // Body ROUTEs.
   if (!d.body.routes.empty()) {
@@ -559,7 +587,8 @@ void JsonWriter::writeNode(std::ostringstream &os,
       std::string val = jsonValue(*node, f);
       if (val.empty())
         continue;
-      if (defaults && val == jsonValue(*defaults, f))
+      if (defaults && val == jsonValue(*defaults, f) &&
+          !(unitDefaults_ && unitDefaults_->contains(node, f.x3dName)))
         continue; // equals the type default -> omit
       members.push_back("\"@" + f.x3dName + "\": " + val);
     }
