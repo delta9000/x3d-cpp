@@ -633,6 +633,11 @@ struct LightDesc {
   const X3DNode *scopeRoot = nullptr;  // enclosing grouping node for scoping.
   PathKey scopePath; // full placement of scopeRoot; empty means scene-wide.
 
+  // The light node and its ancestors, roots first (the node itself is not in
+  // `path`). Null/empty for a light the host made up (a headlight).
+  const X3DNode *node = nullptr;
+  PathKey path;
+
   bool operator==(const LightDesc &) const = default;
 };
 
