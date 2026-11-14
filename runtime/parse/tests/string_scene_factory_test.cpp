@@ -43,6 +43,17 @@ TEST_CASE("string scene factory accepts fragments") {
   CHECK(headed.size() == 1);
 }
 
+TEST_CASE("string scene factory handles UTF-8 BOM before encoding detection") {
+  auto make = x3d::codec::makeStringSceneFactory();
+  const std::string bom = "\xEF\xBB\xBF";
+  auto xml = make(bom + "<Transform translation='1 2 3'/>");
+  REQUIRE(xml.size() == 1);
+  CHECK(std::dynamic_pointer_cast<Transform>(xml[0]));
+  auto vrml = make(bom + "Transform { translation 4 5 6 }");
+  REQUIRE(vrml.size() == 1);
+  CHECK(std::dynamic_pointer_cast<Transform>(vrml[0]));
+}
+
 TEST_CASE("string scene factory expands a PROTO declared in the text") {
   auto make = x3d::codec::makeStringSceneFactory();
   auto roots = make(

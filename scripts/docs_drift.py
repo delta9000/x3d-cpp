@@ -29,7 +29,9 @@ specs/plans) is the historical record and is intentionally excluded.
 
 Embeddings + vector store are shared with code_rag.py and configured through the
 same X3D_EMBED_URL / X3D_QDRANT_URL environment variables (see code_rag.py's
-module docstring). Live ingest/suggest is a manual smoke.
+module docstring). If semantic retrieval is unavailable, suggest still reports
+literal citations and labels the check incomplete. Live ingest/suggest is a
+manual smoke.
 """
 import hashlib
 import os
@@ -307,6 +309,7 @@ def suggest(rev, k=5):
               f"{', '.join(doc_changes)}")
     docs = _load_docs()
     already = set(doc_changes)
+    semantic_error = None
 
     for path in code:
         lines = changed_new_lines(rev, path, untracked)
@@ -314,7 +317,14 @@ def suggest(rev, k=5):
         new_file = path in untracked
         cited = _citations(_needles(path, syms), docs)
         qtext = f"{subject}\nfile: {path}\nchanged symbols: {', '.join(syms) or '(file-level)'}"
-        sem = _semantic(qtext, k)
+        sem = []
+        if semantic_error is None:
+            try:
+                sem = _semantic(qtext, k)
+            except RuntimeError as exc:
+                semantic_error = str(exc)
+                print(f"\n  semantic check unavailable: {semantic_error}")
+                print("  results are incomplete; literal citations are still checked.")
 
         candidates = {}  # doc -> (score, why)
         for d, (score, why) in cited.items():
@@ -329,8 +339,11 @@ def suggest(rev, k=5):
         kind = "NEW FILE" if new_file else (", ".join(syms) if syms else "file-level change")
         print(f"\n  {path}  [{kind}]")
         if not candidates:
-            print("    (no doc references this change — if it shipped new behavior, "
-                  "it may need a NEW page)")
+            if semantic_error is not None:
+                print("    (no literal citations; semantic check unavailable)")
+            else:
+                print("    (no doc references this change — if it shipped new behavior, "
+                      "it may need a NEW page)")
             continue
         ranked = sorted(candidates.items(), key=lambda kv: -kv[1][0])
         for d, (score, why) in ranked[:MAX_PER_FILE]:

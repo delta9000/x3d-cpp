@@ -98,7 +98,9 @@ uses that mode for a dirty tree and HEAD for a clean tree. A commit argument
 compares that commit with its parent. Review `CITES` results first and re-ingest
 after documentation restructuring.
 
-This is an advisory tool. A successful suggestion run does not validate the
-pages; an embedding or vector-store failure can abort it. Use the
+This is an advisory tool. If the embedding service or vector store is
+unavailable, suggestions still report literal citations, label the semantic
+check incomplete, and exit successfully. A successful run does not validate the
+pages. Use the
 [documentation gates](gate-system.md#documentation) for links and CTest names,
 and source review for semantic accuracy.

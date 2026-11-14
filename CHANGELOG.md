@@ -156,6 +156,18 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Duktape string fields.** SFString and MFString values preserve their explicit
+  lengths in both directions, retaining embedded NULs and the text after them.
+- **QuickJS allocation errors.** Returning multi-value fields and newly created
+  scene roots releases partial arrays and propagates allocation failures, so
+  exhausting the script heap cannot appear to succeed with an incomplete result.
+- **Docs-drift service failures.** Advisory suggestions retain literal citation
+  results and clearly mark semantic checks unavailable when the embedding
+  service or vector store cannot be reached.
+- **Scene-source string boundaries.** Both script engines pass the complete
+  `createX3DFromString`/`createVrmlFromString` source to the host factory,
+  including bytes after embedded NULs. The default factory handles a leading
+  UTF-8 BOM before choosing the input encoding.
 - **`x3d extract` on physics scenes in debug builds.** The extractor read
   `RigidBody.geometry` (an MFNode of collidables) as a shape's SFNode geometry,
   which tripped a type assertion in debug builds; release builds were

@@ -37,7 +37,7 @@ resource, and identity rules.
 | Physics | PhysicsBackend interface and optional Jolt implementation. | [Physics](../wiki/subsystems/physics.md) |
 | Asset loading | Host byte resolution with file and optional libcurl adapters, and resolver callbacks that receive the requesting node's source base URL. | [Asset loading](../wiki/subsystems/system-asset-io.md) |
 | Image decoding | Optional stb and Wuffs implementations of TextureResolver. | [Image decoding](../wiki/subsystems/system-texture-decode.md) |
-| Script execution | ScriptEngine interface, Duktape implementation, and optional QuickJS comparison engine. | [Script execution](../wiki/subsystems/system-script-sai.md) |
+| Script execution | ScriptEngine interface, Duktape implementation, optional QuickJS comparison engine, bounded script heaps, and length-preserving string fields and scene creation. | [Script execution](../wiki/subsystems/system-script-sai.md) |
 | SAI SDK | Portable C++20 SAI provider contract (`sai/`) with a reference backend, reference-only kernel extensions and its own UOM-driven generator; builds and installs separately from the runtime. | [SAI SDK](../wiki/subsystems/sai-sdk.md) |
 | Native SAI provider | Opt-in portable service over a bounded native node subset, with named-node discovery, presentation materials and deltas, session adoption, and queued live ROUTE addition. | [Native SAI provider](../wiki/subsystems/sai-provider.md) |
 | Asset conversion | ImportSource backends, X3D emission, and consumer texture processing. | [Asset conversion](../wiki/subsystems/asset-import.md) |
