@@ -43,7 +43,7 @@ static bool hasUvAt(const MeshData &m, const SFVec3f &p, float sx, float ty) {
   return false;
 }
 
-TEST_CASE("mesh builder tc1") {
+TEST_CASE("mesh builder default texcoords: generated from the bounding box") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
   // 1. Unit-square IFS, XY plane, no TextureCoordinate

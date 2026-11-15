@@ -141,6 +141,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Changed
 
+- **Remaining hand-rolled test mains are doctest.** The script backend shared
+  cases (one `SUBCASE` each), the codec round-trip and PROTO expansion audits,
+  the CAVE extension cases (one ctest per `--test-suite`) and the SAI provider
+  evidence tests now run under the shared doctest main, so a failing assertion
+  names its case and file:line. Opaque case names (`mesh builder t3`,
+  `fontmetrics_backend_a_stbtt`, …) are now descriptive.
+
 - **One documentation tree.** All prose docs now live under `docs/wiki/`,
   organised by Diataxis: `tutorials/`, `how-to/`, `reference/` (subsystem
   pages in `reference/subsystems/`, example pages in `reference/examples/`)

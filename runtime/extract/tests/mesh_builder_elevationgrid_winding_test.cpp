@@ -33,7 +33,7 @@ static void setWindF(const std::shared_ptr<X3DNode> &n, const char *nm,
     }
 }
 
-TEST_CASE("elevationgrid_default_ccw_surface_faces_up") {
+TEST_CASE("mesh builder: a default ccw ElevationGrid faces up") {
   // A flat 3x3 ElevationGrid (all heights 0), ccw left at its spec default TRUE.
   auto g = createX3DNode("ElevationGrid");
   setWindF(g, "xDimension", std::any(3));

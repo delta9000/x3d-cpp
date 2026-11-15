@@ -10,10 +10,9 @@
 #include "X3DProtoExpand.hpp"
 #include "x3d/core/X3DReflection.hpp"
 
+#include "doctest/doctest.h"
+
 #include <any>
-#include <cassert>
-#include <cstdlib>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,15 +23,6 @@ using namespace x3d::nodes;
 namespace xn = x3d::nodes;
 using x3d::codec::noopProtoResolver;
 
-static int failures = 0;
-static void check(bool cond, const std::string &what) {
-  if (!cond) {
-    std::cerr << "FAIL: " << what << "\n";
-    ++failures;
-  } else {
-    std::cout << "ok: " << what << "\n";
-  }
-}
 
 static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {
   for (const auto &f : n.fields()) if (f.x3dName == name) return &f;
@@ -57,8 +47,7 @@ static X3DNode *primaryOf(const Scene &scene, const std::string &def) {
 // (1) initializeOnly IS does value substitution; ProtoField value visible on
 //     instance. The clone + forward-set path lands the override on the cloned
 //     body field.
-static void initOnlyValueForwardTest() {
-  std::cerr << "\n[1] initializeOnly IS value substitution\n";
+TEST_CASE("proto expand audit: an initializeOnly IS override lands on the cloned body field") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Cube";
@@ -81,18 +70,15 @@ static void initOnlyValueForwardTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary != nullptr, "initializeOnly: primary clone produced");
-  check(primary && primary->nodeTypeName() == "Box",
-        "initializeOnly: primary is Box");
+  CHECK_MESSAGE((primary != nullptr), "initializeOnly: primary clone produced");
+  CHECK_MESSAGE((primary && primary->nodeTypeName() == "Box"), "initializeOnly: primary is Box");
   auto sz = std::any_cast<SFVec3f>(
       fieldByName(*primary, "size")->get(*primary));
-  check(sz.x == 5.f && sz.y == 5.f && sz.z == 5.f,
-        "initializeOnly: override 5,5,5 lands on cloned body field");
-  check(w.empty(), "initializeOnly: no warnings on clean override");
+  CHECK_MESSAGE((sz.x == 5.f && sz.y == 5.f && sz.z == 5.f), "initializeOnly: override 5,5,5 lands on cloned body field");
+  CHECK_MESSAGE((w.empty()), "initializeOnly: no warnings on clean override");
 }
 
-static void initOnlyDefaultTest() {
-  std::cerr << "\n[1b] initializeOnly default used when no override\n";
+TEST_CASE("proto expand audit: an initializeOnly IS without override keeps the interface default") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Mat";
@@ -112,17 +98,15 @@ static void initOnlyDefaultTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary != nullptr, "initializeOnly-default: primary clone produced");
+  CHECK_MESSAGE((primary != nullptr), "initializeOnly-default: primary clone produced");
   auto col = std::any_cast<SFColor>(
       fieldByName(*primary, "diffuseColor")->get(*primary));
-  check(col.r == 0.5f && col.g == 0.5f && col.b == 0.5f,
-        "initializeOnly-default: proto default 0.5 visible on clone");
+  CHECK_MESSAGE((col.r == 0.5f && col.g == 0.5f && col.b == 0.5f), "initializeOnly-default: proto default 0.5 visible on clone");
 }
 // (2) inputOnly IS creates a redirect. Expansion populates protoRedirects and
 //     the bridge wires an external source through the interface to the body's
 //     inputOnly event handler.
-static void inputOnlyRedirectPopulatedTest() {
-  std::cerr << "\n[2] inputOnly IS populates protoRedirects\n";
+TEST_CASE("proto expand audit: an inputOnly IS registers a redirect") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Btn";
@@ -141,24 +125,17 @@ static void inputOnlyRedirectPopulatedTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary && primary->nodeTypeName() == "BooleanTrigger",
-        "inputOnly: primary is BooleanTrigger");
-  check(scene.protoRedirects.count(primary.get()) == 1,
-        "inputOnly: primary registered in protoRedirects");
+  CHECK_MESSAGE((primary && primary->nodeTypeName() == "BooleanTrigger"), "inputOnly: primary is BooleanTrigger");
+  CHECK_MESSAGE((scene.protoRedirects.count(primary.get()) == 1), "inputOnly: primary registered in protoRedirects");
   auto &byField = scene.protoRedirects[primary.get()];
-  check(byField.count("trig") == 1,
-        "inputOnly: 'trig' interface field has one redirect target");
-  check(byField["trig"].size() == 1,
-        "inputOnly: one body endpoint per IS");
-  check(byField["trig"][0].targetField == "set_triggerTime",
-        "inputOnly: body target is set_triggerTime");
-  check(byField["trig"][0].targetNode &&
-        byField["trig"][0].targetNode->nodeTypeName() == "BooleanTrigger",
-        "inputOnly: body target node is the cloned BooleanTrigger");
+  CHECK_MESSAGE((byField.count("trig") == 1), "inputOnly: 'trig' interface field has one redirect target");
+  CHECK_MESSAGE((byField["trig"].size() == 1), "inputOnly: one body endpoint per IS");
+  CHECK_MESSAGE((byField["trig"][0].targetField == "set_triggerTime"), "inputOnly: body target is set_triggerTime");
+  CHECK_MESSAGE((byField["trig"][0].targetNode &&
+        byField["trig"][0].targetNode->nodeTypeName() == "BooleanTrigger"), "inputOnly: body target node is the cloned BooleanTrigger");
 }
 
-static void inputOnlyRedirectBridgesTest() {
-  std::cerr << "\n[2b] inputOnly IS redirects external ROUTE through bridge\n";
+TEST_CASE("proto expand audit: an inputOnly redirect bridges an external ROUTE to the body") {
 
   // Same interface/body mapping as 2a (trig -> set_triggerTime, SFTime). External
   // source: a TouchSensor that emits SFTime on touchTime — types match (both
@@ -195,21 +172,18 @@ static void inputOnlyRedirectBridgesTest() {
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
 
-  check(r.routesAdded >= 1,
-        "inputOnly: external route through interface added via redirect");
+  CHECK_MESSAGE((r.routesAdded >= 1), "inputOnly: external route through interface added via redirect");
   bool interfaceRejected = false;
   for (const auto &err : r.rejected) {
     if (err.reason.find("trig") != std::string::npos)
       interfaceRejected = true;
   }
-  check(!interfaceRejected,
-        "inputOnly: interface field NOT rejected as unknown");
+  CHECK_MESSAGE((!interfaceRejected), "inputOnly: interface field NOT rejected as unknown");
 }
 // (3) inputOutput IS: expansion populates protoRedirects and the body field
 //     has both a write thunk (set_xxx) and read thunk (xxx_changed) — both
 //     directions can be the target of an external ROUTE.
-static void inputOutputRedirectTest() {
-  std::cerr << "\n[3] inputOutput IS populates redirect + is bidirectional\n";
+TEST_CASE("proto expand audit: an inputOutput IS redirects both directions") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Srv";
@@ -227,20 +201,16 @@ static void inputOutputRedirectTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary && primary->nodeTypeName() == "Material",
-        "inputOutput: primary is Material");
-  check(scene.protoRedirects[primary.get()].count("color") == 1,
-        "inputOutput: 'color' interface field redirects to body diffuseColor");
+  CHECK_MESSAGE((primary && primary->nodeTypeName() == "Material"), "inputOutput: primary is Material");
+  CHECK_MESSAGE((scene.protoRedirects[primary.get()].count("color") == 1), "inputOutput: 'color' interface field redirects to body diffuseColor");
 
   // The body field has the correct reflection access type on the clone.
   const FieldInfo *fi = fieldByName(*primary, "diffuseColor");
-  check(fi && fi->access == AccessType::InputOutput,
-        "inputOutput: cloned body field diffuseColor stays InputOutput");
+  CHECK_MESSAGE((fi && fi->access == AccessType::InputOutput), "inputOutput: cloned body field diffuseColor stays InputOutput");
 
   // The redirect target node IS the cloned Material primary.
-  check(scene.protoRedirects[primary.get()]["color"][0].targetNode.get()
-            == primary.get(),
-        "inputOutput: redirect target node is the cloned primary");
+  CHECK_MESSAGE((scene.protoRedirects[primary.get()]["color"][0].targetNode.get()
+            == primary.get()), "inputOutput: redirect target node is the cloned primary");
 
   // Bridge an external source (TimeSensor's fraction SFFloat, here just for
   // direction check — values would need to be SFFloat-compatible; we only
@@ -256,14 +226,12 @@ static void inputOutputRedirectTest() {
     if (err.reason.find("color") != std::string::npos)
       interfaceRejected = true;
   }
-  check(!interfaceRejected,
-        "inputOutput: interface 'color' not rejected (dangling source only)");
+  CHECK_MESSAGE((!interfaceRejected), "inputOutput: interface 'color' not rejected (dangling source only)");
 }
 // (4) Self-recursive PROTO (body instantiates itself) hits the depth guard.
 //     Spec §4.4.4.3 mandates that self-referential protos not loop forever;
 //     our defensive cap is ExpandGuard::maxDepth = 32 (per expansion stack).
-static void selfRecursiveDepthGuardTest() {
-  std::cerr << "\n[4] self-recursive PROTO hits depth guard\n";
+TEST_CASE("proto expand audit: a self-recursive PROTO stops at the depth guard") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Self";
@@ -294,19 +262,17 @@ static void selfRecursiveDepthGuardTest() {
   for (const auto &warn : w) {
     if (warn.kind == ProtoWarning::Kind::RecursionLimit) sawRecursionLimit = true;
   }
-  check(sawRecursionLimit,
-        "self-recursive: RecursionLimit warning recorded (depth cap fired)");
+  CHECK_MESSAGE((sawRecursionLimit), "self-recursive: RecursionLimit warning recorded (depth cap fired)");
   // The top-level instance should still produce a Box primary — the top
   // instance itself is not at the cap; only its nested recursion is.
   bool foundBox = false;
   for (auto &n : scene.rootNodes) {
     if (n && n->nodeTypeName() == "Box") foundBox = true;
   }
-  check(foundBox, "self-recursive: top-level primary is a Box");
+  CHECK_MESSAGE((foundBox), "self-recursive: top-level primary is a Box");
 }
 
-static void depthGuardPerStackTest() {
-  std::cerr << "\n[4b] depth guard is per-expansion-stack (resets per top-level)\n";
+TEST_CASE("proto expand audit: the depth guard counts per expansion stack") {
 
   // Two unrelated, non-recursive PROTOs each expanded as their own top-level
   // instance — each gets its own ExpandGuard, neither fires the cap.
@@ -326,34 +292,27 @@ static void depthGuardPerStackTest() {
 
   std::vector<ProtoWarning> w;
   expandScene(scene, noopProtoResolver, "", w);
-  check(w.empty(),
-        "depth-guard: two non-recursive top-level instances -> no warnings");
+  CHECK_MESSAGE((w.empty()), "depth-guard: two non-recursive top-level instances -> no warnings");
   int rootCount = 0;
   for (auto &n : scene.rootNodes) if (n) ++rootCount;
-  check(rootCount == 2,
-        "depth-guard: both top-level instances produce a root node");
+  CHECK_MESSAGE((rootCount == 2), "depth-guard: both top-level instances produce a root node");
 }
 // (5) EXTERNPROTO with local file URL resolves and expands. We test via
 //     parseFile(front door) so the resolver seam is the production one.
-static void externLocalFileResolveTest() {
-  std::cerr << "\n[5] EXTERNPROTO local-file URL resolves\n";
+TEST_CASE("proto expand audit: a local-file EXTERNPROTO resolves through parseFile") {
 
-  std::string dataDir = "runtime/parse/tests/data/proto";
-  if (const char *env = std::getenv("X3D_TEST_DATA_DIR")) dataDir = env;
+  const std::string dataDir = X3D_PARSE_TEST_DATA "/proto";
   auto doc = x3d::codec::parseFile(dataDir + "/main.x3d");
 
   bool foundBox = false;
   for (auto &n : doc.scene.rootNodes) {
     if (n && n->nodeTypeName() == "Box") foundBox = true;
   }
-  check(foundBox,
-        "EXTERNPROTO: sibling-file EXTERNPROTO expands into Box primary");
-  check(doc.protoWarnings.empty(),
-        "EXTERNPROTO: no warnings on resolved sibling-file URL");
+  CHECK_MESSAGE((foundBox), "EXTERNPROTO: sibling-file EXTERNPROTO expands into Box primary");
+  CHECK_MESSAGE((doc.protoWarnings.empty()), "EXTERNPROTO: no warnings on resolved sibling-file URL");
 }
 
-static void externLocalFileRelativeUrlTest() {
-  std::cerr << "\n[5b] EXTERNPROTO relative URL resolves against baseUrl\n";
+TEST_CASE("proto expand audit: a relative EXTERNPROTO url resolves against the base url") {
 
   // Direct programmatic: pass baseUrl explicitly so we exercise the relative
   // resolution path independent of parseFile's path-derivation logic.
@@ -363,16 +322,14 @@ static void externLocalFileRelativeUrlTest() {
   x3d::runtime::ProtoInstance inst;
   inst.name = "ExtBox"; inst.externDeclaration = ext;
 
-  std::string dataDir = "runtime/parse/tests/data/proto";
-  if (const char *env = std::getenv("X3D_TEST_DATA_DIR")) dataDir = env;
+  const std::string dataDir = X3D_PARSE_TEST_DATA "/proto";
 
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, dataDir, guard, w);
 
   // noopProtoResolver returns null, so this should warn and yield no primary.
-  check(!primary, "EXTERNPROTO: noop resolver yields no primary");
-  check(w.size() == 1 && w[0].kind == ProtoWarning::Kind::UnresolvedExtern,
-        "EXTERNPROTO: UnresolvedExtern warning recorded");
+  CHECK_MESSAGE((!primary), "EXTERNPROTO: noop resolver yields no primary");
+  CHECK_MESSAGE((w.size() == 1 && w[0].kind == ProtoWarning::Kind::UnresolvedExtern), "EXTERNPROTO: UnresolvedExtern warning recorded");
 
   // Now exercise the real local-file resolver via parseDocument.
   const char *x3dDoc =
@@ -385,8 +342,7 @@ static void externLocalFileRelativeUrlTest() {
   for (auto &n : doc.scene.rootNodes) {
     if (n && n->nodeTypeName() == "Box") got = true;
   }
-  check(got,
-        "EXTERNPROTO: parseDocument with explicit baseUrl resolves relative URL");
+  CHECK_MESSAGE((got), "EXTERNPROTO: parseDocument with explicit baseUrl resolves relative URL");
 
   // Also test the URL with a #fragment that doesn't match any PROTO in the
   // target file — should be UnresolvedExtern.
@@ -401,14 +357,12 @@ static void externLocalFileRelativeUrlTest() {
   for (const auto &warn : docBad.protoWarnings) {
     if (warn.kind == ProtoWarning::Kind::UnresolvedExtern) badWarned = true;
   }
-  check(badWarned,
-        "EXTERNPROTO: unresolved #fragment warns (no such PROTO in target)");
+  CHECK_MESSAGE((badWarned), "EXTERNPROTO: unresolved #fragment warns (no such PROTO in target)");
 }
 // (6) Clone preserves event-only semantics: an inputOnly event field on the
 //     body remains inputOnly on the clone (with a write thunk), and an
 //     initializeOnly field stays constant after clone.
-static void clonePreservesInputOnlyTest() {
-  std::cerr << "\n[6] clone preserves inputOnly event-field semantics\n";
+TEST_CASE("proto expand audit: a clone keeps inputOnly fields event-only") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Btn";
@@ -421,22 +375,19 @@ static void clonePreservesInputOnlyTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary && primary->nodeTypeName() == "BooleanTrigger",
-        "clone: primary is BooleanTrigger");
+  CHECK_MESSAGE((primary && primary->nodeTypeName() == "BooleanTrigger"), "clone: primary is BooleanTrigger");
 
   const FieldInfo *setTime = fieldByName(*primary, "set_triggerTime");
-  check(setTime != nullptr, "clone: set_triggerTime field present on clone");
-  check(setTime && setTime->access == AccessType::InputOnly,
-        "clone: set_triggerTime access stays InputOnly on clone");
-  check(setTime && setTime->set != nullptr,
-        "clone: set_triggerTime still has a write thunk (events deliverable)");
+  CHECK_MESSAGE((setTime != nullptr), "clone: set_triggerTime field present on clone");
+  CHECK_MESSAGE((setTime && setTime->access == AccessType::InputOnly), "clone: set_triggerTime access stays InputOnly on clone");
+  CHECK_MESSAGE((setTime && setTime->set != nullptr), "clone: set_triggerTime still has a write thunk (events deliverable)");
 
   // Register a handler on the clone and post an event via the bridge — the
   // handler must fire, proving the cloned body node is fully wired.
   auto raw = primary.get();
   // Cast to register handler.
   auto btPtr = std::dynamic_pointer_cast<class xn::BooleanTrigger>(primary);
-  check(btPtr != nullptr, "clone: primary downcasts to BooleanTrigger");
+  CHECK_MESSAGE((btPtr != nullptr), "clone: primary downcasts to BooleanTrigger");
   if (btPtr) {
     int fired = 0;
     btPtr->setOnSet_triggerTimeHandler(
@@ -444,13 +395,11 @@ static void clonePreservesInputOnlyTest() {
     X3DExecutionContext ctx;
     ctx.postEvent(raw, "set_triggerTime", std::any(SFTime{1.0}));
     ctx.process();
-    check(fired == 1,
-          "clone: posted event reaches cloned body's inputOnly handler");
+    CHECK_MESSAGE((fired == 1), "clone: posted event reaches cloned body's inputOnly handler");
   }
 }
 
-static void clonePreservesInitializeOnlyTest() {
-  std::cerr << "\n[6b] clone keeps initializeOnly field constant\n";
+TEST_CASE("proto expand audit: a clone keeps initializeOnly fields constant") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Cube";
@@ -470,18 +419,15 @@ static void clonePreservesInitializeOnlyTest() {
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
   const FieldInfo *sz = fieldByName(*primary, "size");
-  check(sz && sz->access == AccessType::InitializeOnly,
-        "clone: size remains InitializeOnly on the clone");
+  CHECK_MESSAGE((sz && sz->access == AccessType::InitializeOnly), "clone: size remains InitializeOnly on the clone");
   auto got = std::any_cast<SFVec3f>(sz->get(*primary));
-  check(got.x == 3.f && got.y == 3.f && got.z == 3.f,
-        "clone: proto-default value lands on the clone (constant)");
+  CHECK_MESSAGE((got.x == 3.f && got.y == 3.f && got.z == 3.f), "clone: proto-default value lands on the clone (constant)");
 }
 // (7) PROTO body USE resolves to body-local instance, not scene-global.
 //     A node with DEF inside a ProtoBody and another node using it via USE
 //     must share identity at the body level after expansion — and that DEF
 //     name must not be promoted into scene.defs (proto-local DEF scope).
-static void bodyUseIsLocalTest() {
-  std::cerr << "\n[7] PROTO body USE is proto-local\n";
+TEST_CASE("proto expand audit: a USE in the ProtoBody shares identity and stays proto-local") {
 
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Body";
@@ -512,34 +458,26 @@ static void bodyUseIsLocalTest() {
 
   // The primary clones the first body node and takes the instance DEF.
   // Body USE identity is preserved, while body DEF names stay out of scene.defs.
-  check(primary && primary->nodeTypeName() == "Group",
-        "body-USE: primary is Group (first body node)");
+  CHECK_MESSAGE((primary && primary->nodeTypeName() == "Group"), "body-USE: primary is Group (first body node)");
 
   // The proto-local DEF "S" must not be promoted to scene.defs.
-  check(scene.defs.count("S") == 0,
-        "body-USE: body DEF 'S' NOT promoted to scene.defs (proto-local)");
-  check(scene.defs.count("G") == 0,
-        "body-USE: body DEF 'G' NOT promoted to scene.defs (proto-local)");
+  CHECK_MESSAGE((scene.defs.count("S") == 0), "body-USE: body DEF 'S' NOT promoted to scene.defs (proto-local)");
+  CHECK_MESSAGE((scene.defs.count("G") == 0), "body-USE: body DEF 'G' NOT promoted to scene.defs (proto-local)");
 
   // The body route must be pre-resolved via localDefs.
-  check(scene.resolvedProtoRoutes.size() == 1,
-        "body-USE: body route pre-resolved via localDefs");
+  CHECK_MESSAGE((scene.resolvedProtoRoutes.size() == 1), "body-USE: body route pre-resolved via localDefs");
   if (scene.resolvedProtoRoutes.empty()) return;
   const auto &r = scene.resolvedProtoRoutes[0];
-  check(r.from && r.from.get() == primary.get(),
-        "body-USE: route source resolves to the cloned Group (USE identity)");
-  check(r.to && r.to->nodeTypeName() == "Group",
-        "body-USE: route sink resolves to the cloned Group");
+  CHECK_MESSAGE((r.from && r.from.get() == primary.get()), "body-USE: route source resolves to the cloned Group (USE identity)");
+  CHECK_MESSAGE((r.to && r.to->nodeTypeName() == "Group"), "body-USE: route sink resolves to the cloned Group");
   if (!r.to) return;
   const FieldInfo *clonedKids = fieldByName(*r.to, "children");
   auto children = std::any_cast<std::vector<std::shared_ptr<X3DNode>>>(
       clonedKids->get(*r.to));
-  check(children.size() == 1 && children[0] == primary,
-        "body-USE: cloned Group child shares the primary pointer");
+  CHECK_MESSAGE((children.size() == 1 && children[0] == primary), "body-USE: cloned Group child shares the primary pointer");
 }
 // PROTO redirects reject invalid directions and mismatched field types.
-static void redirectRejectsInputOnlyAsSourceTest() {
-  std::cerr << "\n[8a] redirect: inputOnly interface as source -> REJECTED\n";
+TEST_CASE("proto expand audit: a redirect rejects an inputOnly field as ROUTE source") {
 
   Scene scene;
   auto decl = std::make_shared<ProtoDeclaration>();
@@ -577,8 +515,7 @@ static void redirectRejectsInputOnlyAsSourceTest() {
   for (const auto &err : r.rejected) {
     if (err.reason.find("trig") != std::string::npos) seenTrigRejected = true;
   }
-  check(seenTrigRejected,
-        "inputOnly-as-source: rejected with diagnostic naming 'trig'");
+  CHECK_MESSAGE((seenTrigRejected), "inputOnly-as-source: rejected with diagnostic naming 'trig'");
   // The diagnostic must call out the direction failure (outputOnly/inputOutput
   // required for source), so users can tell what to fix.
   bool mentionsDirection = false;
@@ -588,20 +525,17 @@ static void redirectRejectsInputOnlyAsSourceTest() {
       mentionsDirection = true;
     }
   }
-  check(mentionsDirection,
-        "inputOnly-as-source: diagnostic mentions 'source' / 'outputOnly'");
+  CHECK_MESSAGE((mentionsDirection), "inputOnly-as-source: diagnostic mentions 'source' / 'outputOnly'");
 
   // And concretely: ctx.graph() has no source edge keyed on set_triggerTime.
   // The cloned BooleanTrigger is reachable via scene.protoRedirects[B].
   X3DNode *bodyNode = scene.protoRedirects[primaryOf(scene, "B")]["trig"]
                           [0].targetNode.get();
   auto broken = ctx.graph().sinks({bodyNode, "set_triggerTime"});
-  check(broken.empty(),
-        "inputOnly-as-source: no edge wired from set_triggerTime");
+  CHECK_MESSAGE((broken.empty()), "inputOnly-as-source: no edge wired from set_triggerTime");
 }
 
-static void redirectRejectsOutputOnlyAsSinkTest() {
-  std::cerr << "\n[8b] redirect: outputOnly interface as sink -> REJECTED\n";
+TEST_CASE("proto expand audit: a redirect rejects an outputOnly field as ROUTE sink") {
 
   Scene scene;
   auto decl = std::make_shared<ProtoDeclaration>();
@@ -637,8 +571,7 @@ static void redirectRejectsOutputOnlyAsSinkTest() {
     if (err.reason.find("'out'") != std::string::npos ||
         err.reason.find("out") != std::string::npos) seenOutRejected = true;
   }
-  check(seenOutRejected,
-        "outputOnly-as-sink: rejected with diagnostic naming 'out'");
+  CHECK_MESSAGE((seenOutRejected), "outputOnly-as-sink: rejected with diagnostic naming 'out'");
 
   // The invalid outputOnly sink must have no edge to body.triggerTrue.
   X3DNode *bodyNode = scene.protoRedirects[primaryOf(scene, "S")]["out"]
@@ -651,12 +584,10 @@ static void redirectRejectsOutputOnlyAsSinkTest() {
       wiredToTriggerTrue = true;
     }
   }
-  check(!wiredToTriggerTrue,
-        "outputOnly-as-sink: no edge wired to body.triggerTrue");
+  CHECK_MESSAGE((!wiredToTriggerTrue), "outputOnly-as-sink: no edge wired to body.triggerTrue");
 }
 
-static void redirectRejectsTypeMismatchTest() {
-  std::cerr << "\n[8c] redirect: type mismatch -> REJECTED\n";
+TEST_CASE("proto expand audit: a redirect rejects mismatched field types") {
 
   // Interface 'trig' is SFTime (inputOnly). External source is SFFloat
   // (TimeSensor.fraction). The body target is set_triggerTime (SFTime);
@@ -701,16 +632,13 @@ static void redirectRejectsTypeMismatchTest() {
     }
   }
   // A type-mismatched redirect must be rejected without adding a route.
-  check(seenTypeRejection || r.routesAdded == 0,
-        "type-mismatch: rejected OR not wired (redirect validation active)");
-  check(seenTypeRejection,
-        "type-mismatch: diagnostic names the type mismatch");
+  CHECK_MESSAGE((seenTypeRejection || r.routesAdded == 0), "type-mismatch: rejected OR not wired (redirect validation active)");
+  CHECK_MESSAGE((seenTypeRejection), "type-mismatch: diagnostic names the type mismatch");
 }
 // (8d) A valid redirect (inputOnly interface as sink with matching types) still
 //      works after the fix — sanity guard that the validation didn't regress
 //      the legitimate redirect path.
-static void validRedirectStillWorksTest() {
-  std::cerr << "\n[8d] redirect: valid inputOnly sink -> redirect path still wires\n";
+TEST_CASE("proto expand audit: a valid redirect still wires") {
 
   Scene scene;
   auto decl = std::make_shared<ProtoDeclaration>();
@@ -741,10 +669,8 @@ static void validRedirectStillWorksTest() {
   X3DExecutionContext ctx;
   BridgeResult r = buildRoutes(scene, ctx);
 
-  check(r.routesAdded == 1,
-        "valid-redirect: one route added via redirect path");
-  check(r.rejected.empty(),
-        "valid-redirect: no rejections");
+  CHECK_MESSAGE((r.routesAdded == 1), "valid-redirect: one route added via redirect path");
+  CHECK_MESSAGE((r.rejected.empty()), "valid-redirect: no rejections");
 
   // Confirm the wired edge: TS.touchTime -> body.set_triggerTime.
   X3DNode *bodyNode = scene.protoRedirects[primaryOf(scene, "B")]["trig"]
@@ -756,13 +682,11 @@ static void validRedirectStillWorksTest() {
       wiredToBody = true;
     }
   }
-  check(wiredToBody,
-        "valid-redirect: edge wired from TS.touchTime to body.set_triggerTime");
+  CHECK_MESSAGE((wiredToBody), "valid-redirect: edge wired from TS.touchTime to body.set_triggerTime");
 }
 // (9) IS access-type validation per Table 4.4 — invalid mappings warn and
 //     are skipped rather than silently creating bad redirects / value forwards.
-static void invalidIsMappingInitOnlyBodyToInputOnlyIfaceTest() {
-  std::cerr << "\n[9a] IS Table 4.4: initOnly body -> inputOnly iface -> warn+skip\n";
+TEST_CASE("proto expand audit: an IS from an initializeOnly body field to an inputOnly interface warns") {
 
   // Body: Box.size is initializeOnly. Interface: "trig" is inputOnly.
   // Table 4.4 says no — this IS mapping is invalid.
@@ -782,7 +706,7 @@ static void invalidIsMappingInitOnlyBodyToInputOnlyIfaceTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary != nullptr, "9a: expansion still succeeds despite bad IS");
+  CHECK_MESSAGE((primary != nullptr), "9a: expansion still succeeds despite bad IS");
   bool saw = false;
   for (const auto &warn : w) {
     if (warn.kind == ProtoWarning::Kind::InterfaceMismatch &&
@@ -790,18 +714,16 @@ static void invalidIsMappingInitOnlyBodyToInputOnlyIfaceTest() {
       saw = true;
     }
   }
-  check(saw, "9a: InterfaceMismatch warning for initOnly->inputOnly IS");
+  CHECK_MESSAGE((saw), "9a: InterfaceMismatch warning for initOnly->inputOnly IS");
 
   // No redirect must be registered for the bad mapping.
   auto it = scene.protoRedirects.find(primary.get());
   if (it != scene.protoRedirects.end()) {
-    check(it->second.count("trig") == 0,
-          "9a: no redirect registered for invalid IS mapping");
+    CHECK_MESSAGE((it->second.count("trig") == 0), "9a: no redirect registered for invalid IS mapping");
   }
 }
 
-static void invalidIsMappingInputOnlyBodyToInitOnlyIfaceTest() {
-  std::cerr << "\n[9b] IS Table 4.4: inputOnly body -> initOnly iface -> warn+skip\n";
+TEST_CASE("proto expand audit: an IS from an inputOnly body field to an initializeOnly interface warns") {
 
   // Body: BooleanTrigger.set_triggerTime is inputOnly.
   // Interface: "size" is initializeOnly. Table 4.4 says no.
@@ -822,7 +744,7 @@ static void invalidIsMappingInputOnlyBodyToInitOnlyIfaceTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary != nullptr, "9b: expansion still succeeds despite bad IS");
+  CHECK_MESSAGE((primary != nullptr), "9b: expansion still succeeds despite bad IS");
   bool saw = false;
   for (const auto &warn : w) {
     if (warn.kind == ProtoWarning::Kind::InterfaceMismatch &&
@@ -830,14 +752,12 @@ static void invalidIsMappingInputOnlyBodyToInitOnlyIfaceTest() {
       saw = true;
     }
   }
-  check(saw, "9b: InterfaceMismatch warning for inputOnly->initOnly IS");
-  check(fieldByName(*primary, "set_triggerTime") != nullptr,
-        "9b: set_triggerTime field present on clone");
+  CHECK_MESSAGE((saw), "9b: InterfaceMismatch warning for inputOnly->initOnly IS");
+  CHECK_MESSAGE((fieldByName(*primary, "set_triggerTime") != nullptr), "9b: set_triggerTime field present on clone");
 
 }
 
-static void invalidIsMappingOutputOnlyBodyToInputOnlyIfaceTest() {
-  std::cerr << "\n[9c] IS Table 4.4: outputOnly body -> inputOnly iface -> warn+skip\n";
+TEST_CASE("proto expand audit: an IS from an outputOnly body field to an inputOnly interface warns") {
 
   // Body: BooleanTrigger.triggerTrue is outputOnly.
   // Interface: "trig" is inputOnly. Table 4.4 says no.
@@ -857,7 +777,7 @@ static void invalidIsMappingOutputOnlyBodyToInputOnlyIfaceTest() {
   Scene scene; ExpandGuard guard; std::vector<ProtoWarning> w;
   auto primary = expandInstance(inst, scene, noopProtoResolver, "", guard, w);
 
-  check(primary != nullptr, "9c: expansion still succeeds despite bad IS");
+  CHECK_MESSAGE((primary != nullptr), "9c: expansion still succeeds despite bad IS");
   bool saw = false;
   for (const auto &warn : w) {
     if (warn.kind == ProtoWarning::Kind::InterfaceMismatch &&
@@ -865,58 +785,10 @@ static void invalidIsMappingOutputOnlyBodyToInputOnlyIfaceTest() {
       saw = true;
     }
   }
-  check(saw, "9c: InterfaceMismatch warning for outputOnly->inputOnly IS");
+  CHECK_MESSAGE((saw), "9c: InterfaceMismatch warning for outputOnly->inputOnly IS");
 
   auto it = scene.protoRedirects.find(primary.get());
   if (it != scene.protoRedirects.end()) {
-    check(it->second.count("trig") == 0,
-          "9c: no redirect registered for invalid IS mapping");
+    CHECK_MESSAGE((it->second.count("trig") == 0), "9c: no redirect registered for invalid IS mapping");
   }
-}
-// Driver
-int main(int argc, char **argv) {
-  if (argc > 1) {
-    // accept argv[1] as data dir for the file-based tests
-    std::string d = argv[1];
-#ifdef _WIN32
-    _putenv_s("X3D_TEST_DATA_DIR", d.c_str()); // setenv is POSIX; MSVC uses this
-#else
-    setenv("X3D_TEST_DATA_DIR", d.c_str(), 1);
-#endif
-  }
-
-  initOnlyValueForwardTest();
-  initOnlyDefaultTest();
-
-  inputOnlyRedirectPopulatedTest();
-  inputOnlyRedirectBridgesTest();
-
-  inputOutputRedirectTest();
-
-  selfRecursiveDepthGuardTest();
-  depthGuardPerStackTest();
-
-  externLocalFileResolveTest();
-  externLocalFileRelativeUrlTest();
-
-  clonePreservesInputOnlyTest();
-  clonePreservesInitializeOnlyTest();
-
-  bodyUseIsLocalTest();
-
-  redirectRejectsInputOnlyAsSourceTest();
-  redirectRejectsOutputOnlyAsSinkTest();
-  redirectRejectsTypeMismatchTest();
-  validRedirectStillWorksTest();
-
-  invalidIsMappingInitOnlyBodyToInputOnlyIfaceTest();
-  invalidIsMappingInputOnlyBodyToInitOnlyIfaceTest();
-  invalidIsMappingOutputOnlyBodyToInputOnlyIfaceTest();
-
-  if (failures) {
-    std::cerr << "\n" << failures << " check(s) failed\n";
-    return 1;
-  }
-  std::cout << "\nall proto-expand audit tests passed\n";
-  return 0;
 }

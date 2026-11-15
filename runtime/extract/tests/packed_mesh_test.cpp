@@ -6,7 +6,7 @@
 
 using namespace x3d::runtime::extract;
 
-TEST_CASE("packed mesh: indexed triangle") {
+TEST_CASE("packed mesh: an indexed triangle keeps its views and bytes") {
   // Build a triangle: 3 Float32 positions + uint16 indices
   PackedMesh m;
 

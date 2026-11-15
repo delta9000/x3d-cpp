@@ -26,7 +26,7 @@ constexpr std::uint32_t kAbsentEmoji = 0x1F600;  // 😀 — not in Liberation.
 
 }  // namespace
 
-TEST_CASE("fontmetrics_backend_a_stbtt") {
+TEST_CASE("font metrics: stb_truetype glyph metrics and failures") {
   FontMetrics fm = x3d::runtime::io::stbtt::makeStbttFontMetrics(liberationFaces());
   CHECK((static_cast<bool>(fm)));
 

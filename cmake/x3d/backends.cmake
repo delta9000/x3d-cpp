@@ -120,7 +120,7 @@ if(X3D_CPP_BUILD_QUICKJS)
         # syntax-error -> kInvalidScriptHandle, independent per-script contexts.
         add_executable(x3d_quickjs_backend_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/quickjs_backend_test.cpp")
-        target_link_libraries(x3d_quickjs_backend_test PRIVATE x3d_quickjs)
+        target_link_libraries(x3d_quickjs_backend_test PRIVATE x3d_quickjs x3d_doctest_main)
         add_test(NAME x3d_quickjs_backend COMMAND x3d_quickjs_backend_test)
     endif()
 endif()

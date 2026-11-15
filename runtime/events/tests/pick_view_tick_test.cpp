@@ -15,7 +15,7 @@ using namespace x3d::nodes;
 using x3d::test::setF;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-2f; }
 
-TEST_CASE("pick view tick") {
+TEST_CASE("pick and viewMatrix through the runtime context") {
   auto shape = createX3DNode("Shape");
   auto box = createX3DNode("Box"); setF(box, "size", std::any(SFVec3f{2,2,2}));
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));

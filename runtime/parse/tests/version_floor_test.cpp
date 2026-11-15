@@ -9,7 +9,7 @@
 
 #include <string>
 
-TEST_CASE("version floor") {
+TEST_CASE("version floor: sub-3.0 versions read as X3D 3.0") {
   using namespace x3d;
 
   // VRML97 .wrl header -> floored to 3.0.

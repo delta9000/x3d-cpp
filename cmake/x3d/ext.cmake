@@ -75,12 +75,17 @@ if(X3D_CPP_BUILD_EXT)
 
         add_executable(x3d_ext_cave_tests
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/tests/cave_extensions_test.cpp")
-        target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext)
+        target_link_libraries(x3d_ext_cave_tests PRIVATE x3d_cpp::ext x3d_doctest_main)
         target_compile_definitions(x3d_ext_cave_tests PRIVATE
             X3D_EXT_PROTO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/runtime/ext/protos")
+        # One CTest case per doctest case; each case is in a test suite named
+        # after it. The pass expression also fails a filter that matches nothing.
         foreach(_case proto_routes room_same_tick tracking_lifecycle invalid_room room_placement placement_cache placement_idle placement_inline placement_geolod fallback recursive_resolver input_diagnostics
                 room_rotation_order room_drift placement_fields placement_inline_same_tick)
-            add_test(NAME x3d_ext_cave_${_case} COMMAND x3d_ext_cave_tests ${_case})
+            add_test(NAME x3d_ext_cave_${_case}
+                COMMAND x3d_ext_cave_tests --test-suite=${_case})
+            set_tests_properties(x3d_ext_cave_${_case} PROPERTIES
+                PASS_REGULAR_EXPRESSION "test cases: +1 \\| +1 passed \\| +0 failed")
         endforeach()
 
         # One aggregate so `mise run build-ext` and the GitHub ext-gate job

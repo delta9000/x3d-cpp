@@ -37,7 +37,7 @@ static SFVec3f triGeoNormal(const MeshData &m, std::size_t t) {
   return cross(sub(b, a), sub(c, a));
 }
 
-TEST_CASE("mesh builder extrusion") {
+TEST_CASE("mesh builder extrusion: counts, caps and winding") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
   const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
 
@@ -141,7 +141,7 @@ TEST_CASE("mesh builder extrusion") {
   }
 }
 
-TEST_CASE("extrusion_concave_cap_does_not_cover_notch") {
+TEST_CASE("mesh builder extrusion: a concave cap does not cover the notch") {
   auto g = createX3DNode("Extrusion");
   // A 3x3 U with a 1x2 notch: cap area is 7 square units.
   const MFVec2f u = {{0,0}, {3,0}, {3,3}, {2,3}, {2,1},
