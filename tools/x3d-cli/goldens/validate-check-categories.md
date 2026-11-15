@@ -81,7 +81,7 @@ triaged.
 float32 boundary value (`1.570796`, the UOM truncation of π/2) landed epsilon above a
 double-precision bound literal. ADR-0003's 2026-07-18 refinement compares bounds in the
 field's own float32 precision, and the live gate no longer emits this category. See
-`docs/wiki/decisions/0003-throw-on-range.md`.
+`docs/wiki/explanation/decisions/0003-throw-on-range.md`.
 
 ## Improvements Landed (former disagreements now AGREE)
 

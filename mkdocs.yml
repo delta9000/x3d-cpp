@@ -1,5 +1,5 @@
-site_name: x3d-cpp Knowledge Wiki
-site_description: Architecture and reference for the x3d-cpp runtime SDK.
+site_name: x3d-cpp documentation
+site_description: Tutorials, how-to guides, reference and explanation for the x3d-cpp runtime SDK and the SAI SDK.
 site_author: Ben Sandbrook
 repo_url: https://github.com/delta9000/x3d-cpp
 docs_dir: docs/wiki
@@ -39,152 +39,237 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Architecture: architecture.md
-  - Native host integration: guides/native-host.md
-  - Knowledge map: knowledge-map.md
-  - Subsystem source map: coverage.md
-  - Seam matrix: seam-status.md
-  - Subsystems:
-      - Generator & Bindings:
-          - Generator Pipeline: subsystems/generator.md
-          - Jinja2 Emit Templates: subsystems/templates.md
-          - Generated Bindings: subsystems/generated-bindings.md
-          - Reflection Layer: subsystems/reflection.md
-      - Runtime Core:
-          - Scene Graph: subsystems/scene-graph.md
-          - Execution Context: subsystems/execution-context.md
-          - Dirty Tracking, Transforms, and Bounds: subsystems/dirty-bounds-transform.md
-          - Math Core: subsystems/math.md
-          - H-Anim: subsystems/hanim.md
-      - Codecs & Parse:
-          - Codec Writers: subsystems/codecs-writers.md
-          - Canonical XML Writer: subsystems/canonical-xml.md
-          - Parse Readers: subsystems/parse-readers.md
-          - PROTO/EXTERNPROTO Expansion: subsystems/proto-expand.md
-          - Inline Expansion: subsystems/inline-expand.md
-      - Event / Behavior Runtime:
-          - Event Cascade: subsystems/event-cascade.md
-          - ROUTEs: subsystems/routes.md
-          - Time System: subsystems/system-time.md
-          - Interpolator System: subsystems/system-interpolators.md
-          - Followers System: subsystems/system-followers.md
-          - Geospatial: subsystems/geospatial.md
-          - EventUtility System: subsystems/system-eventutility.md
-          - View-Dependent System: subsystems/system-viewdependent.md
-          - Viewpoint Binding System: subsystems/system-viewpointbind.md
-          - Navigation System: subsystems/system-navigation.md
-          - Pointing-Device Sensor System: subsystems/system-pointing.md
-          - Key-Device Sensor System: subsystems/system-keydevice.md
-          - LoadSensor System: subsystems/system-loadsensor.md
-          - Script / SAI Runtime: subsystems/system-script-sai.md
-          - SAI SDK (sai/): subsystems/sai-sdk.md
-          - Native SAI Provider: subsystems/sai-provider.md
-          - Sensor Layer Overview: subsystems/sensors.md
-          - Physics (RigidBody dynamics): subsystems/physics.md
-          - Sound (§16 audio graph): subsystems/sound.md
-      - Extract:
-          - Extraction Pipeline: subsystems/extract.md
-          - H-Anim Extraction: subsystems/hanim.md
-          - Texture, Material, and Light Extraction: subsystems/extract-textures.md
-          - Materials (§12 discriminated union + backMaterial): subsystems/materials.md
-          - Shaders (ComposedShader + binding plan): subsystems/shaders.md
-          - Text Extraction: subsystems/extract-text.md
-          - Topology Classification: subsystems/extract-topology.md
-      - Boundaries & Consumers:
-          - Ext Firewall: subsystems/ext-firewall.md
-          - Asset Resolver / IO Seam: subsystems/system-asset-io.md
-          - Texture Decode Seam: subsystems/system-texture-decode.md
-          - Font Metrics Seam: subsystems/system-font-metrics.md
-          - SDK Facade: subsystems/sdk-facade.md
-          - CLI Suite: subsystems/cli-suite.md
-          - Asset Import: subsystems/asset-import.md
-          - Conformance Infrastructure: subsystems/conformance-infra.md
-  - Decisions (ADRs):
-      - "ADR-0001: Ext Firewall": decisions/0001-ext-firewall.md
-      - "ADR-0002: Event API for inputOnly Fields": decisions/0002-event-api-for-inputonly.md
-      - "ADR-0003: Throw on Range Violation": decisions/0003-throw-on-range.md
-      - "ADR-0004: Virtual Mixins for AbstractObjectTypes": decisions/0004-virtual-mixins.md
-      - "ADR-0005: Golden Files Committed to Git": decisions/0005-golden-files-in-git.md
-      - "ADR-0006: Generated Layer as Compiled Static Library": decisions/0006-compiled-static-lib.md
-      - "ADR-0007: Version-Inference Ladder": decisions/0007-version-inference-ladder.md
-      - "ADR-0008: Canonicalize Source-Provenance Handling": decisions/0008-canonicalize-source-provenance.md
-      - "ADR-0009: sim Uses Snapshot-Diff Field Tracing": decisions/0009-sim-snapshot-diff.md
-      - "ADR-0010: Differential CLI Gate as Baseline Regression": decisions/0010-differential-gate-regression.md
-      - "ADR-0011: ECS-Flavored Architecture, Not Full ECS": decisions/0011-ecs-flavored-not-ecs.md
-      - "ADR-0012: No External Math Library in the Core": decisions/0012-no-external-math-lib.md
-      - "ADR-0013: ECMAScript Engine Choice for Script/SAI": decisions/0013-js-engine-choice.md
-      - "ADR-0014: Dynamic Field Foundation for Script Author Fields": decisions/0014-dynamic-field-foundation.md
-      - "ADR-0015: Extraction as Pull over an Incremental Dirty Set": decisions/0015-extraction-pull-per-path.md
-      - "ADR-0016: Containment Cycles Severed Once at Scene Build": decisions/0016-cycle-breaker.md
-      - "ADR-0017: OBJ/glTF Ingestion via Parse-Time Inline Expansion": decisions/0017-inline-expansion-parse-time.md
-      - "ADR-0018: CAVE Cross-Process RenderDelta Wire Contract": decisions/0018-cave-cross-process-delta-contract.md
-      - "ADR-0019: Physics via a Flag-Gated Engine Backend": decisions/0019-physics-seam.md
-      - "ADR-0020: Sound via an Engine-Agnostic AudioBackend Seam": decisions/0020-sound-seam.md
-      - "ADR-0021: Material + Shader Design (discriminated union + vocab + introspection)": decisions/0021-material-shader-design.md
-      - "ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test as Genericity Proof": decisions/0022-scriptengine-second-backend-swap-test.md
-      - "ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test as Genericity Proof": decisions/0023-assetresolver-second-backend-swap-test.md
-      - "ADR-0024: Second TextureResolver Backend (wuffs) + Decode Swap-Test as Genericity Proof": decisions/0024-textureresolver-second-backend-swap-test.md
-      - "ADR-0025: FontMetrics Second Backend + Swap-Test": decisions/0025-fontmetrics-second-backend-swap-test.md
-      - "ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as Genericity Proof": decisions/0026-audiobackend-second-backend-swap-test.md
-      - "ADR-0027: Reference Lighting Evaluator (single normative §17 shading path)": decisions/0027-reference-lighting-evaluator.md
-      - "ADR-0028: Shadow Visibility Seam (normative modulation + technique-defined visibility)": decisions/0028-shadow-visibility-seam.md
-      - "ADR-0029: directOutput Writes Are Non-Routable (SAI 4.5.2 Governs)": decisions/0029-directoutput-non-routable.md
-      - "ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype": decisions/0030-fieldofview-validate-not-retype.md
-      - "ADR-0031: Deterministic SCP Frames for Degenerate Extrusion Spines": decisions/0031-extrusion-degenerate-scp.md
-      - "ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point": decisions/0032-hanimdisplacer-routable-coordpoint.md
-      - "ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)": decisions/0033-proto-builtin-shadow-error.md
-      - "ADR-0034: Environmental Sensor Activation Under Switch/LOD": decisions/0034-sensor-switch-lod-activation.md
-      - "ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics": decisions/0035-viewport-clipboundary-glviewport.md
-      - "ADR-0036: Codec Round-Trip Fidelity Properties and Fault-Injected Oracles": decisions/0036-codec-roundtrip-fidelity-oracles.md
-      - "ADR-0037: Graph-Walk Traversal Budget for Acyclic Fan-Out": decisions/0037-graph-walk-traversal-budget.md
-      - "ADR-0038: Default Local Resolver Confines Includes to the Source Subtree": decisions/0038-local-resolver-path-confinement.md
-      - "ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes": decisions/0039-generated-binding-namespaces.md
-      - "ADR-0040: NURBS Curve + Patch Tessellation is First-Party": decisions/0040-nurbs-tessellation-first-party.md
-      - "ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship": decisions/0041-moviedecoder-seam-royalty-free-defaults.md
-      - "ADR-0042: Slim Authoring Target & Ingestion Pipeline": decisions/0042-authoring-target.md
-      - "ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam": decisions/0043-usd-material-portable-glsl-seam.md
-      - "ADR-0044: Asset-Import Backend Selection — Priority Registry & cgltf glTF Path": decisions/0044-asset-import-backend-selection.md
-      - "ADR-0045: Shared Mesh Storage — Make GeomId's Instancing Contract Structural": decisions/0045-shared-mesh-instancing.md
-      - "ADR-0046: LoadSensor as a System over the AssetResolver Seam": decisions/0046-loadsensor-assetresolver-oracle.md
-      - "ADR-0047: Split the SAI semantic kernel into a sister repository (superseded)": decisions/0047-sai-sister-repo-split.md
-      - "ADR-0048: Script SFNode Handles Are Table Ids, Resolved to Owning References": decisions/0048-script-node-handles.md
-      - "ADR-0049: Zero-Copy Field Reads": decisions/0049-zero-copy-field-reads.md
-      - "ADR-0050: Decoded PCM and the Sound Ellipsoid Cross the AudioBackend Seam": decisions/0050-audio-pcm-and-ellipsoid-seam.md
-      - "ADR-0051: Deferred Inline Expansion Uses the Parse Resolver and Live Runtime Enrollment": decisions/0051-runtime-inline-expansion.md
-      - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": decisions/0052-movie-audio-buffer-source.md
-      - "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default": decisions/0053-geo-projection-seam.md
-      - "ADR-0054: GeoLOD Tiles and GeoViewpoint Navigation Scale": decisions/0054-geolod-tiles-navigation-scale.md
-      - "ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner": decisions/0055-hanim-skinning-descriptor.md
-      - "ADR-0056: Prototype Instance Templates in Node Defaults": decisions/0056-prototype-instance-default-templates.md
-      - "ADR-0057: Scene-Owned Author Fields and Scoped Clone Services": decisions/0057-scene-owned-author-fields.md
-      - "ADR-0058: Context-Owned Immutable Geospatial Projection": decisions/0058-context-owned-geo-projection.md
-      - "ADR-0059: Cube-Map Images Through the Texture Decode Seam": decisions/0059-cube-map-images-through-texture-decode.md
-      - "ADR-0060: Generated Cube Maps and the Local Cube Frame": decisions/0060-generated-cube-maps-local-frame.md
-      - "ADR-0061: Texture Projectors as Textured Lights": decisions/0061-texture-projectors-as-lights.md
-      - "ADR-0062: ClassicVRML prototype metadata comments": decisions/0062-classic-prototype-metadata-comments.md
-      - "ADR-0063: Resolver base URLs": decisions/0063-resolver-base-urls.md
-      - "ADR-0064: Pointing sensors without navigation": decisions/0064-pointing-without-navigation.md
-      - "ADR-0065: Absolute viewer world pose": decisions/0065-absolute-viewer-world-pose.md
-      - "ADR-0066: Native SAI presentation materials and frame deltas": decisions/0066-sai-presentation-materials-and-deltas.md
-      - "ADR-0067: Provider named-node discovery": decisions/0067-provider-named-node-discovery.md
-      - "ADR-0068: Room anchoring through sensor composition": decisions/0068-room-frame-sensor-composition.md
-      - "ADR-0069: Selection deltas and cheap ticks": decisions/0069-selection-deltas-and-cheap-ticks.md
-      - "ADR-0070: Deferred Inline loader ancestry": decisions/0070-deferred-inline-loader-ancestry.md
-      - "ADR-0071: Public node inspection": decisions/0071-public-node-inspection.md
-      - "ADR-0072: Fetched document diagnostics": decisions/0072-fetched-document-diagnostics.md
-      - "ADR-0073: Unbound viewer head tracking": decisions/0073-implicit-default-viewer.md
-      - "ADR-0074: Adopt a native session into the SAI provider": decisions/0074-sai-adopt-session.md
-      - "ADR-0075: Queued live SAI ROUTE addition": decisions/0075-sai-live-route-addition.md
-      - "ADR-0076: Fold the SAI SDK back into x3d-cpp": decisions/0076-fold-sai-into-x3d-cpp.md
-  - Guides:
-      - Gate system: guides/gate-system.md
-      - Build and mise: guides/build-and-mise.md
-      - RAG tools: guides/rags.md
-      - Conformance audits: guides/conformance-campaign.md
-      - X3D 4.0 requirements audit: guides/x3d4-requirements-audit.md
-      - Add a CLI command: guides/add-a-cli-command.md
-      - Golden regeneration: guides/golden-regeneration.md
-  - Conventions:
-      - Overview: _conventions/CONVENTIONS.md
-      - ADR Template: _conventions/adr-template.md
-      - Subsystem Template: _conventions/subsystem-template.md
+  - Tutorials:
+      - Load, run and extract your first scene: tutorials/first-scene.md
+      - Tour the x3d command line: tutorials/cli-tour.md
+  - How-to guides:
+      - Embed the runtime:
+          - Build and install the SDK: how-to/build-and-install.md
+          - Integrate a native host: how-to/integrate-a-native-host.md
+          - Supply resources through the seams: how-to/supply-resources.md
+          - Add a behavior System: how-to/add-a-behavior-system.md
+          - Drive the context and extractor directly: how-to/use-the-low-level-api.md
+          - Build a scene in code: how-to/build-a-scene-in-code.md
+          - Measure tick phases: how-to/measure-tick-phases.md
+      - Work on x3d-cpp:
+          - Verify a change: how-to/verify-a-change.md
+          - Regenerate the golden bindings: how-to/regenerate-goldens.md
+          - Add a CLI command: how-to/add-a-cli-command.md
+          - Audit a requirement: how-to/audit-a-requirement.md
+          - Search with the RAG tools: how-to/search-with-the-rags.md
+          - Report a bug with a scene: how-to/report-a-bug.md
+  - Reference:
+      - Using the SDK:
+          - SDK capabilities: reference/capabilities.md
+          - Native host contract: reference/native-host-contract.md
+          - Seam matrix: reference/seam-matrix.md
+          - API stability: reference/api-stability.md
+      - Examples:
+          - Overview: reference/examples/index.md
+          - Headless CPU rasterizer: reference/examples/cpu-raster.md
+          - PoC OpenGL renderer: reference/examples/poc-renderer.md
+          - Headless SVG projector: reference/examples/x3d2svg.md
+          - Asset import converter: reference/examples/asset-import.md
+      - Subsystems:
+          - Generator and bindings:
+              - Generator pipeline: reference/subsystems/generator.md
+              - Jinja2 emit templates: reference/subsystems/templates.md
+              - Generated bindings: reference/subsystems/generated-bindings.md
+              - Reflection layer: reference/subsystems/reflection.md
+          - Runtime core:
+              - Scene graph: reference/subsystems/scene-graph.md
+              - Execution context: reference/subsystems/execution-context.md
+              - Activation ownership: reference/subsystems/activation-ownership.md
+              - Dirty tracking, transforms and bounds: reference/subsystems/dirty-bounds-transform.md
+              - Math core: reference/subsystems/math.md
+          - Codecs and parsing:
+              - Parse readers: reference/subsystems/parse-readers.md
+              - Asset loader policy: reference/subsystems/asset-loader-policy.md
+              - PROTO and EXTERNPROTO expansion: reference/subsystems/proto-expand.md
+              - Inline expansion: reference/subsystems/inline-expand.md
+              - Codec writers: reference/subsystems/codecs-writers.md
+              - Canonical XML writer: reference/subsystems/canonical-xml.md
+          - Events and behavior:
+              - Event cascade: reference/subsystems/event-cascade.md
+              - ROUTEs: reference/subsystems/routes.md
+              - Time: reference/subsystems/system-time.md
+              - Interpolators: reference/subsystems/system-interpolators.md
+              - Followers: reference/subsystems/system-followers.md
+              - Event utilities: reference/subsystems/system-eventutility.md
+              - Script and SAI runtime: reference/subsystems/system-script-sai.md
+              - Geospatial: reference/subsystems/geospatial.md
+              - H-Anim: reference/subsystems/hanim.md
+              - Rigid-body physics: reference/subsystems/physics.md
+              - Sound: reference/subsystems/sound.md
+          - Sensors, viewing and navigation:
+              - Sensors overview: reference/subsystems/sensors.md
+              - Pointing-device sensors: reference/subsystems/system-pointing.md
+              - Key-device sensors: reference/subsystems/system-keydevice.md
+              - LoadSensor: reference/subsystems/system-loadsensor.md
+              - View-dependent behavior: reference/subsystems/system-viewdependent.md
+              - Viewpoint binding: reference/subsystems/system-viewpointbind.md
+              - Navigation: reference/subsystems/system-navigation.md
+              - Room and device input: reference/subsystems/room-and-device-input.md
+          - Extraction:
+              - Extraction pipeline: reference/subsystems/extract.md
+              - Extraction delta contracts: reference/subsystems/extract-deltas.md
+              - Geometry extraction: reference/subsystems/extract-geometry.md
+              - Topology classification: reference/subsystems/extract-topology.md
+              - Texture, material and light extraction: reference/subsystems/extract-textures.md
+              - Materials: reference/subsystems/materials.md
+              - Shaders: reference/subsystems/shaders.md
+              - Text extraction: reference/subsystems/extract-text.md
+              - glTF export: reference/subsystems/gltf-export.md
+          - Seams and consumers:
+              - Ext firewall: reference/subsystems/ext-firewall.md
+              - Asset resolution: reference/subsystems/system-asset-io.md
+              - Texture decoding: reference/subsystems/system-texture-decode.md
+              - Font metrics: reference/subsystems/system-font-metrics.md
+              - SDK facade: reference/subsystems/sdk-facade.md
+              - CLI suite: reference/subsystems/cli-suite.md
+              - Asset import: reference/subsystems/asset-import.md
+              - Conformance infrastructure: reference/subsystems/conformance-infra.md
+      - Working on x3d-cpp:
+          - Build and mise tasks: reference/build-and-tasks.md
+          - Gate system: reference/gates.md
+          - Source map: reference/source-map.md
+          - X3D 4.0 requirements audit: reference/x3d4-requirements-audit.md
+          - Documentation conventions: reference/doc-conventions.md
+          - Subsystem page template: reference/subsystems/_template.md
+  - Explanation:
+      - Architecture: explanation/architecture.md
+      - The tick model: explanation/tick-model.md
+      - Seams, ports and backends: explanation/seams.md
+      - Decisions (ADRs):
+          - ADR template: explanation/decisions/0000-template.md
+          - "ADR-0001: Ext Firewall": explanation/decisions/0001-ext-firewall.md
+          - "ADR-0002: Event API for inputOnly Fields": explanation/decisions/0002-event-api-for-inputonly.md
+          - "ADR-0003: Throw on Range Violation": explanation/decisions/0003-throw-on-range.md
+          - "ADR-0004: Virtual Mixins for AbstractObjectTypes": explanation/decisions/0004-virtual-mixins.md
+          - "ADR-0005: Golden Files Committed to Git": explanation/decisions/0005-golden-files-in-git.md
+          - "ADR-0006: Generated Layer as Compiled Static Library": explanation/decisions/0006-compiled-static-lib.md
+          - "ADR-0007: Version-Inference Ladder": explanation/decisions/0007-version-inference-ladder.md
+          - "ADR-0008: Canonicalize Source-Provenance Handling": explanation/decisions/0008-canonicalize-source-provenance.md
+          - "ADR-0009: sim Uses Snapshot-Diff Field Tracing": explanation/decisions/0009-sim-snapshot-diff.md
+          - "ADR-0010: Differential CLI Gate as Baseline Regression": explanation/decisions/0010-differential-gate-regression.md
+          - "ADR-0011: ECS-Flavored Architecture, Not Full ECS": explanation/decisions/0011-ecs-flavored-not-ecs.md
+          - "ADR-0012: No External Math Library in the Core": explanation/decisions/0012-no-external-math-lib.md
+          - "ADR-0013: ECMAScript Engine Choice for Script/SAI": explanation/decisions/0013-js-engine-choice.md
+          - "ADR-0014: Dynamic Field Foundation for Script Author Fields": explanation/decisions/0014-dynamic-field-foundation.md
+          - "ADR-0015: Extraction as Pull over an Incremental Dirty Set": explanation/decisions/0015-extraction-pull-per-path.md
+          - "ADR-0016: Containment Cycles Severed Once at Scene Build": explanation/decisions/0016-cycle-breaker.md
+          - "ADR-0017: OBJ/glTF Ingestion via Parse-Time Inline Expansion": explanation/decisions/0017-inline-expansion-parse-time.md
+          - "ADR-0018: CAVE Cross-Process RenderDelta Wire Contract": explanation/decisions/0018-cave-cross-process-delta-contract.md
+          - "ADR-0019: Physics via a Flag-Gated Engine Backend": explanation/decisions/0019-physics-seam.md
+          - "ADR-0020: Sound via an Engine-Agnostic AudioBackend Seam": explanation/decisions/0020-sound-seam.md
+          - "ADR-0021: Material + Shader Design (discriminated union + vocab + introspection)": explanation/decisions/0021-material-shader-design.md
+          - "ADR-0022: Second ScriptEngine Backend (QuickJS) + Swap-Test as Genericity Proof": explanation/decisions/0022-scriptengine-second-backend-swap-test.md
+          - "ADR-0023: Second AssetResolver/IO Backend (S3 SDK) + Swap-Test as Genericity Proof": explanation/decisions/0023-assetresolver-second-backend-swap-test.md
+          - "ADR-0024: Second TextureResolver Backend (wuffs) + Decode Swap-Test as Genericity Proof": explanation/decisions/0024-textureresolver-second-backend-swap-test.md
+          - "ADR-0025: FontMetrics Second Backend + Swap-Test": explanation/decisions/0025-fontmetrics-second-backend-swap-test.md
+          - "ADR-0026: Second AudioBackend (miniaudio) + Headless Swap-Test as Genericity Proof": explanation/decisions/0026-audiobackend-second-backend-swap-test.md
+          - "ADR-0027: Reference Lighting Evaluator (single normative §17 shading path)": explanation/decisions/0027-reference-lighting-evaluator.md
+          - "ADR-0028: Shadow Visibility Seam (normative modulation + technique-defined visibility)": explanation/decisions/0028-shadow-visibility-seam.md
+          - "ADR-0029: directOutput Writes Are Non-Routable (SAI 4.5.2 Governs)": explanation/decisions/0029-directoutput-non-routable.md
+          - "ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype": explanation/decisions/0030-fieldofview-validate-not-retype.md
+          - "ADR-0031: Deterministic SCP Frames for Degenerate Extrusion Spines": explanation/decisions/0031-extrusion-degenerate-scp.md
+          - "ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point": explanation/decisions/0032-hanimdisplacer-routable-coordpoint.md
+          - "ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)": explanation/decisions/0033-proto-builtin-shadow-error.md
+          - "ADR-0034: Environmental Sensor Activation Under Switch/LOD": explanation/decisions/0034-sensor-switch-lod-activation.md
+          - "ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics": explanation/decisions/0035-viewport-clipboundary-glviewport.md
+          - "ADR-0036: Codec Round-Trip Fidelity Properties and Fault-Injected Oracles": explanation/decisions/0036-codec-roundtrip-fidelity-oracles.md
+          - "ADR-0037: Graph-Walk Traversal Budget for Acyclic Fan-Out": explanation/decisions/0037-graph-walk-traversal-budget.md
+          - "ADR-0038: Default Local Resolver Confines Includes to the Source Subtree": explanation/decisions/0038-local-resolver-path-confinement.md
+          - "ADR-0039: Generated Bindings Live in x3d::core + x3d::nodes": explanation/decisions/0039-generated-binding-namespaces.md
+          - "ADR-0040: NURBS Curve + Patch Tessellation is First-Party": explanation/decisions/0040-nurbs-tessellation-first-party.md
+          - "ADR-0041: MovieDecoder Seam — Royalty-Free Codecs Ship": explanation/decisions/0041-moviedecoder-seam-royalty-free-defaults.md
+          - "ADR-0042: Slim Authoring Target & Ingestion Pipeline": explanation/decisions/0042-authoring-target.md
+          - "ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam": explanation/decisions/0043-usd-material-portable-glsl-seam.md
+          - "ADR-0044: Asset-Import Backend Selection — Priority Registry & cgltf glTF Path": explanation/decisions/0044-asset-import-backend-selection.md
+          - "ADR-0045: Shared Mesh Storage — Make GeomId's Instancing Contract Structural": explanation/decisions/0045-shared-mesh-instancing.md
+          - "ADR-0046: LoadSensor as a System over the AssetResolver Seam": explanation/decisions/0046-loadsensor-assetresolver-oracle.md
+          - "ADR-0047: Split the SAI semantic kernel into a sister repository (superseded)": explanation/decisions/0047-sai-sister-repo-split.md
+          - "ADR-0048: Script SFNode Handles Are Table Ids, Resolved to Owning References": explanation/decisions/0048-script-node-handles.md
+          - "ADR-0049: Zero-Copy Field Reads": explanation/decisions/0049-zero-copy-field-reads.md
+          - "ADR-0050: Decoded PCM and the Sound Ellipsoid Cross the AudioBackend Seam": explanation/decisions/0050-audio-pcm-and-ellipsoid-seam.md
+          - "ADR-0051: Deferred Inline Expansion Uses the Parse Resolver and Live Runtime Enrollment": explanation/decisions/0051-runtime-inline-expansion.md
+          - "ADR-0052: Movie Audio Uses the Existing PCM Buffer Source": explanation/decisions/0052-movie-audio-buffer-source.md
+          - "ADR-0053: Geospatial Coordinates Through a GeoProjection Seam With a First-Party Default": explanation/decisions/0053-geo-projection-seam.md
+          - "ADR-0054: GeoLOD Tiles and GeoViewpoint Navigation Scale": explanation/decisions/0054-geolod-tiles-navigation-scale.md
+          - "ADR-0055: H-Anim Skinning Through a Descriptor With a Reference CPU Skinner": explanation/decisions/0055-hanim-skinning-descriptor.md
+          - "ADR-0056: Prototype Instance Templates in Node Defaults": explanation/decisions/0056-prototype-instance-default-templates.md
+          - "ADR-0057: Scene-Owned Author Fields and Scoped Clone Services": explanation/decisions/0057-scene-owned-author-fields.md
+          - "ADR-0058: Context-Owned Immutable Geospatial Projection": explanation/decisions/0058-context-owned-geo-projection.md
+          - "ADR-0059: Cube-Map Images Through the Texture Decode Seam": explanation/decisions/0059-cube-map-images-through-texture-decode.md
+          - "ADR-0060: Generated Cube Maps and the Local Cube Frame": explanation/decisions/0060-generated-cube-maps-local-frame.md
+          - "ADR-0061: Texture Projectors as Textured Lights": explanation/decisions/0061-texture-projectors-as-lights.md
+          - "ADR-0062: ClassicVRML prototype metadata comments": explanation/decisions/0062-classic-prototype-metadata-comments.md
+          - "ADR-0063: Resolver base URLs": explanation/decisions/0063-resolver-base-urls.md
+          - "ADR-0064: Pointing sensors without navigation": explanation/decisions/0064-pointing-without-navigation.md
+          - "ADR-0065: Absolute viewer world pose": explanation/decisions/0065-absolute-viewer-world-pose.md
+          - "ADR-0066: Native SAI presentation materials and frame deltas": explanation/decisions/0066-sai-presentation-materials-and-deltas.md
+          - "ADR-0067: Provider named-node discovery": explanation/decisions/0067-provider-named-node-discovery.md
+          - "ADR-0068: Room anchoring through sensor composition": explanation/decisions/0068-room-frame-sensor-composition.md
+          - "ADR-0069: Selection deltas and cheap ticks": explanation/decisions/0069-selection-deltas-and-cheap-ticks.md
+          - "ADR-0070: Deferred Inline loader ancestry": explanation/decisions/0070-deferred-inline-loader-ancestry.md
+          - "ADR-0071: Public node inspection": explanation/decisions/0071-public-node-inspection.md
+          - "ADR-0072: Fetched document diagnostics": explanation/decisions/0072-fetched-document-diagnostics.md
+          - "ADR-0073: Unbound viewer head tracking": explanation/decisions/0073-implicit-default-viewer.md
+          - "ADR-0074: Adopt a native session into the SAI provider": explanation/decisions/0074-sai-adopt-session.md
+          - "ADR-0075: Queued live SAI ROUTE addition": explanation/decisions/0075-sai-live-route-addition.md
+          - "ADR-0076: Fold the SAI SDK back into x3d-cpp": explanation/decisions/0076-fold-sai-into-x3d-cpp.md
+  - SAI SDK:
+      - Overview: sai/index.md
+      - Tutorials:
+          - Animate your first scene: sai/tutorials/first-scene.md
+          - Run a scene on the native runtime: sai/tutorials/native-host.md
+      - How-to guides:
+          - Portable contract:
+              - Consume the SDK from CMake: sai/how-to/consume-the-sdk.md
+              - Run the host loop: sai/how-to/run-the-host-loop.md
+              - Add a ROUTE to a live scene: sai/how-to/add-a-live-route.md
+              - Find named nodes: sai/how-to/find-named-nodes.md
+              - Declare scene units and metadata: sai/how-to/declare-units-and-metadata.md
+              - Attach user data: sai/how-to/attach-user-data.md
+          - Native backend:
+              - Build and link the native backend: sai/how-to/use-the-native-backend.md
+              - Adopt a loaded session: sai/how-to/adopt-a-session.md
+              - Present frames from the native feed: sai/how-to/present-frames.md
+          - Reference kernel extensions:
+              - Author and inspect with the reference kernel: sai/how-to/author-with-the-kernel.md
+              - Evaluate events with a kernel runtime host: sai/how-to/write-a-kernel-runtime-host.md
+              - Publish browser information: sai/how-to/publish-browser-information.md
+          - Working on the SDK:
+              - Verify a change: sai/how-to/verify-a-change.md
+              - Update the service register: sai/how-to/update-the-service-register.md
+      - Reference:
+          - Portable contract:
+              - Packages, targets and headers: sai/reference/packages-and-targets.md
+              - Provider contract: sai/reference/provider-contract.md
+              - Submissions, turns and notifications: sai/reference/submissions.md
+              - Resource limits: sai/reference/resource-limits.md
+              - Live ROUTEs: sai/reference/live-routes.md
+              - Named nodes: sai/reference/named-nodes.md
+              - Scene units and metadata: sai/reference/scene-information.md
+              - User data: sai/reference/user-data.md
+              - Field values and validity: sai/reference/field-values.md
+          - Native backend:
+              - Native provider: sai/reference/native-provider.md
+              - Presentation feed: sai/reference/presentation-feed.md
+              - Headless host example: sai/reference/host-example.md
+          - Reference kernel extensions:
+              - Reference kernel: sai/reference/kernel.md
+              - Kernel runtime evaluation: sai/reference/kernel-runtime.md
+              - Multi-field services: sai/reference/multi-field-services.md
+              - Browser services: sai/reference/browser-services.md
+              - Matrix algebra: sai/reference/matrix.md
+              - Generated field projection: sai/reference/generated-fields.md
+          - Evidence:
+              - Service register: sai/reference/service-register.md
+              - Test suites and gates: sai/reference/test-suites.md
+      - Explanation:
+          - "Architecture: one contract, two backends": sai/explanation/architecture.md
+          - Relationship to the ISO C++ binding: sai/explanation/iso-binding.md
+          - Reference kernel design: sai/explanation/kernel-design.md
+          - Canonical units: sai/explanation/canonical-units.md
+          - Scope and limits: sai/explanation/scope-and-limits.md

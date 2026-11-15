@@ -1,54 +1,21 @@
-# SAI SDK / runtime consumer contract
+# SAI SDK / runtime coexistence check
 
-This integration check builds the runtime and the SAI SDK (`sai/`) as two
-separate packages and links them into one process. It adds no dependency to
-either production package and downloads nothing. The SDK's generated metadata
-must stay private under `x3d_sai/detail` with its own namespace; a revision
-exporting `x3d/core` or `x3d/nodes` fails the boundary check.
+Builds the runtime and the SAI SDK (`sai/`) as two separate packages and links
+them into one process, in every header and link order, from source and from a
+relocated installed prefix.
 
-Requirements: CMake 3.24+, a C++20 compiler, and Ninja (or set `CMAKE_GENERATOR`).
-From the x3d-cpp root:
+Requirements: CMake 3.24+, a C++20 compiler, and Ninja (or set
+`CMAKE_GENERATOR`). From the x3d-cpp root:
 
 ```bash
 bash scripts/verify_sai_coexistence.sh            # SAI source defaults to sai/
-# Also exercise static runtime symbols, rather than only shared libraries:
-X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh
+X3D_CPP_SHARED_NODES=OFF bash scripts/verify_sai_coexistence.sh   # static runtime symbols
 ```
 
-The optional second argument is an **empty** work directory; otherwise a new
-temporary directory is created. Builds/logs are retained at the printed path.
-Set `CMAKE_BUILD_PARALLEL_LEVEL` to control compiler concurrency (default: 2).
-Record both repository commit IDs with the result, since this is a paired check.
+Or `mise run sai-coexistence`. Run it when you change generated header
+ownership, exported include paths or the SAI/runtime boundary.
 
-## What is checked
-
-- Four source consumers use `x3d_cpp::sdk`, `x3d::sai_reference_metadata`, and
-  `x3d::sai_reference_provider` usage requirements: runtime-first and SAI-first
-  headers, independently crossed with runtime-first and SAI-first CMake
-  link/include-search order
-- Each consumer includes the SDK and legacy `SaiContext` headers, constructs a
-  runtime `Transform`, calls its compiled reflection, and separately creates,
-  edits and reads a typed SAI `Transform` through the compiled metadata bridge
-- The same consumer creates and activates a third scene through the ordinary
-  portable `provider::service`, then checks its typed readback and the unchanged
-  independent scenes. Linking the reference provider also builds its portable
-  frontend dependency, so every installed SAI library is built before relocation
-- Private SAI metadata cannot be found on a downstream include path
-- Both packages install into one prefix without private SAI headers or absolute
-  source/build paths in their CMake exports
-- The prefix is moved, leaving the original location absent; a copied consumer
-  finds, builds and runs all four combinations against the relocated packages,
-  with CMake package registries disabled
-
-These are eight build-and-run checks per runtime linkage mode. The scene models
-remain separate; the smoke test does not claim to translate runtime nodes into
-SAI handles, connect event models, or certify standards conformance. Native
-backend execution and presentation are covered by the separate
-[provider integration check](../sai_provider/README.md).
-
-## Direct CMake use
-
-The source consumer can also be configured directly:
+To configure the source consumer directly:
 
 ```bash
 cmake -S tests/cmake/sai_coexistence -B build/coexistence -G Ninja \
@@ -57,6 +24,5 @@ cmake --build build/coexistence --target sai_coexistence_all --parallel 2
 ctest --test-dir build/coexistence --output-on-failure -R '^sai_coexistence_'
 ```
 
-The complete script additionally checks installed relocation. Cross-repository
-checkout credentials are an integration-runner concern; normal PR CI and normal
-package builds do not gain a mandatory credential or sibling-repository fetch.
+What is checked, and the script's options, are in
+[Test suites and gates](../../../docs/wiki/sai/reference/test-suites.md#coexistence-check).

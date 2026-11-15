@@ -1,6 +1,6 @@
 // Sever containment back-edges while preserving shared DAG paths.
 // Path-based walks cannot use a global visited set.
-// See docs/wiki/decisions/0016-cycle-breaker.md.
+// See docs/wiki/explanation/decisions/0016-cycle-breaker.md.
 #ifndef X3D_RUNTIME_CYCLE_BREAKER_HPP
 #define X3D_RUNTIME_CYCLE_BREAKER_HPP
 

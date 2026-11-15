@@ -1,6 +1,6 @@
 // Jolt implementation of PhysicsBackend, enabled by X3D_CPP_BUILD_PHYSICS.
 // Keep Jolt headers in the implementation to isolate their types and warnings.
-// See docs/wiki/decisions/0019-physics-seam.md.
+// See docs/wiki/explanation/decisions/0019-physics-seam.md.
 #ifndef X3D_RUNTIME_PHYSICS_JOLT_BACKEND_HPP
 #define X3D_RUNTIME_PHYSICS_JOLT_BACKEND_HPP
 

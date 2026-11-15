@@ -1,0 +1,157 @@
+---
+title: Materials
+summary: "MaterialDesc discriminated union (Phong/Physical/Unlit), backMaterial two-sided support, multi-UV texCoordMapping, and ORM channel-packing docs — the extraction seam between X3D Appearance nodes and the renderer-facing descriptor."
+tags: [subsystem, materials, extract, appearance, pbr, phong]
+updated: 2026-09-26
+related:
+  - ../../explanation/architecture.md
+  - extract-textures.md
+  - shaders.md
+  - ../../explanation/decisions/0021-material-shader-design.md
+---
+
+# Materials
+
+## Purpose
+
+Converts an X3D `Appearance` node (and its child `material`, `backMaterial`, and texture nodes) into a renderer-facing `MaterialDesc` discriminated union.  The conversion is reflection-generic — it reads every field by X3D name through the generated reflection layer and adds no members to generated nodes.  The result is a plain-data descriptor a consumer can bind without touching the X3D node graph.
+
+## Key files
+
+| File | Role |
+|---|---|
+| `runtime/extract/RenderItem.hpp` | Defines `MaterialDesc`, `PhongParams`, `PhysicalParams`, `TextureRef`, `MaterialModel`, `AlphaMode`, `ShaderProgramDesc`, `ShaderStageDesc`, `ShaderFieldBinding` — the full renderer contract |
+| `runtime/extract/MaterialSystem.hpp` | `materialOf(appearance)` + `texturesOf(appearance)` — the extraction logic; header-only, no generated-node dependency |
+| `runtime/extract/X3DFieldValue.hpp` | `X3DFieldValue` discriminated union for typed author-shader field values |
+
+## MaterialDesc layout
+
+```
+MaterialDesc {
+  MaterialModel model;          // Phong | Physical | Unlit
+  SFColor       emissive;
+  float         normalScale;
+  float         transparency;
+  AlphaMode     alphaMode;      // Opaque | Mask | Blend
+  float         alphaCutoff;
+  bool          doubleSided;    // true when backMaterial is present
+  PhongParams   phong;          // valid when model == Phong
+  PhysicalParams physical;      // valid when model == Physical
+  vector<TextureRef> textures;
+  unique_ptr<MaterialDesc> backMaterial;
+  bool backMaterialConstraintMet;
+  LinePropertiesDesc  line;     // §12.4.6 SEAM-LINEPOINT (applied/linetype/width)
+  PointPropertiesDesc point;    // §12.4.8 SEAM-LINEPOINT (scale/attenuation/min/max)
+  FillPropertiesDesc fill;      // §12.4.3 (filled/hatched/hatchColor/hatchStyle)
+  SFColorRGBA toRGBA() const;   // composes RGB + alpha = 1 - transparency
+}
+```
+
+`MaterialModel` selects the active variant:
+
+| X3D node | MaterialModel | Primary color field |
+|---|---|---|
+| `Material` | `Phong` | `diffuseColor` |
+| `PhysicalMaterial` | `Physical` | `baseColor` |
+| `UnlitMaterial` | `Unlit` | `emissiveColor` |
+| null material under present Appearance | `Unlit` | white (1,1,1) — spec §12.4.2 |
+| null Appearance entirely | `Unlit` | white — debug always-draws fallback |
+
+## materialOf dispatch
+
+`materialOf(const X3DNode *appearance)` in `runtime/extract/MaterialSystem.hpp` walks `Appearance.material` node type name and fills the correct variant block.  Every read goes through `geombounds::getField` so the function is free of generated-node `#include` dependencies.
+
+Fields covered per model:
+
+Phong (Material): `diffuseColor`, `emissiveColor`, `specularColor`, `shininess`, `ambientIntensity`, `occlusionStrength`, `normalScale`.
+
+Physical (PhysicalMaterial): `baseColor`, `metallic`, `roughness`, `occlusionStrength`, `emissiveColor`, `normalScale`.
+
+Unlit (UnlitMaterial): `emissiveColor`, `transparency`, `normalScale`.
+
+`alphaMode` and `alphaCutoff` are always read from `Appearance` regardless of material type.
+
+## Polygon fill and hatching
+
+`materialOf` reads all four `Appearance.fillProperties` fields into
+`MaterialDesc::fill`. An absent node means ordinary filling without hatching;
+a present node defaults to both filling and hatching. Field edits and replacing
+the node refresh the descriptor through `RenderDelta::updatedMaterial`.
+
+- The CPU and OpenGL reference consumers apply fill properties only to
+  polygons.
+- They implement the six required patterns (horizontal, vertical, positive and
+  negative diagonals, and the two crosshatches); unsupported styles use
+  horizontal lines.
+- Hatching overlays `hatchColor` on the shaded material.
+- Disabling filling leaves holes between hatch lines, with no color or depth
+  writes in those holes.
+- Disabling both flags removes polygon fragments while leaving lines and
+  points unaffected.
+
+The reference consumers use an eight-pixel window-space grid with one-pixel
+lines. Hatch fragments retain material alpha and alpha-test coverage, and fog
+is applied to the hatch color. Grid spacing and this opacity treatment are
+consumer choices; §12.4.3 specifies the patterns, color and fill-before-hatch
+ordering without defining a separate hatch opacity.
+
+## backMaterial — two-sided surfaces
+
+When `Appearance.backMaterial` is present:
+
+1. The field is read the same way as the front material — same three-way dispatch, same field reads.
+2. A constraint check validates: `backMaterial.model == front.model` (same material model type) AND that the front and back texture-slot sets match (`sameTextureSlotSet`, §12.2.3). The result is written to `backMaterialConstraintMet`; the check is diagnostic, not enforced by the SDK. The back descriptor's `textures` are populated from the back material node's own slots.
+3. `MaterialDesc::doubleSided` is set `true`.
+4. The back descriptor is stored as `unique_ptr<MaterialDesc> backMaterial` (avoids the self-referential incomplete-type problem of `optional<MaterialDesc>`).
+
+The CPU consumer selects this descriptor for back-facing fragments. The OpenGL
+PoC still uses the front material on both faces; its two-sided normal handling
+does not implement a distinct back material. Appearance fill properties apply
+to both faces in either consumer.
+
+## Texture extraction and multi-UV
+
+`texturesOf(appearance)` collects `TextureRef` entries with material-slot precedence over the legacy `Appearance.texture` (design §D6):
+
+- A material-borne texture slot (`Material.diffuseTexture`, `PhysicalMaterial.baseTexture`, etc.) wins.
+- only when no material slot is populated is `Appearance.texture` surfaced as `Slot::BaseColor`.
+- `MultiTexture` in any slot expands to one `TextureRef` per channel, each initially carrying its stage index in `channel`. Enrichment resolves named mapping labels to geometry UV channels while retaining authored stage order.
+
+Each `TextureRef` carries `texCoordMapping` (the X3D v4 `xxxTextureMapping` field value, empty = UV set 0).  `mappingOf(materialNode, textureFieldName)` reads the mapping by constructing `fieldName + "Mapping"` and using the reflection layer — no generated-node dependency.
+
+The CPU consumes these mappings for every material slot, including ambient and
+shininess textures. Ambient texture RGB modulates ambient colour; shininess texture
+alpha modulates the specular exponent. Material-free Appearance textures render
+through the unlit Emissive slot. See [Texture extraction](extract-textures.md)
+for coordinate generators and MultiTexture operators.
+
+## ORM channel-packing and the AO source
+
+`Slot::MetallicRoughness` maps to the X3D `PhysicalMaterial.metallicRoughnessTexture` (or an ORM combined image).  The channel assignment follows glTF §3.9.4 / X3D §17:
+
+| Channel | Semantic |
+|---|---|
+| R | Occlusion (only when the image is explicitly ORM-packed — see below) |
+| G | Roughness |
+| B | Metallic |
+
+The SDK emits exactly one `MetallicRoughness` `TextureRef` per packed map.  Consumers must not request separate Metallic / Roughness / Occlusion textures from the same image.  The color-space convention for each slot is documented in the `TextureRef::Slot` enum comment in `runtime/extract/RenderItem.hpp`.
+
+Ambient-occlusion source (§12.4.6):  `PhysicalMaterial.occlusionTexture` (red channel), scaled by `occlusionStrength`, is the occlusion source — it is surfaced as a separate `Slot::Occlusion` ref.  A consumer must not derive AO from the metallic-roughness texture's R channel: the extractor emits no "ORM-packed" marker, so `Slot::MetallicRoughness` is treated as roughness (G) + metallic (B) only.  The CPU reference evaluator (`examples/cpu_raster/cpuraster/MaterialShader.hpp`) and the PoC GLSL (`examples/poc_renderer/shaders/pbr.frag`) apply AO from `Slot::Occlusion` alone.
+
+## toRGBA and gamma stance
+
+`MaterialDesc::toRGBA()` produces `SFColorRGBA{ rgb, 1.0 - transparency }` where `rgb` is `phong.diffuse`, `physical.baseColor`, or `emissive` depending on model.
+
+Gamma / sRGB stance: the SDK emits colors in the space they were authored.  X3D uses linear-intensity floats for Material/PhysicalMaterial.  The PoC consumer in `examples/poc_renderer/` treats `BaseColor` and `Emissive` texture slots as sRGB (uses `GL_SRGB8_ALPHA8`), treats Normal/Occlusion/MetallicRoughness as linear, and applies `linearToSRGB()` gamma-correction at fragment output.  The SDK itself does not apply gamma; that is consumer policy.
+
+## Seam boundary
+
+`materialOf` and `texturesOf` are pure extraction functions — they consume `const X3DNode*` and return POD descriptors.  No renderer state, no OpenGL, no GLFW, no DynamicFieldStore.  The consumer drives the render loop; the SDK drives the descriptor.
+
+## Related
+
+- [ADR-0021: Material + Shader Design](../../explanation/decisions/0021-material-shader-design.md)
+- [Texture, material and light extraction](extract-textures.md)
+- [Shaders subsystem](shaders.md)
+- [Architecture](../../explanation/architecture.md)

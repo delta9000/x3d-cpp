@@ -1,7 +1,7 @@
 // Canonicalize include paths before checking confinement and cycle identity.
 // Absolute URLs and paths outside the configured root are rejected. The default
 // root is the top-level file's directory; callers may select a wider trusted tree.
-// See docs/wiki/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
+// See docs/wiki/explanation/decisions/0038-local-resolver-path-confinement.md (ADR-0038).
 
 #ifndef X3D_PATH_CONFINE_HPP
 #define X3D_PATH_CONFINE_HPP

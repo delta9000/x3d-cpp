@@ -4,7 +4,7 @@
 // the AudioBackend seam has a dependency-free BuiltinDspBackend implementation.
 // parseFile() and the default Inline/EXTERNPROTO resolvers can read local files.
 // Inject both parse resolvers for a fully host-controlled resource boundary.
-// See docs/wiki/seam-status.md for interface stability.
+// See docs/wiki/reference/seam-matrix.md for interface stability.
 //
 // Canonical usage:
 //   #include "x3d/sdk.hpp"
@@ -134,7 +134,7 @@ using x3d::runtime::RuntimeSession;
 using x3d::runtime::SessionOptions;
 
 // Extraction / render feed
-// In-process descriptors, not a wire/ABI contract. See docs/wiki/guides/native-host.md.
+// In-process descriptors, not a wire/ABI contract. See docs/wiki/reference/native-host-contract.md.
 using x3d::runtime::extract::SceneExtractor;
 using x3d::runtime::extract::RenderItem;
 using x3d::runtime::extract::RenderDelta;

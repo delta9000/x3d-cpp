@@ -1,7 +1,8 @@
 """Project UOM node descriptions into executable SAI fields.
 
 The parser preserves the UOM's encoding and host/document attributes. This
-module is the narrower runtime boundary; see docs/generated-field-projection.md.
+module is the narrower runtime boundary; see
+docs/wiki/sai/reference/generated-fields.md in the x3d-cpp checkout.
 """
 
 from x3d_cpp_gen.emit.descriptors import build_reflection_descriptors

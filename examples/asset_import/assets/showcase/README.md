@@ -27,7 +27,7 @@ Everything is generated procedurally by [`gen.py`](gen.py) — the mesh (a param
 torus knot with rotation-minimizing frames) and the knurl base-colour textures (a
 stdlib PNG writer, no PIL) — so there are no third-party models or images and the
 showcase is free of asset-licensing constraints (see the
-[asset-licensing policy](../../README.md#example-models--licensing)). The generated
+[asset-licensing policy](../../../../docs/wiki/reference/examples/asset-import.md#example-models-licensing)). The generated
 `knot.*` sources and `knot_gold.png` / `knot_teal.png` textures are `.gitignore`d
 (regenerable; not vendored, to keep the repo lean).
 

@@ -1,7 +1,7 @@
 # Path classification limits backend builds to relevant changes.
 # Path-skipped jobs may be required branch-protection checks: GitHub treats
 # their skipped conclusion as passing.
-# Gate purposes: docs/wiki/guides/gate-system.md.
+# Gate purposes: docs/wiki/reference/gates.md.
 name: CI
 
 on:

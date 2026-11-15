@@ -15,7 +15,7 @@
 //   8. DEF/USE, ProtoDeclare/field/connect, ROUTE, IMPORT/EXPORT, head meta,
 //      xmlns:xsd and xsd:noNamespaceSchemaLocation on <X3D> all preserved.
 //
-// See docs/wiki/decisions/0008-canonicalize-source-provenance.md (ADR-0008).
+// See docs/wiki/explanation/decisions/0008-canonicalize-source-provenance.md (ADR-0008).
 #ifndef X3D_CANONICAL_XML_WRITER_HPP
 #define X3D_CANONICAL_XML_WRITER_HPP
 

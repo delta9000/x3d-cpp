@@ -377,7 +377,7 @@ public:
   // submission the last stateful whole-field write wins; every inputOnly
   // whole-field occurrence is preserved. Indexed MF edits aggregate in call
   // order into the latest pending MF occurrence, also for inputOnly. Release and execution validate the final
-  // coupled candidate before backend entry. This is explicit proposal policy.
+  // coupled candidate before backend entry. This is explicit SDK policy.
   // Resource limits count calls and owning payload bytes, including held work.
   result<ticket> enqueue(const client &, std::vector<write>);
   // Optional FIFO request. A released update gate installs all its routes
