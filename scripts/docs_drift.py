@@ -51,8 +51,11 @@ DOC_ROOTS = ("docs/wiki", "docs/conformance")
 # machine-emitted (their "doc" is the generator), so they are excluded; so is
 # vendored third-party code (not ours to document). examples/ is included so the
 # out-of-SDK consumers (cpu_raster, poc_renderer, asset_import) are drift-checked
-# against their subsystem pages — they ship documented behavior too.
-CODE_ROOTS = ("runtime/", "tools/", "include/x3d/", "examples/")
+# against their subsystem pages — they ship documented behavior too. The SAI
+# SDK and native adapter have their own pages in the same living-doc tree;
+# generated bindings and vendored dependencies remain excluded by _is_code.
+CODE_ROOTS = ("runtime/", "tools/", "include/x3d/", "examples/",
+              "sai/", "adapters/sai_provider/")
 CODE_SUFFIXES = (".hpp", ".cpp", ".h")
 
 MAX_PER_FILE = 6  # cap suggestions per changed file (advisory worklist, not a dump)

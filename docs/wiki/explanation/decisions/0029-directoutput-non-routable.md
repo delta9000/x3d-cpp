@@ -2,11 +2,11 @@
 title: "ADR-0029: directOutput Writes Are Non-Routable (SAI §4.5.2 Governs)"
 summary: "A directOutput Script write to another node mutates the target field's value but does not generate an event or seed the event cascade; only a Script's own outputOnly writes are routable."
 tags: [adr, scripting, event-cascade, sai, directoutput, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - ../architecture.md
   - ../../reference/subsystems/system-script-sai.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0029: directOutput Writes Are Non-Routable (SAI §4.5.2 Governs)

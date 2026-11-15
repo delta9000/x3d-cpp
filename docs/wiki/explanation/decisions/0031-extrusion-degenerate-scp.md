@@ -2,11 +2,11 @@
 title: "ADR-0031: Deterministic SCP Frames for Degenerate Extrusion Spines"
 summary: "For a 2-distinct-point (or otherwise underdetermined) Extrusion spine, the in-plane SCP axes are aligned to the local coordinate system; spines with fewer than 2 distinct points render nothing."
 tags: [adr, geometry, extrusion, scp, determinism, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - ../architecture.md
   - ../../reference/subsystems/extract.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0031: Deterministic SCP Frames for Degenerate Extrusion Spines

@@ -1,8 +1,8 @@
 ---
 title: API stability
-summary: What x3d-cpp promises about API, ABI, seam markers and CMake target names before 1.0.
+summary: What x3d-cpp promises about API, ABI, interface status and CMake target names before 1.0.
 tags: [reference, stability, packaging]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - seam-matrix.md
 ---
@@ -21,15 +21,16 @@ x3d-cpp is pre-1.0. The promise is narrow.
 Patch compatibility is intent backed by convention. There is no ABI checker in
 CI. Pin an exact version if you depend on it.
 
-## Header markers
+## Interface status
 
-| Marker in `include/x3d/sdk.hpp` | Meaning |
-|---|---|
-| `[STABLE]` | Frozen before v2; a breaking change is a major bump |
-| `[EXPERIMENTAL]` | Usable; may gain fields |
+`include/x3d/sdk.hpp` marks selected features `[EXPERIMENTAL]`: node inspection
+and the contextual asset/texture resolver variants. These features may change.
+The header has no `[STABLE]` annotations; an unmarked alias is not itself a
+compatibility promise.
 
-There is no blanket answer for the seams. The [seam matrix](seam-matrix.md)
-states each one.
+The [seam matrix](seam-matrix.md) states the status of each interface. Those
+per-interface labels do not extend package API or ABI compatibility beyond the
+pre-1.0 release policy above.
 
 ## CMake targets
 
