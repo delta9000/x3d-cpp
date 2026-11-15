@@ -21,6 +21,7 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <tuple>
 #include <limits>
@@ -385,7 +386,38 @@ struct GeometrySource {
   std::shared_ptr<X3DNode> interpolator;
   const X3DNode *target;
   std::string field;
+  // The target is a TextureTransform on the shape's appearance, not a node
+  // in the geometry: its values go to GltfMorph::textureFields.
+  bool texture = false;
 };
+
+// The value of a single-value interpolator at a key fraction `f` (`right`:
+// after a jump at exactly that key), or `eval(f)` between keys.
+template <typename T, typename Eval>
+T valueAtKey(const std::vector<float> &key, const std::vector<T> &kv, float f,
+             bool right, Eval eval) {
+  std::size_t first = key.size(), last = key.size();
+  for (std::size_t i = 0; i < key.size(); ++i)
+    if (key[i] == f) {
+      if (first == key.size()) first = i;
+      last = i;
+    }
+  if (first < key.size()) return kv[right ? last : first];
+  return eval(f);
+}
+
+// What can drive a TextureTransform field: the field's X3D type and whether
+// the interpolator emits it.
+bool drivesTextureTransform(const std::string &interpolator,
+                            const std::string &field) {
+  const bool vec2 = interpolator == "PositionInterpolator2D" ||
+                    interpolator == "SplinePositionInterpolator2D";
+  const bool scalar = interpolator == "ScalarInterpolator" ||
+                      interpolator == "SplineScalarInterpolator";
+  if (field == "rotation") return scalar;
+  return vec2 && (field == "translation" || field == "center" ||
+                  field == "scale");
+}
 
 // The keyValue row of a multi-value interpolator at `fraction` (`right`:
 // after a jump at exactly that key).
@@ -426,16 +458,74 @@ bool morphTargets(const std::shared_ptr<X3DNode> &geometry,
     std::size_t m = 0;
     bool normal = false, twoD = false;
   };
+  // A TextureTransform field: one value per key, from a linear or spline
+  // interpolator.
+  struct TextureSource {
+    const X3DNode *node = nullptr;
+    std::string field;
+    std::vector<float> key, kv1, vel1;
+    std::vector<SFVec2f> kv2, vel2;
+    bool vec2 = false, spline = false, closed = false, normalize = false;
+    std::any at(float f, bool right) const {
+      if (vec2)
+        return std::any(valueAtKey(key, kv2, f, right, [&](float x) {
+          return spline ? hermiteSpline<SFVec2f>(key, kv2, vel2, closed, normalize, x)
+                        : interpolateValue(key, kv2, x, lerpVec2);
+        }));
+      return std::any(valueAtKey(key, kv1, f, right, [&](float x) {
+        return spline ? hermiteSpline<float>(key, kv1, vel1, closed, normalize, x)
+                      : interpolateValue(key, kv1, x, lerpf);
+      }));
+    }
+  };
   std::vector<Source> in;
+  std::vector<TextureSource> textures;
   std::set<float> keys, jumps;
+  auto addKeys = [&](const std::vector<float> &key, bool densify) {
+    for (std::size_t i = 0; i < key.size(); ++i) {
+      if (i && key[i] < key[i - 1]) return false;
+      if (i && key[i] == key[i - 1]) jumps.insert(key[i]);
+      keys.insert(key[i]);
+      // texture coordinates are not linear in a TextureTransform's fields
+      // taken together (rotation, and products of scale with the others), and
+      // splines are not linear at all: sample inside each interval too.
+      if (densify && i + 1 < key.size() && key[i + 1] > key[i])
+        for (int k = 1; k < kSubsteps; ++k)
+          keys.insert(key[i] + (key[i + 1] - key[i]) * float(k) / kSubsteps);
+    }
+    return true;
+  };
   for (const GeometrySource &g : sources) {
+    const std::string type = g.interpolator->nodeTypeName();
+    if (g.texture) {
+      using geombounds::getField;
+      TextureSource t;
+      t.node = g.target;
+      t.field = g.field;
+      t.vec2 = g.field != "rotation";
+      t.spline = type.rfind("Spline", 0) == 0;
+      t.closed = getField<bool>(*g.interpolator, "closed", false);
+      t.normalize = getField<bool>(*g.interpolator, "normalizeVelocity", false);
+      t.key = getField<std::vector<float>>(*g.interpolator, "key", {});
+      if (t.vec2) {
+        t.kv2 = getField<std::vector<SFVec2f>>(*g.interpolator, "keyValue", {});
+        t.vel2 = getField<std::vector<SFVec2f>>(*g.interpolator, "keyVelocity", {});
+      } else {
+        t.kv1 = getField<std::vector<float>>(*g.interpolator, "keyValue", {});
+        t.vel1 = getField<std::vector<float>>(*g.interpolator, "keyVelocity", {});
+      }
+      const std::size_t total = t.vec2 ? t.kv2.size() : t.kv1.size();
+      if (t.key.empty() || total != t.key.size() || !addKeys(t.key, true))
+        return false;
+      textures.push_back(std::move(t));
+      continue;
+    }
     Source src;
     const auto found = cloneMap.find(g.target);
     if (found == cloneMap.end() || !found->second) return false;
     src.node = found->second.get();
     for (const FieldInfo &f : src.node->fields())
       if (f.x3dName == g.field && f.set) src.field = &f;
-    const std::string type = g.interpolator->nodeTypeName();
     src.twoD = type == "CoordinateInterpolator2D";
     src.normal = type == "NormalInterpolator";
     if (!src.field || src.field->type != (src.twoD ? X3DFieldType::MFVec2f
@@ -449,13 +539,12 @@ bool morphTargets(const std::shared_ptr<X3DNode> &geometry,
     const std::size_t total = src.twoD ? src.kv2.size() : src.kv3.size();
     if (src.key.empty() || total == 0 || total % src.key.size() != 0) return false;
     src.m = total / src.key.size();
-    for (std::size_t i = 0; i < src.key.size(); ++i) {
-      if (i && src.key[i] < src.key[i - 1]) return false;
-      if (i && src.key[i] == src.key[i - 1]) jumps.insert(src.key[i]);
-      keys.insert(src.key[i]);
-    }
+    if (!addKeys(src.key, false)) return false;
     in.push_back(std::move(src));
   }
+  // With only TextureTransform sources the geometry does not change: one
+  // tessellation serves every target.
+  std::optional<MeshData> still;
   for (float f : keys) {
     for (bool right : {false, true}) {
       if (right && !jumps.count(f)) continue;
@@ -470,12 +559,22 @@ bool morphTargets(const std::shared_ptr<X3DNode> &geometry,
           src.field->set(*src.node, std::any(rowAt(src.key, src.kv3, src.m, f, right,
                                                    lerpVec3)));
       }
-      MeshData mesh = buildLocalMesh(clone.get(), projection, options);
+      MeshData mesh;
+      if (in.empty()) {
+        if (!still) still = buildLocalMesh(clone.get(), projection, options);
+        mesh = *still;
+      } else {
+        mesh = buildLocalMesh(clone.get(), projection, options);
+      }
       if (mesh.positions.empty() ||
           (!morph.targets.empty() &&
            mesh.positions.size() != morph.targets.front().positions.size()))
         return false;
+      std::vector<GltfTextureFieldValue> fields;
+      for (const TextureSource &t : textures)
+        fields.push_back({t.node, t.field, t.at(f, right)});
       morph.targets.push_back(std::move(mesh));
+      morph.textureFields.push_back(std::move(fields));
       fractions.push_back(f);
     }
   }
@@ -633,7 +732,12 @@ public:
          std::find(item.path.begin(), item.path.end(), m->second->segment) !=
              item.path.end()))
       morph = m->second;
-    const auto key = std::make_pair(item.mesh.get(), material);
+    // Morph targets carry this placement's TextureTransform, which lives on
+    // the appearance, so a morphed mesh is only shared by one appearance.
+    const X3DNode *appearance = nullptr;
+    if (morph && !item.path.empty() && item.path.back())
+      appearance = sfNode(*item.path.back(), "appearance").get();
+    const auto key = std::make_tuple(item.mesh.get(), material, appearance);
     auto found = meshIndex_.find(key);
     if (found == meshIndex_.end()) {
       std::vector<std::string> attrs{"\"POSITION\":" +
@@ -649,7 +753,7 @@ public:
                        : mesh.topology == Topology::Lines ? 1 : 0;
       std::string targets, weights;
       if (morph) {
-        const std::vector<std::string> &t = targetsFor(item.mesh, *morph, acc);
+        const std::vector<std::string> &t = targetsFor(item, *morph, acc);
         targets = ",\"targets\":[" + join(t) + "]";
         std::vector<std::string> w(t.size(), "0");
         if (morph->weights.size() == t.size())
@@ -1311,14 +1415,41 @@ private:
     return sfNode(*item.path.back(), "geometry").get();
   }
 
-  // The morph targets of `ref` as glTF target objects: each a difference
-  // from the base mesh in the attributes the base mesh has.
-  const std::vector<std::string> &targetsFor(const MeshRef &ref,
+  // The TextureTransforms baked into a target's texture coordinates for a
+  // placement with `appearance`: the appearance's own, with the fields an
+  // animation drives at that target (on a clone, so the scene is untouched).
+  static std::vector<TextureTransform2DParams>
+  textureTransformsAt(const std::shared_ptr<X3DNode> &appearance,
+                      const X3DNode *geometry,
+                      const std::vector<GltfTextureFieldValue> &fields) {
+    if (!appearance || fields.empty())
+      return textureTransformsForGeometry(appearance.get(), geometry);
+    std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> cloneMap;
+    const auto clone = deepClone(appearance, cloneMap);
+    if (!clone) return textureTransformsForGeometry(appearance.get(), geometry);
+    for (const GltfTextureFieldValue &v : fields) {
+      const auto node = cloneMap.find(v.node);
+      if (node == cloneMap.end() || !node->second) continue; // not this appearance
+      for (const FieldInfo &f : node->second->fields())
+        if (f.x3dName == v.field && f.set) f.set(*node->second, v.value);
+    }
+    return textureTransformsForGeometry(clone.get(), geometry);
+  }
+
+  // The morph targets of `item`'s mesh as glTF target objects: each a
+  // difference from the base mesh in the attributes the base mesh has. The
+  // base mesh has the placement's TextureTransform baked in, so each target
+  // gets it too, at that target's animated values.
+  const std::vector<std::string> &targetsFor(const RenderItem &item,
                                              const GltfMorph &morph,
                                              const MeshAccessors &acc) {
-    auto found = morphTargets_.find(ref.get());
+    std::shared_ptr<X3DNode> appearance;
+    if (!item.path.empty() && item.path.back())
+      appearance = sfNode(*item.path.back(), "appearance");
+    const auto cacheKey = std::make_pair(item.mesh.get(), appearance.get());
+    auto found = morphTargets_.find(cacheKey);
     if (found != morphTargets_.end()) return found->second;
-    const MeshData &base = *ref;
+    const MeshData &base = *item.mesh;
     const std::size_t n = base.positions.size();
     auto finite = [](float v) { return std::isfinite(v) ? v : 0.0f; };
     auto unitNormal = [](const SFVec3f &v) {
@@ -1329,7 +1460,14 @@ private:
     };
     std::vector<std::string> out;
     std::vector<float> flat;
-    for (const MeshData &target : morph.targets) {
+    static const std::vector<GltfTextureFieldValue> kNoFields;
+    for (std::size_t k = 0; k < morph.targets.size(); ++k) {
+      MeshData target = morph.targets[k];
+      applyTextureTransformsToMesh(
+          target, textureTransformsAt(appearance, morph.geometry,
+                                      k < morph.textureFields.size()
+                                          ? morph.textureFields[k]
+                                          : kNoFields));
       std::vector<std::string> attrs;
       flat.clear();
       for (std::size_t i = 0; i < n; ++i) {
@@ -1363,7 +1501,7 @@ private:
       }
       out.push_back("{" + join(attrs) + "}");
     }
-    return morphTargets_.emplace(ref.get(), std::move(out)).first->second;
+    return morphTargets_.emplace(cacheKey, std::move(out)).first->second;
   }
 
   // ---- animation ----
@@ -2272,7 +2410,7 @@ private:
   std::unordered_map<std::string, int> embedded_, fileImages_;
   std::unordered_map<const TexturePixels *, int> decodedImages_;
   std::unordered_map<const MeshData *, MeshAccessors> meshAccessors_;
-  std::map<std::pair<const MeshData *, int>, int> meshIndex_;
+  std::map<std::tuple<const MeshData *, int, const X3DNode *>, int> meshIndex_;
   std::map<std::pair<std::string, const X3DNode *>, int> materialIndex_;
   // Animation targets: every field driven on a node, over all animations.
   std::unordered_map<const X3DNode *, std::set<std::string>> animatedFields_;
@@ -2300,7 +2438,8 @@ private:
   std::unordered_map<const X3DNode *, std::pair<const hanim::SkinBinding *, std::size_t>>
       skinDisplacers_;
   std::unordered_map<const X3DNode *, std::vector<int>> morphNodes_;
-  std::unordered_map<const MeshData *, std::vector<std::string>> morphTargets_;
+  std::map<std::pair<const MeshData *, const X3DNode *>, std::vector<std::string>>
+      morphTargets_;
   bool usesPointer_ = false;
   bool usesUnlit_ = false;
 };
@@ -2416,9 +2555,12 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   };
   auto isInterpolator = [](const X3DNode &n) {
     const std::string type = n.nodeTypeName();
-    const std::string tail = "Interpolator";
-    return type.size() > tail.size() &&
-           type.compare(type.size() - tail.size(), tail.size(), tail) == 0;
+    // PositionInterpolator2D and CoordinateInterpolator2D end in "2D".
+    for (const std::string tail : {"Interpolator", "Interpolator2D"})
+      if (type.size() > tail.size() &&
+          type.compare(type.size() - tail.size(), tail.size(), tail) == 0)
+        return true;
+    return false;
   };
 
   // The TimeSensor driving an interpolator sets its time scale.
@@ -2462,6 +2604,28 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
           });
         };
     rec(geometry.get(), 0);
+  });
+  // Every TextureTransform on a shape's appearance (directly, or inside a
+  // MultiTextureTransform), mapped to the geometry nodes of those shapes: it
+  // is baked into their texture coordinates.
+  std::unordered_map<const X3DNode *, std::vector<std::shared_ptr<X3DNode>>>
+      texturedGeometriesOf;
+  x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
+    auto geometry = sfNode(*n, "geometry");
+    auto appearance = sfNode(*n, "appearance");
+    if (!geometry || !appearance) return;
+    auto transform = sfNode(*appearance, "textureTransform");
+    if (!transform) return;
+    std::vector<std::shared_ptr<X3DNode>> transforms{transform};
+    if (transform->nodeTypeName() == "MultiTextureTransform")
+      for (const auto &child :
+           geombounds::getField<MFNode>(*transform, "textureTransform", {}))
+        if (child) transforms.push_back(child);
+    for (const auto &t : transforms) {
+      auto &list = texturedGeometriesOf[t.get()];
+      if (std::find(list.begin(), list.end(), geometry) == list.end())
+        list.push_back(geometry);
+    }
   });
 
   std::map<std::pair<const X3DNode *, const X3DNode *>,
@@ -2508,6 +2672,27 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     if (fieldName(route.fromField) != "value") continue;
 
     const std::string type = from->nodeTypeName();
+    const std::string toType = to->nodeTypeName();
+    if (toType == "TextureTransform" || toType == "TextureTransform2D") {
+      // A TextureTransform is baked into the texture coordinates of every
+      // shape using it, so it animates as morph targets of their geometry.
+      const std::string field = fieldName(route.toField);
+      const auto geometries = texturedGeometriesOf.find(to.get());
+      if (!drivesTextureTransform(type, field) ||
+          geometries == texturedGeometriesOf.end()) {
+        ++skippedRoutes;
+        continue;
+      }
+      const X3DNode *clock = clockOf(from);
+      for (const auto &geometry : geometries->second) {
+        const auto key = std::make_pair(static_cast<const X3DNode *>(geometry.get()), clock);
+        auto &sources = bySurface[key];
+        if (sources.empty()) surfaceOrder.push_back(key);
+        sources.push_back({from, to.get(), field, true});
+        geometryNode[geometry.get()] = geometry;
+      }
+      continue;
+    }
     if (type == "CoordinateInterpolator" || type == "CoordinateInterpolator2D" ||
         type == "NormalInterpolator") {
       const auto geometries = geometriesOf.find(to.get());

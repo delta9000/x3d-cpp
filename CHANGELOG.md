@@ -29,7 +29,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   animate through `KHR_animation_pointer`. HSV colour, spline, squad and
   NURBS-curve interpolators are sampled. Coordinate, normal and
   texture-coordinate interpolators (and ones driving a geometry's own
-  MFVec3f/MFVec2f fields, such as `Extrusion.spine`) become morph targets.
+  MFVec3f/MFVec2f fields, such as `Extrusion.spine`) become morph targets,
+  and so does an animated `TextureTransform` (PositionInterpolator2D,
+  ScalarInterpolator and their spline forms); morph targets keep the shape's
+  TextureTransform.
   H-Anim humanoids become glTF skins (every influence, inverse bind matrices
   from the binding); joint interpolators, HAnimMotion (as `STEP` channels)
   and Joint and Segment displacer weights animate.
@@ -186,6 +189,13 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **glTF export of 2D interpolators and textured morphs.** A
+  `CoordinateInterpolator2D` or `PositionInterpolator2D` route was skipped
+  silently (its type name ends in `2D`), so texture-coordinate animation by
+  CoordinateInterpolator2D was never exported and the dropped routes were not
+  counted. Morph targets now also carry the shape's TextureTransform; before,
+  a coordinate animation on a shape with a TextureTransform undid it once the
+  animation played.
 - **Install build with tests off.** The documented
   `-DX3D_CPP_BUILD_TESTS=OFF` build failed in `x3d_corpus_audit_selftest`, a
   doctest suite built with the examples, until the examples were also turned

@@ -20,6 +20,8 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
   applied and every MeshBuilder geometry tessellated.
 - `x3d extract in.x3d -o out.glb` is the CLI form.
 
+## Static scene
+
 | X3D side | glTF side |
 |---|---|
 | One `RenderItem` | One root node with the item's world `matrix` (the grouping hierarchy is flattened), named after the nearest DEF on its path |
@@ -35,6 +37,33 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 | Texture images | A PNG or JPEG `ImageTexture` is embedded when `GltfWriteOptions::readImage` returns its bytes (the CLI reads local files, resolved against the texture's source document), so the GLB does not depend on where it is written; otherwise it is an external `images[].uri`, the url as authored. A PixelTexture, or any other url texture the host's `TextureResolver` has decoded → an embedded PNG (stored uncompressed). Identical images are written once |
 | DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
+| An HAnimHumanoid's skin (an item with a `skin` binding) | A glTF skin. The mesh holds the binding's bind-pose coordinates and normals (`skinBindingCoords`/`skinBindingNormals` when authored), with `JOINTS_n`/`WEIGHTS_n` carrying every influence, four per set. Joint 0 is a node with the humanoid's frame and an identity inverse bind, for vertices no joint weights; the others are the palette joints as nodes, with the binding's B_j⁻¹ as inverse bind matrices. glTF's joint world × inverse bind is then the humanoid's world matrix times the runtime's palette D_j = C_j·B_j⁻¹, so the posed mesh equals `SceneExtractor::deformedMesh` |
+
+`writeGlb(items, extras, ...)` takes the lights and cameras explicitly;
+`gltfExtrasFrom(extractor)` collects them, and the extractor overload does both.
+
+Colour, metallic, roughness and alpha factors are clamped to [0,1], so an
+out-of-range authored value still gives a valid file.
+
+- Not written, each counted in `GltfWriteReport`: packed (binary) geometry
+  items; MovieTexture, MultiTexture, cube and 3D textures, textures on
+  generated texture coordinates and undecoded textures with no PNG/JPEG url
+  (`droppedTextures`); specular, shininess and ambient textures and the
+  lighting maps of an unlit surface (`unmappedTextureSlots`); back materials;
+  author shaders; GeoViewpoint.
+- A normal map is written without a `TANGENT` attribute, so viewers derive the
+  tangent space.
+- A skinned item is written as a plain mesh with its stored coordinates
+  (`staticSkins`) only when its corners do not map back to the humanoid's skin
+  coordinates.
+- Backgrounds and fog are not exported.
+
+## Animation
+
+A scene with no exportable animation is written flat, as above.
+
+| X3D side | glTF side |
+|---|---|
 | PositionInterpolator / OrientationInterpolator routed to a Transform's `translation`, `scale` or `rotation` | A glTF animation: the Transform is kept as a node (see below), the interpolator's `key`/`keyValue` become a `LINEAR` sampler (rotations as quaternions), and key times are `key × cycleInterval` of the TimeSensor routed to the interpolator's `set_fraction`. One animation per TimeSensor, named by its DEF |
 | PositionInterpolator / OrientationInterpolator routed to a Viewpoint's or OrthoViewpoint's `position` / `orientation`, a PositionInterpolator routed to a PointLight's or SpotLight's `location`, or to a DirectionalLight's or SpotLight's `direction` | Channels in the same animation: the camera or light node carries the authored value as its `translation`/`rotation` (a direction as the rotation aiming −Z along it), under a `matrix` node for the Transforms above it |
 | PositionInterpolator / OrientationInterpolator routed to a Transform's `center` / `scaleOrientation` | Channels on the helper nodes (below): the `T+C` translation, the `SR` and `SR⁻¹` rotations and the tail translation |
@@ -42,12 +71,12 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 | SplinePositionInterpolator, SplineScalarInterpolator, SquadOrientationInterpolator, and ColorInterpolator (X3D blends in HSV) | Sampled: each key interval is split into 8 `LINEAR` steps, valued by the runtime's own interpolation |
 | NurbsPositionInterpolator, NurbsOrientationInterpolator | Sampled at 65 even fractions over the curve |
 | GeoPositionInterpolator (`value_changed`, the local position) | Sampled 8 steps per key interval, since it interpolates in geographic coordinates and then projects |
-| An HAnimHumanoid's skin (an item with a `skin` binding) | A glTF skin. The mesh holds the binding's bind-pose coordinates and normals (`skinBindingCoords`/`skinBindingNormals` when authored), with `JOINTS_n`/`WEIGHTS_n` carrying every influence, four per set. Joint 0 is a node with the humanoid's frame and an identity inverse bind, for vertices no joint weights; the others are the palette joints as nodes, with the binding's B_j⁻¹ as inverse bind matrices. glTF's joint world × inverse bind is then the humanoid's world matrix times the runtime's palette D_j = C_j·B_j⁻¹, so the posed mesh equals `SceneExtractor::deformedMesh` |
 | PositionInterpolator / OrientationInterpolator routed to an HAnimHumanoid, HAnimJoint, HAnimSite or CADPart | The same as for a Transform: these nodes have the Transform fields and composition. Rigid Segment geometry hangs from its joint's node, so it moves with the skin |
 | HAnimMotion (enabled, in `HAnimHumanoid.motions`) | One animation per motion, named by its DEF (else its `name`), with `STEP` channels: each frame's joint translation and rotation (as playback posts them), `frameDuration` apart, from `frameIndex` through one pass of `[startFrame, endFrame]` by `frameIncrement`, one cycle when it loops. A last key holds the final frame for its full duration. A motion with `frameIncrement` 0 or no `frameDuration` is a single key |
 | ScalarInterpolator routed to an HAnimDisplacer `weight` on an HAnimJoint | The skin's morph weights: each Joint displacer is a morph target (below), and every skinned mesh of the humanoid gets the channel |
 | ScalarInterpolator routed to an HAnimDisplacer `weight` on an HAnimSegment | Morph targets on each mesh the Segment displaces (a geometry using the Segment's `coord`): one with no displacement, then one per displacer at weight 1, with weights `[1 − Σw, w₁ … wₙ]`. Positions are linear in the weights, so this is exact. As with coordinate morphs, a mesh takes one set of targets: the first TimeSensor driving a Segment's displacers is exported, and a geometry already morphed by a coordinate interpolator is skipped |
 | CoordinateInterpolator, CoordinateInterpolator2D or NormalInterpolator routed to a node in a shape's geometry (a `Coordinate`, `TextureCoordinate` or `Normal`, or an MFVec3f/MFVec2f field of the geometry itself such as `Extrusion.spine` or `crossSection`) | Morph targets: the geometry is re-tessellated once per key (twice at a jump), each tessellation stored as `POSITION`/`NORMAL`/`TEXCOORD_n` differences from the exported mesh, and a `weights` channel steps one-hot through them. Every shape using the geometry gets the channel |
+| PositionInterpolator2D or SplinePositionInterpolator2D routed to a `TextureTransform`'s `translation`, `center` or `scale`; ScalarInterpolator or SplineScalarInterpolator routed to its `rotation` (directly on the appearance or inside a MultiTextureTransform) | Morph targets on the geometry of every shape using it, with the transform baked into each target's `TEXCOORD_n` as the extractor bakes the static one. Sampled 8 steps per key interval, since texture coordinates are not linear in rotation or in several fields at once |
 
 Animated properties (`KHR_animation_pointer`):
 
@@ -69,36 +98,6 @@ Animated properties (`KHR_animation_pointer`):
   values, which are the values at export time. It is listed in
   `extensionsUsed`, not `extensionsRequired`.
 
-- Approximations: X3D light `intensity` is a unitless factor and is written
-  unchanged as glTF intensity (lux or candela), so absolute brightness will
-  not match a physically based viewer; `ambientIntensity`, the `attenuation`
-  coefficients and light scoping (`global=FALSE`) have no glTF equivalent and
-  are dropped.
-- X3D `fieldOfView` spans the smaller viewport dimension and is written as
-  `yfov`, which is the same angle for a landscape viewport.
-- An OrthoViewpoint's off-centre extent is centred.
-- Colours are copied as authored with no sRGB/linear conversion.
-
-`writeGlb(items, extras, ...)` takes the lights and cameras explicitly;
-`gltfExtrasFrom(extractor)` collects them, and the extractor overload does both.
-
-Colour, metallic, roughness and alpha factors are clamped to [0,1], so an
-out-of-range authored value still gives a valid file.
-
-- Not written, each counted in `GltfWriteReport`: packed (binary) geometry
-  items; MovieTexture, MultiTexture, cube and 3D textures, textures on
-  generated texture coordinates and undecoded textures with no PNG/JPEG url
-  (`droppedTextures`); specular, shininess and ambient textures and the
-  lighting maps of an unlit surface (`unmappedTextureSlots`); back materials;
-  author shaders; GeoViewpoint.
-- A normal map is written without a `TANGENT` attribute, so viewers derive the
-  tangent space.
-- A skinned item is written as a plain mesh with its stored coordinates
-  (`staticSkins`) only when its corners do not map back to the humanoid's skin
-  coordinates.
-- Backgrounds and fog are not exported.
-- **Animated Transforms.** A scene with no exportable animation is written
-  flat, as above.
 - Each Transform that an animation targets becomes glTF nodes, once per
   placement (a USE'd Transform under two parents gives two node chains and two
   channels on one sampler).
@@ -148,13 +147,17 @@ out-of-range authored value still gives a valid file.
 - The viewer skins normals from the bind normals; the runtime uses the
   inverse transpose of each palette matrix, which differs only under
   non-uniform joint scale.
-- Not exported: PositionInterpolator2D (glTF has no texture transform without
-  `KHR_texture_transform`, which the exporter does not write);
-  NurbsSurfaceInterpolator (driven by a 2D fraction, not a TimeSensor);
-  chains through other
-  nodes (sequencers, Scripts, EaseInEaseOut, followers); and fields with no
-  glTF property, such as `specularColor`, `ambientIntensity` and
-  `attenuation`.
+- Morph targets are raw tessellations; the writer bakes each placement's
+  TextureTransform into their texture coordinates, so a coordinate
+  animation keeps the shape's TextureTransform, and two placements of one
+  geometry under different appearances get separate glTF meshes.
+- A morphed mesh stores one full-size target per key (two at a jump; nine
+  per interval for a TextureTransform), so the file grows with keys ×
+  vertices.
+- Not exported: NurbsSurfaceInterpolator (driven by a 2D fraction, not a
+  TimeSensor); chains through other nodes (sequencers, Scripts,
+  EaseInEaseOut, followers); and fields with no glTF property, such as
+  `specularColor`, `ambientIntensity` and `attenuation`.
 - An HAnimMotion that is disabled or has no complete frame is counted in
   `skippedMotions`.
 - Dropped interpolator routes are counted in `skippedAnimationRoutes`, and a
@@ -163,9 +166,23 @@ out-of-range authored value still gives a valid file.
   `skippedAnimationChannels`.
 - glTF has no loop flag, so `TimeSensor.loop` is left to the viewer.
 
+## Approximations
+
+- X3D light `intensity` is a unitless factor and is written
+  unchanged as glTF intensity (lux or candela), so absolute brightness will
+  not match a physically based viewer; `ambientIntensity`, the `attenuation`
+  coefficients and light scoping (`global=FALSE`) have no glTF equivalent and
+  are dropped.
+- X3D `fieldOfView` spans the smaller viewport dimension and is written as
+  `yfov`, which is the same angle for a landscape viewport.
+- An OrthoViewpoint's off-centre extent is centred.
+- Colours are copied as authored with no sRGB/linear conversion.
+
+## Validation
+
 The JSON and the PNG encoder are written by hand; the tests
 (`runtime/extract/tests/gltf_writer_test.cpp`) check the container and
-selected values, and exports of the CLI fixtures and the lion-head models pass
-the Khronos glTF validator with no errors. The validator checks
-`KHR_animation_pointer` channels only partly (it reports
-`INCOMPLETE_EXTENSION_SUPPORT`).
+selected values, including decoded morph-target attributes. Exports of every
+`.x3d` fixture in the repository pass the Khronos glTF validator with no
+errors. The validator checks `KHR_animation_pointer` channels only partly
+(it reports `INCOMPLETE_EXTENSION_SUPPORT`).
