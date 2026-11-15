@@ -181,6 +181,12 @@ Frame control.
 The motion emits `frameCount`, `cycleTime` (at activation and at each wrap) and
 cumulative `elapsedTime`.
 
+The layout and frame rules are public statics that playback itself uses:
+`decode` resolves `joints`/`channels` against a humanoid, `poseAt` gives the
+joint values of one frame, `frameRange` the `[startFrame, endFrame]` range,
+and `motionEnabled` the gating. [glTF export](gltf-export.md) reads motions
+through them.
+
 The channel and control rules follow the
 [ISO/IEC 19774-2 v2.1 working draft §6.3–6.4](https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19774/ISO-IEC19774-2/ISO-IEC19774-2v2.1/ISO-IEC19774-2v2.1-WD/MotionDataAnimation/MotionNodes.html),
 because the published 2.0 motion-node page could not be retrieved. Units follow

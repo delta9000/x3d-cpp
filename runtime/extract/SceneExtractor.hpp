@@ -506,6 +506,10 @@ public:
   // track the live set. Initially empty placements allocate no slot.
   std::size_t itemCount() const { return items_.size(); }
 
+  // The tessellation options every buildLocalMesh() call uses, so a caller
+  // re-tessellating a geometry (glTF morph targets) matches the items' meshes.
+  const MeshBuildOptions &meshOptions() const { return meshOptions_; }
+
   // CPU fallback for a skin item. The returned mesh owns its expanded corners.
   MeshData deformedMesh(RenderItemId id) const {
     const RenderItem &rec = item(id);

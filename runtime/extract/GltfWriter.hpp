@@ -32,14 +32,19 @@
 //   - lights as KHR_lights_punctual (directional, point, spot), each on a node
 //     placed and aimed in world space;
 //   - Viewpoint and OrthoViewpoint nodes as cameras, the bound one first;
-//   - animation: a Transform whose translation, rotation or scale is driven
-//     by a PositionInterpolator or OrientationInterpolator is kept as a glTF
-//     node (with helper nodes for center and scaleOrientation), and the
+//   - animation: a Transform whose translation, rotation, scale, center or
+//     scaleOrientation is driven by an interpolator is kept as a glTF node
+//     (with helper nodes for center and scaleOrientation), and the
 //     interpolator's keys become a LINEAR sampler. One glTF animation per
 //     driving TimeSensor; its cycleInterval sets the duration. Shapes,
 //     lights and cameras below an animated Transform are its children
-//     instead of world-matrix roots. A Viewpoint's position and orientation
-//     and a PointLight's or SpotLight's location animate the same way.
+//     instead of world-matrix roots. A Viewpoint's position and orientation,
+//     a PointLight's or SpotLight's location and a light's direction animate
+//     the same way. Material, light and camera properties (colours,
+//     transparency, metallic, roughness, shininess, intensity, radius, cone
+//     angles, field of view) animate through KHR_animation_pointer.
+//     Interpolators glTF's LINEAR does not reproduce (HSV colours, splines,
+//     squad, NURBS curves, geographic positions) are sampled.
 //
 // Approximations to know about:
 //   - X3D light intensity is a unitless [0,1] factor; it is written unchanged
@@ -55,17 +60,20 @@
 // Not written (each is counted in GltfWriteReport): packed/binary geometry
 // items, MovieTexture, MultiTexture, cube and 3D textures, textures on
 // generated texture coordinates, undecoded textures with no PNG/JPEG url,
-// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
-// written as static meshes in the mesh's stored pose.
+// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint.
 //
-// Animation limits: core glTF can only animate a node's translation,
-// rotation and scale (and morph weights), so that is what is written.
-// Interpolators driving colours, scalars (transparency, intensity, field of
-// view) or a light's direction would need the KHR_animation_pointer
-// extension, which most viewers do not load; coordinates would need morph
-// targets. Those, chains through other nodes (sequencers, scripts,
-// EaseInEaseOut, followers), and H-Anim motion are not exported; routes out
-// of an interpolator that are dropped are counted. glTF has no loop flag, so
+// H-Anim: a humanoid's skin is a glTF skin (bind-pose mesh, JOINTS_n /
+// WEIGHTS_n with every influence, the binding's inverse bind matrices),
+// Joint displacers are its morph targets, Segment displacers morph the
+// Segment's mesh, and HAnimMotion frames are STEP channels.
+//
+// Coordinate, normal and texture-coordinate interpolators become morph
+// targets (one tessellation per key, stepped by a weights channel); normals
+// blend linearly between keys.
+//
+// Animation limits: PositionInterpolator2D, NurbsSurfaceInterpolator and chains through other nodes (sequencers,
+// scripts, EaseInEaseOut, followers) are not exported; routes out of an
+// interpolator that are dropped are counted. glTF has no loop flag, so
 // TimeSensor.loop is left to the viewer, and startTime is not carried.
 #ifndef X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
 #define X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
@@ -112,21 +120,31 @@ struct GltfWriteReport {
   /// Textures in a slot glTF has no property for: specular, shininess and
   /// ambient maps, and the lighting maps of an unlit surface.
   std::size_t unmappedTextureSlots = 0;
-  std::size_t staticSkins = 0;     ///< skinned items written without a skin
+  std::size_t skins = 0;           ///< glTF skins (one per humanoid placement)
+  /// Skinned items written as plain meshes with their stored coordinates:
+  /// a mesh whose corners do not map back to the humanoid's skin
+  /// coordinates (no source-coordinate index), or a humanoid not on the
+  /// item's path.
+  std::size_t staticSkins = 0;
   std::size_t droppedBackMaterials = 0;
   std::size_t droppedShaders = 0;
   std::size_t skippedViewpoints = 0; ///< GeoViewpoint
 
   std::size_t animations = 0;        ///< glTF animations written
-  std::size_t animationChannels = 0; ///< channels over all animations
-  /// Channels whose Transform is on no exported item's path, or whose key and
-  /// value counts disagree.
+  /// Channels over all animations, node and KHR_animation_pointer alike.
+  std::size_t animationChannels = 0;
+  std::size_t pointerChannels = 0;   ///< of which KHR_animation_pointer
+  /// Channels with nothing exported to animate (a Transform on no exported
+  /// item's path, a material on no exported shape), whose key and value
+  /// counts disagree, or a colour on a shape whose vertex colours replace it.
   std::size_t skippedAnimationChannels = 0;
-  /// ROUTEs out of an interpolator that could not become a channel: any
-  /// interpolator other than Position/Orientation, or a destination other
-  /// than a Transform's translation, rotation or scale, a viewpoint's
-  /// position or orientation, or a point/spot light's location.
+  /// ROUTEs out of an interpolator that could not become a channel: an
+  /// interpolator type the exporter does not sample, or a destination field
+  /// with no glTF property (see GltfAnimationChannel for the list).
   std::size_t skippedAnimationRoutes = 0;
+  /// HAnimMotions not exported: disabled (enabled FALSE or off in the
+  /// humanoid's motionsEnabled), no complete frame, or no joint channel.
+  std::size_t skippedMotions = 0;
 };
 
 /// One camera to export. `cameraToWorld` places it; like an X3D viewpoint a
@@ -146,15 +164,46 @@ struct GltfCamera {
   PathKey path;
 };
 
-/// Keyframes for one property of one Transform.
+/// Keyframes for one animated property.
 struct GltfAnimationChannel {
-  enum class Path { Translation, Rotation, Scale };
-  /// A Transform; or a viewpoint (Translation = position, Rotation =
-  /// orientation); or a PointLight/SpotLight (Translation = location).
+  enum class Path {
+    Translation, ///< 3 floats per key
+    Rotation,    ///< a quaternion x,y,z,w per key
+    Scale,       ///< 3 floats per key
+    Property,    ///< the X3D field `field` of `target`; see below
+    Weights      ///< morph weights: one float per morph target per key
+  };
+  /// Translation/Rotation/Scale: a Transform, HAnimHumanoid, HAnimJoint,
+  /// HAnimSite or CADPart (Rotation also from scaleOrientation, see
+  /// `field`); a viewpoint (Translation = position,
+  /// Rotation = orientation); a PointLight/SpotLight (Translation =
+  /// location); a DirectionalLight/SpotLight (Rotation = direction, as the
+  /// rotation aiming -Z along it).
+  ///
+  /// Property: a material, light or viewpoint, written through
+  /// KHR_animation_pointer. `field` is the X3D field and the values are its
+  /// X3D values, 3 floats per key for a colour and 1 for a scalar:
+  ///   Material diffuseColor, emissiveColor, transparency, shininess;
+  ///   PhysicalMaterial baseColor, emissiveColor, transparency, metallic,
+  ///   roughness; UnlitMaterial emissiveColor, transparency;
+  ///   any light's color and intensity, a PointLight's or SpotLight's
+  ///   radius, a SpotLight's beamWidth and cutOffAngle;
+  ///   a Viewpoint's fieldOfView.
+  /// A Transform's center is also a Property (3 floats per key), and its
+  /// scaleOrientation a Property with quaternion values. An HAnimDisplacer
+  /// on an HAnimJoint: `weight`, 1 float per key, written as the morph
+  /// weights of the humanoid's skinned meshes.
+  ///
+  /// Weights: `target` is a geometry node with a GltfMorph in the extras;
+  /// every exported shape using it gets the channel.
   const X3DNode *target = nullptr;
   Path path = Path::Translation;
-  std::vector<float> times;  ///< seconds, one per key, non-decreasing
-  /// 3 floats per key (translation, scale) or a quaternion x,y,z,w (rotation).
+  std::string field; ///< the X3D field, for Path::Property
+  /// Hold each key until the next (glTF STEP) instead of interpolating, as
+  /// HAnimMotion frames play.
+  bool step = false;
+  /// Seconds, one per key, non-decreasing; a repeated time is a jump.
+  std::vector<float> times;
   std::vector<float> values;
 };
 
@@ -165,20 +214,33 @@ struct GltfAnimation {
   std::vector<GltfAnimationChannel> channels;
 };
 
+/// Morph targets for one geometry node: whole meshes, each the geometry
+/// re-tessellated with its animated coordinates, normals or texture
+/// coordinates at one key, or with one HAnimSegment displacer at weight 1.
+/// They must have the corner layout of the items' mesh (the writer stores
+/// the differences and skips a geometry whose target vertex counts differ).
+struct GltfMorph {
+  const X3DNode *geometry = nullptr;
+  /// Non-null: only placements under this HAnimSegment use the targets.
+  const X3DNode *segment = nullptr;
+  std::vector<MeshData> targets;
+  /// The mesh's default weights; empty means all zero.
+  std::vector<float> weights;
+};
+
 /// Scene content beyond the render items.
 struct GltfSceneExtras {
   std::vector<LightDesc> lights;
   std::vector<GltfCamera> cameras;
   std::vector<GltfAnimation> animations;
+  std::vector<GltfMorph> morphs;
 };
 
 /// The lights, viewpoints and animations of the extractor's scene:
 /// `extractor.lights()`; every Viewpoint/OrthoViewpoint, the bound one first
 /// (GeoViewpoints are counted in `report->skippedViewpoints`); and one
-/// animation per TimeSensor, from the ROUTEs
-/// TimeSensor.fraction_changed -> Position/OrientationInterpolator ->
-/// Transform.translation|rotation|scale, Viewpoint/OrthoViewpoint
-/// .position|orientation, or PointLight/SpotLight.location. Key times are
+/// animation per TimeSensor, from the ROUTEs TimeSensor.fraction_changed ->
+/// interpolator -> a field listed under GltfAnimationChannel. Key times are
 /// key * cycleInterval.
 /// Other interpolator routes are counted in `report->skippedAnimationRoutes`.
 GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
