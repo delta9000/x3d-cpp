@@ -4,6 +4,7 @@
 #include "Interpolation.hpp"
 #include "NurbsInterpolatorSystem.hpp"
 #include "SplineInterpolation.hpp"
+#include "X3DProtoClone.hpp"
 
 #include "TransformSystem.hpp"
 #include "X3DSceneBridge.hpp"
@@ -196,6 +197,15 @@ std::array<double, 4> quaternion(const SFRotation &r) {
 
 bool isIdentity(const Mat4 &m) { return m.m == Mat4::identity().m; }
 
+// An SFNode field's value, or null when `n` has no SFNode field `name` (some
+// nodes have an MFNode field of that name, e.g. RigidBody.geometry).
+std::shared_ptr<X3DNode> sfNode(const X3DNode &n, const char *name) {
+  for (const FieldInfo &f : n.fields())
+    if (f.x3dName == name && f.type == X3DFieldType::SFNode && f.get)
+      return geombounds::getNode(n, name);
+  return nullptr;
+}
+
 // ---- interpolator sampling ----
 
 // What an interpolator emits, as glTF sees it: a rotation is a quaternion.
@@ -366,6 +376,110 @@ bool sampleInterpolator(const X3DNode &n, bool densify,
   return false;
 }
 
+// An interpolator writing an MF field inside a geometry (Coordinate.point,
+// Normal.vector, TextureCoordinate.point, Extrusion.spine, ...).
+struct GeometrySource {
+  std::shared_ptr<X3DNode> interpolator;
+  const X3DNode *target;
+  std::string field;
+};
+
+// The keyValue row of a multi-value interpolator at `fraction` (`right`:
+// after a jump at exactly that key).
+template <typename T, typename Lerp>
+std::vector<T> rowAt(const std::vector<float> &key, const std::vector<T> &kv,
+                     std::size_t m, float fraction, bool right, Lerp lerp) {
+  auto row = [&](std::size_t i) {
+    return std::vector<T>(kv.begin() + std::ptrdiff_t(i * m),
+                          kv.begin() + std::ptrdiff_t((i + 1) * m));
+  };
+  std::size_t first = key.size(), last = key.size();
+  for (std::size_t i = 0; i < key.size(); ++i)
+    if (key[i] == fraction) {
+      if (first == key.size()) first = i;
+      last = i;
+    }
+  if (first < key.size()) return row(right ? last : first);
+  return interpolateMulti(key, kv, fraction, lerp);
+}
+
+// Re-tessellate `geometry` at every key of `sources` (the union of their
+// keys, a jump giving two targets). Fills `morph` and the fraction of each
+// target; false if a source is malformed or the vertex count changes.
+bool morphTargets(const std::shared_ptr<X3DNode> &geometry,
+                  const std::vector<GeometrySource> &sources,
+                  const MeshBuildOptions &options,
+                  const geo::GeoProjection &projection, GltfMorph &morph,
+                  std::vector<float> &fractions) {
+  std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> cloneMap;
+  const auto clone = deepClone(geometry, cloneMap);
+  if (!clone) return false;
+  struct Source {
+    X3DNode *node = nullptr;
+    const FieldInfo *field = nullptr;
+    std::vector<float> key;
+    std::vector<SFVec3f> kv3;
+    std::vector<SFVec2f> kv2;
+    std::size_t m = 0;
+    bool normal = false, twoD = false;
+  };
+  std::vector<Source> in;
+  std::set<float> keys, jumps;
+  for (const GeometrySource &g : sources) {
+    Source src;
+    const auto found = cloneMap.find(g.target);
+    if (found == cloneMap.end() || !found->second) return false;
+    src.node = found->second.get();
+    for (const FieldInfo &f : src.node->fields())
+      if (f.x3dName == g.field && f.set) src.field = &f;
+    const std::string type = g.interpolator->nodeTypeName();
+    src.twoD = type == "CoordinateInterpolator2D";
+    src.normal = type == "NormalInterpolator";
+    if (!src.field || src.field->type != (src.twoD ? X3DFieldType::MFVec2f
+                                                    : X3DFieldType::MFVec3f))
+      return false;
+    src.key = geombounds::getField<std::vector<float>>(*g.interpolator, "key", {});
+    if (src.twoD)
+      src.kv2 = geombounds::getField<std::vector<SFVec2f>>(*g.interpolator, "keyValue", {});
+    else
+      src.kv3 = geombounds::getField<std::vector<SFVec3f>>(*g.interpolator, "keyValue", {});
+    const std::size_t total = src.twoD ? src.kv2.size() : src.kv3.size();
+    if (src.key.empty() || total == 0 || total % src.key.size() != 0) return false;
+    src.m = total / src.key.size();
+    for (std::size_t i = 0; i < src.key.size(); ++i) {
+      if (i && src.key[i] < src.key[i - 1]) return false;
+      if (i && src.key[i] == src.key[i - 1]) jumps.insert(src.key[i]);
+      keys.insert(src.key[i]);
+    }
+    in.push_back(std::move(src));
+  }
+  for (float f : keys) {
+    for (bool right : {false, true}) {
+      if (right && !jumps.count(f)) continue;
+      for (Source &src : in) {
+        if (src.twoD)
+          src.field->set(*src.node, std::any(rowAt(src.key, src.kv2, src.m, f, right,
+                                                   lerpVec2)));
+        else if (src.normal)
+          src.field->set(*src.node, std::any(rowAt(src.key, src.kv3, src.m, f, right,
+                                                   slerpNormal)));
+        else
+          src.field->set(*src.node, std::any(rowAt(src.key, src.kv3, src.m, f, right,
+                                                   lerpVec3)));
+      }
+      MeshData mesh = buildLocalMesh(clone.get(), projection, options);
+      if (mesh.positions.empty() ||
+          (!morph.targets.empty() &&
+           mesh.positions.size() != morph.targets.front().positions.size()))
+        return false;
+      morph.targets.push_back(std::move(mesh));
+      fractions.push_back(f);
+    }
+  }
+  morph.geometry = geometry.get();
+  return !morph.targets.empty();
+}
+
 // Where an interpolator's value goes in glTF.
 struct Destination {
   SampleKind kind = SampleKind::None; // what the field takes; None: nowhere
@@ -500,6 +614,12 @@ public:
     const MeshAccessors &acc = accessorsFor(item.mesh);
     const int material =
         materialFor(item.material, mesh, acc, materialNodeOf(item));
+    // Morph targets of an animated geometry, when they fit this mesh.
+    const X3DNode *geometry = geometryNodeOf(item);
+    const GltfMorph *morph = nullptr;
+    if (const auto m = morphs_.find(geometry); m != morphs_.end() &&
+        m->second->targets.front().positions.size() == mesh.positions.size())
+      morph = m->second;
     const auto key = std::make_pair(item.mesh.get(), material);
     auto found = meshIndex_.find(key);
     if (found == meshIndex_.end()) {
@@ -514,10 +634,18 @@ public:
         attrs.push_back("\"COLOR_0\":" + std::to_string(acc.color));
       const int mode = mesh.topology == Topology::Triangles ? 4
                        : mesh.topology == Topology::Lines ? 1 : 0;
+      std::string targets, weights;
+      if (morph) {
+        const std::vector<std::string> &t = targetsFor(item.mesh, *morph, acc);
+        targets = ",\"targets\":[" + join(t) + "]";
+        weights = ",\"weights\":[" +
+                  join(std::vector<std::string>(t.size(), "0")) + "]";
+      }
       meshes_.push_back("{\"primitives\":[{\"attributes\":{" + join(attrs) +
                         "},\"indices\":" + std::to_string(acc.indices) +
                         ",\"material\":" + std::to_string(material) +
-                        ",\"mode\":" + std::to_string(mode) + "}]}");
+                        ",\"mode\":" + std::to_string(mode) + targets + "}]" +
+                        weights + "}");
       found = meshIndex_.emplace(key, static_cast<int>(meshes_.size()) - 1)
                   .first;
     }
@@ -537,9 +665,15 @@ public:
     const Mat4 local =
         parent < 0 ? item.worldTransform : below.inverse() * item.worldTransform;
     if (!isIdentity(local)) node += "," + matrixJson(local);
-    attach(parent, node);
+    const int index = attach(parent, node);
+    if (morph) morphNodes_[geometry].push_back(index);
     ++itemNodes_;
     report_.triangles += acc.triangles;
+  }
+
+  void setMorphs(const std::vector<GltfMorph> &morphs) {
+    for (const GltfMorph &m : morphs)
+      if (m.geometry && !m.targets.empty()) morphs_[m.geometry] = &m;
   }
 
   // Declare the animations before any item is added: their targets decide
@@ -553,7 +687,8 @@ public:
         // Nodes whose own glTF node moves: Transforms, viewpoints and lights
         // with a translation/rotation/scale channel, and Transforms whose
         // centre or scaleOrientation moves.
-        if (channel.path != GltfAnimationChannel::Path::Property ||
+        if ((channel.path != GltfAnimationChannel::Path::Property &&
+             channel.path != GltfAnimationChannel::Path::Weights) ||
             channel.field == "center" || channel.field == "scaleOrientation")
           animatedTargets_.insert(channel.target);
       }
@@ -911,9 +1046,69 @@ private:
   // The X3D material node of an item's shape, or null.
   static const X3DNode *materialNodeOf(const RenderItem &item) {
     if (item.path.empty() || !item.path.back()) return nullptr;
-    const auto appearance = geombounds::getNode(*item.path.back(), "appearance");
+    const auto appearance = sfNode(*item.path.back(), "appearance");
     if (!appearance) return nullptr;
-    return geombounds::getNode(*appearance, "material").get();
+    return sfNode(*appearance, "material").get();
+  }
+
+  static const X3DNode *geometryNodeOf(const RenderItem &item) {
+    if (item.path.empty() || !item.path.back()) return nullptr;
+    return sfNode(*item.path.back(), "geometry").get();
+  }
+
+  // The morph targets of `ref` as glTF target objects: each a difference
+  // from the base mesh in the attributes the base mesh has.
+  const std::vector<std::string> &targetsFor(const MeshRef &ref,
+                                             const GltfMorph &morph,
+                                             const MeshAccessors &acc) {
+    auto found = morphTargets_.find(ref.get());
+    if (found != morphTargets_.end()) return found->second;
+    const MeshData &base = *ref;
+    const std::size_t n = base.positions.size();
+    auto finite = [](float v) { return std::isfinite(v) ? v : 0.0f; };
+    auto unitNormal = [](const SFVec3f &v) {
+      const float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+      if (len > 1e-20f && std::isfinite(len))
+        return SFVec3f{v.x / len, v.y / len, v.z / len};
+      return SFVec3f{0, 0, 1};
+    };
+    std::vector<std::string> out;
+    std::vector<float> flat;
+    for (const MeshData &target : morph.targets) {
+      std::vector<std::string> attrs;
+      flat.clear();
+      for (std::size_t i = 0; i < n; ++i) {
+        const SFVec3f &a = base.positions[i], &b = target.positions[i];
+        flat.insert(flat.end(), {finite(b.x) - finite(a.x), finite(b.y) - finite(a.y),
+                                 finite(b.z) - finite(a.z)});
+      }
+      // POSITION accessors, targets included, need bounds.
+      attrs.push_back("\"POSITION\":" + std::to_string(floatAccessor(flat, 3, "VEC3", true)));
+      if (acc.normal >= 0 && target.normals.size() == n) {
+        flat.clear();
+        for (std::size_t i = 0; i < n; ++i) {
+          const SFVec3f a = unitNormal(base.normals[i]), b = unitNormal(target.normals[i]);
+          flat.insert(flat.end(), {b.x - a.x, b.y - a.y, b.z - a.z});
+        }
+        attrs.push_back("\"NORMAL\":" + std::to_string(floatAccessor(flat, 3, "VEC3", false)));
+      }
+      for (std::size_t set = 0; set < acc.texcoords.size(); ++set) {
+        const std::vector<SFVec2f> &a = set ? base.texcoordSets[set] : base.texcoords;
+        const std::vector<SFVec2f> *b =
+            set ? (set < target.texcoordSets.size() ? &target.texcoordSets[set] : nullptr)
+                : &target.texcoords;
+        if (!b || b->size() != n || a.size() != n) continue;
+        flat.clear();
+        for (std::size_t i = 0; i < n; ++i)
+          // t is flipped to glTF's top-left origin, so its difference is too.
+          flat.insert(flat.end(), {finite((*b)[i].x) - finite(a[i].x),
+                                   finite(a[i].y) - finite((*b)[i].y)});
+        attrs.push_back("\"TEXCOORD_" + std::to_string(set) +
+                        "\":" + std::to_string(floatAccessor(flat, 2, "VEC2", false)));
+      }
+      out.push_back("{" + join(attrs) + "}");
+    }
+    return morphTargets_.emplace(ref.get(), std::move(out)).first->second;
   }
 
   // ---- animation ----
@@ -1065,6 +1260,7 @@ private:
       case GltfAnimationChannel::Path::Translation: return "translation";
       case GltfAnimationChannel::Path::Rotation: return "rotation";
       case GltfAnimationChannel::Path::Scale: return "scale";
+      case GltfAnimationChannel::Path::Weights: return "weights";
       default: return ch.field;
     }
   }
@@ -1366,14 +1562,18 @@ private:
             ch.path == GltfAnimationChannel::Path::Rotation ||
             (ch.path == GltfAnimationChannel::Path::Property &&
              ch.field == "scaleOrientation");
+        const auto morph = ch.path == GltfAnimationChannel::Path::Weights
+                               ? morphs_.find(ch.target) : morphs_.end();
         const std::size_t width =
-            rotation ? 4
+            ch.path == GltfAnimationChannel::Path::Weights
+                ? (morph == morphs_.end() ? 0 : morph->second->targets.size())
+            : rotation ? 4
             : ch.path != GltfAnimationChannel::Path::Property ? 3
             : (ch.field == "center" || ch.field.find("Color") != std::string::npos ||
                ch.field == "color")
                 ? 3
                 : 1;
-        if (!ch.target || ch.times.empty() ||
+        if (!ch.target || ch.times.empty() || width == 0 ||
             ch.values.size() != ch.times.size() * width ||
             !std::is_sorted(ch.times.begin(), ch.times.end())) {
           ++report_.skippedAnimationChannels;
@@ -1391,6 +1591,21 @@ private:
           const bool node = ch->path != GltfAnimationChannel::Path::Property ||
                             name == "center" || name == "scaleOrientation";
           (node ? nodeFields : pointerFields).emplace(name, ch);
+        }
+        if (const auto w = nodeFields.find("weights"); w != nodeFields.end()) {
+          // Morph weights: every exported shape using the geometry.
+          const auto nodes = morphNodes_.find(target);
+          if (nodes == morphNodes_.end()) {
+            ++report_.skippedAnimationChannels;
+          } else {
+            Keys keys;
+            keys.times = w->second->times;
+            keys.values = w->second->values;
+            keys.width = 1;
+            const int s = sampler(std::move(keys), samplers);
+            for (int node : nodes->second) nodeChannel(channels, s, node, "weights");
+          }
+          nodeFields.erase(w);
         }
         const std::size_t before = channels.size();
         if (!nodeFields.empty())
@@ -1774,6 +1989,9 @@ private:
       lightsByNode_, camerasByNode_;
   std::unordered_map<int, MaterialStatic> materialStatics_;
   std::vector<LightStatic> lightStatics_; // one per glTF light
+  std::unordered_map<const X3DNode *, const GltfMorph *> morphs_;
+  std::unordered_map<const X3DNode *, std::vector<int>> morphNodes_;
+  std::unordered_map<const MeshData *, std::vector<std::string>> morphTargets_;
   bool usesPointer_ = false;
   bool usesUnlit_ = false;
 };
@@ -1792,6 +2010,7 @@ std::string writeGlb(const std::vector<const RenderItem *> &items,
   r.skippedViewpoints = skippedViewpoints;
   r.skippedAnimationRoutes = skippedRoutes;
   Writer writer(options, r);
+  writer.setMorphs(extras.morphs);
   writer.setAnimations(extras.animations);
   for (const RenderItem *item : items)
     if (item) writer.add(*item);
@@ -1890,14 +2109,90 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
            type.compare(type.size() - tail.size(), tail.size(), tail) == 0;
   };
 
+  // The TimeSensor driving an interpolator sets its time scale.
+  auto clockOf = [&](const std::shared_ptr<X3DNode> &interpolator) {
+    for (const Route &drive : scene.routes) {
+      const auto sink = endpoint(drive.to, drive.toNode);
+      if (sink != interpolator || fieldName(drive.toField) != "fraction") continue;
+      const auto source = endpoint(drive.from, drive.fromNode);
+      if (source && source->nodeTypeName() == "TimeSensor" &&
+          fieldName(drive.fromField) == "fraction")
+        return static_cast<const X3DNode *>(source.get());
+    }
+    return static_cast<const X3DNode *>(nullptr);
+  };
+  auto durationOf = [](const X3DNode *clock) {
+    double duration = 1.0;
+    if (clock) {
+      duration = geombounds::getField<double>(*clock, "cycleInterval", 1.0);
+      if (!(duration > 0) || !std::isfinite(duration)) duration = 1.0;
+    }
+    return duration;
+  };
+
+  // Every node inside a shape's geometry, mapped to the geometry nodes it
+  // is part of: an interpolator driving one of them changes those meshes.
+  std::unordered_map<const X3DNode *, std::vector<std::shared_ptr<X3DNode>>>
+      geometriesOf;
+  x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
+    auto geometry = sfNode(*n, "geometry");
+    if (!geometry) return;
+    std::unordered_set<const X3DNode *> seen;
+    std::function<void(const X3DNode *, std::size_t)> rec =
+        [&](const X3DNode *m, std::size_t depth) {
+          if (!m || depth > kMaxNestingDepth || !seen.insert(m).second) return;
+          auto &list = geometriesOf[m];
+          if (std::find(list.begin(), list.end(), geometry) == list.end())
+            list.push_back(geometry);
+          forEachChildNode(*m, [&](const FieldInfo &,
+                                   const std::shared_ptr<X3DNode> &c) {
+            rec(c.get(), depth + 1);
+          });
+        };
+    rec(geometry.get(), 0);
+  });
+
+  std::map<std::pair<const X3DNode *, const X3DNode *>,
+           std::vector<GeometrySource>> bySurface; // (geometry, clock)
+  std::vector<std::pair<const X3DNode *, const X3DNode *>> surfaceOrder;
+  std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> geometryNode;
+
   std::size_t skippedRoutes = 0;
   std::vector<const X3DNode *> clocks; // animation order: first use
   std::unordered_map<const X3DNode *, GltfAnimation> byClock;
+  auto animationFor = [&](const X3DNode *clock) -> GltfAnimation & {
+    auto found = byClock.find(clock);
+    if (found == byClock.end()) {
+      clocks.push_back(clock);
+      found = byClock.emplace(clock, GltfAnimation{}).first;
+      if (clock) found->second.name = clock->getDEF();
+    }
+    return found->second;
+  };
   for (const Route &route : scene.routes) {
     const auto from = endpoint(route.from, route.fromNode);
     const auto to = endpoint(route.to, route.toNode);
     if (!from || !to || !isInterpolator(*from)) continue;
     if (fieldName(route.fromField) != "value") continue;
+
+    const std::string type = from->nodeTypeName();
+    if (type == "CoordinateInterpolator" || type == "CoordinateInterpolator2D" ||
+        type == "NormalInterpolator") {
+      const auto geometries = geometriesOf.find(to.get());
+      if (geometries == geometriesOf.end()) {
+        ++skippedRoutes;
+        continue;
+      }
+      const X3DNode *clock = clockOf(from);
+      for (const auto &geometry : geometries->second) {
+        const auto key = std::make_pair(static_cast<const X3DNode *>(geometry.get()), clock);
+        auto &sources = bySurface[key];
+        if (sources.empty()) surfaceOrder.push_back(key);
+        sources.push_back({from, to.get(), fieldName(route.toField)});
+        geometryNode[geometry.get()] = geometry;
+      }
+      continue;
+    }
 
     const Destination dest = destinationOf(*to, fieldName(route.toField));
     Samples samples;
@@ -1922,34 +2217,43 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     } else {
       channel.values = std::move(samples.values);
     }
-    const std::vector<float> &keys = samples.fractions;
+    const X3DNode *clock = clockOf(from);
+    const double duration = durationOf(clock);
+    for (float key : samples.fractions)
+      channel.times.push_back(float(key * duration));
+    animationFor(clock).channels.push_back(std::move(channel));
+  }
 
-    // The TimeSensor driving this interpolator sets the time scale.
-    const X3DNode *clock = nullptr;
-    for (const Route &drive : scene.routes) {
-      const auto sink = endpoint(drive.to, drive.toNode);
-      if (sink != from || fieldName(drive.toField) != "fraction") continue;
-      const auto source = endpoint(drive.from, drive.fromNode);
-      if (source && source->nodeTypeName() == "TimeSensor" &&
-          fieldName(drive.fromField) == "fraction") {
-        clock = source.get();
-        break;
-      }
+  // Morph targets: re-tessellate each driven geometry at every key of its
+  // interpolators (the union, when several drive it), on a clone so the
+  // scene is untouched. glTF gives a mesh one set of targets, so only the
+  // first TimeSensor driving a geometry is exported.
+  std::unordered_set<const X3DNode *> morphed;
+  for (const auto &surface : surfaceOrder) {
+    const auto &sources = bySurface[surface];
+    if (!morphed.insert(surface.first).second) {
+      skippedRoutes += sources.size();
+      continue;
     }
-    double duration = 1.0;
-    if (clock) {
-      duration = geombounds::getField<double>(*clock, "cycleInterval", 1.0);
-      if (!(duration > 0) || !std::isfinite(duration)) duration = 1.0;
+    GltfMorph morph;
+    std::vector<float> fractions;
+    if (!morphTargets(geometryNode[surface.first], sources,
+                      extractor.meshOptions(), ctx.geoProjection(), morph,
+                      fractions)) {
+      skippedRoutes += sources.size();
+      continue;
     }
-    for (float key : keys) channel.times.push_back(float(key * duration));
-
-    auto found = byClock.find(clock);
-    if (found == byClock.end()) {
-      clocks.push_back(clock);
-      found = byClock.emplace(clock, GltfAnimation{}).first;
-      if (clock) found->second.name = clock->getDEF();
+    GltfAnimationChannel channel;
+    channel.target = surface.first;
+    channel.path = GltfAnimationChannel::Path::Weights;
+    const double duration = durationOf(surface.second);
+    const std::size_t n = morph.targets.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      channel.times.push_back(float(fractions[i] * duration));
+      for (std::size_t k = 0; k < n; ++k) channel.values.push_back(k == i ? 1.0f : 0.0f);
     }
-    found->second.channels.push_back(std::move(channel));
+    extras.morphs.push_back(std::move(morph));
+    animationFor(surface.second).channels.push_back(std::move(channel));
   }
   for (const X3DNode *clock : clocks)
     extras.animations.push_back(std::move(byClock[clock]));

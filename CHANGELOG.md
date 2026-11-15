@@ -27,8 +27,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   transparency, metallic, roughness and shininess, light colour,
   intensity, radius and cone angles, and a Viewpoint's field of view
   animate through `KHR_animation_pointer`. HSV colour, spline, squad and
-  NURBS-curve interpolators are sampled. Not exported: movie, multi, cube
-  and 3D textures, skins, and coordinate/normal animation;
+  NURBS-curve interpolators are sampled. Coordinate, normal and
+  texture-coordinate interpolators (and ones driving a geometry's own
+  MFVec3f/MFVec2f fields, such as `Extrusion.spine`) become morph targets.
+  Not exported: movie, multi, cube and 3D textures, and skins;
   `GltfWriteReport` counts what was dropped. Light intensity has no unit
   conversion.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and

@@ -63,8 +63,11 @@
 // specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
 // written as static meshes in the mesh's stored pose.
 //
-// Animation limits: coordinate and normal interpolators (morph targets),
-// H-Anim motion, PositionInterpolator2D, NurbsSurfaceInterpolator and chains through other nodes (sequencers,
+// Coordinate, normal and texture-coordinate interpolators become morph
+// targets (one tessellation per key, stepped by a weights channel); normals
+// blend linearly between keys.
+//
+// Animation limits: H-Anim motion, PositionInterpolator2D, NurbsSurfaceInterpolator and chains through other nodes (sequencers,
 // scripts, EaseInEaseOut, followers) are not exported; routes out of an
 // interpolator that are dropped are counted. glTF has no loop flag, so
 // TimeSensor.loop is left to the viewer, and startTime is not carried.
@@ -155,7 +158,8 @@ struct GltfAnimationChannel {
     Translation, ///< 3 floats per key
     Rotation,    ///< a quaternion x,y,z,w per key
     Scale,       ///< 3 floats per key
-    Property     ///< the X3D field `field` of `target`; see below
+    Property,    ///< the X3D field `field` of `target`; see below
+    Weights      ///< morph weights: one float per morph target per key
   };
   /// Translation/Rotation/Scale: a Transform (Rotation also from
   /// scaleOrientation, see `field`); a viewpoint (Translation = position,
@@ -174,6 +178,9 @@ struct GltfAnimationChannel {
   ///   a Viewpoint's fieldOfView.
   /// A Transform's center is also a Property (3 floats per key), and its
   /// scaleOrientation a Property with quaternion values.
+  ///
+  /// Weights: `target` is a geometry node with a GltfMorph in the extras;
+  /// every exported shape using it gets the channel.
   const X3DNode *target = nullptr;
   Path path = Path::Translation;
   std::string field; ///< the X3D field, for Path::Property
@@ -189,11 +196,22 @@ struct GltfAnimation {
   std::vector<GltfAnimationChannel> channels;
 };
 
+/// Morph targets for one geometry node: whole meshes, each the geometry
+/// re-tessellated with its animated coordinates, normals or texture
+/// coordinates at one key. They must have the corner layout of the items'
+/// mesh (the writer stores the differences and skips a geometry whose
+/// target vertex counts differ).
+struct GltfMorph {
+  const X3DNode *geometry = nullptr;
+  std::vector<MeshData> targets;
+};
+
 /// Scene content beyond the render items.
 struct GltfSceneExtras {
   std::vector<LightDesc> lights;
   std::vector<GltfCamera> cameras;
   std::vector<GltfAnimation> animations;
+  std::vector<GltfMorph> morphs;
 };
 
 /// The lights, viewpoints and animations of the extractor's scene:

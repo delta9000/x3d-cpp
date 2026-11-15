@@ -42,6 +42,7 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 | SplinePositionInterpolator, SplineScalarInterpolator, SquadOrientationInterpolator, and ColorInterpolator (X3D blends in HSV) | Sampled: each key interval is split into 8 `LINEAR` steps, valued by the runtime's own interpolation |
 | NurbsPositionInterpolator, NurbsOrientationInterpolator | Sampled at 65 even fractions over the curve |
 | GeoPositionInterpolator (`value_changed`, the local position) | Sampled 8 steps per key interval, since it interpolates in geographic coordinates and then projects |
+| CoordinateInterpolator, CoordinateInterpolator2D or NormalInterpolator routed to a node in a shape's geometry (a `Coordinate`, `TextureCoordinate` or `Normal`, or an MFVec3f/MFVec2f field of the geometry itself such as `Extrusion.spine` or `crossSection`) | Morph targets: the geometry is re-tessellated once per key (twice at a jump), each tessellation stored as `POSITION`/`NORMAL`/`TEXCOORD_n` differences from the exported mesh, and a `weights` channel steps one-hot through them. Every shape using the geometry gets the channel |
 
 Animated properties (`KHR_animation_pointer`):
 
@@ -120,8 +121,18 @@ out-of-range authored value still gives a valid file.
   and a centre, a colour and a transparency, the two cone angles) are
   animated by different TimeSensors, each animation writes the shared value
   with the other field at its export-time value.
-- Not exported: CoordinateInterpolator, CoordinateInterpolator2D and
-  NormalInterpolator (they need morph targets); H-Anim skinning and motion;
+- Morph targets: between keys glTF blends the two neighbouring
+  tessellations linearly, which equals X3D's interpolation for coordinates
+  and texture coordinates. Normals are blended linearly where X3D
+  interpolates them on the sphere, and normals the runtime generates from
+  the coordinates are blended rather than regenerated, so shading between
+  keys is approximate (exact at every key).
+- glTF gives a mesh one set of morph targets, so when interpolators on two
+  TimeSensors drive one geometry, the first TimeSensor's routes are exported
+  and the others are counted in `skippedAnimationRoutes`. So are the routes
+  to a geometry whose tessellation has a different vertex count at some key,
+  since morph targets must match the mesh vertex for vertex.
+- Not exported: H-Anim skinning and motion;
   PositionInterpolator2D (glTF has no texture transform without
   `KHR_texture_transform`, which the exporter does not write);
   NurbsSurfaceInterpolator (driven by a 2D fraction, not a TimeSensor);

@@ -706,3 +706,58 @@ TEST_CASE("glb: a GeoPositionInterpolator's local position is sampled") {
   CHECK(g.report.animationChannels == 1);
   CHECK(has(g.json, "\"count\":9,\"type\":\"SCALAR\""));
 }
+
+TEST_CASE("glb: coordinate and texture-coordinate animation become morph targets") {
+  const Glb g = exportScene(
+      "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+      "<Shape DEF='Flag'><Appearance><Material/><PixelTexture image='1 1 3 0xFF0000'/>"
+      "</Appearance>"
+      "<IndexedFaceSet coordIndex='0 1 2 -1' texCoordIndex='0 1 2 -1'>"
+      "<Coordinate DEF='Pts' point='0 0 0 1 0 0 0 1 0'/>"
+      "<TextureCoordinate DEF='TC' point='0 0 1 0 0 1'/>"
+      "</IndexedFaceSet></Shape>"
+      "<Transform translation='3 0 0'><Shape USE='Flag'/></Transform>"
+      // A jump at 0.5 gives two targets there.
+      "<CoordinateInterpolator DEF='CI' key='0 0.5 0.5 1' keyValue='"
+      "  0 0 0 1 0 0 0 1 0  0 0 0 1 0 1 0 1 0  0 0 0 1 0 0 0 1 0  0 0 0 2 0 0 0 1 0'/>"
+      "<CoordinateInterpolator2D DEF='TI' key='0 1' keyValue='0 0 1 0 0 1  1 0 2 0 1 1'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='CI' toField='set_fraction'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='TI' toField='set_fraction'/>"
+      "<ROUTE fromNode='CI' fromField='value_changed' toNode='Pts' toField='point'/>"
+      "<ROUTE fromNode='TI' fromField='value_changed' toNode='TC' toField='point'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.animations == 1);
+  // Keys 0, 0.5 (twice) and 1: four targets, each with position, normal and
+  // texture-coordinate differences; the mesh starts at weight 0.
+  CHECK(count(g.json, "{\"POSITION\":") == 5);
+  CHECK(has(g.json, "\"weights\":[0,0,0,0]}"));
+  CHECK(count(g.json, "\"TEXCOORD_0\":") == 5);
+  // Both placements of the shared geometry get the weights channel.
+  CHECK(count(g.json, "\"path\":\"weights\"") == 2);
+  // One-hot weights: 4 keys x 4 targets.
+  CHECK(has(g.json, "\"count\":16,\"type\":\"SCALAR\"}"));
+  CHECK(has(g.json, "\"count\":4,\"type\":\"SCALAR\",\"min\":[0],\"max\":[2]"));
+}
+
+TEST_CASE("glb: a geometry's own MF field can be morphed, and bad morphs are counted") {
+  const Glb g = exportScene(
+      "<Shape><Extrusion DEF='Tube' spine='0 0 0 0 1 0'/></Shape>"
+      "<Shape><IndexedFaceSet coordIndex='0 1 2 -1'>"
+      "  <Coordinate DEF='Short' point='0 0 0 1 0 0 0 1 0'/></IndexedFaceSet></Shape>"
+      "<Shape><IndexedFaceSet coordIndex='0 1 2 -1'>"
+      "  <Coordinate point='0 0 0 1 0 0 0 1 0'/>"
+      "  <Normal DEF='N' vector='0 0 1 0 0 1 0 0 1'/></IndexedFaceSet></Shape>"
+      "<Coordinate DEF='Loose' point='0 0 0'/>"
+      "<CoordinateInterpolator DEF='S' key='0 1' keyValue='0 0 0 0 1 0  0 0 0 1 2 0'/>"
+      "<CoordinateInterpolator DEF='Bad' key='0 1' keyValue='0 0 0 1 0 0 0 1 0  1 1 1'/>"
+      "<NormalInterpolator DEF='NI' key='0 1' keyValue='0 0 1 0 0 1 0 0 1  1 0 0 1 0 0 1 0 0'/>"
+      "<ROUTE fromNode='S' fromField='value_changed' toNode='Tube' toField='set_spine'/>"
+      "<ROUTE fromNode='Bad' fromField='value_changed' toNode='Short' toField='point'/>"
+      "<ROUTE fromNode='NI' fromField='value_changed' toNode='N' toField='vector'/>"
+      // Not inside any shape's geometry.
+      "<ROUTE fromNode='S' fromField='value_changed' toNode='Loose' toField='point'/>");
+  CHECK(g.report.animations == 1);
+  CHECK(count(g.json, "\"path\":\"weights\"") == 2); // Tube and the normals
+  CHECK(g.report.skippedAnimationRoutes == 2);       // Bad, Loose
+}
