@@ -442,6 +442,15 @@ if(X3D_CPP_BUILD_TESTS)
                     -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/test_selection/check.cmake")
     endforeach()
 
+    # Configure-only regression: the documented install build (tests off,
+    # examples on) must not reference the test-only doctest main.
+    add_test(NAME x3d_no_tests_build_contract
+        COMMAND "${CMAKE_COMMAND}"
+                "-DX3D_CPP_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+                "-DFIXTURE_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/no_tests_build"
+                "-DFIXTURE_GENERATOR=${CMAKE_GENERATOR}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/no_tests_build/check.cmake")
+
     # §16 sound graph wiring and DSP samples run without an external backend.
     add_executable(x3d_sound_system
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/sound/dsp/BuiltinDspBackend.cpp"

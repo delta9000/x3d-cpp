@@ -176,6 +176,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Install build with tests off.** The documented
+  `-DX3D_CPP_BUILD_TESTS=OFF` build failed in `x3d_corpus_audit_selftest`, a
+  doctest suite built with the examples, until the examples were also turned
+  off. The selftest now needs the tests; a configure-only contract test
+  (`x3d_no_tests_build_contract`) keeps test-only targets out of that build.
 - **Enclosing USE leak.** A USE inside the body of the node it names, such as
   `DEF A Transform { children [ USE A ] }` or the same node as a ProtoInstance
   `fieldValue` nested in it, made the node contain itself and leaked the

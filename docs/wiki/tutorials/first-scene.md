@@ -24,7 +24,7 @@ From the x3d-cpp checkout:
 
 ```sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_BUILD_EXAMPLES=OFF
+  -DX3D_CPP_BUILD_TESTS=OFF
 cmake --build build --parallel 2
 cmake --install build --prefix "$PWD/install"
 ```
