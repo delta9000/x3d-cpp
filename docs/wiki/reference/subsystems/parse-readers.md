@@ -43,7 +43,10 @@ The parse frontend turns raw X3D bytes — in any of four encodings (XML, Classi
 - Gzip input is inflated with a decompressed-size ceiling
   (`kMaxDecompressedBytes`, default 256 MiB) clamping both the initial
   reservation and the grow loop, so a decompression bomb or a forged ISIZE
-  footer cannot drive an OOM (SEC-5, `Inflate.hpp`).
+  footer cannot drive an OOM (SEC-5, `Inflate.hpp`). A multi-member stream
+  (`cat a.gz b.gz`, RFC 1952 §2.2) decodes member by member, each checked
+  against its own CRC32/ISIZE, with the ceiling on the total; trailing zero
+  padding is ignored and other trailing bytes are an error.
 - The default `Inline`/`EXTERNPROTO` resolvers canonicalize a file-like `url`
   and confine it to a configurable root — `parseFile()`/ `parseDocument()`
   default it to the source file's own directory (a secure default for

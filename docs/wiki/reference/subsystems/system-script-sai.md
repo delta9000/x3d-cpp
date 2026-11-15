@@ -212,7 +212,8 @@ static std::any EcmaScriptBackend::toValue  (duk_context *ctx, duk_idx_t idx,   
 - Call budget — `ScriptEngine::setCallBudget()` (default 2 s, zero disables) bounds each entry into script code: load, initialize, one invoke, prepareEvents, eventsProcessed, shutdown.
     - A call that runs past it is interrupted (Duktape exec-timeout check; QuickJS interrupt handler), logged as a script error, and the script stays loaded.
     - A load whose top level times out fails.
-    - `ScriptEngine::setMemoryLimit()` (default 256 MiB, zero disables) caps script heaps: per script in Duktape (a counting allocator), across all scripts in QuickJS (its shared runtime).
+    - `ScriptEngine::setMemoryLimit()` (default 256 MiB, zero disables) caps each script's heap: Duktape gives each script its own heap with a counting allocator, QuickJS gives each script its own runtime with `JS_SetMemoryLimit`. One script at its cap leaves the others their full budget.
+    - Engines are not thread-safe: all calls on one `ScriptEngine`, for any of its scripts, come from one thread at a time (see [Tick model](../../explanation/tick-model.md)).
     - An allocation past the cap fails and becomes a contained out-of-memory error.
     - This includes exposing newly created scene roots: a failed conversion discards its partial array and throws, and later script calls remain usable.
     - See [ADR-0048](../../explanation/decisions/0048-script-node-handles.md).

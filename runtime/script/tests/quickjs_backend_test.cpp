@@ -113,6 +113,43 @@ int main() {
     backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
   }
 
+  // per-script memory cap. One script that has filled its heap to the
+  //       cap (and keeps it full) does not stop another script from
+  //       allocating: each script has its own runtime and its own cap.
+  {
+    backend.setMemoryLimit(std::size_t{16} << 20);
+    X3DExecutionContext ctx;
+    Script hogScript, otherScript;
+    SaiContext hogSai(ctx, hogScript, "x3d-cpp-gen", "dev");
+    SaiContext otherSai(ctx, otherScript, "x3d-cpp-gen", "dev");
+    ctx.authorFields().addAuthorField(
+        otherScript, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                     AccessType::OutputOnly, {}});
+    ScriptHandle hog = backend.load(hogScript,
+        "var hog = [], i = 0;"
+        "function go(v, t) {"
+        "  for (;;) hog.push(new Array(100000).join('xxxxxxxxxx') + (i++)); }",
+        hogSai);
+    ScriptHandle other = backend.load(otherScript,
+        "function go(v, t) {"
+        "  var keep = [];"
+        "  for (var j = 0; j < 8; ++j)"
+        "    keep.push(new Array(100000).join('yyyyyyyyyy') + j);"
+        "  ok = keep.length; }",
+        otherSai);
+    check(hog != kInvalidScriptHandle && other != kInvalidScriptHandle,
+          "T15j: load two scripts");
+    backend.invoke(hog, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    backend.invoke(other, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    std::any ok = ctx.authorFields().getValue(otherScript, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 8.0f,
+          "T15j: a script at its memory cap leaves others their own budget");
+    backend.shutdown(hog);
+    backend.shutdown(other);
+    ctx.authorFields().erase(otherScript);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
+  }
+
   // QuickJS supports ES2015 Date subclassing; Duktape supports ES5.
   {
     Fixture fix;

@@ -174,3 +174,24 @@ TEST_CASE("Inline urls are confined to the top-level file directory") {
 
   fs::remove_all(root, ec);
 }
+
+#ifndef _WIN32
+TEST_CASE("a backslash in a POSIX filename is not a path separator") {
+  // On POSIX a backslash is an ordinary filename character. parseFile used to split
+  // the base directory on it, so `dir/a\\b.x3d` got base `dir/a`, and the
+  // sibling Inline `child.x3d` was looked up (and confined) under `dir/a/`.
+  const fs::path root = fs::temp_directory_path() / "x3d_backslash_name_test";
+  std::error_code ec;
+  fs::remove_all(root, ec);
+  write(root / "child.x3d",
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<X3D profile=\"Interchange\" version=\"4.0\"><head/><Scene>\n"
+        "  <Shape/>\n"
+        "</Scene></X3D>\n");
+  write(root / "a\\b.x3d", parentWith("child.x3d"));
+  auto doc = parseFile((root / "a\\b.x3d").string());
+  CHECK_MESSAGE((countInlines(doc) == 0),
+                "the sibling Inline resolves against the file's real directory");
+  fs::remove_all(root, ec);
+}
+#endif

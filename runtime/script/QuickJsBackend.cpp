@@ -659,36 +659,43 @@ JSClassExoticMethods *nodeExoticMethods();
 } // namespace
 
 struct QuickJsBackend::Impl {
-  // One loaded script's per-context state (the Duktape Entry model).
+  // Call budget (ScriptEngine::setCallBudget) of one script. QuickJS polls the
+  // interrupt handler while running bytecode; a nonzero return raises an
+  // uncatchable "interrupted" error.
+  struct Budget {
+    bool armed = false;
+    std::chrono::steady_clock::time_point deadline{};
+  };
+
+  // One loaded script's state. Each script owns its JSRuntime (heap, memory
+  // cap, interrupt handler) as well as its JSContext, the same model as the
+  // Duktape backend's one heap per script: one script cannot spend another's
+  // memory budget, and its deadline is never shared.
   struct Entry {
+    JSRuntime *rt = nullptr;    // owned; freed after ctx
     JSContext *ctx = nullptr;   // owned; freed in shutdown()/destructor
     x3d::nodes::X3DNode *node = nullptr;    // owning Script node (not owned here)
     SaiContext *sai = nullptr;  // SAI surface (not owned here)
+    std::unique_ptr<Budget> budget;  // stable address: the interrupt opaque
   };
 
-  JSRuntime *rt = nullptr;
   ScriptHandle nextHandle = 1;  // start at 1 so 0 stays kInvalidScriptHandle
   std::unordered_map<ScriptHandle, Entry> entries;
 
-  // Call budget (ScriptEngine::setCallBudget). One runtime backs every script
-  // and calls are sequential, so one deadline suffices. QuickJS polls the
-  // interrupt handler while running bytecode; a nonzero return raises an
-  // uncatchable "interrupted" error.
-  bool deadlineArmed = false;
-  std::chrono::steady_clock::time_point deadline{};
-
   static int interruptHandler(JSRuntime *, void *opaque) {
-    const auto *self = static_cast<const Impl *>(opaque);
-    return self->deadlineArmed &&
-           std::chrono::steady_clock::now() >= self->deadline;
+    const auto *b = static_cast<const Budget *>(opaque);
+    return b->armed && std::chrono::steady_clock::now() >= b->deadline;
   }
 
-  Impl() {
-    rt = JS_NewRuntime();
-    if (!rt) return;
-    JS_SetInterruptHandler(rt, &Impl::interruptHandler, this);
-    // Register the native SFNode handle class (see pushNode). No finalizer: the
-    // opaque slot holds an id, not an allocation.
+  // A fresh runtime for one script: memory cap, interrupt handler on `budget`,
+  // and the native SFNode handle class (see pushNode). The class has no
+  // finalizer: the opaque slot holds an id, not an allocation.
+  static JSRuntime *newRuntime(Budget &budget, std::size_t memoryLimit) {
+    JSRuntime *rt = JS_NewRuntime();
+    if (!rt) return nullptr;
+    // 0 = unlimited, as in QuickJS itself.
+    JS_SetMemoryLimit(rt, memoryLimit);
+    JS_SetInterruptHandler(rt, &Impl::interruptHandler, &budget);
     JSClassID nodeClass = 0;
     JS_NewClassID(rt, &nodeClass);
     JSClassDef def{};
@@ -697,14 +704,19 @@ struct QuickJsBackend::Impl {
     JS_NewClass(rt, nodeClass, &def);
     JS_SetRuntimeOpaque(rt, reinterpret_cast<void *>(
                                 static_cast<uintptr_t>(nodeClass)));
+    return rt;
+  }
+
+  static void freeEntry(Entry &e) {
+    if (e.ctx) JS_FreeContext(e.ctx);
+    if (e.rt) JS_FreeRuntime(e.rt);
+    e.ctx = nullptr;
+    e.rt = nullptr;
   }
 
   ~Impl() {
-    for (auto &[handle, e] : entries) {
-      if (e.ctx) JS_FreeContext(e.ctx);
-    }
+    for (auto &[handle, e] : entries) freeEntry(e);
     entries.clear();
-    if (rt) JS_FreeRuntime(rt);
   }
 
   Entry *entryFor(ScriptHandle handle) {
@@ -1100,6 +1112,24 @@ public:
 private:
   bool *armed_;
 };
+
+// Install the script's globals and evaluate its source in a fresh context.
+// False (after logging) on any failure; the caller frees the context.
+bool loadInto(JSContext *ctx, SaiContext &sai, const std::string &source) {
+  // Thread the SaiContext to Browser callbacks (1 context : 1 script).
+  JS_SetContextOpaque(ctx, &sai);
+  installBrowser(ctx);
+  installDeterministicDate(ctx);
+  if (!installFieldTypes(ctx)) return false;
+  // Evaluate the source to define global functions (initialize/handlers/...).
+  JsValue result(ctx, JS_Eval(ctx, source.c_str(), source.size(),
+                              "<script>", JS_EVAL_TYPE_GLOBAL));
+  if (result.isException()) {
+    logException(ctx, "eval");
+    return false;
+  }
+  return true;
+}
 } // namespace
 
 // Construction / destruction.
@@ -1111,42 +1141,36 @@ QuickJsBackend::~QuickJsBackend() = default;
 
 ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
                                   const std::string &source, SaiContext &sai) {
-  if (!impl_->rt) return kInvalidScriptHandle;
-  // memoryLimit(): every script shares this runtime, so the cap is on their
-  // combined heap (0 = unlimited, as in QuickJS itself).
-  JS_SetMemoryLimit(impl_->rt, memoryLimit());
-  JSContext *ctx = JS_NewContext(impl_->rt);
-  if (!ctx) return kInvalidScriptHandle;
+  auto budget = std::make_unique<Impl::Budget>();
+  JSRuntime *rt = Impl::newRuntime(*budget, memoryLimit());
+  if (!rt) return kInvalidScriptHandle;
+  JSContext *ctx = JS_NewContext(rt);
+  if (!ctx) {
+    JS_FreeRuntime(rt);
+    return kInvalidScriptHandle;
+  }
+  Impl::Entry entry{rt, ctx, &scriptNode, &sai, std::move(budget)};
   // The script's top level runs here too, so it gets a budget of its own.
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
-
-  // Thread the SaiContext to Browser callbacks (1 context : 1 script).
-  JS_SetContextOpaque(ctx, &sai);
-  installBrowser(ctx);
-  installDeterministicDate(ctx);
-  if (!installFieldTypes(ctx)) {
-    JS_FreeContext(ctx);
+  // Scoped so the deadline is disarmed before a failed load frees the entry.
+  bool ok = false;
+  {
+    ArmDeadline armed(entry.budget->armed, entry.budget->deadline,
+                      callBudget());
+    ok = loadInto(ctx, sai, source);
+  }
+  if (!ok) {
+    Impl::freeEntry(entry);
     return kInvalidScriptHandle;
   }
-
-  // Evaluate the source to define global functions (initialize/handlers/...).
-  JsValue result(ctx, JS_Eval(ctx, source.c_str(), source.size(),
-                              "<script>", JS_EVAL_TYPE_GLOBAL));
-  if (result.isException()) {
-    logException(ctx, "eval");
-    JS_FreeContext(ctx);
-    return kInvalidScriptHandle;
-  }
-
   ScriptHandle handle = impl_->nextHandle++;
-  impl_->entries[handle] = Impl::Entry{ctx, &scriptNode, &sai};
+  impl_->entries.emplace(handle, std::move(entry));
   return handle;
 }
 
 void QuickJsBackend::initialize(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
   // Seed initializeOnly/inputOutput author defaults before initialize() runs.
   impl_->seedAuthorGlobals(*e);
   impl_->callGlobalNoArgs(e->ctx, "initialize");
@@ -1158,16 +1182,19 @@ void QuickJsBackend::initialize(ScriptHandle handle) {
 void QuickJsBackend::shutdown(ScriptHandle handle) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
-  impl_->callGlobalNoArgs(e->ctx, "shutdown");
-  JS_FreeContext(e->ctx);
+  {
+    ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
+    impl_->callGlobalNoArgs(e->ctx, "shutdown");
+  }
+  // Disarmed above: the budget is freed with the entry.
+  Impl::freeEntry(*e);
   impl_->entries.erase(handle);
 }
 
 void QuickJsBackend::prepareEvents(ScriptHandle handle, double now) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
   JsValue arg(e->ctx, JS_NewFloat64(e->ctx, now));
   JSValueConst argv[1] = {arg.get()};
   impl_->callGlobal(e->ctx, "prepareEvents", 1, argv);
@@ -1180,7 +1207,7 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
                             double timestamp) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
   JSContext *ctx = e->ctx;
   JsValue arg0(ctx, pushValue(ctx, value, type));   // arg 0: the field value
   JsValue arg1(ctx, JS_NewFloat64(ctx, timestamp)); // arg 1: the timestamp
@@ -1194,7 +1221,7 @@ void QuickJsBackend::invoke(ScriptHandle handle, const std::string &eventName,
 void QuickJsBackend::eventsProcessed(ScriptHandle handle, double /*timestamp*/) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
   impl_->callGlobalNoArgs(e->ctx, "eventsProcessed");
   // §29.2.4: events from eventsProcessed() enter the cascade with the timestamp
   // of the last event processed — read author outputs back.
@@ -1208,7 +1235,7 @@ void QuickJsBackend::updateField(ScriptHandle handle, const std::string &name,
                                  const std::any &value, X3DFieldType type) {
   Impl::Entry *e = impl_->entryFor(handle);
   if (!e || !value.has_value()) return;
-  ArmDeadline armed(impl_->deadlineArmed, impl_->deadline, callBudget());
+  ArmDeadline armed(e->budget->armed, e->budget->deadline, callBudget());
   impl_->setGlobal(e->ctx, name.c_str(), pushValue(e->ctx, value, type));
   // The script may have made this global a throwing setter.
   if (JS_HasException(e->ctx))

@@ -101,8 +101,8 @@ Script source comes from the document, so this is the same exposure as above.
   (local `duk_config.h` changes). The heap udata is the script's `CallDeadline`.
   Once the deadline passes, Duktape raises a `RangeError` and keeps raising it
   until the deadline is disarmed, so a `try`/`catch` loop cannot outlast it.
-- QuickJS uses `JS_SetInterruptHandler` on the shared runtime, which raises an
-  uncatchable "interrupted" error.
+- QuickJS uses `JS_SetInterruptHandler` on the script's runtime, which raises
+  an uncatchable "interrupted" error.
 - An interrupted call is a script error: it is logged, and the script stays
   loaded. A load whose top level times out fails. T15g covers a plain infinite
   loop, a catch-and-continue loop, unbounded recursion (stopped by each
@@ -114,8 +114,10 @@ Script source comes from the document, so this is the same exposure as above.
     carries a size header, and the counts live in the heap udata `HeapState`
     alongside the deadline. Past the cap an allocation fails, Duktape collects
     garbage and retries, then raises "alloc failed".
-    - QuickJS uses `JS_SetMemoryLimit` on the shared runtime, so there the cap
-    covers all of that backend's scripts together.
+    - QuickJS gives each script its own `JSRuntime` and uses
+    `JS_SetMemoryLimit` on it, so the cap is per script as in Duktape
+    (amended 2026-11-15; until then one shared runtime capped all scripts
+    together, so one script could use up the others' budget).
     - Either way the out-of-memory error is contained like any script error.
     T15h stops an allocate-forever handler at a 16 MiB cap (peak process RSS
     28 MB) well inside a 10 s budget, and the script keeps working.

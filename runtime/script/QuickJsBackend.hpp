@@ -18,10 +18,11 @@ class SaiContext;
 /**
  * @brief QuickJS (quickjs-ng) backend implementing the ScriptEngine seam.
  * @details One QuickJsBackend instance backs the whole "ecmascript" language and
- *          may hold many loaded scripts, each addressed by a ScriptHandle. A
- *          single shared JSRuntime owns the heap; each loaded script gets its own
- *          JSContext (so globals defined by one script never leak into another),
- *          keyed by the handle returned from load(). The handle is a simple
+ *          may hold many loaded scripts, each addressed by a ScriptHandle. Each
+ *          loaded script gets its own JSRuntime and JSContext, keyed by the
+ *          handle returned from load(): globals defined by one script never
+ *          leak into another, and the memory cap and call deadline are per
+ *          script. The handle is a simple
  *          1-based counter so 0 stays kInvalidScriptHandle and the runtime never
  *          interprets the bits.
  */
