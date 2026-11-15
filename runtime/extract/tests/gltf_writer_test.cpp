@@ -474,3 +474,73 @@ TEST_CASE("glb: animation that cannot be exported is counted, not written") {
   CHECK(!has(g.json, "\"animations\""));
   CHECK(!has(g.json, "\"children\""));
 }
+
+TEST_CASE("glb: cameras and lights ride animated Transforms") {
+  const Glb g = exportScene(
+      "<Transform translation='0 5 0'>"
+      "  <Transform DEF='Arm' translation='1 0 0'>"
+      "    <Transform translation='0 0 2'>"
+      "      <Viewpoint DEF='Cam' position='0 0 3'/>"
+      "      <SpotLight DEF='Lamp' location='0 1 0' direction='0 -1 0'/>"
+      "    </Transform>"
+      "    <DirectionalLight direction='1 0 0'/>"
+      "  </Transform></Transform>"
+      "<PointLight DEF='Fixed' location='7 0 0'/>"
+      "<Shape><Box/></Shape>"
+      "<PositionInterpolator DEF='P' key='0 1' keyValue='1 0 0 4 0 0'/>"
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Arm' toField='translation'/>");
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 1);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.cameras == 1);
+  CHECK(g.report.lights == 3);
+  // The camera is a child of Arm carrying what lies between: the plain
+  // Transform and its own position.
+  CHECK(has(g.json, "{\"camera\":0,\"name\":\"Cam\","
+                    "\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,5,1]}"));
+  // The spot light keeps its local placement under a node for the plain
+  // Transform; the directional light hangs straight off Arm.
+  CHECK(has(g.json, "{\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,2,1],\"children\":["));
+  CHECK(has(g.json, "\"name\":\"Lamp\",\"translation\":[0,1,0],\"rotation\":["));
+  // The light outside the animated branch is still a world-space root.
+  CHECK(has(g.json, "{\"extensions\":{\"KHR_lights_punctual\":{\"light\":2}},"
+                    "\"translation\":[7,0,0]}"));
+  // Arm has three children (camera, lamp frame, directional light) besides
+  // nothing else: no shape sits under it.
+  CHECK(has(g.json, "{\"name\":\"Arm\",\"translation\":[1,0,0],\"rotation\":[0,0,0,1],"
+                    "\"scale\":[1,1,1],\"children\":["));
+}
+
+TEST_CASE("glb: a Viewpoint's pose and a light's location animate") {
+  const Glb g = exportScene(
+      "<Transform translation='0 0 -4'>"
+      "  <Viewpoint DEF='Fly' position='0 1 0' orientation='0 1 0 1.5707963'/>"
+      "  <PointLight DEF='Bulb' location='0 2 0'/>"
+      "</Transform>"
+      "<OrthoViewpoint DEF='Still'/>"
+      "<SpotLight DEF='Aim'/>"
+      "<Shape><Box/></Shape>"
+      "<TimeSensor DEF='Tour' cycleInterval='10'/>"
+      "<PositionInterpolator DEF='P' key='0 1' keyValue='0 1 0 0 1 9'/>"
+      "<OrientationInterpolator DEF='O' key='0 1' keyValue='0 1 0 0 0 1 0 1'/>"
+      "<ROUTE fromNode='Tour' fromField='fraction_changed' toNode='P' toField='set_fraction'/>"
+      "<ROUTE fromNode='Tour' fromField='fraction_changed' toNode='O' toField='set_fraction'/>"
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Fly' toField='set_position'/>"
+      "<ROUTE fromNode='O' fromField='value_changed' toNode='Fly' toField='set_orientation'/>"
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Bulb' toField='location'/>"
+      // Not expressible in core glTF: a light's direction.
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Aim' toField='direction'/>");
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 3);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.skippedAnimationRoutes == 1);
+  CHECK(has(g.json, "\"animations\":[{\"name\":\"Tour\""));
+  // Both sit under one-off nodes for the enclosing Transform, as TRS nodes.
+  CHECK(count(g.json, "{\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,-4,1],\"children\":[") == 2);
+  CHECK(has(g.json, "\"name\":\"Fly\",\"translation\":[0,1,0],\"rotation\":[0,0.70710"));
+  CHECK(has(g.json, "\"name\":\"Bulb\",\"translation\":[0,2,0]}"));
+  CHECK(count(g.json, "\"path\":\"translation\"") == 2);
+  CHECK(count(g.json, "\"path\":\"rotation\"") == 1);
+  // The untouched viewpoint and light stay plain roots.
+  CHECK(has(g.json, "\"name\":\"Still\",\"matrix\":["));
+}

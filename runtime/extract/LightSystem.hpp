@@ -89,6 +89,8 @@ public:
       // on==true gate (spec default true) — skip disabled lights entirely.
       if (geombounds::getField<bool>(*n, "on", true)) {
         out.push_back(makeLight(*n, type, worldM, scopeRoot));
+        out.back().node = n;
+        out.back().path = path;
         if (scopeRoot)
           out.back().scopePath.assign(path.begin(),
               std::find(path.rbegin(), path.rend(), scopeRoot).base());

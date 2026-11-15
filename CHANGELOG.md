@@ -20,10 +20,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   the base colour texture. Lights are written as `KHR_lights_punctual` and
   `Viewpoint`/`OrthoViewpoint` nodes as cameras. A Transform driven by a
   `PositionInterpolator` or `OrientationInterpolator` is exported as an
-  animated node, one glTF animation per `TimeSensor`. Not exported: movie,
-  multi, cube and 3D textures, skins, and animation of anything but a
-  Transform's translation, rotation and scale; `GltfWriteReport` counts what
-  was dropped. Light intensity has no unit conversion.
+  animated node, one glTF animation per `TimeSensor`; so are a viewpoint's
+  `position`/`orientation` and a point or spot light's `location`, and lights
+  and cameras below an animated Transform move with it. Not exported: movie,
+  multi, cube and 3D textures, skins, and animation core glTF cannot express
+  (colours, scalars, coordinates); `GltfWriteReport` counts what was
+  dropped. Light intensity has no unit conversion.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and
   `sdk::SceneBuilder`) gains a fluent builder:
   `b.add<Transform>().def("T").add<Shape>().add<Sphere>()`,
