@@ -11,6 +11,7 @@
 
 #include <any>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -1310,6 +1311,57 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     store.erase(fix.script);
     backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
     backend.setCallBudget(ScriptEngine::kDefaultCallBudget);
+  }
+
+  // T15k: engine-wide memory cap. Two scripts, each within its own cap,
+  // together pass the engine's total: the second one's allocations fail, and
+  // succeed once the first script is unloaded and its heap is returned.
+  {
+    backend.setMemoryLimit(std::size_t{16} << 20);
+    backend.setTotalMemoryLimit(std::size_t{22} << 20);
+    const std::size_t before = backend.totalMemoryUsed();
+    X3DExecutionContext ctx;
+    Script hogScript, otherScript;
+    SaiContext hogSai(ctx, hogScript, "x3d-cpp-gen", "dev");
+    SaiContext otherSai(ctx, otherScript, "x3d-cpp-gen", "dev");
+    ctx.authorFields().addAuthorField(
+        otherScript, AuthorFieldDecl{"ok", X3DFieldType::SFFloat,
+                                     AccessType::OutputOnly, {}});
+    // Each string is ~1 MB and unique (engines may intern equal strings).
+    ScriptHandle hog = backend.load(hogScript,
+        "var hog = [], i = 0;"
+        "function go(v, t) {"
+        "  for (;;) hog.push(new Array(100000).join('xxxxxxxxxx') + (i++)); }",
+        hogSai);
+    ScriptHandle other = backend.load(otherScript,
+        "function go(v, t) {"
+        "  var keep = [];"
+        "  for (var j = 0; j < 10; ++j)"
+        "    keep.push(new Array(100000).join('yyyyyyyyyy') + j);"
+        "  ok = keep.length; }",
+        otherSai);
+    check(hog != kInvalidScriptHandle && other != kInvalidScriptHandle,
+          "T15k: load two scripts");
+    backend.invoke(hog, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    const std::size_t full = backend.totalMemoryUsed();
+    check(full - before > (std::size_t{12} << 20),
+          "T15k: the total counts the first script's heap");
+    backend.invoke(other, "go", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    check(!ctx.authorFields().getValue(otherScript, "ok").has_value(),
+          "T15k: past the engine's total, another script's allocation fails");
+    backend.shutdown(hog);
+    check(backend.totalMemoryUsed() + (std::size_t{12} << 20) < full,
+          "T15k: an unloaded script's heap leaves the total");
+    backend.invoke(other, "go", std::any(1.0), X3DFieldType::SFTime, 2.0);
+    std::any ok = ctx.authorFields().getValue(otherScript, "ok");
+    check(ok.has_value() && std::any_cast<float>(ok) == 10.0f,
+          "T15k: with the room back, the script allocates");
+    backend.shutdown(other);
+    check(backend.totalMemoryUsed() == before,
+          "T15k: every byte returns to the total");
+    ctx.authorFields().erase(otherScript);
+    backend.setMemoryLimit(ScriptEngine::kDefaultMemoryLimit);
+    backend.setTotalMemoryLimit(ScriptEngine::kDefaultTotalMemoryLimit);
   }
 }
 

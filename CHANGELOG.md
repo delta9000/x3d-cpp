@@ -8,6 +8,12 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Engine-wide script memory cap.** `ScriptEngine::setTotalMemoryLimit()`
+  (default 1 GiB) bounds the heaps of all of one engine's scripts together,
+  on top of the 256 MiB per-script cap, in both Duktape and QuickJS. Before,
+  each script had its own cap and nothing bounded their sum, so a document
+  with many Scripts could allocate many times the per-script cap.
+  `totalMemoryUsed()` reports the current sum.
 - **glTF export.** `sdk::writeGlb(extractor, snapshot.added)` and
   `x3d extract scene.x3d -o scene.glb` (or `-f glb`) write the extracted scene
   as binary glTF 2.0: one node per placed shape with its world matrix, meshes
