@@ -2,7 +2,7 @@
 title: Source map
 summary: Where to look for each kind of question, and the primary source paths behind every subsystem page.
 tags: [reference]
-updated: 2026-11-05
+updated: 2026-11-15
 related: []
 ---
 
@@ -16,7 +16,7 @@ related: []
 | Where is the behavior implemented? | Current C++ source; `code_rag.py` locates symbols |
 | How does a subsystem work? | The subsystem page, found through the table below |
 | Why was a design chosen? | The decision records (ADRs) |
-| What conformance gaps remain? | `docs/conformance/findings.yaml` and its generated view |
+| What conformance gaps remain? | The [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml) and [generated status view](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/INDEX.md) |
 | What can I run? | `mise tasks`, described in [Build and mise tasks](build-and-tasks.md) |
 | Which docs might a code change affect? | `mise run docs-drift`, then source review |
 

@@ -2,7 +2,7 @@
 title: Measure tick phases
 summary: Get per-phase tick timings from the profile tool or from your own host.
 tags: [how-to, execution, performance]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/native-host-contract.md
 ---
@@ -32,15 +32,17 @@ It fails if the extraction walk budget is exhausted.
 
 ## In your own host
 
-Pass a `TickTimings` to the context tick:
+Pass a `TickTimings` to the session tick:
 
 ```cpp
 sdk::X3DExecutionContext::TickTimings timings;
-session->context().tick(now, &timings);
+session->tick(now, &timings);
 ```
 
 It receives the same per-phase milliseconds. Plain `tick(now)` reads no
 clocks, so leave the argument out in production paths you don't measure.
+Use the session overload to keep deferred Inline diagnostics flowing into
+`session->document().inlineWarnings` while measuring.
 
 ## Reading the numbers
 

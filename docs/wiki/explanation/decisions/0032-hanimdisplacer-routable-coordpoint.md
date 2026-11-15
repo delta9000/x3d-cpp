@@ -2,11 +2,11 @@
 title: "ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point"
 summary: "Superseded by ADR-0055. Proposed that in the headless runtime, a Segment's coord.point current value reflects the weighted sum of its Displacers and emits point_changed; the neutral pose is retained internally and never destructively overwritten."
 tags: [adr, hanim, displacer, events, headless, conformance]
-updated: 2026-09-27
+updated: 2026-11-15
 related:
   - ../architecture.md
   - ../../reference/subsystems/event-cascade.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0032: HAnimDisplacer Produces a Routable Derived coord.point

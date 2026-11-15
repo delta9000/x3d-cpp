@@ -12,19 +12,19 @@ x3d-cpp is a headless C++20 X3D runtime SDK. It parses a scene, advances its
 behavior, and hands meshes, materials, lights and cameras to your renderer. The
 node bindings are generated from the X3D 4.0 Unified Object Model.
 
-New here? Work through [Load, run and extract your first scene](tutorials/first-scene.md),
-then read [Architecture](explanation/architecture.md).
-
-The documentation follows [Diataxis](https://diataxis.fr/). Pick the kind of
-page that matches what you need now.
+Choose a starting point for your work:
 
 | You want to | Go to |
 |---|---|
-| Learn by building something that works | [Tutorials](#tutorials) |
-| Get one task done | [How-to guides](#how-to-guides) |
-| Look up exact behavior | [Reference](#reference) |
-| Understand why it is built this way | [Explanation](#explanation) |
-| Use the Scene Access Interface | [SAI SDK](sai/index.md), a tree of the same shape |
+| Try the runtime without writing code | [Tour the x3d command line](tutorials/cli-tour.md) |
+| Write a first C++ host | [Load, run and extract your first scene](tutorials/first-scene.md) |
+| Add the runtime to an existing application | [Integrate a native host](how-to/integrate-a-native-host.md) |
+| Look up session methods and option defaults | [RuntimeSession and SessionOptions](reference/runtime-session.md) |
+| Understand the runtime's layers | [Architecture](explanation/architecture.md) |
+| Use the Scene Access Interface | [SAI SDK](sai/index.md) |
+
+Browse the sections below for learning tutorials, task guides, exact reference
+material and explanations of the design.
 
 ## Tutorials
 
@@ -59,6 +59,7 @@ Using the SDK:
 | Page | Contents |
 |---|---|
 | [SDK capabilities](reference/capabilities.md) | What the SDK covers, one row per capability |
+| [Runtime session and options](reference/runtime-session.md) | Session API, configuration defaults and callback precedence |
 | [Native host contract](reference/native-host-contract.md) | Session, mutation, delta, lifetime and resource rules |
 | [Seam matrix](reference/seam-matrix.md) | Interfaces, implementations and contract tests |
 | [API stability](reference/api-stability.md) | What 0.x releases promise |
@@ -79,8 +80,9 @@ Working on x3d-cpp:
 | [X3D 4.0 requirements audit](reference/x3d4-requirements-audit.md) | Normative obligations and host acceptance scope |
 | [Documentation conventions](reference/doc-conventions.md) | Where pages go and how they are written |
 
-Conformance status is not in this tree: `docs/conformance/findings.yaml` owns
-it, and `docs/conformance/INDEX.md` is its generated view.
+The [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml)
+owns conformance status; the [generated status view](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/INDEX.md)
+groups the findings by component.
 
 ## Explanation
 

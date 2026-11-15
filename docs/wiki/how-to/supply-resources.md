@@ -16,12 +16,18 @@ callbacks. This guide shows how to supply each one. Why they are callbacks is
 in [Seams, ports and backends](../explanation/seams.md); the list of seams and
 their state is the [seam matrix](../reference/seam-matrix.md).
 
+The session snippets assume you have linked `x3d_cpp::sdk`, included
+`x3d/sdk.hpp`, and declared `namespace sdk = x3d::sdk;`. They use `doc` for an
+already parsed document. The font and script recipes below are complete
+programs with their own build instructions.
+
 ## Pick the seam
 
 | You want the scene to | Supply | Default without it |
 |---|---|---|
 | Show images | `sdk::TextureResolver` (decoded RGBA for a URL) | Always fails; textured surfaces use the white fallback |
-| Load bytes (textures, movies, Inline, EXTERNPROTO) | `sdk::AssetResolver` | No bytes |
+| Resolve resources watched by `LoadSensor` | `SessionOptions::assetResolver` | No bytes |
+| Load Inline and EXTERNPROTO while parsing | Both `parseDocument` resolver callbacks | Local-file resolution |
 | Lay out `Text` with a real font | `sdk::FontMetrics` | `makeMonospaceStub()`: fixed-pitch cells, advance 0.6 em |
 | Run `Script` nodes | `sdk::ScriptEngine`, wrapped in `sdk::ScriptSystem` | Scripts do not run |
 | Use another geospatial projection | `SessionOptions::geoProjection` | Built-in ellipsoid conversion |
@@ -78,69 +84,162 @@ options.assetResolverWithBase = [](const std::string &url, sdk::AssetKind kind,
 ## Load slowly without blocking
 
 Callbacks run on the thread that called `tick` or `delta`. For slow IO, start
-your own background load and return `Pending`. The extractor asks again on
-later ticks and reports completion through `updatedMaterial`,
-`updatedGeometry` or `added`. Parse-time requests (Inline and EXTERNPROTO)
+your own background load and return `Pending`. Consume `delta()` after each
+tick to retry pending texture and geometry resources and receive completion
+through `updatedMaterial`, `updatedGeometry` or `added`. `LoadSensor` retries
+its byte requests during ticks. Parse-time requests (Inline and EXTERNPROTO)
 can't be pending: they must answer `Ready` or `Failed`.
+
+## Prepare the backend example
+
+The font and script recipes need a C++20 compiler, CMake 3.21 or later, Ninja,
+and an x3d-cpp checkout. The bundled stb font adapter and Duktape script engine
+are source-tree targets. Create an empty directory outside the checkout and
+save this as `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.21)
+project(resource_host LANGUAGES CXX)
+
+add_subdirectory("${X3D_CPP_SOURCE_DIR}" x3d-cpp EXCLUDE_FROM_ALL)
+add_executable(resource_host main.cpp)
+target_link_libraries(resource_host PRIVATE
+  x3d_cpp::sdk x3d_stbtt x3d_ecmascript_backend)
+```
+
+The installed package exports the callback interfaces; these two backend
+targets are available when building from source. An installed-package host can
+instead supply its own `FontMetrics` or `ScriptEngine` implementation.
+
+Choose [Use a real font](#use-a-real-font) or [Run scripts](#run-scripts), then
+save that recipe's `main.cpp` beside `CMakeLists.txt` before configuring or
+building. Each recipe works independently. The first build compiles the SDK
+and takes a few minutes.
 
 ## Use a real font
 
+First [prepare the backend example](#prepare-the-backend-example). Save the
+following program as `main.cpp`. It maps the scene's `SANS` family to a font
+file and passes its metrics through `SessionOptions::meshOptions`:
+
 ```cpp
-sdk::MeshBuildOptions opts;
-opts.fontMetrics = sdk::makeMonospaceStub();   // or your own FontMetrics
-sdk::SceneExtractor ex(ctx, doc.scene, opts);
+#include "x3d/sdk.hpp"
+#include "StbttFontMetrics.hpp"
+#include <iostream>
+
+namespace sdk = x3d::sdk;
+
+int main(int argc, char **argv) {
+  if (argc != 2) {
+    std::cerr << "usage: resource_host /path/to/font.ttf\n";
+    return 1;
+  }
+  auto metrics = x3d::runtime::io::stbtt::makeStbttFontMetrics(
+      {{"SANS", argv[1]}});
+  if (!metrics({"SANS", "PLAIN", 'A'}).ready()) {
+    std::cerr << "font or glyph unavailable\n";
+    return 1;
+  }
+
+  sdk::SessionOptions options;
+  options.meshOptions.fontMetrics = metrics;
+  auto doc = sdk::parseDocument(R"(
+    <X3D profile="Immersive" version="4.0"><Scene><Shape>
+      <Text string='"Wi"'><FontStyle family='"SANS"' style="PLAIN"/></Text>
+    </Shape></Scene></X3D>)");
+  auto session = sdk::RuntimeSession::create(std::move(doc), options);
+  auto snapshot = session->fullSnapshot();
+  std::cout << "glyph ready; placements=" << snapshot.added.size() << '\n';
+}
 ```
 
-The SDK does the text layout; your callback supplies per-glyph advance and,
-optionally, atlas UVs or outlines. See
+From your example directory, configure, build and run with the checkout's
+bundled font. Replace `/path/to/x3d-cpp` with your checkout path in both places:
+
+```sh
+cmake -S . -B build -G Ninja \
+  -DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp \
+  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
+  -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_SCRIPT=ON
+cmake --build build --target resource_host --parallel 2
+./build/resource_host /path/to/x3d-cpp/third_party/fonts/LiberationSans-Regular.ttf
+```
+
+```text
+glyph ready; placements=1
+```
+
+The adapter supplies real glyph advances and boxes for PLAIN faces. It does
+not supply a glyph atlas; to draw rasterized glyphs, wire an atlas as described
+in [Text extraction](../reference/subsystems/extract-text.md#optional-glyph-atlas).
+The SDK performs layout using the supplied metrics. See
 [Font metrics](../reference/subsystems/system-font-metrics.md).
 
 ## Run scripts
 
-The bundled Duktape engine is the in-tree target `x3d_ecmascript_backend`; a
-consumer of the installed package implements `sdk::ScriptEngine` instead.
-
-1. Bind the context to the scene's author fields, build it, and attach the
-   standard runtime.
-2. Wrap the engine in a `sdk::ScriptSystem`. Pass an `AssetResolver` as the
-   fourth argument if scripts load external urls; set the scene factory, and
-   call `setResourceLimits` if you need other quotas, before enrolling any
-   script.
-3. Enroll every Script node with `attach`, then register the system with
-   `ctx.addScriptSystem`. It runs ahead of the other systems and delivers
-   routed events to script handlers itself.
+First [prepare the backend example](#prepare-the-backend-example). Save the
+following program as `main.cpp`, replacing it if you already tried the font
+recipe. It uses the bundled Duktape backend, registers a script system, and
+explicitly enrolls the scene's Script nodes before the first tick:
 
 ```cpp
 #include "x3d/sdk.hpp"
-#include "EcmaScriptBackend.hpp"  // in-tree target x3d_ecmascript_backend
+#include "EcmaScriptBackend.hpp"
+#include <iostream>
+#include <memory>
 
-sdk::X3DExecutionContext ctx(doc.scene.authorFields);
-ctx.buildSceneGraph(doc.scene);
-ctx.buildFrom(doc.scene);
-x3d::runtime::attachStandardRuntime(doc.scene, ctx);
+namespace sdk = x3d::sdk;
 
-auto engine = std::make_shared<x3d::runtime::EcmaScriptBackend>();
-auto scripts = std::make_shared<sdk::ScriptSystem>(engine, "my-host", "1.0");
-scripts->setSceneFactory(x3d::codec::makeStringSceneFactory());
-
-sdk::forEachNode(doc.scene, [&](sdk::X3DNode *node) {
-  if (node->nodeTypeName() == "Script") scripts->attach(node, ctx);
-});
-ctx.addScriptSystem(scripts);
-
-ctx.tick(0.0);
+int main() {
+  auto doc = sdk::parseDocument(R"(
+    <X3D profile="Immersive" version="4.0"><Scene>
+      <Script DEF="Reporter"><![CDATA[
+        function initialize() { Browser.print("script initialized\n"); }
+        function prepareEvents() { Browser.print("script tick\n"); }
+      ]]></Script>
+    </Scene></X3D>)");
+  auto session = sdk::RuntimeSession::create(std::move(doc));
+  auto engine = std::make_shared<x3d::runtime::EcmaScriptBackend>();
+  auto scripts = std::make_shared<sdk::ScriptSystem>(engine, "resource-host", "1");
+  auto &ctx = session->context();
+  ctx.addScriptSystem(scripts);
+  sdk::forEachNode(session->scene(), [&](sdk::X3DNode *node) {
+    scripts->attach(node, ctx);
+  });
+  auto reporter = session->scene().resolve("Reporter");
+  auto *script = dynamic_cast<x3d::nodes::Script *>(reporter.get());
+  if (!script || scripts->handleFor(script) == sdk::kInvalidScriptHandle) {
+    std::cerr << "script failed to load\n";
+    return 1;
+  }
+  session->tick(0.0);
+  std::cout << scripts->saiFor(script)->log();
+}
 ```
 
-With a Script whose `initialize()` sets an `outputOnly` SFVec3f to `1 2 3` and
-a ROUTE to a Transform's `set_translation`, reading the translation after the
-first tick prints:
+From your example directory, configure, build and run. Replace
+`/path/to/x3d-cpp` with your checkout path:
+
+```sh
+cmake -S . -B build -G Ninja \
+  -DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp \
+  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
+  -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_SCRIPT=ON
+cmake --build build --target resource_host --parallel 2
+./build/resource_host
+```
 
 ```text
-translation: 1 2 3
+script initialized
+script tick
 ```
 
-`scripts->saiFor(script)->log()` returns what the script printed. Call budget,
-heap and quota defaults are in
+`initialize` runs during enrollment; `prepareEvents` runs when the host ticks.
+`Browser.print` accumulates text in the script's SAI log, which the host prints
+here. For external script URLs, pass an `AssetResolver` as the fourth
+`ScriptSystem` constructor argument. Call `setSceneFactory` (for
+`Browser.createX3DFromString`) and `setResourceLimits` before enrolling any
+script. Call budget, heap and quota defaults are in
 [Script and SAI runtime](../reference/subsystems/system-script-sai.md#limits);
 what script code can call is in the [Script ECMAScript API](../reference/script-api.md).
 

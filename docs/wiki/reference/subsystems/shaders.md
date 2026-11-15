@@ -2,7 +2,7 @@
 title: Shaders
 summary: "§31 shaders end to end: selectShader picks each Appearance's first valid GLSL ComposedShader/ProgramShader and SceneExtractor puts it on RenderItem::shaderProgram; ShaderSystem emits isSelected/isValid and handles activate; ShaderUniformVocabulary + buildBindingPlan classify uniforms; cpu_raster and the GL PoC run the program."
 tags: [subsystem, shaders, extract, composedshader, vocab, binding-plan]
-updated: 2026-10-10
+updated: 2026-11-15
 related:
   - ../../explanation/architecture.md
   - materials.md
@@ -177,7 +177,7 @@ The result `ShaderBindingPlan::entries` is a classified, ordered list parallel t
 
 ## PoC consumer dispatch (Phase 5)
 
-The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-program dispatch. Its `makeGlShaderValidator` compiles and links each candidate in the GL context, so a program that fails to compile is skipped for the next shader or the material (`tests/author_shader_gl_test.py`):
+The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-program dispatch. Its `makeGlShaderValidator` compiles and links each candidate in the GL context, so a program that fails to compile is skipped for the next shader or the material (`examples/poc_renderer/tests/author_shader_gl_test.py`):
 
 | Condition | Program | Shader files |
 |---|---|---|
@@ -224,7 +224,7 @@ This keeps the vocabulary includable in any header without dragging in the full 
 - `--frag` still forces one fragment shader onto every item.
 - It binds the same `ShaderUniformVocabulary` names this seam defines, making
   the shader seam testable as a GPU-free golden-image harness
-  (`tests/author_shader_test.cpp`); see `examples/cpu_raster/README.md`.
+  (`examples/cpu_raster/tests/author_shader_test.cpp`); see `examples/cpu_raster/README.md`.
 
 Runtime interpreter failures retain the material fallback. Each draw logs its
 first `GlslError`, and the thread-local `interpreterRuntimeErrors` counter records

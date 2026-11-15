@@ -2,11 +2,11 @@
 title: "ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)"
 summary: "A ProtoDeclare/ExternProtoDeclare whose name collides with a built-in node type is rejected (quarantined with a diagnostic); the built-in retains precedence. Lenient by default, fatal in strict mode."
 tags: [adr, prototypes, security, parsing, ext-firewall, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - 0001-ext-firewall.md
   - ../architecture.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0033: A PROTO May Not Shadow a Built-in Node Name (Security)
