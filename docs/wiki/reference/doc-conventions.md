@@ -1,6 +1,6 @@
 ---
 title: Documentation conventions
-summary: Where a page goes, how each kind of page is written, and which link and navigation rules the docs gate enforces.
+summary: Choose a page's purpose, write for its reader, and follow the documentation build and review rules.
 tags: [reference, conventions, meta]
 updated: 2026-11-15
 related:
@@ -10,34 +10,43 @@ related:
 
 # Documentation conventions
 
-All prose documentation lives in one tree, `docs/wiki/`, organised by
-[Diataxis](https://diataxis.fr/). Each page serves exactly one purpose.
+The main documentation lives in `docs/wiki/`, organised by
+[Diataxis](https://diataxis.fr/). Each page serves one reader need: learning,
+completing a task, looking up a contract, or understanding a design.
+
 `mkdocs build --strict` (`mise run docs-build`) rejects broken internal page
 and heading links and pages omitted from navigation. Frontmatter and prose
 conventions below require review; the build does not enforce them.
 
 ## Where a page goes
 
-| Directory | A page there | Written as |
+| Directory | Reader need | What to include |
 |---|---|---|
-| `tutorials/` | Teaches by building something that works | Numbered steps with the expected output after each; no options, no digressions |
-| `how-to/` | Gets one named task done | Steps for a reader who already knows the basics; links to reference for the rules |
-| `reference/` | States exact behavior | Tables and short bullets; no instructions, no rationale |
-| `reference/subsystems/` | Describes one subsystem's contract | The [subsystem template](subsystems/_template.md) |
-| `reference/examples/` | Describes one example program | What it covers, how to build it, its options |
-| `explanation/` | Says why | Prose; no steps |
-| `explanation/decisions/` | Records one binding design decision | The [ADR template](../explanation/decisions/0000-template.md) |
-| `sai/` | The SAI SDK, a product of its own | The same four directories inside `sai/` |
+| `tutorials/` | Learn by building something that works | A clear starting point, one guided sequence, and observable checkpoints; choose a path for the learner |
+| `how-to/` | Complete one named task | Prerequisites, actions, and a completion check for a reader who knows the basics; link to reference for detailed rules |
+| `reference/` | Look up exact behavior | Contracts, parameters, defaults, limits, and errors; use short examples when they clarify a rule |
+| `reference/subsystems/` | Look up one subsystem's contract | The [subsystem template](subsystems/_template.md) |
+| `reference/examples/` | Find an example program's capabilities and options | What it covers, how to build it, and its options |
+| `explanation/` | Understand how and why a design works | Concepts, relationships, tradeoffs, and diagrams; link to separate procedures for tasks |
+| `explanation/decisions/` | Understand one binding design decision | The [ADR template](../explanation/decisions/0000-template.md) |
+| `sai/` | Work with the SAI SDK | The same four directories inside `sai/` |
 
-Rules:
+Choose the page kind by what the reader needs to do, then choose the format
+that makes the material clear. Use tables to compare cases, numbered steps
+for a sequence, and paragraphs to develop an explanation.
+
+When adding or revising a page:
 
 - New material goes into the matching directory, the `mkdocs.yml` nav, and the
   landing page (`index.md`, or `sai/index.md` for SAI material).
-- State a fact once, in reference, and link to it from the other three kinds.
-- If a page needs a second purpose, split it.
-- Prefer a table to a paragraph that lists cases. A paragraph longer than
-  about six lines usually hides a list.
-- Verify tutorial and how-to commands by running them. Paste real output.
+- Keep authoritative behavior and detailed contracts in reference, and link
+  to them from tutorials, how-to guides, and explanation.
+- If a page takes on a second purpose, split that material into a linked page.
+  A short example that clarifies the current purpose can stay.
+- Keep tutorials and how-to guides usable from their stated starting point.
+  Name required files, tools, and working directories before using them.
+- Verify commands by running them. Show the result readers should check, using
+  actual output when it helps them recognise success.
 
 ## What stays outside the tree
 
@@ -73,6 +82,7 @@ related:                    # paths relative to this file; may be []
 | Field | Rule |
 |---|---|
 | `title` | Matches the `# H1` that follows the frontmatter |
+| `summary` | One sentence describing what the reader can learn or do on the page |
 | `tags` | Lowercase and hyphenated; include the page kind (`tutorial`, `how-to`, `reference`, `explanation`, `adr`, `subsystem`) |
 | `updated` | The date the content changed, not the git date |
 | `related` | Pages a reader should also visit. Every entry also appears as an in-page link |
@@ -97,7 +107,8 @@ Check incoming anchors before renaming a heading.
 ## Nav
 
 The `nav:` section of `mkdocs.yml` is the single source of truth for
-navigation. A page that is not in nav warns under `--strict`.
+navigation. A page omitted from nav raises a warning, which fails a strict
+build.
 
 To add a page:
 
@@ -108,10 +119,10 @@ To add a page:
 
 ## Commands in pages
 
-`scripts/doc_ctest_gate.py` checks every `ctest ... -R <pattern>` written in
-`docs/wiki/` against the CTest registrations in the CMake sources. Doctest
-case names are not CTest targets; to select a case, run the test binary with
-`--test-case`.
+`scripts/doc_ctest_gate.py` checks documented `ctest ... -R <pattern>` commands
+whose pattern contains `x3d_` against the CTest registrations in the CMake
+sources. Doctest case names are not CTest targets; to select a case, run the
+test binary with `--test-case`.
 
 ## ADRs
 

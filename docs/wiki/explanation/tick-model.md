@@ -2,7 +2,7 @@
 title: The tick model
 summary: Why the runtime is single-threaded, host-driven and pull-based, and what that means for deltas.
 tags: [explanation, execution, embedding]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - architecture.md
   - ../reference/native-host-contract.md
@@ -55,8 +55,13 @@ that is the baseline everything later is relative to.
 ## Callbacks run on your thread
 
 Resource callbacks run synchronously inside the call that needed them, so slow
-IO blocks the host's thread. The runtime doesn't start background work to hide
-that. Where a result type allows it, a callback can answer `Pending` and the
-extractor asks again on later ticks; the host still owns the loading, the
-timeout and the cancellation. [Seams, ports and backends](seams.md) explains
-why resource IO sits outside the core at all.
+IO blocks the host's thread. Where an interface supports `Pending`, the host
+can start asynchronous work and return before it completes. Returning
+`Pending` does not start that work: the host owns its scheduling, timeout and
+cancellation. Later ticks or extraction calls retry the request according to
+the interface's contract.
+
+This keeps resource scheduling under the same host control as time and input.
+[Seams, ports and backends](seams.md) explains that boundary;
+[Supply resources through the seams](../how-to/supply-resources.md#load-slowly-without-blocking)
+shows how to use it.

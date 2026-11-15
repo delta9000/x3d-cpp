@@ -2,7 +2,7 @@
 title: SAI SDK
 summary: Entry point for the C++20 Scene Access Interface SDK, its two backends and its documentation.
 tags: [sai, index]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/subsystems/system-script-sai.md
   - ../explanation/decisions/0076-fold-sai-into-x3d-cpp.md
@@ -27,10 +27,14 @@ notification rules, and the same test oracle runs against both.
 
 | You want to | Go to |
 |---|---|
-| Learn the API by building something | [Tutorials](#tutorials) |
-| Get a specific job done | [How-to guides](#how-to-guides) |
-| Look up exact behaviour | [Reference](#reference) |
-| Understand why it works this way | [Explanation](#explanation) |
+| Learn the provider API with the reference backend | [Animate your first scene](tutorials/first-scene.md) |
+| Drive a scene on the native runtime | [Run a scene on the native runtime](tutorials/native-host.md) |
+| Link the SDK from an application | [Consume the SDK from CMake](how-to/consume-the-sdk.md) |
+| Look up handles, operations and errors | [Provider contract](reference/provider-contract.md) |
+| Choose between the two backends | [Architecture: one contract, two backends](explanation/architecture.md) |
+
+The task guides and reference pages below distinguish the portable contract
+from backend-specific features.
 
 ## Tutorials
 

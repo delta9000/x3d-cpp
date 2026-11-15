@@ -16,9 +16,10 @@ The definitions are in `runtime/extract/RuntimeSession.hpp`.
 
 `RuntimeSession` owns a document, execution context and extractor together.
 It builds scene indices, resolves ROUTEs and attaches the configured systems
-before returning from `create`. It creates no renderer, thread or event loop.
-The integration steps are in [Integrate a native host](../how-to/integrate-a-native-host.md);
-mutation and render-feed rules are in the [native host contract](native-host-contract.md).
+before `create` returns. The host supplies the renderer, thread and event loop.
+See [Integrate a native host](../how-to/integrate-a-native-host.md) for the
+steps, or the [native host contract](native-host-contract.md) for mutation and
+render-feed rules.
 
 ## Construction and frame methods
 
@@ -26,7 +27,7 @@ Member signatures of `sdk::RuntimeSession`:
 
 ```cpp
 static std::unique_ptr<RuntimeSession> create(X3DDocument doc,
-                                             SessionOptions options = {});
+                                            SessionOptions options = {});
 
 void tick(double now);
 void tick(double now,
@@ -41,14 +42,18 @@ RenderDelta delta();
 | Method | Contract |
 |---|---|
 | `create` | Takes the document and options by value and returns an owning `unique_ptr`. The session itself is neither copyable nor movable |
-| `tick` | Advances the context using host time in seconds; repeated timestamps are allowed. Every overload appends pending runtime Inline warnings to `document().inlineWarnings` and drains the scene's pending warning vector |
+| `tick` | Advances the context using host time in seconds; repeated timestamps are allowed |
 | `tick` with `ingress` | Supplies a retained batch before systems run; admission and value rules are in [retained batch ingress](subsystems/execution-context.md#retained-batch-ingress) |
 | `tick` with `timings` | Fills phase timings when the pointer is non-null. A null pointer disables those clock reads; see [Measure tick phases](../how-to/measure-tick-phases.md) |
 | `fullSnapshot` | Returns every current placement in `added` and replaces the extraction baseline |
 | `delta` | Returns changes for the latest tick. Before a baseline exists it returns a full snapshot; a second call without a tick returns an empty delta |
 
-`context().tick()` bypasses the session's Inline-warning drain. Extraction
-does not happen inside `tick`; deltas and descriptor lifetimes follow
+Every `tick` overload appends pending runtime Inline warnings to
+`document().inlineWarnings` and drains the scene's pending warning vector.
+Calling `context().tick()` directly bypasses this drain.
+
+Extraction is separate from ticking: the host requests it with `fullSnapshot`
+or `delta`. Delta and descriptor lifetimes follow
 [Extraction pipeline](subsystems/extract.md#one-delta-per-tick-contract).
 
 ## SessionOptions
@@ -56,24 +61,36 @@ does not happen inside `tick`; deltas and descriptor lifetimes follow
 Options are consumed at construction. Changing the caller's options object
 after `create` does not reconfigure the session.
 
-| Member | Type | Default | Effect |
-|---|---|---|---|
-| `geoProjection` | `std::shared_ptr<const runtime::geo::GeoProjection>` | Null | Selects the built-in projection when null; otherwise retains the supplied projection for the context's lifetime. See [Geospatial](subsystems/geospatial.md#world-ownership-and-migration) |
-| `standardRuntime` | `bool` | `true` | Attaches the standard behavior systems. `false` leaves their installation to the host; it does not disable scene indexing, ROUTE resolution or extraction |
-| `interactive` | `bool` | `false` | Installs pointing-device sensors, Anchors and SDK navigation; `navigation()` exposes the navigation system |
-| `anchorHandler` | `runtime::AnchorSystem::AnchorHandler` | Empty | With `interactive`, receives activated Anchors with external URLs and their parameters. An empty handler ignores these activations; fragment Viewpoint binding remains internal |
-| `meshOptions` | `MeshBuildOptions` | `{}` | Passed unchanged to the extractor for tessellation, font metrics, external geometry and shader selection. See [extraction seams](subsystems/extract.md#seam-points); its shader options also configure the standard runtime's ShaderSystem |
-| `textureResolver` | `TextureResolver` | `makeNullTextureResolver()` | Supplies decoded URL texture pixels to extraction; the default returns `Failed` |
-| `assetResolver` | `AssetResolver` | Null | Supplies the standard runtime's LoadSensor byte requests; null selects a failed-loading stub. It does not configure parsing, texture decoding or runtime Inline loading |
-| `inlineResolver` | `runtime::InlineResolver` | Empty | A nonempty value enables the standard runtime's deferred Inline system and supplies its fallback loader |
-| `baseUrl` | `std::string` | Empty | Fallback source directory for Inline loading, contextual texture resolution and contextual LoadSensor requests |
-| `textureResolverWithBase` | `TextureResolverWithBase` | Empty | Contextual texture callback; when present, used instead of `textureResolver` |
-| `assetResolverWithBase` | `AssetResolverWithBase` | Empty | Contextual LoadSensor callback; when present, used instead of `assetResolver` |
-| `pointingSensors` | `bool` | `false` | Installs pointing-device sensors without Anchors or SDK navigation when `interactive` is false |
-
 The `runtime::` qualifications on this page mean `x3d::runtime`; those types
 are not aliases in `x3d::sdk`. The other type names are available through the
 [SDK facade](subsystems/sdk-facade.md).
+
+### Behavior and input
+
+| Member and type | Default | Effect |
+|---|---|---|
+| `standardRuntime` (`bool`) | `true` | Attaches the standard behavior systems. `false` leaves their installation to the host; scene indexing, ROUTE resolution and extraction still run |
+| `interactive` (`bool`) | `false` | Installs pointing-device sensors, Anchors and SDK navigation; `navigation()` exposes the navigation system |
+| `pointingSensors` (`bool`) | `false` | Installs pointing-device sensors when `interactive` is false, without Anchors or SDK navigation |
+| `anchorHandler` (`runtime::AnchorSystem::AnchorHandler`) | Empty | With `interactive`, receives activated Anchors with external URLs and their parameters. An empty handler ignores these activations; fragment Viewpoint binding remains internal |
+
+### Extraction and coordinates
+
+| Member and type | Default | Effect |
+|---|---|---|
+| `geoProjection` (`std::shared_ptr<const runtime::geo::GeoProjection>`) | Null | Selects the built-in projection when null; otherwise retains the supplied projection for the context's lifetime. See [Geospatial](subsystems/geospatial.md#world-ownership-and-migration) |
+| `meshOptions` (`MeshBuildOptions`) | `{}` | Passed unchanged to the extractor for tessellation, font metrics, external geometry and shader selection. Its shader options also configure the standard runtime's ShaderSystem. See [extraction seams](subsystems/extract.md#seam-points) |
+
+### Resource resolution
+
+| Member and type | Default | Effect |
+|---|---|---|
+| `textureResolver` (`TextureResolver`) | `makeNullTextureResolver()` | Supplies decoded URL texture pixels to extraction; the default returns `Failed` |
+| `textureResolverWithBase` (`TextureResolverWithBase`) | Empty | Contextual texture callback; takes precedence over `textureResolver` |
+| `assetResolver` (`AssetResolver`) | Null | Supplies the standard runtime's LoadSensor byte requests; null selects a failed-loading stub. Parsing, texture decoding and runtime Inline loading use separate callbacks |
+| `assetResolverWithBase` (`AssetResolverWithBase`) | Empty | Contextual LoadSensor callback; takes precedence over `assetResolver` |
+| `inlineResolver` (`runtime::InlineResolver`) | Empty | A nonempty value enables the standard runtime's deferred Inline system and supplies its fallback loader |
+| `baseUrl` (`std::string`) | Empty | Fallback source directory for Inline loading, contextual texture resolution and contextual LoadSensor requests |
 
 ### Precedence and resource boundaries
 
@@ -114,23 +131,32 @@ removing their nodes. Sensor-query details are in
 
 ## Diagnostics, errors and lifetime
 
-- Parse failures can throw before session construction. Warning collections,
-  ROUTE rejections, skipped geometry and partial extraction are separate
-  acceptance checks; see [scene acceptance](../how-to/integrate-a-native-host.md#2-check-the-scene-before-you-accept-it).
-- Session methods do not translate allocation, backend or callback exceptions
-  into a result type. Exceptions can leave partial effects; rollback is not
-  promised. `InlineCycleError` has the specific warning conversion described
-  in [Inline expansion](subsystems/inline-expand.md#fetched-and-runtime-diagnostics).
-- One thread drives the context and extractor. Every native call and node
-  callback must finish before destruction. Destroying the session while its
-  callbacks cannot retire calls `std::terminate`.
-- The document, context and extractor have dependency-ordered lifetimes.
-  References returned by accessors cannot outlive the session. Copying a
-  document with shared nodes does not create an independent mutable graph for
-  another live activation; see [Activation ownership](subsystems/activation-ownership.md).
-- Resource callbacks are retained by value and may retain host objects through
-  their captures. Any host state borrowed by those captures must remain valid
-  while the callbacks can run, including loaders retained by an Inline scene.
+### Scene acceptance and exceptions
+
+Parse failures can throw before session construction. Warning collections,
+ROUTE rejections, skipped geometry and partial extraction are separate
+[scene acceptance checks](../how-to/integrate-a-native-host.md#2-check-the-scene-before-you-accept-it).
+
+Session methods propagate allocation, backend and callback exceptions rather
+than translating them into a result type. Exceptions can leave partial effects;
+rollback is not promised. `InlineCycleError` has the specific warning
+conversion described in
+[Inline expansion](subsystems/inline-expand.md#fetched-and-runtime-diagnostics).
+
+### Destruction and borrowed state
+
+One thread drives the context and extractor. Every native call and node
+callback must finish before destruction. Destroying the session while its
+callbacks cannot retire calls `std::terminate`.
+
+The document, context and extractor have dependency-ordered lifetimes.
+References returned by accessors cannot outlive the session. Copying a document
+with shared nodes does not create an independent mutable graph for another
+live activation; see [Activation ownership](subsystems/activation-ownership.md).
+
+Resource callbacks are retained by value and may retain host objects through
+their captures. Host state borrowed by those captures must remain valid while
+the callbacks can run, including loaders retained by an Inline scene.
 
 ## Related
 

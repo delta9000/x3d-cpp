@@ -16,6 +16,11 @@ callbacks. This guide shows how to supply each one. Why they are callbacks is
 in [Seams, ports and backends](../explanation/seams.md); the list of seams and
 their state is the [seam matrix](../reference/seam-matrix.md).
 
+The session snippets assume you have linked `x3d_cpp::sdk`, included
+`x3d/sdk.hpp`, and declared `namespace sdk = x3d::sdk;`. They use `doc` for an
+already parsed document. The font and script recipes below are complete
+programs with their own build instructions.
+
 ## Pick the seam
 
 | You want the scene to | Supply | Default without it |
@@ -85,11 +90,12 @@ through `updatedMaterial`, `updatedGeometry` or `added`. `LoadSensor` retries
 its byte requests during ticks. Parse-time requests (Inline and EXTERNPROTO)
 can't be pending: they must answer `Ready` or `Failed`.
 
-## Use a real font
+## Prepare the backend example
 
-The bundled stb font adapter and Duktape script engine are source-tree targets.
-To try either recipe below, create a directory outside the checkout with this
-`CMakeLists.txt` and the recipe's `main.cpp`:
+The font and script recipes need a C++20 compiler, CMake 3.21 or later, Ninja,
+and an x3d-cpp checkout. The bundled stb font adapter and Duktape script engine
+are source-tree targets. Create an empty directory outside the checkout and
+save this as `CMakeLists.txt`:
 
 ```cmake
 cmake_minimum_required(VERSION 3.21)
@@ -101,22 +107,20 @@ target_link_libraries(resource_host PRIVATE
   x3d_cpp::sdk x3d_stbtt x3d_ecmascript_backend)
 ```
 
-Configure from that directory, substituting your checkout path:
-
-```sh
-cmake -S . -B build -G Ninja \
-  -DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp \
-  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
-  -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_SCRIPT=ON
-cmake --build build --target resource_host --parallel 2
-```
-
 The installed package exports the callback interfaces; these two backend
 targets are available when building from source. An installed-package host can
 instead supply its own `FontMetrics` or `ScriptEngine` implementation.
 
-Map the scene's `SANS` family to a real font file, then pass its metrics through
-`SessionOptions::meshOptions`:
+Choose [Use a real font](#use-a-real-font) or [Run scripts](#run-scripts), then
+save that recipe's `main.cpp` beside `CMakeLists.txt` before configuring or
+building. Each recipe works independently. The first build compiles the SDK
+and takes a few minutes.
+
+## Use a real font
+
+First [prepare the backend example](#prepare-the-backend-example). Save the
+following program as `main.cpp`. It maps the scene's `SANS` family to a font
+file and passes its metrics through `SessionOptions::meshOptions`:
 
 ```cpp
 #include "x3d/sdk.hpp"
@@ -149,9 +153,15 @@ int main(int argc, char **argv) {
 }
 ```
 
-Run with the checkout's bundled font:
+From your example directory, configure, build and run with the checkout's
+bundled font. Replace `/path/to/x3d-cpp` with your checkout path in both places:
 
 ```sh
+cmake -S . -B build -G Ninja \
+  -DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp \
+  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
+  -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_SCRIPT=ON
+cmake --build build --target resource_host --parallel 2
 ./build/resource_host /path/to/x3d-cpp/third_party/fonts/LiberationSans-Regular.ttf
 ```
 
@@ -167,9 +177,10 @@ The SDK performs layout using the supplied metrics. See
 
 ## Run scripts
 
-Using the same CMake project, replace `main.cpp` with this program and rebuild
-`resource_host`. It uses the bundled Duktape backend, registers a script system,
-and explicitly enrolls the scene's Script nodes before the first tick:
+First [prepare the backend example](#prepare-the-backend-example). Save the
+following program as `main.cpp`, replacing it if you already tried the font
+recipe. It uses the bundled Duktape backend, registers a script system, and
+explicitly enrolls the scene's Script nodes before the first tick:
 
 ```cpp
 #include "x3d/sdk.hpp"
@@ -206,7 +217,14 @@ int main() {
 }
 ```
 
+From your example directory, configure, build and run. Replace
+`/path/to/x3d-cpp` with your checkout path:
+
 ```sh
+cmake -S . -B build -G Ninja \
+  -DX3D_CPP_SOURCE_DIR=/path/to/x3d-cpp \
+  -DX3D_CPP_BUILD_TESTS=OFF -DX3D_CPP_ENABLE_DEV_TOOLING=OFF \
+  -DX3D_CPP_BUILD_STBTT=ON -DX3D_CPP_BUILD_SCRIPT=ON
 cmake --build build --target resource_host --parallel 2
 ./build/resource_host
 ```

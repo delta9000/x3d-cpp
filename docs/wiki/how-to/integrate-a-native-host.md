@@ -16,6 +16,8 @@ renderer and an event loop. It assumes you have linked `x3d_cpp::sdk`
 ([Build and install the SDK](build-and-install.md)) and know the three calls
 from [the first tutorial](../tutorials/first-scene.md). The rules behind each
 step are in the [native host contract](../reference/native-host-contract.md).
+Method signatures and option defaults are in
+[RuntimeSession and SessionOptions](../reference/runtime-session.md).
 
 ## 1. Create the session
 
