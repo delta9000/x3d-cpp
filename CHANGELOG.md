@@ -30,7 +30,10 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   NURBS-curve interpolators are sampled. Coordinate, normal and
   texture-coordinate interpolators (and ones driving a geometry's own
   MFVec3f/MFVec2f fields, such as `Extrusion.spine`) become morph targets.
-  Not exported: movie, multi, cube and 3D textures, and skins;
+  H-Anim humanoids become glTF skins (every influence, inverse bind matrices
+  from the binding); joint interpolators, HAnimMotion (as `STEP` channels)
+  and Joint and Segment displacer weights animate.
+  Not exported: movie, multi, cube and 3D textures;
   `GltfWriteReport` counts what was dropped. Light intensity has no unit
   conversion.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and

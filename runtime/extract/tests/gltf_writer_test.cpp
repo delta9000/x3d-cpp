@@ -761,3 +761,98 @@ TEST_CASE("glb: a geometry's own MF field can be morphed, and bad morphs are cou
   CHECK(count(g.json, "\"path\":\"weights\"") == 2); // Tube and the normals
   CHECK(g.report.skippedAnimationRoutes == 2);       // Bad, Loose
 }
+
+namespace {
+// Two joints in a chain with a v2 binding; vertex 4 has five influences and
+// vertex 5 none.
+const char *kHumanoid =
+    "<HAnimHumanoid DEF='Hum' name='Hum' translation='0 0.5 0' "
+    "  jointBindingRotations='0 0 1 0.1'>"
+    "<Coordinate DEF='Skin' containerField='skinCoord' "
+    "  point='0 0 0 1 0 0 0 1 0 1 1 0 0 2 0 1 2 0'/>"
+    "<HAnimJoint DEF='hip' containerField='joints' name='hip' center='0 1 0' "
+    "  skinCoordIndex='0 1 4' skinCoordWeight='1 0.5 0.2'/>"
+    "<HAnimJoint DEF='knee' containerField='joints' name='knee' center='0 0.5 0' "
+    "  skinCoordIndex='1 2 3 4' skinCoordWeight='0.5 1 1 0.2'>"
+    "  <HAnimDisplacer DEF='bulge' containerField='displacers' name='bulge' "
+    "    coordIndex='2' displacements='0 0 0.5' weight='0.3'/></HAnimJoint>"
+    "<HAnimJoint DEF='a' containerField='joints' name='a' skinCoordIndex='4' skinCoordWeight='0.2'/>"
+    "<HAnimJoint DEF='b' containerField='joints' name='b' skinCoordIndex='4' skinCoordWeight='0.2'/>"
+    "<HAnimJoint DEF='c' containerField='joints' name='c' skinCoordIndex='4' skinCoordWeight='0.2'/>"
+    "<HAnimJoint USE='hip' containerField='skeleton'/>"
+    "<Shape containerField='skin'><Appearance><Material/></Appearance>"
+    "  <IndexedFaceSet coordIndex='0 1 3 2 -1 2 3 5 4 -1' solid='false'>"
+    "  <Coordinate USE='Skin'/></IndexedFaceSet></Shape>";
+} // namespace
+
+TEST_CASE("glb: a skinned humanoid becomes a glTF skin") {
+  const Glb g = exportScene(std::string(kHumanoid) + "</HAnimHumanoid>");
+  CHECK(g.report.skins == 1);
+  CHECK(g.report.staticSkins == 0);
+  // Joint 0 is the humanoid's frame, then the five palette joints.
+  CHECK(has(g.json, "\"skins\":[{\"name\":\"Hum\",\"joints\":["));
+  CHECK(has(g.json, "\"count\":6,\"type\":\"MAT4\""));
+  // Five influences need two JOINTS/WEIGHTS sets.
+  CHECK(has(g.json, "\"JOINTS_0\":"));
+  CHECK(has(g.json, "\"JOINTS_1\":"));
+  CHECK(has(g.json, "\"WEIGHTS_1\":"));
+  CHECK(!has(g.json, "\"JOINTS_2\":"));
+  CHECK(has(g.json, "\"componentType\":5121,\"count\":12,\"type\":\"VEC4\""));
+  // The Joint displacer is a morph target at its current weight.
+  CHECK(has(g.json, "\"weights\":[0.300000012]"));
+  // The skinned mesh node is a root with no transform of its own.
+  CHECK(has(g.json, "{\"mesh\":0,\"skin\":0,\"name\":\"Hum\"}"));
+  CHECK(has(g.json, "\"name\":\"hip\",\"translation\":[0,1,0]"));
+}
+
+TEST_CASE("glb: joint interpolators, displacer weights and HAnimMotion animate") {
+  const Glb g = exportScene(
+      std::string(kHumanoid) +
+      "<HAnimMotion DEF='Walk' containerField='motions' joints='knee' "
+      "  channels='2 Zrotation Xposition' values='0 0  90 1  180 2' "
+      "  frameDuration='0.5' loop='true'/></HAnimHumanoid>"
+      "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+      "<OrientationInterpolator DEF='Bend' key='0 1' keyValue='0 0 1 0 0 0 1 1'/>"
+      "<ScalarInterpolator DEF='Puff' key='0 1' keyValue='0 1'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Bend' toField='set_fraction'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Puff' toField='set_fraction'/>"
+      "<ROUTE fromNode='Bend' fromField='value_changed' toNode='hip' toField='rotation'/>"
+      "<ROUTE fromNode='Puff' fromField='value_changed' toNode='bulge' toField='weight'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.animations == 2);
+  // The motion: frames 0, 1, 2 and a hold key, STEP, named by its DEF.
+  CHECK(has(g.json, "\"name\":\"Walk\""));
+  CHECK(count(g.json, "\"interpolation\":\"STEP\"") == 2); // translation, rotation
+  CHECK(has(g.json, "\"count\":4,\"type\":\"SCALAR\",\"min\":[0],\"max\":[1.5]"));
+  // The clock: the hip rotation and the skin's displacer weights.
+  CHECK(has(g.json, "\"name\":\"Clock\""));
+  CHECK(count(g.json, "\"path\":\"weights\"") == 1);
+  CHECK(count(g.json, "\"path\":\"rotation\"") == 2); // hip, knee
+}
+
+TEST_CASE("glb: Segment displacers become morph targets on the Segment's mesh") {
+  const Glb g = exportScene(
+      "<HAnimHumanoid name='H'><HAnimJoint DEF='j' containerField='skeleton' name='j'>"
+      "<HAnimSegment DEF='seg' name='seg'>"
+      "  <Coordinate DEF='P' containerField='coord' point='0 0 0 1 0 0 0 1 0'/>"
+      "  <HAnimDisplacer DEF='d1' containerField='displacers' name='d1' coordIndex='2' "
+      "    displacements='0 0 1' weight='0.25'/>"
+      "  <HAnimDisplacer DEF='d2' containerField='displacers' name='d2' coordIndex='0' "
+      "    displacements='1 0 0'/>"
+      "  <Shape><IndexedFaceSet coordIndex='0 1 2 -1'><Coordinate USE='P'/></IndexedFaceSet></Shape>"
+      "  <Shape><Box/></Shape>"
+      "</HAnimSegment></HAnimJoint></HAnimHumanoid>"
+      "<TimeSensor DEF='Clock'/>"
+      "<ScalarInterpolator DEF='W' key='0 1' keyValue='0 1'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='W' toField='set_fraction'/>"
+      "<ROUTE fromNode='W' fromField='value_changed' toNode='d1' toField='weight'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  // Targets: no displacement, then each displacer at weight 1; the rest
+  // weights reproduce the authored mesh.
+  CHECK(has(g.json, "\"weights\":[0.75,0.25,0]"));
+  CHECK(count(g.json, "\"path\":\"weights\"") == 1); // the Box is not displaced
+  // Two keys x three weights.
+  CHECK(has(g.json, "\"count\":6,\"type\":\"SCALAR\"}"));
+}

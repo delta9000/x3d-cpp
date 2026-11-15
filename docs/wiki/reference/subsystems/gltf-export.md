@@ -42,6 +42,11 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 | SplinePositionInterpolator, SplineScalarInterpolator, SquadOrientationInterpolator, and ColorInterpolator (X3D blends in HSV) | Sampled: each key interval is split into 8 `LINEAR` steps, valued by the runtime's own interpolation |
 | NurbsPositionInterpolator, NurbsOrientationInterpolator | Sampled at 65 even fractions over the curve |
 | GeoPositionInterpolator (`value_changed`, the local position) | Sampled 8 steps per key interval, since it interpolates in geographic coordinates and then projects |
+| An HAnimHumanoid's skin (an item with a `skin` binding) | A glTF skin. The mesh holds the binding's bind-pose coordinates and normals (`skinBindingCoords`/`skinBindingNormals` when authored), with `JOINTS_n`/`WEIGHTS_n` carrying every influence, four per set. Joint 0 is a node with the humanoid's frame and an identity inverse bind, for vertices no joint weights; the others are the palette joints as nodes, with the binding's B_j⁻¹ as inverse bind matrices. glTF's joint world × inverse bind is then the humanoid's world matrix times the runtime's palette D_j = C_j·B_j⁻¹, so the posed mesh equals `SceneExtractor::deformedMesh` |
+| PositionInterpolator / OrientationInterpolator routed to an HAnimHumanoid, HAnimJoint, HAnimSite or CADPart | The same as for a Transform: these nodes have the Transform fields and composition. Rigid Segment geometry hangs from its joint's node, so it moves with the skin |
+| HAnimMotion (enabled, in `HAnimHumanoid.motions`) | One animation per motion, named by its DEF (else its `name`), with `STEP` channels: each frame's joint translation and rotation (as playback posts them), `frameDuration` apart, from `frameIndex` through one pass of `[startFrame, endFrame]` by `frameIncrement`, one cycle when it loops. A last key holds the final frame for its full duration. A motion with `frameIncrement` 0 or no `frameDuration` is a single key |
+| ScalarInterpolator routed to an HAnimDisplacer `weight` on an HAnimJoint | The skin's morph weights: each Joint displacer is a morph target (below), and every skinned mesh of the humanoid gets the channel |
+| ScalarInterpolator routed to an HAnimDisplacer `weight` on an HAnimSegment | Morph targets on each mesh the Segment displaces (a geometry using the Segment's `coord`): one with no displacement, then one per displacer at weight 1, with weights `[1 − Σw, w₁ … wₙ]`. Positions are linear in the weights, so this is exact. As with coordinate morphs, a mesh takes one set of targets: the first TimeSensor driving a Segment's displacers is exported, and a geometry already morphed by a coordinate interpolator is skipped |
 | CoordinateInterpolator, CoordinateInterpolator2D or NormalInterpolator routed to a node in a shape's geometry (a `Coordinate`, `TextureCoordinate` or `Normal`, or an MFVec3f/MFVec2f field of the geometry itself such as `Extrusion.spine` or `crossSection`) | Morph targets: the geometry is re-tessellated once per key (twice at a jump), each tessellation stored as `POSITION`/`NORMAL`/`TEXCOORD_n` differences from the exported mesh, and a `weights` channel steps one-hot through them. Every shape using the geometry gets the channel |
 
 Animated properties (`KHR_animation_pointer`):
@@ -88,7 +93,9 @@ out-of-range authored value still gives a valid file.
   author shaders; GeoViewpoint.
 - A normal map is written without a `TANGENT` attribute, so viewers derive the
   tangent space.
-- Skinned H-Anim items are written as static meshes.
+- A skinned item is written as a plain mesh with its stored coordinates
+  (`staticSkins`) only when its corners do not map back to the humanoid's skin
+  coordinates.
 - Backgrounds and fog are not exported.
 - **Animated Transforms.** A scene with no exportable animation is written
   flat, as above.
@@ -132,8 +139,16 @@ out-of-range authored value still gives a valid file.
   and the others are counted in `skippedAnimationRoutes`. So are the routes
   to a geometry whose tessellation has a different vertex count at some key,
   since morph targets must match the mesh vertex for vertex.
-- Not exported: H-Anim skinning and motion;
-  PositionInterpolator2D (glTF has no texture transform without
+- Joint displacers: X3D adds `weight · C_owner · displacement` after
+  skinning, and glTF adds a morph target before it. The target is stored as
+  `B_owner · displacement`, so a vertex the owning joint fully weights moves
+  exactly. A vertex shared with other joints is exact in the bind pose and
+  drifts as the joints weighting it turn apart; glTF has no post-skin offset
+  to express it exactly.
+- The viewer skins normals from the bind normals; the runtime uses the
+  inverse transpose of each palette matrix, which differs only under
+  non-uniform joint scale.
+- Not exported: PositionInterpolator2D (glTF has no texture transform without
   `KHR_texture_transform`, which the exporter does not write);
   NurbsSurfaceInterpolator (driven by a 2D fraction, not a TimeSensor);
   chains through other

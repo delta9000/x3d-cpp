@@ -55,10 +55,108 @@ class HAnimMotionSystem : public System {
     for (std::string t; in >> t;) result.push_back(std::move(t));
     return result;
   }
+public:
+  /// One joint group of a motion's `joints`/`channels` layout (draft 2.1
+  /// §6.3); `joint` is null for IGNORED or an unknown name.
   struct Group {
     HAnimJoint *joint = nullptr;
     std::vector<std::string> channels;
   };
+  /// One joint's values in one frame: what playback posts to the joint.
+  struct JointPose {
+    HAnimJoint *joint = nullptr;
+    bool translated = false, rotated = false;
+    SFVec3f translation{0, 0, 0};
+    SFRotation rotation{0, 0, 1, 0};
+  };
+
+  /// Resolve `motion`'s layout against `humanoid`'s joints; `width` is the
+  /// number of values per frame. Empty (width 0) when the layout is malformed.
+  static std::vector<Group> decode(HAnimHumanoid &humanoid, const HAnimMotion &motion,
+                                   std::size_t &width) {
+    std::vector<Group> groups;
+    width = 0;
+    auto names = tokens(motion.getJoints());
+    auto words = tokens(motion.getChannels());
+    std::unordered_map<std::string, HAnimJoint *> joints;
+    std::unordered_set<X3DNode *> seen;
+    collectJoints(&humanoid, joints, seen);
+    std::size_t at = 0;
+    for (const auto &name : names) {
+      if (at >= words.size()) break;
+      int n = 0;
+      try { n = std::stoi(words[at++]); } catch (...) { break; }
+      if (n < 0 || static_cast<std::size_t>(n) > words.size() - at) break;
+      Group group;
+      if (name != "IGNORED") {
+        auto it = joints.find(name);
+        if (it != joints.end()) group.joint = it->second;
+      }
+      for (int i = 0; i < n; ++i) group.channels.push_back(words[at++]);
+      width += group.channels.size();
+      groups.push_back(std::move(group));
+    }
+    if (groups.size() != names.size() || at != words.size()) {
+      groups.clear(); width = 0;
+    }
+    return groups;
+  }
+
+  /// The joint values of frame `index` (in [0, frame count)). A joint keeps
+  /// its current translation components that the frame does not set.
+  static std::vector<JointPose> poseAt(const std::vector<Group> &groups,
+                                       const HAnimMotion &motion, std::size_t width,
+                                       int index) {
+    std::vector<JointPose> out;
+    const auto &values = motion.getValues();
+    const auto &enabled = motion.getChannelsEnabled();
+    std::size_t at = static_cast<std::size_t>(index) * width, channel = 0;
+    if (index < 0 || at + width > values.size()) return out;
+    // Draft 2.1 §6.3: values are frame, group, channel; IGNORED still consumes values.
+    for (const Group &g : groups) {
+      JointPose pose;
+      pose.joint = g.joint;
+      if (g.joint) pose.translation = g.joint->getTranslation();
+      Quaternion q;
+      for (const std::string &kind : g.channels) {
+        const float value = values[at++];
+        const bool use = channel >= enabled.size() || enabled[channel];
+        ++channel;
+        if (!g.joint || !use) continue;
+        if (kind == "Xposition") { pose.translation.x = value; pose.translated = true; }
+        else if (kind == "Yposition") { pose.translation.y = value; pose.translated = true; }
+        else if (kind == "Zposition") { pose.translation.z = value; pose.translated = true; }
+        else if (kind == "Xrotation" || kind == "Yrotation" || kind == "Zrotation") {
+          // Draft 2.1 §6.3: local-axis rotations compose in listed channel order.
+          q = multiply(q, axis(kind[0], value)); pose.rotated = true;
+        }
+      }
+      if (!g.joint || (!pose.translated && !pose.rotated)) continue;
+      pose.rotation = rotation(q);
+      out.push_back(pose);
+    }
+    return out;
+  }
+
+  /// The playable frame range [lo, hi] of a motion with `count` frames
+  /// (startFrame/endFrame clamped; endFrame 0 means the last frame).
+  static std::pair<int, int> frameRange(const HAnimMotion &motion, int count) {
+    const int last = count - 1;
+    const int start = std::clamp(static_cast<int>(motion.getStartFrame()), 0, last);
+    const int end = motion.getEndFrame() == 0 ? last :
+        std::clamp(static_cast<int>(motion.getEndFrame()), 0, last);
+    return {std::min(start, end), std::max(start, end)};
+  }
+
+  /// Whether the motion in `humanoid`'s motions slot `slot` plays: its own
+  /// `enabled` and the humanoid's motionsEnabled flag for the slot.
+  static bool motionEnabled(const HAnimHumanoid &humanoid, const HAnimMotion &motion,
+                            std::size_t slot) {
+    const auto &flags = humanoid.getMotionsEnabled();
+    return motion.getEnabled() && (slot >= flags.size() || flags[slot]);
+  }
+
+private:
   struct Playback {
     HAnimHumanoid *humanoid = nullptr;
     HAnimMotion *motion = nullptr;
@@ -87,67 +185,19 @@ class HAnimMotionSystem : public System {
     if (p.channelText == p.motion->getChannels() && p.jointText == p.motion->getJoints()) return;
     p.channelText = p.motion->getChannels();
     p.jointText = p.motion->getJoints();
-    p.groups.clear(); p.width = 0;
-    auto names = tokens(p.jointText);
-    auto words = tokens(p.channelText);
-    std::unordered_map<std::string, HAnimJoint *> joints;
-    std::unordered_set<X3DNode *> seen;
-    collectJoints(p.humanoid, joints, seen);
-    std::size_t at = 0;
-    for (const auto &name : names) {
-      if (at >= words.size()) break;
-      int n = 0;
-      try { n = std::stoi(words[at++]); } catch (...) { break; }
-      if (n < 0 || static_cast<std::size_t>(n) > words.size() - at) break;
-      Group group;
-      if (name != "IGNORED") {
-        auto it = joints.find(name);
-        if (it != joints.end()) group.joint = it->second;
-      }
-      for (int i = 0; i < n; ++i) group.channels.push_back(words[at++]);
-      p.width += group.channels.size();
-      p.groups.push_back(std::move(group));
-    }
-    if (p.groups.size() != names.size() || at != words.size()) {
-      p.groups.clear(); p.width = 0;
-    }
+    p.groups = decode(*p.humanoid, *p.motion, p.width);
   }
   static bool allowed(const Playback &p) {
-    const auto &flags = p.humanoid->getMotionsEnabled();
-    return p.motion->getEnabled() && (p.motionSlot >= flags.size() || flags[p.motionSlot]);
+    return motionEnabled(*p.humanoid, *p.motion, p.motionSlot);
   }
   static std::pair<int, int> range(const Playback &p) {
-    const int last = p.count - 1;
-    const int start = std::clamp(static_cast<int>(p.motion->getStartFrame()), 0, last);
-    const int end = p.motion->getEndFrame() == 0 ? last :
-        std::clamp(static_cast<int>(p.motion->getEndFrame()), 0, last);
-    return {std::min(start, end), std::max(start, end)};
+    return frameRange(*p.motion, p.count);
   }
   static void apply(Playback &p, X3DExecutionContext &ctx) {
     if (!allowed(p) || p.count == 0) return;
-    const auto &values = p.motion->getValues();
-    const auto &enabled = p.motion->getChannelsEnabled();
-    std::size_t at = static_cast<std::size_t>(p.index) * p.width, channel = 0;
-    // Draft 2.1 §6.3: values are frame, group, channel; IGNORED still consumes values.
-    for (const Group &g : p.groups) {
-      SFVec3f pos = g.joint ? g.joint->getTranslation() : SFVec3f{0, 0, 0};
-      Quaternion q;
-      bool position = false, orient = false;
-      for (const std::string &kind : g.channels) {
-        const float value = values[at++];
-        const bool use = channel >= enabled.size() || enabled[channel];
-        ++channel;
-        if (!g.joint || !use) continue;
-        if (kind == "Xposition") { pos.x = value; position = true; }
-        else if (kind == "Yposition") { pos.y = value; position = true; }
-        else if (kind == "Zposition") { pos.z = value; position = true; }
-        else if (kind == "Xrotation" || kind == "Yrotation" || kind == "Zrotation") {
-          // Draft 2.1 §6.3: local-axis rotations compose in listed channel order.
-          q = multiply(q, axis(kind[0], value)); orient = true;
-        }
-      }
-      if (g.joint && position) ctx.postEvent(g.joint, "translation", std::any(pos));
-      if (g.joint && orient) ctx.postEvent(g.joint, "rotation", std::any(rotation(q)));
+    for (const JointPose &pose : poseAt(p.groups, *p.motion, p.width, p.index)) {
+      if (pose.translated) ctx.postEvent(pose.joint, "translation", std::any(pose.translation));
+      if (pose.rotated) ctx.postEvent(pose.joint, "rotation", std::any(pose.rotation));
     }
   }
   static void setIndex(Playback &p, int index, X3DExecutionContext &ctx) {

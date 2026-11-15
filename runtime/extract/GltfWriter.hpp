@@ -60,14 +60,18 @@
 // Not written (each is counted in GltfWriteReport): packed/binary geometry
 // items, MovieTexture, MultiTexture, cube and 3D textures, textures on
 // generated texture coordinates, undecoded textures with no PNG/JPEG url,
-// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
-// written as static meshes in the mesh's stored pose.
+// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint.
+//
+// H-Anim: a humanoid's skin is a glTF skin (bind-pose mesh, JOINTS_n /
+// WEIGHTS_n with every influence, the binding's inverse bind matrices),
+// Joint displacers are its morph targets, Segment displacers morph the
+// Segment's mesh, and HAnimMotion frames are STEP channels.
 //
 // Coordinate, normal and texture-coordinate interpolators become morph
 // targets (one tessellation per key, stepped by a weights channel); normals
 // blend linearly between keys.
 //
-// Animation limits: H-Anim motion, PositionInterpolator2D, NurbsSurfaceInterpolator and chains through other nodes (sequencers,
+// Animation limits: PositionInterpolator2D, NurbsSurfaceInterpolator and chains through other nodes (sequencers,
 // scripts, EaseInEaseOut, followers) are not exported; routes out of an
 // interpolator that are dropped are counted. glTF has no loop flag, so
 // TimeSensor.loop is left to the viewer, and startTime is not carried.
@@ -116,7 +120,12 @@ struct GltfWriteReport {
   /// Textures in a slot glTF has no property for: specular, shininess and
   /// ambient maps, and the lighting maps of an unlit surface.
   std::size_t unmappedTextureSlots = 0;
-  std::size_t staticSkins = 0;     ///< skinned items written without a skin
+  std::size_t skins = 0;           ///< glTF skins (one per humanoid placement)
+  /// Skinned items written as plain meshes with their stored coordinates:
+  /// a mesh whose corners do not map back to the humanoid's skin
+  /// coordinates (no source-coordinate index), or a humanoid not on the
+  /// item's path.
+  std::size_t staticSkins = 0;
   std::size_t droppedBackMaterials = 0;
   std::size_t droppedShaders = 0;
   std::size_t skippedViewpoints = 0; ///< GeoViewpoint
@@ -161,8 +170,9 @@ struct GltfAnimationChannel {
     Property,    ///< the X3D field `field` of `target`; see below
     Weights      ///< morph weights: one float per morph target per key
   };
-  /// Translation/Rotation/Scale: a Transform (Rotation also from
-  /// scaleOrientation, see `field`); a viewpoint (Translation = position,
+  /// Translation/Rotation/Scale: a Transform, HAnimHumanoid, HAnimJoint,
+  /// HAnimSite or CADPart (Rotation also from scaleOrientation, see
+  /// `field`); a viewpoint (Translation = position,
   /// Rotation = orientation); a PointLight/SpotLight (Translation =
   /// location); a DirectionalLight/SpotLight (Rotation = direction, as the
   /// rotation aiming -Z along it).
@@ -177,13 +187,18 @@ struct GltfAnimationChannel {
   ///   radius, a SpotLight's beamWidth and cutOffAngle;
   ///   a Viewpoint's fieldOfView.
   /// A Transform's center is also a Property (3 floats per key), and its
-  /// scaleOrientation a Property with quaternion values.
+  /// scaleOrientation a Property with quaternion values. An HAnimDisplacer
+  /// on an HAnimJoint: `weight`, 1 float per key, written as the morph
+  /// weights of the humanoid's skinned meshes.
   ///
   /// Weights: `target` is a geometry node with a GltfMorph in the extras;
   /// every exported shape using it gets the channel.
   const X3DNode *target = nullptr;
   Path path = Path::Translation;
   std::string field; ///< the X3D field, for Path::Property
+  /// Hold each key until the next (glTF STEP) instead of interpolating, as
+  /// HAnimMotion frames play.
+  bool step = false;
   /// Seconds, one per key, non-decreasing; a repeated time is a jump.
   std::vector<float> times;
   std::vector<float> values;
@@ -198,12 +213,16 @@ struct GltfAnimation {
 
 /// Morph targets for one geometry node: whole meshes, each the geometry
 /// re-tessellated with its animated coordinates, normals or texture
-/// coordinates at one key. They must have the corner layout of the items'
-/// mesh (the writer stores the differences and skips a geometry whose
-/// target vertex counts differ).
+/// coordinates at one key, or with one HAnimSegment displacer at weight 1.
+/// They must have the corner layout of the items' mesh (the writer stores
+/// the differences and skips a geometry whose target vertex counts differ).
 struct GltfMorph {
   const X3DNode *geometry = nullptr;
+  /// Non-null: only placements under this HAnimSegment use the targets.
+  const X3DNode *segment = nullptr;
   std::vector<MeshData> targets;
+  /// The mesh's default weights; empty means all zero.
+  std::vector<float> weights;
 };
 
 /// Scene content beyond the render items.

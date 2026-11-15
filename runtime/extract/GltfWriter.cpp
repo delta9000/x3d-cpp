@@ -5,6 +5,7 @@
 #include "NurbsInterpolatorSystem.hpp"
 #include "SplineInterpolation.hpp"
 #include "X3DProtoClone.hpp"
+#include "HAnimMotionSystem.hpp"
 
 #include "TransformSystem.hpp"
 #include "X3DSceneBridge.hpp"
@@ -18,8 +19,10 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <set>
+#include <tuple>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -503,7 +506,10 @@ Destination destinationOf(const X3DNode &to, const std::string &field) {
     d.kind = kind;
     d.path = path;
   };
-  if (TransformSystem::isTransform(&to) && type == "Transform") {
+  // Nodes with the Transform fields and composition (HAnim 19774-1 §6.3,
+  // §6.5; CAD §32.4.2).
+  if (type == "Transform" || type == "HAnimHumanoid" || type == "HAnimJoint" ||
+      type == "HAnimSite" || type == "CADPart") {
     if (field == "translation") node(SampleKind::Vec3, Path::Translation);
     else if (field == "scale") node(SampleKind::Vec3, Path::Scale);
     else if (field == "rotation") node(SampleKind::Rotation, Path::Rotation);
@@ -608,8 +614,11 @@ public:
       ++report_.skippedEmpty;
       return;
     }
-    if (item.skin) ++report_.staticSkins;
     if (item.shaderProgram) ++report_.droppedShaders;
+    if (item.skin && item.skin->binding && !item.skin->binding->empty()) {
+      if (addSkinned(item)) return;
+      ++report_.staticSkins;
+    }
 
     const MeshAccessors &acc = accessorsFor(item.mesh);
     const int material =
@@ -617,8 +626,12 @@ public:
     // Morph targets of an animated geometry, when they fit this mesh.
     const X3DNode *geometry = geometryNodeOf(item);
     const GltfMorph *morph = nullptr;
-    if (const auto m = morphs_.find(geometry); m != morphs_.end() &&
-        m->second->targets.front().positions.size() == mesh.positions.size())
+    if (const auto m = morphs_.find(geometry);
+        m != morphs_.end() &&
+        m->second->targets.front().positions.size() == mesh.positions.size() &&
+        (!m->second->segment ||
+         std::find(item.path.begin(), item.path.end(), m->second->segment) !=
+             item.path.end()))
       morph = m->second;
     const auto key = std::make_pair(item.mesh.get(), material);
     auto found = meshIndex_.find(key);
@@ -638,8 +651,10 @@ public:
       if (morph) {
         const std::vector<std::string> &t = targetsFor(item.mesh, *morph, acc);
         targets = ",\"targets\":[" + join(t) + "]";
-        weights = ",\"weights\":[" +
-                  join(std::vector<std::string>(t.size(), "0")) + "]";
+        std::vector<std::string> w(t.size(), "0");
+        if (morph->weights.size() == t.size())
+          for (std::size_t k = 0; k < t.size(); ++k) w[k] = num(morph->weights[k]);
+        weights = ",\"weights\":[" + join(w) + "]";
       }
       meshes_.push_back("{\"primitives\":[{\"attributes\":{" + join(attrs) +
                         "},\"indices\":" + std::to_string(acc.indices) +
@@ -674,6 +689,241 @@ public:
   void setMorphs(const std::vector<GltfMorph> &morphs) {
     for (const GltfMorph &m : morphs)
       if (m.geometry && !m.targets.empty()) morphs_[m.geometry] = &m;
+  }
+
+  // Keep the humanoid and palette joints of every skinned item as glTF
+  // nodes, before any item is placed, so rigid parts and skins hang from
+  // the same joint nodes.
+  void prepareSkins(const std::vector<const RenderItem *> &items) {
+    for (const RenderItem *item : items) {
+      if (!item || !item->skin || !item->skin->binding) continue;
+      const hanim::SkinBinding &b = *item->skin->binding;
+      if (b.empty() || !b.humanoid) continue;
+      keptTransforms_.insert(b.humanoid);
+      keptTransforms_.insert(b.joints.begin(), b.joints.end());
+    }
+  }
+
+  // Every node below `humanoid`'s skeleton, as the chain from the skeleton
+  // root down to it (the path the extractor walks; the first chain wins).
+  const std::unordered_map<const X3DNode *, PathKey> &
+  skeletonOf(const X3DNode *humanoid) {
+    if (const auto found = skeletons_.find(humanoid); found != skeletons_.end())
+      return found->second;
+    auto &out = skeletons_[humanoid];
+    PathKey chain;
+    std::function<void(const X3DNode *)> rec = [&](const X3DNode *n) {
+      if (!n || chain.size() >= kMaxNestingDepth || out.count(n)) return;
+      chain.push_back(n);
+      out.emplace(n, chain);
+      forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
+        if (f.x3dName == "children") rec(c.get());
+      });
+      chain.pop_back();
+    };
+    forEachChildNode(*humanoid, [&](const FieldInfo &f,
+                                    const std::shared_ptr<X3DNode> &c) {
+      if (f.x3dName == "skeleton") rec(c.get());
+    });
+    return out;
+  }
+
+  // The glTF skin of one placement of a humanoid's skin (`frame`: the
+  // shape's ancestors). Joint 0 is a node with the frame's world matrix and
+  // an identity inverse bind, for vertices no joint weights; joint j+1 is
+  // palette joint j with B_j^-1 from the binding.
+  int skinFor(const hanim::SkinBinding &b, const PathKey &frame) {
+    const auto key = std::make_pair(&b, frame);
+    if (const auto found = skinIndex_.find(key); found != skinIndex_.end())
+      return found->second;
+    Mat4 below = Mat4::identity();
+    const int anchor = animatedParent(frame, below);
+    std::vector<int> joints{frameNode(anchor, below, frame)};
+    const Mat4 identity = Mat4::identity();
+    std::vector<float> inverse(identity.m.begin(), identity.m.end());
+    const auto &skeleton = skeletonOf(b.humanoid);
+    for (std::size_t j = 0; j < b.joints.size(); ++j) {
+      PathKey path = frame;
+      if (const auto chain = skeleton.find(b.joints[j]); chain != skeleton.end())
+        path.insert(path.end(), chain->second.begin(), chain->second.end());
+      else
+        path.push_back(b.joints[j]); // posed alone, as evaluatePose does
+      joints.push_back(animatedParent(path, below));
+      const Mat4 &m = j < b.inverseBind.size() ? b.inverseBind[j] : Mat4::identity();
+      inverse.insert(inverse.end(), m.m.begin(), m.m.end());
+    }
+    std::vector<std::string> list;
+    for (int node : joints) list.push_back(std::to_string(node));
+    std::string json = "{";
+    if (!b.humanoid->getDEF().empty())
+      json += "\"name\":" + quote(b.humanoid->getDEF()) + ",";
+    json += "\"joints\":[" + join(list) + "],\"inverseBindMatrices\":" +
+            std::to_string(floatAccessor(inverse, 16, "MAT4", false, 0)) + "}";
+    skins_.push_back(json);
+    report_.skins = skins_.size();
+    return skinIndex_.emplace(key, static_cast<int>(skins_.size()) - 1).first->second;
+  }
+
+  // A skinned item as a glTF skinned mesh: the binding's bind-pose
+  // coordinates and normals, JOINTS_n/WEIGHTS_n from its influences (every
+  // influence, four per set), and its Joint displacers as morph targets.
+  // glTF composes joint world * inverse bind, which is the humanoid's world
+  // matrix times D_j = C_j B_j^-1, so the posed mesh matches deformedMesh().
+  // False when the corners do not map to skin coordinates.
+  bool addSkinned(const RenderItem &item) {
+    const hanim::SkinBinding &b = *item.skin->binding;
+    const MeshData &mesh = *item.mesh;
+    const std::size_t n = mesh.positions.size();
+    if (mesh.sourceCoordIndex.size() != n || item.path.size() < 2 ||
+        b.influenceOffset.size() != b.bindPositions.size() + 1 ||
+        std::find(item.path.begin(), item.path.end(), b.humanoid) == item.path.end())
+      return false;
+    for (std::uint32_t source : mesh.sourceCoordIndex)
+      if (source >= b.bindPositions.size()) return false;
+
+    const PathKey frame(item.path.begin(), item.path.end() - 1);
+    const int skin = skinFor(b, frame);
+    const auto meshKey = std::make_pair(item.mesh.get(), &b);
+    auto bound = skinMeshes_.find(meshKey);
+    if (bound == skinMeshes_.end()) {
+      auto bind = std::make_shared<MeshData>(mesh);
+      for (std::size_t i = 0; i < n; ++i)
+        bind->positions[i] = b.bindPositions[mesh.sourceCoordIndex[i]];
+      if (!b.bindNormals.empty() && mesh.sourceNormalIndex.size() == n &&
+          bind->normals.size() == n)
+        for (std::size_t i = 0; i < n; ++i)
+          if (mesh.sourceNormalIndex[i] < b.bindNormals.size())
+            bind->normals[i] = b.bindNormals[mesh.sourceNormalIndex[i]];
+      bound = skinMeshes_.emplace(meshKey, SkinMesh{MeshRef(std::move(bind)), {}, {}}).first;
+      SkinMesh &sm = bound->second;
+      sm.attributes = skinAttributes(b, mesh.sourceCoordIndex);
+      sm.targets = displacerTargets(b, mesh.sourceCoordIndex);
+    }
+    const SkinMesh &sm = bound->second;
+    const MeshAccessors &acc = accessorsFor(sm.mesh);
+    const int material = materialFor(item.material, *sm.mesh, acc, materialNodeOf(item));
+    const auto key = std::make_tuple(sm.mesh.get(), material);
+    auto found = skinMeshIndex_.find(key);
+    if (found == skinMeshIndex_.end()) {
+      std::vector<std::string> attrs{"\"POSITION\":" + std::to_string(acc.position)};
+      if (acc.normal >= 0) attrs.push_back("\"NORMAL\":" + std::to_string(acc.normal));
+      for (std::size_t i = 0; i < acc.texcoords.size(); ++i)
+        attrs.push_back("\"TEXCOORD_" + std::to_string(i) +
+                        "\":" + std::to_string(acc.texcoords[i]));
+      if (acc.color >= 0) attrs.push_back("\"COLOR_0\":" + std::to_string(acc.color));
+      attrs.insert(attrs.end(), sm.attributes.begin(), sm.attributes.end());
+      const int mode = sm.mesh->topology == Topology::Triangles ? 4
+                       : sm.mesh->topology == Topology::Lines ? 1 : 0;
+      std::string targets, weights;
+      if (!sm.targets.empty()) {
+        targets = ",\"targets\":[" + join(sm.targets) + "]";
+        std::vector<std::string> w;
+        for (const hanim::JointDisplacer &d : b.displacers)
+          w.push_back(num(geombounds::getField<float>(*d.node, "weight", 0.0f)));
+        weights = ",\"weights\":[" + join(w) + "]";
+      }
+      meshes_.push_back("{\"primitives\":[{\"attributes\":{" + join(attrs) +
+                        "},\"indices\":" + std::to_string(acc.indices) +
+                        ",\"material\":" + std::to_string(material) +
+                        ",\"mode\":" + std::to_string(mode) + targets + "}]" +
+                        weights + "}");
+      found = skinMeshIndex_.emplace(key, static_cast<int>(meshes_.size()) - 1).first;
+    }
+
+    // glTF ignores a skinned mesh node's transform: a root with none.
+    std::string node = "{\"mesh\":" + std::to_string(found->second) +
+                       ",\"skin\":" + std::to_string(skin);
+    std::string name;
+    for (const X3DNode *p : item.path)
+      if (p && !p->getDEF().empty()) name = p->getDEF();
+    if (!name.empty()) node += ",\"name\":" + quote(name);
+    const int index = attach(-1, node);
+    if (!sm.targets.empty()) {
+      skinMeshNodes_[b.humanoid].push_back(index);
+      for (std::size_t d = 0; d < b.displacers.size(); ++d)
+        skinDisplacers_[b.displacers[d].node] = {&b, d};
+    }
+    ++itemNodes_;
+    report_.triangles += acc.triangles;
+    return true;
+  }
+
+  // JOINTS_n / WEIGHTS_n attributes ("NAME":accessor) for corners mapped to
+  // skin coordinates by `sources`. Joint 0 holds unweighted vertices.
+  std::vector<std::string> skinAttributes(const hanim::SkinBinding &b,
+                                          const std::vector<std::uint32_t> &sources) {
+    std::size_t width = 1;
+    for (std::uint32_t s : sources)
+      width = std::max<std::size_t>(width, b.influenceOffset[s + 1] - b.influenceOffset[s]);
+    const std::size_t sets = (width + 3) / 4;
+    const bool wide = b.joints.size() + 1 > 256;
+    std::vector<std::string> out;
+    for (std::size_t set = 0; set < sets; ++set) {
+      std::vector<std::uint16_t> joints;
+      std::vector<float> weights;
+      for (std::uint32_t s : sources) {
+        const std::uint32_t begin = b.influenceOffset[s], end = b.influenceOffset[s + 1];
+        for (std::size_t k = 0; k < 4; ++k) {
+          const std::size_t at = set * 4 + k;
+          if (begin == end) {
+            joints.push_back(0);
+            weights.push_back(at == 0 ? 1.0f : 0.0f);
+          } else if (begin + at < end && b.influences[begin + at].joint < b.joints.size()) {
+            joints.push_back(static_cast<std::uint16_t>(b.influences[begin + at].joint + 1));
+            weights.push_back(b.influences[begin + at].weight);
+          } else {
+            joints.push_back(0);
+            weights.push_back(0.0f);
+          }
+        }
+      }
+      int v;
+      if (wide) {
+        v = view(joints.data(), joints.size() * sizeof(std::uint16_t), kArrayBuffer);
+      } else {
+        std::vector<std::uint8_t> narrow(joints.begin(), joints.end());
+        v = view(narrow.data(), narrow.size(), kArrayBuffer);
+      }
+      accessors_.push_back("{\"bufferView\":" + std::to_string(v) +
+                           ",\"componentType\":" + (wide ? "5123" : "5121") +
+                           ",\"count\":" + std::to_string(sources.size()) +
+                           ",\"type\":\"VEC4\"}");
+      out.push_back("\"JOINTS_" + std::to_string(set) +
+                    "\":" + std::to_string(accessors_.size() - 1));
+      out.push_back("\"WEIGHTS_" + std::to_string(set) + "\":" +
+                    std::to_string(floatAccessor(weights, 4, "VEC4", false)));
+    }
+    return out;
+  }
+
+  // One morph target per Joint displacer. X3D adds weight * C_owner *
+  // displacement after skinning; a glTF target is added before, so the
+  // offset is stored as B_owner * displacement, which skinning turns into
+  // C_owner * displacement for a vertex the owning joint fully weights.
+  std::vector<std::string> displacerTargets(const hanim::SkinBinding &b,
+                                            const std::vector<std::uint32_t> &sources) {
+    std::vector<std::string> out;
+    for (const hanim::JointDisplacer &d : b.displacers) {
+      std::vector<SFVec3f> offset(b.bindPositions.size(), SFVec3f{0, 0, 0});
+      const Mat4 bind = d.joint < b.inverseBind.size() ? b.inverseBind[d.joint].inverse()
+                                                       : Mat4::identity();
+      for (std::size_t k = 0; k < d.index.size() && k < d.displacement.size(); ++k) {
+        if (d.index[k] >= offset.size()) continue;
+        const SFVec3f v = bind.transformDirection(d.displacement[k]);
+        SFVec3f &o = offset[d.index[k]];
+        o = {o.x + v.x, o.y + v.y, o.z + v.z};
+      }
+      std::vector<float> flat;
+      for (std::uint32_t s : sources) {
+        const SFVec3f &o = offset[s];
+        flat.insert(flat.end(), {std::isfinite(o.x) ? o.x : 0.0f,
+                                 std::isfinite(o.y) ? o.y : 0.0f,
+                                 std::isfinite(o.z) ? o.z : 0.0f});
+      }
+      out.push_back("{\"POSITION\":" +
+                    std::to_string(floatAccessor(flat, 3, "VEC3", true)) + "}");
+    }
+    return out;
   }
 
   // Declare the animations before any item is added: their targets decide
@@ -860,6 +1110,7 @@ public:
     };
     section("nodes", nodes);
     section("meshes", meshes_);
+    section("skins", skins_);
     section("materials", materials_);
     section("textures", textures_);
     section("images", images_);
@@ -934,7 +1185,11 @@ private:
       if (TransformSystem::isTransform(n))
         world = world * TransformSystem::localMatrix(n, projection);
     const Mat4 frame = parent < 0 ? world : below.inverse() * world;
-    return isIdentity(frame) ? parent : attach(parent, "{" + matrixJson(frame));
+    // The inverse leaves float noise on an identity remainder.
+    bool identity = true;
+    for (std::size_t i = 0; i < 16; ++i)
+      identity = identity && std::fabs(frame.m[i] - Mat4::identity().m[i]) < 1e-6f;
+    return identity ? parent : attach(parent, "{" + matrixJson(frame));
   }
 
   // A leaf node that is itself an animation target.
@@ -957,7 +1212,7 @@ private:
   //   scale { rotation SR, scale S }
   //   tail  { translation SR^-1(-C), rotation SR^-1 }
   int animatedParent(const PathKey &path, Mat4 &below) {
-    if (animatedTargets_.empty()) return -1;
+    if (animatedTargets_.empty() && keptTransforms_.empty()) return -1;
     const geo::GeoProjection &projection = *geo::builtinProjectionOwner();
     int parent = -1;
     Mat4 world = Mat4::identity(); // estimate at the current path node
@@ -967,7 +1222,7 @@ private:
     for (const X3DNode *n : path) {
       prefix.push_back(n);
       if (!TransformSystem::isTransform(n)) continue;
-      if (!animatedTargets_.count(n)) {
+      if (!animatedTargets_.count(n) && !keptTransforms_.count(n)) {
         const Mat4 local = TransformSystem::localMatrix(n, projection);
         world = world * local;
         since = since * local;
@@ -1119,6 +1374,7 @@ private:
     std::vector<float> values;
     std::size_t width = 0;
     bool rotation = false; // unit quaternions, kept in one hemisphere
+    bool step = false;     // glTF STEP: each key holds until the next
   };
 
   // The union of the channels' times, each repeated time once per side of
@@ -1161,6 +1417,8 @@ private:
       at = 0;
     } else if (hi == t.end()) {
       at = t.size() - 1;
+    } else if (ch.step) {
+      at = static_cast<std::size_t>(hi - t.begin()) - 1;
     } else {
       const std::size_t i = static_cast<std::size_t>(hi - t.begin()) - 1;
       const float u = (time - t[i]) / (t[i + 1] - t[i]);
@@ -1183,6 +1441,9 @@ private:
     Keys keys;
     keys.width = width;
     keys.rotation = rotation;
+    keys.step = !channels.empty() &&
+                std::all_of(channels.begin(), channels.end(),
+                            [](const GltfAnimationChannel *c) { return c->step; });
     std::vector<float> v(width);
     for (const auto &[time, right] : timeline(channels, densify)) {
       fn(time, right, v.data());
@@ -1192,7 +1453,8 @@ private:
     return keys;
   }
 
-  // Write `keys` as a LINEAR sampler of `samplers`; returns its index.
+  // Write `keys` as a LINEAR (or STEP) sampler of `samplers`; returns its
+  // index.
   int sampler(Keys keys, std::vector<std::string> &samplers) {
     // glTF wants strictly increasing times; X3D allows a repeated key for a
     // jump. Nudge repeats forward by the smallest float step.
@@ -1228,7 +1490,8 @@ private:
     const int output = floatAccessor(keys.values, static_cast<int>(keys.width),
                                      kTypes[keys.width], false, 0);
     samplers.push_back("{\"input\":" + std::to_string(input) + ",\"output\":" +
-                       std::to_string(output) + ",\"interpolation\":\"LINEAR\"}");
+                       std::to_string(output) + ",\"interpolation\":\"" +
+                       (keys.step ? "STEP" : "LINEAR") + "\"}");
     return static_cast<int>(samplers.size()) - 1;
   }
 
@@ -1584,8 +1847,20 @@ private:
         it->second[fieldKey(ch)] = &ch;
       }
       std::vector<std::string> samplers, channels;
+      // Joint displacer weights, gathered per skin: glTF animates a mesh's
+      // weights as one array.
+      std::map<const hanim::SkinBinding *,
+               std::vector<std::pair<std::size_t, const GltfAnimationChannel *>>>
+          displacerWeights;
       for (const X3DNode *target : order) {
         const FieldChannels &f = byTarget[target];
+        if (const auto d = skinDisplacers_.find(target); d != skinDisplacers_.end()) {
+          for (const auto &[name, ch] : f) {
+            if (name == "weight") displacerWeights[d->second.first].emplace_back(d->second.second, ch);
+            else ++report_.skippedAnimationChannels;
+          }
+          continue;
+        }
         FieldChannels nodeFields, pointerFields;
         for (const auto &[name, ch] : f) {
           const bool node = ch->path != GltfAnimationChannel::Path::Property ||
@@ -1615,6 +1890,22 @@ private:
         if (!pointerFields.empty() &&
             !writePointerChannels(*target, pointerFields, samplers, channels))
           report_.skippedAnimationChannels += pointerFields.size();
+      }
+      for (const auto &[binding, list] : displacerWeights) {
+        const std::size_t n = binding->displacers.size();
+        std::vector<float> rest;
+        for (const hanim::JointDisplacer &d : binding->displacers)
+          rest.push_back(geombounds::getField<float>(*d.node, "weight", 0.0f));
+        std::vector<const GltfAnimationChannel *> in;
+        for (const auto &entry : list) in.push_back(entry.second);
+        Keys keys = resample(in, n, false, false, [&](float time, bool right, float *out) {
+          std::copy(rest.begin(), rest.end(), out);
+          for (const auto &[k, ch] : list) valueAt(*ch, 1, false, time, right, &out[k]);
+        });
+        keys.width = 1; // glTF weights: one SCALAR per target per key
+        const int s = sampler(std::move(keys), samplers);
+        for (int node : skinMeshNodes_[binding->humanoid])
+          nodeChannel(channels, s, node, "weights");
       }
       if (channels.empty()) continue;
       std::string json = "{";
@@ -1990,6 +2281,24 @@ private:
   std::unordered_map<int, MaterialStatic> materialStatics_;
   std::vector<LightStatic> lightStatics_; // one per glTF light
   std::unordered_map<const X3DNode *, const GltfMorph *> morphs_;
+  // Skins: kept joint nodes, skeleton chains, the skins and bind meshes.
+  struct SkinMesh {
+    MeshRef mesh;                        // bind-pose copy of the item mesh
+    std::vector<std::string> attributes; // JOINTS_n / WEIGHTS_n
+    std::vector<std::string> targets;    // Joint displacer morph targets
+  };
+  std::unordered_set<const X3DNode *> keptTransforms_;
+  std::unordered_map<const X3DNode *, std::unordered_map<const X3DNode *, PathKey>>
+      skeletons_;
+  std::map<std::pair<const hanim::SkinBinding *, PathKey>, int> skinIndex_;
+  std::vector<std::string> skins_;
+  std::map<std::pair<const MeshData *, const hanim::SkinBinding *>, SkinMesh> skinMeshes_;
+  std::map<std::tuple<const MeshData *, int>, int> skinMeshIndex_;
+  // Mesh nodes of each humanoid's skins with displacer targets, and each
+  // Joint displacer's binding and target index.
+  std::unordered_map<const X3DNode *, std::vector<int>> skinMeshNodes_;
+  std::unordered_map<const X3DNode *, std::pair<const hanim::SkinBinding *, std::size_t>>
+      skinDisplacers_;
   std::unordered_map<const X3DNode *, std::vector<int>> morphNodes_;
   std::unordered_map<const MeshData *, std::vector<std::string>> morphTargets_;
   bool usesPointer_ = false;
@@ -2012,6 +2321,7 @@ std::string writeGlb(const std::vector<const RenderItem *> &items,
   Writer writer(options, r);
   writer.setMorphs(extras.morphs);
   writer.setAnimations(extras.animations);
+  writer.prepareSkins(items);
   for (const RenderItem *item : items)
     if (item) writer.add(*item);
   for (const LightDesc &light : extras.lights) writer.add(light);
@@ -2157,6 +2467,26 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   std::vector<std::pair<const X3DNode *, const X3DNode *>> surfaceOrder;
   std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> geometryNode;
 
+  // Shared handles of every node (a Segment is cloned for its morph
+  // targets) and the Joint or Segment owning each HAnimDisplacer.
+  std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> shared;
+  std::unordered_map<const X3DNode *, const X3DNode *> displacerOwner;
+  for (const auto &root : scene.rootNodes)
+    if (root) shared.emplace(root.get(), root);
+  x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
+    forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
+      shared.emplace(c.get(), c);
+      if (f.x3dName == "displacers") displacerOwner.emplace(c.get(), n);
+    });
+  });
+  struct DisplacerSource {
+    const X3DNode *displacer;
+    Samples samples;
+  };
+  std::map<std::pair<const X3DNode *, const X3DNode *>, std::vector<DisplacerSource>>
+      bySegment; // (Segment, clock)
+  std::vector<std::pair<const X3DNode *, const X3DNode *>> segmentOrder;
+
   std::size_t skippedRoutes = 0;
   std::vector<const X3DNode *> clocks; // animation order: first use
   std::unordered_map<const X3DNode *, GltfAnimation> byClock;
@@ -2192,6 +2522,38 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
         geometryNode[geometry.get()] = geometry;
       }
       continue;
+    }
+
+    if (type == "ScalarInterpolator" || type == "SplineScalarInterpolator") {
+      if (to->nodeTypeName() == "HAnimDisplacer" && fieldName(route.toField) == "weight") {
+        const auto owner = displacerOwner.find(to.get());
+        Samples samples;
+        if (owner == displacerOwner.end() ||
+            !sampleInterpolator(*from, false, ctx.geoProjection(), samples) ||
+            samples.kind != SampleKind::Scalar) {
+          ++skippedRoutes;
+          continue;
+        }
+        const X3DNode *clock = clockOf(from);
+        if (owner->second->nodeTypeName() == "HAnimSegment") {
+          // Segment displacers move the Segment's own mesh: morph targets.
+          const auto key = std::make_pair(owner->second, clock);
+          auto &sources = bySegment[key];
+          if (sources.empty()) segmentOrder.push_back(key);
+          sources.push_back({to.get(), std::move(samples)});
+          continue;
+        }
+        // Joint displacers: the humanoid's skin morph weights (the writer).
+        GltfAnimationChannel channel;
+        channel.target = to.get();
+        channel.path = GltfAnimationChannel::Path::Property;
+        channel.field = "weight";
+        channel.values = std::move(samples.values);
+        const double duration = durationOf(clock);
+        for (float key : samples.fractions) channel.times.push_back(float(key * duration));
+        animationFor(clock).channels.push_back(std::move(channel));
+        continue;
+      }
     }
 
     const Destination dest = destinationOf(*to, fieldName(route.toField));
@@ -2255,6 +2617,199 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     extras.morphs.push_back(std::move(morph));
     animationFor(surface.second).channels.push_back(std::move(channel));
   }
+  // Segment displacers: per Segment, the meshes it displaces (a geometry
+  // whose coord is the Segment's coord) get targets [no displacement, each
+  // displacer at weight 1] on a clone of the Segment. Positions are linear
+  // in the weights, so weights [1 - sum(w), w...] give the X3D mesh exactly.
+  auto lerpFloat = [](float a, float b, float t) { return a + (b - a) * t; };
+  std::unordered_set<const X3DNode *> displacedSegments;
+  for (const auto &segmentKey : segmentOrder) {
+    const auto &sources = bySegment[segmentKey];
+    const X3DNode *segment = segmentKey.first;
+    const auto segmentPtr = shared.find(segment);
+    const auto coord = sfNode(*segment, "coord");
+    if (!displacedSegments.insert(segment).second || segmentPtr == shared.end() || !coord) {
+      skippedRoutes += sources.size();
+      continue;
+    }
+    std::vector<const X3DNode *> displacers;
+    forEachChildNode(*segment, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
+      if (f.x3dName == "displacers" && c) displacers.push_back(c.get());
+    });
+    std::vector<std::shared_ptr<X3DNode>> geometries;
+    {
+      std::unordered_set<const X3DNode *> seen;
+      std::function<void(const X3DNode *, std::size_t)> rec = [&](const X3DNode *n,
+                                                                  std::size_t depth) {
+        if (!n || depth > kMaxNestingDepth || !seen.insert(n).second) return;
+        if (const auto geometry = sfNode(*n, "geometry")) {
+          if (sfNode(*geometry, "coord") == coord &&
+              std::find(geometries.begin(), geometries.end(), geometry) == geometries.end())
+            geometries.push_back(geometry);
+          return;
+        }
+        const std::string t = n->nodeTypeName();
+        if (depth > 0 && (t == "HAnimJoint" || t == "HAnimSegment")) return;
+        forEachChildNode(*n, [&](const FieldInfo &f, const std::shared_ptr<X3DNode> &c) {
+          if (f.x3dName == "children") rec(c.get(), depth + 1);
+        });
+      };
+      rec(segment, 0);
+    }
+    // The union of the driven displacers' keys, both sides of a jump.
+    std::set<float> keys, jumps;
+    for (const DisplacerSource &src : sources)
+      for (std::size_t i = 0; i < src.samples.fractions.size(); ++i) {
+        keys.insert(src.samples.fractions[i]);
+        if (i && src.samples.fractions[i] == src.samples.fractions[i - 1])
+          jumps.insert(src.samples.fractions[i]);
+      }
+    std::vector<float> rest;
+    for (const X3DNode *d : displacers)
+      rest.push_back(geombounds::getField<float>(*d, "weight", 0.0f));
+    auto weightsAt = [&](float f, bool right) {
+      std::vector<float> w = rest;
+      for (const DisplacerSource &src : sources) {
+        const auto at = std::find(displacers.begin(), displacers.end(), src.displacer);
+        if (at == displacers.end()) continue;
+        const auto row = rowAt(src.samples.fractions, src.samples.values, 1, f, right, lerpFloat);
+        if (!row.empty()) w[std::size_t(at - displacers.begin())] = row.front();
+      }
+      return w;
+    };
+    auto withRest = [](const std::vector<float> &w) {
+      float sum = 0;
+      for (float v : w) sum += v;
+      std::vector<float> out{1.0f - sum};
+      out.insert(out.end(), w.begin(), w.end());
+      return out;
+    };
+    bool any = false;
+    for (const auto &geometry : geometries) {
+      if (morphed.count(geometry.get())) continue;
+      std::unordered_map<const X3DNode *, std::shared_ptr<X3DNode>> cloneMap;
+      const auto clone = deepClone(segmentPtr->second, cloneMap);
+      const auto geometryClone = cloneMap.find(geometry.get());
+      if (!clone || geometryClone == cloneMap.end()) continue;
+      std::vector<X3DNode *> weightClones;
+      for (const X3DNode *d : displacers) {
+        const auto c = cloneMap.find(d);
+        weightClones.push_back(c == cloneMap.end() ? nullptr : c->second.get());
+      }
+      auto build = [&](std::ptrdiff_t only) {
+        for (std::size_t k = 0; k < weightClones.size(); ++k)
+          if (weightClones[k])
+            for (const FieldInfo &f : weightClones[k]->fields())
+              if (f.x3dName == "weight" && f.set)
+                f.set(*weightClones[k], std::any(float(std::ptrdiff_t(k) == only ? 1 : 0)));
+        MeshBuildOptions options = extractor.meshOptions();
+        options.hanimSegment = clone.get();
+        return buildLocalMesh(geometryClone->second.get(), ctx.geoProjection(), options);
+      };
+      GltfMorph morph;
+      morph.geometry = geometry.get();
+      morph.segment = segment;
+      morph.targets.push_back(build(-1));
+      bool ok = !morph.targets.back().positions.empty();
+      for (std::size_t k = 0; ok && k < displacers.size(); ++k) {
+        morph.targets.push_back(build(std::ptrdiff_t(k)));
+        ok = morph.targets.back().positions.size() == morph.targets.front().positions.size();
+      }
+      if (!ok) continue;
+      morph.weights = withRest(rest);
+      GltfAnimationChannel channel;
+      channel.target = geometry.get();
+      channel.path = GltfAnimationChannel::Path::Weights;
+      const double duration = durationOf(segmentKey.second);
+      for (float f : keys)
+        for (bool right : {false, true}) {
+          if (right && !jumps.count(f)) continue;
+          const auto w = withRest(weightsAt(f, right));
+          channel.times.push_back(float(f * duration));
+          channel.values.insert(channel.values.end(), w.begin(), w.end());
+        }
+      morphed.insert(geometry.get());
+      extras.morphs.push_back(std::move(morph));
+      animationFor(segmentKey.second).channels.push_back(std::move(channel));
+      any = true;
+    }
+    if (!any) skippedRoutes += sources.size();
+  }
+
+  // HAnimMotion: one animation per enabled motion, its frames as STEP keys
+  // frameDuration apart, from the playback start (frameIndex) through one
+  // pass of [startFrame, endFrame] by frameIncrement (one cycle when it
+  // loops). A last key holds the final frame for its full duration.
+  using Motion = hanim::HAnimMotionSystem;
+  x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
+    auto *humanoid = dynamic_cast<x3d::nodes::HAnimHumanoid *>(n);
+    if (!humanoid) return;
+    const auto &motions = humanoid->getMotions();
+    for (std::size_t slot = 0; slot < motions.size(); ++slot) {
+      const auto *motion = dynamic_cast<const x3d::nodes::HAnimMotion *>(motions[slot].get());
+      if (!motion || !Motion::motionEnabled(*humanoid, *motion, slot)) continue;
+      std::size_t width = 0;
+      const auto groups = Motion::decode(*humanoid, *motion, width);
+      const int count = width ? int(motion->getValues().size() / width) : 0;
+      if (count == 0) continue;
+      const auto [lo, hi] = Motion::frameRange(*motion, count);
+      int index = std::clamp(std::clamp(int(motion->getFrameIndex()), 0, count - 1), lo, hi);
+      const int increment = motion->getFrameIncrement();
+      const double duration = motion->getFrameDuration();
+      std::vector<int> frames{index};
+      if (increment != 0 && duration > 0) {
+        const int span = hi - lo + 1;
+        for (int guard = 0; guard < span; ++guard) {
+          int next = index + increment;
+          if (next > hi || next < lo) {
+            if (!motion->getLoop()) break;
+            next = lo + ((next - lo) % span + span) % span;
+          }
+          if (next == frames.front()) break;
+          frames.push_back(next);
+          index = next;
+        }
+      }
+      GltfAnimation animation;
+      animation.name = motion->getDEF();
+      if (animation.name.empty())
+        animation.name = geombounds::getField<std::string>(*motion, "name", {});
+      std::vector<std::pair<GltfAnimationChannel, GltfAnimationChannel>> perJoint;
+      const double step = duration > 0 ? duration : 0.0;
+      for (std::size_t k = 0; k <= frames.size(); ++k) {
+        if (k == frames.size() && (step <= 0 || frames.empty())) break;
+        const int frame = frames[std::min(k, frames.size() - 1)];
+        const auto poses = Motion::poseAt(groups, *motion, width, frame);
+        if (perJoint.empty()) perJoint.resize(poses.size());
+        for (std::size_t j = 0; j < poses.size() && j < perJoint.size(); ++j) {
+          auto &[t, r] = perJoint[j];
+          const float time = float(double(k) * step);
+          if (poses[j].translated) {
+            t.target = poses[j].joint;
+            t.path = GltfAnimationChannel::Path::Translation;
+            t.step = true;
+            t.times.push_back(time);
+            t.values.insert(t.values.end(), {poses[j].translation.x, poses[j].translation.y,
+                                             poses[j].translation.z});
+          }
+          if (poses[j].rotated) {
+            const auto q = quaternion(poses[j].rotation);
+            r.target = poses[j].joint;
+            r.path = GltfAnimationChannel::Path::Rotation;
+            r.step = true;
+            r.times.push_back(time);
+            r.values.insert(r.values.end(),
+                            {float(q[0]), float(q[1]), float(q[2]), float(q[3])});
+          }
+        }
+      }
+      for (auto &[t, r] : perJoint) {
+        if (t.target) animation.channels.push_back(std::move(t));
+        if (r.target) animation.channels.push_back(std::move(r));
+      }
+      if (!animation.channels.empty()) extras.animations.push_back(std::move(animation));
+    }
+  });
   for (const X3DNode *clock : clocks)
     extras.animations.push_back(std::move(byClock[clock]));
   if (report) report->skippedAnimationRoutes = skippedRoutes;
