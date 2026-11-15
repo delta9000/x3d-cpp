@@ -19,9 +19,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -682,6 +685,55 @@ struct QuickJsBackend::Impl {
   ScriptHandle nextHandle = 1;  // start at 1 so 0 stays kInvalidScriptHandle
   std::unordered_map<ScriptHandle, Entry> entries;
 
+  // Every script runtime allocates through these, with the engine's
+  // MemoryTotal as opaque, so the sum over all scripts has a cap
+  // (ScriptEngine::setTotalMemoryLimit). Each block carries a header holding
+  // its size; QuickJS itself still enforces the per-script cap
+  // (JS_SetMemoryLimit) with the sizes these report.
+  static constexpr std::size_t kHeader = alignof(std::max_align_t);
+  static std::size_t sizeOf(const void *ptr) {
+    std::size_t n = 0;
+    std::memcpy(&n, static_cast<const unsigned char *>(ptr) - kHeader, sizeof n);
+    return n;
+  }
+  static void *totalMalloc(void *opaque, std::size_t size) {
+    auto &total = *static_cast<ScriptEngine::MemoryTotal *>(opaque);
+    if (!total.fits(size)) return nullptr;
+    auto *base = static_cast<unsigned char *>(std::malloc(kHeader + size));
+    if (!base) return nullptr;
+    std::memcpy(base, &size, sizeof size);
+    total.used += size;
+    return base + kHeader;
+  }
+  static void *totalCalloc(void *opaque, std::size_t count, std::size_t size) {
+    if (size && count > std::numeric_limits<std::size_t>::max() / size) return nullptr;
+    void *p = totalMalloc(opaque, count * size);
+    if (p) std::memset(p, 0, count * size);
+    return p;
+  }
+  static void totalFree(void *opaque, void *ptr) {
+    if (!ptr) return;
+    static_cast<ScriptEngine::MemoryTotal *>(opaque)->used -= sizeOf(ptr);
+    std::free(static_cast<unsigned char *>(ptr) - kHeader);
+  }
+  static void *totalRealloc(void *opaque, void *ptr, std::size_t size) {
+    if (!ptr) return totalMalloc(opaque, size);
+    if (size == 0) {
+      totalFree(opaque, ptr);
+      return nullptr;
+    }
+    auto &total = *static_cast<ScriptEngine::MemoryTotal *>(opaque);
+    const std::size_t old = sizeOf(ptr);
+    if (size > old && !total.fits(size - old)) return nullptr;
+    auto *grown = static_cast<unsigned char *>(
+        std::realloc(static_cast<unsigned char *>(ptr) - kHeader, kHeader + size));
+    if (!grown) return nullptr;
+    std::memcpy(grown, &size, sizeof size);
+    total.used = total.used - old + size;
+    return grown + kHeader;
+  }
+  static std::size_t usableSize(const void *ptr) { return ptr ? sizeOf(ptr) : 0; }
+
   static int interruptHandler(JSRuntime *, void *opaque) {
     const auto *b = static_cast<const Budget *>(opaque);
     return b->armed && std::chrono::steady_clock::now() >= b->deadline;
@@ -690,8 +742,12 @@ struct QuickJsBackend::Impl {
   // A fresh runtime for one script: memory cap, interrupt handler on `budget`,
   // and the native SFNode handle class (see pushNode). The class has no
   // finalizer: the opaque slot holds an id, not an allocation.
-  static JSRuntime *newRuntime(Budget &budget, std::size_t memoryLimit) {
-    JSRuntime *rt = JS_NewRuntime();
+  static JSRuntime *newRuntime(Budget &budget, std::size_t memoryLimit,
+                               ScriptEngine::MemoryTotal &total) {
+    static const JSMallocFunctions kTotalMalloc{&totalCalloc, &totalMalloc,
+                                                &totalFree, &totalRealloc,
+                                                &usableSize};
+    JSRuntime *rt = JS_NewRuntime2(&kTotalMalloc, &total);
     if (!rt) return nullptr;
     // 0 = unlimited, as in QuickJS itself.
     JS_SetMemoryLimit(rt, memoryLimit);
@@ -1142,7 +1198,7 @@ QuickJsBackend::~QuickJsBackend() = default;
 ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
                                   const std::string &source, SaiContext &sai) {
   auto budget = std::make_unique<Impl::Budget>();
-  JSRuntime *rt = Impl::newRuntime(*budget, memoryLimit());
+  JSRuntime *rt = Impl::newRuntime(*budget, memoryLimit(), memoryTotal());
   if (!rt) return kInvalidScriptHandle;
   JSContext *ctx = JS_NewContext(rt);
   if (!ctx) {

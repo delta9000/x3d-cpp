@@ -2109,8 +2109,11 @@
   note: >-
     ScriptEngine::setMemoryLimit (default 256 MiB), per script in both engines. Duktape uses a counting
     allocator per script heap; QuickJS gives each script its own runtime and uses JS_SetMemoryLimit on it.
-    Past the cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests:
-    ecmascript/quickjs backend T15h, quickjs T15j (one script at its cap leaves another its budget), plus shared "create" cases that force a heap-cap
+    ScriptEngine::setTotalMemoryLimit (default 1 GiB) caps the sum over all of one engine's scripts; both
+    engines charge every allocation to it as well (QuickJS through JS_NewRuntime2 allocator functions).
+    Past either cap an allocation fails and becomes a contained out-of-memory error. ADR-0048 (amended). Tests:
+    ecmascript/quickjs backend T15h, quickjs T15j (one script at its cap leaves another its budget),
+    shared T15k (two scripts past the engine total), plus shared "create" cases that force a heap-cap
     failure while converting factory roots and verify catchable errors and recovery. This is a
     JavaScript-heap limit, not a whole-process sandbox.
     SaiContext separately bounds captured Browser.print output and cumulative scene-creation

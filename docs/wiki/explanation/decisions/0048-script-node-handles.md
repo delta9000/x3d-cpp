@@ -118,6 +118,11 @@ Script source comes from the document, so this is the same exposure as above.
     `JS_SetMemoryLimit` on it, so the cap is per script as in Duktape
     (amended 2026-11-15; until then one shared runtime capped all scripts
     together, so one script could use up the others' budget).
+    - `ScriptEngine::setTotalMemoryLimit()` (default 1 GiB) caps the sum over
+    all of one engine's scripts, so the number of Script nodes in a document
+    does not multiply the bound (amended 2026-11-15). Duktape's counting
+    allocator and QuickJS's allocator functions (`JS_NewRuntime2`) charge
+    every block to the engine's account as well as to the script's.
     - Either way the out-of-memory error is contained like any script error.
     T15h stops an allocate-forever handler at a 16 MiB cap (peak process RSS
     28 MB) well inside a 10 s budget, and the script keeps working.

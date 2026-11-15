@@ -55,6 +55,8 @@ public:
     CallDeadline deadline;
     std::size_t used = 0;
     std::size_t limit = 0; ///< 0 = unlimited
+    /// The engine-wide account (ScriptEngine::setTotalMemoryLimit).
+    MemoryTotal *total = nullptr;
   };
 
   EcmaScriptBackend() = default;

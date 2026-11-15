@@ -156,12 +156,13 @@ functions for unit tests.
 |---|---|---|---|
 | Time per call into script code (load, initialize, one invoke, prepareEvents, eventsProcessed, shutdown) | `ScriptEngine::setCallBudget()` | 2 s | Interrupted and logged as a script error; the script stays loaded. A load whose top level times out fails |
 | Heap per script | `ScriptEngine::setMemoryLimit()` | 256 MiB | The allocation fails and becomes a contained out-of-memory error. One script at its cap leaves the others their full budget |
+| Heaps of all one engine's scripts together | `ScriptEngine::setTotalMemoryLimit()` | 1 GiB | The same, in whichever script allocates past it. Takes effect at once; `totalMemoryUsed()` reports the sum |
 | Captured `print` log | `ResourceLimits::logBytes` | 1 MiB | Keeps the prefix; `logTruncated()` turns true |
 | Scene source text, cumulative | `ResourceLimits::sceneSourceBytes` | 16 MiB | Scene creation throws a catchable error |
 | Scene factory calls | `ResourceLimits::sceneCalls` | 4096 | Same; failed calls still count |
 | Retained created roots | `ResourceLimits::createdRoots` | 65536 | Same |
 
-A zero call budget or memory limit disables it. A zero resource limit is a
+A zero call budget, memory limit or total memory limit disables it. A zero resource limit is a
 zero quota. Resource limits are per `SaiContext`, never reset between callbacks
 or reloads, and are separate from heap limits; they do not account for parser
 expansion, native graph sizes, field writes or route creation.

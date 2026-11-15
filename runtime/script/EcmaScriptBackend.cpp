@@ -128,8 +128,15 @@ SFNode extractNode(duk_context *ctx, duk_idx_t idx) {
 constexpr std::size_t kAllocHeader = alignof(std::max_align_t);
 static_assert(kAllocHeader >= sizeof(std::size_t));
 
+// Past the script's own cap, or the engine's total over all its scripts.
 bool overLimit(const EcmaScriptBackend::HeapState &h, std::size_t growth) {
+  if (h.total && !h.total->fits(growth)) return true;
   return h.limit != 0 && (h.used > h.limit || growth > h.limit - h.used);
+}
+
+void charge(EcmaScriptBackend::HeapState &h, std::size_t add, std::size_t sub) {
+  h.used = h.used - sub + add;
+  if (h.total) h.total->used = h.total->used - sub + add;
 }
 
 void *heapAlloc(void *udata, duk_size_t size) {
@@ -139,7 +146,7 @@ void *heapAlloc(void *udata, duk_size_t size) {
   if (!base) return nullptr;
   const std::size_t n = size;
   std::memcpy(base, &n, sizeof n);
-  h.used += n;
+  charge(h, n, 0);
   return base + kAllocHeader;
 }
 
@@ -149,7 +156,7 @@ void heapFree(void *udata, void *ptr) {
   unsigned char *base = static_cast<unsigned char *>(ptr) - kAllocHeader;
   std::size_t n = 0;
   std::memcpy(&n, base, sizeof n);
-  h.used -= n;
+  charge(h, 0, n);
   std::free(base);
 }
 
@@ -169,7 +176,7 @@ void *heapRealloc(void *udata, void *ptr, duk_size_t size) {
       static_cast<unsigned char *>(std::realloc(base, kAllocHeader + n));
   if (!grown) return nullptr;
   std::memcpy(grown, &n, sizeof n);
-  h.used = h.used - old + n;
+  charge(h, n, old);
   return grown + kAllocHeader;
 }
 
@@ -1068,6 +1075,7 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
                                      SaiContext &sai) {
   auto heap = std::make_unique<HeapState>();
   heap->limit = memoryLimit();
+  heap->total = &memoryTotal();
   duk_context *ctx = duk_create_heap(heapAlloc, heapRealloc, heapFree,
                                      heap.get(), nullptr);
   if (!ctx) return kInvalidScriptHandle;

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace x3d::nodes { class X3DNode; }
@@ -84,10 +85,39 @@ public:
    *          error, which is contained like any other script error. Applies to
    *          scripts loaded after the call. Zero disables the cap. The cap is
    *          per script: each loaded script has its own heap, so one script
-   *          cannot use up another's budget.
+   *          cannot use up another's budget. setTotalMemoryLimit bounds the
+   *          sum over all of the engine's scripts.
    */
   void setMemoryLimit(std::size_t bytes) { memoryLimit_ = bytes; }
   std::size_t memoryLimit() const { return memoryLimit_; }
+
+  /// Default cap on the heaps of all of one engine's scripts together.
+  static constexpr std::size_t kDefaultTotalMemoryLimit = std::size_t{1} << 30;
+
+  /// The bytes the scripts of one engine have allocated, against its total
+  /// cap. Backends charge every script heap's allocations here as well as to
+  /// the per-script cap.
+  struct MemoryTotal {
+    std::size_t used = 0;
+    std::size_t limit = kDefaultTotalMemoryLimit; ///< 0 = unlimited
+    /// Whether `growth` more bytes stay within the cap.
+    bool fits(std::size_t growth) const {
+      return limit == 0 || (used <= limit && growth <= limit - used);
+    }
+  };
+
+  /**
+   * @brief Cap the heaps of all this engine's scripts together, in bytes.
+   * @details The per-script cap (setMemoryLimit) keeps one script from using
+   *          up another's budget, but a document can hold any number of
+   *          scripts. This cap bounds their sum: past it an allocation in any
+   *          script fails the same way as at the per-script cap. It takes
+   *          effect at once, for scripts already loaded too. Zero disables it.
+   */
+  void setTotalMemoryLimit(std::size_t bytes) { total_->limit = bytes; }
+  std::size_t totalMemoryLimit() const { return total_->limit; }
+  /// Bytes currently allocated by this engine's script heaps.
+  std::size_t totalMemoryUsed() const { return total_->used; }
 
   /**
    * @brief Compile `source` for `scriptNode`; return a handle (or invalid).
@@ -151,9 +181,16 @@ public:
   virtual void updateField(ScriptHandle /*handle*/, const std::string & /*name*/,
                            const std::any & /*value*/, X3DFieldType /*type*/) {}
 
+protected:
+  /// The engine-wide account a backend charges script allocations to. Its
+  /// address is stable for the engine's lifetime, and script heaps freed in
+  /// a derived destructor still find it.
+  MemoryTotal &memoryTotal() { return *total_; }
+
 private:
   std::chrono::milliseconds callBudget_{kDefaultCallBudget};
   std::size_t memoryLimit_ = kDefaultMemoryLimit;
+  std::unique_ptr<MemoryTotal> total_ = std::make_unique<MemoryTotal>();
 };
 
 } // namespace x3d::runtime
