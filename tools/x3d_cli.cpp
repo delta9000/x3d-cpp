@@ -517,7 +517,8 @@ int cmdExtract(const std::vector<std::string> &args) {
         "  Interpolators driving a Transform, viewpoint or light pose become glTF\n"
         "  animations, one per TimeSensor; ones driving material, light and\n"
         "  camera properties use KHR_animation_pointer, and ones driving\n"
-        "  coordinates, normals or texture coordinates become morph targets.\n"
+        "  coordinates, normals, texture coordinates or a TextureTransform become\n"
+        "  morph targets.\n"
         "  H-Anim humanoids become glTF skins; HAnimMotion and displacers animate.\n"
         "  Not exported: movie, multi, cube and 3D textures.\n"
         "\n"
@@ -697,7 +698,7 @@ int cmdExtract(const std::vector<std::string> &args) {
         note(glbReport.droppedTextures, "texture(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG image)");
         note(glbReport.unmappedTextureSlots, "texture(s) in a slot glTF has no property for (specular, shininess, ambient, or lighting maps of an unlit surface)");
         note(glbReport.skippedViewpoints, "GeoViewpoint(s) not exported");
-        note(glbReport.skippedAnimationRoutes, "interpolator route(s) not exported (interpolator type or destination field has no glTF equivalent)");
+        note(glbReport.skippedAnimationRoutes, "interpolator route(s) not exported (no glTF equivalent, a second TimeSensor on one geometry, or a vertex count that changes between keys)");
         note(glbReport.skippedAnimationChannels, "animation channel(s) not exported (target not exported, key/keyValue counts differ, or a colour replaced by vertex colours)");
         note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
         note(glbReport.staticSkins, "skinned item(s) exported as static meshes");

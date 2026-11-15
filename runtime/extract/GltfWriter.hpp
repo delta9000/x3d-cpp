@@ -80,6 +80,7 @@
 
 #include "SceneExtractor.hpp"
 
+#include <any>
 #include <cstddef>
 #include <functional>
 #include <string>
@@ -214,16 +215,29 @@ struct GltfAnimation {
   std::vector<GltfAnimationChannel> channels;
 };
 
+/// One TextureTransform field's value at one morph target.
+struct GltfTextureFieldValue {
+  const X3DNode *node = nullptr; ///< the TextureTransform (in the scene)
+  std::string field;             ///< translation, center, scale or rotation
+  std::any value;                ///< SFVec2f, or float for rotation
+};
+
 /// Morph targets for one geometry node: whole meshes, each the geometry
 /// re-tessellated with its animated coordinates, normals or texture
 /// coordinates at one key, or with one HAnimSegment displacer at weight 1.
 /// They must have the corner layout of the items' mesh (the writer stores
 /// the differences and skips a geometry whose target vertex counts differ).
+/// Targets are raw tessellations: the writer bakes each placement's
+/// TextureTransform into their texture coordinates, as the extractor does for
+/// the items' meshes, using `textureFields[k]` for the fields an animation
+/// drives at target k.
 struct GltfMorph {
   const X3DNode *geometry = nullptr;
   /// Non-null: only placements under this HAnimSegment use the targets.
   const X3DNode *segment = nullptr;
   std::vector<MeshData> targets;
+  /// Per target, the animated TextureTransform fields; empty when none is.
+  std::vector<std::vector<GltfTextureFieldValue>> textureFields;
   /// The mesh's default weights; empty means all zero.
   std::vector<float> weights;
 };

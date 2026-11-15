@@ -1,6 +1,7 @@
 // GltfWriter: the GLB container, instancing, the material mapping and the
 // conversions glTF needs (winding, texture-coordinate origin).
 #include "x3d/sdk.hpp"
+#include "JsonLite.hpp"
 
 #include "doctest/doctest.h"
 #include <algorithm>
@@ -67,6 +68,52 @@ std::size_t count(const std::string &text, const std::string &needle) {
        at = text.find(needle, at + needle.size()))
     ++n;
   return n;
+}
+
+// The float rows of accessor `index`, read from the BIN chunk.
+std::vector<std::vector<float>> accessorRows(const Glb &g, double index) {
+  const auto json = x3d::json::parse(g.json);
+  REQUIRE(json);
+  const auto *accessor = json->member("accessors")->array.at(std::size_t(index)).get();
+  const std::string &type = accessor->member("type")->str;
+  const std::size_t width = type == "SCALAR" ? 1 : std::size_t(type.back() - '0');
+  const auto *view = json->member("bufferViews")
+                         ->array.at(std::size_t(accessor->member("bufferView")->number))
+                         .get();
+  std::size_t at = 0;
+  if (const auto *o = view->member("byteOffset")) at += std::size_t(o->number);
+  if (const auto *o = accessor->member("byteOffset")) at += std::size_t(o->number);
+  std::vector<std::vector<float>> rows(std::size_t(accessor->member("count")->number));
+  for (auto &row : rows) {
+    row.resize(width);
+    std::memcpy(row.data(), g.bin.data() + at, width * 4);
+    at += width * 4;
+  }
+  return rows;
+}
+
+// Attribute `name` of morph target `target` of mesh `mesh`'s first primitive
+// (target -1: the primitive's own attribute).
+std::vector<std::vector<float>> morphAttribute(const Glb &g, std::size_t mesh,
+                                               int target, const std::string &name) {
+  const auto json = x3d::json::parse(g.json);
+  REQUIRE(json);
+  const auto *primitive =
+      json->member("meshes")->array.at(mesh)->member("primitives")->array.at(0).get();
+  const x3d::json::Value *attributes =
+      target < 0 ? primitive->member("attributes")
+                 : primitive->member("targets")->array.at(std::size_t(target)).get();
+  const auto *index = attributes->member(name);
+  REQUIRE(index);
+  return accessorRows(g, index->number);
+}
+
+std::size_t morphTargetCount(const Glb &g, std::size_t mesh) {
+  const auto json = x3d::json::parse(g.json);
+  const auto *primitive =
+      json->member("meshes")->array.at(mesh)->member("primitives")->array.at(0).get();
+  const auto *targets = primitive->member("targets");
+  return targets ? targets->array.size() : 0;
 }
 
 } // namespace
@@ -738,6 +785,91 @@ TEST_CASE("glb: coordinate and texture-coordinate animation become morph targets
   // One-hot weights: 4 keys x 4 targets.
   CHECK(has(g.json, "\"count\":16,\"type\":\"SCALAR\"}"));
   CHECK(has(g.json, "\"count\":4,\"type\":\"SCALAR\",\"min\":[0],\"max\":[2]"));
+}
+
+TEST_CASE("glb: a CoordinateInterpolator2D on its own becomes texture-coordinate morph targets") {
+  const Glb g = exportScene(
+      "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+      "<Shape><Appearance><Material/><PixelTexture image='1 1 3 0xFF0000'/></Appearance>"
+      "<IndexedFaceSet coordIndex='0 1 2 -1' texCoordIndex='0 1 2 -1'>"
+      "<Coordinate point='0 0 0 1 0 0 0 1 0'/>"
+      "<TextureCoordinate DEF='TC' point='0 0 1 0 0 1'/>"
+      "</IndexedFaceSet></Shape>"
+      "<CoordinateInterpolator2D DEF='TI' key='0 1' keyValue='0 0 1 0 0 1  0 0 2 0 0 3'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='TI' toField='set_fraction'/>"
+      "<ROUTE fromNode='TI' fromField='value_changed' toNode='TC' toField='point'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.animations == 1);
+  REQUIRE(morphTargetCount(g, 0) == 2);
+  // At key 1 the second corner's s grows by 1 and the third's t by 2 (t is
+  // flipped in glTF, so its difference is -2).
+  const auto last = morphAttribute(g, 0, 1, "TEXCOORD_0");
+  REQUIRE(last.size() == 3);
+  CHECK(last[1][0] == doctest::Approx(1.0f));
+  CHECK(last[2][1] == doctest::Approx(-2.0f));
+  const auto first = morphAttribute(g, 0, 0, "TEXCOORD_0");
+  for (const auto &row : first) CHECK(row[0] == 0.0f);
+}
+
+TEST_CASE("glb: morph targets keep the shape's TextureTransform") {
+  // The mesh has the TextureTransform baked into its texture coordinates; a
+  // coordinate animation must not undo it.
+  const Glb g = exportScene(
+      "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+      "<Shape><Appearance><Material/><PixelTexture image='1 1 3 0xFF0000'/>"
+      "<TextureTransform scale='4 4'/></Appearance>"
+      "<IndexedFaceSet coordIndex='0 1 2 -1' texCoordIndex='0 1 2 -1'>"
+      "<Coordinate DEF='Pts' point='0 0 0 1 0 0 0 1 0'/>"
+      "<TextureCoordinate point='0 0 1 0 0 1'/>"
+      "</IndexedFaceSet></Shape>"
+      "<CoordinateInterpolator DEF='CI' key='0 1' keyValue='0 0 0 1 0 0 0 1 0  0 0 0 2 0 0 0 2 0'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='CI' toField='set_fraction'/>"
+      "<ROUTE fromNode='CI' fromField='value_changed' toNode='Pts' toField='point'/>");
+  const auto base = morphAttribute(g, 0, -1, "TEXCOORD_0");
+  REQUIRE(base.size() == 3);
+  CHECK(base[1][0] == doctest::Approx(4.0f)); // scaled by the TextureTransform
+  REQUIRE(morphTargetCount(g, 0) == 2);
+  for (int k = 0; k < 2; ++k)
+    for (const auto &row : morphAttribute(g, 0, k, "TEXCOORD_0")) {
+      CHECK(row[0] == doctest::Approx(0.0f));
+      CHECK(row[1] == doctest::Approx(0.0f));
+    }
+  CHECK(morphAttribute(g, 0, 1, "POSITION")[1][0] == doctest::Approx(1.0f));
+}
+
+TEST_CASE("glb: an animated TextureTransform becomes texture-coordinate morph targets") {
+  const Glb g = exportScene(
+      "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+      "<Shape><Appearance><Material/><PixelTexture image='1 1 3 0xFF0000'/>"
+      "<TextureTransform DEF='TT'/></Appearance>"
+      "<IndexedFaceSet DEF='G' coordIndex='0 1 2 -1' texCoordIndex='0 1 2 -1'>"
+      "<Coordinate point='0 0 0 1 0 0 0 1 0'/>"
+      "<TextureCoordinate point='0 0 1 0 0 1'/>"
+      "</IndexedFaceSet></Shape>"
+      // The same geometry with no TextureTransform: its own, static mesh.
+      "<Transform translation='3 0 0'><Shape><Appearance><Material/></Appearance>"
+      "<IndexedFaceSet USE='G'/></Shape></Transform>"
+      // A TextureTransform on no shape: counted.
+      "<Shape><Appearance><TextureTransform DEF='Unused'/></Appearance></Shape>"
+      "<PositionInterpolator2D DEF='Slide' key='0 1' keyValue='0 0 1 0'/>"
+      "<ScalarInterpolator DEF='Turn' key='0 1' keyValue='0 3.14159265'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Slide' toField='set_fraction'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Turn' toField='set_fraction'/>"
+      "<ROUTE fromNode='Slide' fromField='value_changed' toNode='TT' toField='set_translation'/>"
+      "<ROUTE fromNode='Turn' fromField='value_changed' toNode='TT' toField='set_rotation'/>"
+      "<ROUTE fromNode='Slide' fromField='value_changed' toNode='Unused' toField='set_center'/>");
+  CHECK(g.report.skippedAnimationRoutes == 1); // Unused
+  CHECK(g.report.animations == 1);
+  // The textured placement and the plain one do not share a glTF mesh.
+  CHECK(g.report.meshes == 2);
+  // The rotation is not linear in texture space: 8 samples per key interval.
+  REQUIRE(morphTargetCount(g, 0) == 9);
+  // At key 1 the corner at (0,0) moves to (1,0) and turns half a turn about
+  // the origin to (-1,0).
+  const auto last = morphAttribute(g, 0, 8, "TEXCOORD_0");
+  CHECK(last[0][0] == doctest::Approx(-1.0f).epsilon(1e-4));
+  CHECK(last[0][1] == doctest::Approx(0.0f).epsilon(1e-4));
+  for (const auto &row : morphAttribute(g, 0, 0, "TEXCOORD_0")) CHECK(row[0] == 0.0f);
 }
 
 TEST_CASE("glb: a geometry's own MF field can be morphed, and bad morphs are counted") {
