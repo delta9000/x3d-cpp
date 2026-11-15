@@ -2315,9 +2315,11 @@ std::string writeGlb(const std::vector<const RenderItem *> &items,
   // gltfExtrasFrom reports what it skipped before the writer runs; keep it.
   const std::size_t skippedViewpoints = report ? r.skippedViewpoints : 0;
   const std::size_t skippedRoutes = report ? r.skippedAnimationRoutes : 0;
+  const std::size_t skippedMotions = report ? r.skippedMotions : 0;
   r = GltfWriteReport{};
   r.skippedViewpoints = skippedViewpoints;
   r.skippedAnimationRoutes = skippedRoutes;
+  r.skippedMotions = skippedMotions;
   Writer writer(options, r);
   writer.setMorphs(extras.morphs);
   writer.setAnimations(extras.animations);
@@ -2741,17 +2743,25 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   // pass of [startFrame, endFrame] by frameIncrement (one cycle when it
   // loops). A last key holds the final frame for its full duration.
   using Motion = hanim::HAnimMotionSystem;
+  std::size_t skippedMotions = 0;
   x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
     auto *humanoid = dynamic_cast<x3d::nodes::HAnimHumanoid *>(n);
     if (!humanoid) return;
     const auto &motions = humanoid->getMotions();
     for (std::size_t slot = 0; slot < motions.size(); ++slot) {
       const auto *motion = dynamic_cast<const x3d::nodes::HAnimMotion *>(motions[slot].get());
-      if (!motion || !Motion::motionEnabled(*humanoid, *motion, slot)) continue;
+      if (!motion) continue;
+      if (!Motion::motionEnabled(*humanoid, *motion, slot)) {
+        ++skippedMotions;
+        continue;
+      }
       std::size_t width = 0;
       const auto groups = Motion::decode(*humanoid, *motion, width);
       const int count = width ? int(motion->getValues().size() / width) : 0;
-      if (count == 0) continue;
+      if (count == 0) {
+        ++skippedMotions;
+        continue;
+      }
       const auto [lo, hi] = Motion::frameRange(*motion, count);
       int index = std::clamp(std::clamp(int(motion->getFrameIndex()), 0, count - 1), lo, hi);
       const int increment = motion->getFrameIncrement();
@@ -2807,12 +2817,16 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
         if (t.target) animation.channels.push_back(std::move(t));
         if (r.target) animation.channels.push_back(std::move(r));
       }
-      if (!animation.channels.empty()) extras.animations.push_back(std::move(animation));
+      if (animation.channels.empty()) ++skippedMotions;
+      else extras.animations.push_back(std::move(animation));
     }
   });
   for (const X3DNode *clock : clocks)
     extras.animations.push_back(std::move(byClock[clock]));
-  if (report) report->skippedAnimationRoutes = skippedRoutes;
+  if (report) {
+    report->skippedAnimationRoutes = skippedRoutes;
+    report->skippedMotions = skippedMotions;
+  }
   return extras;
 }
 

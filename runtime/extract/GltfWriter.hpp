@@ -142,6 +142,9 @@ struct GltfWriteReport {
   /// interpolator type the exporter does not sample, or a destination field
   /// with no glTF property (see GltfAnimationChannel for the list).
   std::size_t skippedAnimationRoutes = 0;
+  /// HAnimMotions not exported: disabled (enabled FALSE or off in the
+  /// humanoid's motionsEnabled), no complete frame, or no joint channel.
+  std::size_t skippedMotions = 0;
 };
 
 /// One camera to export. `cameraToWorld` places it; like an X3D viewpoint a

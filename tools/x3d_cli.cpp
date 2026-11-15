@@ -701,6 +701,7 @@ int cmdExtract(const std::vector<std::string> &args) {
         note(glbReport.skippedAnimationChannels, "animation channel(s) not exported (target not exported, key/keyValue counts differ, or a colour replaced by vertex colours)");
         note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
         note(glbReport.staticSkins, "skinned item(s) exported as static meshes");
+        note(glbReport.skippedMotions, "HAnimMotion(s) not exported (disabled or no frames)");
         note(glbReport.droppedBackMaterials, "back material(s) not exported");
         note(glbReport.droppedShaders, "author shader(s) not exported");
     }

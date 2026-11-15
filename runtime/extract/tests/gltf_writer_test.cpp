@@ -810,7 +810,9 @@ TEST_CASE("glb: joint interpolators, displacer weights and HAnimMotion animate")
       std::string(kHumanoid) +
       "<HAnimMotion DEF='Walk' containerField='motions' joints='knee' "
       "  channels='2 Zrotation Xposition' values='0 0  90 1  180 2' "
-      "  frameDuration='0.5' loop='true'/></HAnimHumanoid>"
+      "  frameDuration='0.5' loop='true'/>"
+      "<HAnimMotion DEF='Off' containerField='motions' enabled='false' joints='knee' "
+      "  channels='1 Xposition' values='0 1' frameDuration='0.5'/></HAnimHumanoid>"
       "<TimeSensor DEF='Clock' cycleInterval='2'/>"
       "<OrientationInterpolator DEF='Bend' key='0 1' keyValue='0 0 1 0 0 0 1 1'/>"
       "<ScalarInterpolator DEF='Puff' key='0 1' keyValue='0 1'/>"
@@ -821,6 +823,7 @@ TEST_CASE("glb: joint interpolators, displacer weights and HAnimMotion animate")
   CHECK(g.report.skippedAnimationRoutes == 0);
   CHECK(g.report.skippedAnimationChannels == 0);
   CHECK(g.report.animations == 2);
+  CHECK(g.report.skippedMotions == 1); // Off is disabled
   // The motion: frames 0, 1, 2 and a hold key, STEP, named by its DEF.
   CHECK(has(g.json, "\"name\":\"Walk\""));
   CHECK(count(g.json, "\"interpolation\":\"STEP\"") == 2); // translation, rotation

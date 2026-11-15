@@ -155,6 +155,8 @@ out-of-range authored value still gives a valid file.
   nodes (sequencers, Scripts, EaseInEaseOut, followers); and fields with no
   glTF property, such as `specularColor`, `ambientIntensity` and
   `attenuation`.
+- An HAnimMotion that is disabled or has no complete frame is counted in
+  `skippedMotions`.
 - Dropped interpolator routes are counted in `skippedAnimationRoutes`, and a
   channel whose target was not written (a Transform with nothing exported
   under it, a material on no exported shape, a light that is off) in
