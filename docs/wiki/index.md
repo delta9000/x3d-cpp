@@ -2,7 +2,7 @@
 title: x3d-cpp documentation
 summary: Entry point to the tutorials, how-to guides, reference and explanation for the runtime SDK and the SAI SDK.
 tags: [index]
-updated: 2026-11-14
+updated: 2026-11-15
 related: []
 ---
 
@@ -59,6 +59,7 @@ Using the SDK:
 | Page | Contents |
 |---|---|
 | [SDK capabilities](reference/capabilities.md) | What the SDK covers, one row per capability |
+| [Runtime session and options](reference/runtime-session.md) | Session API, configuration defaults and callback precedence |
 | [Native host contract](reference/native-host-contract.md) | Session, mutation, delta, lifetime and resource rules |
 | [Seam matrix](reference/seam-matrix.md) | Interfaces, implementations and contract tests |
 | [API stability](reference/api-stability.md) | What 0.x releases promise |
@@ -78,8 +79,9 @@ Working on x3d-cpp:
 | [X3D 4.0 requirements audit](reference/x3d4-requirements-audit.md) | Normative obligations and host acceptance scope |
 | [Documentation conventions](reference/doc-conventions.md) | Where pages go and how they are written |
 
-Conformance status is not in this tree: `docs/conformance/findings.yaml` owns
-it, and `docs/conformance/INDEX.md` is its generated view.
+The [findings register](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/findings.yaml)
+owns conformance status; the [generated status view](https://github.com/delta9000/x3d-cpp/blob/main/docs/conformance/INDEX.md)
+groups the findings by component.
 
 ## Explanation
 

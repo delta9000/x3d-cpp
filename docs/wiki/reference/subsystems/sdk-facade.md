@@ -1,8 +1,8 @@
 ---
 title: SDK facade
-summary: The single public header consumers include — x3d::sdk — which re-exports the curated v1 embedder surface from namespace x3d::sdk.
+summary: The x3d/sdk.hpp entry point and its curated aliases, node-inspection helpers and package boundaries.
 tags: [subsystem, sdk, facade, public-api]
-updated: 2026-10-18
+updated: 2026-11-15
 related:
   - ../../explanation/architecture.md
   - cli-suite.md
@@ -24,8 +24,10 @@ Use `parseFile` for local-file loading or `parseDocument` with explicit
 resolvers for host-controlled loading. See [Parse readers](parse-readers.md).
 
 `RuntimeSession::create` owns a document, context, and extractor and attaches
-the standard runtime. Call `fullSnapshot()` once, then `tick(now)` and
-`delta()` from the host loop. Low-level `X3DExecutionContext` and
+the standard runtime by default. Its signatures, configuration defaults and
+accessors are in [RuntimeSession and SessionOptions](../runtime-session.md).
+Call `fullSnapshot()` once, then `tick(now)` and `delta()` from the host loop.
+Low-level `X3DExecutionContext` and
 `SceneExtractor` remain available. See [Execution context](execution-context.md)
 and [extraction](extract.md) for lifetime, mutation, and delta contracts.
 

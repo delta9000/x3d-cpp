@@ -1,8 +1,8 @@
 ---
 title: Documentation conventions
-summary: Where a page goes, how each kind of page is written, and the frontmatter, link and nav rules the docs gate enforces.
+summary: Where a page goes, how each kind of page is written, and which link and navigation rules the docs gate enforces.
 tags: [reference, conventions, meta]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - subsystems/_template.md
   - ../explanation/decisions/0000-template.md
@@ -12,7 +12,9 @@ related:
 
 All prose documentation lives in one tree, `docs/wiki/`, organised by
 [Diataxis](https://diataxis.fr/). Each page serves exactly one purpose.
-`mkdocs build --strict` (`mise run docs-build`) enforces links and nav.
+`mkdocs build --strict` (`mise run docs-build`) rejects broken internal page
+and heading links and pages omitted from navigation. Frontmatter and prose
+conventions below require review; the build does not enforce them.
 
 ## Where a page goes
 
@@ -75,16 +77,22 @@ related:                    # paths relative to this file; may be []
 | `updated` | The date the content changed, not the git date |
 | `related` | Pages a reader should also visit. Every entry also appears as an in-page link |
 
+The theme does not display `related` metadata. Add the links to the page body
+so readers can follow them and the build can validate them.
+
 ## Links
 
 | Target | Write it as |
 |---|---|
 | Another page in `docs/wiki/` | A relative Markdown link with the `.md` extension, resolvable from the file's own location |
-| Anything else in the repository (source, registers, READMEs) | An inline-code path. `docs_dir` is `docs/wiki`, so an out-of-tree relative link fails the strict build |
+| A repository file outside `docs/wiki/` that the reader needs to open (source, registers, READMEs) | A GitHub `blob/main/` link, or `tree/main/` for a directory; pin a commit when the text describes a historical revision |
+| A repository path used in a command or mentioned without a need to open it | An inline-code path |
 | A removed spec or plan | A GitHub link pinned to commit `db23737` |
 
-Do not use absolute or site-root-relative paths (`/architecture/`). Check
-incoming anchors before renaming a heading.
+Do not use absolute or site-root-relative paths (`/architecture/`) or relative
+links outside `docs/wiki/`: they do not resolve in the built site. External
+GitHub URLs are not checked by MkDocs; verify their targets when adding them.
+Check incoming anchors before renaming a heading.
 
 ## Nav
 

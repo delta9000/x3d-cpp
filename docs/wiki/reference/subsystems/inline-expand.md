@@ -2,7 +2,7 @@
 title: Inline expansion
 summary: Parse-time Inline expansion enabling foreign-asset ingestion and general sub-scene composition via the X3D Inline seam.
 tags: [subsystem, inline, expansion, ingestion, obj, gltf, parse-time]
-updated: 2026-06-20
+updated: 2026-11-15
 related:
   - ../../explanation/architecture.md
   - parse-readers.md
@@ -35,7 +35,7 @@ declarations in `Scene::sourceUnits`, including when reached through
 `expandedInlineScenes`. An empty snapshot means that the child declared no
 units. Parsing retains authored units; runtime entry normalizes mapped authored fields through `normalizeRuntimeUnits`.
 
-## Fetched and runtime diagnostics proposal
+## Fetched and runtime diagnostics
 
 - The paired asset loaders forward selected child documents' reader, range,
   PROTO, and Inline warnings into the parent's `inlineWarnings` (or
@@ -51,7 +51,7 @@ units. Parsing retains authored units; runtime entry normalizes mapped authored 
   [ADR-0072](../../explanation/decisions/0072-fetched-document-diagnostics.md)
   for the resolver exception contract and scope.
 - The focused cases in `inline_diagnostics_test.cpp` are registered in
-  `x3d_extract_tests` and unrun.
+  `x3d_extract_tests`.
 
 ## Key files
 
@@ -81,7 +81,7 @@ units. Parsing retains authored units; runtime entry normalizes mapped authored 
 namespace x3d::runtime {
 
 /// Callable that resolves an Inline's url list to a parsed sub-Scene.
-/// Returns nullptr on failure or cycle (lenient path).
+/// Returns nullptr on failure; may throw InlineCycleError for a cycle reason.
 using InlineResolver = std::function<std::shared_ptr<Scene>(
     const std::vector<std::string> &urls, const std::string &baseUrl)>;
 
@@ -91,20 +91,42 @@ using InlineResolver = std::function<std::shared_ptr<Scene>(
 void expandInlines(Scene &scene,
                    const InlineResolver &resolver,
                    const std::string &baseUrl,
-                   std::vector<InlineWarning> &warnings);
+                   std::vector<InlineWarning> &warnings,
+                   const std::function<void(X3DNode *,
+                       const std::shared_ptr<X3DNode> &)> &onExpanded = {});
 
 } // namespace x3d::runtime
 ```
 
 `expandInlines()` is called from `parseDocument` in `runtime/parse/X3DParse.cpp` immediately after `expandScene` (the PROTO pass). Nested Inlines recurse automatically because `localFileInlineResolver` calls `parseFile`, which re-enters `parseDocument` and expands any Inlines in the child before returning.
 
-The `InlineWarning::Kind` enum covers `UnresolvedUrl` (first-class, no throw — matching the EXTERNPROTO policy).
+`InlineWarning::Kind` has `UnresolvedUrl`, `LoadError`, `Cycle` and
+`SourceWarning` values. `expandInlines` converts `InlineCycleError` to a `Cycle`
+warning; other resolver exceptions propagate. Direct callers of an asset
+loader's Inline callback must handle its cycle exception themselves.
 
 ### Seam points
 
 - `InlineResolver` injection — `parseDocument` accepts an `InlineResolver` parameter (default: `localFileInlineResolver`). An embedder supplying a network fetcher, virtual filesystem, or format-converting resolver (e.g. a glTF-to-Scene converter) passes it here; the core never changes.
 
-- Runtime injection — `attachStandardRuntime` and `SessionOptions` accept the same `InlineResolver` plus `baseUrl`. No resolver means deferred Inline nodes stay inert. The parsed `Scene` does not retain an IO callback; callers that want late loading pass their resolver again. `InlineRuntimeSystem` attempts a deferred URL once per value; `load=FALSE` unloads an expanded subtree and a changed `url` replaces it.
+- Runtime injection — `attachStandardRuntime` and `SessionOptions` accept an
+  `InlineResolver` plus `baseUrl`. A nonempty fallback resolver enables the
+  standard runtime's Inline system; no fallback means it is not installed.
+  Asset-loaded Inline nodes retain value-owned loaders in
+  `Scene::deferredInlineResolvers`. Their captured loading policy and source
+  ancestry take precedence over the fallback for those nodes; replacing the
+  fallback does not replace retained callbacks. Nodes without retained state
+  use the supplied fallback. `InlineRuntimeSystem` attempts a deferred URL
+  once per value; `load=FALSE` unloads an expanded subtree and a changed `url`
+  replaces it. See [session options](../runtime-session.md#sessionoptions).
+
+- Retained-loader lifetime — Inline expansion transfers retained callbacks
+  alongside source base URLs when splicing child scenes. Their captures can
+  retain host asset backends and decorators until that loader state is
+  released. Weak node keys prevent policy from attaching to a reused node
+  address. Custom and local-file resolvers remain responsible for their own
+  source ancestry and cycle rules; see
+  [ADR-0070](../../explanation/decisions/0070-deferred-inline-loader-ancestry.md).
 
 - `localFileInlineResolver` (in `X3DParse.hpp`) — the default resolver. Resolves file-like URLs relative to `baseUrl`, calls `parseFile` on the target, and guards cycles via a `thread_local std::vector<std::string> activeFiles` stack. `http`/`https`/`urn:` schemes are skipped (embedder-override territory), matching `localFileProtoResolver`'s policy.
 

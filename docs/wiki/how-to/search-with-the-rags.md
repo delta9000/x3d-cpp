@@ -2,15 +2,15 @@
 title: Search with the RAG tools
 summary: Configure and query specification, C++, and documentation indexes.
 tags: [how-to, rag]
-updated: 2026-11-05
+updated: 2026-11-15
 related: []
 ---
 
 # Search with the RAG tools
 
 The search scripts locate evidence. Read the returned clause or source before
-making a capability claim. The [source map](../reference/source-map.md
-sources that own specifications, decisions, and conformance status.
+making a capability claim. The [source map](../reference/source-map.md) lists
+the sources that own specifications, decisions, and conformance status.
 
 ## Configuration
 
