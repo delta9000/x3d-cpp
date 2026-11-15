@@ -544,3 +544,185 @@ TEST_CASE("glb: a Viewpoint's pose and a light's location animate") {
   // The untouched viewpoint and light stay plain roots.
   CHECK(has(g.json, "\"name\":\"Still\",\"matrix\":["));
 }
+
+namespace {
+const char *kSkinned =
+    "<Transform translation='10 0 0'>"
+    "<HAnimHumanoid DEF='Body' name='body' translation='0 1 0'>"
+    "  <HAnimJoint DEF='Root' name='humanoid_root' containerField='skeleton' "
+    "      skinCoordIndex='0 1 2 3' skinCoordWeight='1 1 0.5 0.5'>"
+    "    <HAnimJoint DEF='Elbow' name='l_elbow' center='0 1 0' rotation='0 0 1 1.5707963' "
+    "        skinCoordIndex='2 3 4 4' skinCoordWeight='0.5 0.5 0.75 0.25'/>"
+    "  </HAnimJoint>"
+    "  <HAnimJoint USE='Root' containerField='joints'/>"
+    "  <HAnimJoint USE='Elbow' containerField='joints'/>"
+    "  <Coordinate DEF='Skin' containerField='skinCoord' "
+    "      point='0 0 0 1 0 0 1 1 0 0 1 0 0 2 0 1 2 0'/>"
+    "  <Shape DEF='SkinShape' containerField='skin'>"
+    "    <IndexedFaceSet coordIndex='0 1 2 3 -1 3 2 5 4 -1'><Coordinate USE='Skin'/>"
+    "    </IndexedFaceSet></Shape>"
+    "</HAnimHumanoid></Transform>"
+    "<TimeSensor DEF='Clock' cycleInterval='2'/>"
+    "<OrientationInterpolator DEF='Bend' key='0 1' keyValue='0 0 1 0 0 0 1 1.5707963'/>"
+    "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='Bend' toField='set_fraction'/>"
+    "<ROUTE fromNode='Bend' fromField='value_changed' toNode='Elbow' toField='set_rotation'/>";
+} // namespace
+
+TEST_CASE("glb: an H-Anim skin becomes a glTF skin with animated joints") {
+  const Glb g = exportScene(kSkinned);
+  CHECK(g.report.skins == 1);
+  CHECK(g.report.staticSkins == 0);
+  CHECK(g.report.nodes == 1);
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 1);
+  CHECK(g.report.skippedAnimationRoutes == 0);
+
+  // Transform -> humanoid -> Root -> Elbow -> the node undoing Elbow's centre.
+  CHECK(has(g.json, "{\"matrix\":[1,0,0,0,0,1,0,0,0,0,1,0,10,0,0,1],\"children\":[1]}"));
+  CHECK(has(g.json, "{\"name\":\"Body\",\"translation\":[0,1,0],\"rotation\":[0,0,0,1],"
+                    "\"scale\":[1,1,1],\"children\":[2]}"));
+  CHECK(has(g.json, "{\"name\":\"Elbow\",\"translation\":[0,1,0],\"rotation\":[0,0,0.70710"));
+  CHECK(has(g.json, "{\"translation\":[0,-1,0]}"));
+  // Joints in palette order, then the humanoid's frame for unweighted vertices.
+  CHECK(has(g.json, "\"skins\":[{\"name\":\"Body\",\"inverseBindMatrices\":"));
+  CHECK(has(g.json, "\"joints\":[2,4,1]}"));
+  // The mesh node is a root with no transform of its own.
+  CHECK(has(g.json, "{\"mesh\":0,\"skin\":0,\"name\":\"SkinShape\"}"));
+  CHECK(has(g.json, "\"JOINTS_0\":"));
+  CHECK(has(g.json, "\"WEIGHTS_0\":"));
+  CHECK(!has(g.json, "\"JOINTS_1\":"));
+  CHECK(has(g.json, "\"componentType\":5123,\"count\":12,\"type\":\"VEC4\""));
+  CHECK(has(g.json, "\"type\":\"MAT4\""));
+  // The animation drives the Elbow node (3), not the mesh.
+  CHECK(has(g.json, "\"target\":{\"node\":3,\"path\":\"rotation\"}"));
+
+  // The buffer ends with the joints (12 x 8 bytes) and weights (12 x 16),
+  // then the animation's two times and two quaternions.
+  REQUIRE(g.bin.size() >= 96 + 192 + 40);
+  const std::size_t jointsAt = g.bin.size() - 40 - 192 - 96;
+  std::vector<std::uint16_t> joints(48);
+  std::memcpy(joints.data(), g.bin.data() + jointsAt, 96);
+  const auto weights = floatsAt(g, jointsAt + 96, 48);
+  int unweighted = 0, blended = 0, doubled = 0;
+  for (int v = 0; v < 12; ++v) {
+    const float sum = weights[v * 4] + weights[v * 4 + 1] + weights[v * 4 + 2] +
+                      weights[v * 4 + 3];
+    CHECK(sum == doctest::Approx(1.0f));
+    if (joints[v * 4] == 2) ++unweighted; // coordinate 5: the humanoid's frame
+    if (weights[v * 4] == 0.5f && weights[v * 4 + 1] == 0.5f) ++blended;
+    // Coordinate 4 lists Elbow twice; the two weights are merged.
+    if (joints[v * 4] == 1 && weights[v * 4] == 1.0f) ++doubled;
+  }
+  CHECK(unweighted == 2);
+  CHECK(blended == 6);
+  CHECK(doubled == 1);
+}
+
+TEST_CASE("glb: rigid H-Anim segments follow their animated joint") {
+  const Glb g = exportScene(
+      "<HAnimHumanoid DEF='Body' name='body'>"
+      "  <HAnimJoint DEF='Root' name='humanoid_root' containerField='skeleton'>"
+      "    <HAnimSegment DEF='Seg' name='pelvis'><Shape DEF='Bone'><Box/></Shape></HAnimSegment>"
+      "  </HAnimJoint>"
+      "  <HAnimJoint USE='Root' containerField='joints'/>"
+      "</HAnimHumanoid>"
+      "<PositionInterpolator DEF='Hop' key='0 1' keyValue='0 0 0 0 1 0'/>"
+      "<ROUTE fromNode='Hop' fromField='value_changed' toNode='Root' toField='set_translation'/>");
+  CHECK(g.report.skins == 0);
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.animationChannels == 1);
+  CHECK(has(g.json, "{\"name\":\"Root\",\"translation\":[0,0,0],\"rotation\":[0,0,0,1],"
+                    "\"scale\":[1,1,1],\"children\":["));
+  CHECK(has(g.json, "\"name\":\"Bone\"}"));
+}
+
+TEST_CASE("glb: an HAnimMotion becomes a STEP animation of its joints") {
+  const Glb g = exportScene(
+      "<HAnimHumanoid DEF='Body' name='body'>"
+      "  <HAnimJoint DEF='Root' name='humanoid_root' containerField='skeleton' translation='0 1 0'>"
+      "    <HAnimJoint DEF='Neck' name='vc4'>"
+      "      <HAnimSegment name='skull'><Shape DEF='Head'><Sphere/></Shape></HAnimSegment>"
+      "    </HAnimJoint>"
+      "  </HAnimJoint>"
+      "  <HAnimJoint USE='Root' containerField='joints'/>"
+      "  <HAnimJoint USE='Neck' containerField='joints'/>"
+      "  <HAnimMotion DEF='Nod' containerField='motions' frameDuration='0.5' loop='true' "
+      "      joints='humanoid_root vc4 IGNORED' "
+      "      channels='1 Yposition 2 Xrotation Yrotation 1 Zrotation' "
+      "      values='2 0 0 5  3 90 0 5  4 0 90 5'/>"
+      "  <HAnimMotion DEF='Off' containerField='motions' enabled='false' "
+      "      joints='vc4' channels='1 Xrotation' values='10'/>"
+      "</HAnimHumanoid>");
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.skippedMotions == 1);
+  CHECK(g.report.animationChannels == 2); // root translation, neck rotation
+  CHECK(has(g.json, "\"animations\":[{\"name\":\"Nod\""));
+  CHECK(count(g.json, "\"interpolation\":\"STEP\"") == 2);
+  CHECK(has(g.json, "\"type\":\"SCALAR\",\"min\":[0],\"max\":[1]"));
+
+  // Last two samplers: root translation (times, values), neck rotation.
+  const std::size_t end = g.bin.size();
+  const auto quats = floatsAt(g, end - 48, 12);
+  CHECK(quats[3] == doctest::Approx(1.0f));          // frame 0: no rotation
+  CHECK(quats[4] == doctest::Approx(0.7071068f));    // frame 1: 90 deg about X
+  CHECK(quats[7] == doctest::Approx(0.7071068f));
+  CHECK(quats[9] == doctest::Approx(0.7071068f));    // frame 2: 90 deg about Y
+  const auto positions = floatsAt(g, end - 48 - 12 - 36, 9);
+  CHECK(positions[0] == 0.0f);  // x and z keep the joint's own translation
+  CHECK(positions[1] == 2.0f);
+  CHECK(positions[4] == 3.0f);
+  CHECK(positions[7] == 4.0f);
+}
+
+TEST_CASE("glb: HAnimMotion keys match what the runtime plays") {
+  // Play the motion in the runtime and compare each frame's joint values with
+  // the exported keys, which glTF holds from key time k * frameDuration.
+  const std::string text =
+      "<X3D profile='Full' version='4.0'><Scene>"
+      "<HAnimHumanoid name='body'>"
+      "  <HAnimJoint DEF='Root' name='humanoid_root' containerField='skeleton'>"
+      "    <HAnimJoint DEF='Neck' name='vc4'/></HAnimJoint>"
+      "  <HAnimMotion containerField='motions' frameDuration='0.5' loop='true' "
+      "      joints='humanoid_root vc4' channels='2 Xposition Zposition 3 Zrotation Xrotation Yrotation' "
+      "      values='1 2 30 40 50  3 4 60 -20 10  5 6 -45 15 75'/>"
+      "</HAnimHumanoid></Scene></X3D>";
+  sdk::X3DDocument doc = sdk::parseDocument(text, sdk::Encoding::XML);
+  sdk::X3DExecutionContext ctx;
+  ctx.buildSceneGraph(doc.scene);
+  ctx.buildFrom(doc.scene);
+  x3d::runtime::attachStandardRuntime(doc.scene, ctx);
+  sdk::SceneExtractor ex(ctx, doc.scene);
+  ex.fullSnapshot();
+  sdk::GltfWriteReport report;
+  const sdk::GltfSceneExtras extras = sdk::gltfExtrasFrom(ex, &report);
+  REQUIRE(extras.animations.size() == 1);
+  const auto &channels = extras.animations[0].channels;
+  REQUIRE(channels.size() == 2);
+  const auto &position = channels[0];
+  const auto &rotation = channels[1];
+  CHECK(position.step);
+  REQUIRE(position.times.size() == 3);
+  REQUIRE(rotation.values.size() == 12);
+
+  auto root = doc.scene.resolve("Root");
+  auto neck = doc.scene.resolve("Neck");
+  REQUIRE(root);
+  REQUIRE(neck);
+  for (int frame = 0; frame < 3; ++frame) {
+    ctx.tick(0.25 + 0.5 * frame);
+    CAPTURE(frame);
+    const auto t = std::any_cast<x3d::core::SFVec3f>(
+        x3d::runtime::findField(*root, "translation")->get(*root));
+    CHECK(position.times[frame] == doctest::Approx(0.5 * frame));
+    CHECK(position.values[frame * 3] == doctest::Approx(t.x));
+    CHECK(position.values[frame * 3 + 1] == doctest::Approx(t.y));
+    CHECK(position.values[frame * 3 + 2] == doctest::Approx(t.z));
+    const auto r = std::any_cast<x3d::core::SFRotation>(
+        x3d::runtime::findField(*neck, "rotation")->get(*neck));
+    const double s = std::sin(r.angle / 2), c = std::cos(r.angle / 2);
+    const float *q = &rotation.values[frame * 4];
+    // Same rotation up to sign.
+    const double dot = q[0] * r.x * s + q[1] * r.y * s + q[2] * r.z * s + q[3] * c;
+    CHECK(std::fabs(dot) == doctest::Approx(1.0).epsilon(1e-5));
+  }
+}

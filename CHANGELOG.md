@@ -22,8 +22,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   `PositionInterpolator` or `OrientationInterpolator` is exported as an
   animated node, one glTF animation per `TimeSensor`; so are a viewpoint's
   `position`/`orientation` and a point or spot light's `location`, and lights
-  and cameras below an animated Transform move with it. Not exported: movie,
-  multi, cube and 3D textures, skins, and animation core glTF cannot express
+  and cameras below an animated Transform move with it. Skinned H-Anim
+  humanoids become glTF skins (joint hierarchy, every vertex influence, the
+  runtime's inverse bind matrices); interpolators driving joints and each
+  playing `HAnimMotion` are exported as animation. Not exported: movie,
+  multi, cube and 3D textures, joint displacers, and animation core glTF cannot express
   (colours, scalars, coordinates); `GltfWriteReport` counts what was
   dropped. Light intensity has no unit conversion.
 - **`SceneBuilder`: checked scene construction.** `x3d/authoring.hpp` (and

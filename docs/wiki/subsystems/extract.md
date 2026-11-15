@@ -493,6 +493,9 @@ form.
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
 | PositionInterpolator / OrientationInterpolator routed to a Transform's `translation`, `scale` or `rotation` | A glTF animation: the Transform is kept as a node (see below), the interpolator's `key`/`keyValue` become a `LINEAR` sampler (rotations as quaternions), and key times are `key × cycleInterval` of the TimeSensor routed to the interpolator's `set_fraction`. One animation per TimeSensor, named by its DEF |
 | PositionInterpolator / OrientationInterpolator routed to a Viewpoint's or OrthoViewpoint's `position` / `orientation`, or a PositionInterpolator routed to a PointLight's or SpotLight's `location` | Channels in the same animation: the camera or light node carries the authored value as its `translation`/`rotation`, under a `matrix` node for the Transforms above it |
+| The same interpolators routed to an HAnimJoint, HAnimHumanoid, HAnimSite or CADPart | Channels on that node, exactly as for a Transform |
+| HAnimHumanoid skin (`skinCoord`, joint `skinCoordIndex`/`skinCoordWeight`, `jointBinding*`) | A glTF skin (see below) |
+| HAnimMotion in a humanoid's `motions` | One animation per motion with `STEP` samplers: a translation and/or rotation channel per joint it drives |
 
 Approximations: X3D light `intensity` is a unitless factor and is written
 unchanged as glTF intensity (lux or candela), so absolute brightness will not
@@ -515,8 +518,7 @@ coordinates and undecoded textures with no PNG/JPEG url (`droppedTextures`);
 specular, shininess and ambient textures and the lighting maps of an unlit
 surface (`unmappedTextureSlots`); back materials; author shaders; GeoViewpoint.
 A normal map is written without a `TANGENT` attribute, so viewers derive the
-tangent space. Skinned H-Anim
-items are written as static meshes. Backgrounds and fog are not exported.
+tangent space. Backgrounds and fog are not exported.
 
 **Animated Transforms.** A scene with no exportable animation is written flat,
 as above. Each Transform that an animation targets becomes glTF nodes, once per
@@ -532,6 +534,40 @@ matrix, so every shape's composed matrix at export time equals its
 `RenderItem::worldTransform`. A repeated `key` (an X3D jump) is nudged forward
 by one float step, because glTF sample times must strictly increase.
 
+**H-Anim skins.** A skinned HAnimHumanoid is written as a glTF skin. The
+humanoid and its joints are kept as nodes (with the same TRS helper nodes as an
+animated Transform), so the skeleton keeps its hierarchy and names. The skin
+mesh is the bind pose in the humanoid's frame, on a root node with no
+transform, carrying `JOINTS_n`/`WEIGHTS_n`: each vertex takes the influences of
+its source `skinCoord` index, merged per joint, normalized, and sorted heaviest
+first, four per set, so a vertex with five or more influences uses
+`JOINTS_1`/`WEIGHTS_1` rather than being truncated. The skin's joints are the
+humanoid's palette (`HAnimHumanoid.joints`, then any skeleton joint with skin
+weights) plus the humanoid node itself, whose identity inverse bind matrix
+holds vertices no joint influences. The inverse bind matrices are the runtime's
+`SkinBinding::inverseBind`: identity unless `jointBindingPositions`/
+`Rotations`/`Scales` are authored. Exports of the poc_renderer and cpu_raster
+skin fixtures pass the Khronos validator, and the skinned positions a glTF
+viewer computes match `SceneExtractor::deformedMesh` mid-animation, with and
+without authored binding values. Joint `HAnimDisplacer`s are not written
+(`droppedDisplacers`); a skinned item whose binding is empty, whose mesh has no
+source-coordinate map, or whose humanoid is not on its path is a static mesh
+(`staticSkins`). Rigid `HAnimSegment` geometry hangs from its joint's node like
+any shape under an animated Transform.
+
+**HAnimMotion.** Each motion a humanoid plays becomes one animation, named by
+the motion's DEF (else its `name`, else the humanoid's DEF). The `joints`,
+`channels` and `values` are read the way `HAnimMotionSystem` plays them:
+positions replace the named components of the joint's own translation,
+rotations are Euler degrees about the joint's axes composed in listed order,
+`IGNORED` groups and channels switched off in `channelsEnabled` are skipped,
+and frames run `startFrame`..`endFrame` stepping by `frameIncrement`, held for
+`frameDuration` each (glTF `STEP`). A test plays the motion in the runtime and
+compares every frame with the exported keys. A motion that is disabled (its
+`enabled`, or the humanoid's `motionsEnabled`), malformed, empty or with
+`frameDuration` ≤ 0 is counted in `skippedMotions`. `loop` is left to the
+viewer, as for TimeSensors.
+
 **Lights and cameras.** A light or viewpoint below an animated Transform is a
 child of that Transform's node, so it moves with it; one whose own `location`,
 `position` or `orientation` is animated keeps that value as its node's
@@ -541,11 +577,11 @@ else is still a world-space root.
 Animation limits: core glTF animates only a node's translation, rotation and
 scale (and morph weights), so those are the channels written. Interpolators
 that drive colours, scalars (transparency, intensity, field of view) or a
-light's `direction` would need the `KHR_animation_pointer` extension, which
-most viewers do not load, and CoordinateInterpolators would need morph
+light's `direction` would need the `KHR_animation_pointer` extension, which this
+exporter does not write, and CoordinateInterpolators would need morph
 targets; they are not exported. Neither are chains through other nodes
-(sequencers, Scripts, EaseInEaseOut, followers), `center` and
-`scaleOrientation` animation, and H-Anim motion. Dropped interpolator routes
+(sequencers, Scripts, EaseInEaseOut, followers), and `center` and
+`scaleOrientation` animation. Dropped interpolator routes
 are counted in `skippedAnimationRoutes`, and a channel whose target was not
 written (a Transform with nothing exported under it, a light that is off) in
 `skippedAnimationChannels`. glTF has no loop flag, so `TimeSensor.loop` is

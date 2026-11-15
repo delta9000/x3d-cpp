@@ -131,6 +131,11 @@ evaluates the pose and replaces only the palette buffer; the vertex shaders
 blend positions and inverse-transpose normals. Only skins with Joint displacers
 use `deformedMesh()` instead, refreshing their mesh on pose updates.
 
+The glTF exporter writes the same binding as a glTF skin: the joints as
+nodes, `inverseBind` as the inverse bind matrices, and every influence as
+`JOINTS_n`/`WEIGHTS_n`; each playing HAnimMotion becomes a `STEP` animation.
+See [glTF export](extract.md#gltf-export).
+
 Both renderers flip the front face under a negative-determinant world
 transform (`ccw` XOR reflection). Leif and Lily use `ccw=false` under the
 humanoid scale `1 1 -1`.

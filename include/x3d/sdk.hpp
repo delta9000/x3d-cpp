@@ -149,6 +149,8 @@ using x3d::runtime::extract::MeshData;
 using x3d::runtime::extract::writeGlb; ///< render items -> binary glTF 2.0
 using x3d::runtime::extract::GltfWriteOptions;
 using x3d::runtime::extract::GltfWriteReport;
+using x3d::runtime::extract::GltfSceneExtras; ///< lights, cameras, animations
+using x3d::runtime::extract::gltfExtrasFrom;
 using x3d::runtime::extract::Topology;
 using x3d::runtime::extract::MaterialDesc;
 using x3d::runtime::extract::MaterialModel;

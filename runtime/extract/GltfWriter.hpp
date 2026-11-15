@@ -55,16 +55,22 @@
 // Not written (each is counted in GltfWriteReport): packed/binary geometry
 // items, MovieTexture, MultiTexture, cube and 3D textures, textures on
 // generated texture coordinates, undecoded textures with no PNG/JPEG url,
-// specular/shininess/ambient maps, back materials, author shaders, GeoViewpoint. Skinned H-Anim items are
-// written as static meshes in the mesh's stored pose.
+// specular/shininess/ambient maps, back materials, author shaders,
+// GeoViewpoint, H-Anim joint displacers.
+//
+// H-Anim: a skinned HAnimHumanoid becomes a glTF skin. The humanoid and its
+// joints are nodes; the skin mesh is the bind pose with JOINTS_n/WEIGHTS_n
+// (every influence kept, four per set) and the runtime's inverse bind
+// matrices. Interpolators driving joints animate them like Transforms, and
+// each playing HAnimMotion becomes an animation with STEP samplers.
 //
 // Animation limits: core glTF can only animate a node's translation,
 // rotation and scale (and morph weights), so that is what is written.
 // Interpolators driving colours, scalars (transparency, intensity, field of
 // view) or a light's direction would need the KHR_animation_pointer
-// extension, which most viewers do not load; coordinates would need morph
-// targets. Those, chains through other nodes (sequencers, scripts,
-// EaseInEaseOut, followers), and H-Anim motion are not exported; routes out
+// extension, which this writer does not use; coordinates would need morph
+// targets. Those, and chains through other nodes (sequencers, scripts,
+// EaseInEaseOut, followers), are not exported; routes out
 // of an interpolator that are dropped are counted. glTF has no loop flag, so
 // TimeSensor.loop is left to the viewer, and startTime is not carried.
 #ifndef X3D_RUNTIME_EXTRACT_GLTF_WRITER_HPP
@@ -112,7 +118,12 @@ struct GltfWriteReport {
   /// Textures in a slot glTF has no property for: specular, shininess and
   /// ambient maps, and the lighting maps of an unlit surface.
   std::size_t unmappedTextureSlots = 0;
-  std::size_t staticSkins = 0;     ///< skinned items written without a skin
+  std::size_t skins = 0;           ///< glTF skins, one per placed humanoid
+  /// Skinned items written as static meshes: the binding is empty, the mesh
+  /// has no source-coordinate map, or the humanoid is not on the item's path.
+  std::size_t staticSkins = 0;
+  /// HAnimDisplacers on the joints of an exported skin (not written).
+  std::size_t droppedDisplacers = 0;
   std::size_t droppedBackMaterials = 0;
   std::size_t droppedShaders = 0;
   std::size_t skippedViewpoints = 0; ///< GeoViewpoint
@@ -127,6 +138,10 @@ struct GltfWriteReport {
   /// than a Transform's translation, rotation or scale, a viewpoint's
   /// position or orientation, or a point/spot light's location.
   std::size_t skippedAnimationRoutes = 0;
+  /// HAnimMotions not exported: disabled (enabled FALSE or switched off in
+  /// the humanoid's motionsEnabled), no frames, malformed channels/joints, or
+  /// frameDuration <= 0.
+  std::size_t skippedMotions = 0;
 };
 
 /// One camera to export. `cameraToWorld` places it; like an X3D viewpoint a
@@ -156,10 +171,13 @@ struct GltfAnimationChannel {
   std::vector<float> times;  ///< seconds, one per key, non-decreasing
   /// 3 floats per key (translation, scale) or a quaternion x,y,z,w (rotation).
   std::vector<float> values;
+  /// Hold each key until the next (glTF STEP), as HAnimMotion frames play;
+  /// otherwise LINEAR, as interpolators do.
+  bool step = false;
 };
 
 /// The channels that play together: in X3D terms, everything one TimeSensor
-/// drives.
+/// or one HAnimMotion drives.
 struct GltfAnimation {
   std::string name;
   std::vector<GltfAnimationChannel> channels;
@@ -174,10 +192,11 @@ struct GltfSceneExtras {
 
 /// The lights, viewpoints and animations of the extractor's scene:
 /// `extractor.lights()`; every Viewpoint/OrthoViewpoint, the bound one first
-/// (GeoViewpoints are counted in `report->skippedViewpoints`); and one
-/// animation per TimeSensor, from the ROUTEs
-/// TimeSensor.fraction_changed -> Position/OrientationInterpolator ->
-/// Transform.translation|rotation|scale, Viewpoint/OrthoViewpoint
+/// (GeoViewpoints are counted in `report->skippedViewpoints`); one
+/// animation per HAnimMotion a humanoid plays; and one per TimeSensor, from
+/// the ROUTEs TimeSensor.fraction_changed -> Position/OrientationInterpolator
+/// -> Transform (or HAnimJoint/Humanoid/Site, CADPart)
+/// .translation|rotation|scale, Viewpoint/OrthoViewpoint
 /// .position|orientation, or PointLight/SpotLight.location. Key times are
 /// key * cycleInterval.
 /// Other interpolator routes are counted in `report->skippedAnimationRoutes`.

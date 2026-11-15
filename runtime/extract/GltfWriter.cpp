@@ -4,6 +4,9 @@
 #include "TransformSystem.hpp"
 #include "X3DSceneBridge.hpp"
 #include "x3d/nodes/GeoViewpoint.hpp"
+#include "x3d/nodes/HAnimHumanoid.hpp"
+#include "x3d/nodes/HAnimJoint.hpp"
+#include "x3d/nodes/HAnimMotion.hpp"
 #include "x3d/nodes/OrthoViewpoint.hpp"
 #include "x3d/nodes/Viewpoint.hpp"
 
@@ -14,6 +17,8 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <sstream>
+#include <tuple>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -232,11 +237,14 @@ public:
       ++report_.skippedEmpty;
       return;
     }
-    if (item.skin) ++report_.staticSkins;
     if (item.shaderProgram) ++report_.droppedShaders;
 
     const MeshAccessors &acc = accessorsFor(item.mesh);
     const int material = materialFor(item.material, mesh, acc);
+    if (item.skin) {
+      if (addSkinned(item, acc, material)) return;
+      ++report_.staticSkins;
+    }
     const auto key = std::make_pair(item.mesh.get(), material);
     auto found = meshIndex_.find(key);
     if (found == meshIndex_.end()) {
@@ -277,6 +285,17 @@ public:
     attach(parent, node);
     ++itemNodes_;
     report_.triangles += acc.triangles;
+  }
+
+  // Declare the skins before any item is added: a skinned humanoid and its
+  // joints are kept as nodes whether or not anything animates them.
+  void declareSkins(const std::vector<const RenderItem *> &items) {
+    for (const RenderItem *item : items) {
+      if (!item || !skinnable(*item)) continue;
+      const hanim::SkinBinding &binding = *item->skin->binding;
+      animatedTargets_.insert(binding.humanoid);
+      for (const X3DNode *joint : binding.joints) animatedTargets_.insert(joint);
+    }
   }
 
   // Declare the animations before any item is added: their targets decide
@@ -399,6 +418,7 @@ public:
     report_.nodes = itemNodes_;
     report_.lights = lights_.size();
     report_.cameras = cameras_.size();
+    report_.skins = skinJson_.size();
     std::vector<std::string> nodes;
     for (const Node &n : nodes_) {
       std::string json = n.body;
@@ -440,6 +460,7 @@ public:
     section("textures", textures_);
     section("images", images_);
     section("samplers", samplers_);
+    section("skins", skinJson_);
     section("cameras", cameras_);
     section("animations", animationJson_);
     section("accessors", accessors_);
@@ -498,6 +519,182 @@ private:
     if (parent < 0) roots_.push_back(index);
     else nodes_[static_cast<std::size_t>(parent)].children.push_back(index);
     return index;
+  }
+
+  // A skinned item can be written as a glTF skin when its binding has data,
+  // every mesh vertex knows its source coordinate, and the humanoid is on the
+  // item's path (so the skeleton can be placed).
+  static bool skinnable(const RenderItem &item) {
+    if (!item.skin || !item.skin->binding || !item.mesh) return false;
+    const hanim::SkinBinding &b = *item.skin->binding;
+    if (b.empty() || !b.humanoid || b.joints.size() != b.inverseBind.size() ||
+        b.influenceOffset.size() != b.bindPositions.size() + 1)
+      return false;
+    if (item.mesh->sourceCoordIndex.size() != item.mesh->positions.size())
+      return false;
+    return std::find(item.path.begin(), item.path.end(), b.humanoid) !=
+           item.path.end();
+  }
+
+  // The glTF skin for a humanoid placed at `prefix` (the path up to and
+  // including the HAnimHumanoid). Joint nodes are the nodes animatedParent
+  // makes for each HAnimJoint; one more joint, the humanoid's own frame with
+  // an identity inverse bind matrix, holds vertices no joint influences.
+  int skinFor(const hanim::SkinBinding &binding, const PathKey &prefix) {
+    const auto found = skins_.find(prefix);
+    if (found != skins_.end()) return found->second;
+
+    // First path to every node of the skeleton, as evaluatePose walks it.
+    std::unordered_map<const X3DNode *, PathKey> paths;
+    PathKey stack = prefix;
+    std::function<void(const std::shared_ptr<X3DNode> &)> walk =
+        [&](const std::shared_ptr<X3DNode> &n) {
+          if (!n || stack.size() >= kMaxNestingDepth || paths.count(n.get()))
+            return;
+          stack.push_back(n.get());
+          paths.emplace(n.get(), stack);
+          for (const auto &c : hanim::detail::nodes(*n, "children")) walk(c);
+          stack.pop_back();
+        };
+    for (const auto &n : hanim::detail::nodes(*binding.humanoid, "skeleton"))
+      walk(n);
+
+    std::vector<std::string> joints;
+    std::vector<float> inverseBind;
+    Mat4 below = Mat4::identity();
+    for (std::size_t j = 0; j < binding.joints.size(); ++j) {
+      PathKey path = prefix;
+      const auto placed = paths.find(binding.joints[j]);
+      if (placed != paths.end()) path = placed->second;
+      else path.push_back(binding.joints[j]); // not in the skeleton: a root joint
+      joints.push_back(std::to_string(animatedParent(path, below)));
+      for (float v : binding.inverseBind[j].m)
+        inverseBind.push_back(std::isfinite(v) ? v : 0.0f);
+    }
+    joints.push_back(std::to_string(animatedParent(prefix, below)));
+    for (float v : Mat4::identity().m) inverseBind.push_back(v);
+
+    std::string skin = "{";
+    if (!binding.humanoid->getDEF().empty())
+      skin += "\"name\":" + quote(binding.humanoid->getDEF()) + ",";
+    skin += "\"inverseBindMatrices\":" +
+            std::to_string(floatAccessor(inverseBind, 16, "MAT4", false, 0)) +
+            ",\"joints\":[" + join(joints) + "]}";
+    skinJson_.push_back(skin);
+    report_.droppedDisplacers += binding.displacers.size();
+    return skins_.emplace(prefix, static_cast<int>(skinJson_.size()) - 1)
+        .first->second;
+  }
+
+  // JOINTS_n / WEIGHTS_n for `mesh` under `binding`: each vertex takes the
+  // influences of its source coordinate, heaviest first, four per set.
+  const std::vector<std::string> &skinAttributes(const MeshData &mesh,
+                                                 const hanim::SkinBinding &b) {
+    const auto key = std::make_pair(&mesh, &b);
+    const auto found = skinAttributes_.find(key);
+    if (found != skinAttributes_.end()) return found->second;
+
+    const std::size_t n = mesh.positions.size();
+    const std::uint16_t neutral = static_cast<std::uint16_t>(b.joints.size());
+    std::vector<std::vector<std::pair<float, std::uint16_t>>> perVertex(n);
+    std::size_t widest = 1;
+    for (std::size_t i = 0; i < n; ++i) {
+      auto &list = perVertex[i];
+      const std::uint32_t source = mesh.sourceCoordIndex[i];
+      if (source < b.bindPositions.size()) {
+        for (std::uint32_t k = b.influenceOffset[source];
+             k < b.influenceOffset[source + 1] && k < b.influences.size(); ++k) {
+          const hanim::Influence &in = b.influences[k];
+          if (in.joint >= b.joints.size() || !(in.weight > 0) ||
+              !std::isfinite(in.weight))
+            continue;
+          const auto joint = static_cast<std::uint16_t>(in.joint);
+          auto same = std::find_if(list.begin(), list.end(), [&](const auto &e) {
+            return e.second == joint;
+          });
+          if (same != list.end()) same->first += in.weight; // a joint listed twice
+          else list.emplace_back(in.weight, joint);
+        }
+      }
+      float sum = 0;
+      for (const auto &e : list) sum += e.first;
+      if (!(sum > 0) || !std::isfinite(sum)) {
+        list.assign(1, {1.0f, neutral}); // stays in the humanoid's frame
+      } else {
+        for (auto &e : list) e.first /= sum;
+        std::stable_sort(list.begin(), list.end(), [](const auto &x, const auto &y) {
+          return x.first > y.first;
+        });
+      }
+      widest = std::max(widest, list.size());
+    }
+
+    std::vector<std::string> attrs;
+    const std::size_t sets = (widest + 3) / 4;
+    for (std::size_t set = 0; set < sets; ++set) {
+      std::vector<std::uint16_t> joints(n * 4, 0);
+      std::vector<float> weights(n * 4, 0.0f);
+      for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t c = 0; c < 4 && set * 4 + c < perVertex[i].size(); ++c) {
+          joints[i * 4 + c] = perVertex[i][set * 4 + c].second;
+          weights[i * 4 + c] = perVertex[i][set * 4 + c].first;
+        }
+      const int v = view(joints.data(), joints.size() * sizeof(std::uint16_t),
+                         kArrayBuffer);
+      accessors_.push_back("{\"bufferView\":" + std::to_string(v) +
+                           ",\"componentType\":5123,\"count\":" +
+                           std::to_string(n) + ",\"type\":\"VEC4\"}");
+      attrs.push_back("\"JOINTS_" + std::to_string(set) + "\":" +
+                      std::to_string(accessors_.size() - 1));
+      attrs.push_back("\"WEIGHTS_" + std::to_string(set) + "\":" +
+                      std::to_string(floatAccessor(weights, 4, "VEC4", false)));
+    }
+    return skinAttributes_.emplace(key, std::move(attrs)).first->second;
+  }
+
+  // Write `item` as a skinned mesh. The mesh holds the bind pose in the
+  // humanoid's frame; the joints place it, so its own node is a plain root.
+  bool addSkinned(const RenderItem &item, const MeshAccessors &acc, int material) {
+    if (!skinnable(item)) return false;
+    const MeshData &mesh = *item.mesh;
+    const hanim::SkinBinding &binding = *item.skin->binding;
+    const auto at = std::find(item.path.begin(), item.path.end(), binding.humanoid);
+    const PathKey prefix(item.path.begin(), at + 1);
+    const int skin = skinFor(binding, prefix);
+
+    const auto key = std::make_tuple(item.mesh.get(), material, &binding);
+    auto found = skinnedMeshIndex_.find(key);
+    if (found == skinnedMeshIndex_.end()) {
+      std::vector<std::string> attrs{"\"POSITION\":" +
+                                     std::to_string(acc.position)};
+      if (acc.normal >= 0)
+        attrs.push_back("\"NORMAL\":" + std::to_string(acc.normal));
+      for (std::size_t i = 0; i < acc.texcoords.size(); ++i)
+        attrs.push_back("\"TEXCOORD_" + std::to_string(i) +
+                        "\":" + std::to_string(acc.texcoords[i]));
+      if (acc.color >= 0)
+        attrs.push_back("\"COLOR_0\":" + std::to_string(acc.color));
+      for (const std::string &a : skinAttributes(mesh, binding)) attrs.push_back(a);
+      const int mode = mesh.topology == Topology::Triangles ? 4
+                       : mesh.topology == Topology::Lines ? 1 : 0;
+      meshes_.push_back("{\"primitives\":[{\"attributes\":{" + join(attrs) +
+                        "},\"indices\":" + std::to_string(acc.indices) +
+                        ",\"material\":" + std::to_string(material) +
+                        ",\"mode\":" + std::to_string(mode) + "}]}");
+      found = skinnedMeshIndex_
+                  .emplace(key, static_cast<int>(meshes_.size()) - 1)
+                  .first;
+    }
+    std::string node = "{\"mesh\":" + std::to_string(found->second) +
+                       ",\"skin\":" + std::to_string(skin);
+    std::string name;
+    for (const X3DNode *n : item.path)
+      if (n && !n->getDEF().empty()) name = n->getDEF();
+    if (!name.empty()) node += ",\"name\":" + quote(name);
+    attach(-1, node);
+    ++itemNodes_;
+    report_.triangles += acc.triangles;
+    return true;
   }
 
   // The parent for a leaf (light, camera) that keeps its own local
@@ -667,7 +864,8 @@ private:
                           width == 4 ? "VEC4" : "VEC3", false, 0);
         samplers.push_back("{\"input\":" + std::to_string(input) +
                            ",\"output\":" + std::to_string(output) +
-                           ",\"interpolation\":\"LINEAR\"}");
+                           ",\"interpolation\":\"" +
+                           (ch.step ? "STEP" : "LINEAR") + "\"}");
         const char *path =
             ch.path == GltfAnimationChannel::Path::Translation ? "translation"
             : ch.path == GltfAnimationChannel::Path::Rotation ? "rotation"
@@ -1021,7 +1219,12 @@ private:
   std::vector<int> roots_;
   std::size_t itemNodes_ = 0;
   std::vector<std::string> meshes_, materials_, textures_, images_, samplers_,
-      accessors_, views_, lights_, cameras_, animationJson_;
+      accessors_, views_, lights_, cameras_, animationJson_, skinJson_;
+  std::map<PathKey, int> skins_;
+  std::map<std::pair<const MeshData *, const hanim::SkinBinding *>,
+           std::vector<std::string>> skinAttributes_;
+  std::map<std::tuple<const MeshData *, int, const hanim::SkinBinding *>, int>
+      skinnedMeshIndex_;
   const std::vector<GltfAnimation> *animations_ = nullptr;
   std::unordered_set<const X3DNode *> animatedTargets_;
   std::map<PathKey, TransformInstance> instances_;
@@ -1045,17 +1248,162 @@ std::string writeGlb(const std::vector<const RenderItem *> &items,
   // gltfExtrasFrom reports what it skipped before the writer runs; keep it.
   const std::size_t skippedViewpoints = report ? r.skippedViewpoints : 0;
   const std::size_t skippedRoutes = report ? r.skippedAnimationRoutes : 0;
+  const std::size_t skippedMotions = report ? r.skippedMotions : 0;
   r = GltfWriteReport{};
   r.skippedViewpoints = skippedViewpoints;
   r.skippedAnimationRoutes = skippedRoutes;
+  r.skippedMotions = skippedMotions;
   Writer writer(options, r);
   writer.setAnimations(extras.animations);
+  writer.declareSkins(items);
   for (const RenderItem *item : items)
     if (item) writer.add(*item);
   for (const LightDesc &light : extras.lights) writer.add(light);
   for (const GltfCamera &camera : extras.cameras) writer.add(camera);
   return writer.finish();
 }
+
+namespace {
+
+// Tokens of an HAnimMotion channels/joints string (commas count as spaces).
+std::vector<std::string> motionTokens(std::string text) {
+  std::replace(text.begin(), text.end(), ',', ' ');
+  std::istringstream in(text);
+  std::vector<std::string> out;
+  for (std::string t; in >> t;) out.push_back(std::move(t));
+  return out;
+}
+
+// The frames an HAnimMotion plays, as glTF STEP channels per joint, read the
+// way HAnimMotionSystem plays them: `joints` names one channel group each,
+// `channels` gives each group's count then its channel names, `values` holds
+// frame by frame, group by group. Positions replace the named components of
+// the joint's translation; rotations are Euler degrees about the joint's own
+// axes, composed in listed order. Frames run startFrame..endFrame (0: the
+// last) stepping by frameIncrement, frameDuration seconds each.
+bool motionAnimation(
+    const x3d::nodes::HAnimMotion &motion,
+    const std::unordered_map<std::string, const x3d::nodes::HAnimJoint *> &byName,
+    bool switchedOn, GltfAnimation &out) {
+  if (!motion.getEnabled() || !switchedOn) return false;
+  const double duration = motion.getFrameDuration();
+  if (!(duration > 0) || !std::isfinite(duration)) return false;
+
+  struct Group {
+    const x3d::nodes::HAnimJoint *joint = nullptr;
+    std::vector<std::string> channels;
+  };
+  const auto names = motionTokens(motion.getJoints());
+  const auto words = motionTokens(motion.getChannels());
+  std::vector<Group> groups;
+  std::size_t at = 0, width = 0;
+  for (const std::string &name : names) {
+    if (at >= words.size()) return false;
+    int count = 0;
+    try { count = std::stoi(words[at++]); } catch (...) { return false; }
+    if (count < 0 || std::size_t(count) > words.size() - at) return false;
+    Group g;
+    if (name != "IGNORED") {
+      const auto found = byName.find(name);
+      if (found != byName.end()) g.joint = found->second;
+    }
+    for (int i = 0; i < count; ++i) g.channels.push_back(words[at++]);
+    width += g.channels.size();
+    groups.push_back(std::move(g));
+  }
+  if (groups.empty() || at != words.size() || width == 0) return false;
+  const auto &values = motion.getValues();
+  const int frames = static_cast<int>(values.size() / width);
+  if (frames == 0) return false;
+
+  const int last = frames - 1;
+  const int start = std::clamp(static_cast<int>(motion.getStartFrame()), 0, last);
+  const int end = motion.getEndFrame() == 0
+                      ? last
+                      : std::clamp(static_cast<int>(motion.getEndFrame()), 0, last);
+  const int lo = std::min(start, end), hi = std::max(start, end);
+  const int increment = motion.getFrameIncrement();
+  std::vector<int> order;
+  if (increment == 0) {
+    order.push_back(std::clamp(static_cast<int>(motion.getFrameIndex()), lo, hi));
+  } else {
+    int i = increment > 0 ? lo : hi;
+    for (; i >= lo && i <= hi; i += increment) order.push_back(i);
+  }
+  const auto &channelOn = motion.getChannelsEnabled();
+
+  std::size_t channelBase = 0;
+  for (const Group &g : groups) {
+    bool hasPosition = false, hasRotation = false;
+    for (std::size_t c = 0; c < g.channels.size(); ++c) {
+      const std::size_t channel = channelBase + c;
+      if (channel < channelOn.size() && !channelOn[channel]) continue;
+      const std::string &kind = g.channels[c];
+      if (kind == "Xposition" || kind == "Yposition" || kind == "Zposition")
+        hasPosition = true;
+      if (kind == "Xrotation" || kind == "Yrotation" || kind == "Zrotation")
+        hasRotation = true;
+    }
+    if (!g.joint || (!hasPosition && !hasRotation)) {
+      channelBase += g.channels.size();
+      continue;
+    }
+    GltfAnimationChannel translation, rotation;
+    translation.target = rotation.target = g.joint;
+    translation.path = GltfAnimationChannel::Path::Translation;
+    rotation.path = GltfAnimationChannel::Path::Rotation;
+    translation.step = rotation.step = true;
+    std::size_t offset = 0; // this group's first value within a frame
+    for (const Group &before : groups) {
+      if (&before == &g) break;
+      offset += before.channels.size();
+    }
+    for (std::size_t k = 0; k < order.size(); ++k) {
+      const std::size_t base = std::size_t(order[k]) * width + offset;
+      SFVec3f p = g.joint->getTranslation();
+      double qw = 1, qx = 0, qy = 0, qz = 0;
+      for (std::size_t c = 0; c < g.channels.size(); ++c) {
+        const std::size_t channel = channelBase + c;
+        if (channel < channelOn.size() && !channelOn[channel]) continue;
+        const float v = values[base + c];
+        const std::string &kind = g.channels[c];
+        if (kind == "Xposition") p.x = v;
+        else if (kind == "Yposition") p.y = v;
+        else if (kind == "Zposition") p.z = v;
+        else if (kind.size() == 9 && kind.compare(1, 8, "rotation") == 0 &&
+                 (kind[0] == 'X' || kind[0] == 'Y' || kind[0] == 'Z')) {
+          const double half = double(v) * (3.14159265358979323846 / 360.0);
+          const double s = std::sin(half), cw = std::cos(half);
+          const double ax = kind[0] == 'X' ? s : 0, ay = kind[0] == 'Y' ? s : 0,
+                       az = kind[0] == 'Z' ? s : 0;
+          const double nw = qw * cw - qx * ax - qy * ay - qz * az;
+          const double nx = qw * ax + qx * cw + qy * az - qz * ay;
+          const double ny = qw * ay - qx * az + qy * cw + qz * ax;
+          const double nz = qw * az + qx * ay - qy * ax + qz * cw;
+          qw = nw; qx = nx; qy = ny; qz = nz;
+        }
+      }
+      const float t = float(double(k) * duration);
+      if (hasPosition) {
+        translation.times.push_back(t);
+        translation.values.insert(translation.values.end(), {p.x, p.y, p.z});
+      }
+      if (hasRotation) {
+        rotation.times.push_back(t);
+        rotation.values.insert(rotation.values.end(),
+                               {float(qx), float(qy), float(qz), float(qw)});
+      }
+    }
+    if (hasPosition) out.channels.push_back(std::move(translation));
+    if (hasRotation) out.channels.push_back(std::move(rotation));
+    channelBase += g.channels.size();
+  }
+  out.name = motion.getDEF();
+  if (out.name.empty()) out.name = motion.getName();
+  return !out.channels.empty();
+}
+
+} // namespace
 
 GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
                                GltfWriteReport *report) {
@@ -1163,17 +1511,21 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     const std::string sink = to->nodeTypeName();
     const bool viewpoint = sink == "Viewpoint" || sink == "OrthoViewpoint";
     const bool placedLight = sink == "PointLight" || sink == "SpotLight";
-    bool ok = sink == "Transform" || viewpoint || placedLight;
+    // The nodes with a plain Transform's fields (not the geospatial ones).
+    const bool transform = sink == "Transform" || sink == "HAnimJoint" ||
+                           sink == "HAnimHumanoid" || sink == "HAnimSite" ||
+                           sink == "CADPart";
+    bool ok = transform || viewpoint || placedLight;
     if (ok && type == "PositionInterpolator" &&
-        (sink == "Transform" ? dest == "translation" || dest == "scale"
-                             : dest == (viewpoint ? "position" : "location"))) {
+        (transform ? dest == "translation" || dest == "scale"
+                   : dest == (viewpoint ? "position" : "location"))) {
       channel.path = dest == "scale" ? GltfAnimationChannel::Path::Scale
                                      : GltfAnimationChannel::Path::Translation;
       for (const SFVec3f &v : geombounds::getField<std::vector<SFVec3f>>(
                *from, "keyValue", {}))
         channel.values.insert(channel.values.end(), {v.x, v.y, v.z});
     } else if (ok && type == "OrientationInterpolator" &&
-               ((sink == "Transform" && dest == "rotation") ||
+               ((transform && dest == "rotation") ||
                 (viewpoint && dest == "orientation"))) {
       channel.path = GltfAnimationChannel::Path::Rotation;
       for (const SFRotation &v : geombounds::getField<std::vector<SFRotation>>(
@@ -1223,6 +1575,45 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
   for (const X3DNode *clock : clocks)
     extras.animations.push_back(std::move(byClock[clock]));
   if (report) report->skippedAnimationRoutes = skippedRoutes;
+
+  // ---- HAnimMotion: one animation per motion a humanoid plays ----
+  std::size_t skippedMotions = 0;
+  x3d::runtime::detail::forEachNode(scene, [&](X3DNode *n) {
+    const auto *humanoid = dynamic_cast<const x3d::nodes::HAnimHumanoid *>(n);
+    if (!humanoid) return;
+    const auto &enabledFlags = humanoid->getMotionsEnabled();
+    const auto &motions = humanoid->getMotions();
+    // Joints by name, as HAnimMotionSystem binds them.
+    std::unordered_map<std::string, const x3d::nodes::HAnimJoint *> byName;
+    {
+      std::unordered_set<const X3DNode *> seen;
+      std::function<void(const X3DNode *)> rec = [&](const X3DNode *node) {
+        if (!node || !seen.insert(node).second) return;
+        if (const auto *j = dynamic_cast<const x3d::nodes::HAnimJoint *>(node))
+          byName.emplace(j->getName(), j);
+        forEachChildNode(*node, [&](const FieldInfo &,
+                                    const std::shared_ptr<X3DNode> &c) {
+          rec(c.get());
+        });
+      };
+      rec(humanoid);
+    }
+    for (std::size_t slot = 0; slot < motions.size(); ++slot) {
+      const auto *motion =
+          dynamic_cast<const x3d::nodes::HAnimMotion *>(motions[slot].get());
+      if (!motion) continue;
+      GltfAnimation animation;
+      if (motionAnimation(*motion, byName,
+                          slot >= enabledFlags.size() || enabledFlags[slot],
+                          animation)) {
+        if (animation.name.empty()) animation.name = humanoid->getDEF();
+        extras.animations.push_back(std::move(animation));
+      } else {
+        ++skippedMotions;
+      }
+    }
+  });
+  if (report) report->skippedMotions = skippedMotions;
   return extras;
 }
 
