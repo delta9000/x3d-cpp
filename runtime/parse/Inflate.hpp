@@ -39,11 +39,11 @@ inline std::uint32_t crc32(const unsigned char *data, std::size_t len) {
 
 } // namespace detail
 
-/// Inflate a gzip (RFC 1952) stream to its decompressed bytes. `compressed`
-/// must begin with the gzip magic. Throws std::runtime_error on a malformed
-/// header, truncated body, DEFLATE failure, or CRC32/ISIZE mismatch.
-inline std::string inflateGzip(std::string_view compressed,
-                               std::size_t maxOut = kMaxDecompressedBytes) {
+/// Inflate one gzip member starting at `compressed[0]` and append its bytes to
+/// `out`, which may grow to at most `maxOut` bytes in total. Returns the number
+/// of input bytes the member occupied (header + DEFLATE body + footer).
+inline std::size_t inflateGzipMember(std::string_view compressed,
+                                     std::string &out, std::size_t maxOut) {
   const auto *p = reinterpret_cast<const unsigned char *>(compressed.data());
   const std::size_t n = compressed.size();
 
@@ -96,13 +96,62 @@ inline std::string inflateGzip(std::string_view compressed,
     pos += 2; // 16-bit header CRC; not verified.
   }
 
-  // The 8-byte footer (CRC32 + ISIZE) trails the DEFLATE body.
+  // The DEFLATE body runs from here to its final block; tinfl reports how many
+  // input bytes it used, and the 8-byte footer (CRC32 + ISIZE) follows.
   if (pos + 8 > n)
     throw std::runtime_error("inflateGzip: truncated gzip body/footer");
   const std::size_t deflate_begin = pos;
-  const std::size_t deflate_len = n - 8 - deflate_begin;
+  const std::size_t avail = n - deflate_begin;
 
-  const auto *footer = p + (n - 8);
+  // Single-shot, non-wrapping output: grow the buffer and re-run on overflow.
+  // Every member shares the one maxOut ceiling, so the room left for this
+  // member is what earlier members did not use.
+  const std::size_t start = out.size();
+  const std::size_t room = maxOut - start;
+  tinfl_decompressor decomp;
+  // Initial guess from the input size (the footer's ISIZE is only reachable
+  // once the body has been decoded), bounded so a large input does not
+  // reserve a large zero-filled buffer up front.
+  std::size_t cap = avail * 4 + 64;
+  if (cap > (std::size_t{16} << 20))
+    cap = std::size_t{16} << 20;
+  if (cap > room)
+    cap = room;
+
+  std::size_t used = 0;
+  for (;;) {
+    tinfl_init(&decomp);
+    out.resize(start + cap);
+    std::size_t in_size = avail;
+    std::size_t out_size = cap;
+    auto *dst = reinterpret_cast<unsigned char *>(out.data()) + start;
+    tinfl_status st = tinfl_decompress(
+        &decomp, p + deflate_begin, &in_size, dst, dst, &out_size,
+        TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+    if (st == TINFL_STATUS_DONE) {
+      out.resize(start + out_size);
+      used = in_size;
+      break;
+    }
+    if (st == TINFL_STATUS_HAS_MORE_OUTPUT) {
+      // the stream wants more than `cap` bytes. If we are already at the
+      // ceiling the decompressed output exceeds the policy limit — reject it as
+      // a decompression bomb rather than doubling the buffer toward OOM.
+      if (cap >= room)
+        throw ParseResourceLimitError(
+            "inflateGzip: decompressed size exceeds the kMaxDecompressedBytes "
+            "cap (possible gzip decompression bomb)");
+      cap = cap > room / 2 ? room : cap * 2; // grow, clamped to the ceiling
+      continue;
+    }
+    throw std::runtime_error(
+        "inflateGzip: DEFLATE stream is corrupt or truncated");
+  }
+
+  const std::size_t footer_at = deflate_begin + used;
+  if (footer_at + 8 > n)
+    throw std::runtime_error("inflateGzip: truncated gzip footer");
+  const auto *footer = p + footer_at;
   const std::uint32_t expected_crc =
       std::uint32_t(footer[0]) | (std::uint32_t(footer[1]) << 8) |
       (std::uint32_t(footer[2]) << 16) | (std::uint32_t(footer[3]) << 24);
@@ -110,55 +159,37 @@ inline std::string inflateGzip(std::string_view compressed,
       std::uint32_t(footer[4]) | (std::uint32_t(footer[5]) << 8) |
       (std::uint32_t(footer[6]) << 16) | (std::uint32_t(footer[7]) << 24);
 
-  // Single-shot, non-wrapping output: grow the buffer and re-run on overflow.
-  // ISIZE is a hint for the initial reservation (mod 2^32; trust but verify).
-  tinfl_decompressor decomp;
-  std::string out;
-  std::size_t cap = expected_isize ? expected_isize : (deflate_len * 4 + 64);
-  if (cap < 64)
-    cap = 64;
-  // never reserve past the decompressed-size ceiling. ISIZE is attacker-
-  // controlled and can claim ~4 GiB, so clamp the initial reservation; the grow
-  // loop below stops at the same ceiling rather than doubling toward OOM.
-  if (cap > maxOut)
-    cap = maxOut;
-
-  for (;;) {
-    tinfl_init(&decomp);
-    out.assign(cap, '\0');
-    std::size_t in_size = deflate_len;
-    std::size_t out_size = cap;
-    tinfl_status st = tinfl_decompress(
-        &decomp, p + deflate_begin, &in_size,
-        reinterpret_cast<unsigned char *>(out.data()),
-        reinterpret_cast<unsigned char *>(out.data()), &out_size,
-        TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
-    if (st == TINFL_STATUS_DONE) {
-      out.resize(out_size);
-      break;
-    }
-    if (st == TINFL_STATUS_HAS_MORE_OUTPUT) {
-      // the stream wants more than `cap` bytes. If we are already at the
-      // ceiling the decompressed output exceeds the policy limit — reject it as
-      // a decompression bomb rather than doubling the buffer toward OOM.
-      if (cap >= maxOut)
-        throw ParseResourceLimitError(
-            "inflateGzip: decompressed size exceeds the kMaxDecompressedBytes "
-            "cap (possible gzip decompression bomb)");
-      cap = cap > maxOut / 2 ? maxOut : cap * 2; // grow, clamped to the ceiling
-      continue;
-    }
-    throw std::runtime_error(
-        "inflateGzip: DEFLATE stream is corrupt or truncated");
-  }
-
+  const std::size_t produced = out.size() - start;
   const std::uint32_t actual_crc = detail::crc32(
-      reinterpret_cast<const unsigned char *>(out.data()), out.size());
+      reinterpret_cast<const unsigned char *>(out.data()) + start, produced);
   if (actual_crc != expected_crc)
     throw std::runtime_error("inflateGzip: CRC32 mismatch (corrupt stream)");
-  if (static_cast<std::uint32_t>(out.size()) != expected_isize)
+  if (static_cast<std::uint32_t>(produced) != expected_isize)
     throw std::runtime_error("inflateGzip: ISIZE mismatch (corrupt stream)");
+  return footer_at + 8;
+}
 
+/// Inflate a gzip (RFC 1952) stream to its decompressed bytes. `compressed`
+/// must begin with the gzip magic. A stream of several members (RFC 1952
+/// §2.2, e.g. `cat a.gz b.gz`) decodes to their concatenation; trailing zero
+/// padding after the last member is ignored, any other trailing bytes are an
+/// error. Throws std::runtime_error on a malformed header, truncated body,
+/// DEFLATE failure, CRC32/ISIZE mismatch, or trailing garbage, and
+/// ParseResourceLimitError once the total output would pass `maxOut`.
+inline std::string inflateGzip(std::string_view compressed,
+                               std::size_t maxOut = kMaxDecompressedBytes) {
+  std::string out;
+  std::size_t pos = inflateGzipMember(compressed, out, maxOut);
+  while (pos < compressed.size()) {
+    std::string_view rest = compressed.substr(pos);
+    if (rest.find_first_not_of('\0') == std::string_view::npos)
+      break; // zero padding (e.g. a tape block), as gzip(1) accepts
+    if (rest.size() < 2 || static_cast<unsigned char>(rest[0]) != 0x1f ||
+        static_cast<unsigned char>(rest[1]) != 0x8b)
+      throw std::runtime_error(
+          "inflateGzip: trailing bytes after the gzip stream");
+    pos += inflateGzipMember(rest, out, maxOut);
+  }
   return out;
 }
 

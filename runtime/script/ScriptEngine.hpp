@@ -46,6 +46,11 @@ inline constexpr ScriptHandle kInvalidScriptHandle = 0;
  *          browser info) through the SaiContext supplied at load time. The SAI
  *          surface is the *only* sanctioned channel from backend to runtime, and
  *          it enforces the directOutput gate.
+ *
+ *          Threading: an engine is not thread-safe. All calls on one instance,
+ *          for any of its scripts, must come from one thread at a time (the
+ *          runtime drives scripts from the thread that runs the event cascade).
+ *          Hosts that want scripts on several threads use one engine per thread.
  */
 class ScriptEngine {
 public:
@@ -77,9 +82,9 @@ public:
    *          and get the host killed. Past the cap an allocation fails; the
    *          engine collects garbage and retries, then raises an out-of-memory
    *          error, which is contained like any other script error. Applies to
-   *          scripts loaded after the call. Zero disables the cap. How it is
-   *          counted is backend-specific (per script, or per engine instance
-   *          when scripts share one heap); see the backend's documentation.
+   *          scripts loaded after the call. Zero disables the cap. The cap is
+   *          per script: each loaded script has its own heap, so one script
+   *          cannot use up another's budget.
    */
   void setMemoryLimit(std::size_t bytes) { memoryLimit_ = bytes; }
   std::size_t memoryLimit() const { return memoryLimit_; }

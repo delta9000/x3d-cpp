@@ -71,3 +71,32 @@ TEST_CASE("inflateGzip caps decompressed output") {
   CHECK_MESSAGE((x3d::kMaxDecompressedBytes >= (1u << 20)),
                 "kMaxDecompressedBytes default is generous (>= 1 MiB)");
 }
+
+TEST_CASE("inflateGzip decodes a multi-member stream") {
+  const std::string a(3000, 'a');
+  const std::string b = "second member";
+  const std::string both = gzipStored(a) + gzipStored(b);
+
+  // RFC 1952 §2.2: a gzip file is a series of members; `cat a.gz b.gz`
+  // decompresses to the concatenation.
+  CHECK(inflateGzip(both) == a + b);
+
+  // Trailing zero padding after the last member is accepted, as gzip(1) does.
+  CHECK(inflateGzip(both + std::string(16, '\0')) == a + b);
+
+  // Anything else after a member is an error, not silently dropped.
+  CHECK(throwsInflate(gzipStored(a) + "junk", 1u << 20));
+
+  // A truncated second member fails instead of yielding a partial result.
+  const std::string cut = both.substr(0, both.size() - 4);
+  CHECK(throwsInflate(cut, 1u << 20));
+
+  // A corrupt CRC in the first member is caught, not masked by the last.
+  std::string badFirst = both;
+  badFirst[gzipStored(a).size() - 8] ^= 0x01;
+  CHECK(throwsInflate(badFirst, 1u << 20));
+
+  // maxOut bounds the total across members, not each member alone.
+  CHECK(throwsInflate(both, a.size() + 4));
+  CHECK(inflateGzip(both, a.size() + b.size()) == a + b);
+}

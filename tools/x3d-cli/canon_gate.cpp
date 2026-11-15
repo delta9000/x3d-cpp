@@ -56,17 +56,23 @@ static std::vector<std::string> loadSubset(const std::string &path) {
 
 static std::string g_x3dBin; // set from argv[1] in main()
 
-// Invoke `x3d canonicalize <path>` as a subprocess; return stdout.
-// Throws on non-zero exit or pipe failure.
-static std::string canonicalizeViaProc(const std::string &path) {
-    // Single-quote the path for the shell, escaping any embedded single-quotes.
-    std::string qpath = "'";
-    for (char c : path) {
-        if (c == '\'') qpath += "'\\''";
-        else qpath += c;
+// Single-quote `s` for the POSIX shell, escaping any embedded single-quotes.
+static std::string shellQuote(const std::string &s) {
+    std::string q = "'";
+    for (char c : s) {
+        if (c == '\'') q += "'\\''";
+        else q += c;
     }
-    qpath += "'";
-    const std::string cmd = g_x3dBin + " canonicalize " + qpath + " 2>/dev/null";
+    q += "'";
+    return q;
+}
+
+// Invoke `x3d canonicalize <path>` as a subprocess; return stdout.
+// Throws on non-zero exit or pipe failure. Both the binary and the scene path
+// are quoted, so neither can inject shell syntax.
+static std::string canonicalizeViaProc(const std::string &path) {
+    const std::string cmd = shellQuote(g_x3dBin) + " canonicalize " +
+                            shellQuote(path) + " 2>/dev/null";
     FILE *pipe = popen(cmd.c_str(), "r");
     if (!pipe) throw std::runtime_error("popen failed: " + cmd);
     std::string result;

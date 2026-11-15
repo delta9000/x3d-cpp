@@ -488,8 +488,15 @@ runtime::X3DDocument parseFile(const std::string &path,
                              path);
   // Derive the base directory so relative EXTERNPROTO urls resolve against the
   // source file's location rather than the process cwd.
+  // Only Windows treats a backslash as a separator; on POSIX it is a legal filename
+  // character, so splitting on it would put the base inside the file's name.
+#ifdef _WIN32
+  constexpr const char *kPathSeparators = "/\\";
+#else
+  constexpr const char *kPathSeparators = "/";
+#endif
   std::string base;
-  if (auto slash = path.find_last_of("/\\"); slash != std::string::npos)
+  if (auto slash = path.find_last_of(kPathSeparators); slash != std::string::npos)
     base = path.substr(0, slash);
   // Default the confinement root to this top-level file's directory (secure
   // per-file default) unless a trusted caller widened it. `.` when base is
