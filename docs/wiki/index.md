@@ -2,7 +2,7 @@
 title: x3d-cpp documentation
 summary: Entry point to the tutorials, how-to guides, reference and explanation for the runtime SDK and the SAI SDK.
 tags: [index]
-updated: 2026-11-14
+updated: 2026-11-15
 related: []
 ---
 
@@ -62,6 +62,7 @@ Using the SDK:
 | [Native host contract](reference/native-host-contract.md) | Session, mutation, delta, lifetime and resource rules |
 | [Seam matrix](reference/seam-matrix.md) | Interfaces, implementations and contract tests |
 | [API stability](reference/api-stability.md) | What 0.x releases promise |
+| [Script ECMAScript API](reference/script-api.md) | What code in a Script node can call |
 | [Examples](reference/examples/index.md) | Every example program and what it shows |
 
 Subsystem pages describe one part of the runtime each; the navigation groups

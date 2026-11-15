@@ -64,6 +64,7 @@ nav:
           - Native host contract: reference/native-host-contract.md
           - Seam matrix: reference/seam-matrix.md
           - API stability: reference/api-stability.md
+          - Script ECMAScript API: reference/script-api.md
       - Examples:
           - Overview: reference/examples/index.md
           - Headless CPU rasterizer: reference/examples/cpu-raster.md
