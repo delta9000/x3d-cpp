@@ -2,7 +2,7 @@
 title: Integrate a native host
 summary: Wire a RuntimeSession into an application frame loop with input, a camera and scene acceptance checks.
 tags: [how-to, embedding]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/native-host-contract.md
   - supply-resources.md
@@ -16,6 +16,8 @@ renderer and an event loop. It assumes you have linked `x3d_cpp::sdk`
 ([Build and install the SDK](build-and-install.md)) and know the three calls
 from [the first tutorial](../tutorials/first-scene.md). The rules behind each
 step are in the [native host contract](../reference/native-host-contract.md).
+Method signatures and option defaults are in
+[RuntimeSession and SessionOptions](../reference/runtime-session.md).
 
 ## 1. Create the session
 
@@ -29,9 +31,15 @@ If your host owns navigation but still wants TouchSensor and drag sensors, set
 `options.pointingSensors` instead of `interactive`. Wire resource callbacks
 here too; see [Supply resources through the seams](supply-resources.md).
 
+Catch `std::exception` around loading and session creation at your application's
+scene-loading boundary. An unreadable file, corrupt gzip input, an unknown
+encoding or a fatal parse error can throw. Report `error.what()` and keep the
+previous scene, or abort the load, before inspecting a new session.
+
 ## 2. Check the scene before you accept it
 
-Loading reports problems instead of throwing. Before you show the scene, check:
+After loading succeeds, recoverable problems remain in diagnostics. Before you
+show the scene, check:
 
 | Check | Where |
 |---|---|

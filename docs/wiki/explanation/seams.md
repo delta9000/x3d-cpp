@@ -2,7 +2,7 @@
 title: Seams, ports and backends
 summary: Why resource IO and engines sit behind host-supplied interfaces, and what a swap-test proves.
 tags: [explanation, seams, embedding]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - architecture.md
   - ../reference/seam-matrix.md
@@ -22,11 +22,10 @@ provider interface. The core owns the interface. The host supplies the adapter,
 which this project calls a *backend*. Most seams are a `std::function` value;
 the script seam is an abstract class.
 
-The split exists because the SDK is headless and renderer-agnostic. A host
-already has opinions about file access, caching, image formats, fonts and
-threading, and a runtime that brought its own would fight them. Putting the
-choice at a narrow interface keeps the core free of those dependencies and
-lets one build serve a game engine, a CAVE and a command-line converter.
+The split lets the SDK fit a host's existing file access, caching, image
+formats, fonts and threading. Each interface gives the host control over one
+of those choices while keeping its dependencies outside the core. The same
+runtime can then serve a game engine, a CAVE or a command-line converter.
 
 ## What "proven" means
 
@@ -45,13 +44,13 @@ implementations and tests.
 
 ## What ships and what doesn't
 
-The installed package carries working defaults where a default can be honest:
-a monospace font-metrics stub that produces real fixed-pitch text layout, and a
-built-in ellipsoid geospatial projection. The texture and asset resolvers
-default to refusing, so a scene with images renders with fallbacks until the
-host wires a decoder.
+The core defaults provide fixed-pitch font metrics and a built-in ellipsoid
+geospatial projection. Texture and LoadSensor byte requests fail by default,
+so a scene with images uses texture fallbacks until the host supplies a
+decoder. Building a backend makes it available to the application; the host
+still has to wire it into the appropriate interface.
 
-The richer backends (stb_truetype font metrics, stb_image and Wuffs image
+Additional backends (stb_truetype font metrics, stb_image and Wuffs image
 decoding, libcurl fetching, the script engines, physics) live in the source
 tree behind the `X3D_CPP_BUILD_*` options in `cmake/x3d/backends.cmake`. Each
 has its own header and target and is not re-exported by `x3d/sdk.hpp`.

@@ -2,10 +2,10 @@
 title: "ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics"
 summary: "The runtime defines clipBoundary as a sub-region the layer view is mapped (rescaled) into, with aspect ratio derived from the sub-region; it exposes a derived ViewportRegion{x,y,w,h,aspect} contract for renderers."
 tags: [adr, layering, viewport, renderer-contract, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - ../architecture.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0035: Viewport.clipBoundary Uses glViewport (Remap) Semantics

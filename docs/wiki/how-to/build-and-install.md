@@ -2,7 +2,7 @@
 title: Build and install the SDK
 summary: Build x3d-cpp from a checkout, install it to a prefix and link it from another CMake project.
 tags: [how-to, build, cmake, embedding]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/build-and-tasks.md
   - ../reference/api-stability.md
@@ -31,6 +31,8 @@ cmake --install build --prefix "$PWD/install"
 
 ## Link it from your project
 
+In your application's `CMakeLists.txt`, after defining the `my_app` target:
+
 ```cmake
 find_package(x3d_cpp CONFIG REQUIRED)
 target_link_libraries(my_app PRIVATE x3d_cpp::sdk)
@@ -43,7 +45,7 @@ cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/x3d-cpp/install
 cmake --build build
 ```
 
-Then include the one header:
+In your C++ source, include the SDK header:
 
 ```cpp
 #include "x3d/sdk.hpp"
@@ -58,20 +60,24 @@ namespace sdk = x3d::sdk;
 | A tool that only builds and writes scenes | `x3d_cpp::authoring` | `x3d/authoring.hpp` |
 | A host that also needs the opt-in extensions | `x3d_cpp::sdk` and `x3d_cpp::ext` | `x3d/ext.hpp` (build with `-DX3D_CPP_BUILD_EXT=ON`) |
 
-Which target names are a promise is in [API stability](../reference/api-stability.md).
+Target compatibility is described in [API stability](../reference/api-stability.md).
 
 ## Turn on optional backends
 
-Optional backends are off by default and some fetch their dependency at
-configure time. Their switches are the `X3D_CPP_BUILD_*` options in
-`cmake/x3d/backends.cmake`. Use a separate build directory for each backend
-combination. Presets, compiled libraries and tooling switches are in
-[Build and mise tasks](../reference/build-and-tasks.md).
+Choose backends with the `X3D_CPP_BUILD_*` options in
+`cmake/x3d/backends.cmake`. Most are off by default; the bundled Duktape script
+backend is enabled by default in `cmake/x3d/script-backend.cmake`. Some backends
+fetch dependencies at configure time. Use a separate build directory for each
+backend combination.
+
+See [Supply resources through the seams](supply-resources.md) for wiring
+backends into a host, and [Build and mise tasks](../reference/build-and-tasks.md)
+for presets, compiled libraries and tooling switches.
 
 ## Check the install
 
 `examples/embed_minimal/` is a complete downstream project that uses only the
-installed package:
+installed package. Run these commands from the SDK checkout after installing:
 
 ```sh
 cmake -S examples/embed_minimal -B build-embed -G Ninja \

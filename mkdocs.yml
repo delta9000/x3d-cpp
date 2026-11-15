@@ -26,10 +26,20 @@ theme:
 plugins:
   - search
 
+validation:
+  nav:
+    omitted_files: warn
+  links:
+    anchors: warn
+
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
@@ -61,6 +71,7 @@ nav:
   - Reference:
       - Using the SDK:
           - SDK capabilities: reference/capabilities.md
+          - Runtime session and options: reference/runtime-session.md
           - Native host contract: reference/native-host-contract.md
           - Seam matrix: reference/seam-matrix.md
           - API stability: reference/api-stability.md

@@ -2,7 +2,7 @@
 title: Native host contract
 summary: The rules a host follows for session ownership, input, mutation, deltas, lifetimes and resources.
 tags: [reference, embedding, extraction]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../how-to/integrate-a-native-host.md
   - ../explanation/tick-model.md
@@ -17,6 +17,7 @@ renderer. The host owns presentation, input mapping, frame pacing and GPU
 lifetime.
 
 For the steps, see [Integrate a native host](../how-to/integrate-a-native-host.md).
+For signatures and option defaults, see [RuntimeSession and SessionOptions](runtime-session.md).
 For the reasoning, see [The tick model](../explanation/tick-model.md).
 
 ## Session

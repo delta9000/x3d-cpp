@@ -2,10 +2,10 @@
 title: "ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype"
 summary: "OrthoViewpoint.fieldOfView keeps its MFFloat type (retyping to SFVec4f breaks ClassicVRML); the engine instead validates it as a fixed SFVec4f-semantics 4-tuple, shared with TextureProjectorParallel."
 tags: [adr, validation, fieldofview, classicvrml, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - ../architecture.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0030: Validate fieldOfView as a Fixed 4-Tuple, Do Not Retype

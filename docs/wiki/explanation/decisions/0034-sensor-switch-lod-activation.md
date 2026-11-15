@@ -2,11 +2,11 @@
 title: "ADR-0034: Environmental Sensor Activation Under Switch/LOD"
 summary: "An environmental sensor reachable only through a non-selected Switch child or inactive LOD level is treated as removed from the transformation hierarchy (deactivated); Script and time-dependent nodes are not gated."
 tags: [adr, sensors, switch, lod, traversal, conformance]
-updated: 2026-06-25
+updated: 2026-11-15
 related:
   - ../architecture.md
   - ../../reference/subsystems/system-viewdependent.md
-  - ../../conformance/findings.yaml
+  - ../../../conformance/findings.yaml
 ---
 
 # ADR-0034: Environmental Sensor Activation Under Switch/LOD

@@ -2,7 +2,7 @@
 title: Verify a change to the SAI SDK
 summary: Which gate to run for which kind of SAI change, and how to run the harnesses by hand.
 tags: [sai, how-to, testing]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/test-suites.md
 ---
@@ -25,6 +25,20 @@ Run from the x3d-cpp root. What each suite covers is in
 | SAI wiki pages | `mise run docs-build` |
 
 `mise run ci` includes `sai-ci`. `mise run ci-all` adds `sai-provider`.
+
+## Check affected documentation
+
+For C++ changes under `sai/` or `adapters/sai_provider/`, run:
+
+```sh
+mise run docs-drift working
+```
+
+Review the `CITES` hits and update the affected SAI pages in the same diff.
+The suggester excludes generated bindings and vendored dependencies. It is
+advisory: if semantic retrieval is unavailable, literal citations still run
+and the output labels the review incomplete. Check the code and its contract
+even when no page is suggested, then run `mise run docs-build`.
 
 ## Try the example
 

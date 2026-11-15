@@ -2,7 +2,7 @@
 title: Report a bug with a scene
 summary: What to attach and state so a parsing, ticking or extraction bug can be reproduced.
 tags: [how-to, contributing]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/subsystems/parse-readers.md
 ---
@@ -18,6 +18,8 @@ and Inlines unless they are the bug.
 
 - The encoding: XML, ClassicVRML, VRML97 or JSON.
 - The X3D version the file declares.
+- The SDK revision, operating system, compiler, and enabled backends.
+- The command or minimal host code that reproduces the problem.
 - What you expected the parser, the tick or the extraction to do, and what it
   did.
 
@@ -42,6 +44,7 @@ is, contact the maintainer directly instead of opening a public issue.
 
 ## 5. File it
 
-Open a GitHub issue for an ordinary bug. A gap against the X3D specification
-goes in `docs/conformance/findings.yaml` instead; see
-[Audit a requirement](audit-a-requirement.md).
+Open a [GitHub issue](https://github.com/delta9000/x3d-cpp/issues/new) for an
+ordinary bug and include the facts above. If you are contributing a confirmed
+gap against the X3D specification, record it in
+`docs/conformance/findings.yaml`; see [Audit a requirement](audit-a-requirement.md).

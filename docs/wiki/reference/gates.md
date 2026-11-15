@@ -2,7 +2,7 @@
 title: Gate system
 summary: What the verification gates check and where their definitions live.
 tags: [reference, gates]
-updated: 2026-11-05
+updated: 2026-11-15
 related: []
 ---
 
@@ -60,10 +60,15 @@ existing tier-2 baseline with empty results.
 
 ## Documentation
 
-`mise run docs-build` invokes MkDocs with `--strict`. Warnings fail the build;
-inspect informational messages too, since strict mode does not turn every
-navigation or anchor diagnostic into a warning. Keep pages in `mkdocs.yml` and
-check incoming anchors before changing headings.
+`mise run docs-build` invokes MkDocs with `--strict`. The configuration makes
+missing heading anchors and pages omitted from `mkdocs.yml` warnings, alongside
+broken internal page links; warnings fail the build. Keep pages in navigation
+and check incoming anchors before changing headings. The build does not check
+external URLs, frontmatter conventions, API accuracy, or tutorial output.
+
+The GitHub checks job runs this build. The local `ci` aggregate includes the
+CTest documentation check below; run `mise run docs-build` separately for wiki
+changes.
 
 `python3 scripts/doc_ctest_gate.py` checks that documented `ctest -R x3d_*`
 patterns match a CTest registration in the CMake sources. It includes gated
