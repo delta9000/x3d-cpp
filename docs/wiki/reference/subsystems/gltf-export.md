@@ -2,7 +2,7 @@
 title: glTF export
 summary: "writeGlb: how extracted render items become a binary glTF 2.0 file and what is left out."
 tags: [subsystem, extract, gltf, export]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - extract.md
   - cli-suite.md
@@ -36,7 +36,32 @@ entry is `x3d extract -o out.glb` ([CLI suite](cli-suite.md)).
 | DirectionalLight, PointLight, SpotLight (`extractor.lights()`) | `KHR_lights_punctual` lights, each on a node with the world location and a rotation aiming −Z along the world direction. `radius` → `range`; `beamWidth`/`cutOffAngle` → inner/outer cone, with inner pulled inside outer |
 | Viewpoint, OrthoViewpoint | Cameras on nodes carrying the viewpoint's world pose, the bound one first; `description` (else DEF) → name; `nearDistance`/`farDistance` → `znear`/`zfar` |
 | PositionInterpolator / OrientationInterpolator routed to a Transform's `translation`, `scale` or `rotation` | A glTF animation: the Transform is kept as a node (see below), the interpolator's `key`/`keyValue` become a `LINEAR` sampler (rotations as quaternions), and key times are `key × cycleInterval` of the TimeSensor routed to the interpolator's `set_fraction`. One animation per TimeSensor, named by its DEF |
-| PositionInterpolator / OrientationInterpolator routed to a Viewpoint's or OrthoViewpoint's `position` / `orientation`, or a PositionInterpolator routed to a PointLight's or SpotLight's `location` | Channels in the same animation: the camera or light node carries the authored value as its `translation`/`rotation`, under a `matrix` node for the Transforms above it |
+| PositionInterpolator / OrientationInterpolator routed to a Viewpoint's or OrthoViewpoint's `position` / `orientation`, a PositionInterpolator routed to a PointLight's or SpotLight's `location`, or to a DirectionalLight's or SpotLight's `direction` | Channels in the same animation: the camera or light node carries the authored value as its `translation`/`rotation` (a direction as the rotation aiming −Z along it), under a `matrix` node for the Transforms above it |
+| PositionInterpolator / OrientationInterpolator routed to a Transform's `center` / `scaleOrientation` | Channels on the helper nodes (below): the `T+C` translation, the `SR` and `SR⁻¹` rotations and the tail translation |
+| Color/ScalarInterpolator routed to a material, light or viewpoint property (table below) | `KHR_animation_pointer` channels on the glTF property, in the same animation |
+| SplinePositionInterpolator, SplineScalarInterpolator, SquadOrientationInterpolator, and ColorInterpolator (X3D blends in HSV) | Sampled: each key interval is split into 8 `LINEAR` steps, valued by the runtime's own interpolation |
+| NurbsPositionInterpolator, NurbsOrientationInterpolator | Sampled at 65 even fractions over the curve |
+| GeoPositionInterpolator (`value_changed`, the local position) | Sampled 8 steps per key interval, since it interpolates in geographic coordinates and then projects |
+
+Animated properties (`KHR_animation_pointer`):
+
+| X3D field | glTF property |
+|---|---|
+| `Material.diffuseColor`, `PhysicalMaterial.baseColor`, the `emissiveColor` of an unlit surface | `baseColorFactor` RGB |
+| `transparency` (any material) | `baseColorFactor` alpha (1 − transparency); the material is written with `alphaMode` BLEND. Colour and transparency in one animation share one VEC4 channel |
+| `emissiveColor` of a lit material | `emissiveFactor` (written even when black) |
+| `PhysicalMaterial.metallic` / `roughness` | `metallicFactor` / `roughnessFactor` |
+| `Material.shininess` | `roughnessFactor` through the static mapping, sampled 8 steps per interval |
+| A light's `color` / `intensity`; a PointLight's or SpotLight's `radius` | `KHR_lights_punctual` `color` / `intensity` / `range` |
+| `SpotLight.beamWidth` / `cutOffAngle` | `spot.innerConeAngle` and `spot.outerConeAngle`, clamped together so inner < outer ≤ π/2 |
+| `Viewpoint.fieldOfView` | `perspective.yfov` |
+
+- A material an animation drives is written as glTF materials of its own, so
+  its channel moves no other shape. A colour channel aimed at a shape whose
+  per-vertex colours replace the material colour is skipped and counted.
+- Most viewers do not load `KHR_animation_pointer`; they show the static
+  values, which are the values at export time. It is listed in
+  `extensionsUsed`, not `extensionsRequired`.
 
 - Approximations: X3D light `intensity` is a unitless factor and is written
   unchanged as glTF intensity (lux or candela), so absolute brightness will
@@ -86,20 +111,33 @@ out-of-range authored value still gives a valid file.
   `location`, `position` or `orientation` is animated keeps that value as its
   node's `translation`/`rotation` under a `matrix` node for its ancestors.
   Everything else is still a world-space root.
-- Animation limits: core glTF animates only a node's translation, rotation and
-  scale (and morph weights), so those are the channels written.
-- Interpolators that drive colours, scalars (transparency, intensity, field of
-  view) or a light's `direction` would need the `KHR_animation_pointer`
-  extension, which most viewers do not load, and CoordinateInterpolators would
-  need morph targets; they are not exported.
-- Neither are chains through other nodes (sequencers, Scripts, EaseInEaseOut,
-  followers), `center` and `scaleOrientation` animation, and H-Anim motion.
+- An animated `center` or `scaleOrientation` gets its helper nodes even when
+  it is zero at export time. Between samples, the tail translation
+  `SR⁻¹(−C)` is linear while the true value turns with `SR`, so it is sampled
+  8 steps per interval: exact at every sample, within about 1% of the
+  Transform's size between them for a 1.2 radian sweep.
+- When a field and the property it shares a glTF value with (a translation
+  and a centre, a colour and a transparency, the two cone angles) are
+  animated by different TimeSensors, each animation writes the shared value
+  with the other field at its export-time value.
+- Not exported: CoordinateInterpolator, CoordinateInterpolator2D and
+  NormalInterpolator (they need morph targets); H-Anim skinning and motion;
+  PositionInterpolator2D (glTF has no texture transform without
+  `KHR_texture_transform`, which the exporter does not write);
+  NurbsSurfaceInterpolator (driven by a 2D fraction, not a TimeSensor);
+  chains through other
+  nodes (sequencers, Scripts, EaseInEaseOut, followers); and fields with no
+  glTF property, such as `specularColor`, `ambientIntensity` and
+  `attenuation`.
 - Dropped interpolator routes are counted in `skippedAnimationRoutes`, and a
   channel whose target was not written (a Transform with nothing exported
-  under it, a light that is off) in `skippedAnimationChannels`.
+  under it, a material on no exported shape, a light that is off) in
+  `skippedAnimationChannels`.
 - glTF has no loop flag, so `TimeSensor.loop` is left to the viewer.
 
 The JSON and the PNG encoder are written by hand; the tests
 (`runtime/extract/tests/gltf_writer_test.cpp`) check the container and
 selected values, and exports of the CLI fixtures and the lion-head models pass
-the Khronos glTF validator with no errors.
+the Khronos glTF validator with no errors. The validator checks
+`KHR_animation_pointer` channels only partly (it reports
+`INCOMPLETE_EXTENSION_SUPPORT`).

@@ -393,8 +393,9 @@ TEST_CASE("glb: an interpolator-driven Transform becomes an animated node") {
   const Glb g = exportScene(kAnimated);
   CHECK(g.report.animations == 1);
   CHECK(g.report.animationChannels == 4); // rotation + translation, two placements
-  CHECK(g.report.skippedAnimationRoutes == 1); // the ColorInterpolator
-  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  // The ColorInterpolator drives a Material no exported shape uses.
+  CHECK(g.report.skippedAnimationChannels == 1);
   CHECK(g.report.nodes == 3);
 
   // The plain Transform above Spin is a matrix node; Spin is TRS with the
@@ -415,10 +416,10 @@ TEST_CASE("glb: an interpolator-driven Transform becomes an animated node") {
   // Sample data is not vertex data: its buffer views carry no target.
   CHECK(count(g.json, "\"type\":\"SCALAR\",\"min\":[0],\"max\":[4]") == 2);
 
-  // The samples are the last four views: rotation times, rotation values,
-  // translation times, translation values.
+  // The samples are the last four views: translation times, translation
+  // values, rotation times, rotation values.
   const std::size_t rotT = 3 * 4, rotV = 3 * 16, posT = 4 * 4, posV = 4 * 12;
-  const std::size_t end = g.bin.size();
+  const std::size_t end = g.bin.size() - rotV - rotT;
   const auto times = floatsAt(g, end - posV - posT, 4);
   CHECK(times[0] == 0.0f);
   CHECK(times[1] == 2.0f);          // key 0.5 x cycleInterval 4
@@ -429,7 +430,7 @@ TEST_CASE("glb: an interpolator-driven Transform becomes an animated node") {
   CHECK(positions[1] == 3.0f);      // y: 2 + centre 1
   CHECK(positions[4] == 5.0f);
   CHECK(positions[7] == 1.0f);      // 0 + centre 1
-  const auto quats = floatsAt(g, end - posV - posT - rotV, 12);
+  const auto quats = floatsAt(g, g.bin.size() - rotV, 12);
   CHECK(quats[3] == doctest::Approx(1.0f));  // no rotation
   CHECK(std::fabs(quats[5]) == doctest::Approx(1.0f)); // half turn about Y
   CHECK(quats[7] == doctest::Approx(0.0f).epsilon(1e-6));
@@ -467,10 +468,10 @@ TEST_CASE("glb: animation that cannot be exported is counted, not written") {
       "<Transform DEF='T'><Shape><Cone/></Shape></Transform>"
       "<ROUTE fromNode='P' fromField='value_changed' toNode='Hidden' toField='translation'/>"
       "<ROUTE fromNode='Bad' fromField='value_changed' toNode='T' toField='translation'/>"
-      "<ROUTE fromNode='P' fromField='value_changed' toNode='T' toField='center'/>");
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='T' toField='bboxCenter'/>");
   CHECK(g.report.animations == 0);
   CHECK(g.report.skippedAnimationChannels == 1); // Hidden has no shape under it
-  CHECK(g.report.skippedAnimationRoutes == 2);   // short keyValue; center
+  CHECK(g.report.skippedAnimationRoutes == 2);   // short keyValue; bboxCenter
   CHECK(!has(g.json, "\"animations\""));
   CHECK(!has(g.json, "\"children\""));
 }
@@ -528,8 +529,8 @@ TEST_CASE("glb: a Viewpoint's pose and a light's location animate") {
       "<ROUTE fromNode='P' fromField='value_changed' toNode='Fly' toField='set_position'/>"
       "<ROUTE fromNode='O' fromField='value_changed' toNode='Fly' toField='set_orientation'/>"
       "<ROUTE fromNode='P' fromField='value_changed' toNode='Bulb' toField='location'/>"
-      // Not expressible in core glTF: a light's direction.
-      "<ROUTE fromNode='P' fromField='value_changed' toNode='Aim' toField='direction'/>");
+      // No glTF property: a light's attenuation.
+      "<ROUTE fromNode='P' fromField='value_changed' toNode='Aim' toField='attenuation'/>");
   CHECK(g.report.animations == 1);
   CHECK(g.report.animationChannels == 3);
   CHECK(g.report.skippedAnimationChannels == 0);
@@ -543,4 +544,165 @@ TEST_CASE("glb: a Viewpoint's pose and a light's location animate") {
   CHECK(count(g.json, "\"path\":\"rotation\"") == 1);
   // The untouched viewpoint and light stay plain roots.
   CHECK(has(g.json, "\"name\":\"Still\",\"matrix\":["));
+}
+
+TEST_CASE("glb: material colours and transparency animate through pointers") {
+  const Glb g = exportScene(
+      "<Shape><Appearance><Material DEF='M' diffuseColor='1 0 0' transparency='0'/>"
+      "</Appearance><Box/></Shape>"
+      // Same values, not animated: stays a separate glTF material.
+      "<Shape><Appearance><Material diffuseColor='1 0 0'/></Appearance><Sphere/></Shape>"
+      "<TimeSensor DEF='Fade' cycleInterval='2'/>"
+      "<ColorInterpolator DEF='C' key='0 1' keyValue='1 0 0 0 0 1'/>"
+      "<ScalarInterpolator DEF='T' key='0 0.5 1' keyValue='0 0.5 1'/>"
+      "<ScalarInterpolator DEF='E' key='0 1' keyValue='0 1'/>"
+      "<ROUTE fromNode='Fade' fromField='fraction_changed' toNode='C' toField='set_fraction'/>"
+      "<ROUTE fromNode='Fade' fromField='fraction_changed' toNode='T' toField='set_fraction'/>"
+      "<ROUTE fromNode='C' fromField='value_changed' toNode='M' toField='diffuseColor'/>"
+      "<ROUTE fromNode='T' fromField='value_changed' toNode='M' toField='transparency'/>"
+      "<ROUTE fromNode='C' fromField='value_changed' toNode='M' toField='emissiveColor'/>");
+  CHECK(g.report.animations == 1);
+  CHECK(g.report.materials == 2);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  // Colour and transparency share baseColorFactor: one VEC4 channel.
+  CHECK(g.report.pointerChannels == 2);
+  CHECK(has(g.json, "\"extensionsUsed\":[\"KHR_animation_pointer\"]"));
+  CHECK(has(g.json, "\"pointer\":\"/materials/0/pbrMetallicRoughness/baseColorFactor\""));
+  CHECK(has(g.json, "\"pointer\":\"/materials/0/emissiveFactor\""));
+  // The animated material blends and writes its (black) emissive factor.
+  CHECK(has(g.json, "\"emissiveFactor\":[0,0,0],\"alphaMode\":\"BLEND\""));
+  // HSV colours are densified: 8 steps per key interval; the transparency
+  // keys (0, 1, 2 s) fall on that grid, so 9 samples over 2 s.
+  CHECK(has(g.json, "\"count\":9,\"type\":\"SCALAR\",\"min\":[0],\"max\":[2]"));
+  CHECK(has(g.json, "\"count\":9,\"type\":\"VEC4\""));
+
+  // The VEC4 output is the first sampler's: red opaque, through magenta
+  // (HSV), to blue fully transparent.
+  const std::size_t times = 9 * 4;
+  const std::size_t vec4 = 9 * 16, vec3 = 9 * 12;
+  const auto v = floatsAt(g, g.bin.size() - vec3 - times - vec4, 36);
+  CHECK(v[0] == 1.0f);
+  CHECK(v[2] == 0.0f);
+  CHECK(v[3] == 1.0f);
+  CHECK(v[16] == doctest::Approx(1.0f)); // middle sample: magenta, half alpha
+  CHECK(v[18] == doctest::Approx(1.0f));
+  CHECK(v[19] == doctest::Approx(0.5f));
+  CHECK(v[34] == 1.0f);
+  CHECK(v[35] == 0.0f);
+}
+
+TEST_CASE("glb: physical material, light and camera properties animate") {
+  const Glb g = exportScene(
+      "<Shape><Appearance><PhysicalMaterial DEF='P' metallic='0' roughness='1'/>"
+      "</Appearance><Box/></Shape>"
+      "<SpotLight DEF='S' beamWidth='0.2' cutOffAngle='0.5' radius='10'/>"
+      "<DirectionalLight DEF='D'/>"
+      "<Viewpoint DEF='V'/>"
+      "<TimeSensor DEF='Clock' cycleInterval='4'/>"
+      "<ScalarInterpolator DEF='A' key='0 1' keyValue='0 1'/>"
+      "<ScalarInterpolator DEF='Cone' key='0 1' keyValue='0.5 2'/>"
+      "<ColorInterpolator DEF='Col' key='0 1' keyValue='1 1 1 1 0 0'/>"
+      "<PositionInterpolator DEF='Dir' key='0 1' keyValue='0 0 -1 1 0 0'/>"
+      "<ROUTE fromNode='Clock' fromField='fraction_changed' toNode='A' toField='set_fraction'/>"
+      "<ROUTE fromNode='A' fromField='value_changed' toNode='P' toField='metallic'/>"
+      "<ROUTE fromNode='A' fromField='value_changed' toNode='P' toField='roughness'/>"
+      "<ROUTE fromNode='A' fromField='value_changed' toNode='S' toField='intensity'/>"
+      "<ROUTE fromNode='A' fromField='value_changed' toNode='S' toField='radius'/>"
+      "<ROUTE fromNode='Cone' fromField='value_changed' toNode='S' toField='cutOffAngle'/>"
+      "<ROUTE fromNode='Col' fromField='value_changed' toNode='S' toField='color'/>"
+      "<ROUTE fromNode='Dir' fromField='value_changed' toNode='D' toField='direction'/>"
+      "<ROUTE fromNode='A' fromField='value_changed' toNode='V' toField='fieldOfView'/>");
+  CHECK(g.report.skippedAnimationChannels == 0);
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(has(g.json, "/materials/0/pbrMetallicRoughness/metallicFactor"));
+  CHECK(has(g.json, "/materials/0/pbrMetallicRoughness/roughnessFactor"));
+  CHECK(has(g.json, "/extensions/KHR_lights_punctual/lights/0/intensity"));
+  CHECK(has(g.json, "/extensions/KHR_lights_punctual/lights/0/range"));
+  CHECK(has(g.json, "/extensions/KHR_lights_punctual/lights/0/color"));
+  // A moving cutoff clamps the beam width with it: both cone angles move.
+  CHECK(has(g.json, "/extensions/KHR_lights_punctual/lights/0/spot/innerConeAngle"));
+  CHECK(has(g.json, "/extensions/KHR_lights_punctual/lights/0/spot/outerConeAngle"));
+  CHECK(has(g.json, "\"pointer\":\"/cameras/0/perspective/yfov\""));
+  // The directional light's direction turns its node.
+  CHECK(count(g.json, "\"path\":\"rotation\"") == 1);
+  CHECK(g.report.pointerChannels == 8);
+  CHECK(g.report.animationChannels == 9);
+}
+
+TEST_CASE("glb: an animated centre and scaleOrientation move the helper nodes") {
+  const Glb g = exportScene(
+      "<Transform DEF='Pivot'><Shape><Box/></Shape></Transform>"
+      "<PositionInterpolator DEF='C' key='0 1' keyValue='0 0 0 0 2 0'/>"
+      "<OrientationInterpolator DEF='SO' key='0 1' keyValue='0 0 1 0 0 0 1 1'/>"
+      "<ROUTE fromNode='C' fromField='value_changed' toNode='Pivot' toField='center'/>"
+      "<ROUTE fromNode='SO' fromField='value_changed' toNode='Pivot' toField='scaleOrientation'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.skippedAnimationChannels == 0);
+  // Zero at export time, but animated: trs -> scale -> tail helpers exist.
+  CHECK(has(g.json, "{\"name\":\"Pivot\",\"translation\":[0,0,0],"
+                    "\"rotation\":[0,0,0,1],\"children\":[1]}"));
+  // trs translation (T + C), scale rotation (SR), tail rotation (SR^-1) and
+  // tail translation (SR^-1(-C)).
+  CHECK(g.report.animationChannels == 4);
+  CHECK(has(g.json, "\"target\":{\"node\":0,\"path\":\"translation\"}"));
+  CHECK(has(g.json, "\"target\":{\"node\":1,\"path\":\"rotation\"}"));
+  CHECK(has(g.json, "\"target\":{\"node\":2,\"path\":\"rotation\"}"));
+  CHECK(has(g.json, "\"target\":{\"node\":2,\"path\":\"translation\"}"));
+  // The tail translation is a rotated vector, so it is densified.
+  CHECK(has(g.json, "\"count\":9,\"type\":\"VEC3\""));
+}
+
+TEST_CASE("glb: spline and squad interpolators are sampled") {
+  const Glb g = exportScene(
+      "<Transform DEF='Path'><Shape><Box/></Shape></Transform>"
+      "<SplinePositionInterpolator DEF='S' key='0 0.5 1' keyValue='0 0 0 1 1 0 2 0 0'/>"
+      "<SquadOrientationInterpolator DEF='Q' key='0 0.5 1' "
+      "  keyValue='0 1 0 0 0 1 0 1 0 1 0 2'/>"
+      "<ROUTE fromNode='S' fromField='value_changed' toNode='Path' toField='translation'/>"
+      "<ROUTE fromNode='Q' fromField='value_changed' toNode='Path' toField='rotation'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.animationChannels == 2);
+  // Two key intervals of 8 steps each, plus the last key.
+  CHECK(count(g.json, "\"count\":17,\"type\":\"SCALAR\"") == 2);
+}
+
+TEST_CASE("glb: a colour animation on a shape with vertex colours is skipped") {
+  const Glb g = exportScene(
+      "<Shape><Appearance><Material DEF='M'/></Appearance>"
+      "<IndexedFaceSet coordIndex='0 1 2 -1'><Coordinate point='0 0 0 1 0 0 0 1 0'/>"
+      "<Color color='1 0 0 0 1 0 0 0 1'/></IndexedFaceSet></Shape>"
+      "<ColorInterpolator DEF='C' key='0 1' keyValue='1 0 0 0 1 0'/>"
+      "<ROUTE fromNode='C' fromField='value_changed' toNode='M' toField='diffuseColor'/>");
+  CHECK(g.report.animations == 0);
+  CHECK(g.report.skippedAnimationChannels == 1);
+}
+
+TEST_CASE("glb: NURBS curve interpolators are sampled along the curve") {
+  const Glb g = exportScene(
+      "<Transform DEF='Car'><Shape><Box/></Shape></Transform>"
+      "<NurbsPositionInterpolator DEF='N' order='3'>"
+      "  <Coordinate containerField='controlPoint' point='0 0 0 1 2 0 2 0 0'/>"
+      "</NurbsPositionInterpolator>"
+      "<NurbsOrientationInterpolator DEF='O' order='3'>"
+      "  <Coordinate containerField='controlPoint' point='0 0 0 1 2 0 2 0 0'/>"
+      "</NurbsOrientationInterpolator>"
+      "<ROUTE fromNode='N' fromField='value_changed' toNode='Car' toField='translation'/>"
+      "<ROUTE fromNode='O' fromField='value_changed' toNode='Car' toField='rotation'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.animationChannels == 2);
+  CHECK(count(g.json, "\"count\":65,\"type\":\"SCALAR\",\"min\":[0],\"max\":[1]") == 2);
+  // The curve starts at its first control point and ends at its last.
+  CHECK(has(g.json, "\"count\":65,\"type\":\"VEC3\""));
+}
+
+TEST_CASE("glb: a GeoPositionInterpolator's local position is sampled") {
+  const Glb g = exportScene(
+      "<Transform DEF='Plane'><Shape><Box/></Shape></Transform>"
+      "<GeoPositionInterpolator DEF='G' geoSystem='\"GD\" \"WE\"' key='0 1' "
+      "  keyValue='0 0 0 0 1 0'/>"
+      "<ROUTE fromNode='G' fromField='value_changed' toNode='Plane' toField='translation'/>");
+  CHECK(g.report.skippedAnimationRoutes == 0);
+  CHECK(g.report.animationChannels == 1);
+  CHECK(has(g.json, "\"count\":9,\"type\":\"SCALAR\""));
 }

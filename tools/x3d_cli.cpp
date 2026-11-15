@@ -514,10 +514,11 @@ int cmdExtract(const std::vector<std::string> &args) {
         "  PixelTextures are embedded; an image that cannot be read is left as a\n"
         "  url reference. Lights are written as\n"
         "  KHR_lights_punctual and Viewpoints/OrthoViewpoints as cameras.\n"
-        "  Position/OrientationInterpolators driving a Transform become glTF\n"
-        "  animations, one per TimeSensor.\n"
-        "  Not exported: movie, multi, cube and 3D textures, other animation,\n"
-        "  skinning.\n"
+        "  Interpolators driving a Transform, viewpoint or light pose become glTF\n"
+        "  animations, one per TimeSensor; ones driving material, light and\n"
+        "  camera properties use KHR_animation_pointer.\n"
+        "  Not exported: movie, multi, cube and 3D textures, coordinate and\n"
+        "  normal animation, skinning.\n"
         "\n"
         "  stl: a single merged binary STL file (world-space, one triangle soup).\n"
         "  The STL is produced by running the full SceneExtractor pipeline\n"
@@ -695,8 +696,8 @@ int cmdExtract(const std::vector<std::string> &args) {
         note(glbReport.droppedTextures, "texture(s) not exported (movie, multi, cube, 3D, generated-coordinate, or undecoded non-PNG/JPEG image)");
         note(glbReport.unmappedTextureSlots, "texture(s) in a slot glTF has no property for (specular, shininess, ambient, or lighting maps of an unlit surface)");
         note(glbReport.skippedViewpoints, "GeoViewpoint(s) not exported");
-        note(glbReport.skippedAnimationRoutes, "interpolator route(s) not exported (only Position/OrientationInterpolator to a Transform's translation, rotation or scale are)");
-        note(glbReport.skippedAnimationChannels, "animation channel(s) not exported (Transform not above any exported shape, or key/keyValue counts differ)");
+        note(glbReport.skippedAnimationRoutes, "interpolator route(s) not exported (interpolator type or destination field has no glTF equivalent)");
+        note(glbReport.skippedAnimationChannels, "animation channel(s) not exported (target not exported, key/keyValue counts differ, or a colour replaced by vertex colours)");
         note(glbReport.skippedPacked, "packed-geometry item(s) not exported");
         note(glbReport.staticSkins, "skinned item(s) exported as static meshes");
         note(glbReport.droppedBackMaterials, "back material(s) not exported");

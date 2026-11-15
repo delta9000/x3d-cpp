@@ -1,6 +1,10 @@
 // GltfWriter.cpp — see GltfWriter.hpp for what is and is not exported.
 #include "GltfWriter.hpp"
 
+#include "Interpolation.hpp"
+#include "NurbsInterpolatorSystem.hpp"
+#include "SplineInterpolation.hpp"
+
 #include "TransformSystem.hpp"
 #include "X3DSceneBridge.hpp"
 #include "x3d/nodes/GeoViewpoint.hpp"
@@ -14,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <set>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -25,6 +30,7 @@ namespace {
 constexpr int kFloat = 5126, kUint32 = 5125;
 constexpr int kArrayBuffer = 34962, kElementArrayBuffer = 34963;
 constexpr int kRepeat = 10497, kClampToEdge = 33071;
+constexpr float kMinRange = 1e-6f; // glTF light range must be positive
 
 std::string num(double v) {
   if (!std::isfinite(v) || v == 0.0) v = 0.0; // also folds -0 to 0
@@ -190,6 +196,244 @@ std::array<double, 4> quaternion(const SFRotation &r) {
 
 bool isIdentity(const Mat4 &m) { return m.m == Mat4::identity().m; }
 
+// ---- interpolator sampling ----
+
+// What an interpolator emits, as glTF sees it: a rotation is a quaternion.
+enum class SampleKind { None, Scalar, Color, Vec3, Rotation };
+
+// Samples of one interpolator: fractions (the X3D key domain) and values.
+struct Samples {
+  SampleKind kind = SampleKind::None;
+  std::vector<float> fractions;
+  std::vector<float> values;
+};
+
+// Steps per key interval when glTF's LINEAR between keys is not what the
+// interpolator does (HSV colours, splines, squad) or the value is mapped
+// non-linearly on the way to glTF.
+constexpr int kSubsteps = 8;
+
+void push(Samples &out, float fraction, float v) {
+  out.fractions.push_back(fraction);
+  out.values.push_back(v);
+}
+void push(Samples &out, float fraction, const SFColor &c) {
+  out.fractions.push_back(fraction);
+  out.values.insert(out.values.end(), {c.r, c.g, c.b});
+}
+void push(Samples &out, float fraction, const SFVec3f &v) {
+  out.fractions.push_back(fraction);
+  out.values.insert(out.values.end(), {v.x, v.y, v.z});
+}
+void push(Samples &out, float fraction, const SFRotation &r) {
+  const auto q = quaternion(r);
+  out.fractions.push_back(fraction);
+  out.values.insert(out.values.end(),
+                    {float(q[0]), float(q[1]), float(q[2]), float(q[3])});
+}
+
+// Every key with its value; with `densify`, also kSubsteps - 1 evenly spaced
+// fractions inside each key interval, valued by `eval`. Keys are taken as
+// authored, so a repeated key (a jump) stays a pair of samples.
+template <typename T, typename Eval>
+bool sampleKeys(const std::vector<float> &key, const std::vector<T> &keyValue,
+                bool densify, Eval eval, Samples &out) {
+  if (key.empty() || keyValue.size() != key.size()) return false;
+  for (std::size_t i = 0; i < key.size(); ++i) {
+    push(out, key[i], keyValue[i]);
+    if (!densify || i + 1 == key.size() || !(key[i + 1] > key[i])) continue;
+    for (int k = 1; k < kSubsteps; ++k) {
+      const float f = key[i] + (key[i + 1] - key[i]) * float(k) / kSubsteps;
+      push(out, f, eval(f));
+    }
+  }
+  return true;
+}
+
+// Sample the interpolators whose output glTF can carry. LINEAR keys are
+// exact for the linear ones (and for OrientationInterpolator, since glTF
+// slerps rotations); the others are densified.
+bool sampleInterpolator(const X3DNode &n, bool densify,
+                        const geo::GeoProjection &projection, Samples &out) {
+  using geombounds::getField;
+  const std::string type = n.nodeTypeName();
+  const auto key = getField<std::vector<float>>(n, "key", {});
+  const bool closed = getField<bool>(n, "closed", false);
+  const bool normalize = getField<bool>(n, "normalizeVelocity", false);
+  if (type == "ScalarInterpolator" || type == "SplineScalarInterpolator") {
+    out.kind = SampleKind::Scalar;
+    const auto kv = getField<std::vector<float>>(n, "keyValue", {});
+    if (type == "ScalarInterpolator")
+      return sampleKeys(key, kv, densify, [&](float f) {
+        return interpolateValue(key, kv, f, lerpf);
+      }, out);
+    const auto vel = getField<std::vector<float>>(n, "keyVelocity", {});
+    return sampleKeys(key, kv, true, [&](float f) {
+      return hermiteSpline<float>(key, kv, vel, closed, normalize, f);
+    }, out);
+  }
+  if (type == "ColorInterpolator") {
+    // X3D interpolates colours in HSV.
+    out.kind = SampleKind::Color;
+    const auto kv = getField<std::vector<SFColor>>(n, "keyValue", {});
+    return sampleKeys(key, kv, true, [&](float f) {
+      return interpolateValue(key, kv, f, lerpColorHsv);
+    }, out);
+  }
+  if (type == "PositionInterpolator" || type == "SplinePositionInterpolator") {
+    out.kind = SampleKind::Vec3;
+    const auto kv = getField<std::vector<SFVec3f>>(n, "keyValue", {});
+    if (type == "PositionInterpolator")
+      return sampleKeys(key, kv, densify, [&](float f) {
+        return interpolateValue(key, kv, f, lerpVec3);
+      }, out);
+    const auto vel = getField<std::vector<SFVec3f>>(n, "keyVelocity", {});
+    return sampleKeys(key, kv, true, [&](float f) {
+      return hermiteSpline<SFVec3f>(key, kv, vel, closed, normalize, f);
+    }, out);
+  }
+  if (type == "OrientationInterpolator" ||
+      type == "SquadOrientationInterpolator") {
+    out.kind = SampleKind::Rotation;
+    const auto kv = getField<std::vector<SFRotation>>(n, "keyValue", {});
+    const bool squad = type == "SquadOrientationInterpolator";
+    return sampleKeys(key, kv, squad || densify, [&](float f) {
+      return squad ? squadOrientation(key, kv, f, normalize)
+                   : interpolateValue(key, kv, f, slerpRotation);
+    }, out);
+  }
+  if (type == "GeoPositionInterpolator") {
+    // Interpolated in geographic coordinates, then projected (§25.3.7): not
+    // linear in the local frame, so densified.
+    out.kind = SampleKind::Vec3;
+    const auto kv = getField<std::vector<SFVec3d>>(n, "keyValue", {});
+    if (key.empty() || kv.size() != key.size()) return false;
+    auto local = [&](float f, SFVec3f &world) {
+      const SFVec3d g = interpolateValue(key, kv, f, [](const SFVec3d &a,
+                                                        const SFVec3d &b, float t) {
+        return SFVec3d{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                       a.z + (b.z - a.z) * t};
+      });
+      return geo::toWorld(n, g, world, projection);
+    };
+    for (std::size_t i = 0; i < key.size(); ++i) {
+      SFVec3f world;
+      if (!geo::toWorld(n, kv[i], world, projection)) return false;
+      push(out, key[i], world);
+      if (i + 1 == key.size() || !(key[i + 1] > key[i])) continue;
+      for (int k = 1; k < kSubsteps; ++k) {
+        const float f = key[i] + (key[i + 1] - key[i]) * float(k) / kSubsteps;
+        if (!local(f, world)) return false;
+        push(out, f, world);
+      }
+    }
+    return true;
+  }
+  if (type == "NurbsPositionInterpolator" ||
+      type == "NurbsOrientationInterpolator") {
+    // No keys: the fraction runs over the whole curve. Sample it evenly.
+    const auto *pos = dynamic_cast<const x3d::nodes::NurbsPositionInterpolator *>(&n);
+    const auto *ori = dynamic_cast<const x3d::nodes::NurbsOrientationInterpolator *>(&n);
+    nurbs::CurveDef c;
+    if (pos) {
+      c.cp = nurbsPoints(pos->getControlPoint());
+      c.w = pos->getWeight();
+      c.knot = pos->getKnot();
+      c.order = pos->getOrder();
+    } else if (ori) {
+      c.cp = nurbsPoints(ori->getControlPoint());
+      c.w = ori->getWeight();
+      c.knot = ori->getKnot();
+      c.order = ori->getOrder();
+    } else {
+      return false;
+    }
+    out.kind = pos ? SampleKind::Vec3 : SampleKind::Rotation;
+    constexpr int kCurveSamples = 64;
+    for (int i = 0; i <= kCurveSamples; ++i) {
+      const double f = double(i) / kCurveSamples;
+      if (pos) {
+        SFVec3f p;
+        if (nurbs::evalCurve(c, f, p)) push(out, float(f), p);
+      } else {
+        // The orientation turns +Z onto the curve's tangent.
+        SFVec3f t;
+        if (nurbsTangent(c, f, t)) push(out, float(f), rotationFromPositiveZ(t));
+      }
+    }
+    return !out.fractions.empty();
+  }
+  return false;
+}
+
+// Where an interpolator's value goes in glTF.
+struct Destination {
+  SampleKind kind = SampleKind::None; // what the field takes; None: nowhere
+  GltfAnimationChannel::Path path = GltfAnimationChannel::Path::Property;
+  std::string field;    // Path::Property: the X3D field
+  bool densify = false; // the glTF value is not linear in the X3D value
+  bool aim = false;     // a direction, written as the rotation aiming -Z
+};
+
+Destination destinationOf(const X3DNode &to, const std::string &field) {
+  using Path = GltfAnimationChannel::Path;
+  const std::string type = to.nodeTypeName();
+  Destination d;
+  auto property = [&](SampleKind kind, bool densify = false) {
+    d.kind = kind;
+    d.path = Path::Property;
+    d.field = field;
+    d.densify = densify;
+  };
+  auto node = [&](SampleKind kind, Path path) {
+    d.kind = kind;
+    d.path = path;
+  };
+  if (TransformSystem::isTransform(&to) && type == "Transform") {
+    if (field == "translation") node(SampleKind::Vec3, Path::Translation);
+    else if (field == "scale") node(SampleKind::Vec3, Path::Scale);
+    else if (field == "rotation") node(SampleKind::Rotation, Path::Rotation);
+    else if (field == "center") property(SampleKind::Vec3);
+    else if (field == "scaleOrientation") property(SampleKind::Rotation);
+  } else if (type == "Viewpoint" || type == "OrthoViewpoint") {
+    if (field == "position") node(SampleKind::Vec3, Path::Translation);
+    else if (field == "orientation") node(SampleKind::Rotation, Path::Rotation);
+    else if (field == "fieldOfView" && type == "Viewpoint")
+      property(SampleKind::Scalar);
+  } else if (type == "DirectionalLight" || type == "PointLight" ||
+             type == "SpotLight") {
+    if (field == "color") property(SampleKind::Color);
+    else if (field == "intensity") property(SampleKind::Scalar);
+    else if (field == "location" && type != "DirectionalLight")
+      node(SampleKind::Vec3, Path::Translation);
+    else if (field == "radius" && type != "DirectionalLight")
+      property(SampleKind::Scalar);
+    else if ((field == "beamWidth" || field == "cutOffAngle") &&
+             type == "SpotLight")
+      property(SampleKind::Scalar);
+    else if (field == "direction" && type != "PointLight") {
+      node(SampleKind::Vec3, Path::Rotation);
+      d.densify = d.aim = true;
+    }
+  } else if (type == "Material") {
+    if (field == "diffuseColor" || field == "emissiveColor")
+      property(SampleKind::Color);
+    else if (field == "transparency") property(SampleKind::Scalar);
+    else if (field == "shininess") property(SampleKind::Scalar, true);
+  } else if (type == "PhysicalMaterial") {
+    if (field == "baseColor" || field == "emissiveColor")
+      property(SampleKind::Color);
+    else if (field == "transparency" || field == "metallic" ||
+             field == "roughness")
+      property(SampleKind::Scalar);
+  } else if (type == "UnlitMaterial") {
+    if (field == "emissiveColor") property(SampleKind::Color);
+    else if (field == "transparency") property(SampleKind::Scalar);
+  }
+  return d;
+}
+
+
 std::string matrixJson(const Mat4 &m) {
   std::vector<std::string> cells;
   for (float v : m.m) cells.push_back(num(v));
@@ -208,7 +452,25 @@ struct TransformInstance {
   int trs = -1;    // translation and rotation live here
   int scale = -1;  // the node carrying scale (trs unless scaleOrientation is used)
   int tail = -1;   // parent for content below the Transform
+  bool oriented = false; // scale and tail are helper nodes (scaleOrientation)
   Mat4 after;      // estimated world matrix below this Transform
+};
+
+// Static glTF values of a material made from an animated X3D material, for
+// the components a channel does not drive.
+struct MaterialStatic {
+  bool unlit = false;       // KHR_materials_unlit: base colour = emissive
+  bool vertexColor = false; // COLOR_0 replaces the base colour's RGB
+  MaterialModel model = MaterialModel::Phong;
+  std::array<float, 4> base{1, 1, 1, 1};
+  std::array<float, 3> emissive{0, 0, 0};
+  float metallic = 0, roughness = 1;
+};
+
+struct LightStatic {
+  LightDesc::Type type = LightDesc::Type::Point;
+  SFColor color{1, 1, 1};
+  float intensity = 1, radius = 0, beamWidth = 0, cutOffAngle = 0;
 };
 
 struct MeshAccessors {
@@ -236,7 +498,8 @@ public:
     if (item.shaderProgram) ++report_.droppedShaders;
 
     const MeshAccessors &acc = accessorsFor(item.mesh);
-    const int material = materialFor(item.material, mesh, acc);
+    const int material =
+        materialFor(item.material, mesh, acc, materialNodeOf(item));
     const auto key = std::make_pair(item.mesh.get(), material);
     auto found = meshIndex_.find(key);
     if (found == meshIndex_.end()) {
@@ -284,8 +547,16 @@ public:
   void setAnimations(const std::vector<GltfAnimation> &animations) {
     animations_ = &animations;
     for (const GltfAnimation &animation : animations)
-      for (const GltfAnimationChannel &channel : animation.channels)
-        if (channel.target) animatedTargets_.insert(channel.target);
+      for (const GltfAnimationChannel &channel : animation.channels) {
+        if (!channel.target) continue;
+        animatedFields_[channel.target].insert(channel.field);
+        // Nodes whose own glTF node moves: Transforms, viewpoints and lights
+        // with a translation/rotation/scale channel, and Transforms whose
+        // centre or scaleOrientation moves.
+        if (channel.path != GltfAnimationChannel::Path::Property ||
+            channel.field == "center" || channel.field == "scaleOrientation")
+          animatedTargets_.insert(channel.target);
+      }
   }
 
   void add(const LightDesc &light) {
@@ -296,8 +567,10 @@ public:
                                std::clamp(light.color.g, 0.0f, 1.0f),
                                std::clamp(light.color.b, 0.0f, 1.0f)});
     l += ",\"intensity\":" + num(std::max(0.0f, light.intensity));
-    if (light.type != LightDesc::Type::Directional && light.radius > 0.0f)
-      l += ",\"range\":" + num(light.radius);
+    // An animated radius needs a range to animate, even a non-positive one.
+    if (light.type != LightDesc::Type::Directional &&
+        (light.radius > 0.0f || fieldAnimated(light.node, "radius")))
+      l += ",\"range\":" + num(std::max(light.radius, kMinRange));
     if (light.type == LightDesc::Type::Spot) {
       // glTF: 0 <= inner < outer <= pi/2. X3D allows beamWidth > cutOffAngle
       // (full intensity out to the cutoff).
@@ -309,6 +582,19 @@ public:
            ",\"outerConeAngle\":" + num(outer) + "}";
     }
     lights_.push_back(l + "}");
+    if (light.node) {
+      lightsByNode_[light.node].push_back(static_cast<int>(lights_.size()) - 1);
+      LightStatic st;
+      st.type = light.type;
+      st.color = light.color;
+      st.intensity = light.intensity;
+      st.radius = light.radius;
+      st.beamWidth = light.beamWidth;
+      st.cutOffAngle = light.cutOffAngle;
+      lightStatics_.push_back(st);
+    } else {
+      lightStatics_.emplace_back();
+    }
 
     std::string node = "{\"extensions\":{\"KHR_lights_punctual\":{\"light\":" +
                        std::to_string(lights_.size() - 1) + "}}";
@@ -369,6 +655,8 @@ public:
     }
     if (!camera.name.empty()) c += ",\"name\":" + quote(camera.name);
     cameras_.push_back(c + "}");
+    if (camera.node && !camera.ortho)
+      camerasByNode_[camera.node].push_back(static_cast<int>(cameras_.size()) - 1);
 
     std::string node =
         "{\"camera\":" + std::to_string(cameras_.size() - 1);
@@ -418,6 +706,7 @@ public:
                   quote(options_.generator) + "}");
     std::vector<std::string> used;
     if (usesUnlit_) used.push_back("\"KHR_materials_unlit\"");
+    if (usesPointer_) used.push_back("\"KHR_animation_pointer\"");
     if (!lights_.empty()) used.push_back("\"KHR_lights_punctual\"");
     if (!used.empty())
       top.push_back("\"extensionsUsed\":[" + join(used) + "]");
@@ -560,7 +849,12 @@ private:
         const SFRotation so =
             geombounds::getField<SFRotation>(*n, "scaleOrientation", {0, 0, 1, 0});
         const SFRotation soInverse{so.x, so.y, so.z, -so.angle};
-        const bool oriented = quaternion(so)[3] < 1.0 - 1e-12;
+        // An animated centre or scaleOrientation needs its helper nodes even
+        // when it is zero at export time.
+        const bool oriented = quaternion(so)[3] < 1.0 - 1e-12 ||
+                              fieldAnimated(n, "scaleOrientation");
+        const bool centred = c.x != 0 || c.y != 0 || c.z != 0 ||
+                             fieldAnimated(n, "center");
         const auto q = quaternion(r);
 
         std::string trs = "{";
@@ -572,11 +866,12 @@ private:
         TransformInstance inst;
         if (!oriented) {
           inst.trs = inst.scale = inst.tail = attach(parent, trs + "," + scale);
-          if (c.x != 0 || c.y != 0 || c.z != 0)
+          if (centred)
             inst.tail = attach(inst.trs, "{\"translation\":" +
                                              array({-double(c.x), -double(c.y),
                                                     -double(c.z)}));
         } else {
+          inst.oriented = true;
           inst.trs = attach(parent, trs);
           const auto qs = quaternion(so), qi = quaternion(soInverse);
           inst.scale = attach(inst.trs, "{\"rotation\":" +
@@ -607,80 +902,504 @@ private:
     return parent;
   }
 
+  bool fieldAnimated(const X3DNode *node, const char *field) const {
+    if (!node) return false;
+    const auto found = animatedFields_.find(node);
+    return found != animatedFields_.end() && found->second.count(field);
+  }
+
+  // The X3D material node of an item's shape, or null.
+  static const X3DNode *materialNodeOf(const RenderItem &item) {
+    if (item.path.empty() || !item.path.back()) return nullptr;
+    const auto appearance = geombounds::getNode(*item.path.back(), "appearance");
+    if (!appearance) return nullptr;
+    return geombounds::getNode(*appearance, "material").get();
+  }
+
+  // ---- animation ----
+
+  // One output sampler's keyframes: times may repeat (an X3D jump).
+  struct Keys {
+    std::vector<float> times;
+    std::vector<float> values;
+    std::size_t width = 0;
+    bool rotation = false; // unit quaternions, kept in one hemisphere
+  };
+
+  // The union of the channels' times, each repeated time once per side of
+  // the jump: (time, right side?).
+  static std::vector<std::pair<float, bool>>
+  timeline(const std::vector<const GltfAnimationChannel *> &channels,
+           bool densify) {
+    std::vector<float> all;
+    std::set<float> jumps;
+    for (const GltfAnimationChannel *ch : channels) {
+      all.insert(all.end(), ch->times.begin(), ch->times.end());
+      for (std::size_t i = 1; i < ch->times.size(); ++i)
+        if (ch->times[i] == ch->times[i - 1]) jumps.insert(ch->times[i]);
+    }
+    std::sort(all.begin(), all.end());
+    all.erase(std::unique(all.begin(), all.end()), all.end());
+    std::vector<std::pair<float, bool>> out;
+    for (std::size_t i = 0; i < all.size(); ++i) {
+      out.emplace_back(all[i], false);
+      if (jumps.count(all[i])) out.emplace_back(all[i], true);
+      if (densify && i + 1 < all.size())
+        for (int k = 1; k < kSubsteps; ++k)
+          out.emplace_back(all[i] + (all[i + 1] - all[i]) * float(k) / kSubsteps,
+                           false);
+    }
+    return out;
+  }
+
+  // A channel's value at `time` (`right`: after a jump there), linear between
+  // keys, spherical for quaternions, held before the first and after the last.
+  static void valueAt(const GltfAnimationChannel &ch, std::size_t width,
+                      bool rotation, float time, bool right, float *out) {
+    const std::vector<float> &t = ch.times;
+    const auto lo = std::lower_bound(t.begin(), t.end(), time);
+    const auto hi = std::upper_bound(t.begin(), t.end(), time);
+    std::size_t at;
+    if (lo != hi) {
+      at = static_cast<std::size_t>((right ? hi - 1 : lo) - t.begin());
+    } else if (hi == t.begin()) {
+      at = 0;
+    } else if (hi == t.end()) {
+      at = t.size() - 1;
+    } else {
+      const std::size_t i = static_cast<std::size_t>(hi - t.begin()) - 1;
+      const float u = (time - t[i]) / (t[i + 1] - t[i]);
+      const float *a = &ch.values[i * width], *b = &ch.values[(i + 1) * width];
+      if (!rotation) {
+        for (std::size_t k = 0; k < width; ++k) out[k] = a[k] + (b[k] - a[k]) * u;
+        return;
+      }
+      const Quat q = slerp(Quat{a[0], a[1], a[2], a[3]}, Quat{b[0], b[1], b[2], b[3]}, u);
+      out[0] = float(q.x); out[1] = float(q.y); out[2] = float(q.z); out[3] = float(q.w);
+      return;
+    }
+    for (std::size_t k = 0; k < width; ++k) out[k] = ch.values[at * width + k];
+  }
+
+  // Sample `fn(time, right, out)` over the channels' common timeline.
+  template <typename Fn>
+  static Keys resample(const std::vector<const GltfAnimationChannel *> &channels,
+                       std::size_t width, bool rotation, bool densify, Fn fn) {
+    Keys keys;
+    keys.width = width;
+    keys.rotation = rotation;
+    std::vector<float> v(width);
+    for (const auto &[time, right] : timeline(channels, densify)) {
+      fn(time, right, v.data());
+      keys.times.push_back(time);
+      keys.values.insert(keys.values.end(), v.begin(), v.end());
+    }
+    return keys;
+  }
+
+  // Write `keys` as a LINEAR sampler of `samplers`; returns its index.
+  int sampler(Keys keys, std::vector<std::string> &samplers) {
+    // glTF wants strictly increasing times; X3D allows a repeated key for a
+    // jump. Nudge repeats forward by the smallest float step.
+    std::vector<float> &times = keys.times;
+    for (std::size_t i = 0; i < times.size(); ++i) {
+      if (!std::isfinite(times[i]) || times[i] < 0) times[i] = 0;
+      if (i && times[i] <= times[i - 1])
+        times[i] = std::nextafter(times[i - 1], std::numeric_limits<float>::max());
+    }
+    if (keys.rotation) {
+      // Unit length, and each key in the hemisphere of the one before.
+      for (std::size_t i = 0; i < times.size(); ++i) {
+        float *q = &keys.values[i * 4];
+        const float len =
+            std::sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+        if (!(len > 1e-12f) || !std::isfinite(len)) {
+          q[0] = q[1] = q[2] = 0;
+          q[3] = 1;
+        } else {
+          for (int k = 0; k < 4; ++k) q[k] /= len;
+        }
+        if (i) {
+          const float *p = q - 4;
+          if (p[0] * q[0] + p[1] * q[1] + p[2] * q[2] + p[3] * q[3] < 0)
+            for (int k = 0; k < 4; ++k) q[k] = -q[k];
+        }
+      }
+    }
+    for (float &v : keys.values)
+      if (!std::isfinite(v)) v = 0;
+    static const char *const kTypes[] = {"", "SCALAR", "VEC2", "VEC3", "VEC4"};
+    const int input = floatAccessor(times, 1, "SCALAR", true, 0);
+    const int output = floatAccessor(keys.values, static_cast<int>(keys.width),
+                                     kTypes[keys.width], false, 0);
+    samplers.push_back("{\"input\":" + std::to_string(input) + ",\"output\":" +
+                       std::to_string(output) + ",\"interpolation\":\"LINEAR\"}");
+    return static_cast<int>(samplers.size()) - 1;
+  }
+
+  void nodeChannel(std::vector<std::string> &channels, int sampler, int node,
+                   const char *path) {
+    channels.push_back("{\"sampler\":" + std::to_string(sampler) +
+                       ",\"target\":{\"node\":" + std::to_string(node) +
+                       ",\"path\":\"" + path + "\"}}");
+    ++report_.animationChannels;
+  }
+
+  void pointerChannel(std::vector<std::string> &channels, int sampler,
+                      const std::string &pointer) {
+    channels.push_back(
+        "{\"sampler\":" + std::to_string(sampler) +
+        ",\"target\":{\"path\":\"pointer\",\"extensions\":{"
+        "\"KHR_animation_pointer\":{\"pointer\":" + quote(pointer) + "}}}}");
+    ++report_.animationChannels;
+    ++report_.pointerChannels;
+    usesPointer_ = true;
+  }
+
+  // The channels of one target in one animation, by X3D field (node paths
+  // by their glTF name).
+  using FieldChannels = std::map<std::string, const GltfAnimationChannel *>;
+
+  static std::string fieldKey(const GltfAnimationChannel &ch) {
+    switch (ch.path) {
+      case GltfAnimationChannel::Path::Translation: return "translation";
+      case GltfAnimationChannel::Path::Rotation: return "rotation";
+      case GltfAnimationChannel::Path::Scale: return "scale";
+      default: return ch.field;
+    }
+  }
+
+  // Translation, rotation, scale, center and scaleOrientation of a node kept
+  // as glTF nodes (see animatedParent for the layout).
+  void writeNodeChannels(const X3DNode &target, const FieldChannels &f,
+                         std::vector<std::string> &samplers,
+                         std::vector<std::string> &channels) {
+    const auto instances = targetInstances_.find(&target);
+    if (instances == targetInstances_.end()) return;
+    auto get = [&](const char *name) -> const GltfAnimationChannel * {
+      const auto it = f.find(name);
+      return it == f.end() ? nullptr : it->second;
+    };
+    const GltfAnimationChannel *T = get("translation"), *R = get("rotation"),
+                               *S = get("scale"), *C = get("center"),
+                               *SO = get("scaleOrientation");
+    const SFVec3f c0 = geombounds::getVec3fLenient(target, "center", {0, 0, 0});
+    const SFVec3f t0 = geombounds::getVec3fLenient(target, "translation", {0, 0, 0});
+    const auto so0 = quaternion(
+        geombounds::getField<SFRotation>(target, "scaleOrientation", {0, 0, 1, 0}));
+    auto vec3 = [](const GltfAnimationChannel *ch, const SFVec3f &dflt, float time,
+                   bool right) {
+      std::array<float, 3> v{dflt.x, dflt.y, dflt.z};
+      if (ch) valueAt(*ch, 3, false, time, right, v.data());
+      return v;
+    };
+    auto quat = [&](float time, bool right) {
+      std::array<float, 4> q{float(so0[0]), float(so0[1]), float(so0[2]),
+                             float(so0[3])};
+      if (SO) valueAt(*SO, 4, true, time, right, q.data());
+      return q;
+    };
+
+    int trsT = -1, trsR = -1, scl = -1, soR = -1, tailT = -1, tailR = -1;
+    if (T || C) // the trs node's translation is T + centre
+      trsT = sampler(resample({T ? T : C, C ? C : T}, 3, false, false,
+                              [&](float time, bool right, float *out) {
+                                const auto t = vec3(T, t0, time, right);
+                                const auto c = vec3(C, c0, time, right);
+                                for (int k = 0; k < 3; ++k) out[k] = t[k] + c[k];
+                              }),
+                     samplers);
+    if (R)
+      trsR = sampler(resample({R}, 4, true, false,
+                              [&](float time, bool right, float *out) {
+                                valueAt(*R, 4, true, time, right, out);
+                              }),
+                     samplers);
+    if (S)
+      scl = sampler(resample({S}, 3, false, false,
+                             [&](float time, bool right, float *out) {
+                               valueAt(*S, 3, false, time, right, out);
+                             }),
+                    samplers);
+    if (SO && std::any_of(instances->second.begin(), instances->second.end(),
+                          [](const TransformInstance &i) { return i.oriented; })) {
+      soR = sampler(resample({SO}, 4, true, false,
+                             [&](float time, bool right, float *out) {
+                               const auto q = quat(time, right);
+                               std::copy(q.begin(), q.end(), out);
+                             }),
+                    samplers);
+      tailR = sampler(resample({SO}, 4, true, false,
+                               [&](float time, bool right, float *out) {
+                                 const auto q = quat(time, right);
+                                 out[0] = -q[0]; out[1] = -q[1]; out[2] = -q[2];
+                                 out[3] = q[3];
+                               }),
+                      samplers);
+    }
+    // The tail undoes the centre: -C, or SR^-1(-C) under a scaleOrientation
+    // (a rotated vector, so densified when SR moves).
+    bool anyOriented = false, anyPlain = false;
+    for (const TransformInstance &inst : instances->second)
+      (inst.oriented ? anyOriented : anyPlain) = true;
+    int tailOriented = -1;
+    if ((C || SO) && anyOriented)
+      tailOriented = sampler(
+          resample({C ? C : SO, SO ? SO : C}, 3, false, SO != nullptr,
+                   [&](float time, bool right, float *out) {
+                     const auto c = vec3(C, c0, time, right);
+                     const auto q = quat(time, right);
+                     // Rotate -C by the conjugate of q.
+                     const Quat inv{-q[0], -q[1], -q[2], q[3]};
+                     const Quat r = quatMul(quatMul(inv, Quat{-c[0], -c[1], -c[2], 0}),
+                                            Quat{q[0], q[1], q[2], q[3]});
+                     out[0] = float(r.x); out[1] = float(r.y); out[2] = float(r.z);
+                   }),
+          samplers);
+    if (C && anyPlain)
+      tailT = sampler(resample({C}, 3, false, false,
+                               [&](float time, bool right, float *out) {
+                                 valueAt(*C, 3, false, time, right, out);
+                                 for (int k = 0; k < 3; ++k) out[k] = -out[k];
+                               }),
+                      samplers);
+
+    for (const TransformInstance &inst : instances->second) {
+      if (trsT >= 0) nodeChannel(channels, trsT, inst.trs, "translation");
+      if (trsR >= 0) nodeChannel(channels, trsR, inst.trs, "rotation");
+      if (scl >= 0) nodeChannel(channels, scl, inst.scale, "scale");
+      if (inst.oriented) {
+        if (soR >= 0) nodeChannel(channels, soR, inst.scale, "rotation");
+        if (tailR >= 0) nodeChannel(channels, tailR, inst.tail, "rotation");
+        if (tailOriented >= 0)
+          nodeChannel(channels, tailOriented, inst.tail, "translation");
+      } else if (tailT >= 0 && inst.tail != inst.trs) {
+        nodeChannel(channels, tailT, inst.tail, "translation");
+      }
+    }
+  }
+
+  // Material, light and camera properties, through KHR_animation_pointer.
+  // Returns false when the target has nothing exported to animate.
+  bool writePointerChannels(const X3DNode &target, const FieldChannels &f,
+                            std::vector<std::string> &samplers,
+                            std::vector<std::string> &channels) {
+    auto get = [&](const char *name) -> const GltfAnimationChannel * {
+      const auto it = f.find(name);
+      return it == f.end() ? nullptr : it->second;
+    };
+    auto unit = [](float v) { return std::clamp(v, 0.0f, 1.0f); };
+    bool wrote = false;
+
+    if (const auto mats = materialsBySource_.find(&target);
+        mats != materialsBySource_.end()) {
+      for (int index : mats->second) {
+        const MaterialStatic &st = materialStatics_.at(index);
+        const std::string at = "/materials/" + std::to_string(index);
+        // The base colour: RGB from the lit colour field (or the emissive
+        // colour when unlit), alpha from transparency.
+        const char *rgbField = st.unlit ? "emissiveColor"
+                               : st.model == MaterialModel::Physical ? "baseColor"
+                               : st.model == MaterialModel::Unlit ? "emissiveColor"
+                                                                    : "diffuseColor";
+        const GltfAnimationChannel *rgb = st.vertexColor ? nullptr : get(rgbField);
+        const GltfAnimationChannel *tr = get("transparency");
+        if (rgb || tr) {
+          std::vector<const GltfAnimationChannel *> in;
+          if (rgb) in.push_back(rgb);
+          if (tr) in.push_back(tr);
+          pointerChannel(channels,
+                         sampler(resample(in, 4, false, false,
+                                          [&](float time, bool right, float *out) {
+                                            std::copy(st.base.begin(), st.base.end(), out);
+                                            if (rgb) valueAt(*rgb, 3, false, time, right, out);
+                                            float a = 1.0f - st.base[3];
+                                            if (tr) valueAt(*tr, 1, false, time, right, &a);
+                                            for (int k = 0; k < 3; ++k) out[k] = unit(out[k]);
+                                            out[3] = unit(1.0f - a);
+                                          }),
+                                 samplers),
+                         at + "/pbrMetallicRoughness/baseColorFactor");
+          wrote = true;
+        }
+        if (const auto *e = get("emissiveColor"); e && !st.unlit &&
+                                                   st.model != MaterialModel::Unlit) {
+          pointerChannel(channels,
+                         sampler(resample({e}, 3, false, false,
+                                          [&](float time, bool right, float *out) {
+                                            valueAt(*e, 3, false, time, right, out);
+                                            for (int k = 0; k < 3; ++k) out[k] = unit(out[k]);
+                                          }),
+                                 samplers),
+                         at + "/emissiveFactor");
+          wrote = true;
+        }
+        auto scalar = [&](const GltfAnimationChannel *ch, const char *pointer,
+                          float (*map)(float)) {
+          if (!ch) return;
+          pointerChannel(channels,
+                         sampler(resample({ch}, 1, false, false,
+                                          [&](float time, bool right, float *out) {
+                                            valueAt(*ch, 1, false, time, right, out);
+                                            out[0] = map(out[0]);
+                                          }),
+                                 samplers),
+                         at + pointer);
+          wrote = true;
+        };
+        if (!st.unlit && st.model == MaterialModel::Physical) {
+          scalar(get("metallic"), "/pbrMetallicRoughness/metallicFactor",
+                 [](float v) { return std::clamp(v, 0.0f, 1.0f); });
+          scalar(get("roughness"), "/pbrMetallicRoughness/roughnessFactor",
+                 [](float v) { return std::clamp(v, 0.0f, 1.0f); });
+        } else if (!st.unlit && st.model == MaterialModel::Phong) {
+          // Blinn-Phong exponent (shininess * 128) to perceptual roughness,
+          // as for the static value.
+          scalar(get("shininess"), "/pbrMetallicRoughness/roughnessFactor",
+                 [](float v) {
+                   const double exponent = std::max(0.0, double(v)) * 128.0;
+                   return float(std::pow(2.0 / (exponent + 2.0), 0.25));
+                 });
+        }
+      }
+      return wrote;
+    }
+
+    if (const auto lights = lightsByNode_.find(&target);
+        lights != lightsByNode_.end()) {
+      for (int index : lights->second) {
+        const LightStatic &st = lightStatics_[static_cast<std::size_t>(index)];
+        const std::string at =
+            "/extensions/KHR_lights_punctual/lights/" + std::to_string(index);
+        if (const auto *ch = get("color")) {
+          pointerChannel(channels,
+                         sampler(resample({ch}, 3, false, false,
+                                          [&](float time, bool right, float *out) {
+                                            valueAt(*ch, 3, false, time, right, out);
+                                            for (int k = 0; k < 3; ++k) out[k] = unit(out[k]);
+                                          }),
+                                 samplers),
+                         at + "/color");
+          wrote = true;
+        }
+        auto scalar = [&](const GltfAnimationChannel *ch, const std::string &pointer,
+                          auto map) {
+          if (!ch) return;
+          pointerChannel(channels,
+                         sampler(resample({ch}, 1, false, false,
+                                          [&](float time, bool right, float *out) {
+                                            valueAt(*ch, 1, false, time, right, out);
+                                            out[0] = map(out[0]);
+                                          }),
+                                 samplers),
+                         pointer);
+          wrote = true;
+        };
+        scalar(get("intensity"), at + "/intensity",
+               [](float v) { return std::max(0.0f, v); });
+        if (st.type != LightDesc::Type::Directional)
+          scalar(get("radius"), at + "/range",
+                 [](float v) { return std::max(v, kMinRange); });
+        if (st.type == LightDesc::Type::Spot) {
+          // glTF: 0 <= inner < outer <= pi/2, so the two clamp together.
+          const auto *beam = get("beamWidth");
+          const auto *cut = get("cutOffAngle");
+          auto cone = [&](float time, bool right) {
+            float b = st.beamWidth, c = st.cutOffAngle;
+            if (beam) valueAt(*beam, 1, false, time, right, &b);
+            if (cut) valueAt(*cut, 1, false, time, right, &c);
+            const float outer = std::clamp(c, 1e-4f, 1.5707963f);
+            return std::make_pair(std::clamp(b, 0.0f, outer - 1e-5f), outer);
+          };
+          std::vector<const GltfAnimationChannel *> in;
+          if (beam) in.push_back(beam);
+          if (cut) in.push_back(cut);
+          if (!in.empty()) {
+            pointerChannel(channels,
+                           sampler(resample(in, 1, false, false,
+                                            [&](float time, bool right, float *out) {
+                                              out[0] = cone(time, right).first;
+                                            }),
+                                   samplers),
+                           at + "/spot/innerConeAngle");
+            pointerChannel(channels,
+                           sampler(resample(in, 1, false, false,
+                                            [&](float time, bool right, float *out) {
+                                              out[0] = cone(time, right).second;
+                                            }),
+                                   samplers),
+                           at + "/spot/outerConeAngle");
+            wrote = true;
+          }
+        }
+      }
+      return wrote;
+    }
+
+    if (const auto cams = camerasByNode_.find(&target);
+        cams != camerasByNode_.end()) {
+      if (const auto *ch = get("fieldOfView")) {
+        const int s = sampler(resample({ch}, 1, false, false,
+                                       [&](float time, bool right, float *out) {
+                                         valueAt(*ch, 1, false, time, right, out);
+                                         out[0] = std::clamp(out[0], 1e-3f, 3.14f);
+                                       }),
+                              samplers);
+        for (int index : cams->second)
+          pointerChannel(channels, s,
+                         "/cameras/" + std::to_string(index) + "/perspective/yfov");
+        wrote = true;
+      }
+    }
+    return wrote;
+  }
+
   void writeAnimations() {
     if (!animations_) return;
     for (const GltfAnimation &animation : *animations_) {
-      std::vector<std::string> samplers, channels;
+      // Group the channels by target; within a target the last channel for
+      // a field wins, like the last ROUTE event.
+      std::vector<const X3DNode *> order;
+      std::unordered_map<const X3DNode *, FieldChannels> byTarget;
       for (const GltfAnimationChannel &ch : animation.channels) {
-        const auto instances = targetInstances_.find(ch.target);
+        const bool rotation =
+            ch.path == GltfAnimationChannel::Path::Rotation ||
+            (ch.path == GltfAnimationChannel::Path::Property &&
+             ch.field == "scaleOrientation");
         const std::size_t width =
-            ch.path == GltfAnimationChannel::Path::Rotation ? 4 : 3;
-        const std::size_t keys = ch.times.size();
-        if (instances == targetInstances_.end() || keys == 0 ||
-            ch.values.size() != keys * width) {
+            rotation ? 4
+            : ch.path != GltfAnimationChannel::Path::Property ? 3
+            : (ch.field == "center" || ch.field.find("Color") != std::string::npos ||
+               ch.field == "color")
+                ? 3
+                : 1;
+        if (!ch.target || ch.times.empty() ||
+            ch.values.size() != ch.times.size() * width ||
+            !std::is_sorted(ch.times.begin(), ch.times.end())) {
           ++report_.skippedAnimationChannels;
           continue;
         }
-        // glTF wants strictly increasing times; X3D allows a repeated key
-        // for a jump. Nudge repeats forward by the smallest float step.
-        std::vector<float> times = ch.times;
-        for (std::size_t i = 0; i < keys; ++i) {
-          if (!std::isfinite(times[i]) || times[i] < 0) times[i] = 0;
-          if (i && times[i] <= times[i - 1])
-            times[i] = std::nextafter(times[i - 1],
-                                      std::numeric_limits<float>::max());
+        auto [it, fresh] = byTarget.try_emplace(ch.target);
+        if (fresh) order.push_back(ch.target);
+        it->second[fieldKey(ch)] = &ch;
+      }
+      std::vector<std::string> samplers, channels;
+      for (const X3DNode *target : order) {
+        const FieldChannels &f = byTarget[target];
+        FieldChannels nodeFields, pointerFields;
+        for (const auto &[name, ch] : f) {
+          const bool node = ch->path != GltfAnimationChannel::Path::Property ||
+                            name == "center" || name == "scaleOrientation";
+          (node ? nodeFields : pointerFields).emplace(name, ch);
         }
-        std::vector<float> values = ch.values;
-        if (ch.path == GltfAnimationChannel::Path::Translation) {
-          // The trs node's translation is T + center.
-          const SFVec3f c =
-              geombounds::getVec3fLenient(*ch.target, "center", {0, 0, 0});
-          for (std::size_t i = 0; i < keys; ++i) {
-            values[i * 3] += c.x;
-            values[i * 3 + 1] += c.y;
-            values[i * 3 + 2] += c.z;
-          }
-        } else if (ch.path == GltfAnimationChannel::Path::Rotation) {
-          // Unit length, and each key in the hemisphere of the one before.
-          for (std::size_t i = 0; i < keys; ++i) {
-            float *q = &values[i * 4];
-            const float len = std::sqrt(q[0] * q[0] + q[1] * q[1] +
-                                        q[2] * q[2] + q[3] * q[3]);
-            if (!(len > 1e-12f) || !std::isfinite(len)) {
-              q[0] = q[1] = q[2] = 0;
-              q[3] = 1;
-            } else {
-              for (int k = 0; k < 4; ++k) q[k] /= len;
-            }
-            if (i) {
-              const float *p = q - 4;
-              if (p[0] * q[0] + p[1] * q[1] + p[2] * q[2] + p[3] * q[3] < 0)
-                for (int k = 0; k < 4; ++k) q[k] = -q[k];
-            }
-          }
-        }
-        for (float &v : values)
-          if (!std::isfinite(v)) v = 0;
-        const int input = floatAccessor(times, 1, "SCALAR", true, 0);
-        const int output =
-            floatAccessor(values, static_cast<int>(width),
-                          width == 4 ? "VEC4" : "VEC3", false, 0);
-        samplers.push_back("{\"input\":" + std::to_string(input) +
-                           ",\"output\":" + std::to_string(output) +
-                           ",\"interpolation\":\"LINEAR\"}");
-        const char *path =
-            ch.path == GltfAnimationChannel::Path::Translation ? "translation"
-            : ch.path == GltfAnimationChannel::Path::Rotation ? "rotation"
-                                                              : "scale";
-        for (const TransformInstance &inst : instances->second) {
-          const int node = ch.path == GltfAnimationChannel::Path::Scale
-                               ? inst.scale : inst.trs;
-          channels.push_back("{\"sampler\":" +
-                             std::to_string(samplers.size() - 1) +
-                             ",\"target\":{\"node\":" + std::to_string(node) +
-                             ",\"path\":\"" + path + "\"}}");
-          ++report_.animationChannels;
-        }
+        const std::size_t before = channels.size();
+        if (!nodeFields.empty())
+          writeNodeChannels(*target, nodeFields, samplers, channels);
+        if (channels.size() == before && !nodeFields.empty())
+          report_.skippedAnimationChannels += nodeFields.size();
+        if (!pointerFields.empty() &&
+            !writePointerChannels(*target, pointerFields, samplers, channels))
+          report_.skippedAnimationChannels += pointerFields.size();
       }
       if (channels.empty()) continue;
       std::string json = "{";
@@ -902,7 +1621,10 @@ private:
   }
 
   int materialFor(const MaterialDesc &m, const MeshData &mesh,
-                  const MeshAccessors &acc) {
+                  const MeshAccessors &acc, const X3DNode *source) {
+    // A material an animation drives gets glTF materials of its own, so a
+    // channel aimed at it moves nothing else.
+    if (source && !animatedFields_.count(source)) source = nullptr;
     using Slot = TextureRef::Slot;
     if (m.backMaterial) ++report_.droppedBackMaterials;
     // §11.2.2.5: lines and points without normals are unlit and take the
@@ -985,7 +1707,8 @@ private:
       // shows, so lift the factor to white in that case.
       SFColor e = m.emissive;
       if (emissiveTexture && e.r == 0 && e.g == 0 && e.b == 0) e = {1, 1, 1};
-      if (e.r != 0 || e.g != 0 || e.b != 0)
+      if (e.r != 0 || e.g != 0 || e.b != 0 ||
+          fieldAnimated(source, "emissiveColor"))
         fields.push_back("\"emissiveFactor\":" +
                          array({std::clamp(e.r, 0.0f, 1.0f),
                                 std::clamp(e.g, 0.0f, 1.0f),
@@ -994,7 +1717,8 @@ private:
     if (m.alphaMode == AlphaMode::Mask) {
       fields.push_back("\"alphaMode\":\"MASK\"");
       fields.push_back("\"alphaCutoff\":" + num(std::max(0.0f, m.alphaCutoff)));
-    } else if (m.alphaMode == AlphaMode::Blend || base.a < 1.0f) {
+    } else if (m.alphaMode == AlphaMode::Blend || base.a < 1.0f ||
+               fieldAnimated(source, "transparency")) {
       fields.push_back("\"alphaMode\":\"BLEND\"");
     }
     if (m.doubleSided || !mesh.solid)
@@ -1004,12 +1728,24 @@ private:
       usesUnlit_ = true;
     }
     const std::string json = "{" + join(fields) + "}";
-    auto it = materialIndex_.find(json);
+    const auto key = std::make_pair(json, source);
+    auto it = materialIndex_.find(key);
     if (it == materialIndex_.end()) {
       materials_.push_back(json);
-      it = materialIndex_
-               .emplace(json, static_cast<int>(materials_.size()) - 1)
-               .first;
+      const int index = static_cast<int>(materials_.size()) - 1;
+      it = materialIndex_.emplace(key, index).first;
+      if (source) {
+        MaterialStatic st;
+        st.unlit = unlit;
+        st.vertexColor = acc.color >= 0;
+        st.model = m.model;
+        st.base = {base.r, base.g, base.b, base.a};
+        st.emissive = {unit(m.emissive.r), unit(m.emissive.g), unit(m.emissive.b)};
+        st.metallic = float(metallic);
+        st.roughness = float(roughness);
+        materialStatics_.emplace(index, st);
+        materialsBySource_[source].push_back(index);
+      }
     }
     return it->second;
   }
@@ -1031,7 +1767,14 @@ private:
   std::unordered_map<const TexturePixels *, int> decodedImages_;
   std::unordered_map<const MeshData *, MeshAccessors> meshAccessors_;
   std::map<std::pair<const MeshData *, int>, int> meshIndex_;
-  std::unordered_map<std::string, int> materialIndex_;
+  std::map<std::pair<std::string, const X3DNode *>, int> materialIndex_;
+  // Animation targets: every field driven on a node, over all animations.
+  std::unordered_map<const X3DNode *, std::set<std::string>> animatedFields_;
+  std::unordered_map<const X3DNode *, std::vector<int>> materialsBySource_,
+      lightsByNode_, camerasByNode_;
+  std::unordered_map<int, MaterialStatic> materialStatics_;
+  std::vector<LightStatic> lightStatics_; // one per glTF light
+  bool usesPointer_ = false;
   bool usesUnlit_ = false;
 };
 
@@ -1156,42 +1899,30 @@ GltfSceneExtras gltfExtrasFrom(const SceneExtractor &extractor,
     if (!from || !to || !isInterpolator(*from)) continue;
     if (fieldName(route.fromField) != "value") continue;
 
-    const std::string type = from->nodeTypeName();
-    const std::string dest = fieldName(route.toField);
+    const Destination dest = destinationOf(*to, fieldName(route.toField));
+    Samples samples;
+    if (dest.kind == SampleKind::None ||
+        !sampleInterpolator(*from, dest.densify, ctx.geoProjection(), samples) ||
+        samples.kind != dest.kind) {
+      ++skippedRoutes;
+      continue;
+    }
     GltfAnimationChannel channel;
     channel.target = to.get();
-    const std::string sink = to->nodeTypeName();
-    const bool viewpoint = sink == "Viewpoint" || sink == "OrthoViewpoint";
-    const bool placedLight = sink == "PointLight" || sink == "SpotLight";
-    bool ok = sink == "Transform" || viewpoint || placedLight;
-    if (ok && type == "PositionInterpolator" &&
-        (sink == "Transform" ? dest == "translation" || dest == "scale"
-                             : dest == (viewpoint ? "position" : "location"))) {
-      channel.path = dest == "scale" ? GltfAnimationChannel::Path::Scale
-                                     : GltfAnimationChannel::Path::Translation;
-      for (const SFVec3f &v : geombounds::getField<std::vector<SFVec3f>>(
-               *from, "keyValue", {}))
-        channel.values.insert(channel.values.end(), {v.x, v.y, v.z});
-    } else if (ok && type == "OrientationInterpolator" &&
-               ((sink == "Transform" && dest == "rotation") ||
-                (viewpoint && dest == "orientation"))) {
-      channel.path = GltfAnimationChannel::Path::Rotation;
-      for (const SFRotation &v : geombounds::getField<std::vector<SFRotation>>(
-               *from, "keyValue", {})) {
-        const auto q = quaternion(v);
+    channel.path = dest.path;
+    channel.field = dest.field;
+    if (dest.aim) {
+      // A light's direction becomes the rotation aiming -Z along it.
+      for (std::size_t i = 0; i + 3 <= samples.values.size(); i += 3) {
+        const auto q = aimQuaternion(
+            {samples.values[i], samples.values[i + 1], samples.values[i + 2]});
         channel.values.insert(channel.values.end(),
                               {float(q[0]), float(q[1]), float(q[2]), float(q[3])});
       }
     } else {
-      ok = false;
+      channel.values = std::move(samples.values);
     }
-    const auto keys = geombounds::getField<std::vector<float>>(*from, "key", {});
-    const std::size_t width =
-        channel.path == GltfAnimationChannel::Path::Rotation ? 4 : 3;
-    if (!ok || keys.empty() || channel.values.size() != keys.size() * width) {
-      ++skippedRoutes;
-      continue;
-    }
+    const std::vector<float> &keys = samples.fractions;
 
     // The TimeSensor driving this interpolator sets the time scale.
     const X3DNode *clock = nullptr;
