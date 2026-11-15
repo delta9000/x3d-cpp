@@ -49,7 +49,7 @@ static SFVec3f triGeoNormal(const MeshData &m, std::size_t t) {
 
 static const float PI = 3.14159265358979323846f;
 
-TEST_CASE("mesh builder crease normals") {
+TEST_CASE("mesh builder crease normals: creaseAngle smooths shared corners") {
   // 8 unit-cube corners (centred at origin), CCW-outward faces.
   const std::vector<SFVec3f> cube = {
       {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}, // back  (z=-1)

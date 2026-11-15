@@ -53,7 +53,7 @@ static void assertOutwardWinding(const MeshData &m) {
   }
 }
 
-TEST_CASE("mesh builder primitives") {
+TEST_CASE("mesh builder primitives: Box, Sphere, Cone and Cylinder") {
   const SFVec3f center{0, 0, 0};
 
   // 1. Box: 12 triangles, all normals outward

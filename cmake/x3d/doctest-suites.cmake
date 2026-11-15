@@ -59,7 +59,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_test(NAME x3d_namespace_taxonomy COMMAND x3d_namespace_taxonomy)
 endif()
 
-# doctest grouped binary: codecs tests (19 cases, one link)
+# doctest grouped binary: codecs tests
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_codecs_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/roundtrip_test.cpp"
@@ -98,7 +98,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_codecs_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# doctest grouped binary: parse tests (13 cases, one link)
+# doctest grouped binary: parse tests
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_parse_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_clone_test.cpp"
@@ -134,7 +134,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_parse_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# doctest grouped binary: extract tests (35 cases, one link)
+# doctest grouped binary: extract tests
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_extract_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/extract/tests/render_item_test.cpp"
@@ -215,7 +215,7 @@ if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     set_tests_properties(x3d_extract_tests PROPERTIES TIMEOUT 180)
 endif()
 
-# doctest grouped binary: events tests (34 cases, one link)
+# doctest grouped binary: events tests
 if(X3D_CPP_BUILD_TESTS AND TARGET x3d_cpp_nodes)
     add_executable(x3d_events_tests
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/events/tests/dynamic_field_test.cpp"

@@ -3,20 +3,17 @@
 #include "x3d/nodes/PositionInterpolator.hpp"
 #include "x3d/nodes/Transform.hpp"
 #include <cmath>
-#include <iostream>
 #include <map>
 #include <stdexcept>
 #include <x3d/sai/experimental/testing/provider_fixture.hpp>
 #include <x3d/sai_provider.hpp>
 #include <x3d/sai_presentation.hpp>
 
+#include "doctest/doctest.h"
+
 namespace sai = x3d::sai::experimental;
 namespace h = sai::provider;
 namespace {
-void require(bool value, const char *why) {
-  if (!value)
-    throw std::runtime_error(why);
-}
 template <class T> T take(sai::result<T> value) {
   if (!value)
     throw std::runtime_error(value.error().operation + ": " +
@@ -29,7 +26,7 @@ void take(sai::result<void> value) {
                              value.error().message);
 }
 void eq(sai::vec3f actual, sai::vec3f expected, const char *why) {
-  require(actual == expected, why);
+  REQUIRE_MESSAGE((actual == expected), why);
 }
 class inspected_backend : public sai::native::backend {
 public:
@@ -93,19 +90,16 @@ fixture make(h::service &service, h::scene scene = {}) {
   f.key_value = take(service.get_field(f.interpolator, "keyValue"));
   return f;
 }
-void native_route_and_render() {
+TEST_CASE("native runtime: native route and render") {
   auto world = take(sai::native::make_presented_scene());
   auto &service = *world.service;
   auto f = make(service, world.scene);
-  require(take(service.roots(f.context)).size() == 3, "three real roots");
-  require(take(service.type_name(f.interpolator)) == "PositionInterpolator",
-          "real interpolator type");
-  require(take(service.type_name(f.transform)) == "Transform",
-          "real Transform type");
+  REQUIRE_MESSAGE((take(service.roots(f.context)).size() == 3), "three real roots");
+  REQUIRE_MESSAGE((take(service.type_name(f.interpolator)) == "PositionInterpolator"), "real interpolator type");
+  REQUIRE_MESSAGE((take(service.type_name(f.transform)) == "Transform"), "real Transform type");
   const auto before_identity = f.interpolator;
   auto a = take(service.activate(f.scene));
-  require(take(service.named(f.context, "Interpolator")) == before_identity,
-          "activation preserves lexical identity");
+  REQUIRE_MESSAGE((take(service.named(f.context, "Interpolator")) == before_identity), "activation preserves lexical identity");
   auto c = take(service.connect(a));
   std::vector<h::notification> notifications;
   auto output_subscription = take(service.observe(
@@ -116,13 +110,11 @@ void native_route_and_render() {
   eq(std::get<sai::vec3f>(take(service.read(f.translation))), {0, 0, 0},
      "enqueue cannot mutate native node");
   auto first = take(service.pump(a, {7.0}));
-  require(first.turn == 1 && first.request == ticket.id(),
-          "turn/request identity");
-  require(notifications.empty(), "no application callbacks inside native turn");
+  REQUIRE_MESSAGE((first.turn == 1 && first.request == ticket.id()), "turn/request identity");
+  REQUIRE_MESSAGE((notifications.empty()), "no application callbacks inside native turn");
   const auto frame = take(world.feed.snapshot(service));
-  require(frame->native_tick == 1 && frame->host_time->seconds == 7.0,
-          "native frame carries the host turn");
-  require(frame->items.size() == 1, "one rendered placement");
+  REQUIRE_MESSAGE((frame->native_tick == 1 && frame->host_time->seconds == 7.0), "native frame carries the host turn");
+  REQUIRE_MESSAGE((frame->items.size() == 1), "one rendered placement");
   const auto interpolated = std::get<sai::vec3f>(take(service.read(f.output)));
   eq(interpolated, {2.5f, 5, 7.5f}, "actual interpolator output storage");
   eq(std::get<sai::vec3f>(take(service.read(f.translation))), interpolated,
@@ -130,24 +122,19 @@ void native_route_and_render() {
   const auto &matrix = frame->items.front().world_transform.m;
   eq({matrix[12], matrix[13], matrix[14]}, interpolated,
      "render item reflects routed world translation");
-  require(take(service.dispatch_notifications()) == 2,
-          "two captured native notifications");
-  require(notifications[0].source == f.output &&
-              notifications[1].source == f.translation,
-          "source then routed destination causal order");
-  require(notifications[0].turn == 1 && notifications[1].turn == 1 &&
-              notifications[0].time.seconds == 7.0,
-          "notifications carry turn/time");
+  REQUIRE_MESSAGE((take(service.dispatch_notifications()) == 2), "two captured native notifications");
+  REQUIRE_MESSAGE((notifications[0].source == f.output &&
+              notifications[1].source == f.translation), "source then routed destination causal order");
+  REQUIRE_MESSAGE((notifications[0].turn == 1 && notifications[1].turn == 1 &&
+              notifications[0].time.seconds == 7.0), "notifications carry turn/time");
   eq(std::get<sai::vec3f>(notifications.front().value), interpolated,
      "notification owns output copy");
   take(service.enqueue(c, {{f.fraction, 0.75f}}));
   const auto second = take(service.pump(a, {7.0}));
-  require(second.turn == 2 && take(world.feed.snapshot(service))->native_tick == 2,
-          "equal host time creates distinct native turn");
+  REQUIRE_MESSAGE((second.turn == 2 && take(world.feed.snapshot(service))->native_tick == 2), "equal host time creates distinct native turn");
   const auto next = take(world.feed.snapshot(service));
-  require(next->items.front().placement_key == frame->items.front().placement_key &&
-              next->items.front().mesh_key == frame->items.front().mesh_key,
-          "transform-only update preserves render identity and geometry");
+  REQUIRE_MESSAGE((next->items.front().placement_key == frame->items.front().placement_key &&
+              next->items.front().mesh_key == frame->items.front().mesh_key), "transform-only update preserves render identity and geometry");
   const auto &next_matrix = next->items.front().world_transform.m;
   eq({next_matrix[12], next_matrix[13], next_matrix[14]}, {7.5f, 15, 22.5f},
      "second equal-time world transform");
@@ -155,12 +142,10 @@ void native_route_and_render() {
      "earlier notification not aliased to native storage");
   take(service.dispatch_notifications());
   const auto empty = take(service.pump(a, {7.0}));
-  require(empty.turn == 3 && !empty.request && take(world.feed.snapshot(service))->native_tick == 3,
-          "empty host turn ticks runtime");
-  require(take(world.feed.snapshot(service))->items.front().world_transform.m == next_matrix,
-          "empty turn preserves the presentation transform");
+  REQUIRE_MESSAGE((empty.turn == 3 && !empty.request && take(world.feed.snapshot(service))->native_tick == 3), "empty host turn ticks runtime");
+  REQUIRE_MESSAGE((take(world.feed.snapshot(service))->items.front().world_transform.m == next_matrix), "empty turn preserves the presentation transform");
 }
-void all_four_payload_kinds() {
+TEST_CASE("native runtime: all four payload kinds") {
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
@@ -179,10 +164,9 @@ void all_four_payload_kinds() {
                       std::vector<sai::vec3f>{{1, 2, 3}, {3, 6, 9}}));
   {
     const auto setup = take(native.native_scene(1));
-    require(setup->authoredScalarFields.contains(setup->resolve("Transform"), "translation") &&
+    REQUIRE_MESSAGE((setup->authoredScalarFields.contains(setup->resolve("Transform"), "translation") &&
                 setup->authoredScalarFields.contains(setup->resolve("Interpolator"), "key") &&
-                setup->authoredScalarFields.contains(setup->resolve("Interpolator"), "keyValue"),
-            "setup authoring preserves native authored-scalar presence marks");
+                setup->authoredScalarFields.contains(setup->resolve("Interpolator"), "keyValue")), "setup authoring preserves native authored-scalar presence marks");
   }
   auto a = take(service.activate(f.scene));
   eq(std::get<sai::vec3f>(take(service.read(f.output))), {1, 2, 3},
@@ -204,20 +188,17 @@ void all_four_payload_kinds() {
   take(service.pump(a, {0}));
   eq(std::get<sai::vec3f>(take(service.read(f.output))), {2, 4, 6},
      "live native array inputs reach interpolation handler");
-  require(take(service.dispatch_notifications()) == 2,
-          "array field events captured");
-  require(std::get<std::vector<float>>(notices[0].value) ==
-              std::vector<float>({0, 0.5f, 1}),
-          "owning MFFloat event copy");
-  require(std::get<std::vector<sai::vec3f>>(notices[1].value).at(1) ==
-              sai::vec3f{4, 8, 12},
-          "owning MFVec3f event copy");
+  REQUIRE_MESSAGE((take(service.dispatch_notifications()) == 2), "array field events captured");
+  REQUIRE_MESSAGE((std::get<std::vector<float>>(notices[0].value) ==
+              std::vector<float>({0, 0.5f, 1})), "owning MFFloat event copy");
+  REQUIRE_MESSAGE((std::get<std::vector<sai::vec3f>>(notices[1].value).at(1) ==
+              sai::vec3f{4, 8, 12}), "owning MFVec3f event copy");
   take(service.enqueue(c, {{f.translation, sai::vec3f{9, 8, 7}}}));
   take(service.pump(a, {0}));
   eq(std::get<sai::vec3f>(take(service.read(f.translation))), {9, 8, 7},
      "live native SFVec3f conversion");
 }
-void independent_scene_retirement() {
+TEST_CASE("native runtime: independent scene retirement") {
   // Constructor-supplied admission bounds reach the shared portable service.
   h::service limited(std::make_unique<inspected_backend>(),
                      h::resource_limits{1, 4096});
@@ -227,19 +208,16 @@ void independent_scene_retirement() {
   auto receipt =
       take(limited.enqueue(limited_client, {{bounded.fraction, .5f}}));
   auto rejected = limited.enqueue(limited_client, {{bounded.fraction, .75f}});
-  require(!rejected && rejected.error().code == sai::error_code::resource_limit,
-          "native constructor forwards the shared admission budget");
+  REQUIRE_MESSAGE((!rejected && rejected.error().code == sai::error_code::resource_limit), "native constructor forwards the shared admission budget");
   take(limited.pump(limited_world, {0}));
-  require(take(receipt.status()).state == h::request_state::processed,
-          "native processing publishes the owning terminal receipt");
+  REQUIRE_MESSAGE((take(receipt.status()).state == h::request_state::processed), "native processing publishes the owning terminal receipt");
   take(limited.enqueue(limited_client, {{bounded.fraction, .75f}}));
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
   auto one = make(service), two = make(service);
-  require(!(one.scene == two.scene) && !(one.context == two.context) &&
-              !(one.transform == two.transform),
-          "separate scene/context/node identities");
+  REQUIRE_MESSAGE((!(one.scene == two.scene) && !(one.context == two.context) &&
+              !(one.transform == two.transform)), "separate scene/context/node identities");
   auto a1 = take(service.activate(one.scene)),
        a2 = take(service.activate(two.scene));
   auto c1 = take(service.connect(a1)), c2 = take(service.connect(a2));
@@ -252,16 +230,15 @@ void independent_scene_retirement() {
   eq(std::get<sai::vec3f>(take(service.read(two.translation))), {8, 16, 24},
      "second scene clock and native values independent");
   take(service.retire(a1));
-  require(take(service.state(one.scene)) == h::activation_state::retired,
-          "scene explicitly retired");
-  require(!service.read(one.translation), "retired handle rejected");
+  REQUIRE_MESSAGE((take(service.state(one.scene)) == h::activation_state::retired), "scene explicitly retired");
+  REQUIRE_MESSAGE((!service.read(one.translation)), "retired handle rejected");
   take(service.enqueue(c2, {{two.fraction, 0.5f}}));
   take(service.pump(a2, {1}));
   eq(std::get<sai::vec3f>(take(service.read(two.translation))), {5, 10, 15},
      "other session works after first retirement");
-  require(native.turns == 3, "other runtime remains active");
+  REQUIRE_MESSAGE((native.turns == 3), "other runtime remains active");
 }
-void partial_failure_no_replay() {
+TEST_CASE("native runtime: partial failure no replay") {
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
@@ -275,27 +252,19 @@ void partial_failure_no_replay() {
   auto later = take(service.enqueue(c, {{f.fraction, 0.9f}}));
   native.throw_after_tick = true;
   const auto report = take(service.pump(a, {3}));
-  require(report.state == h::activation_state::faulted &&
+  REQUIRE_MESSAGE((report.state == h::activation_state::faulted &&
               report.effects == h::failure_effect::partial_or_unknown &&
-              report.error.has_value(),
-          "post-mutation throw faults activation with honest effects");
-  require(take(service.names(f.transform)) == std::vector<std::string>{"Transform"},
-          "reverse name remains readable after native fault");
-  require(take(service.named_nodes(f.context)).size() == 5,
-          "named-node enumeration remains readable after native fault");
+              report.error.has_value()), "post-mutation throw faults activation with honest effects");
+  REQUIRE_MESSAGE((take(service.names(f.transform)) == std::vector<std::string>{"Transform"}), "reverse name remains readable after native fault");
+  REQUIRE_MESSAGE((take(service.named_nodes(f.context)).size() == 5), "named-node enumeration remains readable after native fault");
   eq(std::get<sai::vec3f>(take(service.read(f.translation))), {5, 10, 15},
      "fault does not falsely roll back native mutation");
-  require(take(mutation.status()).state == h::request_state::failed,
-          "failed request terminal");
-  require(take(later.status()).state == h::request_state::cancelled,
-          "later batch cancelled after fault");
-  require(take(service.dispatch_notifications()) == 0 && notified == 0,
-          "partial turn notifications discarded");
+  REQUIRE_MESSAGE((take(mutation.status()).state == h::request_state::failed), "failed request terminal");
+  REQUIRE_MESSAGE((take(later.status()).state == h::request_state::cancelled), "later batch cancelled after fault");
+  REQUIRE_MESSAGE((take(service.dispatch_notifications()) == 0 && notified == 0), "partial turn notifications discarded");
   native.throw_after_tick = false;
-  require(!service.pump(a, {4}) && native.turns == 1,
-          "faulted native turn cannot replay");
-  require(!service.enqueue(c, {{f.fraction, 0.1f}}),
-          "faulted activation refuses new writes");
+  REQUIRE_MESSAGE((!service.pump(a, {4}) && native.turns == 1), "faulted native turn cannot replay");
+  REQUIRE_MESSAGE((!service.enqueue(c, {{f.fraction, 0.1f}})), "faulted activation refuses new writes");
   take(service.retire(a));
   auto fresh = make(service);
   auto fresh_a = take(service.activate(fresh.scene));
@@ -305,22 +274,18 @@ void partial_failure_no_replay() {
   eq(std::get<sai::vec3f>(take(service.read(fresh.translation))), {2.5f, 5, 7.5f},
      "new activation contains no failed queued work");
 }
-void activation_failure_retirement() {
+TEST_CASE("native runtime: activation failure retirement") {
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
   auto broken = make(service);
   native.throw_after_activation = true;
   const auto failed = service.activate(broken.scene);
-  require(!failed && failed.error().code == sai::error_code::callback_failed,
-          "activation throw after native construction returns explicit error");
-  require(take(service.state(broken.scene)) == h::activation_state::faulted,
-          "partially built session cannot masquerade as setup");
-  require(!service.activate(broken.scene),
-          "partial native activation cannot retry");
+  REQUIRE_MESSAGE((!failed && failed.error().code == sai::error_code::callback_failed), "activation throw after native construction returns explicit error");
+  REQUIRE_MESSAGE((take(service.state(broken.scene)) == h::activation_state::faulted), "partially built session cannot masquerade as setup");
+  REQUIRE_MESSAGE((!service.activate(broken.scene)), "partial native activation cannot retry");
   take(service.retire(broken.scene));
-  require(take(service.state(broken.scene)) == h::activation_state::retired,
-          "scene retirement releases failed native activation");
+  REQUIRE_MESSAGE((take(service.state(broken.scene)) == h::activation_state::retired), "scene retirement releases failed native activation");
   native.throw_after_activation = false;
   auto fresh = make(service);
   auto active = take(service.activate(fresh.scene));
@@ -331,7 +296,7 @@ void activation_failure_retirement() {
      "subsequent session works after partial activation teardown");
 }
 
-void destruction_during_deferred_notification() {
+TEST_CASE("native runtime: destruction during deferred notification") {
   auto service =
       std::make_unique<h::service>(std::make_unique<inspected_backend>());
   auto f = make(*service);
@@ -348,23 +313,17 @@ void destruction_during_deferred_notification() {
   auto completed = take(service->enqueue(client, {{f.fraction, 0.5f}}));
   take(service->pump(active, {0}));
   auto pending = take(service->enqueue(client, {{f.fraction, 0.75f}}));
-  require(calls == 0,
-          "destructive application callback is deferred beyond native tick");
+  REQUIRE_MESSAGE((calls == 0), "destructive application callback is deferred beyond native tick");
   auto *owner = service.get();
-  require(
-      take(owner->dispatch_notifications()) == 1,
-      "native session owner can be destroyed during detached callback drain");
-  require(!service && calls == 1 && f.transform.expired(),
-          "native teardown suppresses pending callbacks and expires authority");
-  require(
-      take(completed.status()).state == h::request_state::processed &&
-          take(pending.status()).state == h::request_state::cancelled,
-      "native service destruction preserves consumer-owned terminal receipts");
+  REQUIRE_MESSAGE((take(owner->dispatch_notifications()) == 1), "native session owner can be destroyed during detached callback drain");
+  REQUIRE_MESSAGE((!service && calls == 1 && f.transform.expired()), "native teardown suppresses pending callbacks and expires authority");
+  REQUIRE_MESSAGE((take(completed.status()).state == h::request_state::processed &&
+          take(pending.status()).state == h::request_state::cancelled), "native service destruction preserves consumer-owned terminal receipts");
 }
 
 // Input occurrence cardinality and output timestamp cardinality are distinct.
 // No portable winner is inferred from the architecture's at-most-once rule.
-void ordered_inputs_bounded_outputs() {
+TEST_CASE("native runtime: ordered inputs bounded outputs") {
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
@@ -382,22 +341,18 @@ void ordered_inputs_bounded_outputs() {
   auto last = take(service.enqueue(client, {{f.fraction, .75f}}));
   take(service.end_update(client));
   take(service.pump(active, {7}));
-  require(native.turns == 1 && native.last_turn_writes == 3,
-          "grouped external inputOnly occurrences execute in one native turn");
+  REQUIRE_MESSAGE((native.turns == 1 && native.last_turn_writes == 3), "grouped external inputOnly occurrences execute in one native turn");
   take(service.dispatch_notifications());
-  require(outputs.size() == 1 && routed.size() == 1,
-          "one output-field event and one ROUTE delivery per timestamp");
-  require(outputs.front().value == routed.front().value &&
+  REQUIRE_MESSAGE((outputs.size() == 1 && routed.size() == 1), "one output-field event and one ROUTE delivery per timestamp");
+  REQUIRE_MESSAGE((outputs.front().value == routed.front().value &&
               take(service.read(f.output)) == outputs.front().value &&
-              take(service.read(f.translation)) == routed.front().value,
-          "admitted runtime output, native readback and routed storage are "
+              take(service.read(f.translation)) == routed.front().value), "admitted runtime output, native readback and routed storage are "
           "coherent");
-  require(take(first.status()).submission == take(same.status()).submission &&
-              take(same.status()).submission == take(last.status()).submission,
-          "the three occurrence receipts share one released gate");
+  REQUIRE_MESSAGE((take(first.status()).submission == take(same.status()).submission &&
+              take(same.status()).submission == take(last.status()).submission), "the three occurrence receipts share one released gate");
 }
 
-void unnamed_routes_and_weak_identity() {
+TEST_CASE("native runtime: unnamed routes and weak identity") {
   auto owned = std::make_unique<sai::native::backend>();
   auto *native = owned.get();
   h::service service(std::move(owned));
@@ -419,21 +374,17 @@ void unnamed_routes_and_weak_identity() {
       service.author(values, std::vector<sai::vec3f>{{0, 0, 0}, {10, 20, 30}}));
   take(service.add_route(context, output, translation));
   auto duplicate = service.add_route(context, output, translation);
-  require(!duplicate &&
-              duplicate.error().code == sai::error_code::invalid_route,
-          "duplicate unnamed ROUTE rejected");
+  REQUIRE_MESSAGE((!duplicate &&
+              duplicate.error().code == sai::error_code::invalid_route), "duplicate unnamed ROUTE rejected");
   const auto storage = take(native->native_scene(1));
-  require(storage->defs.empty() && storage->rootNodes.size() == 1 &&
-              storage->rootNodes[0]->getDEF().empty(),
-          "generic ROUTE creates no synthetic public DEF names");
-  require(storage->routes.size() == 1 &&
+  REQUIRE_MESSAGE((storage->defs.empty() && storage->rootNodes.size() == 1 &&
+              storage->rootNodes[0]->getDEF().empty()), "generic ROUTE creates no synthetic public DEF names");
+  REQUIRE_MESSAGE((storage->routes.size() == 1 &&
               storage->routes.front().binding ==
-                  x3d::runtime::Route::Binding::DirectNodes,
-          "ROUTE lives in the authoritative native scene");
+                  x3d::runtime::Route::Binding::DirectNodes), "ROUTE lives in the authoritative native scene");
   auto retained = std::dynamic_pointer_cast<x3d::nodes::PositionInterpolator>(
       storage->routes.front().from.lock());
-  require(bool(retained),
-          "direct route retains the actual detached native interpolator");
+  REQUIRE_MESSAGE((bool(retained)), "direct route retains the actual detached native interpolator");
   auto active = take(service.activate(scene));
   auto client = take(service.connect(active));
   take(service.enqueue(client, {{fraction, .5f}}));
@@ -445,8 +396,7 @@ void unnamed_routes_and_weak_identity() {
   const auto completed = retained->getValue_changed();
   take(service.retire(active));
   retained->onSet_fraction(.75f);
-  require(retained->getValue_changed() == completed && !service.read(output),
-          "retired detached native callbacks stay inert even when the node is "
+  REQUIRE_MESSAGE((retained->getValue_changed() == completed && !service.read(output)), "retired detached native callbacks stay inert even when the node is "
           "retained");
 
   // Default parsed/name-bound routes still refresh from the DEF table. A direct
@@ -463,26 +413,22 @@ void unnamed_routes_and_weak_identity() {
   direct.to = replacement;
   native_scene.routes.push_back(direct);
   native_scene.resolveRoutes();
-  require(native_scene.routes[0].from.lock() == first,
-          "named ROUTE default resolves as before");
+  REQUIRE_MESSAGE((native_scene.routes[0].from.lock() == first), "named ROUTE default resolves as before");
   native_scene.define("A", replacement);
   first.reset();
   native_scene.resolveRoutes();
-  require(native_scene.routes[0].from.lock() == replacement,
-          "named ROUTE refresh follows DEF replacement");
-  require(native_scene.routes[1].from.expired() &&
-              native_scene.routes[1].to.lock() == replacement,
-          "expired direct endpoint is never resurrected by a reused DEF name");
+  REQUIRE_MESSAGE((native_scene.routes[0].from.lock() == replacement), "named ROUTE refresh follows DEF replacement");
+  REQUIRE_MESSAGE((native_scene.routes[1].from.expired() &&
+              native_scene.routes[1].to.lock() == replacement), "expired direct endpoint is never resurrected by a reused DEF name");
 }
 
-void shared_root_behavior_once() {
+TEST_CASE("native runtime: shared root behavior once") {
   auto owned = std::make_unique<inspected_backend>();
   auto &native = *owned;
   h::service service(std::move(owned));
   auto f = make(service);
   take(service.append_root(f.context, f.interpolator));
-  require(take(service.roots(f.context)).size() == 4,
-          "repeated root occurrence is preserved before activation");
+  REQUIRE_MESSAGE((take(service.roots(f.context)).size() == 4), "repeated root occurrence is preserved before activation");
   auto active = take(service.activate(f.scene));
   auto client = take(service.connect(active));
   std::size_t outputs = 0;
@@ -491,14 +437,11 @@ void shared_root_behavior_once() {
   take(service.enqueue(client, {{f.fraction, .5f}}));
   take(service.pump(active, {0}));
   take(service.dispatch_notifications());
-  require(
-      outputs == 1 && native.last_turn_writes == 1,
-      "shared/rooted node identity has one behavior attachment and one output");
-  require(take(service.roots(f.context)).size() == 4,
-          "activation does not fabricate or remove render roots");
+  REQUIRE_MESSAGE((outputs == 1 && native.last_turn_writes == 1), "shared/rooted node identity has one behavior attachment and one output");
+  REQUIRE_MESSAGE((take(service.roots(f.context)).size() == 4), "activation does not fabricate or remove render roots");
 }
 
-void native_scene_information() {
+TEST_CASE("native runtime: native scene information") {
   class information_backend : public sai::native::backend {
   public:
     sai::result<std::vector<sai::unit_declaration>> declarations() const {
@@ -510,8 +453,7 @@ void native_scene_information() {
   h::service service(std::move(owned));
   auto scene = take(service.create_scene());
   auto context = take(service.root_context(scene));
-  require(take(native->declarations()).empty(),
-          "native document stores only explicitly declared units");
+  REQUIRE_MESSAGE((take(native->declarations()).empty()), "native document stores only explicitly declared units");
   take(service.declare_unit(scene, {"length", "centimetre", .01}));
   take(service.declare_unit(scene, {"angle", "degree", .017453292519943295}));
   take(service.set_metadata(scene, "title", "original"));
@@ -519,10 +461,9 @@ void native_scene_information() {
   take(service.set_metadata(scene, "title", "replacement"));
   take(service.set_metadata(scene, "", ""));
   const auto metadata = take(service.metadata(scene));
-  require(metadata == std::vector<sai::metadata_entry>{
+  REQUIRE_MESSAGE((metadata == std::vector<sai::metadata_entry>{
                           {"title", "replacement"},
-                          {"Title", "case-sensitive"}, {"", ""}},
-          "native metadata retains order, exact keys and empty values");
+                          {"Title", "case-sensitive"}, {"", ""}}), "native metadata retains order, exact keys and empty values");
   const auto units = take(service.units(context));
   auto transform = take(service.create_node(context, "Transform"));
   auto interpolator = take(service.create_node(context, "PositionInterpolator"));
@@ -552,34 +493,28 @@ void native_scene_information() {
   {
     const auto storage = take(native->native_scene(1));
     const auto declared = take(native->declarations());
-    require(storage->sourceUnits.size() == declared.size(),
-            "native document and scene source declarations have matching size");
+    REQUIRE_MESSAGE((storage->sourceUnits.size() == declared.size()), "native document and scene source declarations have matching size");
     for (std::size_t i = 0; i < declared.size(); ++i)
-      require(storage->sourceUnits[i].category == declared[i].category &&
+      REQUIRE_MESSAGE((storage->sourceUnits[i].category == declared[i].category &&
                   storage->sourceUnits[i].name == declared[i].name &&
                   storage->sourceUnits[i].conversionFactor ==
-                      declared[i].conversion_factor,
-              "native document and scene source declarations stay synchronized");
-    require(storage->normalizedUnitFields.contains(storage->resolve("Root"),
+                      declared[i].conversion_factor), "native document and scene source declarations stay synchronized");
+    REQUIRE_MESSAGE((storage->normalizedUnitFields.contains(storage->resolve("Root"),
                                                    "translation") &&
                 storage->normalizedUnitFields.contains(storage->resolve("Root"),
                                                        "rotation") &&
                 storage->normalizedUnitFields.contains(
-                    storage->resolve("Detached"), "keyValue"),
-            "all provider-authored dimensional scalars carry canonical marks");
-    require(!storage->authoredScalarFields.contains(
-                storage->resolve("DefaultBox"), "size"),
-            "generated defaults remain unauthored");
+                    storage->resolve("Detached"), "keyValue")), "all provider-authored dimensional scalars carry canonical marks");
+    REQUIRE_MESSAGE((!storage->authoredScalarFields.contains(
+                storage->resolve("DefaultBox"), "size")), "generated defaults remain unauthored");
   }
   auto active = take(service.activate(scene));
-  require(take(service.units(context)) == units &&
-              take(service.metadata(scene)) == metadata,
-          "native document declarations survive runtime activation");
+  REQUIRE_MESSAGE((take(service.units(context)) == units &&
+              take(service.metadata(scene)) == metadata), "native document declarations survive runtime activation");
   eq(std::get<sai::vec3f>(take(service.read(translation))), {3, 4, 5},
      "length declaration never rescales canonical setup translation");
-  require(std::get<sai::rotation>(take(service.read(rotation))) ==
-              canonical_rotation,
-          "angle declaration never rescales canonical setup rotation");
+  REQUIRE_MESSAGE((std::get<sai::rotation>(take(service.read(rotation))) ==
+              canonical_rotation), "angle declaration never rescales canonical setup rotation");
   eq(std::get<sai::vec3f>(take(service.read(size))), {2, 2, 2},
      "length declaration never rescales generated Box defaults");
   eq(std::get<sai::vec3f>(take(service.read(output))), {2, 4, 6},
@@ -596,49 +531,32 @@ void native_scene_information() {
 }
 
 } // namespace
-int main() {
-  try {
-    // Leave unrelated author-field state alive while all provider scenes run.
-    // The generic provider path must neither register its own dynamic fields
-    // nor clear another native scene's explicitly owned author-field entries.
-    x3d::runtime::Scene unrelated_scene;
-    auto unrelated = std::make_shared<x3d::nodes::Transform>();
-    unrelated_scene.rootNodes.push_back(unrelated);
-    auto &author_fields = *unrelated_scene.authorFields;
-    author_fields.addAuthorField(unrelated,
-                                 {"provider_unrelated_sentinel",
-                                  x3d::core::X3DFieldType::SFFloat,
-                                  x3d::core::AccessType::InputOutput, 42.f});
-    const auto author_count = author_fields.entryCount();
-    const auto common = sai::testing::run_provider_live_fixture(
-        [] { return sai::native::make_service(); });
-    require(common.checks > 100, "shared live fixture executed deeply");
-    std::cout << "native common live fixture: " << common.checks << " checks\n";
-    native_route_and_render();
-    all_four_payload_kinds();
-    independent_scene_retirement();
-    partial_failure_no_replay();
-    activation_failure_retirement();
-    destruction_during_deferred_notification();
-    ordered_inputs_bounded_outputs();
-    unnamed_routes_and_weak_identity();
-    shared_root_behavior_once();
-    native_scene_information();
-    sai::testing::check_provider_named_nodes(
-        [] { return sai::native::make_service(); });
-    require(
-        author_fields.entryCount() == author_count,
-        "provider fixture does not populate or clear another scene's author "
-        "fields");
-    require(std::any_cast<float>(author_fields.getValue(
-                *unrelated, "provider_unrelated_sentinel")) == 42.f,
-            "unrelated native author field survives provider scene retirement");
-    author_fields.erase(*unrelated);
-    std::cout << "native runtime: six migrated plus input-cardinality, "
-                 "unnamed/detached-route "
-                 "and shared-root evidence cases passed\n";
-  } catch (const std::exception &e) {
-    std::cerr << "native provider runtime failed: " << e.what() << '\n';
-    return 1;
-  }
+
+TEST_CASE("native runtime: the shared provider fixtures leave another scene's "
+          "author fields alone") {
+  // Leave unrelated author-field state alive while the provider scenes run.
+  // The generic provider path must neither register its own dynamic fields
+  // nor clear another native scene's explicitly owned author-field entries.
+  x3d::runtime::Scene unrelated_scene;
+  auto unrelated = std::make_shared<x3d::nodes::Transform>();
+  unrelated_scene.rootNodes.push_back(unrelated);
+  auto &author_fields = *unrelated_scene.authorFields;
+  author_fields.addAuthorField(unrelated,
+                               {"provider_unrelated_sentinel",
+                                x3d::core::X3DFieldType::SFFloat,
+                                x3d::core::AccessType::InputOutput, 42.f});
+  const auto author_count = author_fields.entryCount();
+  const auto common = sai::testing::run_provider_live_fixture(
+      [] { return sai::native::make_service(); });
+  REQUIRE_MESSAGE(common.checks > 100, "shared live fixture executed deeply");
+  sai::testing::check_provider_named_nodes(
+      [] { return sai::native::make_service(); });
+  REQUIRE_MESSAGE(author_fields.entryCount() == author_count,
+                  "provider fixture does not populate or clear another scene's "
+                  "author fields");
+  REQUIRE_MESSAGE(std::any_cast<float>(author_fields.getValue(
+                      *unrelated, "provider_unrelated_sentinel")) == 42.f,
+                  "unrelated native author field survives provider scene "
+                  "retirement");
+  author_fields.erase(*unrelated);
 }

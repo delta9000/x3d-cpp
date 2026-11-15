@@ -75,6 +75,9 @@ cp "$cpp/adapters/sai_provider/tests/native_runtime_test.cpp" "$work/consumer/na
 cp "$cpp/adapters/sai_provider/tests/allocation_failure_test.cpp" "$work/consumer/allocation_failure_test.cpp"
 cp "$cpp/adapters/sai_provider/tests/presentation_test.cpp" "$work/consumer/presentation_test.cpp"
 cp "$cpp/adapters/sai_provider/tests/adopt_session_test.cpp" "$work/consumer/adopt_session_test.cpp"
+mkdir -p "$work/consumer/test_support"
+cp -R "$cpp/runtime/test_support/doctest" "$cpp/runtime/test_support/doctest_main.cpp" \
+  "$work/consumer/test_support/"
 cmake -S "$work/consumer" -B "$work/installed-build" -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DSAI_PROVIDER_INSTALLED=ON \
   -DCMAKE_PREFIX_PATH="$moved" -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \

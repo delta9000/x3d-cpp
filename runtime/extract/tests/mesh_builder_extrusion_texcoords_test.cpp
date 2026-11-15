@@ -18,7 +18,7 @@ using namespace x3d::nodes;
 using x3d::test::setF;
 using x3d::test::feq;
 
-TEST_CASE("mesh builder extrusion texcoords") {
+TEST_CASE("mesh builder extrusion texcoords: side walls and caps") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
   // Edges are all length 2 => perimeter 8; accumulated chord at verts:
   //   k0: 0, k1: 2/8=0.25, k2: 4/8=0.5, k3: 6/8=0.75, k4: 8/8=1.0.

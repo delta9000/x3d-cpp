@@ -24,7 +24,7 @@ static std::shared_ptr<X3DNode> firstRoot(const runtime::X3DDocument &doc) {
 }
 
 // Scene-level: ProtoDeclare P { body Box, size IS size }, ProtoInstance P size=5.
-TEST_CASE("json proto: JSON proto expand") {
+TEST_CASE("json proto: a JSON PROTO declaration and instance expand") {
   const char *json = R"JSON({ "X3D": { "@version": "4.0", "Scene": {
     "-children": [
       { "ProtoDeclare": { "@name": "P",

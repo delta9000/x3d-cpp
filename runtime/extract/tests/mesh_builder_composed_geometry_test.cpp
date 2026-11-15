@@ -63,7 +63,7 @@ TEST_CASE("ElevationGrid infers an omitted dimension from its height count") {
   }
 }
 
-TEST_CASE("mesh builder t2") {
+TEST_CASE("mesh builder composed geometry: fans, strips and quads") {
   // Five distinct points; fans/strips index into these.
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0}, P4{-1, 1, 0};
 

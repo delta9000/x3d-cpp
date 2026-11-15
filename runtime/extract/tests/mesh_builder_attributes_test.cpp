@@ -55,7 +55,7 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
   return feq(a.r, r) && feq(a.g, g) && feq(a.b, b) && feq(a.a, al);
 }
 
-TEST_CASE("mesh builder t3") {
+TEST_CASE("mesh builder attributes: normals, colors and texcoords") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
   // 1. Flat-normal correctness: no Normal node -> +Z geometric normal

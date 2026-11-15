@@ -46,7 +46,7 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
   return feq(a.r, r) && feq(a.g, g) && feq(a.b, b) && feq(a.a, al);
 }
 
-TEST_CASE("mesh builder b4") {
+TEST_CASE("mesh builder topology: line and point sets") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{2, 0, 0}, P3{3, 0, 0};
 
   // recognizedGeometryType lists all three line/point sets.

@@ -4,7 +4,7 @@
 using namespace x3d::runtime;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-3f; }
 
-TEST_CASE("intersect") {
+TEST_CASE("intersect: ray against cone and cylinder") {
   Aabb box = Aabb::fromCenterSize({0,0,0}, {2,2,2}); // [-1,1]^3
   // ray from +z toward -z hits front face z=1 at t=9 (origin z=10)
   auto a = rayAabb(Ray{{0,0,10},{0,0,-1}}, box);

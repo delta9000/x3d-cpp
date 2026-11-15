@@ -153,13 +153,10 @@ if(X3D_CPP_BUILD_TESTS)
 
     add_executable(x3d_codec_roundtrip_audit
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/codecs/tests/codec_roundtrip_audit_test.cpp")
-    target_link_libraries(x3d_codec_roundtrip_audit PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_codec_roundtrip_audit
-        COMMAND x3d_codec_roundtrip_audit
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto"
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/json"
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/x3dv"
-            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/wrl")
+    target_link_libraries(x3d_codec_roundtrip_audit PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    target_compile_definitions(x3d_codec_roundtrip_audit PRIVATE
+        X3D_PARSE_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
+    add_test(NAME x3d_codec_roundtrip_audit COMMAND x3d_codec_roundtrip_audit)
 
     # Script / shader author-field capture, one test per reader. Reader tests
     # take their source-tree fixture dir as argv[1]; the end-to-end runtime test
@@ -251,7 +248,7 @@ if(X3D_CPP_BUILD_TESTS)
         add_executable(x3d_ecmascript_backend_test
             "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/tests/ecmascript_backend_test.cpp")
         target_link_libraries(x3d_ecmascript_backend_test PRIVATE
-            x3d_ecmascript_backend)
+            x3d_ecmascript_backend x3d_doctest_main)
         add_test(NAME x3d_ecmascript_backend COMMAND x3d_ecmascript_backend_test)
 
         add_executable(x3d_ecmascript_corpus_smoke_test
@@ -297,10 +294,10 @@ if(X3D_CPP_BUILD_TESTS)
 
     add_executable(x3d_proto_expand_audit
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/proto_expand_audit_test.cpp")
-    target_link_libraries(x3d_proto_expand_audit PRIVATE x3d_cpp::x3d_cpp)
-    add_test(NAME x3d_proto_expand_audit
-        COMMAND x3d_proto_expand_audit
-                "${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data/proto")
+    target_link_libraries(x3d_proto_expand_audit PRIVATE x3d_cpp::x3d_cpp x3d_doctest_main)
+    target_compile_definitions(x3d_proto_expand_audit PRIVATE
+        X3D_PARSE_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/runtime/parse/tests/data")
+    add_test(NAME x3d_proto_expand_audit COMMAND x3d_proto_expand_audit)
 
     # Re-emit <Inline url=.../>
     # via expandedInlines and do not serialize the synthetic Group's child content.

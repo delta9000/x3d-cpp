@@ -40,6 +40,19 @@ endforeach()
 add_custom_target(sai_provider_all DEPENDS
     sai_provider_native sai_provider_reference sai_provider_parity)
 
+# The adapter's evidence tests below are doctest suites. Their entry point is
+# compiled here from the runtime's test_support copy, or from the copy the
+# relocation script puts beside the sources (the installed packages carry no
+# test framework).
+if(SAI_PROVIDER_INSTALLED)
+  set(_doctest_dir "${CMAKE_CURRENT_LIST_DIR}/test_support")
+else()
+  set(_doctest_dir "${X3D_CPP_SOURCE_DIR}/runtime/test_support")
+endif()
+add_library(provider_proof_doctest_main STATIC "${_doctest_dir}/doctest_main.cpp")
+target_include_directories(provider_proof_doctest_main PUBLIC "${_doctest_dir}")
+target_compile_features(provider_proof_doctest_main PUBLIC cxx_std_20)
+
 # Native diagnostic/extraction evidence is a separate extension, never part of
 # the normative provider contract. The source is copied for relocated testing.
 if(SAI_PROVIDER_INSTALLED)
@@ -49,7 +62,8 @@ else()
 endif()
 add_executable(sai_provider_native_runtime "${_evidence}")
 target_link_libraries(sai_provider_native_runtime PRIVATE
-  x3d_cpp::sai_provider x3d_cpp::x3d_cpp x3d::sai_provider_fixture)
+  x3d_cpp::sai_provider x3d_cpp::x3d_cpp x3d::sai_provider_fixture
+  provider_proof_doctest_main)
 add_test(NAME sai_provider_native_runtime COMMAND sai_provider_native_runtime)
 set_tests_properties(sai_provider_native_runtime PROPERTIES TIMEOUT 30)
 add_dependencies(sai_provider_all sai_provider_native_runtime)
@@ -62,7 +76,8 @@ else()
   set(_allocation "${X3D_CPP_SOURCE_DIR}/adapters/sai_provider/tests/allocation_failure_test.cpp")
 endif()
 add_executable(sai_provider_allocation_failure "${_allocation}")
-target_link_libraries(sai_provider_allocation_failure PRIVATE x3d_cpp::sai_provider)
+target_link_libraries(sai_provider_allocation_failure PRIVATE
+  x3d_cpp::sai_provider provider_proof_doctest_main)
 add_test(NAME sai_provider_allocation_failure COMMAND sai_provider_allocation_failure)
 set_tests_properties(sai_provider_allocation_failure PROPERTIES TIMEOUT 30)
 add_dependencies(sai_provider_all sai_provider_allocation_failure)
@@ -75,7 +90,8 @@ else()
   set(_presentation "${X3D_CPP_SOURCE_DIR}/adapters/sai_provider/tests/presentation_test.cpp")
 endif()
 add_executable(sai_provider_presentation "${_presentation}")
-target_link_libraries(sai_provider_presentation PRIVATE x3d_cpp::sai_provider)
+target_link_libraries(sai_provider_presentation PRIVATE
+  x3d_cpp::sai_provider provider_proof_doctest_main)
 add_test(NAME sai_provider_presentation COMMAND sai_provider_presentation)
 set_tests_properties(sai_provider_presentation PROPERTIES TIMEOUT 120)
 add_dependencies(sai_provider_all sai_provider_presentation)
@@ -89,7 +105,7 @@ endif()
 add_executable(sai_provider_adopt_session "${_adoption}")
 # sdk supplies x3d/sdk.hpp in both source and relocated package consumers.
 target_link_libraries(sai_provider_adopt_session PRIVATE
-  x3d_cpp::sai_provider x3d_cpp::sdk)
+  x3d_cpp::sai_provider x3d_cpp::sdk provider_proof_doctest_main)
 add_test(NAME sai_provider_adopt_session COMMAND sai_provider_adopt_session)
 set_tests_properties(sai_provider_adopt_session PROPERTIES TIMEOUT 30)
 add_dependencies(sai_provider_all sai_provider_adopt_session)

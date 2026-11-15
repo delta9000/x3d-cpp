@@ -166,7 +166,7 @@ layer are documented in [Room and device input](room-and-device-input.md).
 - `x3d_ext_external_geometry_roundtrip` (`runtime/ext/tests/external_geometry_roundtrip_test.cpp`) — EXTERNPROTO expansion with `install()`, `expandedSources`, XML round-trip without a raw `<ExternalGeometry>` element, graceful degradation without `install()`, and URN delegation.
 - `x3d_ext_external_geometry_e2e` (`runtime/ext/tests/external_geometry_e2e_test.cpp`) — lazy materialization to a packed `RenderItem`, URL cache reuse, and pending URLs.
 - `x3d_stl_write_test` and `x3d_extract_oracle_test` (`tools/x3d-cli/`) — binary STL writing and the differential extraction oracle.
-- `x3d_ext_cave_tests` (`runtime/ext/tests/cave_extensions_test.cpp`) registers one CTest case per behavior:
+- `x3d_ext_cave_tests` (`runtime/ext/tests/cave_extensions_test.cpp`) is a doctest binary; each behavior is a doctest case tagged with its suite, and CMake registers one CTest case per suite (`--test-suite=<name>`):
 
 | CTest name | Assertions |
 |---|---|

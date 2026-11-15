@@ -32,7 +32,7 @@ static std::shared_ptr<X3DNode> firstRoot(const runtime::X3DDocument &doc) {
 // After expansion the root node should be a Sphere with radius == 7.0f.
 // "field" is the VRML97 alias for initializeOnly; codec::accessTypeFromName
 // already handles it, so no reader change is required.
-TEST_CASE("vrml97 proto: vrml97 proto expand") {
+TEST_CASE("vrml97 proto: a VRML97 PROTO with eventIn and eventOut expands") {
   const char *wrl =
       "#VRML V2.0 utf8\n"
       "PROTO Ball [ field SFFloat r 2.0 ] {\n"
