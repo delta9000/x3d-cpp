@@ -10,7 +10,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_decl_body_roundtrip_test") {
+TEST_CASE("proto decl body roundtrip: a ProtoInstance nested in a ProtoBody is re-emitted") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='Leaf'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -32,5 +32,4 @@ TEST_CASE("proto_decl_body_roundtrip_test") {
   CHECK((pi != std::string::npos));
   // It carries the Leaf name.
   CHECK((out.find("name=\"Leaf\"", pi) != std::string::npos));
-  return;
 }

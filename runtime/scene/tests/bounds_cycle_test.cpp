@@ -27,7 +27,7 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("bounds_cycle_test") {
+TEST_CASE("bounds cycle: containment cycles do not break bounds") {
   // A real Box so the union is meaningful: Group L > Shape > Box(size 2).
   auto leaf = createX3DNode("Group");
   auto shape = createX3DNode("Shape");
@@ -64,5 +64,4 @@ TEST_CASE("bounds_cycle_test") {
   // checked.
   setF(b, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   setF(selfie, "children", std::any(std::vector<std::shared_ptr<X3DNode>>{}));
-  return;
 }

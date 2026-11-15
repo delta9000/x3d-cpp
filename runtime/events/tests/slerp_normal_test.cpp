@@ -21,14 +21,14 @@ bool isUnit(const SFVec3f &v) {
 bool near(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 
 // Antipodal normals (dot == -1 exactly): must return a finite unit vector.
-void test_antipodal_no_nan() {
+TEST_CASE("slerp normal: antipodal no NaN") {
   SFVec3f r = slerpNormal({0, 0, 1}, {0, 0, -1}, 0.5f);
   CHECK_MESSAGE((finite3(r)), ("antipodal slerpNormal returns finite (no NaN)"));
   CHECK_MESSAGE((isUnit(r)), ("antipodal slerpNormal returns a unit vector"));
 }
 
 // Near-antipodal: dot just above -1 must also stay finite/unit.
-void test_near_antipodal_no_nan() {
+TEST_CASE("slerp normal: near antipodal no NaN") {
   // Slightly perturbed antipode.
   double e = 1e-7;
   double len = std::sqrt(e * e + 1.0);
@@ -39,7 +39,7 @@ void test_near_antipodal_no_nan() {
 }
 
 // Endpoints (t=0, t=1) are exact.
-void test_endpoints() {
+TEST_CASE("slerp normal: endpoints") {
   SFVec3f a{1, 0, 0}, b{0, 1, 0};
   SFVec3f r0 = slerpNormal(a, b, 0.0f);
   SFVec3f r1 = slerpNormal(a, b, 1.0f);
@@ -48,7 +48,7 @@ void test_endpoints() {
 }
 
 // 90-degree apart: midpoint lies on the great-circle arc at 45 degrees.
-void test_ninety_degrees() {
+TEST_CASE("slerp normal: ninety degrees") {
   SFVec3f a{1, 0, 0}, b{0, 1, 0};
   SFVec3f m = slerpNormal(a, b, 0.5f);
   CHECK_MESSAGE((finite3(m) && isUnit(m)), ("90-degree midpoint finite unit"));
@@ -57,7 +57,7 @@ void test_ninety_degrees() {
 }
 
 // Identical normals (dot == +1): finite unit, equals input.
-void test_identical() {
+TEST_CASE("slerp normal: identical") {
   SFVec3f r = slerpNormal({0, 1, 0}, {0, 1, 0}, 0.5f);
   CHECK_MESSAGE((finite3(r) && isUnit(r)), ("identical normals finite unit"));
   CHECK_MESSAGE((near(r.y, 1)), ("identical normals return the input direction"));
@@ -65,12 +65,3 @@ void test_identical() {
 
 } // namespace
 
-TEST_CASE("slerp_normal_test") {
-  test_antipodal_no_nan();
-  test_near_antipodal_no_nan();
-  test_endpoints();
-  test_ninety_degrees();
-  test_identical();
-
-  return;
-}

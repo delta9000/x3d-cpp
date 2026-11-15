@@ -37,7 +37,7 @@ bool floatsNear(float a, float b, float eps = 1e-5f) {
   return std::fabs(a - b) <= eps;
 }
 // 1. SFMatrix3f/3d/4f/4d — row-major order (§5.3.8..5.3.11)
-void testMatrix4fIdentityWire() {
+TEST_CASE("fval extended: Matrix4f identity wire") {
   // Default identity per spec: "1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1".
   SFMatrix4f id{};
   for (int r = 0; r < 4; ++r)
@@ -48,7 +48,7 @@ void testMatrix4fIdentityWire() {
         "SFMatrix4f identity wire form matches spec default");
 }
 
-void testMatrix4fRowMajor() {
+TEST_CASE("fval extended: Matrix4f row major") {
   // Distinct values per cell; row-major means m[0][0]..m[0][3] appear first.
   SFMatrix4f m{};
   float k = 1.0f;
@@ -65,7 +65,7 @@ void testMatrix4fRowMajor() {
   CHECK_MESSAGE((t[15] == "17"), "SFMatrix4f m[3][3] is the last token");
 }
 
-void testMatrix4fTranslation() {
+TEST_CASE("fval extended: Matrix4f translation") {
   // Translation lives in the fourth row per §5.3.11 (row-major; tx ty tz 1).
   SFMatrix4f m{};
   for (int r = 0; r < 4; ++r)
@@ -83,7 +83,7 @@ void testMatrix4fTranslation() {
         "SFMatrix4f translation lives in row 3 (4th row, per §5.3.11)");
 }
 
-void testMatrix4fRoundTrip() {
+TEST_CASE("fval extended: Matrix4f round trip") {
   SFMatrix4f m{};
   float k = 0.0f;
   for (int r = 0; r < 4; ++r)
@@ -100,7 +100,7 @@ void testMatrix4fRoundTrip() {
   CHECK_MESSAGE((eq), "SFMatrix4f round-trips through formatValue/parseValue");
 }
 
-void testMatrix3fRoundTrip() {
+TEST_CASE("fval extended: Matrix3f round trip") {
   // 3x3 identity default per §5.3.9: "1 0 0 0 1 0 0 0 1".
   SFMatrix3f id{};
   for (int r = 0; r < 3; ++r)
@@ -119,7 +119,7 @@ void testMatrix3fRoundTrip() {
   CHECK_MESSAGE((eq), "SFMatrix3f round-trips");
 }
 
-void testMatrix3dRoundTrip() {
+TEST_CASE("fval extended: Matrix3d round trip") {
   SFMatrix3d m{};
   double k = 0.0;
   for (int r = 0; r < 3; ++r)
@@ -137,7 +137,7 @@ void testMatrix3dRoundTrip() {
   CHECK_MESSAGE((eq), "SFMatrix3d round-trips");
 }
 
-void testMatrix4dRowMajor() {
+TEST_CASE("fval extended: Matrix4d row major") {
   // Row-major: m[0][0] first, m[3][3] last.
   SFMatrix4d m{};
   double k = 1.0;
@@ -151,7 +151,7 @@ void testMatrix4dRowMajor() {
   CHECK_MESSAGE((t[15] == "17"), "SFMatrix4d m[3][3] is last (row-major)");
 }
 
-void testMFMatrix4fRoundTrip() {
+TEST_CASE("fval extended: MFMatrix4f round trip") {
   // Two 4x4 matrices concatenated.
   SFMatrix4f a{}, b{};
   float k = 0.0f;
@@ -181,7 +181,7 @@ void testMFMatrix4fRoundTrip() {
   CHECK_MESSAGE((eq), "MFMatrix4f second matrix cell-by-cell matches");
 }
 // 2. SFImage / MFImage — packing, empty form, hex (§5.3.6)
-void testImageEmpty() {
+TEST_CASE("fval extended: image empty") {
   // Default SFImage is (0 0 0). Round-trip the empty form.
   SFImage img{};
   img.width = 0; img.height = 0; img.numComponents = 0;
@@ -193,7 +193,7 @@ void testImageEmpty() {
   CHECK_MESSAGE((img2.data.empty()), "SFImage empty data vector is empty");
 }
 
-void testImageOneComponent() {
+TEST_CASE("fval extended: image one component") {
   // 1-component: each pixel is one byte.
   SFImage img{1, 1, 1, {0xFF}};
   std::string wire = formatValue(X3DFieldType::SFImage, std::any(img));
@@ -203,7 +203,7 @@ void testImageOneComponent() {
         "SFImage 1-component round-trip preserves byte value");
 }
 
-void testImageThreeComponentPacking() {
+TEST_CASE("fval extended: image three component packing") {
   // 3-component: high byte first. Pixel 0xFF0000 (red) must pack to "16711680".
   SFImage img{1, 1, 3, {0xFF, 0x00, 0x00}};
   std::string wire = formatValue(X3DFieldType::SFImage, std::any(img));
@@ -216,7 +216,7 @@ void testImageThreeComponentPacking() {
         "SFImage 3-component unpacks to red byte sequence");
 }
 
-void testImageFourComponent() {
+TEST_CASE("fval extended: image four component") {
   // 4-component RGBA: 0x0000FF80 (semi-transparent blue).
   SFImage img{1, 1, 4, {0x00, 0x00, 0xFF, 0x80}};
   std::string wire = formatValue(X3DFieldType::SFImage, std::any(img));
@@ -229,7 +229,7 @@ void testImageFourComponent() {
         "SFImage 4-component unpacks RGBA in byte order");
 }
 
-void testImageHexPixel() {
+TEST_CASE("fval extended: image hex pixel") {
   // The spec allows hex pixel tokens (e.g. "0xFF0000"). Parse must accept them.
   auto img = std::any_cast<SFImage>(
       parseValue(X3DFieldType::SFImage, "1 1 3 0xFF0000"));
@@ -240,7 +240,7 @@ void testImageHexPixel() {
         "SFImage hex-form pixel decodes to bytes");
 }
 
-void testImageTwoByTwo() {
+TEST_CASE("fval extended: image two by two") {
   // 2x2 image with 4 bytes per pixel.
   SFImage img{2, 2, 4, {0x11, 0x22, 0x33, 0x44,
                         0x55, 0x66, 0x77, 0x88,
@@ -253,7 +253,7 @@ void testImageTwoByTwo() {
   CHECK_MESSAGE((img2.data == img.data), "SFImage 2x2 byte-for-byte round-trip");
 }
 
-void testMFImage() {
+TEST_CASE("fval extended: MFImage") {
   SFImage a{1, 1, 1, {0x42}};
   SFImage b{2, 1, 3, {0xFF, 0x00, 0x00, 0x00, 0xFF, 0x00}};
   std::vector<SFImage> mfs{a, b};
@@ -270,7 +270,7 @@ void testMFImage() {
         "MFImage per-image byte sequence preserved");
 }
 // 3. SFColorRGBA — distinct from SFColor; 4-component emission (§5.3.3)
-void testColorRGBAEmitsFourComponents() {
+TEST_CASE("fval extended: color RGBA emits four components") {
   SFColorRGBA c{0.25f, 0.5f, 0.75f, 1.0f};
   std::string wire = formatValue(X3DFieldType::SFColorRGBA, std::any(c));
   auto t = split(wire);
@@ -280,7 +280,7 @@ void testColorRGBAEmitsFourComponents() {
         "SFColorRGBA 4th token is the alpha component");
 }
 
-void testColorRGBADistinctFromColor() {
+TEST_CASE("fval extended: color RGBA distinct from color") {
   // Same first three components; the SFColor wire form has 3 tokens, SFColorRGBA
   // has 4. The type system must distinguish them at format time.
   SFColor c3{0.1f, 0.2f, 0.3f};
@@ -293,7 +293,7 @@ void testColorRGBADistinctFromColor() {
         "SFColorRGBA carries the alpha (4th) component on the wire");
 }
 
-void testColorRGBARoundTrip() {
+TEST_CASE("fval extended: color RGBA round trip") {
   SFColorRGBA c{0.1f, 0.2f, 0.3f, 0.9f};
   std::string wire = formatValue(X3DFieldType::SFColorRGBA, std::any(c));
   auto c2 = std::any_cast<SFColorRGBA>(
@@ -303,7 +303,7 @@ void testColorRGBARoundTrip() {
         "SFColorRGBA round-trips all 4 components");
 }
 
-void testColorRGBAParseDefaults() {
+TEST_CASE("fval extended: color RGBA parse defaults") {
   // Spec default is (0 0 0 0); parser must zero-fill missing alpha.
   auto c = std::any_cast<SFColorRGBA>(
       parseValue(X3DFieldType::SFColorRGBA, "0.5 0.5 0.5"));
@@ -312,7 +312,7 @@ void testColorRGBAParseDefaults() {
         "SFColorRGBA parser zero-fills missing alpha");
 }
 
-void testMFColorRGBARoundTrip() {
+TEST_CASE("fval extended: MFColor RGBA round trip") {
   std::vector<SFColorRGBA> v{{0.1f, 0.2f, 0.3f, 0.4f},
                              {0.5f, 0.6f, 0.7f, 0.8f}};
   std::string wire = formatValue(X3DFieldType::MFColorRGBA, std::any(v));
@@ -329,7 +329,7 @@ void testMFColorRGBARoundTrip() {
   CHECK_MESSAGE((eq), "MFColorRGBA per-element all 4 components preserved");
 }
 // 4. MFString bracket handling
-void testMFStringBare() {
+TEST_CASE("fval extended: MFString bare") {
   // Bare form (the canonical wire form for parseValue).
   auto v = std::any_cast<std::vector<std::string>>(
       parseValue(X3DFieldType::MFString, "\"a\" \"b c\" \"d\""));
@@ -337,14 +337,14 @@ void testMFStringBare() {
         "MFString bare form parses 3 quoted elements");
 }
 
-void testMFStringEmpty() {
+TEST_CASE("fval extended: MFString empty") {
   // Empty input -> empty vector (not an error).
   auto v = std::any_cast<std::vector<std::string>>(
       parseValue(X3DFieldType::MFString, ""));
   CHECK_MESSAGE((v.empty()), "MFString empty input -> empty vector");
 }
 
-void testMFStringRoundTrip() {
+TEST_CASE("fval extended: MFString round trip") {
   std::vector<std::string> v{"hello", "world", "with \"quote\" and \\ slash"};
   std::string wire = formatValue(X3DFieldType::MFString, std::any(v));
   auto v2 = std::any_cast<std::vector<std::string>>(
@@ -352,7 +352,7 @@ void testMFStringRoundTrip() {
   CHECK_MESSAGE((v == v2), "MFString round-trip preserves embedded \\\" and \\\\");
 }
 
-void testMFStringEscapes() {
+TEST_CASE("fval extended: MFString escapes") {
   // Escaped backslash and quote in the wire form must decode correctly.
   auto v = std::any_cast<std::vector<std::string>>(
       parseValue(X3DFieldType::MFString, "\"a\\\"b\" \"c\\\\d\""));
@@ -360,7 +360,7 @@ void testMFStringEscapes() {
         "MFString \\\" and \\\\ escape sequences decode");
 }
 
-void testMFStringBracketSymmetry() {
+TEST_CASE("fval extended: MFString bracket symmetry") {
   // VRML writer brackets MF values as `[ "a" "b" ]`. parseValue must
   // accept the bracketed form so a wire string harvested from VRML output
   // parses the same as the bare form.
@@ -371,7 +371,7 @@ void testMFStringBracketSymmetry() {
         "MFString parseValue strips leading '[' and trailing ']'");
 }
 // 5. parseEnumString / stripEnumQuotes — uniform across sites
-void testStripEnumQuotes() {
+TEST_CASE("fval extended: strip enum quotes") {
   // Direct call: bare token unchanged.
   CHECK_MESSAGE((stripEnumQuotes("FLY") == "FLY"),
         "stripEnumQuotes: bare token unchanged");
@@ -388,7 +388,7 @@ void testStripEnumQuotes() {
 }
 
 // 6. fmtFloat / fmtDouble locale
-void testFloatFormatLocaleIndependent() {
+TEST_CASE("fval extended: float format locale independent") {
   // Install a comma-decimal locale if available; format must still use '.'.
   bool installed = false;
   try {
@@ -423,14 +423,14 @@ void testFloatFormatLocaleIndependent() {
   std::locale::global(std::locale::classic());
 }
 
-void testFloatFormatLocaleNaN() {
+TEST_CASE("fval extended: float format locale NaN") {
   // Under default locale, format a non-integer float: must use '.'.
   std::string sf = formatValue(X3DFieldType::SFFloat, std::any(0.5f));
   CHECK_MESSAGE((contains(sf, ".")), "SFFloat default locale: '.' decimal");
   CHECK_MESSAGE((!contains(sf, ",")), "SFFloat default locale: no ',' separator");
 }
 
-void testFloatParseRejectsComma() {
+TEST_CASE("fval extended: float parse rejects comma") {
   // Comma-decimal input: std::from_chars reads the leading integer '3' and
   // stops at the ',' (it never accepts ',' as a decimal separator). The result
   // is 3.0 (not the locale-interpreted 3.14) — i.e. the wire value is not
@@ -442,7 +442,7 @@ void testFloatParseRejectsComma() {
         "(locale-independent; '.' is the only decimal point accepted)");
 }
 // 7. SFRotation / MFRotation — angle in radians; round-trip (§5.3.13)
-void testRotationDefault() {
+TEST_CASE("fval extended: rotation default") {
   // Spec default: (0 0 1 0).
   SFRotation r{};
   r.x = 0; r.y = 0; r.z = 1; r.angle = 0;
@@ -451,7 +451,7 @@ void testRotationDefault() {
         "SFRotation default wire form matches spec (0 0 1 0)");
 }
 
-void testRotationCustomRoundTrip() {
+TEST_CASE("fval extended: rotation custom round trip") {
   // 90 degrees about Z, expressed in radians.
   SFRotation r{0.0f, 0.0f, 1.0f, 1.5707963f};
   std::string wire = formatValue(X3DFieldType::SFRotation, std::any(r));
@@ -462,7 +462,7 @@ void testRotationCustomRoundTrip() {
         "SFRotation round-trips (axis + angle in radians)");
 }
 
-void testRotationAxisVector() {
+TEST_CASE("fval extended: rotation axis vector") {
   // Non-trivial axis: rotate about (1,1,0)/sqrt(2) by PI/3.
   SFRotation r{0.7071068f, 0.7071068f, 0.0f, 1.0471976f};
   std::string wire = formatValue(X3DFieldType::SFRotation, std::any(r));
@@ -472,7 +472,7 @@ void testRotationAxisVector() {
         "SFRotation angle in radians (not degrees / not zero)");
 }
 
-void testMFRotationRoundTrip() {
+TEST_CASE("fval extended: MFRotation round trip") {
   std::vector<SFRotation> v{{0, 0, 1, 0},
                             {1, 0, 0, 3.14159265f},
                             {0.5f, 0.5f, 0.5f, 0.7853981f}};
@@ -492,7 +492,7 @@ void testMFRotationRoundTrip() {
   CHECK_MESSAGE((eq), "MFRotation per-rotation all 4 components preserved");
 }
 
-void testRotationParseZeroAxis() {
+TEST_CASE("fval extended: rotation parse zero axis") {
   // Degenerate: zero axis vector (rotation undefined) must still parse
   // without crashing (spec allows any x/y/z; default axis is (0 0 1)).
   auto r = std::any_cast<SFRotation>(
@@ -501,7 +501,7 @@ void testRotationParseZeroAxis() {
         "SFRotation: parses zero-axis vector without crash");
 }
 // 7. Shortest-round-trip float formatting
-void testShortestRoundTripFormatting() {
+TEST_CASE("fval extended: shortest round trip formatting") {
   // Shortest round-trip formatting keeps 0.9f as "0.9".
   auto sf = [](float v) {
     return formatValue(X3DFieldType::SFFloat, std::any(v));
@@ -532,55 +532,3 @@ void testShortestRoundTripFormatting() {
 
 } // namespace
 
-TEST_CASE("fval_extended_test") {
-  // Section 1: matrix row-major
-  testMatrix4fIdentityWire();
-  testMatrix4fRowMajor();
-  testMatrix4fTranslation();
-  testMatrix4fRoundTrip();
-  testMatrix3fRoundTrip();
-  testMatrix3dRoundTrip();
-  testMatrix4dRowMajor();
-  testMFMatrix4fRoundTrip();
-
-  // Section 2: SFImage / MFImage
-  testImageEmpty();
-  testImageOneComponent();
-  testImageThreeComponentPacking();
-  testImageFourComponent();
-  testImageHexPixel();
-  testImageTwoByTwo();
-  testMFImage();
-
-  // Section 3: SFColorRGBA
-  testColorRGBAEmitsFourComponents();
-  testColorRGBADistinctFromColor();
-  testColorRGBARoundTrip();
-  testColorRGBAParseDefaults();
-  testMFColorRGBARoundTrip();
-
-  // Section 4: MFString brackets
-  testMFStringBare();
-  testMFStringEmpty();
-  testMFStringRoundTrip();
-  testMFStringEscapes();
-  testMFStringBracketSymmetry();
-
-  // Section 5: enum aliasing
-  testStripEnumQuotes();
-
-  // Section 6: locale
-  testFloatFormatLocaleIndependent();
-  testShortestRoundTripFormatting();
-  testFloatFormatLocaleNaN();
-  testFloatParseRejectsComma();
-
-  // Section 7: rotation
-  testRotationDefault();
-  testRotationCustomRoundTrip();
-  testRotationAxisVector();
-  testMFRotationRoundTrip();
-  testRotationParseZeroAxis();
-
-  return;
-}

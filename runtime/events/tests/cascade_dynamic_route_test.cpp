@@ -29,7 +29,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 // A handler that fires mid-cascade adds a brand-new ROUTE to the very graph the
 // cascade is iterating. This must not invalidate any reference held across the
 // handler call (no crash/UB); the new edge is honored on the next cascade.
-void test_mid_cascade_addroute_no_crash() {
+TEST_CASE("cascade dynamic route: mid cascade addroute no crash") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
   auto c = std::make_shared<Transform>();
@@ -78,7 +78,7 @@ void test_mid_cascade_addroute_no_crash() {
 }
 
 // removeRoute stops delivery along that edge.
-void test_remove_route_stops_delivery() {
+TEST_CASE("cascade dynamic route: remove route stops delivery") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -98,9 +98,3 @@ void test_remove_route_stops_delivery() {
 
 } // namespace
 
-TEST_CASE("cascade_dynamic_route_test") {
-  test_mid_cascade_addroute_no_crash();
-  test_remove_route_stops_delivery();
-
-  return;
-}

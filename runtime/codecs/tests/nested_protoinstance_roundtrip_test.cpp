@@ -36,7 +36,7 @@ static bool hasLiveParent(const x3d::runtime::ProtoInstance &inst) {
   return !inst.parent.expired();
 }
 
-TEST_CASE("nested_protoinstance_roundtrip_test") {
+TEST_CASE("nested protoinstance roundtrip: nested extern instance stays nested through every writer") {
   // Parse original.
   sdk::X3DDocument orig =
       sdk::parseDocument(kScene, sdk::Encoding::XML);
@@ -85,6 +85,4 @@ TEST_CASE("nested_protoinstance_roundtrip_test") {
             (label + "round-trip Widget retains live parent (nested in Shape, not promoted to root)"));
     }
   }
-
-  return;
 }

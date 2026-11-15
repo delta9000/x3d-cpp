@@ -10,7 +10,7 @@ using namespace x3d::runtime;
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-TEST_CASE("cascade_observer_test") {
+TEST_CASE("cascade observer: the observer sees seeded and routed deliveries") {
   auto a = createX3DNode("TimeSensor");
   auto b = createX3DNode("PositionInterpolator");
   // ROUTE a.fraction_changed -> b.set_fraction so a delivered event fans out.
@@ -34,5 +34,4 @@ TEST_CASE("cascade_observer_test") {
     if (p.first == b.get() && p.second == "set_fraction") sawSink = true;
   }
   CHECK((sawSource && sawSink));
-  return;
 }

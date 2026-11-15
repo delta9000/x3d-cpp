@@ -60,7 +60,7 @@ struct Rig {
 // Drive a ray straight down -Z from z=10 toward the origin.
 Ray downZ() { return Ray{{0, 0, 10}, {0, 0, -1}}; }
 
-void test_geo_touch() {
+TEST_CASE("pointing sensor: geo touch") {
   auto origin = std::make_shared<GeoOrigin>();
   origin->setGeoSystemUnchecked(MFString{"GC"});
   origin->setGeoCoords(SFVec3d{6378137, 0, 0});
@@ -91,7 +91,7 @@ void test_geo_touch() {
 // ADR-0053: under a translated parent the geographic hit is the geo form of
 // the sensor-local hit point (the frame hitPoint_changed uses), not of the raw
 // world point.
-void test_geo_touch_under_transform() {
+TEST_CASE("pointing sensor: geo touch under transform") {
   auto origin = std::make_shared<GeoOrigin>();
   origin->setGeoSystemUnchecked(MFString{"GC"});
   origin->setGeoCoords(SFVec3d{6378137, 0, 0});
@@ -113,7 +113,7 @@ void test_geo_touch_under_transform() {
             std::fabs(actual.z - expected.z) < 1e-3), ("GeoTouchSensor hitGeoCoord uses the sensor-local hit under a Transform"));
 }
 // (1) isOver enter/leave + no-event-when-unchanged.
-void test_isOver_and_no_event_when_unchanged() {
+TEST_CASE("pointing sensor: is over and no event when unchanged") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<TouchSensor>();
   auto shape = boxShape();
@@ -140,7 +140,7 @@ void test_isOver_and_no_event_when_unchanged() {
 }
 // (2) resolution = lowest sensor on the path (nested sensors).
 //     outer Group[sensorOuter, inner Group[sensorInner, box]]
-void test_lowest_sensor_wins() {
+TEST_CASE("pointing sensor: lowest sensor wins") {
   auto outer = std::make_shared<Group>();
   auto sensorOuter = std::make_shared<TouchSensor>();
   auto inner = std::make_shared<Group>();
@@ -161,7 +161,7 @@ void test_lowest_sensor_wins() {
 }
 // (3) nearest geometry's sensor wins (two boxes at different depths).
 //     groupNear[sensorNear, boxNear@z=1]  groupFar[sensorFar, boxFar@z=-5]
-void test_nearest_geometry() {
+TEST_CASE("pointing sensor: nearest geometry") {
   auto root = std::make_shared<Group>();
   // near
   auto gNear = std::make_shared<Group>();
@@ -193,7 +193,7 @@ void test_nearest_geometry() {
 // (4) hitPoint/hitNormal in the sensor frame under a translated Transform.
 //     Transform(translation (5,0,0)) > Group[sensor, box]. World hit at
 //     (5,0,1) on the +Z face → sensor-local (0,0,1); normal world +Z → +Z.
-void test_hit_in_sensor_frame_translated() {
+TEST_CASE("pointing sensor: hit in sensor frame translated") {
   auto xform = std::make_shared<Transform>();
   setF(xform, "translation", std::any(SFVec3f{5, 0, 0}));
   auto group = std::make_shared<Group>();
@@ -216,7 +216,7 @@ void test_hit_in_sensor_frame_translated() {
 // (4) rotated Transform: 90° about +Y. World +Z face normal rotates so that,
 //     pulled back into the sensor frame, hitNormal is again the box-local +Z.
 //     A ray from +X hits the rotated box's face that points toward +X in world.
-void test_hit_in_sensor_frame_rotated() {
+TEST_CASE("pointing sensor: hit in sensor frame rotated") {
   auto xform = std::make_shared<Transform>();
   // 90° about Y: box-local +Z maps to world +X.
   setF(xform, "rotation", std::any(SFRotation{0, 1, 0, 1.57079632679f}));
@@ -242,7 +242,7 @@ void test_hit_in_sensor_frame_rotated() {
 }
 // (4b) hitTexCoord — PRIMITIVE (Box §13.3.1) and invariance under the sensor
 //      transform. Box +Z face center → texcoord (0.5,0.5).
-void test_hitTexCoord_primitive_invariant() {
+TEST_CASE("pointing sensor: hit tex coord primitive invariant") {
   auto makeScene = [](SFVec3f tr) {
     auto xform = std::make_shared<Transform>();
     setF(xform, "translation", std::any(tr));
@@ -279,7 +279,7 @@ void test_hitTexCoord_primitive_invariant() {
 // (4b) hitTexCoord — MESH (barycentric). A single quad in the z=0 plane spanning
 //      x,y in [-1,1] with texcoords mapping the unit square. A ray down -Z at
 //      the quad center hits texcoord (0.5,0.5).
-void test_hitTexCoord_mesh_barycentric() {
+TEST_CASE("pointing sensor: hit tex coord mesh barycentric") {
   auto ifs = std::make_shared<IndexedFaceSet>();
   auto coord = std::make_shared<Coordinate>();
   setF(coord, "point",
@@ -310,7 +310,7 @@ void test_hitTexCoord_mesh_barycentric() {
 }
 // (5) isActive + touchTime click. Down-over→up-over ⇒ touchTime==now;
 //     up-after-leave ⇒ no touchTime.
-void test_isActive_touchTime() {
+TEST_CASE("pointing sensor: is active touch time") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<TouchSensor>();
   addChild(group, sensor);
@@ -349,7 +349,7 @@ void test_isActive_touchTime() {
 }
 //  enabled=`FALSE` during an active drag: the grabbed sensor must stop
 //        tracking and deactivate (isActive `FALSE`), not keep emitting.
-void test_drag_enabled_false_mid_drag() {
+TEST_CASE("pointing sensor: drag enabled false mid drag") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<PlaneSensor>();
   addChild(group, sensor);
@@ -373,7 +373,7 @@ void test_drag_enabled_false_mid_drag() {
 }
 // (6) grab exclusivity. During an active drag, moving onto a second sensor's
 //     geometry must emit no events to the second sensor.
-void test_grab_exclusivity() {
+TEST_CASE("pointing sensor: grab exclusivity") {
   auto root = std::make_shared<Group>();
   auto gA = std::make_shared<Group>();
   auto sA = std::make_shared<TouchSensor>();
@@ -407,7 +407,7 @@ void test_grab_exclusivity() {
 }
 // (7) enabled=`FALSE`: disabled sensor produces nothing; next-lowest enabled
 //     sensor resolves instead. inner sensor disabled → outer resolves.
-void test_disabled_sensor_skipped() {
+TEST_CASE("pointing sensor: disabled sensor skipped") {
   auto outer = std::make_shared<Group>();
   auto sensorOuter = std::make_shared<TouchSensor>();
   auto inner = std::make_shared<Group>();
@@ -433,7 +433,7 @@ void test_disabled_sensor_skipped() {
 //       translation_changed=(0.5,0,0) (default unclamped, offset 0)
 //     - button-up with autoOffset (default `TRUE`) → offset == last translation
 //       and isActive `FALSE`
-void test_planesensor_drag_and_autoOffset() {
+TEST_CASE("pointing sensor: planesensor drag and auto offset") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<PlaneSensor>();
   addChild(group, sensor);
@@ -471,7 +471,7 @@ void test_planesensor_drag_and_autoOffset() {
 // (9) PlaneSensor offset accumulation + min/max clamp. With offset=(1,0,0) and
 //     minPosition=(0,0) maxPosition=(2,0) (Y locked at 0): a drag of +0.5 in X
 //     gives unclamped X = 0.5 + 1.0 = 1.5 (within [0,2]); Y locked to 0.
-void test_planesensor_offset_and_clamp() {
+TEST_CASE("pointing sensor: planesensor offset and clamp") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<PlaneSensor>();
   setF(sensor, "offset", std::any(SFVec3f{1, 0, 0}));
@@ -498,25 +498,6 @@ void test_planesensor_offset_and_clamp() {
 
 } // namespace
 
-TEST_CASE("pointing_sensor_test") {
-  test_geo_touch();
-  test_geo_touch_under_transform();
-  test_isOver_and_no_event_when_unchanged();
-  test_lowest_sensor_wins();
-  test_nearest_geometry();
-  test_hit_in_sensor_frame_translated();
-  test_hit_in_sensor_frame_rotated();
-  test_hitTexCoord_primitive_invariant();
-  test_hitTexCoord_mesh_barycentric();
-  test_isActive_touchTime();
-  test_drag_enabled_false_mid_drag();
-  test_grab_exclusivity();
-  test_disabled_sensor_skipped();
-  test_planesensor_drag_and_autoOffset();
-  test_planesensor_offset_and_clamp();
-
-  return;
-}
 
 TEST_CASE("tied lowest pointing sensors all receive the event") {
   auto group = std::make_shared<Group>();

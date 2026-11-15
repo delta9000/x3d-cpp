@@ -32,60 +32,60 @@ template <class N> struct Rig {
 };
 } // namespace
 
-TEST_CASE("media_time_test") {
-  { // AudioClip, known duration 4 s at pitch 2: one pass lasts 2 s.
-    Rig<AudioClip> r;
-    r.node->emitDuration_changed(4.0);
-    r.node->setPitch(2.0f);
-    r.node->setStartTime(1.0);
-    r.ctx.tick(0.5);
-    CHECK_MESSAGE((!r.active()), ("audio: idle before startTime"));
-    r.ctx.tick(1.0);
-    CHECK_MESSAGE((r.active()), ("audio: isActive TRUE at startTime"));
-    r.ctx.tick(2.0);
-    CHECK_MESSAGE((r.active() && deq(r.elapsed(), 1.0)), ("audio: elapsedTime counts playback"));
-    r.node->setPauseTime(2.5);  // 1.5 s of the 2 s pass played by the pause
-    r.ctx.tick(2.5);
-    CHECK_MESSAGE((r.paused()), ("audio: pauseTime pauses (isPaused TRUE)"));
-    r.node->setResumeTime(3.0);
-    r.ctx.tick(3.0);
-    CHECK_MESSAGE((!r.paused()), ("audio: resumeTime resumes"));
-    r.ctx.tick(3.4);  // 0.5 s left after resuming at 3.0; without the pause it ended at 3.0
-    CHECK_MESSAGE((r.active()), ("audio: the paused span does not count toward the pass"));
-    r.ctx.tick(3.6);
-    CHECK_MESSAGE((!r.active()), ("audio: a non-looping clip stops after duration / pitch"));
-  }
-  { // Looping clip keeps playing past one pass.
-    Rig<AudioClip> r;
-    r.node->emitDuration_changed(1.0);
-    r.node->setLoop(true);
-    r.ctx.tick(0.0);
-    r.ctx.tick(3.5);
-    CHECK_MESSAGE((r.active()), ("audio: loop TRUE keeps the clip active"));
-  }
-  { // Unknown duration (-1 before load): plays until stopTime.
-    Rig<AudioClip> r;
-    r.ctx.tick(0.0);
-    r.ctx.tick(100.0);
-    CHECK_MESSAGE((r.active()), ("audio: unknown duration plays until stopTime"));
-    r.node->setStopTime(150.0);
-    r.ctx.tick(151.0);
-    CHECK_MESSAGE((!r.active()), ("audio: stopTime stops it"));
-  }
-  { // MovieTexture: duration / speed, disabled nodes never start.
-    Rig<MovieTexture> r;
-    r.node->emitDuration_changed(6.0);
-    r.node->setSpeed(3.0f);
-    r.ctx.tick(0.0);
-    CHECK_MESSAGE((r.active()), ("movie: isActive TRUE at startTime"));
-    r.ctx.tick(2.1);
-    CHECK_MESSAGE((!r.active()), ("movie: a pass lasts duration / speed"));
-    Rig<MovieTexture> off;
-    off.node->setEnabled(false);
-    off.ctx.tick(0.0);
-    CHECK_MESSAGE((!off.active()), ("movie: enabled FALSE never activates"));
-  }
+TEST_CASE("media time: AudioClip pass length is duration over pitch") { // AudioClip, known duration 4 s at pitch 2: one pass lasts 2 s.
+  Rig<AudioClip> r;
+  r.node->emitDuration_changed(4.0);
+  r.node->setPitch(2.0f);
+  r.node->setStartTime(1.0);
+  r.ctx.tick(0.5);
+  CHECK_MESSAGE((!r.active()), ("audio: idle before startTime"));
+  r.ctx.tick(1.0);
+  CHECK_MESSAGE((r.active()), ("audio: isActive TRUE at startTime"));
+  r.ctx.tick(2.0);
+  CHECK_MESSAGE((r.active() && deq(r.elapsed(), 1.0)), ("audio: elapsedTime counts playback"));
+  r.node->setPauseTime(2.5);  // 1.5 s of the 2 s pass played by the pause
+  r.ctx.tick(2.5);
+  CHECK_MESSAGE((r.paused()), ("audio: pauseTime pauses (isPaused TRUE)"));
+  r.node->setResumeTime(3.0);
+  r.ctx.tick(3.0);
+  CHECK_MESSAGE((!r.paused()), ("audio: resumeTime resumes"));
+  r.ctx.tick(3.4);  // 0.5 s left after resuming at 3.0; without the pause it ended at 3.0
+  CHECK_MESSAGE((r.active()), ("audio: the paused span does not count toward the pass"));
+  r.ctx.tick(3.6);
+  CHECK_MESSAGE((!r.active()), ("audio: a non-looping clip stops after duration / pitch"));
+}
 
+TEST_CASE("media time: looping AudioClip plays past one pass") { // Looping clip keeps playing past one pass.
+  Rig<AudioClip> r;
+  r.node->emitDuration_changed(1.0);
+  r.node->setLoop(true);
+  r.ctx.tick(0.0);
+  r.ctx.tick(3.5);
+  CHECK_MESSAGE((r.active()), ("audio: loop TRUE keeps the clip active"));
+}
+
+TEST_CASE("media time: AudioClip with unknown duration plays until stopTime") { // Unknown duration (-1 before load): plays until stopTime.
+  Rig<AudioClip> r;
+  r.ctx.tick(0.0);
+  r.ctx.tick(100.0);
+  CHECK_MESSAGE((r.active()), ("audio: unknown duration plays until stopTime"));
+  r.node->setStopTime(150.0);
+  r.ctx.tick(151.0);
+  CHECK_MESSAGE((!r.active()), ("audio: stopTime stops it"));
+}
+
+TEST_CASE("media time: MovieTexture pass length is duration over speed") { // MovieTexture: duration / speed, disabled nodes never start.
+  Rig<MovieTexture> r;
+  r.node->emitDuration_changed(6.0);
+  r.node->setSpeed(3.0f);
+  r.ctx.tick(0.0);
+  CHECK_MESSAGE((r.active()), ("movie: isActive TRUE at startTime"));
+  r.ctx.tick(2.1);
+  CHECK_MESSAGE((!r.active()), ("movie: a pass lasts duration / speed"));
+  Rig<MovieTexture> off;
+  off.node->setEnabled(false);
+  off.ctx.tick(0.0);
+  CHECK_MESSAGE((!off.active()), ("movie: enabled FALSE never activates"));
 }
 
 TEST_CASE("MovieTexture ignores speed changes while active") {

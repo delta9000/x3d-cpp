@@ -25,7 +25,7 @@ static void expectKept(const sdk::X3DDocument &d, const std::string &label) {
         (label + ": VRML retains MFEnum tokens"));
 }
 
-TEST_CASE("enum_quote_test") {
+TEST_CASE("enum quote: quoted SFEnum and MFEnum tokens survive every encoding") {
   sdk::X3DDocument orig = sdk::parseDocument(kScene, sdk::Encoding::XML);
   expectKept(orig, "parse(XML)");
   // Reparse each encoding's output and confirm the tokens still survive — proves
@@ -33,7 +33,6 @@ TEST_CASE("enum_quote_test") {
   expectKept(sdk::parseDocument(sdk::XmlWriter().writeDocument(orig),  sdk::Encoding::XML),         "rt(XML)");
   expectKept(sdk::parseDocument(sdk::JsonWriter().writeDocument(orig), sdk::Encoding::JSON),        "rt(JSON)");
   expectKept(sdk::parseDocument(sdk::VrmlWriter().writeDocument(orig), sdk::Encoding::ClassicVRML), "rt(VRML)");
-  return;
 }
 
 // The readers' name->type lookup is derived from the writers' fieldTypeName(),

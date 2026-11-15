@@ -23,7 +23,7 @@ static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {
 //
 // This verifies initializeOnly value-forwarding via the reflection setter
 // (setSizeUnchecked). Box.size is initializeOnly and has a set thunk.
-static void localValueForwardTest() {
+TEST_CASE("proto expand: local value forward") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Param";
   ProtoField pf;
@@ -59,7 +59,7 @@ static void localValueForwardTest() {
 // reader could only type as the SFString fallback) must not throw out of
 // expansion: the typed setter's bad_any_cast is caught and turned into an
 // InterfaceMismatch warning, and expansion still yields the primary node.
-static void mistypedValueLenientTest() {
+TEST_CASE("proto expand: mistyped value lenient") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Param";
   ProtoField pf;
@@ -98,7 +98,7 @@ static void mistypedValueLenientTest() {
 // coerce the string override through the enum-string setter — exactly as the
 // normal reader does for `<EspduTransform networkMode='networkReader'/>` — so
 // the value actually lands instead of throwing bad_any_cast.
-static void enumValueForwardTest() {
+TEST_CASE("proto expand: enum value forward") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Net";
   ProtoField pf;
@@ -131,7 +131,7 @@ static void enumValueForwardTest() {
 }
 
 // Verify that the default value is used when the instance provides no override.
-static void localDefaultForwardTest() {
+TEST_CASE("proto expand: local default forward") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Defaulted";
   ProtoField pf;
@@ -162,7 +162,7 @@ static void localDefaultForwardTest() {
 }
 
 // Verify that a missing declaration yields a MissingDeclaration warning + null.
-static void missingDeclarationTest() {
+TEST_CASE("proto expand: missing declaration") {
   x3d::runtime::ProtoInstance inst;
   inst.name = "Ghost";
   // inst.declaration left null
@@ -178,7 +178,7 @@ static void missingDeclarationTest() {
   CHECK((warnings[0].instanceName == "Ghost"));
 }
 
-static void routesAndRedirectsTest() {
+TEST_CASE("proto expand: routes and redirects") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "Anim";
   // interface: value_changed (SFVec3f, outputOnly)
@@ -216,7 +216,7 @@ static void routesAndRedirectsTest() {
          byField["value_changed"][0].targetNode->nodeTypeName() == "PositionInterpolator"));
 }
 
-static void externResolveTest() {
+TEST_CASE("proto expand: extern resolve") {
   auto inst = std::make_shared<x3d::runtime::ProtoInstance>();
   inst->name = "ExtBox";
   auto ext = std::make_shared<ExternProtoDeclaration>();
@@ -253,7 +253,7 @@ static void externResolveTest() {
          w3[0].kind == ProtoWarning::Kind::RecursionLimit));
 }
 
-static void expandSceneSpliceTest() {
+TEST_CASE("proto expand: expand scene splice") {
   Scene scene;
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "P"; decl->body.nodes.push_back(createX3DNode("Box"));
@@ -293,7 +293,7 @@ static void expandSceneSpliceTest() {
 // A ProtoInstance nested inside a proto body (e.g. inside a Transform that is a
 // body node) must be expanded once per outer instantiation and spliced into the
 // clone of its parent — not dropped, not attached to the template.
-static void nestedInBodyExpandTest() {
+TEST_CASE("proto expand: nested in body expand") {
   // Inner proto "Leaf": body = [ Box ].
   auto leaf = std::make_shared<ProtoDeclaration>();
   leaf->name = "Leaf";
@@ -350,7 +350,7 @@ static void nestedInBodyExpandTest() {
 
 // Nested ProtoInstance field wiring through `field IS protoField` on the nested
 // instance itself must forward outer overrides/defaults into the inner instance.
-static void nestedInstanceIsConnectForwardTest() {
+TEST_CASE("proto expand: nested instance is connect forward") {
   auto anyShape = std::make_shared<ProtoDeclaration>();
   anyShape->name = "anyShape";
   ProtoField anyPf;
@@ -459,19 +459,6 @@ static void nestedInstanceIsConnectForwardTest() {
   CHECK(warnings.empty());
 }
 
-TEST_CASE("proto_expand_test") {
-  localValueForwardTest();
-  mistypedValueLenientTest();
-  enumValueForwardTest();
-  localDefaultForwardTest();
-  missingDeclarationTest();
-  routesAndRedirectsTest();
-  externResolveTest();
-  expandSceneSpliceTest();
-  nestedInBodyExpandTest();
-  nestedInstanceIsConnectForwardTest();
-  return;
-}
 
 TEST_CASE("PROTO node defaults belong to each instance") {
   auto decl = std::make_shared<ProtoDeclaration>();

@@ -102,64 +102,69 @@ runtime::X3DDocument buildSampleDocument() {
 
 } // namespace
 
-TEST_CASE("roundtrip_test") {
+TEST_CASE("roundtrip: sample document") {
   codec::XmlWriter xmlWriter;
   codec::XmlReader xmlReader;
   codec::JsonWriter jsonWriter;
   codec::VrmlWriter vrmlWriter;
   runtime::X3DDocument doc = buildSampleDocument();
-  std::string xml1 = xmlWriter.writeDocument(doc);
-  runtime::X3DDocument doc2 = xmlReader.readDocument(xml1);
-  std::string xml2 = xmlWriter.writeDocument(doc2);
-  CHECK_MESSAGE((canon(xml1) == canon(xml2)),
-        "XML round-trip is stable modulo whitespace");
-  CHECK_MESSAGE((doc2.scene.rootNodes.size() == 2), "two root nodes parsed back");
-  auto root = std::dynamic_pointer_cast<Transform>(doc2.scene.rootNodes[0]);
-  CHECK_MESSAGE((static_cast<bool>(root)), "first root is a Transform");
-  std::shared_ptr<X3DNode> app1, app2;
-  if (root) {
-    const auto &kids = root->getChildren();
-    CHECK_MESSAGE((kids.size() == 2), "transform has two children");
-    if (kids.size() == 2) {
-      auto s1 = std::dynamic_pointer_cast<Shape>(kids[0]);
-      auto s2 = std::dynamic_pointer_cast<Shape>(kids[1]);
-      CHECK_MESSAGE((s1 && s2), "both children are Shapes");
-      if (s1 && s2) {
-        app1 = s1->getAppearance();
-        app2 = s2->getAppearance();
+
+  SUBCASE("XML round trip keeps DEF/USE, ROUTEs and meta") {
+    std::string xml1 = xmlWriter.writeDocument(doc);
+    runtime::X3DDocument doc2 = xmlReader.readDocument(xml1);
+    std::string xml2 = xmlWriter.writeDocument(doc2);
+    CHECK_MESSAGE((canon(xml1) == canon(xml2)),
+          "XML round-trip is stable modulo whitespace");
+    CHECK_MESSAGE((doc2.scene.rootNodes.size() == 2), "two root nodes parsed back");
+    auto root = std::dynamic_pointer_cast<Transform>(doc2.scene.rootNodes[0]);
+    CHECK_MESSAGE((static_cast<bool>(root)), "first root is a Transform");
+    std::shared_ptr<X3DNode> app1, app2;
+    if (root) {
+      const auto &kids = root->getChildren();
+      CHECK_MESSAGE((kids.size() == 2), "transform has two children");
+      if (kids.size() == 2) {
+        auto s1 = std::dynamic_pointer_cast<Shape>(kids[0]);
+        auto s2 = std::dynamic_pointer_cast<Shape>(kids[1]);
+        CHECK_MESSAGE((s1 && s2), "both children are Shapes");
+        if (s1 && s2) {
+          app1 = s1->getAppearance();
+          app2 = s2->getAppearance();
+        }
       }
     }
+    CHECK_MESSAGE((app1 && app2 && app1.get() == app2.get()),
+          "DEF/USE-shared Appearance is ONE shared_ptr after round-trip");
+    CHECK_MESSAGE((app1.use_count() >= 2), "shared Appearance use_count reflects sharing");
+    CHECK_MESSAGE((doc2.scene.routes.size() == 1), "one ROUTE parsed back");
+    if (doc2.scene.routes.size() == 1) {
+      const auto &r = doc2.scene.routes[0];
+      CHECK_MESSAGE((r.fromNode == "Clock" && r.fromField == "fraction_changed" &&
+                r.toNode == "Root" && r.toField == "set_translation"),
+            "ROUTE endpoints preserved");
+      CHECK_MESSAGE((!r.from.expired() && !r.to.expired()),
+            "ROUTE resolved to live node endpoints via DEF table");
+    }
+    CHECK_MESSAGE((doc2.head.meta.size() == 1 && doc2.head.meta[0].name == "title"),
+          "head <meta> survives round-trip");
   }
-  CHECK_MESSAGE((app1 && app2 && app1.get() == app2.get()),
-        "DEF/USE-shared Appearance is ONE shared_ptr after round-trip");
-  CHECK_MESSAGE((app1.use_count() >= 2), "shared Appearance use_count reflects sharing");
-  CHECK_MESSAGE((doc2.scene.routes.size() == 1), "one ROUTE parsed back");
-  if (doc2.scene.routes.size() == 1) {
-    const auto &r = doc2.scene.routes[0];
-    CHECK_MESSAGE((r.fromNode == "Clock" && r.fromField == "fraction_changed" &&
-              r.toNode == "Root" && r.toField == "set_translation"),
-          "ROUTE endpoints preserved");
-    CHECK_MESSAGE((!r.from.expired() && !r.to.expired()),
-          "ROUTE resolved to live node endpoints via DEF table");
+  SUBCASE("JSON output") {
+    std::string json = jsonWriter.writeDocument(doc);
+
+    CHECK_MESSAGE((json.find("\"Transform\"") != std::string::npos &&
+              json.find("\"@USE\"") != std::string::npos &&
+              json.find("\"-children\"") != std::string::npos),
+          "JSON output contains node, USE reference, and child array");
   }
-  CHECK_MESSAGE((doc2.head.meta.size() == 1 && doc2.head.meta[0].name == "title"),
-        "head <meta> survives round-trip");
-  std::string json = jsonWriter.writeDocument(doc);
+  SUBCASE("ClassicVRML output") {
+    std::string vrml = vrmlWriter.writeDocument(doc);
 
-  CHECK_MESSAGE((json.find("\"Transform\"") != std::string::npos &&
-            json.find("\"@USE\"") != std::string::npos &&
-            json.find("\"-children\"") != std::string::npos),
-        "JSON output contains node, USE reference, and child array");
-  std::string vrml = vrmlWriter.writeDocument(doc);
-
-  CHECK_MESSAGE((vrml.find("#X3D V4.0 utf8") != std::string::npos &&
-            vrml.find("DEF Root Transform") != std::string::npos &&
-            vrml.find("USE SharedApp") != std::string::npos &&
-            vrml.find("ROUTE Clock.fraction_changed TO Root.set_translation") !=
-                std::string::npos),
-        "ClassicVRML output contains header, DEF, USE, and ROUTE");
-
-  return;
+    CHECK_MESSAGE((vrml.find("#X3D V4.0 utf8") != std::string::npos &&
+              vrml.find("DEF Root Transform") != std::string::npos &&
+              vrml.find("USE SharedApp") != std::string::npos &&
+              vrml.find("ROUTE Clock.fraction_changed TO Root.set_translation") !=
+                  std::string::npos),
+          "ClassicVRML output contains header, DEF, USE, and ROUTE");
+  }
 }
 
 // USE retains shared identity (ISO/IEC 19775-1 §4.4.3) and ROUTEs retain endpoints

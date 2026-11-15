@@ -18,7 +18,7 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("bounds_shared_subgraph_test") {
+TEST_CASE("bounds shared subgraph: a 2^50-path shared diamond is bounded in linear time") {
   // leaf Group > Shape > Box(size 2); local bounds [-1,1].
   auto leaf = createX3DNode("Group");
   auto shape = createX3DNode("Shape");
@@ -45,5 +45,4 @@ TEST_CASE("bounds_shared_subgraph_test") {
   CHECK((feq(rb.min.y, -1) && feq(rb.max.y, 1)));
   Aabb lb = bs.localBounds(leaf.get());
   CHECK((feq(lb.size().x, 2)));
-  return;
 }

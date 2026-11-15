@@ -35,7 +35,7 @@ bool threwRuntimeError(const std::function<void()> &fn) {
   return false;
 }
 // 1. Encoding::sniff precedence.
-void testSniffPrecedence() {
+TEST_CASE("encoding lex audit: sniff precedence") {
 
   // Content overrides a wrong extension (.wrl file that is really X3D
   // ClassicVRML).
@@ -79,7 +79,7 @@ const unsigned char kSyntheticGzip[] = {
     0x4c, 0x06, 0x00, 0x3c, 0x5e, 0xb7, 0xc0, 0x0f, 0x00, 0x00, 0x00,
 };
 
-void testInflate() {
+TEST_CASE("encoding lex audit: inflate") {
 
   // Synthetic round-trip.
   std::string gz(reinterpret_cast<const char *>(kSyntheticGzip),
@@ -140,7 +140,7 @@ void testInflate() {
   }
 }
 // 3. VrmlTokenizer: punctuation, comments, comma, numbers, escapes.
-void testVrmlTokenizer() {
+TEST_CASE("encoding lex audit: VRML tokenizer") {
 
   // Header-line skip via firstLineIsHeader.
   VrmlTokenizer h("#X3D V4.0 utf8\nPROFILE Interchange\n",
@@ -200,7 +200,7 @@ void testVrmlTokenizer() {
   CHECK_MESSAGE((tail.isWord("tail")), "tok: '- 1' splits: 'tail' follows");
 }
 // 4. JsonLite: numberLexeme, BOM, trailing ws, escapes, \uXXXX, surrogate.
-void testJsonLite() {
+TEST_CASE("encoding lex audit: JSON lite") {
 
   // Integer lexeme preservation: '3' not '3.0'.
   {
@@ -276,15 +276,3 @@ void testJsonLite() {
 
 } // namespace
 
-TEST_CASE("encoding_lex_audit_test") {
-
-  testSniffPrecedence();
-
-  testInflate();
-
-  testVrmlTokenizer();
-
-  testJsonLite();
-
-  return;
-}

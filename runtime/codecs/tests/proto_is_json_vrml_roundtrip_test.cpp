@@ -22,7 +22,7 @@ static int countIs(const runtime::Scene &scene, const std::string &nodeField,
   return n;
 }
 
-TEST_CASE("proto_is_json_vrml_roundtrip_test") {
+TEST_CASE("proto is json vrml roundtrip: depth-1 and depth-2 IS survive") {
   // Ground-truth source: an XML PROTO with a depth-1 IS (Transform.translation
   // IS pos) and a depth-2 IS (Box.size IS boxSize inside a Shape inside the
   // Transform).
@@ -45,7 +45,7 @@ TEST_CASE("proto_is_json_vrml_roundtrip_test") {
   auto doc0 = codec::parseDocument(xml);
   CHECK((countIs(doc0.scene, "translation", "pos") == 1));
   CHECK((countIs(doc0.scene, "size", "boxSize") == 1));
-  {
+  SUBCASE("JSON round trip") {
     std::string js = codec::JsonWriter().writeDocument(doc0);
     // The IS block must be emitted (matching the JsonReader's connect shape).
     CHECK((js.find("\"IS\"") != std::string::npos));
@@ -55,7 +55,7 @@ TEST_CASE("proto_is_json_vrml_roundtrip_test") {
     CHECK((countIs(docJ.scene, "translation", "pos") == 1));
     CHECK((countIs(docJ.scene, "size", "boxSize") == 1)); // deep IS survives JSON
   }
-  {
+  SUBCASE("ClassicVRML round trip") {
     std::string vr = codec::VrmlWriter().writeDocument(doc0);
     // `field IS protoField` lines must be emitted inside the node bodies.
     CHECK((vr.find("translation IS pos") != std::string::npos));
@@ -64,6 +64,4 @@ TEST_CASE("proto_is_json_vrml_roundtrip_test") {
     CHECK((countIs(docV.scene, "translation", "pos") == 1));
     CHECK((countIs(docV.scene, "size", "boxSize") == 1)); // deep IS survives VRML
   }
-
-  return;
 }

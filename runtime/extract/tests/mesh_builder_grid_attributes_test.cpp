@@ -48,7 +48,7 @@ static std::shared_ptr<X3DNode> makeGrid() {
 
 static int latticeOf(int i, int j) { return j * 3 + i; }
 
-TEST_CASE("ext001_elevationgrid_authored_normal_per_vertex") {
+TEST_CASE("elevationgrid_authored_normal_per_vertex") {
   auto g = makeGrid();
   std::vector<SFVec3f> nrm(9);
   for (int j = 0; j < 3; ++j)
@@ -67,7 +67,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_vertex") {
     CHECK(vecEq(m.normals[c], nrm[m.latticeIndex[c]]));
 }
 
-TEST_CASE("ext001_elevationgrid_authored_normal_per_quad") {
+TEST_CASE("elevationgrid_authored_normal_per_quad") {
   auto g = makeGrid();
   std::vector<SFVec3f> nrm = {{0, 0, 1}, {0, 0, -1}, {1, 0, 0}, {-1, 0, 0}};
   attachNormal(g, nrm);
@@ -81,7 +81,7 @@ TEST_CASE("ext001_elevationgrid_authored_normal_per_quad") {
     CHECK(vecEq(m.normals[c], nrm[c / 6]));
 }
 
-TEST_CASE("ext001_elevationgrid_authored_color_per_vertex") {
+TEST_CASE("elevationgrid_authored_color_per_vertex") {
   auto g = makeGrid();
   std::vector<SFColor> col(9);
   for (int j = 0; j < 3; ++j)
@@ -100,7 +100,7 @@ TEST_CASE("ext001_elevationgrid_authored_color_per_vertex") {
   }
 }
 
-TEST_CASE("ext001_elevationgrid_authored_color_per_quad") {
+TEST_CASE("elevationgrid_authored_color_per_quad") {
   auto g = makeGrid();
   std::vector<SFColor> col = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 1}};
   attachColor(g, col);
@@ -115,7 +115,7 @@ TEST_CASE("ext001_elevationgrid_authored_color_per_quad") {
   }
 }
 
-TEST_CASE("ext001_geoelevationgrid_authored_color_per_vertex") {
+TEST_CASE("geoelevationgrid_authored_color_per_vertex") {
   auto g = createX3DNode("GeoElevationGrid");
   setF(g, "xDimension", std::any(3));
   setF(g, "zDimension", std::any(3));

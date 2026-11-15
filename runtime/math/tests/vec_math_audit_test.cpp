@@ -14,110 +14,100 @@ static bool veq(const SFVec3f& a, const SFVec3f& b, float eps = 1e-4f) {
   return feq(a.x,b.x,eps) && feq(a.y,b.y,eps) && feq(a.z,b.z,eps);
 }
 
-TEST_CASE("vec_math_audit_test") {
-  // 1. quatFromRotation with zero axis → falls back to +Y (normalized)
-  {
-    Quat q = quatFromRotation(SFRotation{0,0,0,0});
-    CHECK((feq(static_cast<float>(q.x), 0.0f)));
-    CHECK((feq(static_cast<float>(q.y), 0.0f)));
-    CHECK((feq(static_cast<float>(q.z), 0.0f)));
-    CHECK((feq(static_cast<float>(q.w), 1.0f)));
-  }
-  {
-    Quat q = quatFromRotation(SFRotation{0,0,0, static_cast<float>(std::numbers::pi)});
-    CHECK((feq(static_cast<float>(q.x), 0.0f)));
-    CHECK((feq(static_cast<float>(q.y), 1.0f))); // axis became +Y, sin(pi/2)=1
-    CHECK((feq(static_cast<float>(q.z), 0.0f)));
-    CHECK((feq(static_cast<float>(q.w), 0.0f))); // cos(pi/2)=0
-  }
+TEST_CASE("vec math audit: quatFromRotation with zero axis → falls back to +Y (normalized)") {
+  Quat q = quatFromRotation(SFRotation{0,0,0,0});
+  CHECK((feq(static_cast<float>(q.x), 0.0f)));
+  CHECK((feq(static_cast<float>(q.y), 0.0f)));
+  CHECK((feq(static_cast<float>(q.z), 0.0f)));
+  CHECK((feq(static_cast<float>(q.w), 1.0f)));
+}
 
-  // 2. rotationFromQuat with near-zero vector length → identity about +Y
-  {
-    SFRotation r = rotationFromQuat(Quat{0,0,0,1});
-    CHECK((feq(r.x, 0.0f)));
-    CHECK((feq(r.y, 1.0f)));
-    CHECK((feq(r.z, 0.0f)));
-    CHECK((feq(r.angle, 0.0f)));
-  }
+TEST_CASE("vec math audit: quatFromRotation with zero axis and angle pi picks +Y") {
+  Quat q = quatFromRotation(SFRotation{0,0,0, static_cast<float>(std::numbers::pi)});
+  CHECK((feq(static_cast<float>(q.x), 0.0f)));
+  CHECK((feq(static_cast<float>(q.y), 1.0f))); // axis became +Y, sin(pi/2)=1
+  CHECK((feq(static_cast<float>(q.z), 0.0f)));
+  CHECK((feq(static_cast<float>(q.w), 0.0f))); // cos(pi/2)=0
+}
 
-  // 3. Matrix inversion: singular matrices return identity (documented fallback)
-  {
-    Mat4 zero;
-    Mat4 zi = zero.inverse();
-    CHECK((feq(zi.m[0], 1) && feq(zi.m[5], 1) && feq(zi.m[10], 1) && feq(zi.m[15], 1)));
+TEST_CASE("vec math audit: rotationFromQuat with near-zero vector length → identity about +Y") {
+  SFRotation r = rotationFromQuat(Quat{0,0,0,1});
+  CHECK((feq(r.x, 0.0f)));
+  CHECK((feq(r.y, 1.0f)));
+  CHECK((feq(r.z, 0.0f)));
+  CHECK((feq(r.angle, 0.0f)));
+}
 
-    // Scale with a zero component → det = 0
-    Mat4 sz = Mat4::scale({1,0,2});
-    Mat4 szi = sz.inverse();
-    CHECK((feq(szi.m[0], 1) && feq(szi.m[5], 1) && feq(szi.m[10], 1) && feq(szi.m[15], 1)));
+TEST_CASE("vec math audit: singular matrices invert to identity") {
+  Mat4 zero;
+  Mat4 zi = zero.inverse();
+  CHECK((feq(zi.m[0], 1) && feq(zi.m[5], 1) && feq(zi.m[10], 1) && feq(zi.m[15], 1)));
 
-    // Pure translation has det=1, should invert correctly
-    Mat4 t = Mat4::translation({3,-2,5});
-    Mat4 ti = t.inverse();
-    CHECK((veq(ti.transformPoint({3,-2,5}), {0,0,0})));
-  }
+  // Scale with a zero component → det = 0
+  Mat4 sz = Mat4::scale({1,0,2});
+  Mat4 szi = sz.inverse();
+  CHECK((feq(szi.m[0], 1) && feq(szi.m[5], 1) && feq(szi.m[10], 1) && feq(szi.m[15], 1)));
 
-  // 4. slerp antipodal quaternions → shorter path, valid unit result
-  {
-    Quat q1{0, 1, 0, 0};   // 180° about Y
-    Quat q2{0, -1, 0, 0};  // antipodal representation of same rotation
-    Quat r = slerp(q1, q2, 0.5);
-    double len = std::sqrt(r.x*r.x + r.y*r.y + r.z*r.z + r.w*r.w);
-    CHECK((feq(static_cast<float>(len), 1.0f, 1e-3f)));
-  }
+  // Pure translation has det=1, should invert correctly
+  Mat4 t = Mat4::translation({3,-2,5});
+  Mat4 ti = t.inverse();
+  CHECK((veq(ti.transformPoint({3,-2,5}), {0,0,0})));
+}
 
-  // 5. transformMatrix precision: TRS composition round-trip on points
-  {
-    SFVec3f t{1.0f, 2.0f, 3.0f};
-    SFRotation rot{0,0,1, static_cast<float>(std::numbers::pi/4.0)};
-    SFVec3f s{2.0f, 2.0f, 2.0f};
-    Mat4 m = transformMatrix(t, rot, s, {0,0,0}, {0,0,1,0});
+TEST_CASE("vec math audit: slerp antipodal quaternions → shorter path, valid unit result") {
+  Quat q1{0, 1, 0, 0};   // 180° about Y
+  Quat q2{0, -1, 0, 0};  // antipodal representation of same rotation
+  Quat r = slerp(q1, q2, 0.5);
+  double len = std::sqrt(r.x*r.x + r.y*r.y + r.z*r.z + r.w*r.w);
+  CHECK((feq(static_cast<float>(len), 1.0f, 1e-3f)));
+}
 
-    // Origin maps to translation
-    CHECK((veq(m.transformPoint({0,0,0}), t)));
+TEST_CASE("vec math audit: transformMatrix precision: TRS composition round-trip on points") {
+  SFVec3f t{1.0f, 2.0f, 3.0f};
+  SFRotation rot{0,0,1, static_cast<float>(std::numbers::pi/4.0)};
+  SFVec3f s{2.0f, 2.0f, 2.0f};
+  Mat4 m = transformMatrix(t, rot, s, {0,0,0}, {0,0,1,0});
 
-    // Directions omit translation
-    CHECK((veq(m.transformDirection({0,0,0}), {0,0,0})));
+  // Origin maps to translation
+  CHECK((veq(m.transformPoint({0,0,0}), t)));
 
-    // Identity transform round-trip
-    Mat4 id = transformMatrix({0,0,0}, {0,0,1,0}, {1,1,1}, {0,0,0}, {0,0,1,0});
-    CHECK((veq(id.transformPoint({1,2,3}), {1,2,3})));
-  }
+  // Directions omit translation
+  CHECK((veq(m.transformDirection({0,0,0}), {0,0,0})));
 
-  // 6. rayTriangle/rayTriangleBary with degenerate triangles → nullopt
-  {
-    // Collinear triangle
-    SFVec3f v0{0,0,0}, v1{1,0,0}, v2{2,0,0};
-    CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0,v1,v2)));
+  // Identity transform round-trip
+  Mat4 id = transformMatrix({0,0,0}, {0,0,1,0}, {1,1,1}, {0,0,0}, {0,0,1,0});
+  CHECK((veq(id.transformPoint({1,2,3}), {1,2,3})));
+}
 
-    // Collapsed edge (two identical vertices)
-    SFVec3f v0b{0,0,0}, v1b{1,0,0}, v2b{1,0,0};
-    CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0b,v1b,v2b)));
+TEST_CASE("vec math audit: rayTriangle/rayTriangleBary with degenerate triangles → nullopt") {
+  // Collinear triangle
+  SFVec3f v0{0,0,0}, v1{1,0,0}, v2{2,0,0};
+  CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0,v1,v2)));
 
-    // Ray parallel to triangle plane
-    SFVec3f v0c{0,0,0}, v1c{1,0,0}, v2c{0,1,0};
-    CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{1,0,0}}, v0c,v1c,v2c)));
+  // Collapsed edge (two identical vertices)
+  SFVec3f v0b{0,0,0}, v1b{1,0,0}, v2b{1,0,0};
+  CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0b,v1b,v2b)));
 
-    // Barycentric version with degenerate triangle
-    float u=0,v=0;
-    CHECK((!rayTriangleBary(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0,v1,v2, u, v)));
-  }
+  // Ray parallel to triangle plane
+  SFVec3f v0c{0,0,0}, v1c{1,0,0}, v2c{0,1,0};
+  CHECK((!rayTriangle(Ray{{0.5f,0.5f,5},{1,0,0}}, v0c,v1c,v2c)));
 
-  // 7. slerpNormal with parallel and antipodal vectors
-  {
-    // Parallel
-    SFVec3f a{1,0,0};
-    SFVec3f b{1,0,0};
-    SFVec3f r = slerpNormal(a, b, 0.5f);
-    CHECK((veq(r, a, 1e-3f)));
+  // Barycentric version with degenerate triangle
+  float u=0,v=0;
+  CHECK((!rayTriangleBary(Ray{{0.5f,0.5f,5},{0,0,-1}}, v0,v1,v2, u, v)));
+}
 
-    // Antipodal (fallback to NLERP then return a on zero-length mid-vector)
-    SFVec3f c{0,1,0};
-    SFVec3f d{0,-1,0};
-    SFVec3f ra = slerpNormal(c, d, 0.5f);
-    float len = std::sqrt(ra.x*ra.x + ra.y*ra.y + ra.z*ra.z);
-    CHECK((feq(len, 1.0f, 1e-3f)));
-  }
+TEST_CASE("vec math audit: slerpNormal with parallel and antipodal vectors") {
+  // Parallel
+  SFVec3f a{1,0,0};
+  SFVec3f b{1,0,0};
+  SFVec3f r = slerpNormal(a, b, 0.5f);
+  CHECK((veq(r, a, 1e-3f)));
 
-  return;
+  // Antipodal (fallback to NLERP then return a on zero-length mid-vector)
+  SFVec3f c{0,1,0};
+  SFVec3f d{0,-1,0};
+  SFVec3f ra = slerpNormal(c, d, 0.5f);
+  float len = std::sqrt(ra.x*ra.x + ra.y*ra.y + ra.z*ra.z);
+  CHECK((feq(len, 1.0f, 1e-3f)));
 }

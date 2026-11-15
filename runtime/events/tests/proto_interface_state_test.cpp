@@ -34,7 +34,7 @@ const char *kRelayXml = R"(<X3D version='4.0'><Scene>
 <ROUTE fromNode='RelayNode' fromField='value_changed' toNode='Dest' toField='set_translation'/>
 </Scene></X3D>)";
 
-void test_unmapped_inputoutput_relays() {
+TEST_CASE("proto interface state: unmapped inputoutput relays") {
   auto doc = x3d::codec::parseDocument(kRelayXml, x3d::codec::Encoding::XML);
   Scene &scene = doc.scene;
 
@@ -61,7 +61,7 @@ void test_unmapped_inputoutput_relays() {
   CHECK_MESSAGE((out.x == 1.f && out.y == 2.f && out.z == 3.f), ("route out relayed the changed event to Dest"));
 }
 
-void test_unconnected_keeps_default() {
+TEST_CASE("proto interface state: unconnected keeps default") {
   auto doc = x3d::codec::parseDocument(kRelayXml, x3d::codec::Encoding::XML);
   Scene &scene = doc.scene;
   auto relay = scene.resolve("RelayNode");
@@ -106,7 +106,7 @@ const char *kMappedXml = R"(<X3D version='4.0'><Scene>
 <ROUTE fromNode='M' fromField='value_changed' toNode='Dest' toField='set_translation'/>
 </Scene></X3D>)";
 
-void test_is_connected_unchanged() {
+TEST_CASE("proto interface state: is connected unchanged") {
   auto doc = x3d::codec::parseDocument(kMappedXml, x3d::codec::Encoding::XML);
   Scene &scene = doc.scene;
   auto source = std::dynamic_pointer_cast<Transform>(scene.resolve("Source"));
@@ -157,7 +157,7 @@ SFVec3f storedVec3(const X3DNode &n, const std::string &name,
   return v.has_value() ? std::any_cast<SFVec3f>(v) : SFVec3f{-1, -1, -1};
 }
 
-void test_nested_siblings_do_not_overwrite() {
+TEST_CASE("proto interface state: nested siblings do not overwrite") {
   auto doc = x3d::codec::parseDocument(kNestedXml, x3d::codec::Encoding::XML);
   Scene &scene = doc.scene;
   auto o1 = std::dynamic_pointer_cast<Group>(scene.resolve("O1"));
@@ -216,7 +216,7 @@ const char *kSharedPrimaryXml = R"(<X3D version='4.0'><Scene>
 <ProtoInstance name='Outer' DEF='O'/>
 </Scene></X3D>)";
 
-void test_shared_primary_keeps_both() {
+TEST_CASE("proto interface state: shared primary keeps both") {
   auto doc = x3d::codec::parseDocument(kSharedPrimaryXml,
                                        x3d::codec::Encoding::XML);
   auto primary = doc.scene.resolve("O");
@@ -230,7 +230,7 @@ void test_shared_primary_keeps_both() {
 }
 // EXTERNPROTO: an instance whose declaration comes from the resolver still
 // registers its unconnected interface fields and routes through them.
-void test_externproto_unconnected_field() {
+TEST_CASE("proto interface state: externproto unconnected field") {
   auto decl = std::make_shared<ProtoDeclaration>();
   decl->name = "ExtRelay";
   ProtoField pf;
@@ -275,14 +275,6 @@ void test_externproto_unconnected_field() {
 
 } // namespace
 
-TEST_CASE("proto_interface_state_test") {
-  test_unmapped_inputoutput_relays();
-  test_unconnected_keeps_default();
-  test_is_connected_unchanged();
-  test_nested_siblings_do_not_overwrite();
-  test_shared_primary_keeps_both();
-  test_externproto_unconnected_field();
-}
 
 TEST_CASE("unconnected PROTO MFNode interface relays node identity and empty values") {
   auto doc = x3d::codec::parseDocument(R"(<X3D version='4.0'><Scene>

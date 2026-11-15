@@ -53,11 +53,11 @@ static void assertOutwardWinding(const MeshData &m) {
   }
 }
 
-TEST_CASE("mesh_builder_t4_test") {
+TEST_CASE("mesh builder primitives") {
   const SFVec3f center{0, 0, 0};
 
   // 1. Box: 12 triangles, all normals outward
-  {
+  SUBCASE("Box: 12 triangles, all normals outward") {
     auto g = createX3DNode("Box");
     setF(g, "size", std::any(SFVec3f{2, 2, 2}));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -72,7 +72,7 @@ TEST_CASE("mesh_builder_t4_test") {
   }
 
   // 2. Sphere: default 16x16 UV sphere, radial outward normals
-  {
+  SUBCASE("Sphere: default 16x16 UV sphere, radial outward normals") {
     auto g = createX3DNode("Sphere");
     setF(g, "radius", std::any(SFFloat(1.0f)));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -92,7 +92,7 @@ TEST_CASE("mesh_builder_t4_test") {
   }
 
   // 3. Cone: 24 radial slices, side + bottom cap
-  {
+  SUBCASE("Cone: 24 radial slices, side + bottom cap") {
     auto g = createX3DNode("Cone");
     setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
@@ -116,14 +116,14 @@ TEST_CASE("mesh_builder_t4_test") {
   }
 
   // 3b. Cone with side off -> only bottom cap
-  {
+  SUBCASE("Cone with side off -> only bottom cap") {
     auto g = createX3DNode("Cone");
     setF(g, "side", std::any(SFBool(false)));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 24 * 3)); // bottom cap only
   }
   // 3c. Cone with bottom off -> only side
-  {
+  SUBCASE("Cone with bottom off -> only side") {
     auto g = createX3DNode("Cone");
     setF(g, "bottom", std::any(SFBool(false)));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -131,7 +131,7 @@ TEST_CASE("mesh_builder_t4_test") {
   }
 
   // 4. Cylinder: 24 slices, side + top + bottom
-  {
+  SUBCASE("Cylinder: 24 slices, side + top + bottom") {
     auto g = createX3DNode("Cylinder");
     setF(g, "radius", std::any(SFFloat(1.0f)));
     setF(g, "height", std::any(SFFloat(2.0f)));
@@ -151,7 +151,7 @@ TEST_CASE("mesh_builder_t4_test") {
     assertOutwardWinding(m);
   }
   // 4b. Cylinder caps toggled off -> side only
-  {
+  SUBCASE("Cylinder caps toggled off -> side only") {
     auto g = createX3DNode("Cylinder");
     setF(g, "top", std::any(SFBool(false)));
     setF(g, "bottom", std::any(SFBool(false)));
@@ -160,7 +160,7 @@ TEST_CASE("mesh_builder_t4_test") {
   }
 
   // 5. Density knobs scale the triangle counts
-  {
+  SUBCASE("Density knobs scale the triangle counts") {
     auto g = createX3DNode("Sphere");
     MeshBuildOptions opt;
     opt.sphereRings = 8;
@@ -169,7 +169,7 @@ TEST_CASE("mesh_builder_t4_test") {
     // S*2*(R-1) = 8*2*7 = 112 triangles.
     CHECK((m.indices.size() == 112 * 3));
   }
-  {
+  SUBCASE("Cylinder radialSlices scales the triangle count") {
     auto g = createX3DNode("Cylinder");
     MeshBuildOptions opt;
     opt.radialSlices = 8;
@@ -177,6 +177,4 @@ TEST_CASE("mesh_builder_t4_test") {
     // side 8*2 + top 8 + bottom 8 = 32 tris.
     CHECK((m.indices.size() == 32 * 3));
   }
-
-  return;
 }

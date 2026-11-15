@@ -36,7 +36,7 @@ static void assertScene(const sdk::X3DDocument &d, const std::string &label) {
         (label + ": instance expands to 2 shapes (body-internal USE resolved)"));
 }
 
-TEST_CASE("proto_body_defscope_test") {
+TEST_CASE("proto body defscope: ProtoBody DEFs stay local through every encoding") {
   sdk::X3DDocument orig = sdk::parseDocument(kScene, sdk::Encoding::XML);
   assertScene(orig, "parse");
 
@@ -44,5 +44,4 @@ TEST_CASE("proto_body_defscope_test") {
   assertScene(sdk::parseDocument(sdk::XmlWriter().writeDocument(orig),  sdk::Encoding::XML),         "xml-rt");
   assertScene(sdk::parseDocument(sdk::JsonWriter().writeDocument(orig), sdk::Encoding::JSON),        "json-rt");
   assertScene(sdk::parseDocument(sdk::VrmlWriter().writeDocument(orig), sdk::Encoding::ClassicVRML), "vrml-rt");
-  return;
 }

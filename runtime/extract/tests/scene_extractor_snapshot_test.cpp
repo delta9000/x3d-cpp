@@ -92,169 +92,157 @@ TEST_CASE("FillProperties field edits and replacement update render material") {
   CHECK(ex.item(id).material.fill.hatchStyle == 6);
 }
 
-TEST_CASE("scene_extractor_t7_test") {
-  // 1) Switch whichChoice = -1 (default) draws nothing
-  {
-    auto sw = createX3DNode("Switch");
-    addChild(sw, makeTriShape());
-    addChild(sw, makeTriShape());
-    // whichChoice defaults to -1 — leave unset.
-    Scene scene;
-    scene.addRootNode(sw);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.empty())); // -1 => nothing (NOT the blind first child).
+TEST_CASE("scene extractor snapshot: Switch whichChoice -1 draws nothing") {
+  auto sw = createX3DNode("Switch");
+  addChild(sw, makeTriShape());
+  addChild(sw, makeTriShape());
+  // whichChoice defaults to -1 — leave unset.
+  Scene scene;
+  scene.addRootNode(sw);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.empty())); // -1 => nothing (NOT the blind first child).
+}
+
+TEST_CASE("scene extractor snapshot: Switch whichChoice 1 draws only that child") {
+  auto sw = createX3DNode("Switch");
+  auto child0 = makeTriShape();
+  auto child1 = makeTriShape();
+  addChild(sw, child0);
+  addChild(sw, child1);
+  setF(sw, "whichChoice", std::any(static_cast<std::int32_t>(1)));
+  Scene scene;
+  scene.addRootNode(sw);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1)); // exactly one drawn child.
+  // The drawn item's path passes through child1, not child0.
+  const extract::RenderItem &it = ex.item(snap.added[0]);
+  bool throughChild1 = false, throughChild0 = false;
+  for (const X3DNode *n : it.path) {
+    if (n == child1.get()) throughChild1 = true;
+    if (n == child0.get()) throughChild0 = true;
   }
+  CHECK((throughChild1 && !throughChild0));
+}
 
-  // 2) Switch whichChoice = 1 draws only children[1]
-  {
-    auto sw = createX3DNode("Switch");
-    auto child0 = makeTriShape();
-    auto child1 = makeTriShape();
-    addChild(sw, child0);
-    addChild(sw, child1);
-    setF(sw, "whichChoice", std::any(static_cast<std::int32_t>(1)));
-    Scene scene;
-    scene.addRootNode(sw);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1)); // exactly one drawn child.
-    // The drawn item's path passes through child1, not child0.
-    const extract::RenderItem &it = ex.item(snap.added[0]);
-    bool throughChild1 = false, throughChild0 = false;
-    for (const X3DNode *n : it.path) {
-      if (n == child1.get()) throughChild1 = true;
-      if (n == child0.get()) throughChild0 = true;
-    }
-    CHECK((throughChild1 && !throughChild0));
-  }
+TEST_CASE("scene extractor snapshot: GeoLOD draws its root tile once, not again via its children output") {
+  auto lod = std::make_shared<x3d::nodes::GeoLOD>();
+  auto tile = makeTriShape();
+  lod->setRootNodeUnchecked(MFNode{tile});
+  lod->emitChildren(MFNode{tile});  // what ViewDependentSystem reports
+  Scene scene;
+  scene.addRootNode(lod);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+}
 
-  // 2b) GeoLOD draws its root tile once, not again via its children output
-  {
-    auto lod = std::make_shared<x3d::nodes::GeoLOD>();
-    auto tile = makeTriShape();
-    lod->setRootNodeUnchecked(MFNode{tile});
-    lod->emitChildren(MFNode{tile});  // what ViewDependentSystem reports
-    Scene scene;
-    scene.addRootNode(lod);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1));
-  }
+TEST_CASE("scene extractor snapshot: LOD draws exactly one child") {
+  auto lod = createX3DNode("LOD");
+  addChild(lod, makeTriShape()); // level 0 (highest detail)
+  addChild(lod, makeTriShape()); // level 1
+  addChild(lod, makeTriShape()); // level 2
+  Scene scene;
+  scene.addRootNode(lod);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1)); // exactly one level drawn (not all three).
+}
 
-  // 3) LOD draws exactly one child (level-0 static selection)
-  {
-    auto lod = createX3DNode("LOD");
-    addChild(lod, makeTriShape()); // level 0 (highest detail)
-    addChild(lod, makeTriShape()); // level 1
-    addChild(lod, makeTriShape()); // level 2
-    Scene scene;
-    scene.addRootNode(lod);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1)); // exactly one level drawn (not all three).
-  }
+TEST_CASE("scene extractor snapshot: a Box emits a tessellated item") {
+  auto box = createX3DNode("Box");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+  const extract::RenderItem &it = ex.item(snap.added[0]);
+  CHECK((it.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
+}
 
-  // 4) Box emits a tessellated RenderItem (MeshBuilder wired)
-  {
-    auto box = createX3DNode("Box");
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
-    Scene scene;
-    scene.addRootNode(shape);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1));
-    const extract::RenderItem &it = ex.item(snap.added[0]);
-    CHECK((it.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
-  }
+TEST_CASE("scene extractor snapshot: a Material reaches the MaterialDesc") {
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point",
+       std::any(std::vector<SFVec3f>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
+  auto tri = createX3DNode("TriangleSet");
+  setF(tri, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
 
-  // 5) Shape with a real Material gets the real MaterialDesc
-  {
-    auto coord = createX3DNode("Coordinate");
-    setF(coord, "point",
-         std::any(std::vector<SFVec3f>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
-    auto tri = createX3DNode("TriangleSet");
-    setF(tri, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+  auto material = createX3DNode("Material");
+  setF(material, "diffuseColor", std::any(SFColor{0.1f, 0.2f, 0.3f}));
+  auto app = createX3DNode("Appearance");
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(material)));
 
-    auto material = createX3DNode("Material");
-    setF(material, "diffuseColor", std::any(SFColor{0.1f, 0.2f, 0.3f}));
-    auto app = createX3DNode("Appearance");
-    setF(app, "material", std::any(std::shared_ptr<X3DNode>(material)));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(tri)));
+  setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
 
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(tri)));
-    setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+  const extract::RenderItem &it = ex.item(snap.added[0]);
+  // Real material: Phong, not the Unlit-white stub. (Material.diffuseColor
+  // maps to phong.diffuse in the discriminated-union MaterialDesc.)
+  CHECK((it.material.model == extract::MaterialModel::Phong));
+  CHECK((feq(it.material.phong.diffuse.r, 0.1f)));
+  CHECK((feq(it.material.phong.diffuse.g, 0.2f)));
+  CHECK((feq(it.material.phong.diffuse.b, 0.3f)));
 
-    Scene scene;
-    scene.addRootNode(shape);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1));
-    const extract::RenderItem &it = ex.item(snap.added[0]);
-    // Real material: Phong, not the Unlit-white stub. (Material.diffuseColor
-    // maps to phong.diffuse in the discriminated-union MaterialDesc.)
-    CHECK((it.material.model == extract::MaterialModel::Phong));
-    CHECK((feq(it.material.phong.diffuse.r, 0.1f)));
-    CHECK((feq(it.material.phong.diffuse.g, 0.2f)));
-    CHECK((feq(it.material.phong.diffuse.b, 0.3f)));
+  // reverse indices: the material node resolves to this RenderItem
+  const auto &mids = ex.materialDepsOf(material.get());
+  CHECK((mids.size() == 1 && mids[0] == snap.added[0]));
+  const auto &gids = ex.geomDepsOf(tri.get());
+  CHECK((gids.size() == 1 && gids[0] == snap.added[0]));
+}
 
-    // reverse indices: the material node resolves to this RenderItem
-    const auto &mids = ex.materialDepsOf(material.get());
-    CHECK((mids.size() == 1 && mids[0] == snap.added[0]));
-    const auto &gids = ex.geomDepsOf(tri.get());
-    CHECK((gids.size() == 1 && gids[0] == snap.added[0]));
-  }
+TEST_CASE("scene extractor snapshot: lights() and background() read-outs") {
+  auto dl = createX3DNode("DirectionalLight");
+  auto bg = createX3DNode("Background");
+  setF(bg, "skyColor", std::any(std::vector<SFColor>{{0.2f, 0.3f, 0.4f}}));
+  auto group = createX3DNode("Group");
+  addChild(group, dl);
+  addChild(group, bg);
+  Scene scene;
+  scene.addRootNode(group);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  // Bind the Background so boundBackground() resolves it.
+  ctx.tick(0.0);
+  extract::SceneExtractor ex(ctx, scene);
+  auto lights = ex.lights();
+  CHECK((lights.size() == 1));
+  CHECK((lights[0].type == extract::LightDesc::Type::Directional));
+  // Background read-out is present (skyColor surfaced when bound).
+  auto bgDesc = ex.background();
+  CHECK((bgDesc.backgroundChanged));
+}
 
-  // 6) lights() + background() read-outs
-  {
-    auto dl = createX3DNode("DirectionalLight");
-    auto bg = createX3DNode("Background");
-    setF(bg, "skyColor", std::any(std::vector<SFColor>{{0.2f, 0.3f, 0.4f}}));
-    auto group = createX3DNode("Group");
-    addChild(group, dl);
-    addChild(group, bg);
-    Scene scene;
-    scene.addRootNode(group);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    // Bind the Background so boundBackground() resolves it.
-    ctx.tick(0.0);
-    extract::SceneExtractor ex(ctx, scene);
-    auto lights = ex.lights();
-    CHECK((lights.size() == 1));
-    CHECK((lights[0].type == extract::LightDesc::Type::Directional));
-    // Background read-out is present (skyColor surfaced when bound).
-    auto bgDesc = ex.background();
-    CHECK((bgDesc.backgroundChanged));
-  }
-
-  // 7) camera() surfaces OrthoViewpoint ortho=true
-  {
-    auto ovp = createX3DNode("OrthoViewpoint");
-    Scene scene;
-    scene.addRootNode(ovp);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    ctx.tick(0.0); // bind the viewpoint.
-    extract::SceneExtractor ex(ctx, scene);
-    auto cam = ex.camera();
-    CHECK((cam.ortho == true)); // OrthoViewpoint surfaced ortho.
-  }
-
-  return;
+TEST_CASE("scene extractor snapshot: camera() reports an OrthoViewpoint as ortho") {
+  auto ovp = createX3DNode("OrthoViewpoint");
+  Scene scene;
+  scene.addRootNode(ovp);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.tick(0.0); // bind the viewpoint.
+  extract::SceneExtractor ex(ctx, scene);
+  auto cam = ex.camera();
+  CHECK((cam.ortho == true)); // OrthoViewpoint surfaced ortho.
 }
 
 TEST_CASE("unlit_line_set_material_uses_emissive_color") {

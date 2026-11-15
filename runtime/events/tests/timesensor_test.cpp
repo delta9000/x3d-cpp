@@ -58,7 +58,7 @@ struct Rig {
 };
 
 // enabled=false: nothing happens
-void test_disabled_emits_nothing() {
+TEST_CASE("timesensor: disabled emits nothing") {
   Rig r;
   r.ts->setEnabled(false);
   r.ts->setCycleInterval(1.0);
@@ -74,7 +74,7 @@ void test_disabled_emits_nothing() {
 }
 
 // start gating: idle until startTime
-void test_start_gating() {
+TEST_CASE("timesensor: start gating") {
   Rig r;
   r.ts->setCycleInterval(2.0);
   r.ts->setStartTime(10.0);
@@ -94,7 +94,7 @@ void test_start_gating() {
 }
 
 // single-shot (loop=false): completes and deactivates
-void test_single_shot_completion() {
+TEST_CASE("timesensor: single shot completion") {
   Rig r;
   r.ts->setCycleInterval(1.0);
   r.ts->setStartTime(0.0);
@@ -121,7 +121,7 @@ void test_single_shot_completion() {
 }
 
 // looping wrap + cycleTime pulses
-void test_looping_wrap_and_cycletime() {
+TEST_CASE("timesensor: looping wrap and cycletime") {
   Rig r;
   r.ts->setCycleInterval(1.0);
   r.ts->setStartTime(0.0);
@@ -156,7 +156,7 @@ void test_looping_wrap_and_cycletime() {
 }
 
 // stopTime early stop
-void test_stoptime_deactivates() {
+TEST_CASE("timesensor: stoptime deactivates") {
   Rig r;
   r.ts->setCycleInterval(10.0);
   r.ts->setStartTime(0.0);
@@ -176,7 +176,7 @@ void test_stoptime_deactivates() {
 }
 
 // pause / resume: elapsed/fraction exclude the paused span
-void test_pause_resume() {
+TEST_CASE("timesensor: pause resume") {
   Rig r;
   r.ts->setCycleInterval(100.0); // long, non-wrapping window
   r.ts->setStartTime(0.0);
@@ -212,7 +212,7 @@ void test_pause_resume() {
 }
 
 // cycleInterval <= 0 guard (non-looping deactivates after one tick)
-void test_zero_cycle_interval_guard() {
+TEST_CASE("timesensor: zero cycle interval guard") {
   Rig r;
   r.ts->setCycleInterval(0.0); // spec-min is 0; guard treats <=0 as immediate
   r.ts->setStartTime(0.0);
@@ -226,7 +226,7 @@ void test_zero_cycle_interval_guard() {
 }
 
 // set_startTime ignored while active
-void test_set_starttime_ignored_while_active() {
+TEST_CASE("timesensor: set starttime ignored while active") {
   Rig r;
   r.ts->setCycleInterval(10.0);
   r.ts->setStartTime(0.0); // stopTime stays at its default 0
@@ -246,7 +246,7 @@ void test_set_starttime_ignored_while_active() {
 }
 
 // /loop=`FALSE` finishes the current cycle; final time at boundary
-void test_loop_false_finishes_current_cycle() {
+TEST_CASE("timesensor: loop false finishes current cycle") {
   Rig r;
   r.ts->setCycleInterval(1.0);
   r.ts->setStartTime(0.0);
@@ -270,7 +270,7 @@ void test_loop_false_finishes_current_cycle() {
 }
 
 // resume requires resumeTime strictly > pauseTime (§8.2.4.4)
-void test_resume_requires_strict_greater() {
+TEST_CASE("timesensor: resume requires strict greater") {
   Rig r;
   r.ts->setCycleInterval(100.0);
   r.ts->setStartTime(0.0);
@@ -291,7 +291,7 @@ void test_resume_requires_strict_greater() {
 
 // /pauseTime_changed / resumeTime_changed fire at the pause and
 //     resume transitions (§8.2.4.4). Routed to a sink node's SFTime fields.
-void test_pause_resume_changed_events() {
+TEST_CASE("timesensor: pause resume changed events") {
   Rig r;
   r.ts->setCycleInterval(100.0);
   r.ts->setStartTime(0.0);
@@ -320,7 +320,7 @@ void test_pause_resume_changed_events() {
 // + re-activation guard: a completed single-shot stays inactive on
 //     later ticks (no auto-restart), and its final time is the exact cycle
 //     boundary, not the overshooting tick now.
-void test_no_reactivation_after_completion() {
+TEST_CASE("timesensor: no reactivation after completion") {
   Rig r;
   r.ts->setCycleInterval(1.0);
   r.ts->setStartTime(0.0);
@@ -347,19 +347,3 @@ void test_no_reactivation_after_completion() {
 
 } // namespace
 
-TEST_CASE("timesensor_test") {
-  test_disabled_emits_nothing();
-  test_start_gating();
-  test_single_shot_completion();
-  test_looping_wrap_and_cycletime();
-  test_stoptime_deactivates();
-  test_pause_resume();
-  test_zero_cycle_interval_guard();
-  test_set_starttime_ignored_while_active();
-  test_loop_false_finishes_current_cycle();
-  test_resume_requires_strict_greater();
-  test_pause_resume_changed_events();
-  test_no_reactivation_after_completion();
-
-  return;
-}

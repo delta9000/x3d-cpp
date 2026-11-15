@@ -47,7 +47,7 @@ void post(X3DExecutionContext &ctx, X3DNode *interp, float fraction) {
 }
 
 // ScalarInterpolator
-void test_scalar() {
+TEST_CASE("interpolator: scalar") {
   auto interp = std::make_shared<ScalarInterpolator>();
   interp->setKey(MFFloat{0.0f, 1.0f});
   interp->setKeyValue(MFFloat{0.0f, 10.0f});
@@ -69,7 +69,7 @@ void test_scalar() {
 }
 
 // PositionInterpolator
-void test_position() {
+TEST_CASE("interpolator: position") {
   auto interp = std::make_shared<PositionInterpolator>();
   interp->setKey(MFFloat{0.0f, 1.0f});
   interp->setKeyValue(MFVec3f{SFVec3f{0, 0, 0}, SFVec3f{10, 20, 30}});
@@ -87,7 +87,7 @@ void test_position() {
   CHECK_MESSAGE((feq(v.x, 0) && feq(v.y, 0) && feq(v.z, 0)), ("position f=-1 (off-key) clamps to front"));
 }
 
-void test_geo_position() {
+TEST_CASE("interpolator: geo position") {
   auto origin = std::make_shared<GeoOrigin>();
   origin->setGeoSystemUnchecked(MFString{"GC"});
   origin->setGeoCoords(SFVec3d{6378137, 0, 0});
@@ -110,7 +110,7 @@ void test_geo_position() {
 }
 
 // PositionInterpolator2D
-void test_position2d() {
+TEST_CASE("interpolator: position2d") {
   auto interp = std::make_shared<PositionInterpolator2D>();
   interp->setKey(MFFloat{0.0f, 1.0f});
   interp->setKeyValue(MFVec2f{SFVec2f{0, 0}, SFVec2f{4, 8}});
@@ -129,7 +129,7 @@ void test_position2d() {
 }
 
 // ColorInterpolator (HSV)
-void test_color() {
+TEST_CASE("interpolator: color") {
   auto interp = std::make_shared<ColorInterpolator>();
   // Red (hue 0) -> Green (hue 120). HSV midpoint is hue 60 = yellow (1,1,0).
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -152,7 +152,7 @@ void test_color() {
 }
 
 // OrientationInterpolator (SLERP)
-void test_orientation() {
+TEST_CASE("interpolator: orientation") {
   auto interp = std::make_shared<OrientationInterpolator>();
   // 0 rad -> pi/2 rad about +Z. Midpoint SLERP should be pi/4 about +Z.
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -176,7 +176,7 @@ void test_orientation() {
 }
 
 // CoordinateInterpolator (per-point linear)
-void test_coordinate() {
+TEST_CASE("interpolator: coordinate") {
   auto interp = std::make_shared<CoordinateInterpolator>();
   // 2 keys, 2 points each: row0=[(0,0,0),(1,1,1)] row1=[(10,0,0),(11,1,1)].
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -200,7 +200,7 @@ void test_coordinate() {
 }
 
 // CoordinateInterpolator2D
-void test_coordinate2d() {
+TEST_CASE("interpolator: coordinate2d") {
   auto interp = std::make_shared<CoordinateInterpolator2D>();
   interp->setKey(MFFloat{0.0f, 1.0f});
   interp->setKeyValue(
@@ -219,7 +219,7 @@ void test_coordinate2d() {
 }
 
 // NormalInterpolator (SLERP on sphere)
-void test_normal() {
+TEST_CASE("interpolator: normal") {
   auto interp = std::make_shared<NormalInterpolator>();
   // 1 point: +X -> +Y. Midpoint SLERP is the unit bisector (~0.707,0.707,0).
   interp->setKey(MFFloat{0.0f, 1.0f});
@@ -245,7 +245,7 @@ void test_normal() {
 // Proves several interpolator systems coexist in one context, each driven by
 // the same posted fraction through the cascade (here posted directly to each
 // set_fraction sink; in a real scene a TimeSensor would ROUTE to all of them).
-void test_multi_interpolator_scene() {
+TEST_CASE("interpolator: multi interpolator scene") {
   auto pos = std::make_shared<PositionInterpolator>();
   pos->setKey(MFFloat{0.0f, 1.0f});
   pos->setKeyValue(MFVec3f{SFVec3f{0, 0, 0}, SFVec3f{8, 0, 0}});
@@ -284,17 +284,3 @@ void test_multi_interpolator_scene() {
 
 } // namespace
 
-TEST_CASE("interpolator_test") {
-  test_geo_position();
-  test_scalar();
-  test_position();
-  test_position2d();
-  test_color();
-  test_orientation();
-  test_coordinate();
-  test_coordinate2d();
-  test_normal();
-  test_multi_interpolator_scene();
-
-  return;
-}

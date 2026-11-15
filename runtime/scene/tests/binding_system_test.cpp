@@ -19,7 +19,7 @@ static X3DBindableNode* bindable(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());
 }
 
-TEST_CASE("binding_system_test") {
+TEST_CASE("binding system: defaults bind per category and set_bind switches Viewpoints") {
   auto vp1 = createX3DNode("Viewpoint");
   auto vp2 = createX3DNode("Viewpoint");
   auto nav = createX3DNode("NavigationInfo");
@@ -54,5 +54,4 @@ TEST_CASE("binding_system_test") {
   ctx.process();
   CHECK((bs.bound("Viewpoint") == vp1.get()));
   CHECK((bindable(vp1)->getIsBound() == true));
-  return;
 }

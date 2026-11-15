@@ -38,6 +38,9 @@ ctest --preset dev -R x3d_extract_tests --output-on-failure
 
 CTest selects executable-level tests. To select a doctest case, run its grouped
 binary with `--test-case`. Case names are not separate CTest registrations.
+Each case covers one scenario and is named `<file stem>: <scenario>` (for example
+`mat4 inverse: rank-2 matrix has no tryInverse`), so
+`--test-case="mat4 inverse:*"` runs one file's cases.
 
 ## Compiled libraries
 

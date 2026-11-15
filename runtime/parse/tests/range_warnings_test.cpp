@@ -15,7 +15,6 @@
 #include "X3DParse.hpp"
 
 #include <any>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,11 +22,13 @@
 using namespace x3d::core;
 using namespace x3d::nodes;
 
-TEST_CASE("range_warnings_test") {
-  auto checkCode = [](const auto &node, const std::string &code) {
-    const auto ds = collectRangeWarnings(*node);
-    return std::any_of(ds.begin(), ds.end(), [&](const auto &d) { return d.detail.find(code) != std::string::npos; });
-  };
+static bool checkCode(const std::shared_ptr<X3DNode> &node, const std::string &code) {
+  const auto ds = collectRangeWarnings(*node);
+  return std::any_of(ds.begin(), ds.end(),
+                     [&](const auto &d) { return d.detail.find(code) != std::string::npos; });
+}
+
+TEST_CASE("range warnings: OrthoViewpoint fieldOfView arity and extent order") {
   for (size_t n : {3u, 5u}) {
     auto ortho = std::make_shared<OrthoViewpoint>();
     ortho->setFieldOfView(std::vector<float>(n, 1.f));
@@ -37,11 +38,17 @@ TEST_CASE("range_warnings_test") {
   ortho->setFieldOfView(std::vector<float>{2, 0, 1, 1});
   CHECK(checkCode(ortho, "FOV_EXTENT_ORDER"));
   CHECK(range_detail::orthoFieldOfView4(*ortho).has_value());
+}
+
+TEST_CASE("range warnings: TextureProjectorParallel fieldOfView extent order") {
   auto projector = std::make_shared<TextureProjectorParallel>();
   projector->setFieldOfView(SFVec4f{2, 0, 1, 1});
   CHECK(checkCode(projector, "FOV_EXTENT_ORDER"));
   projector->setFieldOfView(SFVec4f{0, 0, 1, 1});
   CHECK(collectRangeWarnings(*projector).empty());
+}
+
+TEST_CASE("range warnings: GeoCoordinate geoSystem tokens") {
   auto geo = std::make_shared<GeoCoordinate>();
   geo->setGeoSystemUnchecked({"UTM", "Z10", "S"});
   CHECK(collectRangeWarnings(*geo).empty());
@@ -51,7 +58,9 @@ TEST_CASE("range_warnings_test") {
   CHECK(checkCode(geo, "GEOSYSTEM_TOKEN"));
   geo->setGeoSystemUnchecked({"GD", "WE"});
   CHECK(collectRangeWarnings(*geo).empty());
+}
 
+TEST_CASE("range warnings: Material specularColor out of range is reported directly and through a Shape") {
   // (a) a Material with an out-of-range specularColor component reports it.
   auto mat = std::make_shared<Material>();
   SFColor bad;
@@ -75,13 +84,17 @@ TEST_CASE("range_warnings_test") {
   auto all = collectRangeWarnings(*shape);
   CHECK((all.size() == 1));
   CHECK((!all.empty() && all[0].fieldName == "specularColor"));
+}
 
+TEST_CASE("range warnings: an in-range Material yields nothing") {
   // (c) an in-range node yields nothing.
   auto clean = std::make_shared<Material>();
   std::vector<RangeDiagnostic> none;
   clean->validateRanges(none);
   CHECK((none.empty()));
+}
 
+TEST_CASE("range warnings: an out-of-range document fills X3DDocument rangeWarnings") {
   // (d) front-door: a document with an out-of-range value populates
   //     X3DDocument.rangeWarnings.
   const std::string xml =
@@ -92,14 +105,18 @@ TEST_CASE("range_warnings_test") {
   CHECK((!doc.rangeWarnings.empty()));
   CHECK((!doc.rangeWarnings.empty() &&
         doc.rangeWarnings[0].fieldName == "specularColor"));
+}
 
+TEST_CASE("range warnings: an in-range document yields no warnings") {
   // (e) an in-range document yields an empty channel.
   const std::string ok =
       "<X3D profile='Interchange' version='4.0'><Scene>"
       "<Shape><Appearance><Material specularColor='0.5 0 0'/></Appearance>"
       "</Shape></Scene></X3D>";
   CHECK((x3d::codec::parseDocument(ok).rangeWarnings.empty()));
+}
 
+TEST_CASE("range warnings: SpotLight beamWidth compares against float32 bounds") {
   // beamWidth 1.570796 is the UOM's truncated pi/2 maximum. Widening that
   // float32 value to double gives 1.57079601...; compare using float32 bounds.
   const std::string boundary =
@@ -114,32 +131,29 @@ TEST_CASE("range_warnings_test") {
       "<SpotLight beamWidth='1.5708'/>"
       "</Scene></X3D>";
   CHECK((!x3d::codec::parseDocument(above).rangeWarnings.empty()));
+}
 
+TEST_CASE("range warnings: a cyclic node graph terminates") {
   // (f) a cyclic node graph (a Group reachable from itself, as a USE of an
   //     ancestor produces) must not recurse forever. Regression: the walk had
   //     no cycle guard and stack-overflowed on such corpus files.
-  {
-    auto g = std::make_shared<Group>();
-    FieldInfo *childrenSet = nullptr;
-    for (const FieldInfo &f : g->fields()) {
-      if (f.x3dName == "children" && f.set) {
-        std::vector<std::shared_ptr<X3DNode>> kids{g}; // self-reference -> cycle
-        f.set(*g, std::any(kids));
-        childrenSet = const_cast<FieldInfo *>(&f);
-        break;
-      }
+  auto g = std::make_shared<Group>();
+  FieldInfo *childrenSet = nullptr;
+  for (const FieldInfo &f : g->fields()) {
+    if (f.x3dName == "children" && f.set) {
+      std::vector<std::shared_ptr<X3DNode>> kids{g}; // self-reference -> cycle
+      f.set(*g, std::any(kids));
+      childrenSet = const_cast<FieldInfo *>(&f);
+      break;
     }
-    std::vector<RangeDiagnostic> cyc;
-    collectRangeWarnings(*g, cyc); // must terminate, not stack-overflow
-    CHECK((cyc.empty()));
-    // Break the self-cycle before g goes out of scope (caught by ASan/LSan
-    // under the san preset).
-    if (childrenSet)
-      childrenSet->set(*g, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
   }
-
-  std::cout << "range_warnings_test OK\n";
-  return;
+  std::vector<RangeDiagnostic> cyc;
+  collectRangeWarnings(*g, cyc); // must terminate, not stack-overflow
+  CHECK((cyc.empty()));
+  // Break the self-cycle before g goes out of scope (caught by ASan/LSan
+  // under the san preset).
+  if (childrenSet)
+    childrenSet->set(*g, std::any(std::vector<std::shared_ptr<X3DNode>>{}));
 }
 
 TEST_CASE("geoSystem validation accepts spec tokens on every geospatial node") {

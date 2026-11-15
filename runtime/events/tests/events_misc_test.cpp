@@ -45,7 +45,7 @@ bool deq(double a, double b, double e = 1e-6) { return std::fabs(a - b) <= e; }
 
 using NodeP = std::shared_ptr<X3DNode>;
 
-void test_integer_trigger_key_write() {
+TEST_CASE("events misc: integer trigger key write") {
   auto trig = std::make_shared<IntegerTrigger>();
   X3DExecutionContext ctx;
   auto sys = std::make_shared<IntegerTriggerSystem>();
@@ -70,7 +70,7 @@ void test_integer_trigger_key_write() {
 // the node is detached (detachNodes is the last gate before the caller drops
 // the shared_ptr), and a detach -> attachNewSubtree cycle must not stack
 // duplicate listeners (double-emit / unbounded growth on GeoLOD churn).
-void test_integer_trigger_listener_lifetime() {
+TEST_CASE("events misc: integer trigger listener lifetime") {
   auto trig = std::make_shared<IntegerTrigger>();
   X3DExecutionContext ctx;
   auto sys = std::make_shared<IntegerTriggerSystem>();
@@ -98,7 +98,7 @@ void test_integer_trigger_listener_lifetime() {
   CHECK_MESSAGE((triggerEvents == 2 && trig->getTriggerValue() == 11), ("LIFETIME: re-attach reinstalls exactly one listener"));
 }
 
-void test_key_device_focus() {
+TEST_CASE("events misc: key device focus") {
   auto k1 = std::make_shared<KeySensor>();
   auto k2 = std::make_shared<KeySensor>();
   auto s1 = std::make_shared<StringSensor>();
@@ -122,7 +122,7 @@ struct TimeRig {
   TimeRig() { ctx.addSystem(sys); sys->attach(ts.get(), ctx); }
 };
 
-void test_pause_resume_now() {
+TEST_CASE("events misc: pause resume now") {
   TimeRig r;
   r.ts->setCycleInterval(10.0);
   r.ts->setLoop(true);
@@ -135,7 +135,7 @@ void test_pause_resume_now() {
   CHECK_MESSAGE((deq(r.ts->getResumeTime(), 4.4)), ("CONF-TDN1V: resumeTime_changed carries simulation now"));
 }
 
-void test_same_instant_restart() {
+TEST_CASE("events misc: same instant restart") {
   TimeRig r;
   r.ts->setCycleInterval(10.0);
   r.ctx.tick(0.0); // active from 0, no loop
@@ -158,7 +158,7 @@ void test_same_instant_restart() {
   CHECK_MESSAGE((!r.ts->X3DTimeDependentNode::getIsActive()), ("CRITIC-1: the restarted run completes a full cycle"));
 }
 
-void test_nested_inline_readiness() {
+TEST_CASE("events misc: nested inline readiness") {
   // An expanded Inline (a Group recorded in expandedInlines) whose content still
   // holds an un-expanded Inline (load `TRUE`): its nested sub-Inline failed.
   auto good = createX3DNode("Group");
@@ -189,7 +189,7 @@ void test_nested_inline_readiness() {
         "NSN-12: an Inline whose nested sub-Inline failed is not loaded");
 }
 
-void test_anchor_activation() {
+TEST_CASE("events misc: anchor activation") {
   auto box = createX3DNode("Box");
   auto shape = createX3DNode("Shape");
   setF(shape, "geometry", std::any(NodeP(box)));
@@ -258,7 +258,7 @@ void test_anchor_activation() {
   CHECK_MESSAGE((gotUrl.empty()), ("Anchor: releasing off the Anchor does not activate it"));
 }
 
-void test_anchor_loadsensor_waits_for_viewpoint_bind() {
+TEST_CASE("events misc: anchor loadsensor waits for viewpoint bind") {
   auto anchor = createX3DNode("Anchor");
   setF(anchor, "url", std::any(MFString{"#Target"}));
   setF(anchor, "load", std::any(SFBool{false})); // §9.4.1: no effect on Anchor
@@ -289,16 +289,6 @@ void test_anchor_loadsensor_waits_for_viewpoint_bind() {
 
 } // namespace
 
-TEST_CASE("events_misc_test") {
-  test_integer_trigger_key_write();
-  test_integer_trigger_listener_lifetime();
-  test_key_device_focus();
-  test_pause_resume_now();
-  test_same_instant_restart();
-  test_nested_inline_readiness();
-  test_anchor_activation();
-  test_anchor_loadsensor_waits_for_viewpoint_bind();
-}
 
 TEST_CASE("structural removal retires listeners before node address reuse") {
   for (const std::string edit : {"removeChildren", "children", "proxy", "directChildren", "directProxy"}) {

@@ -27,7 +27,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 }
 
 // A single ROUTE A.translation -> B.translation delivers the posted value.
-void test_single_route() {
+TEST_CASE("cascade: single route") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -43,7 +43,7 @@ void test_single_route() {
 }
 
 // Fan-out: one source field routed to two sinks updates both.
-void test_fanout() {
+TEST_CASE("cascade: fanout") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
   auto c = std::make_shared<Transform>();
@@ -62,7 +62,7 @@ void test_fanout() {
 
 // A cyclic route graph (A->B->A) must terminate: each route fires at most once
 // per cascade (X3D single-timestamp loop-breaking).
-void test_cycle_terminates() {
+TEST_CASE("cascade: cycle terminates") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -80,7 +80,7 @@ void test_cycle_terminates() {
 
 // An event delivered to an inputOnly field invokes its registered handler
 // exactly once with the delivered value.
-void test_input_only_delivery() {
+TEST_CASE("cascade: input only delivery") {
   auto interp = std::make_shared<PositionInterpolator>();
 
   int calls = 0;
@@ -101,7 +101,7 @@ void test_input_only_delivery() {
 
 // An outputOnly field can be written (an emitted output event), which both
 // updates the field and cascades along its ROUTEs to inputOutput sinks.
-void test_output_only_source() {
+TEST_CASE("cascade: output only source") {
   auto interp = std::make_shared<PositionInterpolator>();
   auto target = std::make_shared<Transform>();
 
@@ -120,12 +120,3 @@ void test_output_only_source() {
 
 } // namespace
 
-TEST_CASE("cascade_test") {
-  test_single_route();
-  test_fanout();
-  test_cycle_terminates();
-  test_input_only_delivery();
-  test_output_only_source();
-
-  return;
-}

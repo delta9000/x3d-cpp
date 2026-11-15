@@ -15,7 +15,7 @@ static const FieldInfo *fieldByName(const X3DNode &n, const std::string &name) {
   return nullptr;
 }
 
-static void cloneTest() {
+TEST_CASE("proto clone: deepClone keeps USE sharing and DEF names") {
   auto shape = createX3DNode("Shape");
   shape->setDEF("S");
   auto group = createX3DNode("Group");
@@ -33,7 +33,7 @@ static void cloneTest() {
   CHECK((out[0]->getDEF() == "S"));            // DEF copied
 }
 
-TEST_CASE("proto_clone_test") {
+TEST_CASE("proto clone: proto bookkeeping types default empty") {
   ProtoBody body;
   body.isConnections.push_back({nullptr, "size", "size"});
   CHECK((body.isConnections.size() == 1));
@@ -53,6 +53,4 @@ TEST_CASE("proto_clone_test") {
   ProtoWarning w{ProtoWarning::Kind::UnresolvedExtern, "Foo", "no url resolved"};
   CHECK((w.kind == ProtoWarning::Kind::UnresolvedExtern));
 
-  cloneTest();
-  return;
 }

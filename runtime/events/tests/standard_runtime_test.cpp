@@ -12,7 +12,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using namespace x3d::runtime;
 
-TEST_CASE("standard_runtime_test") {
+TEST_CASE("standard runtime: TimeSensor drives an interpolator into a Transform") {
   // TimeSensor drives a PositionInterpolator that translates a Transform 0→10 in x.
   const char *xml =
       "<X3D profile='Interactive'><Scene>"
@@ -49,6 +49,4 @@ TEST_CASE("standard_runtime_test") {
 
   const float x2 = t->getTranslation().x;
   CHECK_MESSAGE((x2 > 1.0f), ("standard runtime animates: TimeSensor→PositionInterpolator→Transform.translation"));
-
-  return;
 }

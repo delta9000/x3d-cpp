@@ -76,7 +76,7 @@ namespace {
 bool contains(const std::string &hay, const std::string &needle) {
   return hay.find(needle) != std::string::npos;
 }
-void testVrmlBoolCasing() {
+TEST_CASE("codec conformance: VRML bool casing") {
   runtime::X3DDocument doc;
   doc.version = "4.0";
   // PixelTexture has repeatS/repeatT (SFBool, default true) -> set false so
@@ -92,7 +92,7 @@ void testVrmlBoolCasing() {
   CHECK_MESSAGE((!contains(out, " false")), "CDC-1: VRML does not emit lowercase false");
   CHECK_MESSAGE((!contains(out, " true")), "CDC-1: VRML does not emit lowercase true");
 }
-void testVrmlStringEscape() {
+TEST_CASE("codec conformance: VRML string escape") {
   runtime::X3DDocument doc;
   doc.version = "4.0";
   auto wi = std::make_shared<WorldInfo>();
@@ -106,7 +106,7 @@ void testVrmlStringEscape() {
   CHECK_MESSAGE((contains(out, "a\\\"b\\\\c")),
         "CDC-2: VRML escapes \\ and \" inside SFString");
 }
-void testMatrix3f() {
+TEST_CASE("codec conformance: Matrix3f") {
   SFMatrix3f m{};
   float k = 0.0f;
   for (int r = 0; r < 3; ++r)
@@ -124,7 +124,7 @@ void testMatrix3f() {
   CHECK_MESSAGE((eq), "CDC-3: SFMatrix3f round-trips");
 }
 
-void testMatrix4d() {
+TEST_CASE("codec conformance: Matrix4d") {
   SFMatrix4d m{};
   double k = 0.0;
   for (int r = 0; r < 4; ++r)
@@ -139,7 +139,7 @@ void testMatrix4d() {
       if (m.matrix[r][c] != m2.matrix[r][c]) eq = false;
   CHECK_MESSAGE((eq), "CDC-3: SFMatrix4d round-trips");
 }
-void testImage() {
+TEST_CASE("codec conformance: image") {
   // 2x1 RGB image: two pixels.
   SFImage img;
   img.width = 2;
@@ -162,7 +162,7 @@ void testImage() {
   CHECK_MESSAGE((mf2.size() == 1 && mf2[0].data == img.data),
         "CDC-3: MFImage round-trips");
 }
-void testFloatDot() {
+TEST_CASE("codec conformance: float dot") {
   std::string s = formatValue(X3DFieldType::SFFloat, std::any(3.14159f));
   CHECK_MESSAGE((contains(s, ".")), "CDC-4: SFFloat formats with '.' decimal point");
   CHECK_MESSAGE((!contains(s, ",")), "CDC-4: SFFloat formats without ',' separator");
@@ -172,13 +172,3 @@ void testFloatDot() {
 
 } // namespace
 
-TEST_CASE("codec_conformance_test") {
-  testVrmlBoolCasing();
-  testVrmlStringEscape();
-  testMatrix3f();
-  testMatrix4d();
-  testImage();
-  testFloatDot();
-
-  return;
-}

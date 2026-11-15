@@ -32,7 +32,7 @@ bool veq(const SFVec3f &a, const SFVec3f &b) {
   return feq(a.x, b.x) && feq(a.y, b.y) && feq(a.z, b.z);
 }
 // PlaneSensor
-void testPlane() {
+TEST_CASE("drag math: plane") {
   // Identity sensor frame (no axisRotation, parent = world identity).
   Mat4 frame = Mat4::identity();
 
@@ -108,7 +108,7 @@ void testPlane() {
   }
 }
 // SphereSensor
-void testSphere() {
+TEST_CASE("drag math: sphere") {
   Mat4 frame = Mat4::identity();
 
   // Activation hit at (0,0,2): radius 2, p0_hat = +Z.
@@ -154,7 +154,7 @@ void testSphere() {
   }
 }
 // CylinderSensor
-void testCylinder() {
+TEST_CASE("drag math: cylinder") {
   Mat4 frame = Mat4::identity();
   const float diskAngle = static_cast<float>(std::numbers::pi) / 12.0f; // 15deg default
 
@@ -252,10 +252,3 @@ void testCylinder() {
 
 } // namespace
 
-TEST_CASE("drag_math_test") {
-  testPlane();
-  testSphere();
-  testCylinder();
-
-  return;
-}

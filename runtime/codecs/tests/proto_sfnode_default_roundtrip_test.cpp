@@ -7,7 +7,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_sfnode_default_roundtrip_test") {
+TEST_CASE("proto sfnode default roundtrip: an SFNode interface default survives every encoding") {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'>"
       "<ProtoInterface><field name='appearance' type='SFNode' accessType='initializeOnly'>"

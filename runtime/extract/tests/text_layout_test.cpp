@@ -46,24 +46,24 @@ static FontMetricsCallback monoMetrics() {
 //   textBounds = {3.0, 1.0}  (totalBlockExtent = 0*step + size = 1.0)
 //   upper-left corner: left = 0, top = 0 + 0.8 = 0.8
 //   origin = {0, 0.8, 0}
-static void test_single_line_defaults() {
-    FontStyleParams fs; // all defaults
-    TextParams t;
-    t.strings = {"abc"};
+TEST_CASE("text layout: single line defaults") {
+  FontStyleParams fs; // all defaults
+  TextParams t;
+  t.strings = {"abc"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((r.lineBounds.size() == 1),      "single: lineBounds count");
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 3.0f)),  "single: lineBounds width");
-    CHECK_MESSAGE((feq(r.lineBounds[0].height, 1.0f)), "single: lineBounds height");
-    CHECK_MESSAGE((feq(r.textBoundsX, 3.0f)),      "single: textBoundsX");
-    CHECK_MESSAGE((feq(r.textBoundsY, 1.0f)),      "single: textBoundsY");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 0.0f)), "single: baselineX");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)), "single: baselineY");
-    // origin = upper-left = (0, ascender=0.8, 0)
-    CHECK_MESSAGE((feq(r.originX, 0.0f)),  "single: originX");
-    CHECK_MESSAGE((feq(r.originY, 0.8f)),  "single: originY");
-    CHECK_MESSAGE((feq(r.originZ, 0.0f)),  "single: originZ");
+  CHECK_MESSAGE((r.lineBounds.size() == 1),      "single: lineBounds count");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 3.0f)),  "single: lineBounds width");
+  CHECK_MESSAGE((feq(r.lineBounds[0].height, 1.0f)), "single: lineBounds height");
+  CHECK_MESSAGE((feq(r.textBoundsX, 3.0f)),      "single: textBoundsX");
+  CHECK_MESSAGE((feq(r.textBoundsY, 1.0f)),      "single: textBoundsY");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 0.0f)), "single: baselineX");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)), "single: baselineY");
+  // origin = upper-left = (0, ascender=0.8, 0)
+  CHECK_MESSAGE((feq(r.originX, 0.0f)),  "single: originX");
+  CHECK_MESSAGE((feq(r.originY, 0.8f)),  "single: originY");
+  CHECK_MESSAGE((feq(r.originZ, 0.0f)),  "single: originZ");
 }
 
 // Test 2: Two lines, `FIRST`/`FIRST` minor (baseline of first line at Y=0).
@@ -75,18 +75,18 @@ static void test_single_line_defaults() {
 //   line[0].baselineY = 0
 //   line[1].baselineY = 0 + 1*(−1.5) = −1.5   (topToBottom=T → sign is −)
 //   textBoundsY = (N-1)*step + size = 1*1.5 + 1.0 = 2.5
-static void test_two_lines_first_minor() {
-    FontStyleParams fs;
-    fs.spacing = 1.5f;
-    TextParams t;
-    t.strings = {"ab", "cd"};
+TEST_CASE("text layout: two lines first minor") {
+  FontStyleParams fs;
+  fs.spacing = 1.5f;
+  TextParams t;
+  t.strings = {"ab", "cd"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((r.lineBounds.size() == 2), "two FIRST: count");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)),  "two FIRST: line0 baselineY");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], -1.5f)), "two FIRST: line1 baselineY");
-    CHECK_MESSAGE((feq(r.textBoundsY, 2.5f)), "two FIRST: textBoundsY");
+  CHECK_MESSAGE((r.lineBounds.size() == 2), "two FIRST: count");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)),  "two FIRST: line0 baselineY");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], -1.5f)), "two FIRST: line1 baselineY");
+  CHECK_MESSAGE((feq(r.textBoundsY, 2.5f)), "two FIRST: textBoundsY");
 }
 
 // Test 3: Minor axis BEGIN, topToBottom=true.
@@ -94,17 +94,17 @@ static void test_two_lines_first_minor() {
 // strings = {"a"}, size=1, spacing=1, minor="BEGIN", topToBottom=T
 //   Table 15.4: top edge of the first line at Y=0, the block hanging below it
 //   → first baseline = -ascender = -0.8; baselineOrigins[0] = {0, -0.8}
-static void test_minor_begin_topToBottom() {
-    FontStyleParams fs;
-    fs.justifyMinor = "BEGIN";
-    TextParams t;
-    t.strings = {"a"};
+TEST_CASE("text layout: minor begin top to bottom") {
+  FontStyleParams fs;
+  fs.justifyMinor = "BEGIN";
+  TextParams t;
+  t.strings = {"a"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], -0.8f)), "BEGIN/tTB: baseline Y");
-    // origin upper-left: Y = baseline + ascender = -0.8 + 0.8 = 0 (top edge)
-    CHECK_MESSAGE((feq(r.originY, 0.0f)), "BEGIN/tTB: originY");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], -0.8f)), "BEGIN/tTB: baseline Y");
+  // origin upper-left: Y = baseline + ascender = -0.8 + 0.8 = 0 (top edge)
+  CHECK_MESSAGE((feq(r.originY, 0.0f)), "BEGIN/tTB: originY");
 }
 
 // Test 4: Minor axis BEGIN, topToBottom=false.
@@ -113,17 +113,17 @@ static void test_minor_begin_topToBottom() {
 //   firstBaselineMinor = -descender = 0.2  (bottom of first line at Y=0)
 //   line[0].baselineY = 0.2
 //   upper-left Y = 0.2 + 0.8 = 1.0
-static void test_minor_begin_bottomToTop() {
-    FontStyleParams fs;
-    fs.topToBottom = false;
-    fs.justifyMinor = "BEGIN";
-    TextParams t;
-    t.strings = {"a"};
+TEST_CASE("text layout: minor begin bottom to top") {
+  FontStyleParams fs;
+  fs.topToBottom = false;
+  fs.justifyMinor = "BEGIN";
+  TextParams t;
+  t.strings = {"a"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.2f)), "BEGIN/bTT: baseline Y");
-    CHECK_MESSAGE((feq(r.originY, 1.0f)), "BEGIN/bTT: originY");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.2f)), "BEGIN/bTT: baseline Y");
+  CHECK_MESSAGE((feq(r.originY, 1.0f)), "BEGIN/bTT: originY");
 }
 
 // Test 5: Major axis MIDDLE, leftToRight=true, single line.
@@ -131,17 +131,17 @@ static void test_minor_begin_bottomToTop() {
 // "abc" (advance=3), size=1, major MIDDLE, leftToRight=T
 //   baselineX = −3/2 = −1.5
 //   left edge = −1.5, right edge = −1.5+3 = +1.5
-static void test_major_middle_ltr() {
-    FontStyleParams fs;
-    fs.justifyMajor = "MIDDLE";
-    TextParams t;
-    t.strings = {"abc"};
+TEST_CASE("text layout: major middle ltr") {
+  FontStyleParams fs;
+  fs.justifyMajor = "MIDDLE";
+  TextParams t;
+  t.strings = {"abc"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], -1.5f)), "MIDDLE/ltr: baselineX");
-    // upper-left X = −1.5
-    CHECK_MESSAGE((feq(r.originX, -1.5f)), "MIDDLE/ltr: originX");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], -1.5f)), "MIDDLE/ltr: baselineX");
+  // upper-left X = −1.5
+  CHECK_MESSAGE((feq(r.originX, -1.5f)), "MIDDLE/ltr: originX");
 }
 
 // Test 6: Major axis END, leftToRight=true.
@@ -149,46 +149,46 @@ static void test_major_middle_ltr() {
 // "abc" (advance=3), major END, leftToRight=T
 //   baselineX = −3 (right edge at X=0, left at X=−3)
 //   origin.X = −3
-static void test_major_end_ltr() {
-    FontStyleParams fs;
-    fs.justifyMajor = "END";
-    TextParams t;
-    t.strings = {"abc"};
+TEST_CASE("text layout: major end ltr") {
+  FontStyleParams fs;
+  fs.justifyMajor = "END";
+  TextParams t;
+  t.strings = {"abc"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], -3.0f)), "END/ltr: baselineX");
-    CHECK_MESSAGE((feq(r.originX, -3.0f)), "END/ltr: originX");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], -3.0f)), "END/ltr: baselineX");
+  CHECK_MESSAGE((feq(r.originX, -3.0f)), "END/ltr: originX");
 }
 
 // Test 7: length[] per-line stretch.
 //
 // "ab" (natural=2), length=[5], maxExtent=0 → target=5, global_scale=1
 //   effective=5, lineBounds.width=5
-static void test_length_stretch() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings = {"ab"};
-    t.length  = {5.0f};
+TEST_CASE("text layout: length stretch") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings = {"ab"};
+  t.length  = {5.0f};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 5.0f)), "stretch: lineBounds.width");
-    CHECK_MESSAGE((feq(r.textBoundsX, 5.0f)),         "stretch: textBoundsX");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 5.0f)), "stretch: lineBounds.width");
+  CHECK_MESSAGE((feq(r.textBoundsX, 5.0f)),         "stretch: textBoundsX");
 }
 
 // Test 8: length[] per-line compress.
 //
 // "abcd" (natural=4), length=[2] → effective=2, lineBounds.width=2
-static void test_length_compress() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings = {"abcd"};
-    t.length  = {2.0f};
+TEST_CASE("text layout: length compress") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings = {"abcd"};
+  t.length  = {2.0f};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "compress: lineBounds.width");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "compress: lineBounds.width");
 }
 
 // Test 9: maxExtent compresses all lines.
@@ -196,31 +196,31 @@ static void test_length_compress() {
 // strings = {"aaaa", "bb"}, natural = {4, 2}, maxExtent=2
 //   max_target=4 > 2 → global_scale = 2/4 = 0.5
 //   effective = {2, 1}
-static void test_maxExtent_compress() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings   = {"aaaa", "bb"};
-    t.maxExtent = 2.0f;
+TEST_CASE("text layout: max extent compress") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings   = {"aaaa", "bb"};
+  t.maxExtent = 2.0f;
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "maxExtent: line0 width");
-    CHECK_MESSAGE((feq(r.lineBounds[1].width, 1.0f)), "maxExtent: line1 width");
-    CHECK_MESSAGE((feq(r.textBoundsX, 2.0f)),         "maxExtent: textBoundsX");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "maxExtent: line0 width");
+  CHECK_MESSAGE((feq(r.lineBounds[1].width, 1.0f)), "maxExtent: line1 width");
+  CHECK_MESSAGE((feq(r.textBoundsX, 2.0f)),         "maxExtent: textBoundsX");
 }
 
 // Test 10: maxExtent does not stretch (natural < maxExtent).
 //
 // strings = {"ab"}, natural=2, maxExtent=10 → global_scale=1, effective=2
-static void test_maxExtent_no_stretch() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings   = {"ab"};
-    t.maxExtent = 10.0f;
+TEST_CASE("text layout: max extent no stretch") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings   = {"ab"};
+  t.maxExtent = 10.0f;
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "no-stretch: width unchanged");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 2.0f)), "no-stretch: width unchanged");
 }
 
 // Test 11: Minor axis MIDDLE, two lines.
@@ -232,16 +232,16 @@ static void test_maxExtent_no_stretch() {
 //   line[0].Y = 0.2   (top of line 0 = 0.2 + 0.8 =  1.0)
 //   line[1].Y = 0.2 − 1.0 = −0.8  (bottom of line 1 = −0.8 + (−0.2) = −1.0)
 //   block spans [−1.0, 1.0] → centred on 0  ✓
-static void test_minor_middle() {
-    FontStyleParams fs;
-    fs.justifyMinor = "MIDDLE";
-    TextParams t;
-    t.strings = {"a", "b"};
+TEST_CASE("text layout: minor middle") {
+  FontStyleParams fs;
+  fs.justifyMinor = "MIDDLE";
+  TextParams t;
+  t.strings = {"a", "b"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.2f)), "MIDDLE: line0 Y");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], -0.8f)), "MIDDLE: line1 Y");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.2f)), "MIDDLE: line0 Y");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], -0.8f)), "MIDDLE: line1 Y");
 }
 
 // Test 12: Minor axis END, topToBottom=true, two lines.
@@ -253,19 +253,19 @@ static void test_minor_middle() {
 //   line[0].Y = 1.2
 //   line[1].Y = 1.2 − 1.0 = 0.2
 //   bottom of last line = line[1].Y + descender[1] = 0.2 + (-0.2) = 0.0  ✓
-static void test_minor_end_topToBottom() {
-    FontStyleParams fs;
-    fs.justifyMinor = "END";
-    TextParams t;
-    t.strings = {"a", "b"};
+TEST_CASE("text layout: minor end top to bottom") {
+  FontStyleParams fs;
+  fs.justifyMinor = "END";
+  TextParams t;
+  t.strings = {"a", "b"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 1.2f)), "END/tTB: line0 Y");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], 0.2f)), "END/tTB: line1 Y");
-    // bottom of last line = 0.2 + (-0.2) = 0.0
-    float lastBottom = r.lineBaselineOrigins[1][1] - 0.2f; // descender = -0.2
-    CHECK_MESSAGE((feq(lastBottom, 0.0f)), "END/tTB: last line bottom at 0");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 1.2f)), "END/tTB: line0 Y");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1], 0.2f)), "END/tTB: line1 Y");
+  // bottom of last line = 0.2 + (-0.2) = 0.0
+  float lastBottom = r.lineBaselineOrigins[1][1] - 0.2f; // descender = -0.2
+  CHECK_MESSAGE((feq(lastBottom, 0.0f)), "END/tTB: last line bottom at 0");
 }
 
 // Test 13: vertical text (horizontal=false), single column, BEGIN/`FIRST`.
@@ -280,52 +280,52 @@ static void test_minor_end_topToBottom() {
 //     → leftToRight=T → firstBaselineMinor = -descender = 0.2
 //   major BEGIN, topToBottom=T → baselineY = 0 (first glyph at Y=0)
 //   column[0] baseline = {0.8, 0}
-static void test_vertical_single() {
-    FontStyleParams fs;
-    fs.horizontal = false;
-    TextParams t;
-    t.strings = {"ab"};
+TEST_CASE("text layout: vertical single") {
+  FontStyleParams fs;
+  fs.horizontal = false;
+  TextParams t;
+  t.strings = {"ab"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((r.lineBounds.size() == 1), "vert: count");
-    // vertical: lineBounds.width = size (column width), height = effective
-    CHECK_MESSAGE((feq(r.lineBounds[0].width,  1.0f)), "vert: lineBounds width = size");
-    CHECK_MESSAGE((feq(r.lineBounds[0].height, 2.0f)), "vert: lineBounds height = advance");
-    // baseline X = firstBaselineMinor = 0.2 (left edge at X=0)
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 0.2f)), "vert: baseline X");
-    // baseline Y = 0 (major BEGIN/`FIRST`)
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)), "vert: baseline Y");
+  CHECK_MESSAGE((r.lineBounds.size() == 1), "vert: count");
+  // vertical: lineBounds.width = size (column width), height = effective
+  CHECK_MESSAGE((feq(r.lineBounds[0].width,  1.0f)), "vert: lineBounds width = size");
+  CHECK_MESSAGE((feq(r.lineBounds[0].height, 2.0f)), "vert: lineBounds height = advance");
+  // baseline X = firstBaselineMinor = 0.2 (left edge at X=0)
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 0.2f)), "vert: baseline X");
+  // baseline Y = 0 (major BEGIN/`FIRST`)
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)), "vert: baseline Y");
 }
 
 // Test 14: length[] with missing entries treated as 0 (unconstrained).
 //
 // strings = {"ab", "cde"}, length=[3] — length[1] is missing → 0 → unconstrained
 //   effective[0] = 3, effective[1] = 3 (natural=3, no constraint)
-static void test_length_missing_entries() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings = {"ab", "cde"};
-    t.length  = {3.0f}; // only one entry; second treated as 0
+TEST_CASE("text layout: length missing entries") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings = {"ab", "cde"};
+  t.length  = {3.0f}; // only one entry; second treated as 0
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBounds[0].width, 3.0f)), "missing len: line0 constrained to 3");
-    CHECK_MESSAGE((feq(r.lineBounds[1].width, 3.0f)), "missing len: line1 natural=3");
+  CHECK_MESSAGE((feq(r.lineBounds[0].width, 3.0f)), "missing len: line0 constrained to 3");
+  CHECK_MESSAGE((feq(r.lineBounds[1].width, 3.0f)), "missing len: line1 natural=3");
 }
 
 // Test 15: empty strings → returns empty result without crashing.
-static void test_empty_strings() {
-    FontStyleParams fs;
-    TextParams t;
-    t.strings = {};
+TEST_CASE("text layout: empty strings") {
+  FontStyleParams fs;
+  TextParams t;
+  t.strings = {};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((r.lineBounds.empty()),              "empty: no lineBounds");
-    CHECK_MESSAGE((r.lineBaselineOrigins.empty()),     "empty: no origins");
-    CHECK_MESSAGE((feq(r.textBoundsX, 0.0f)),         "empty: textBoundsX=0");
-    CHECK_MESSAGE((feq(r.textBoundsY, 0.0f)),         "empty: textBoundsY=0");
+  CHECK_MESSAGE((r.lineBounds.empty()),              "empty: no lineBounds");
+  CHECK_MESSAGE((r.lineBaselineOrigins.empty()),     "empty: no origins");
+  CHECK_MESSAGE((feq(r.textBoundsX, 0.0f)),         "empty: textBoundsX=0");
+  CHECK_MESSAGE((feq(r.textBoundsY, 0.0f)),         "empty: textBoundsY=0");
 }
 
 // Test 16: leftToRight=false, major MIDDLE.
@@ -333,71 +333,71 @@ static void test_empty_strings() {
 // "abc" (advance=3), leftToRight=F, major MIDDLE
 //   advances in −X; baselineX = +eff/2 = 1.5
 //   glyph extends from +1.5 to +1.5−3 = −1.5 → centred about X=0 ✓
-static void test_major_middle_rtl() {
-    FontStyleParams fs;
-    fs.leftToRight  = false;
-    fs.justifyMajor = "MIDDLE";
-    TextParams t;
-    t.strings = {"abc"};
+TEST_CASE("text layout: major middle rtl") {
+  FontStyleParams fs;
+  fs.leftToRight  = false;
+  fs.justifyMajor = "MIDDLE";
+  TextParams t;
+  t.strings = {"abc"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 1.5f)), "RTL MIDDLE: baselineX");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 1.5f)), "RTL MIDDLE: baselineX");
 }
 
 // Test 17: leftToRight=false, major END.
 //
 // "abc" (advance=3), leftToRight=F, major END
 //   advances in −X; END → left edge of string at X=0 → baselineX = +3
-static void test_major_end_rtl() {
-    FontStyleParams fs;
-    fs.leftToRight  = false;
-    fs.justifyMajor = "END";
-    TextParams t;
-    t.strings = {"abc"};
+TEST_CASE("text layout: major end rtl") {
+  FontStyleParams fs;
+  fs.leftToRight  = false;
+  fs.justifyMajor = "END";
+  TextParams t;
+  t.strings = {"abc"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 3.0f)), "RTL END: baselineX");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][0], 3.0f)), "RTL END: baselineX");
 }
 
 // Test 18: textBoundsY for three lines with non-unit spacing.
 //
 // N=3, size=2, spacing=1.5 → baselineStep=3
 //   totalBlockExtent = (3-1)*3 + 2 = 8
-static void test_textBoundsY_three_lines() {
-    FontStyleParams fs;
-    fs.size    = 2.0f;
-    fs.spacing = 1.5f;
-    TextParams t;
-    t.strings = {"a", "b", "c"};
+TEST_CASE("text layout: text bounds y three lines") {
+  FontStyleParams fs;
+  fs.size    = 2.0f;
+  fs.spacing = 1.5f;
+  TextParams t;
+  t.strings = {"a", "b", "c"};
 
-    auto r = computeTextLayout(fs, t, monoMetrics());
+  auto r = computeTextLayout(fs, t, monoMetrics());
 
-    CHECK_MESSAGE((feq(r.textBoundsY, 8.0f)), "3-line: textBoundsY=8");
-    // line spacing: step=3
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1] - r.lineBaselineOrigins[0][1], -3.0f)),
-          "3-line: step between line0 and line1");
-    CHECK_MESSAGE((feq(r.lineBaselineOrigins[2][1] - r.lineBaselineOrigins[1][1], -3.0f)),
-          "3-line: step between line1 and line2");
+  CHECK_MESSAGE((feq(r.textBoundsY, 8.0f)), "3-line: textBoundsY=8");
+  // line spacing: step=3
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[1][1] - r.lineBaselineOrigins[0][1], -3.0f)),
+        "3-line: step between line0 and line1");
+  CHECK_MESSAGE((feq(r.lineBaselineOrigins[2][1] - r.lineBaselineOrigins[1][1], -3.0f)),
+        "3-line: step between line1 and line2");
 }
 
 // Test 19: `FIRST` minor justify = special case for horizontal=TRUE.
 //
 // The first line's baseline sits exactly at Y=0. Confirm this is independent
 // of topToBottom direction.
-static void test_first_minor_baseline_at_zero_both_directions() {
-    for (bool tTB : {true, false}) {
-        FontStyleParams fs;
-        fs.topToBottom  = tTB;
-        fs.justifyMinor = "FIRST"; // explicit FIRST
-        TextParams t;
-        t.strings = {"x"};
+TEST_CASE("text layout: first minor baseline at zero both directions") {
+  for (bool tTB : {true, false}) {
+      FontStyleParams fs;
+      fs.topToBottom  = tTB;
+      fs.justifyMinor = "FIRST"; // explicit FIRST
+      TextParams t;
+      t.strings = {"x"};
 
-        auto r = computeTextLayout(fs, t, monoMetrics());
-        CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)),
-              "FIRST special case: baseline at Y=0 regardless of topToBottom");
-    }
+      auto r = computeTextLayout(fs, t, monoMetrics());
+      CHECK_MESSAGE((feq(r.lineBaselineOrigins[0][1], 0.0f)),
+            "FIRST special case: baseline at Y=0 regardless of topToBottom");
+  }
 }
 
 // Entry point.
@@ -405,75 +405,52 @@ static void test_first_minor_baseline_at_zero_both_directions() {
 // every direction: the edge the table names sits on the origin. A line spans
 // [baseline + descender, baseline + ascender] on the minor axis (monoMetrics:
 // ascender 0.8, descender -0.2), matching the emitted glyph quads.
-static void test_minor_justify_table() {
-    struct Row { bool horizontal, forward; const char *minor; int line; bool upperEdge; bool baseline; };
-    // forward = topToBottom (horizontal) / leftToRight (vertical).
-    // line: 0 = first, 2 = last. upperEdge: ascender side (top / right) else
-    // descender side (bottom / left). baseline: `FIRST` on horizontal text.
-    const Row rows[] = {
-        {true,  true,  "FIRST",  0, false, true},  {true,  false, "FIRST",  0, false, true},
-        {true,  true,  "BEGIN",  0, true,  false}, {true,  false, "BEGIN",  0, false, false},
-        {true,  true,  "END",    2, false, false}, {true,  false, "END",    2, true,  false},
-        {false, true,  "FIRST",  0, false, false}, {false, false, "FIRST",  0, true,  false},
-        {false, true,  "BEGIN",  0, false, false}, {false, false, "BEGIN",  0, true,  false},
-        {false, true,  "END",    2, true,  false}, {false, false, "END",    2, false, false},
-    };
-    for (const Row &row : rows) {
-        FontStyleParams fs;
-        fs.horizontal = row.horizontal;
-        if (row.horizontal) fs.topToBottom = row.forward; else fs.leftToRight = row.forward;
-        fs.justifyMinor = row.minor;
-        TextParams t;
-        t.strings = {"a", "b", "c"};
-        auto r = computeTextLayout(fs, t, monoMetrics());
-        const float b = r.lineBaselineOrigins[row.line][row.horizontal ? 1 : 0];
-        const float edge = row.baseline ? b : (row.upperEdge ? b + 0.8f : b - 0.2f);
-        const std::string what = std::string("minor table: ") + (row.horizontal ? "horiz " : "vert ") +
-                                 (row.forward ? "fwd " : "rev ") + row.minor;
-        CHECK_MESSAGE((feq(edge, 0.0f)), what.c_str());
-    }
-    // MIDDLE: the block is centred on the minor axis in every direction.
-    for (bool horizontal : {true, false})
-        for (bool forward : {true, false}) {
-            FontStyleParams fs;
-            fs.horizontal = horizontal;
-            if (horizontal) fs.topToBottom = forward; else fs.leftToRight = forward;
-            fs.justifyMinor = "MIDDLE";
-            TextParams t;
-            t.strings = {"a", "b", "c"};
-            auto r = computeTextLayout(fs, t, monoMetrics());
-            float lo = 1e9f, hi = -1e9f;
-            for (const auto &o : r.lineBaselineOrigins) {
-                const float bl = o[horizontal ? 1 : 0];
-                lo = std::min(lo, bl - 0.2f);
-                hi = std::max(hi, bl + 0.8f);
-            }
-            const std::string what = std::string("minor table: MIDDLE centred ") +
-                                     (horizontal ? "horiz " : "vert ") + (forward ? "fwd" : "rev");
-            CHECK_MESSAGE((feq(lo + hi, 0.0f)), what.c_str());
-        }
+TEST_CASE("text layout: minor justify table") {
+  struct Row { bool horizontal, forward; const char *minor; int line; bool upperEdge; bool baseline; };
+  // forward = topToBottom (horizontal) / leftToRight (vertical).
+  // line: 0 = first, 2 = last. upperEdge: ascender side (top / right) else
+  // descender side (bottom / left). baseline: `FIRST` on horizontal text.
+  const Row rows[] = {
+      {true,  true,  "FIRST",  0, false, true},  {true,  false, "FIRST",  0, false, true},
+      {true,  true,  "BEGIN",  0, true,  false}, {true,  false, "BEGIN",  0, false, false},
+      {true,  true,  "END",    2, false, false}, {true,  false, "END",    2, true,  false},
+      {false, true,  "FIRST",  0, false, false}, {false, false, "FIRST",  0, true,  false},
+      {false, true,  "BEGIN",  0, false, false}, {false, false, "BEGIN",  0, true,  false},
+      {false, true,  "END",    2, true,  false}, {false, false, "END",    2, false, false},
+  };
+  for (const Row &row : rows) {
+      FontStyleParams fs;
+      fs.horizontal = row.horizontal;
+      if (row.horizontal) fs.topToBottom = row.forward; else fs.leftToRight = row.forward;
+      fs.justifyMinor = row.minor;
+      TextParams t;
+      t.strings = {"a", "b", "c"};
+      auto r = computeTextLayout(fs, t, monoMetrics());
+      const float b = r.lineBaselineOrigins[row.line][row.horizontal ? 1 : 0];
+      const float edge = row.baseline ? b : (row.upperEdge ? b + 0.8f : b - 0.2f);
+      const std::string what = std::string("minor table: ") + (row.horizontal ? "horiz " : "vert ") +
+                               (row.forward ? "fwd " : "rev ") + row.minor;
+      CHECK_MESSAGE((feq(edge, 0.0f)), what.c_str());
+  }
+  // MIDDLE: the block is centred on the minor axis in every direction.
+  for (bool horizontal : {true, false})
+      for (bool forward : {true, false}) {
+          FontStyleParams fs;
+          fs.horizontal = horizontal;
+          if (horizontal) fs.topToBottom = forward; else fs.leftToRight = forward;
+          fs.justifyMinor = "MIDDLE";
+          TextParams t;
+          t.strings = {"a", "b", "c"};
+          auto r = computeTextLayout(fs, t, monoMetrics());
+          float lo = 1e9f, hi = -1e9f;
+          for (const auto &o : r.lineBaselineOrigins) {
+              const float bl = o[horizontal ? 1 : 0];
+              lo = std::min(lo, bl - 0.2f);
+              hi = std::max(hi, bl + 0.8f);
+          }
+          const std::string what = std::string("minor table: MIDDLE centred ") +
+                                   (horizontal ? "horiz " : "vert ") + (forward ? "fwd" : "rev");
+          CHECK_MESSAGE((feq(lo + hi, 0.0f)), what.c_str());
+      }
 }
 
-TEST_CASE("text_layout_test") {
-    test_single_line_defaults();
-    test_two_lines_first_minor();
-    test_minor_begin_topToBottom();
-    test_minor_begin_bottomToTop();
-    test_major_middle_ltr();
-    test_major_end_ltr();
-    test_length_stretch();
-    test_length_compress();
-    test_maxExtent_compress();
-    test_maxExtent_no_stretch();
-    test_minor_middle();
-    test_minor_end_topToBottom();
-    test_vertical_single();
-    test_minor_justify_table();
-    test_length_missing_entries();
-    test_empty_strings();
-    test_major_middle_rtl();
-    test_major_end_rtl();
-    test_textBoundsY_three_lines();
-    test_first_minor_baseline_at_zero_both_directions();
-    return;
-}

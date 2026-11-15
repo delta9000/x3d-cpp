@@ -40,7 +40,7 @@ static std::string checkCaseA(const runtime::Scene &scene,
   return found->parentField;
 }
 
-TEST_CASE("proto_nested_instance_placement_roundtrip_test") {
+TEST_CASE("proto nested instance placement roundtrip: nested instance stays in children") {
   // Ground-truth source: PROTO "Outer" whose body is a single Group, and a
   // ProtoInstance of "Inner" nested under that Group (containerField=children).
   // "Inner" is declared first so the instance resolves its declaration.
@@ -66,16 +66,14 @@ TEST_CASE("proto_nested_instance_placement_roundtrip_test") {
   auto doc0 = codec::parseDocument(xml);
   // Sanity: the XML path itself produces Case A.
   CHECK((checkCaseA(doc0.scene, "Outer", "Inner") == "children"));
-  {
+  SUBCASE("JSON round trip") {
     std::string js = codec::JsonWriter().writeDocument(doc0);
     auto docJ = codec::parseDocument(js, codec::Encoding::JSON);
     CHECK((checkCaseA(docJ.scene, "Outer", "Inner") == "children"));
   }
-  {
+  SUBCASE("ClassicVRML round trip") {
     std::string vr = codec::VrmlWriter().writeDocument(doc0);
     auto docV = codec::parseDocument(vr, codec::Encoding::ClassicVRML);
     CHECK((checkCaseA(docV.scene, "Outer", "Inner") == "children"));
   }
-
-  return;
 }

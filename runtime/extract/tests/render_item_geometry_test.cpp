@@ -7,7 +7,7 @@
 
 using namespace x3d::runtime::extract;
 
-TEST_CASE("render_item_geometry_test") {
+TEST_CASE("render item geometry: Geometry defaults to AoS and reports packed") {
   // Default Geometry is AoS
   Geometry g;
   CHECK((g.kind == Geometry::Kind::AoS));
@@ -17,6 +17,4 @@ TEST_CASE("render_item_geometry_test") {
   Geometry gp;
   gp.kind = Geometry::Kind::Packed;
   CHECK((gp.is_packed()));
-
-  return;
 }

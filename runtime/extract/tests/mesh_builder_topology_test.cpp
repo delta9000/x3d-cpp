@@ -46,7 +46,7 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
   return feq(a.r, r) && feq(a.g, g) && feq(a.b, b) && feq(a.a, al);
 }
 
-TEST_CASE("mesh_builder_b4_test") {
+TEST_CASE("mesh builder b4") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{2, 0, 0}, P3{3, 0, 0};
 
   // recognizedGeometryType lists all three line/point sets.
@@ -55,7 +55,7 @@ TEST_CASE("mesh_builder_b4_test") {
   CHECK((recognizedGeometryType("PointSet")));
 
   // 1. Default topology is Triangles; triangle path unchanged
-  {
+  SUBCASE("Default topology is Triangles; triangle path unchanged") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, SFVec3f{1, 1, 0}});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -66,7 +66,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 2. IndexedLineSet: one 3-vertex polyline -> 2 segments
-  {
+  SUBCASE("IndexedLineSet: one 3-vertex polyline -> 2 segments") {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1, P2});
     // coordIndex 0,1,2,-1 => polyline (P0,P1,P2) => segments P0-P1, P1-P2.
@@ -88,7 +88,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 3a. IndexedLineSet per-vertex Color (RGB promoted alpha=1)
-  {
+  SUBCASE("IndexedLineSet per-vertex Color (RGB promoted alpha=1)") {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1});
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}});
@@ -102,7 +102,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 3b. IndexedLineSet ColorRGBA alpha preserved
-  {
+  SUBCASE("IndexedLineSet ColorRGBA alpha preserved") {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1});
     attachColorRGBA(g, {SFColorRGBA{0.2f, 0.4f, 0.6f, 0.5f},
@@ -115,7 +115,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 4. LineSet: vertexCount {3} partitions into one 3-vertex polyline
-  {
+  SUBCASE("LineSet: vertexCount {3} partitions into one 3-vertex polyline") {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "vertexCount", std::any(std::vector<int>{3}));
@@ -129,7 +129,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 4b. LineSet two polylines {2,2}
-  {
+  SUBCASE("LineSet two polylines {2,2}") {
     auto g = createX3DNode("LineSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "vertexCount", std::any(std::vector<int>{2, 2}));
@@ -141,7 +141,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 5. PointSet: whole array -> 0..N-1 GL_POINTS, Color honored
-  {
+  SUBCASE("PointSet: whole array -> 0..N-1 GL_POINTS, Color honored") {
     auto g = createX3DNode("PointSet");
     attachCoord(g, {P0, P1, P2});
     attachColor(g, {SFColor{1, 0, 0}, SFColor{0, 1, 0}, SFColor{0, 0, 1}});
@@ -159,7 +159,7 @@ TEST_CASE("mesh_builder_b4_test") {
   }
 
   // 6. Degenerate guards: no OOB, empty mesh, still recognized
-  {
+  SUBCASE("Degenerate guards: no OOB, empty mesh, still recognized") {
     // 6a: 1-vertex "polyline" (no segment) + an out-of-range index.
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1});
@@ -170,7 +170,7 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((m.indices.empty()));    // ...but legitimately empty (no valid segment).
     CHECK((m.topology == Topology::Lines));
   }
-  {
+  SUBCASE("empty PointSet gives an empty recognized mesh") {
     // 6b: empty PointSet (no coord) -> empty mesh, recognized.
     auto g = createX3DNode("PointSet");
     bool recognized = false;
@@ -178,8 +178,6 @@ TEST_CASE("mesh_builder_b4_test") {
     CHECK((recognized));
     CHECK((m.positions.empty() && m.indices.empty()));
   }
-
-  return;
 }
 
 TEST_CASE("line_and_point_normals_enable_lighting") {

@@ -15,7 +15,7 @@ static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
   return dynamic_cast<X3DBindableNode*>(n.get());
 }
 
-TEST_CASE("m2c_tick_test") {
+TEST_CASE("bindable tick: set_bind through tick switches and restores the bound Viewpoint") {
   auto vp1 = createX3DNode("Viewpoint");
   auto vp2 = createX3DNode("Viewpoint");
   Scene scene; scene.addRootNode(vp1); scene.addRootNode(vp2);
@@ -35,5 +35,4 @@ TEST_CASE("m2c_tick_test") {
   ctx.tick(2.0);
   CHECK((ctx.boundViewpoint() == vp1.get()));
   CHECK((bnd(vp1)->getIsBound() == true));
-  return;
 }

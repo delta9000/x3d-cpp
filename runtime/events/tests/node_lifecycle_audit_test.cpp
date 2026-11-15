@@ -36,7 +36,7 @@ static void setChildren(const std::shared_ptr<X3DNode> &p,
 // We verify the latent risk by checking routeCount() stays non-zero after the
 // scene is destroyed, and the test documents that the EventGraph has no
 // automatic pruning mechanism.
-void test_event_graph_stale_routes() {
+TEST_CASE("node lifecycle audit: event graph stale routes") {
   X3DExecutionContext ctx;
   std::weak_ptr<X3DNode> weakA, weakB;
 
@@ -62,7 +62,7 @@ void test_event_graph_stale_routes() {
 
 // Same issue at the X3DExecutionContext level: buildFrom adds routes with raw
 // pointers; destroying the Scene leaves them dangling in the context.
-void test_context_outlives_scene() {
+TEST_CASE("node lifecycle audit: context outlives scene") {
   X3DExecutionContext ctx;
   std::weak_ptr<X3DNode> weakClock, weakInterp;
 
@@ -99,7 +99,7 @@ void test_context_outlives_scene() {
 // cycle. The Scene drops its external reference but the node's own internal
 // shared_ptr keeps the ref-count at 1 -> leak.
 // breakContainmentCycles() fixes this by severing back-edges.
-void test_self_cycle_leak() {
+TEST_CASE("node lifecycle audit: self cycle leak") {
   std::weak_ptr<X3DNode> weak;
   {
     auto self = createX3DNode("Group");
@@ -117,7 +117,7 @@ void test_self_cycle_leak() {
   }
 }
 
-void test_self_cycle_fixed_by_breaker() {
+TEST_CASE("node lifecycle audit: self cycle fixed by breaker") {
   std::weak_ptr<X3DNode> weak;
   {
     auto self = createX3DNode("Group");
@@ -131,7 +131,7 @@ void test_self_cycle_fixed_by_breaker() {
   CHECK_MESSAGE((weak.expired()), ("breakContainmentCycles fixes self-cycle; node destroyed"));
 }
 // 3. Well-formed DAG: scene destruction is clean.
-void test_well_formed_scene_destruction() {
+TEST_CASE("node lifecycle audit: well formed scene destruction") {
   std::weak_ptr<X3DNode> weakA, weakB, weakC;
   {
     auto a = createX3DNode("Group");
@@ -149,7 +149,7 @@ void test_well_formed_scene_destruction() {
   CHECK_MESSAGE((weakC.expired()), ("DAG child C destroyed"));
 }
 // 4. DEF/USE identity: USE shares the same shared_ptr; no dangling.
-void test_def_use_identity() {
+TEST_CASE("node lifecycle audit: def use identity") {
   std::weak_ptr<X3DNode> weak;
   {
     auto defNode = createX3DNode("Transform");
@@ -170,7 +170,7 @@ void test_def_use_identity() {
   CHECK_MESSAGE((weak.expired()), ("node destroyed when last external ref drops"));
 }
 // 5. Scene::routes uses weak_ptr; it does not keep nodes alive.
-void test_scene_routes_weak_ptr() {
+TEST_CASE("node lifecycle audit: scene routes weak ptr") {
   std::weak_ptr<X3DNode> weak;
   Scene s;
   {
@@ -188,14 +188,3 @@ void test_scene_routes_weak_ptr() {
   CHECK_MESSAGE((s.routes[0].from.lock() == nullptr), ("expired weak_ptr in route becomes null"));
 }
 
-TEST_CASE("node_lifecycle_audit_test") {
-  test_event_graph_stale_routes();
-  test_context_outlives_scene();
-  test_self_cycle_leak();
-  test_self_cycle_fixed_by_breaker();
-  test_well_formed_scene_destruction();
-  test_def_use_identity();
-  test_scene_routes_weak_ptr();
-
-  return;
-}

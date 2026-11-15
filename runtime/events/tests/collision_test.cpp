@@ -90,105 +90,98 @@ double collideTimeOf(const NodeP &c) { return dynamic_cast<Collision &>(*c).getC
 
 } // namespace
 
-TEST_CASE("collision_test") {
-  // (1) `FLY` into a wall inside a Collision group.
-  {
-    auto group = createX3DNode("Collision");
-    addChild(group, boxAt({2, 2, 2}, {0, 0, 0})); // front face at z = 1
-    auto w = makeWorld("FLY", {0, 0, 5}, {group});
-    w->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w->ctx, 0.0, 1.0); // unobstructed this would reach z = -5
-    CHECK_MESSAGE((feq(cam(w->ctx).z, 1.25f)), ("fly: stops avatarSize[0] (0.25) short of the wall"));
-    CHECK_MESSAGE((activeOf(group)), ("fly: Collision.isActive TRUE on contact"));
-    const double first = collideTimeOf(group);
-    CHECK_MESSAGE((first > 0.0 && first < 1.0), ("fly: collideTime is the tick the contact began"));
-    run(w->ctx, 1.05, 1.5); // keep pushing into the wall
-    CHECK_MESSAGE((collideTimeOf(group) == first), ("fly: collideTime fires once per contact, not per tick"));
-    w->ctx.setKey(NavigationSystem::kKeyForward, false);
-    run(w->ctx, 1.55, 1.7); // rest against the wall
-    CHECK_MESSAGE((activeOf(group)), ("fly: resting against the wall stays in collision"));
-    w->ctx.setKey(NavigationSystem::kKeyBack, true);
-    run(w->ctx, 1.75, 2.0);
-    CHECK_MESSAGE((cam(w->ctx).z > 1.3f), ("fly: backing away moves off the wall"));
-    CHECK_MESSAGE((!activeOf(group)), ("fly: isActive FALSE once the collision no longer occurs"));
-  }
+TEST_CASE("collision: FLY into a wall inside a Collision group") {
+  auto group = createX3DNode("Collision");
+  addChild(group, boxAt({2, 2, 2}, {0, 0, 0})); // front face at z = 1
+  auto w = makeWorld("FLY", {0, 0, 5}, {group});
+  w->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w->ctx, 0.0, 1.0); // unobstructed this would reach z = -5
+  CHECK_MESSAGE((feq(cam(w->ctx).z, 1.25f)), ("fly: stops avatarSize[0] (0.25) short of the wall"));
+  CHECK_MESSAGE((activeOf(group)), ("fly: Collision.isActive TRUE on contact"));
+  const double first = collideTimeOf(group);
+  CHECK_MESSAGE((first > 0.0 && first < 1.0), ("fly: collideTime is the tick the contact began"));
+  run(w->ctx, 1.05, 1.5); // keep pushing into the wall
+  CHECK_MESSAGE((collideTimeOf(group) == first), ("fly: collideTime fires once per contact, not per tick"));
+  w->ctx.setKey(NavigationSystem::kKeyForward, false);
+  run(w->ctx, 1.55, 1.7); // rest against the wall
+  CHECK_MESSAGE((activeOf(group)), ("fly: resting against the wall stays in collision"));
+  w->ctx.setKey(NavigationSystem::kKeyBack, true);
+  run(w->ctx, 1.75, 2.0);
+  CHECK_MESSAGE((cam(w->ctx).z > 1.3f), ("fly: backing away moves off the wall"));
+  CHECK_MESSAGE((!activeOf(group)), ("fly: isActive FALSE once the collision no longer occurs"));
+}
 
-  // (2) enabled `FALSE` turns collision off for the subtree, nested Collision too.
-  {
-    auto outer = createX3DNode("Collision");
-    setF(outer, "enabled", std::any(SFBool{false}));
-    auto inner = createX3DNode("Collision"); // enabled `TRUE` by default
-    addChild(inner, boxAt({2, 2, 2}, {0, 0, 0}));
-    addChild(outer, inner);
-    auto w = makeWorld("FLY", {0, 0, 5}, {outer});
-    w->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w->ctx, 0.0, 1.0);
-    CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("disabled: the avatar passes through the geometry"));
-    CHECK_MESSAGE((!activeOf(inner) && !activeOf(outer)), ("disabled: no Collision events fire"));
-  }
+TEST_CASE("collision: enabled FALSE turns collision off for the subtree") {
+  auto outer = createX3DNode("Collision");
+  setF(outer, "enabled", std::any(SFBool{false}));
+  auto inner = createX3DNode("Collision"); // enabled `TRUE` by default
+  addChild(inner, boxAt({2, 2, 2}, {0, 0, 0}));
+  addChild(outer, inner);
+  auto w = makeWorld("FLY", {0, 0, 5}, {outer});
+  w->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w->ctx, 0.0, 1.0);
+  CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("disabled: the avatar passes through the geometry"));
+  CHECK_MESSAGE((!activeOf(inner) && !activeOf(outer)), ("disabled: no Collision events fire"));
+}
 
-  // (3) proxy semantics.
-  {
-    auto wall = createX3DNode("Collision"); // invisible wall: proxy, no children
-    auto proxyBox = createX3DNode("Box");
-    setF(proxyBox, "size", std::any(SFVec3f{2, 2, 2}));
-    auto proxyShape = createX3DNode("Shape");
-    setF(proxyShape, "geometry", std::any(NodeP(proxyBox)));
-    setF(wall, "proxy", std::any(NodeP(proxyShape)));
-    auto w = makeWorld("FLY", {0, 0, 5}, {wall});
-    w->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w->ctx, 0.0, 1.0);
-    CHECK_MESSAGE((feq(cam(w->ctx).z, 1.25f)), ("proxy: an invisible proxy blocks the avatar"));
-    CHECK_MESSAGE((activeOf(wall)), ("proxy: collision with the proxy fires isActive"));
+TEST_CASE("collision: proxy semantics") {
+  auto wall = createX3DNode("Collision"); // invisible wall: proxy, no children
+  auto proxyBox = createX3DNode("Box");
+  setF(proxyBox, "size", std::any(SFVec3f{2, 2, 2}));
+  auto proxyShape = createX3DNode("Shape");
+  setF(proxyShape, "geometry", std::any(NodeP(proxyBox)));
+  setF(wall, "proxy", std::any(NodeP(proxyShape)));
+  auto w = makeWorld("FLY", {0, 0, 5}, {wall});
+  w->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w->ctx, 0.0, 1.0);
+  CHECK_MESSAGE((feq(cam(w->ctx).z, 1.25f)), ("proxy: an invisible proxy blocks the avatar"));
+  CHECK_MESSAGE((activeOf(wall)), ("proxy: collision with the proxy fires isActive"));
 
-    auto group = createX3DNode("Collision"); // visible children, proxy far away
-    addChild(group, boxAt({2, 2, 2}, {0, 0, 0}));
-    auto farShape = createX3DNode("Shape");
-    auto farBox = createX3DNode("Box");
-    setF(farShape, "geometry", std::any(NodeP(farBox)));
-    auto farT = createX3DNode("Transform");
-    setF(farT, "translation", std::any(SFVec3f{100, 0, 0}));
-    addChild(farT, farShape);
-    setF(group, "proxy", std::any(NodeP(farT)));
-    auto w2 = makeWorld("FLY", {0, 0, 5}, {group});
-    w2->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w2->ctx, 0.0, 1.0);
-    CHECK_MESSAGE((cam(w2->ctx).z < -4.0f), ("proxy: the proxy replaces the children for collision"));
-  }
+  auto group = createX3DNode("Collision"); // visible children, proxy far away
+  addChild(group, boxAt({2, 2, 2}, {0, 0, 0}));
+  auto farShape = createX3DNode("Shape");
+  auto farBox = createX3DNode("Box");
+  setF(farShape, "geometry", std::any(NodeP(farBox)));
+  auto farT = createX3DNode("Transform");
+  setF(farT, "translation", std::any(SFVec3f{100, 0, 0}));
+  addChild(farT, farShape);
+  setF(group, "proxy", std::any(NodeP(farT)));
+  auto w2 = makeWorld("FLY", {0, 0, 5}, {group});
+  w2->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w2->ctx, 0.0, 1.0);
+  CHECK_MESSAGE((cam(w2->ctx).z < -4.0f), ("proxy: the proxy replaces the children for collision"));
+}
 
-  // (4) `WALK`: gravity, terrain following, step height.
-  {
-    auto ground = boxAt({100, 1, 100}, {0, -0.5f, 0}); // top at y = 0
-    auto step = boxAt({4, 0.5f, 2}, {0, 0.25f, 0});    // top at y = 0.5, z in [-1, 1]
-    auto w = makeWorld("WALK", {0, 3, 5}, {ground, step}, 2.0f);
-    run(w->ctx, 0.0, 2.0); // fall from y = 3
-    CHECK_MESSAGE((feq(cam(w->ctx).y, 1.6f)), ("walk: gravity settles the eye at avatarSize[1] above ground"));
-    w->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w->ctx, 2.05, 4.5); // 2 m/s for ~2.5 s: from z = 5 onto the step (z in [-1, 1])
-    CHECK_MESSAGE((cam(w->ctx).z < 0.5f), ("walk: a step lower than avatarSize[2] does not block"));
-    CHECK_MESSAGE((feq(cam(w->ctx).y, 2.1f)), ("walk: the eye climbs onto the step (0.5 + 1.6)"));
+TEST_CASE("collision: WALK gravity, terrain following and step height") {
+  auto ground = boxAt({100, 1, 100}, {0, -0.5f, 0}); // top at y = 0
+  auto step = boxAt({4, 0.5f, 2}, {0, 0.25f, 0});    // top at y = 0.5, z in [-1, 1]
+  auto w = makeWorld("WALK", {0, 3, 5}, {ground, step}, 2.0f);
+  run(w->ctx, 0.0, 2.0); // fall from y = 3
+  CHECK_MESSAGE((feq(cam(w->ctx).y, 1.6f)), ("walk: gravity settles the eye at avatarSize[1] above ground"));
+  w->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w->ctx, 2.05, 4.5); // 2 m/s for ~2.5 s: from z = 5 onto the step (z in [-1, 1])
+  CHECK_MESSAGE((cam(w->ctx).z < 0.5f), ("walk: a step lower than avatarSize[2] does not block"));
+  CHECK_MESSAGE((feq(cam(w->ctx).y, 2.1f)), ("walk: the eye climbs onto the step (0.5 + 1.6)"));
 
-    auto ground2 = boxAt({100, 1, 100}, {0, -0.5f, 0});
-    auto tall = boxAt({4, 2, 2}, {0, 1, 0}); // top at y = 2 > avatarSize[2]
-    auto w2 = makeWorld("WALK", {0, 1.6f, 5}, {ground2, tall}, 2.0f);
-    w2->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w2->ctx, 0.0, 3.0);
-    CHECK_MESSAGE((feq(cam(w2->ctx).z, 1.25f)), ("walk: an obstacle taller than avatarSize[2] blocks"));
-    CHECK_MESSAGE((feq(cam(w2->ctx).y, 1.6f)), ("walk: the eye stays at avatarSize[1] in front of it"));
-  }
+  auto ground2 = boxAt({100, 1, 100}, {0, -0.5f, 0});
+  auto tall = boxAt({4, 2, 2}, {0, 1, 0}); // top at y = 2 > avatarSize[2]
+  auto w2 = makeWorld("WALK", {0, 1.6f, 5}, {ground2, tall}, 2.0f);
+  w2->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w2->ctx, 0.0, 3.0);
+  CHECK_MESSAGE((feq(cam(w2->ctx).z, 1.25f)), ("walk: an obstacle taller than avatarSize[2] blocks"));
+  CHECK_MESSAGE((feq(cam(w2->ctx).y, 1.6f)), ("walk: the eye stays at avatarSize[1] in front of it"));
+}
 
-  // (5) Line geometry does not collide.
-  {
-    auto coord = createX3DNode("Coordinate");
-    setF(coord, "point", std::any(MFVec3f{{-5, 0, 0}, {5, 0, 0}, {0, -5, 0}, {0, 5, 0}}));
-    auto lines = createX3DNode("IndexedLineSet");
-    setF(lines, "coord", std::any(NodeP(coord)));
-    setF(lines, "coordIndex", std::any(MFInt32{0, 1, -1, 2, 3, -1}));
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(NodeP(lines)));
-    auto w = makeWorld("FLY", {0, 0, 5}, {shape});
-    w->ctx.setKey(NavigationSystem::kKeyForward, true);
-    run(w->ctx, 0.0, 1.0);
-    CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("lines: an IndexedLineSet is not collidable"));
-  }
+TEST_CASE("collision: line geometry does not collide") {
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point", std::any(MFVec3f{{-5, 0, 0}, {5, 0, 0}, {0, -5, 0}, {0, 5, 0}}));
+  auto lines = createX3DNode("IndexedLineSet");
+  setF(lines, "coord", std::any(NodeP(coord)));
+  setF(lines, "coordIndex", std::any(MFInt32{0, 1, -1, 2, 3, -1}));
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(NodeP(lines)));
+  auto w = makeWorld("FLY", {0, 0, 5}, {shape});
+  w->ctx.setKey(NavigationSystem::kKeyForward, true);
+  run(w->ctx, 0.0, 1.0);
+  CHECK_MESSAGE((cam(w->ctx).z < -4.0f), ("lines: an IndexedLineSet is not collidable"));
 }

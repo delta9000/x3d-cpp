@@ -43,7 +43,7 @@ struct Rig {
 };
 
 // cycleInterval=0 + loop=`TRUE` must not crash
-void test_rtc1_zero_cycle_loop_no_crash() {
+TEST_CASE("timesensor rtc: rtc1 zero cycle loop no crash") {
   Rig r;
   r.ts->setCycleInterval(0.0); // degenerate
   r.ts->setStartTime(0.0);
@@ -61,7 +61,7 @@ void test_rtc1_zero_cycle_loop_no_crash() {
 }
 
 // looping emits fraction_changed == 1.0 at each cycle boundary
-void test_rtc2_loop_fraction_one_at_boundary() {
+TEST_CASE("timesensor rtc: rtc2 loop fraction one at boundary") {
   Rig r;
   r.ts->setCycleInterval(1.0);
   r.ts->setStartTime(0.0);
@@ -86,7 +86,7 @@ void test_rtc2_loop_fraction_one_at_boundary() {
 }
 
 // cycleTime == startTime + cycleIndex*cycleInterval (not now)
-void test_rtc3_cycletime_is_cycle_start() {
+TEST_CASE("timesensor rtc: rtc3 cycletime is cycle start") {
   Rig r;
   r.ts->setCycleInterval(2.0);
   r.ts->setStartTime(10.0);
@@ -105,7 +105,7 @@ void test_rtc3_cycletime_is_cycle_start() {
 }
 
 // disable mid-cycle emits final outputs then isActive=false
-void test_rtc4_disable_emits_final_outputs() {
+TEST_CASE("timesensor rtc: rtc4 disable emits final outputs") {
   Rig r;
   r.ts->setCycleInterval(10.0);
   r.ts->setStartTime(0.0);
@@ -130,14 +130,6 @@ void test_rtc4_disable_emits_final_outputs() {
 
 } // namespace
 
-TEST_CASE("timesensor_rtc_test") {
-  test_rtc1_zero_cycle_loop_no_crash();
-  test_rtc2_loop_fraction_one_at_boundary();
-  test_rtc3_cycletime_is_cycle_start();
-  test_rtc4_disable_emits_final_outputs();
-
-  return;
-}
 
 TEST_CASE("timesensor_late_resume_keeps_fraction_frozen") {
   Rig r;

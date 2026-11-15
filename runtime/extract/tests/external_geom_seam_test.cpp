@@ -45,89 +45,81 @@ static PackedMesh makeTrianglePacked() {
   return m;
 }
 
-TEST_CASE("external_geom_seam_test") {
-  // A NurbsTrimmedSurface (still unrecognized) triggers the resolver
-  {
-    bool rec = true;
-    auto nurbs = createX3DNode("NurbsTrimmedSurface");
-    auto mesh = buildLocalMesh(nurbs.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
-    CHECK((!rec && mesh.indices.empty())); // still unrecognized
+TEST_CASE("external geom seam: an unrecognized NurbsTrimmedSurface triggers the resolver") {
+  bool rec = true;
+  auto nurbs = createX3DNode("NurbsTrimmedSurface");
+  auto mesh = buildLocalMesh(nurbs.get(), geo::builtinProjection(), MeshBuildOptions{}, &rec);
+  CHECK((!rec && mesh.indices.empty())); // still unrecognized
+}
+
+TEST_CASE("external geom seam: without a resolver an unsupported surface is skipped") {
+  auto root = createX3DNode("Group");
+  auto nurbs = createX3DNode("NurbsTrimmedSurface");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
+  addChild(root, shape);
+
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.empty())); // no resolver → still skipped
+}
+
+TEST_CASE("external geom seam: a resolved PackedMesh is emitted as a packed item") {
+  auto root = createX3DNode("Group");
+  auto nurbs = createX3DNode("NurbsTrimmedSurface");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
+  addChild(root, shape);
+
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+
+  MeshBuildOptions opts;
+  opts.externalGeometryResolver = [](const X3DNode* /*node*/, AssetResolver /*resolver*/) -> PackedMesh {
+    return makeTrianglePacked();
+  };
+
+  extract::SceneExtractor ex(ctx, scene, opts);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1)); // resolver fired, emitPacked called
+  const RenderItem& item = ex.item(snap.added[0]);
+  CHECK((item.geometry_ext.is_packed())); // the new Geometry union field
+  // Packed payloads still satisfy MeshRef's never-null contract. Consumers
+  // that inspect the AoS channel see the shared empty mesh, not a null pointer.
+  CHECK(item.mesh != nullptr);
+  if (item.mesh) {
+    CHECK(item.mesh == emptyMeshRef());
+    CHECK(item.mesh->positions.empty());
+    CHECK(ex.sceneWorldBounds().empty); // packed bounds are a separate channel
   }
+}
 
-  // 1) Resolver not installed → NurbsPatchSurface still skipped (no change) =
-  {
-    auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsTrimmedSurface");
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
-    addChild(root, shape);
+TEST_CASE("external geom seam: an empty PackedMesh is pending and not emitted") {
+  auto root = createX3DNode("Group");
+  auto nurbs = createX3DNode("NurbsTrimmedSurface");
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
+  addChild(root, shape);
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.empty())); // no resolver → still skipped
-  }
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
 
-  // 2) Resolver installed → non-empty PackedMesh → RenderItem Packed emitted
-  {
-    auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsTrimmedSurface");
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
-    addChild(root, shape);
+  MeshBuildOptions opts;
+  opts.externalGeometryResolver = [](const X3DNode*, AssetResolver) -> PackedMesh {
+    return PackedMesh{}; // empty = Pending
+  };
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-
-    MeshBuildOptions opts;
-    opts.externalGeometryResolver = [](const X3DNode* /*node*/, AssetResolver /*resolver*/) -> PackedMesh {
-      return makeTrianglePacked();
-    };
-
-    extract::SceneExtractor ex(ctx, scene, opts);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1)); // resolver fired, emitPacked called
-    const RenderItem& item = ex.item(snap.added[0]);
-    CHECK((item.geometry_ext.is_packed())); // the new Geometry union field
-    // Packed payloads still satisfy MeshRef's never-null contract. Consumers
-    // that inspect the AoS channel see the shared empty mesh, not a null pointer.
-    CHECK(item.mesh != nullptr);
-    if (item.mesh) {
-      CHECK(item.mesh == emptyMeshRef());
-      CHECK(item.mesh->positions.empty());
-      CHECK(ex.sceneWorldBounds().empty); // packed bounds are a separate channel
-    }
-  }
-
-  // 3) Resolver returning empty PackedMesh → Pending → not emitted
-  {
-    auto root = createX3DNode("Group");
-    auto nurbs = createX3DNode("NurbsTrimmedSurface");
-    auto shape = createX3DNode("Shape");
-    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(nurbs)));
-    addChild(root, shape);
-
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-
-    MeshBuildOptions opts;
-    opts.externalGeometryResolver = [](const X3DNode*, AssetResolver) -> PackedMesh {
-      return PackedMesh{}; // empty = Pending
-    };
-
-    extract::SceneExtractor ex(ctx, scene, opts);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.empty())); // empty PackedMesh → Pending → not emitted
-  }
-
-  return;
+  extract::SceneExtractor ex(ctx, scene, opts);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.empty())); // empty PackedMesh → Pending → not emitted
 }
 
 TEST_CASE("delta oracle: packed geometry field edits refresh payload and membership") {

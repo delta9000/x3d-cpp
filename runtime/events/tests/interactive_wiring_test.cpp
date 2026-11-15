@@ -31,7 +31,7 @@ static bool sameMatrix(const Mat4 &a, const Mat4 &b) {
   return true;
 }
 
-TEST_CASE("interactive_wiring_test") {
+TEST_CASE("interactive wiring: click, fly navigation and sensor grab arbitration") {
   // Scene: a viewpoint + a Group{ TouchSensor, Shape{ Box } }.
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<TouchSensor>();
@@ -88,6 +88,4 @@ TEST_CASE("interactive_wiring_test") {
   ctx.setPointer(Ray{{0.3f, 0, 10}, {0, 0, -1}}); // move while grabbed
   ctx.tick(5.0);
   CHECK_MESSAGE((sameMatrix(beforeDrag, ctx.viewMatrix())), ("(c) drag on a sensor does not rotate the camera (grab consumes pointer)"));
-
-  return;
 }

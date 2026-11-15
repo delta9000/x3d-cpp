@@ -7,7 +7,7 @@
 using namespace x3d::runtime;
 using x3d::test::feq;
 
-TEST_CASE("aabb_test") {
+TEST_CASE("aabb: construction and union") {
   Aabb e;                       // empty is union identity
   CHECK((e.empty));
   Aabb b = Aabb::fromCenterSize({0,0,0}, {2,2,2}); // [-1,1]^3
@@ -20,7 +20,9 @@ TEST_CASE("aabb_test") {
   Aabb c = Aabb::fromCenterSize({3,0,0}, {2,2,2}); // [2,4]x[-1,1]x[-1,1]
   b.unionWith(c);
   CHECK((feq(b.min.x,-1) && feq(b.max.x,4)));
+}
 
+TEST_CASE("aabb: a rotation transforms the corners") {
   // transform [-0.5,0.5]^3 by 45deg about +Z: x/y half-extent -> 0.5*(cos45+sin45)=0.7071
   Aabb u = Aabb::fromCenterSize({0,0,0}, {1,1,1});
   Aabb r = u.transformed(Mat4::rotation(SFRotation{0,0,1, static_cast<float>(std::numbers::pi/4)}));
@@ -28,7 +30,9 @@ TEST_CASE("aabb_test") {
 
   Aabb t = Aabb{}.transformed(Mat4::identity()); // empty stays empty
   CHECK((t.empty));
+}
 
+TEST_CASE("aabb: non-finite points are ignored") {
   // Non-finite points are ignored, so bounds are order-independent.
   const float nan = std::nanf("");
   const SFVec3f P{1,2,3};
@@ -46,5 +50,4 @@ TEST_CASE("aabb_test") {
   // And a partial-NaN point is ignored whole (not just its NaN component).
   Aabb p; p.expand(P); p.expand(SFVec3f{nan, 0, 0});
   CHECK((feq(p.min.x, 1) && feq(p.max.x, 1)));
-  return;
 }

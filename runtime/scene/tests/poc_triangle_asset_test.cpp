@@ -14,7 +14,7 @@
 
 using namespace x3d::runtime;
 
-TEST_CASE("poc_triangle_asset_test") {
+TEST_CASE("poc triangle asset: the shipped triangle asset parses and extracts") {
 #ifndef X3D_POC_TRIANGLE_ASSET
 #error "X3D_POC_TRIANGLE_ASSET must be defined to point at the triangle.x3d asset"
 #endif
@@ -27,7 +27,6 @@ TEST_CASE("poc_triangle_asset_test") {
   } catch (const std::exception &e) {
     std::fprintf(stderr, "parseFile(%s) threw: %s\n", assetPath.c_str(), e.what());
     CHECK((false && "first-light asset must parse"));
-    return;
   }
 
   Scene &scene = doc.getScene();
@@ -57,8 +56,4 @@ TEST_CASE("poc_triangle_asset_test") {
   Aabb wb = ex.sceneWorldBounds();
   CHECK((!wb.empty));
 
-  std::fprintf(stderr,
-               "[ok] %s -> %zu render item(s), item[0] has %zu vertices\n",
-               assetPath.c_str(), ex.itemCount(), it.mesh->positions.size());
-  return;
 }

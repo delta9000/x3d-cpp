@@ -15,7 +15,6 @@
 #include "doctest/doctest.h"
 #include "scene_test_helpers.hpp"
 #include <cmath>
-#include <iostream>
 #include <memory>
 using namespace x3d::runtime;
 using namespace x3d::core;
@@ -29,7 +28,7 @@ static T getF(const std::shared_ptr<X3DNode> &n, const char *nm, T def = T{}) {
   return def;
 }
 
-static void testCameraPose() {
+TEST_CASE("view dependent: camera pose") {
   auto vp = createX3DNode("Viewpoint");
   setF(vp, "position", std::any(SFVec3f{1, 2, 3}));
   Scene scene; scene.addRootNode(vp);
@@ -41,7 +40,7 @@ static void testCameraPose() {
 
 // Billboard, axisOfRotation=(0,1,0): a camera on +X must rotate the billboard's
 // local +Z to point toward the camera within the XZ plane.
-static void testBillboardAxis() {
+TEST_CASE("view dependent: billboard axis") {
   Mat4 parent = Mat4::identity();
   SFVec3f cam{10, 0, 0};                 // viewer on +X
   Mat4 r = billboardLocalMatrix(parent, cam, SFVec3f{0, 1, 0}, SFVec3f{0, 1, 0});
@@ -52,7 +51,7 @@ static void testBillboardAxis() {
 
 // Billboard, axisOfRotation=(0,0,0): viewer-alignment. Camera on +Z keeps +Z
 // pointing at the viewer and +Y aligned to the viewer up.
-static void testBillboardViewerAlign() {
+TEST_CASE("view dependent: billboard viewer align") {
   Mat4 parent = Mat4::identity();
   SFVec3f cam{0, 0, 5};
   Mat4 r = billboardLocalMatrix(parent, cam, SFVec3f{0, 1, 0}, SFVec3f{0, 0, 0});
@@ -62,7 +61,7 @@ static void testBillboardViewerAlign() {
   CHECK((feq(y.x, 0) && feq(y.y, 1) && feq(y.z, 0))); // +Y up
 }
 
-static void testBillboardInExtractor() {
+TEST_CASE("view dependent: billboard in extractor") {
   auto bb = createX3DNode("Billboard");
   setF(bb, "axisOfRotation", std::any(SFVec3f{0, 1, 0}));
   auto shape = createX3DNode("Shape");
@@ -94,7 +93,7 @@ static void testBillboardInExtractor() {
 // [-0.5,0.5]) but hits the view-rotated box (x in [-2,2]) on its front face at
 // z=+0.5. This asserts pick resolves against the rotated geometry — it would
 // fail if the billboard rotation were absent or applied to the wrong frame.
-static void testBillboardInPick() {
+TEST_CASE("view dependent: billboard in pick") {
   auto bb = createX3DNode("Billboard");
   setF(bb, "axisOfRotation", std::any(SFVec3f{0, 1, 0}));
   auto shape = createX3DNode("Shape");
@@ -120,7 +119,7 @@ static void testBillboardInPick() {
   CHECK((!miss.hit));
 }
 
-static void testLodSelect() {
+TEST_CASE("view dependent: LOD select") {
   // 2 ranges -> 3 levels. center default 0,0,0. ranges [5,10].
   auto lod = createX3DNode("LOD");
   setF(lod, "range", std::any(std::vector<float>{5.0f, 10.0f}));
@@ -138,7 +137,7 @@ static void testLodSelect() {
   CHECK((lodSelectLevel(*lod2, 999.0f) == 0));
 }
 
-static void testLodLevelChanged() {
+TEST_CASE("view dependent: LOD level changed") {
   auto lod = createX3DNode("LOD");
   setF(lod, "range", std::any(std::vector<float>{5.0f}));
   auto mk=[&](const char*g){auto s=createX3DNode("Shape");auto x=createX3DNode(g);
@@ -162,7 +161,7 @@ static void testLodLevelChanged() {
   CHECK((captured == 0));                 // level changed -> announced
 }
 
-static void testProximitySensor() {
+TEST_CASE("view dependent: proximity sensor") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{4, 4, 4})); // box [-2,2]^3 around origin
   auto vp = createX3DNode("Viewpoint");
@@ -221,7 +220,7 @@ static std::shared_ptr<X3DNode> localGeoOrigin() {
   return origin;
 }
 
-static void testGeoProximity() {
+TEST_CASE("view dependent: geo proximity") {
   auto ps = createX3DNode("GeoProximitySensor");
   setF(ps, "geoOrigin", std::any(localGeoOrigin()));
   setF(ps, "geoCenter", std::any(SFVec3d{0, 0, 0}));
@@ -244,7 +243,7 @@ static void testGeoProximity() {
   CHECK(getF<SFTime>(ps, "exitTime") > 0);
 }
 
-static void testGeoProximityUseUnion() {
+TEST_CASE("view dependent: geo proximity use union") {
   auto ps = createX3DNode("GeoProximitySensor");
   setF(ps, "geoOrigin", std::any(localGeoOrigin()));
   setF(ps, "size", std::any(SFVec3f{20, 20, 20}));
@@ -263,7 +262,7 @@ static void testGeoProximityUseUnion() {
   CHECK(getF<SFBool>(ps, "isActive"));
 }
 
-static void testGeoLodLevels() {
+TEST_CASE("view dependent: geo LOD levels") {
   auto lod = createX3DNode("GeoLOD");
   setF(lod, "geoOrigin", std::any(localGeoOrigin()));
   setF(lod, "range", std::any(SFFloat{10}));
@@ -350,7 +349,7 @@ TEST_CASE("GeoLOD URL tiles wait, switch, unload, and recurse") {
   CHECK(oneLoads == 2); // leaving range released the child tile
 }
 
-static void testProximityLoadTime() {
+TEST_CASE("view dependent: proximity load time") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100,100,100}));
   auto vp = createX3DNode("Viewpoint"); setF(vp,"position",std::any(SFVec3f{0,0,0}));
@@ -362,7 +361,7 @@ static void testProximityLoadTime() {
   CHECK((fired)); // initial enter at load
 }
 
-static void testVisibilitySensorCone() {
+TEST_CASE("view dependent: visibility sensor cone") {
   auto vs = createX3DNode("VisibilitySensor");
   setF(vs, "size", std::any(SFVec3f{2, 2, 2}));
   auto vp = createX3DNode("Viewpoint");
@@ -381,7 +380,7 @@ static void testVisibilitySensorCone() {
 
 // Frustum seam: a box just outside the bare cone becomes visible once the
 // consumer supplies a wider effective half-angle via setViewVolume (aspect>1).
-static void testVisibilitySensorFrustumSeam() {
+TEST_CASE("view dependent: visibility sensor frustum seam") {
   auto vs = createX3DNode("VisibilitySensor");
   setF(vs, "size", std::any(SFVec3f{0.2f, 0.2f, 0.2f}));     // small box (tiny slack)
   setF(vs, "center", std::any(SFVec3f{6, 0, 0}));            // off-axis in +X
@@ -402,7 +401,7 @@ static void testVisibilitySensorFrustumSeam() {
   CHECK((active)); // widened frustum brings the off-axis box into view
 }
 
-static void testVisibleFalseSkip() {
+TEST_CASE("view dependent: visible false skip") {
   auto grp = createX3DNode("Group");
   setF(grp, "visible", std::any(false)); // X3D 4.0: not displayed
   auto shape = createX3DNode("Shape"); auto box = createX3DNode("Box");
@@ -417,7 +416,7 @@ static void testVisibleFalseSkip() {
   CHECK((snap.added.empty())); // visible=FALSE subtree produces no render items
 }
 
-static void testVisibilityLimitTag() {
+TEST_CASE("view dependent: visibility limit tag") {
   auto nav = createX3DNode("NavigationInfo");
   setF(nav, "visibilityLimit", std::any(SFFloat(5.0f)));
   auto shape = createX3DNode("Shape"); auto box = createX3DNode("Box");
@@ -440,7 +439,7 @@ static void testVisibilityLimitTag() {
 // (attachViewDependent) — no manual per-node attach — and assert both nodes are
 // serviced after a tick. This proves the production path discovers and attaches
 // the system to every view-dependent node via the scene walk.
-static void testProductionWiring() {
+TEST_CASE("view dependent: production wiring") {
   // ProximitySensor at the origin, big box so the default viewer is inside.
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
@@ -470,7 +469,7 @@ static void testProductionWiring() {
 // An LOD measures viewer distance in its own frame, so a translated parent
 // Transform moves it: LOD at world x = 100, viewer at the origin, range 10
 // selects the far child.
-static void testLodUnderTranslatedTransform() {
+TEST_CASE("view dependent: LOD under translated transform") {
   auto lod = createX3DNode("LOD");
   setF(lod, "range", std::any(std::vector<float>{10.0f}));
   std::vector<std::shared_ptr<X3DNode>> kids{createX3DNode("Shape"), createX3DNode("Shape")};
@@ -490,7 +489,7 @@ static void testLodUnderTranslatedTransform() {
 // (§23.4.3): level_changed must report the index of the child actually
 // rendered. With 2 children but 3 range bins, a far viewer (raw level 2) clamps
 // to child index 1.
-static void testLodLevelClamp() {
+TEST_CASE("view dependent: LOD level clamp") {
   auto lod = createX3DNode("LOD");
   setF(lod, "range", std::any(std::vector<float>{5.0f, 10.0f})); // bins -> raw levels 0,1,2
   std::vector<std::shared_ptr<X3DNode>> kids{createX3DNode("Shape"), createX3DNode("Shape")};
@@ -508,7 +507,7 @@ static void testLodLevelClamp() {
 // (§22.4.1): position_changed must fire only when the viewer moves, not
 // every tick. Routed to a Transform.translation sink; after a no-move tick the
 // sentinel must survive (no spurious event).
-static void testProximityChangeGate() {
+TEST_CASE("view dependent: proximity change gate") {
   auto ps = createX3DNode("ProximitySensor"); setF(ps, "size", std::any(SFVec3f{10, 10, 10}));
   auto tf = createX3DNode("Transform");
   auto vp = createX3DNode("Viewpoint"); setF(vp, "position", std::any(SFVec3f{0, 0, 1}));
@@ -525,7 +524,7 @@ static void testProximityChangeGate() {
 
 // (§22.4.1): enabled FALSE->TRUE with the viewer still inside must re-fire
 // the enter (isActive TRUE / enterTime).
-static void testProximityReEnable() {
+TEST_CASE("view dependent: proximity re enable") {
   auto ps = createX3DNode("ProximitySensor"); setF(ps, "size", std::any(SFVec3f{10, 10, 10}));
   auto vp = createX3DNode("Viewpoint"); setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
   Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
@@ -539,7 +538,7 @@ static void testProximityReEnable() {
 }
 
 // (§22.4.1): disabling an active sensor clears isActive for routed consumers.
-static void testProximityDisableDeactivates() {
+TEST_CASE("view dependent: proximity disable deactivates") {
   auto ps = createX3DNode("ProximitySensor"); setF(ps, "size", std::any(SFVec3f{10, 10, 10}));
   auto vp = createX3DNode("Viewpoint"); setF(vp, "position", std::any(SFVec3f{0, 0, 0}));
   Scene scene; scene.addRootNode(vp); scene.addRootNode(ps);
@@ -560,7 +559,7 @@ static void testProximityDisableDeactivates() {
 // both relative to center, in the sensor's local coordinate frame.
 //
 // (1) Target inside box at load → isActive TRUE + enterTime fired.
-static void testTransformSensorEnter() {
+TEST_CASE("view dependent: transform sensor enter") {
   auto target = createX3DNode("Shape");
   auto box = createX3DNode("Box");
   setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
@@ -583,7 +582,7 @@ static void testTransformSensorEnter() {
 }
 
 // (2) Target leaves box → isActive FALSE + exitTime fired.
-static void testTransformSensorExit() {
+TEST_CASE("view dependent: transform sensor exit") {
   auto target = createX3DNode("Shape");
   auto box = createX3DNode("Box");
   setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
@@ -617,7 +616,7 @@ static void testTransformSensorExit() {
 // the sensor's local frame, relative to center. We put the sensor at origin
 // (size covers), the target at translation (3, 0, 0) via a parent Transform.
 // Expected position_changed ≈ (3, 0, 0).
-static void testTransformSensorPositionChanged() {
+TEST_CASE("view dependent: transform sensor position changed") {
   auto target = createX3DNode("Shape");
   auto box = createX3DNode("Box");
   setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
@@ -644,7 +643,7 @@ static void testTransformSensorPositionChanged() {
 // (4) Change-gate: a no-movement tick must not re-fire position_changed.
 // Routing to a Transform.translation sink; after a no-move tick the sentinel
 // must survive (no spurious event).
-static void testTransformSensorChangeGate() {
+TEST_CASE("view dependent: transform sensor change gate") {
   auto target = createX3DNode("Shape");
   auto box = createX3DNode("Box");
   setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
@@ -670,7 +669,7 @@ static void testTransformSensorChangeGate() {
 }
 
 // (5) Disable while active fires exit.
-static void testTransformSensorDisableFiresExit() {
+TEST_CASE("view dependent: transform sensor disable fires exit") {
   auto target = createX3DNode("Shape");
   auto box = createX3DNode("Box");
   setF(target, "geometry", std::any(std::static_pointer_cast<X3DNode>(box)));
@@ -691,7 +690,7 @@ static void testTransformSensorDisableFiresExit() {
 }
 
 // (6) Null targetObject → inactive (degenerate; no enter).
-static void testTransformSensorNullTarget() {
+TEST_CASE("view dependent: transform sensor null target") {
   auto ts = createX3DNode("TransformSensor");
   setF(ts, "size", std::any(SFVec3f{10, 10, 10}));
   // no targetObject set
@@ -732,7 +731,7 @@ static SFRotation transformSensorRotation(SFVec3f scale, SFRotation rotation) {
 // The sensor box is in the sensor's local frame (§22.4.2), so a scaled parent
 // scales it: size 2 under scale 2 covers world x in [-2, 2] and contains a
 // small target at x = 1.5.
-static void testTransformSensorBoxScalesWithParent() {
+TEST_CASE("view dependent: transform sensor box scales with parent") {
   auto box = createX3DNode("Box");
   setF(box, "size", std::any(SFVec3f{0.1f, 0.1f, 0.1f}));
   auto target = createX3DNode("Shape");
@@ -759,7 +758,7 @@ static void testTransformSensorBoxScalesWithParent() {
   CHECK(active);
 }
 
-static void testTransformSensorScaleRotation() {
+TEST_CASE("view dependent: transform sensor scale rotation") {
   const SFRotation rx{1, 0, 0, 1.57079632679f};
   const auto uniform = transformSensorRotation({3, 3, 3}, rx);
   CHECK((feq(uniform.x, 1) && feq(uniform.y, 0) && feq(uniform.z, 0)));
@@ -775,7 +774,7 @@ static void testTransformSensorScaleRotation() {
 // centerOfRotation_changed (§22.4.1)
 // The bound Viewpoint's centerOfRotation (default 0 0 0) is emitted in the
 // sensor's frame on entry, change-gated like position/orientation_changed.
-static void testProximityCenterOfRotationChanged() {
+TEST_CASE("view dependent: proximity center of rotation changed") {
   auto nav = createX3DNode("NavigationInfo");
   setF(nav, "type", std::any(std::vector<std::string>{"LOOKAT"}));
   auto ps = createX3DNode("ProximitySensor");
@@ -822,7 +821,7 @@ static void testProximityCenterOfRotationChanged() {
 // A wide aspect widens the horizontal half-angle only: an off-axis-in-X box
 // becomes visible, while an equally off-axis-in-Y box stays outside the
 // (vertical) frustum.
-static void testVisibilityFrustumPerAxis() {
+TEST_CASE("view dependent: visibility frustum per axis") {
   auto mkSensor = [](float x, float y) {
     auto vs = createX3DNode("VisibilitySensor");
     setF(vs, "size", std::any(SFVec3f{0.2f, 0.2f, 0.2f}));
@@ -848,7 +847,7 @@ static void testVisibilityFrustumPerAxis() {
 
 // Visibility uses world extent, including ancestor scale.
 // A large local box under a small scale has a small world extent and is culled.
-static void testVisibilityWorldExtentScale() {
+TEST_CASE("view dependent: visibility world extent scale") {
   auto vs = createX3DNode("VisibilitySensor");
   setF(vs, "size", std::any(SFVec3f{10, 10, 10}));   // local (big)...
   setF(vs, "center", std::any(SFVec3f{0, 0, 0}));
@@ -869,7 +868,7 @@ static void testVisibilityWorldExtentScale() {
 }
 
 // Inactive Switch branch is treated as removed
-static void testSensorSwitchBranchGating() {
+TEST_CASE("view dependent: sensor switch branch gating") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
   auto sw = createX3DNode("Switch");
@@ -896,7 +895,7 @@ static void testSensorSwitchBranchGating() {
 }
 
 // Sensor in an inactive LOD level is treated as removed
-static void testSensorLodLevelGating() {
+TEST_CASE("view dependent: sensor LOD level gating") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
   auto lod = createX3DNode("LOD");
@@ -919,7 +918,7 @@ static void testSensorLodLevelGating() {
 }
 
 // Removed from the active hierarchy (children rewrite)
-static void testSensorRemovedFromChildren() {
+TEST_CASE("view dependent: sensor removed from children") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{100, 100, 100}));
   auto grp = createX3DNode("Group");
@@ -941,7 +940,7 @@ static void testSensorRemovedFromChildren() {
 }
 
 // enter/exitTime interpolated along viewer motion
-static void testProximityInterpolatedEdgeTime() {
+TEST_CASE("view dependent: proximity interpolated edge time") {
   auto ps = createX3DNode("ProximitySensor");
   setF(ps, "size", std::any(SFVec3f{4, 4, 4})); // box [-2,2]^3
   auto vp = createX3DNode("Viewpoint");
@@ -1196,42 +1195,3 @@ TEST_CASE("GeoProximitySensor geoCoord is in the sensor's local geo frame") {
   CHECK(std::fabs(reported.x) < 1e-3f);
 }
 
-TEST_CASE("view_dependent_test") {
-  testGeoProximity();
-  testGeoProximityUseUnion();
-  testGeoLodLevels();
-  testCameraPose();
-  testLodLevelClamp();
-  testProximityChangeGate();
-  testProximityReEnable();
-  testProximityDisableDeactivates();
-  testBillboardAxis();
-  testBillboardViewerAlign();
-  testBillboardInExtractor();
-  testBillboardInPick();
-  testLodSelect();
-  testLodLevelChanged();
-  testProximitySensor();
-  testProximityLoadTime();
-  testVisibilitySensorCone();
-  testVisibilitySensorFrustumSeam();
-  testVisibleFalseSkip();
-  testVisibilityLimitTag();
-  testProductionWiring();
-  testTransformSensorEnter();
-  testTransformSensorExit();
-  testTransformSensorPositionChanged();
-  testTransformSensorChangeGate();
-  testTransformSensorDisableFiresExit();
-  testTransformSensorNullTarget();
-  testTransformSensorScaleRotation();
-  testTransformSensorBoxScalesWithParent();
-  testLodUnderTranslatedTransform();
-  testProximityCenterOfRotationChanged();
-  testVisibilityFrustumPerAxis();
-  testVisibilityWorldExtentScale();
-  testSensorSwitchBranchGating();
-  testSensorLodLevelGating();
-  testSensorRemovedFromChildren();
-  testProximityInterpolatedEdgeTime();
-}

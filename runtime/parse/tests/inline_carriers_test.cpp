@@ -3,9 +3,8 @@
 #include "X3DScene.hpp"
 #include "X3DProto.hpp"
 #include "doctest/doctest.h"
-#include <iostream>
 
-TEST_CASE("inline_carriers_test") {
+TEST_CASE("inline carriers: Inline data carriers start empty") {
   using namespace x3d::runtime;
   Scene s;
   CHECK((s.expandedInlines.empty()));
@@ -19,7 +18,4 @@ TEST_CASE("inline_carriers_test") {
   CHECK((doc.inlineWarnings.size() == 1));
   CHECK((doc.inlineWarnings[0].kind == InlineWarning::Kind::UnresolvedUrl));
   CHECK((doc.inlineWarnings[0].inlineDEF == "MyInline"));
-
-  std::cout << "inline_carriers_test OK\n";
-  return;
 }

@@ -11,34 +11,30 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using x3d::test::setF;
 
-TEST_CASE("texture_mapping_test") {
-  // PhysicalMaterial with baseTextureMapping="uv1"
-  {
-    auto tex = createX3DNode("ImageTexture");
-    setF(tex, "url", std::any(MFString{"u.png"}));
-    auto mat = createX3DNode("PhysicalMaterial");
-    setF(mat, "baseTexture", std::any(std::shared_ptr<X3DNode>(tex)));
-    setF(mat, "baseTextureMapping", std::any(SFString{"uv1"}));
-    auto app = createX3DNode("Appearance");
-    setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+TEST_CASE("texture mapping: PhysicalMaterial baseTextureMapping selects a named UV set") {
+  auto tex = createX3DNode("ImageTexture");
+  setF(tex, "url", std::any(MFString{"u.png"}));
+  auto mat = createX3DNode("PhysicalMaterial");
+  setF(mat, "baseTexture", std::any(std::shared_ptr<X3DNode>(tex)));
+  setF(mat, "baseTextureMapping", std::any(SFString{"uv1"}));
+  auto app = createX3DNode("Appearance");
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
 
-    MaterialDesc m = materialOf(app.get());
-    CHECK((!m.textures.empty()));
-    CHECK((m.textures[0].slot == TextureRef::Slot::BaseColor));
-    CHECK((m.textures[0].texCoordMapping == "uv1"));
-  }
-  // Empty texCoordMapping => UV set 0
-  {
-    auto tex = createX3DNode("ImageTexture");
-    setF(tex, "url", std::any(MFString{"u.png"}));
-    auto mat = createX3DNode("PhysicalMaterial");
-    setF(mat, "baseTexture", std::any(std::shared_ptr<X3DNode>(tex)));
-    auto app = createX3DNode("Appearance");
-    setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+  MaterialDesc m = materialOf(app.get());
+  CHECK((!m.textures.empty()));
+  CHECK((m.textures[0].slot == TextureRef::Slot::BaseColor));
+  CHECK((m.textures[0].texCoordMapping == "uv1"));
+}
 
-    MaterialDesc m = materialOf(app.get());
-    CHECK((!m.textures.empty()));
-    CHECK((m.textures[0].texCoordMapping.empty()));
-  }
-  return;
+TEST_CASE("texture mapping: empty texCoordMapping uses UV set 0") {
+  auto tex = createX3DNode("ImageTexture");
+  setF(tex, "url", std::any(MFString{"u.png"}));
+  auto mat = createX3DNode("PhysicalMaterial");
+  setF(mat, "baseTexture", std::any(std::shared_ptr<X3DNode>(tex)));
+  auto app = createX3DNode("Appearance");
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+
+  MaterialDesc m = materialOf(app.get());
+  CHECK((!m.textures.empty()));
+  CHECK((m.textures[0].texCoordMapping.empty()));
 }

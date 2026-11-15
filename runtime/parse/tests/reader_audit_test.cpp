@@ -44,7 +44,7 @@ template <class T> std::shared_ptr<T> as(const std::shared_ptr<X3DNode> &n) {
 //     document. Only VRML97 collects warnings; the other three readers are
 //     tolerant-silent (documented design choice in each header).
 
-void testLenientUnknownNodeAllEncodings() {
+TEST_CASE("reader audit: lenient unknown node all encodings") {
   // XML
   {
     const std::string xml =
@@ -141,7 +141,7 @@ void testLenientUnknownNodeAllEncodings() {
   }
 }
 
-void testLenientUnknownFieldAllEncodings() {
+TEST_CASE("reader audit: lenient unknown field all encodings") {
   // XML — unknown attribute on a known node is silently dropped.
   {
     const std::string xml =
@@ -250,7 +250,7 @@ void testLenientUnknownFieldAllEncodings() {
 // (2) JSON @containerField — default (-material) and non-default (-shaders)
 //     both land in the correct SF/MFNode field. Confirms the slot routing
 //     chain in build::attachChild.
-void testJsonContainerField() {
+TEST_CASE("reader audit: JSON container field") {
   // (a) Default slot -material -> Appearance.material (SFNode).
   {
     const std::string j = R"({"X3D":{"@profile":"Immersive","@version":"4.0",
@@ -312,7 +312,7 @@ void testJsonContainerField() {
 // not eventIn) falls through to InputOutput via the default branch. This is
 // the documented literal-case behavior of the readers (spec is literal-case).
 // Recording it as a known gap, not a fix.
-void testAccessTypeAliases() {
+TEST_CASE("reader audit: access type aliases") {
   // ClassicVRML: all 4 VRML97 aliases map correctly (inputOutput default
   // catches exposedField; alias covers the case statement).
   {
@@ -448,7 +448,7 @@ void testAccessTypeAliases() {
   }
 }
 // PROTO body DEFs remain local and body-internal USEs share identity.
-void testProtoBodyDefScopeVRML97() {
+TEST_CASE("reader audit: proto body def scope VRML97") {
   const std::string src =
       "#VRML V2.0 utf8\n"
       "PROTO Widget [\n"
@@ -507,7 +507,7 @@ void testProtoBodyDefScopeVRML97() {
 //     (incl. #VRML V2.0) floors to 3.0, >=3.0 forward-compat preserved, bare
 //     header defaults to 3.0. (The bare-floor case is driven through the
 //     readers' own parser, not just the global Encoding sniffer.)
-void testVersionFloorAllEncodings() {
+TEST_CASE("reader audit: version floor all encodings") {
   // VRML97: #VRML V2.0 -> 3.0.
   {
     auto doc = codec::parseDocument("#VRML V2.0 utf8\nGroup {}\n",
@@ -570,7 +570,7 @@ void testVersionFloorAllEncodings() {
 // (6) EXTERNPROTO URL capture across encodings. Local-file resolver only
 //     (http/urn resolution is delegated to the caller). URL field captured into
 //     ExternProtoDeclaration::url verbatim from each encoding.
-void testExternProtoUrlAllEncodings() {
+TEST_CASE("reader audit: extern proto URL all encodings") {
   // ClassicVRML — list form `[ "url" ]` and single-string form both captured.
   {
     const std::string src =
@@ -665,7 +665,7 @@ void testExternProtoUrlAllEncodings() {
 // (7) ROUTE capture across encodings. All four produce a runtime::Route with
 //     the four endpoint fields split on '.' (ClassicVRML/VRML97 textual
 //     syntax) or read from attributes/members (XML/JSON).
-void testRouteCaptureAllEncodings() {
+TEST_CASE("reader audit: route capture all encodings") {
   // ClassicVRML
   {
     const std::string src =
@@ -759,7 +759,7 @@ void testRouteCaptureAllEncodings() {
   }
 }
 
-void testTextureProjectorParallelShadowIntensityAliasAllEncodings() {
+TEST_CASE("reader audit: texture projector parallel shadow intensity alias all encodings") {
   auto checkProjector = [](const runtime::X3DDocument &doc,
                            const std::string &label) {
     CHECK_MESSAGE((doc.scene.rootNodes.size() == 1), (label + ": one root node"));
@@ -818,27 +818,6 @@ void testTextureProjectorParallelShadowIntensityAliasAllEncodings() {
 
 } // namespace
 
-TEST_CASE("reader_audit_test") {
-
-  testLenientUnknownNodeAllEncodings();
-  testLenientUnknownFieldAllEncodings();
-
-  testJsonContainerField();
-
-  testAccessTypeAliases();
-
-  testProtoBodyDefScopeVRML97();
-
-  testVersionFloorAllEncodings();
-
-  testExternProtoUrlAllEncodings();
-
-  testRouteCaptureAllEncodings();
-
-  testTextureProjectorParallelShadowIntensityAliasAllEncodings();
-
-  return;
-}
 
 TEST_CASE("JSON typed author and prototype field values are retained") {
   const auto doc = JsonReader{}.readDocument(R"({"X3D":{"@version":"4.0","Scene":{"-children":[

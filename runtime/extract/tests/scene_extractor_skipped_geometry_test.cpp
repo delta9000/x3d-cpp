@@ -55,7 +55,7 @@ static std::shared_ptr<X3DNode> makeEmptyIfsShape() {
   return shape;
 }
 
-TEST_CASE("scene_extractor_b2_test") {
+TEST_CASE("scene extractor skipped geometry") {
   // 0) The static oracle classifies types correctly
   CHECK((extract::recognizedGeometryType("TriangleSet")));
   CHECK((extract::recognizedGeometryType("IndexedFaceSet")));
@@ -66,7 +66,7 @@ TEST_CASE("scene_extractor_b2_test") {
   CHECK((!extract::recognizedGeometryType("NurbsTrimmedSurface")));
 
   // buildLocalMesh sets `recognized` per the same oracle, independent of emptiness.
-  {
+  SUBCASE("buildLocalMesh sets recognized independently of emptiness") {
     bool rec = true;
     auto ex = createX3DNode("NurbsTrimmedSurface");
     auto m = extract::buildLocalMesh(ex.get(), geo::builtinProjection(), extract::MeshBuildOptions{}, &rec);
@@ -82,7 +82,7 @@ TEST_CASE("scene_extractor_b2_test") {
   }
 
   // 1) NurbsTrimmedSurface increments the count; empty IFS does not
-  {
+  SUBCASE("NurbsTrimmedSurface is counted; an empty IFS is not") {
     auto root = createX3DNode("Group");
     addChild(root, makeUnsupportedShape()); // unsupported -> counted.
     addChild(root, makeEmptyIfsShape());    // legitimately empty -> NOT counted.
@@ -110,7 +110,7 @@ TEST_CASE("scene_extractor_b2_test") {
   }
 
   // 2) Two unsupported shapes of the same type accumulate
-  {
+  SUBCASE("two unsupported shapes of one type accumulate") {
     auto root = createX3DNode("Group");
     addChild(root, makeUnsupportedShape());
     addChild(root, makeUnsupportedShape());
@@ -126,8 +126,6 @@ TEST_CASE("scene_extractor_b2_test") {
     ex.fullSnapshot();
     CHECK((ex.skippedGeometryCounts().at("NurbsTrimmedSurface") == 2)); // not 4.
   }
-
-  return;
 }
 
 TEST_CASE("scene_extractor_layers_respect_layerset_order") {

@@ -29,7 +29,7 @@ static long extractVerts(const sdk::X3DDocument &doc, long &items) {
   return verts;
 }
 
-TEST_CASE("vrml_mf_bracket_test") {
+TEST_CASE("vrml mf bracket: MF values are bracketed and reparse to the same mesh") {
   sdk::X3DDocument orig = sdk::parseDocument(kScene, sdk::Encoding::XML);
   long origItems = 0, origVerts = extractVerts(orig, origItems);
   CHECK_MESSAGE((origItems == 1 && origVerts > 0), "original extracts a non-empty mesh");
@@ -47,6 +47,4 @@ TEST_CASE("vrml_mf_bracket_test") {
   long rtItems = 0, rtVerts = extractVerts(rt, rtItems);
   CHECK_MESSAGE((rtItems == origItems), "round-trip preserves render-item count");
   CHECK_MESSAGE((rtVerts == origVerts), "round-trip preserves vertex count (no MF truncation)");
-
-  return;
 }

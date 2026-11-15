@@ -19,7 +19,7 @@ static X3DBindableNode* bnd(const std::shared_ptr<X3DNode>& n) {
 // Test (a): load-time default bind must emit bindTime
 // buildSceneGraph -> bindDefaults -> first Viewpoint default-bound;
 // its getBindTime() must reflect the clock value used at build time (non-zero).
-static void test_load_time_bind_emits_bindTime() {
+TEST_CASE("bind time conformance: load time bind emits bind time") {
   auto vp = createX3DNode("Viewpoint");
   Scene scene; scene.addRootNode(vp);
 
@@ -39,7 +39,7 @@ static void test_load_time_bind_emits_bindTime() {
 // Test (b): explicit unbind of active node must emit bindTime
 // When set_bind FALSE fires on the currently-bound node, bindTime must be emitted
 // (with the timestamp of the unbind) in addition to isBound FALSE.
-static void test_unbind_emits_bindTime() {
+TEST_CASE("bind time conformance: unbind emits bind time") {
   auto vp1 = createX3DNode("Viewpoint");
   auto vp2 = createX3DNode("Viewpoint");
   Scene scene; scene.addRootNode(vp1); scene.addRootNode(vp2);
@@ -65,8 +65,3 @@ static void test_unbind_emits_bindTime() {
   CHECK((bnd(vp1)->getBindTime() == 2.0 && "restored top must emit bindTime on re-bind"));
 }
 
-TEST_CASE("bind_time_conformance_test") {
-  test_load_time_bind_emits_bindTime();
-  test_unbind_emits_bindTime();
-  return;
-}

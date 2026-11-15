@@ -19,7 +19,7 @@ using namespace x3d::runtime::extract;
 using x3d::test::setF;
 using x3d::test::feq;
 
-TEST_CASE("geometry_bounds_test") {
+TEST_CASE("geometry bounds") {
   auto box = createX3DNode("Box");
   setF(box, "size", std::any(SFVec3f{2,4,6}));
   Aabb b = localGeometryBounds(box.get(), geo::builtinProjection());
@@ -95,7 +95,7 @@ TEST_CASE("geometry_bounds_test") {
   CHECK((!gg.empty && gg.max.x > gg.min.x && gg.max.z > gg.min.z));
 
   // NurbsCurve / NurbsPatchSurface: AABB over control points (convex hull).
-  {
+  SUBCASE("NURBS bounds cover the control points") {
     auto cc = createX3DNode("Coordinate");
     setF(cc, "point", std::any(std::vector<SFVec3f>{{-2,0,0},{0,5,0},{3,0,1}}));
     auto nc = createX3DNode("NurbsCurve");
@@ -110,7 +110,6 @@ TEST_CASE("geometry_bounds_test") {
     Aabb p = localGeometryBounds(np.get(), geo::builtinProjection());
     CHECK((feq(p.min.x,0) && feq(p.max.x,1) && feq(p.max.y,1) && feq(p.max.z,4)));
   }
-  return;
 }
 
 // Exact Text bounds via FontMetrics.
@@ -183,5 +182,4 @@ TEST_CASE("text_bounds_fontmetrics") {
   Aabb s = bs.localBounds(shape.get());
   CHECK((feq(s.min.x, -1.0f) && feq(s.max.x, 1.0f)));
   CHECK((feq(s.min.y, -1.0f) && feq(s.max.y, 1.0f)));
-  return;
 }

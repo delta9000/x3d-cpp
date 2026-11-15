@@ -129,7 +129,7 @@ static void runPropagateScenario(const char *parentType) {
   CHECK((dirty.flags(child.get()) & DirtyWorldTransform));
 }
 
-TEST_CASE("transform_system_hanim_cadpart_test") {
+TEST_CASE("transform system hanim cadpart") {
   // HAnimHumanoid
   runScenario("HAnimHumanoid", 1, 0, 0, 0, 2, 0);
   runPropagateScenario("HAnimHumanoid");
@@ -143,7 +143,7 @@ TEST_CASE("transform_system_hanim_cadpart_test") {
   runPropagateScenario("CADPart");
 
   // Nested: HAnimHumanoid > HAnimJoint > Transform
-  {
+  SUBCASE("HAnimHumanoid > HAnimJoint > Transform nests") {
     auto humanoid = createX3DNode("HAnimHumanoid");
     setTranslation(humanoid, {1, 0, 0});
     auto joint = createX3DNode("HAnimJoint");
@@ -159,6 +159,4 @@ TEST_CASE("transform_system_hanim_cadpart_test") {
     auto lw = ts.worldTransform(leaf.get()).transformPoint({0, 0, 0});
     CHECK((feq(lw.x, 1) && feq(lw.y, 1) && feq(lw.z, 1)));
   }
-
-  return;
 }

@@ -22,7 +22,7 @@ static std::shared_ptr<X3DNode> firstRoot(const runtime::X3DDocument &doc) {
   return nullptr;
 }
 
-static void xmlNestedTest() {
+TEST_CASE("proto nested body: XML nested") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='Leaf'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -38,7 +38,7 @@ static void xmlNestedTest() {
   CHECK((kids.size() == 1 && kids[0] && kids[0]->nodeTypeName() == "Box"));
 }
 
-static void classicVrmlNestedTest() {
+TEST_CASE("proto nested body: classic VRML nested") {
   const char *vrml =
       "#X3D V4.0 utf8\n"
       "PROTO Leaf [] { Box {} }\n"
@@ -55,7 +55,7 @@ static void classicVrmlNestedTest() {
 // Depth-2: a ProtoInstance nested inside a Group inside the body's Transform must
 // still route into the body (regression guard for currentProtoBody forwarding
 // through readNode's recursion).
-static void xmlNestedDepth2Test() {
+TEST_CASE("proto nested body: XML nested depth 2") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='Leaf'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -80,9 +80,3 @@ static void xmlNestedDepth2Test() {
          doc.scene.protoInstances[0].name == "Wrap"));
 }
 
-TEST_CASE("proto_nested_body_test") {
-  xmlNestedTest();
-  classicVrmlNestedTest();
-  xmlNestedDepth2Test();
-  return;
-}

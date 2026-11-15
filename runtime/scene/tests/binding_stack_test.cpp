@@ -6,7 +6,7 @@
 #include <vector>
 using namespace x3d::runtime;
 
-TEST_CASE("binding_stack_test") {
+TEST_CASE("binding stack: bind, re-bind and unbind send isBound in order") {
   int a=0,b=0; // identity stand-ins
   X3DNode* A = reinterpret_cast<X3DNode*>(&a);
   X3DNode* B = reinterpret_cast<X3DNode*>(&b);
@@ -46,5 +46,4 @@ TEST_CASE("binding_stack_test") {
   s.unbind(B, emit);               // last node pops: B->false, stack empty
   CHECK((s.top()==nullptr));
   CHECK((ev.size()==1 && ev[0]==std::make_pair(B,false)));
-  return;
 }

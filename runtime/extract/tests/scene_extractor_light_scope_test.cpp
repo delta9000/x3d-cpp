@@ -51,120 +51,113 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
-TEST_CASE("scene_extractor_m25_5_test") {
-  // A+B) Scoped light tags INSIDE shape but not outside shape
-  {
-    // Build: outerGroup > { scopeGroup > { DL(global=false), shapeInside },
-    //                       shapeOutside, PointLight(global=true) }
-    auto dl = createX3DNode("DirectionalLight");
-    setF(dl, "global", std::any(false)); // explicit false (spec default for DL)
+TEST_CASE("scene extractor light scope: a scoped light tags shapes inside its group only") {
+  // Build: outerGroup > { scopeGroup > { DL(global=false), shapeInside },
+  //                       shapeOutside, PointLight(global=true) }
+  auto dl = createX3DNode("DirectionalLight");
+  setF(dl, "global", std::any(false)); // explicit false (spec default for DL)
 
-    auto shapeInside = makeTriShape();
-    auto scopeGroup = createX3DNode("Group");
-    addChild(scopeGroup, dl);
-    addChild(scopeGroup, shapeInside);
+  auto shapeInside = makeTriShape();
+  auto scopeGroup = createX3DNode("Group");
+  addChild(scopeGroup, dl);
+  addChild(scopeGroup, shapeInside);
 
-    auto shapeOutside = makeTriShape();
+  auto shapeOutside = makeTriShape();
 
-    auto pl = createX3DNode("PointLight");
-    setF(pl, "global", std::any(true)); // explicit true (spec default for PL)
+  auto pl = createX3DNode("PointLight");
+  setF(pl, "global", std::any(true)); // explicit true (spec default for PL)
 
-    auto outerGroup = createX3DNode("Group");
-    addChild(outerGroup, scopeGroup);
-    addChild(outerGroup, shapeOutside);
-    addChild(outerGroup, pl);
+  auto outerGroup = createX3DNode("Group");
+  addChild(outerGroup, scopeGroup);
+  addChild(outerGroup, shapeOutside);
+  addChild(outerGroup, pl);
 
-    Scene scene;
-    scene.addRootNode(outerGroup);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
+  Scene scene;
+  scene.addRootNode(outerGroup);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
 
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 2)); // exactly two shapes emitted.
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 2)); // exactly two shapes emitted.
 
-    // Find which RenderItemId corresponds to which shape.
-    extract::RenderItemId idInside = extract::kInvalidRenderItemId;
-    extract::RenderItemId idOutside = extract::kInvalidRenderItemId;
-    for (extract::RenderItemId id : snap.added) {
-      const extract::RenderItem &rec = ex.item(id);
-      for (const X3DNode *n : rec.path) {
-        if (n == shapeInside.get()) { idInside = id; break; }
-        if (n == shapeOutside.get()) { idOutside = id; break; }
-      }
-    }
-    CHECK((idInside != extract::kInvalidRenderItemId));
-    CHECK((idOutside != extract::kInvalidRenderItemId));
-
-    // Retrieve the tagged light lists. lightsOf() indices are positions in
-    // snapshotLights() (the cached snapshot from fullSnapshot), not lights().
-    const auto &allLights = ex.snapshotLights();
-    CHECK((allLights.size() == 2)); // DL + PL collected.
-
-    const std::vector<std::size_t> &insideLights = ex.lightsOf(idInside);
-    const std::vector<std::size_t> &outsideLights = ex.lightsOf(idOutside);
-
-    // A) shapeInside must be tagged with both lights.
-    CHECK((insideLights.size() == 2));
-
-    // B) shapeOutside must be tagged with only the global PointLight, not the DL.
-    CHECK((outsideLights.size() == 1));
-    // The one light tagging shapeOutside must be global.
-    CHECK((allLights[outsideLights[0]].global == true));
-    CHECK((allLights[outsideLights[0]].type == extract::LightDesc::Type::Point));
-
-    // Double-check insideLights contains both types.
-    bool hasDir = false, hasPoint = false;
-    for (std::size_t li : insideLights) {
-      if (allLights[li].type == extract::LightDesc::Type::Directional) hasDir = true;
-      if (allLights[li].type == extract::LightDesc::Type::Point) hasPoint = true;
-    }
-    CHECK((hasDir && hasPoint));
-  }
-
-  // C) global=TRUE PointLight alone tags all render items
-  {
-    auto pl = createX3DNode("PointLight");
-    setF(pl, "global", std::any(true));
-
-    auto shape1 = makeTriShape();
-    auto shape2 = makeTriShape();
-
-    auto group = createX3DNode("Group");
-    addChild(group, pl);
-    addChild(group, shape1);
-    addChild(group, shape2);
-
-    Scene scene;
-    scene.addRootNode(group);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 2));
-
-    for (extract::RenderItemId id : snap.added) {
-      const std::vector<std::size_t> &lit = ex.lightsOf(id);
-      CHECK((lit.size() == 1)); // exactly the one global light.
+  // Find which RenderItemId corresponds to which shape.
+  extract::RenderItemId idInside = extract::kInvalidRenderItemId;
+  extract::RenderItemId idOutside = extract::kInvalidRenderItemId;
+  for (extract::RenderItemId id : snap.added) {
+    const extract::RenderItem &rec = ex.item(id);
+    for (const X3DNode *n : rec.path) {
+      if (n == shapeInside.get()) { idInside = id; break; }
+      if (n == shapeOutside.get()) { idOutside = id; break; }
     }
   }
+  CHECK((idInside != extract::kInvalidRenderItemId));
+  CHECK((idOutside != extract::kInvalidRenderItemId));
 
-  // D) No lights => all items have empty light list
-  {
-    auto shape = makeTriShape();
-    Scene scene;
-    scene.addRootNode(shape);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
+  // Retrieve the tagged light lists. lightsOf() indices are positions in
+  // snapshotLights() (the cached snapshot from fullSnapshot), not lights().
+  const auto &allLights = ex.snapshotLights();
+  CHECK((allLights.size() == 2)); // DL + PL collected.
 
-    extract::SceneExtractor ex(ctx, scene);
-    auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1));
-    CHECK((ex.lightsOf(snap.added[0]).empty()));
+  const std::vector<std::size_t> &insideLights = ex.lightsOf(idInside);
+  const std::vector<std::size_t> &outsideLights = ex.lightsOf(idOutside);
+
+  // A) shapeInside must be tagged with both lights.
+  CHECK((insideLights.size() == 2));
+
+  // B) shapeOutside must be tagged with only the global PointLight, not the DL.
+  CHECK((outsideLights.size() == 1));
+  // The one light tagging shapeOutside must be global.
+  CHECK((allLights[outsideLights[0]].global == true));
+  CHECK((allLights[outsideLights[0]].type == extract::LightDesc::Type::Point));
+
+  // Double-check insideLights contains both types.
+  bool hasDir = false, hasPoint = false;
+  for (std::size_t li : insideLights) {
+    if (allLights[li].type == extract::LightDesc::Type::Directional) hasDir = true;
+    if (allLights[li].type == extract::LightDesc::Type::Point) hasPoint = true;
   }
+  CHECK((hasDir && hasPoint));
+}
 
-  return;
+TEST_CASE("scene extractor light scope: a global PointLight tags every item") {
+  auto pl = createX3DNode("PointLight");
+  setF(pl, "global", std::any(true));
+
+  auto shape1 = makeTriShape();
+  auto shape2 = makeTriShape();
+
+  auto group = createX3DNode("Group");
+  addChild(group, pl);
+  addChild(group, shape1);
+  addChild(group, shape2);
+
+  Scene scene;
+  scene.addRootNode(group);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 2));
+
+  for (extract::RenderItemId id : snap.added) {
+    const std::vector<std::size_t> &lit = ex.lightsOf(id);
+    CHECK((lit.size() == 1)); // exactly the one global light.
+  }
+}
+
+TEST_CASE("scene extractor light scope: no lights gives empty light lists") {
+  auto shape = makeTriShape();
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+
+  extract::SceneExtractor ex(ctx, scene);
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+  CHECK((ex.lightsOf(snap.added[0]).empty()));
 }
 
 TEST_CASE("delta oracle: lightsChanged exposes current cached descriptors and scope") {

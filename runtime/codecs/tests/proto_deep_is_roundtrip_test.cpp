@@ -21,7 +21,7 @@ static int countIs(const runtime::Scene &scene, const std::string &nodeField,
   return n;
 }
 
-TEST_CASE("proto_deep_is_roundtrip_test") {
+TEST_CASE("proto deep is roundtrip: a depth-2 IS survives read, write and re-read") {
   // Body: a Transform (direct body child) whose child Box (depth-2) carries an
   // IS connecting its `size` field to the interface field `boxSize`. The
   // Transform itself also IS-binds `translation` -> `pos` (depth-1) to prove the
@@ -63,6 +63,4 @@ TEST_CASE("proto_deep_is_roundtrip_test") {
   auto doc1 = codec::parseDocument(out);
   CHECK((countIs(doc1.scene, "translation", "pos") == 1));
   CHECK((countIs(doc1.scene, "size", "boxSize") == 1));
-
-  return;
 }

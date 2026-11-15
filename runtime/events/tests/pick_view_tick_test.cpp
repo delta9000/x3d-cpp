@@ -15,7 +15,7 @@ using namespace x3d::nodes;
 using x3d::test::setF;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-2f; }
 
-TEST_CASE("m2d_tick_test") {
+TEST_CASE("pick view tick") {
   auto shape = createX3DNode("Shape");
   auto box = createX3DNode("Box"); setF(box, "size", std::any(SFVec3f{2,2,2}));
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
@@ -25,12 +25,14 @@ TEST_CASE("m2d_tick_test") {
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(scene);
 
-  auto hit = ctx.pick(Ray{{0,0,10},{0,0,-1}});
-  CHECK((hit.hit && hit.node == shape.get() && feq(hit.point.z, 1)));
-
-  // Viewpoint at (0,0,10), default orientation -> view = translate(0,0,-10).
-  Mat4 view = ctx.viewMatrix();
-  SFVec3f origin = view.transformPoint({0,0,0});
-  CHECK((feq(origin.z, -10) && feq(origin.x, 0) && feq(origin.y, 0)));
-  return;
+  SUBCASE("pick hits the nearest shape") {
+    auto hit = ctx.pick(Ray{{0,0,10},{0,0,-1}});
+    CHECK((hit.hit && hit.node == shape.get() && feq(hit.point.z, 1)));
+  }
+  SUBCASE("viewMatrix follows the bound Viewpoint") {
+    // Viewpoint at (0,0,10), default orientation -> view = translate(0,0,-10).
+    Mat4 view = ctx.viewMatrix();
+    SFVec3f origin = view.transformPoint({0,0,0});
+    CHECK((feq(origin.z, -10) && feq(origin.x, 0) && feq(origin.y, 0)));
+  }
 }

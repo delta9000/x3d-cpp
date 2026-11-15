@@ -40,7 +40,7 @@ makeText(const std::vector<std::string> &strs,
 //   Default major BEGIN/leftToRight => pen starts at X=0, advances +X.
 //   glyph 0 spans X[0,0.6], glyph 1 X[0.6,1.2], glyph 2 X[1.2,1.8].
 //   Minor `FIRST` => baseline Y=0; cell Y[-0.2, 0.8].
-static void test_single_line_quads() {
+TEST_CASE("text extract: single line quads") {
   auto text = makeText({"abc"});
   TextLayoutResult layout;
   MeshData m = buildTextMesh(*text, makeMonospaceStub(), &layout);
@@ -72,7 +72,7 @@ static void test_single_line_quads() {
 }
 
 // Test 2: setTextOutputs writes the outputOnly fields onto the node.
-static void test_set_outputs() {
+TEST_CASE("text extract: set outputs") {
   auto text = makeText({"abc"});
   TextLayoutResult layout;
   (void)buildTextMesh(*text, makeMonospaceStub(), &layout);
@@ -94,7 +94,7 @@ static void test_set_outputs() {
 // Test 3: two lines, FontStyle spacing=2 => line1 baseline at Y=-2.
 //   "ab" (2 glyphs) + "cd" (2 glyphs) => 4 quads => 16 positions.
 //   line0 baseline Y=0, line1 baseline Y=-2 (topToBottom default, `FIRST` minor).
-static void test_two_lines_spacing() {
+TEST_CASE("text extract: two lines spacing") {
   auto fontStyle = createX3DNode("FontStyle");
   setF(fontStyle, "spacing", std::any(2.0f));
   auto text = makeText({"ab", "cd"}, fontStyle);
@@ -113,7 +113,7 @@ static void test_two_lines_spacing() {
 
 // Test 4: SceneExtractor full walk over Shape>Text emits a glyph mesh and sets
 // the Text node outputs (the wired dispatch hook).
-static void test_scene_extractor_text() {
+TEST_CASE("text extract: scene extractor text") {
   auto text = makeText({"hi"}); // 2 glyphs
   auto shape = createX3DNode("Shape");
   setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(text)));
@@ -140,7 +140,7 @@ static void test_scene_extractor_text() {
 }
 
 // Test 5: atlas-UV FontMetrics seam threads u0,v0,u1,v1 onto the glyph quads.
-static void test_atlas_uv_seam() {
+TEST_CASE("text extract: atlas uv seam") {
   // A seam that returns a fixed atlas rect for every glyph.
   FontMetrics atlas = [](const FontKey &) -> GlyphResult {
     GlyphMetrics gm;
@@ -181,7 +181,7 @@ static std::shared_ptr<X3DNode> makeVerticalText(
   return text;
 }
 
-static void test_vertical_stub_legacy_cells() {
+TEST_CASE("text extract: vertical stub legacy cells") {
   auto text = makeVerticalText({"ab"});
   TextLayoutResult layout;
   const MeshData m = buildTextMesh(*text, makeMonospaceStub(), &layout);
@@ -196,7 +196,7 @@ static void test_vertical_stub_legacy_cells() {
   CHECK((feq(m.positions[6].x, x + 0.8f) && feq(m.positions[6].y, y - 0.6f)));
 }
 
-static void test_vertical_length_compresses_y() {
+TEST_CASE("text extract: vertical length compresses y") {
   auto text = makeVerticalText({"ab"}, true, 0.6f);
   TextLayoutResult layout;
   const MeshData m = buildTextMesh(*text, makeMonospaceStub(), &layout);
@@ -206,7 +206,7 @@ static void test_vertical_length_compresses_y() {
   CHECK((feq(m.positions[4].y, -0.6f) && feq(m.positions[6].y, -0.3f)));
 }
 
-static void test_vertical_real_glyph_box() {
+TEST_CASE("text extract: vertical real glyph box") {
   auto text = makeVerticalText({"a"});
   FontMetrics fm = [](const FontKey&) {
     GlyphMetrics gm;
@@ -227,7 +227,7 @@ static void test_vertical_real_glyph_box() {
 }
 
 // Test 6: a Failed glyph is skipped (no quad, no advance).
-static void test_failed_glyph_skipped() {
+TEST_CASE("text extract: failed glyph skipped") {
   FontMetrics failing = [](const FontKey &) -> GlyphResult {
     return GlyphResult::makeFailed();
   };
@@ -240,7 +240,7 @@ static void test_failed_glyph_skipped() {
 // a Text whose fontStyle is a ScreenFontStyle must honour pointSize.
 // ScreenFontStyle has no 'size' field (only 'pointSize'), so the generic
 // getField<float>("size") read silently defaulted to 1.0.
-static void test_screenfontstyle_pointsize() {
+TEST_CASE("text extract: screenfontstyle pointsize") {
   auto text = createX3DNode("Text");
   auto sfs = createX3DNode("ScreenFontStyle");
   setF(sfs, "pointSize", std::any(12.0f));
@@ -253,7 +253,7 @@ static void test_screenfontstyle_pointsize() {
 // FontStyle.family is a fallback list (§15.4.1): the first family the
 // backend supports wins, SERIF when none does; with no backend the first entry
 // is kept. buildTextMesh asks the backend for the resolved family.
-static void test_family_fallback() {
+TEST_CASE("text extract: family fallback") {
   // A backend that only knows SANS and SERIF, recording the families asked for.
   std::vector<std::string> asked;
   FontMetrics fm = [&asked](const FontKey &k) {
@@ -283,20 +283,6 @@ static void test_family_fallback() {
   CHECK_MESSAGE((m.positions.size() == 8), "family: both glyphs render (2 quads)");
 }
 
-TEST_CASE("text_extract_test") {
-  test_single_line_quads();
-  test_set_outputs();
-  test_two_lines_spacing();
-  test_scene_extractor_text();
-  test_atlas_uv_seam();
-  test_vertical_stub_legacy_cells();
-  test_vertical_length_compresses_y();
-  test_vertical_real_glyph_box();
-  test_family_fallback();
-  test_failed_glyph_skipped();
-  test_screenfontstyle_pointsize();
-  return;
-}
 
 TEST_CASE("delta oracle: Text delta refreshes every layout output including emptiness") {
   auto font = createX3DNode("FontStyle");

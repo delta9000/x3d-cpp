@@ -27,7 +27,7 @@ using namespace x3d::nodes;
 
 namespace {
 // BooleanTrigger
-void test_boolean_trigger() {
+TEST_CASE("event utility: boolean trigger") {
   auto n = std::make_shared<BooleanTrigger>();
   X3DExecutionContext ctx;
   BooleanTriggerSystem sys;
@@ -39,7 +39,7 @@ void test_boolean_trigger() {
 }
 
 // IntegerTrigger (honor `TRUE` only)
-void test_integer_trigger() {
+TEST_CASE("event utility: integer trigger") {
   auto n = std::make_shared<IntegerTrigger>();
   n->setIntegerKey(SFInt32{42});
   X3DExecutionContext ctx;
@@ -57,7 +57,7 @@ void test_integer_trigger() {
 }
 
 // TimeTrigger (fires on any boolean, value=now)
-void test_time_trigger() {
+TEST_CASE("event utility: time trigger") {
   auto n = std::make_shared<TimeTrigger>();
   X3DExecutionContext ctx;
   TimeTriggerSystem sys;
@@ -73,7 +73,7 @@ void test_time_trigger() {
 }
 
 // BooleanFilter
-void test_boolean_filter() {
+TEST_CASE("event utility: boolean filter") {
   auto n = std::make_shared<BooleanFilter>();
   X3DExecutionContext ctx;
   BooleanFilterSystem sys;
@@ -96,7 +96,7 @@ void test_boolean_filter() {
 }
 
 // BooleanToggle (flip on `TRUE`, `FALSE` no-op)
-void test_boolean_toggle() {
+TEST_CASE("event utility: boolean toggle") {
   auto n = std::make_shared<BooleanToggle>();
   X3DExecutionContext ctx;
   BooleanToggleSystem sys;
@@ -117,7 +117,7 @@ void test_boolean_toggle() {
 }
 
 // IntegerSequencer stepwise selection (no interpolation)
-void test_integer_sequencer() {
+TEST_CASE("event utility: integer sequencer") {
   auto n = std::make_shared<IntegerSequencer>();
   n->setKey(MFFloat{0.0f, 0.5f, 1.0f});
   n->setKeyValue(MFInt32{10, 20, 30});
@@ -140,7 +140,7 @@ void test_integer_sequencer() {
 }
 
 // duplicate keys select the lowest index (first definition wins)
-void test_sequencer_duplicate_keys() {
+TEST_CASE("event utility: sequencer duplicate keys") {
   auto n = std::make_shared<IntegerSequencer>();
   // key 0.5 is duplicated; at t=0.5 the spec selects v_i at the lowest such i.
   n->setKey(MFFloat{0.0f, 0.5f, 0.5f, 1.0f});
@@ -158,7 +158,7 @@ void test_sequencer_duplicate_keys() {
 }
 
 // BooleanSequencer next/previous with wrap
-void test_boolean_sequencer_next_previous() {
+TEST_CASE("event utility: boolean sequencer next previous") {
   auto n = std::make_shared<BooleanSequencer>();
   n->setKey(MFFloat{0.0f, 0.5f, 1.0f});
   n->setKeyValue(MFBool{false, true, false});
@@ -185,7 +185,7 @@ void test_boolean_sequencer_next_previous() {
 }
 
 // production wiring: attachEventUtilities (no manual attach)
-void test_attach_event_utilities() {
+TEST_CASE("event utility: attach event utilities") {
   auto tog = createX3DNode("BooleanToggle");
   auto seq = createX3DNode("IntegerSequencer");
   for (auto &f : seq->fields()) {
@@ -215,19 +215,6 @@ void test_attach_event_utilities() {
 
 } // namespace
 
-TEST_CASE("event_utility_test") {
-  test_boolean_trigger();
-  test_integer_trigger();
-  test_time_trigger();
-  test_boolean_filter();
-  test_boolean_toggle();
-  test_integer_sequencer();
-  test_sequencer_duplicate_keys();
-  test_boolean_sequencer_next_previous();
-  test_attach_event_utilities();
-
-  return;
-}
 
 TEST_CASE("integer_sequencer_duplicate_last_key_uses_first_value") {
   auto n = std::make_shared<IntegerSequencer>();

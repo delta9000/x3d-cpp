@@ -38,10 +38,12 @@ static std::size_t renderedUnder(const std::shared_ptr<X3DNode> &shapeChild) {
   return ex.fullSnapshot().added.size();
 }
 
-TEST_CASE("scene_extractor_cad1_test") {
+TEST_CASE("scene extractor cad face: a Shape in CADFace.shape renders") {
   // Conforming: CADFace.shape = Shape -> renders.
   CHECK((renderedUnder(makeTriShape()) == 1));
+}
 
+TEST_CASE("scene extractor cad face: a Group in CADFace.shape is skipped") {
   // Non-conforming: a Group is not Shape|LOD|Transform; the guard must skip it,
   // so its renderable descendant is not emitted (would be 1 without the guard).
   auto group = createX3DNode("Group");
