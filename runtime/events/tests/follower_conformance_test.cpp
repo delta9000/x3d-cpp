@@ -88,7 +88,7 @@ TEST_CASE("Followers activate before animating unequal initial values") {
   }
 }
 
-static void test_arith() {
+TEST_CASE("follower conformance: arith") {
   // float
   CHECK_MESSAGE((feq(FollowerArith<float>::lerp(0.f,10.f,0.25f), 2.5f)), ("float lerp"));
   CHECK_MESSAGE((feq(FollowerArith<float>::dist(1.f,4.f), 3.f)), ("float dist"));
@@ -121,7 +121,7 @@ static void test_arith() {
   CHECK_MESSAGE((nm.size()==1 && feq(nm[0].x,2)), ("MFVec2f element-wise lerp"));
 }
 
-static void test_damper() {
+TEST_CASE("follower conformance: damper") {
   X3DExecutionContext ctx;
   // order-1, tau=0.3 scalar -> 1; sample at t=tau => ~0.6321.
   // tolerance defaults to -1 (no finite tolerance), so omit the setter call.
@@ -181,7 +181,7 @@ static void test_damper() {
   CHECK_MESSAGE((pd->getValue_changed().x > 9.5f), ("PositionDamper converges in x"));
 }
 
-static void test_chaser() {
+TEST_CASE("follower conformance: chaser") {
   X3DExecutionContext ctx;
   // D=1 ->1: reaches exactly 1.0 at t=1.0, ~0.5 at t=0.5.
   auto sc = std::make_shared<ScalarChaser>();
@@ -272,7 +272,7 @@ static void test_chaser() {
   }
 }
 
-static void test_mf_followers() {
+TEST_CASE("follower conformance: mf followers") {
   // CoordinateDamper (MFVec3f): length-1 seed → length-2 destination
   {
     X3DExecutionContext ctx;
@@ -366,7 +366,7 @@ static void test_mf_followers() {
   }
 }
 
-static void test_wiring() {
+TEST_CASE("follower conformance: wiring") {
   // makeFollowerSystems registers all 14 (sanity: non-empty, attaches a damper).
   auto systems = makeFollowerSystems();
   CHECK_MESSAGE((systems.size() == 14), ("makeFollowerSystems registers all 14 follower systems"));
@@ -381,12 +381,3 @@ static void test_wiring() {
   CHECK_MESSAGE((lit), ("a PositionDamper attached via makeFollowerSystems behaves (was inert)"));
 }
 
-TEST_CASE("follower_conformance_test") {
-  test_arith();
-  test_damper();
-  test_chaser();
-  test_mf_followers();
-  test_wiring();
-
-  return;
-}

@@ -19,7 +19,7 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 // Test: mixed scalar + node fieldValues must produce a single "fieldValue"
 // JSON array, not two duplicate "fieldValue" keys (invalid JSON).
-static void jsonMixedFieldValueValidJsonTest() {
+TEST_CASE("proto writer parity: mixed scalar and node fieldValues give one JSON array") {
   using namespace x3d::runtime;
 
   // Build a declaration with a scalar field (size:SFVec3f) and a node field
@@ -83,7 +83,7 @@ static void jsonMixedFieldValueValidJsonTest() {
   (void)doc2;
 }
 
-TEST_CASE("proto_writer_parity_test") {
+TEST_CASE("proto writer parity: JSON and VRML re-emit the declaration and instance") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='P'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -102,9 +102,6 @@ TEST_CASE("proto_writer_parity_test") {
   CHECK((vr.find("PROTO P") != std::string::npos));
   // The scene-level instance is re-emitted as a proto instance `P { ... }`.
   CHECK((vr.find("P {") != std::string::npos));
-  jsonMixedFieldValueValidJsonTest();
-
-  return;
 }
 
 TEST_CASE("nested instance IS survives every writer") {

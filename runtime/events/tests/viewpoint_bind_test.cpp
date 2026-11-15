@@ -32,7 +32,7 @@ namespace {
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
 
 // (1) jump=`FALSE` bind keeps the effective view continuous (no jump).
-void test_jump_false_continuous() {
+TEST_CASE("viewpoint bind: jump false continuous") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
   setF(B, "jump", std::any(SFBool{false}));
@@ -54,7 +54,7 @@ void test_jump_false_continuous() {
 }
 
 // (2) jump=`TRUE` + retainUserOffsets=`FALSE` snaps to authored pose (offset reset).
-void test_jump_true_snaps() {
+TEST_CASE("viewpoint bind: jump true snaps") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
   Scene scene; scene.addRootNode(A); scene.addRootNode(B);
@@ -73,7 +73,7 @@ void test_jump_true_snaps() {
 }
 
 // (3) retainUserOffsets=`TRUE` keeps the stored offset on rebind.
-void test_retain_user_offsets() {
+TEST_CASE("viewpoint bind: retain user offsets") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   setF(A, "retainUserOffsets", std::any(SFBool{true}));
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
@@ -91,7 +91,7 @@ void test_retain_user_offsets() {
 }
 
 // (4) binding a viewpoint dispatches set_bind to its navigationInfo.
-void test_navigationinfo_dispatch() {
+TEST_CASE("viewpoint bind: navigationinfo dispatch") {
   auto ni0 = std::make_shared<NavigationInfo>(); // first -> default bound
   auto ni1 = std::make_shared<NavigationInfo>(); // the viewpoint's navigationInfo
   auto vp = std::make_shared<Viewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
@@ -105,7 +105,7 @@ void test_navigationinfo_dispatch() {
 }
 
 // (5) removing a bound viewpoint behaves as set_bind `FALSE` (pop).
-void test_delete_detach() {
+TEST_CASE("viewpoint bind: delete detach") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
   Scene scene; scene.addRootNode(A); scene.addRootNode(B);
@@ -120,7 +120,7 @@ void test_delete_detach() {
 
 // (6) a non-teleport bind animates the effective camera over
 // transitionTime and emits transitionComplete (not just for `LOOKAT`).
-void test_bind_transition() {
+TEST_CASE("viewpoint bind: bind transition") {
   auto nav = std::make_shared<NavigationInfo>(); nav->setTransitionTime(2.0); // `LINEAR` default
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 110});
@@ -142,7 +142,7 @@ void test_bind_transition() {
 
 // (7) The transition uses the bound viewpoint's navigationInfo: `TELEPORT`
 // jumps instantly even when the outgoing viewpoint uses a slow `LINEAR` transition.
-void test_per_viewpoint_navinfo_teleport() {
+TEST_CASE("viewpoint bind: per viewpoint navinfo teleport") {
   auto nav0 = std::make_shared<NavigationInfo>(); nav0->setTransitionTime(5.0); // bound, slow `LINEAR`
   auto niB = std::make_shared<NavigationInfo>();
   niB->setTransitionType(std::vector<std::string>{"TELEPORT"});
@@ -161,7 +161,7 @@ void test_per_viewpoint_navinfo_teleport() {
 // (8) A rotation-only bind (same eye position, different orientation) still
 // animates over transitionTime (the guard must consider orientation, not just
 // translation).
-void test_rotation_only_transition() {
+TEST_CASE("viewpoint bind: rotation only transition") {
   auto nav = std::make_shared<NavigationInfo>(); nav->setTransitionTime(2.0);
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 10});
@@ -179,7 +179,7 @@ void test_rotation_only_transition() {
 
 // (9) a pop (set_bind `FALSE` on the bound vp) restores the popped-to
 // vp's stored offset (§23.3.1 r6.3), not resetting it like a fresh push.
-void test_pop_restores_stored_offset() {
+TEST_CASE("viewpoint bind: pop restores stored offset") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
   Scene scene; scene.addRootNode(A); scene.addRootNode(B);
@@ -200,7 +200,7 @@ void test_pop_restores_stored_offset() {
 }
 
 // (10) A push resets the offset.
-void test_push_still_resets() {
+TEST_CASE("viewpoint bind: push still resets") {
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 100});
   Scene scene; scene.addRootNode(A); scene.addRootNode(B);
@@ -218,7 +218,7 @@ void test_push_still_resets() {
 }
 
 // (11) a pop still animates over transitionTime.
-void test_pop_animates_over_transition_time() {
+TEST_CASE("viewpoint bind: pop animates over transition time") {
   auto nav = std::make_shared<NavigationInfo>(); nav->setTransitionTime(2.0);
   auto A = std::make_shared<Viewpoint>(); A->setPosition(SFVec3f{0, 0, 10});
   auto B = std::make_shared<Viewpoint>(); B->setPosition(SFVec3f{0, 0, 110});
@@ -308,18 +308,3 @@ TEST_CASE("zero_duration_transition_signals_complete") {
   CHECK(nav->getTransitionComplete());
 }
 
-TEST_CASE("viewpoint_bind_test") {
-  test_jump_false_continuous();
-  test_jump_true_snaps();
-  test_retain_user_offsets();
-  test_navigationinfo_dispatch();
-  test_delete_detach();
-  test_bind_transition();
-  test_per_viewpoint_navinfo_teleport();
-  test_rotation_only_transition();
-  test_pop_restores_stored_offset();
-  test_push_still_resets();
-  test_pop_animates_over_transition_time();
-
-  return;
-}

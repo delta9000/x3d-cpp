@@ -7,7 +7,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_extern_url_json_roundtrip_test") {
+TEST_CASE("proto extern url json roundtrip: EXTERNPROTO url candidates keep their order through JSON") {
   // Ground-truth source: an XML ExternProtoDeclare with a multi-element url.
   const char *xml =
       "<X3D version='4.0'><Scene>"
@@ -35,6 +35,4 @@ TEST_CASE("proto_extern_url_json_roundtrip_test") {
   CHECK((urlJ.size() == 2));
   CHECK((urlJ[0] == "widget.x3d#Widget"));
   CHECK((urlJ[1] == "http://example.com/widget.x3d#Widget"));
-
-  return;
 }

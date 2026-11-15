@@ -18,14 +18,14 @@ using namespace x3d::nodes;
 using x3d::test::setF;
 using x3d::test::feq;
 
-TEST_CASE("mesh_builder_tc3_test") {
+TEST_CASE("mesh builder extrusion texcoords") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
   // Edges are all length 2 => perimeter 8; accumulated chord at verts:
   //   k0: 0, k1: 2/8=0.25, k2: 4/8=0.5, k3: 6/8=0.75, k4: 8/8=1.0.
   const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
 
   // 1. ACCEPTANCE: side-wall S spans 0..1 around cs, T spans 0..1 spine --
-  {
+  SUBCASE("side-wall S spans the cross-section and T the spine") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     // Straight 2-point spine of length 1 along +Y.
@@ -77,7 +77,7 @@ TEST_CASE("mesh_builder_tc3_test") {
   // 2. S by accumulated chord length (non-uniform cross-section)
   // An open L-shaped cross-section: edges of length 1, 3 => perimeter 4.
   //   verts (0,0),(1,0),(1,3) => accumulated chord {0, 1/4=0.25, 4/4=1.0}.
-  {
+  SUBCASE("S follows the accumulated cross-section length") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(MFVec2f{{0, 0}, {1, 0}, {1, 3}}));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -96,7 +96,7 @@ TEST_CASE("mesh_builder_tc3_test") {
   // 3. T by accumulated spine length (non-uniform spine)
   // 3-section spine with segment lengths 1 then 3 => total 4.
   //   section 0 t=0, section 1 t=1/4=0.25, section 2 t=4/4=1.0 (not 0.5).
-  {
+  SUBCASE("T follows the accumulated spine length") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}, {0, 4, 0}}));
@@ -118,7 +118,7 @@ TEST_CASE("mesh_builder_tc3_test") {
   // 4. CAP mapping: cross-section coords normalized to bbox
   // Caps ON. The square cross-section bbox is [-1,1]x[-1,1]; normalized corners
   // are the 4 combinations of {0,1}. A cap corner therefore carries s,t in {0,1}.
-  {
+  SUBCASE("caps map the cross-section bounding box") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -141,7 +141,7 @@ TEST_CASE("mesh_builder_tc3_test") {
   // 5. Zero-extent guards: no div-by-zero / NaN
   // A degenerate cross-section (all coincident) => zero perimeter & zero bbox;
   // a coincident spine => zero spine length. The builder must guard to finite UVs.
-  {
+  SUBCASE("zero-extent cross-sections do not divide by zero") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection",
          std::any(MFVec2f{{0, 0}, {0, 0}, {0, 0}, {0, 0}}));
@@ -153,7 +153,7 @@ TEST_CASE("mesh_builder_tc3_test") {
   }
 
   // 6. ccw=false keeps texcoords parallel + finite (winding swap)
-  {
+  SUBCASE("ccw=false keeps texcoords parallel and finite") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -164,6 +164,4 @@ TEST_CASE("mesh_builder_tc3_test") {
       CHECK((std::isfinite(m.texcoords[i].x) && std::isfinite(m.texcoords[i].y)));
     }
   }
-
-  return;
 }

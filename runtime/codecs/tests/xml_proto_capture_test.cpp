@@ -5,12 +5,11 @@
 #include "XmlReader.hpp"
 
 #include "doctest/doctest.h"
-#include <cstdio>
 
 using namespace x3d;
 using namespace x3d::core;
 
-TEST_CASE("xml_proto_capture_test") {
+TEST_CASE("xml proto capture: declaration, IS and instance are captured") {
   const char *xml =
       "<X3D profile='Interchange' version='4.0'><Scene>"
       "<ProtoDeclare name='Param'>"
@@ -52,11 +51,9 @@ TEST_CASE("xml_proto_capture_test") {
          inst.parent.lock()->nodeTypeName() == "Transform"));
   CHECK((inst.parentField == "children"));
 
-  std::puts("xml_proto_capture_test OK");
-  return;
 }
 
-TEST_CASE("xml_proto_capture_nested_instance_is_connect_test") {
+TEST_CASE("xml proto capture: nested instance IS connect is captured") {
   const char *xml =
       "<X3D profile='Interchange' version='4.0'><Scene>"
       "<ProtoDeclare name='Inner'>"

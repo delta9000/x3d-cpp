@@ -43,13 +43,13 @@ static bool hasUvAt(const MeshData &m, const SFVec3f &p, float sx, float ty) {
   return false;
 }
 
-TEST_CASE("mesh_builder_tc1_test") {
+TEST_CASE("mesh builder tc1") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
   // 1. Unit-square IFS, XY plane, no TextureCoordinate
   // size = (1,1,0). X & Y tie for largest -> S=X, T=Y. s=x, t=y. Corners span
   // s in {0,1}, t in {0,1}.
-  {
+  SUBCASE("Unit-square IFS, XY plane, no TextureCoordinate size = (1,1,0)") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
@@ -65,7 +65,7 @@ TEST_CASE("mesh_builder_tc1_test") {
   // 2. 2x1 quad (X largest) -> aspect preserved: t in {0,0.5}
   // points (0,0),(2,0),(2,1),(0,1): size=(2,1,0). S=X (size 2), T=Y (size 1).
   // s = x/2 -> {0,1}; t = y/2 -> {0,0.5}.
-  {
+  SUBCASE("2x1 quad keeps its aspect ratio") {
     const SFVec3f Q0{0, 0, 0}, Q1{2, 0, 0}, Q2{2, 1, 0}, Q3{0, 1, 0};
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {Q0, Q1, Q2, Q3});
@@ -82,7 +82,7 @@ TEST_CASE("mesh_builder_tc1_test") {
   // Build the same IFS twice: once with an authored TextureCoordinate, once with
   // the matching authored UVs, and a control with no texCoord. The authored case
   // must equal the authored UVs (not the bbox projection).
-  {
+  SUBCASE("authored TextureCoordinate is left unchanged") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
@@ -97,27 +97,27 @@ TEST_CASE("mesh_builder_tc1_test") {
   }
 
   // 4. Generation spans every composed/triangle geometry type
-  {
+  SUBCASE("Generation spans every composed/triangle geometry type") {
     // TriangleSet: 3 implicit coords -> 3 corners, all get a texcoord.
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && m.texcoords.size() == 3));
   }
-  {
+  SUBCASE("IndexedTriangleSet gets generated texcoords") {
     auto g = createX3DNode("IndexedTriangleSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2}));
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
-  {
+  SUBCASE("QuadSet gets generated texcoords") {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.texcoords.size() == m.positions.size() && !m.texcoords.empty()));
   }
-  {
+  SUBCASE("IndexedQuadSet gets generated texcoords") {
     auto g = createX3DNode("IndexedQuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
@@ -126,7 +126,7 @@ TEST_CASE("mesh_builder_tc1_test") {
   }
 
   // 5. Line/point sets get no generated texcoords
-  {
+  SUBCASE("Line/point sets get no generated texcoords") {
     auto g = createX3DNode("IndexedLineSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, -1}));
@@ -134,7 +134,7 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((m.topology == Topology::Lines));
     CHECK((m.texcoords.empty())); // no implicit UVs for lines.
   }
-  {
+  SUBCASE("PointSet gets no generated texcoords") {
     auto g = createX3DNode("PointSet");
     attachCoord(g, {P0, P1, P2});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -144,7 +144,7 @@ TEST_CASE("mesh_builder_tc1_test") {
 
   // 6. Sdim/Tdim selection: Z largest, X second (Y smallest)
   // points span X=2, Y=0, Z=4 -> S=Z (size4), T=X (size2). s=z/4, t=x/4.
-  {
+  SUBCASE("Sdim and Tdim follow the two largest extents") {
     const SFVec3f R0{0, 0, 0}, R1{2, 0, 0}, R2{2, 0, 4}, R3{0, 0, 4};
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {R0, R1, R2, R3});
@@ -154,6 +154,4 @@ TEST_CASE("mesh_builder_tc1_test") {
     CHECK((hasUvAt(m, R2, 1.0f, 0.5f)));   // s=z/4=1, t=x/4=0.5
     CHECK((hasUvAt(m, R3, 1.0f, 0.0f)));   // s=z/4=1, t=x/4=0
   }
-
-  return;
 }

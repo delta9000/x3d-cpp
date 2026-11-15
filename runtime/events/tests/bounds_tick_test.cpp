@@ -18,7 +18,7 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("m2b_tick_test") {
+TEST_CASE("bounds tick: world and local bounds after the first tick") {
   auto T = createX3DNode("Transform"); setF(T, "translation", std::any(SFVec3f{5,0,0}));
   auto shape = createX3DNode("Shape");
   auto box = createX3DNode("Box"); setF(box, "size", std::any(SFVec3f{2,2,2}));
@@ -34,10 +34,9 @@ TEST_CASE("m2b_tick_test") {
   CHECK((feq(wb.min.x,4) && feq(wb.max.x,6) && feq(wb.max.y,1)));
   Aabb lb = ctx.localBounds(shape.get());    // box bounds in shape's frame
   CHECK((feq(lb.max.x,1) && feq(lb.min.x,-1)));
-  return;
 }
 
-TEST_CASE("m2b_tick_geometry_replacement_refreshes_node_indexes") {
+TEST_CASE("bounds tick: geometry replacement refreshes node indexes") {
   auto root = createX3DNode("Transform");
   setF(root, "translation", SFVec3f{10, 0, 0});
   auto shape = createX3DNode("Shape");
@@ -64,7 +63,7 @@ TEST_CASE("m2b_tick_geometry_replacement_refreshes_node_indexes") {
   CHECK(ctx.localBounds(root.get()).empty);
 }
 
-TEST_CASE("m2b_tick_coordinate_replacement_refreshes_bounds") {
+TEST_CASE("bounds tick: coordinate replacement refreshes bounds") {
   auto shape = createX3DNode("Shape");
   auto geometry = createX3DNode("PointSet");
   auto coord = createX3DNode("Coordinate");

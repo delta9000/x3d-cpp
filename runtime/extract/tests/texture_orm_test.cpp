@@ -11,22 +11,18 @@ using namespace x3d::core;
 using namespace x3d::nodes;
 using x3d::test::setF;
 
-TEST_CASE("texture_orm_test") {
-  // PhysicalMaterial with metallicRoughnessTexture → single slot, Linear.
-  {
-    auto tex = createX3DNode("ImageTexture");
-    setF(tex, "url", std::any(MFString{"orm.png"}));
-    auto mat = createX3DNode("PhysicalMaterial");
-    setF(mat, "metallicRoughnessTexture", std::any(std::shared_ptr<X3DNode>(tex)));
-    auto app = createX3DNode("Appearance");
-    setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
+TEST_CASE("texture orm: PhysicalMaterial metallicRoughnessTexture is one linear slot") {
+  auto tex = createX3DNode("ImageTexture");
+  setF(tex, "url", std::any(MFString{"orm.png"}));
+  auto mat = createX3DNode("PhysicalMaterial");
+  setF(mat, "metallicRoughnessTexture", std::any(std::shared_ptr<X3DNode>(tex)));
+  auto app = createX3DNode("Appearance");
+  setF(app, "material", std::any(std::shared_ptr<X3DNode>(mat)));
 
-    MaterialDesc m = materialOf(app.get());
-    // Exactly one MetallicRoughness slot (not separate Metallic + Roughness).
-    int mrCount = 0;
-    for (const auto &t : m.textures)
-      if (t.slot == TextureRef::Slot::MetallicRoughness) ++mrCount;
-    CHECK((mrCount == 1));
-  }
-  return;
+  MaterialDesc m = materialOf(app.get());
+  // Exactly one MetallicRoughness slot (not separate Metallic + Roughness).
+  int mrCount = 0;
+  for (const auto &t : m.textures)
+    if (t.slot == TextureRef::Slot::MetallicRoughness) ++mrCount;
+  CHECK((mrCount == 1));
 }

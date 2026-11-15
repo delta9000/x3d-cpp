@@ -55,11 +55,11 @@ static bool rgbaEq(const SFColorRGBA &a, float r, float g, float b, float al) {
   return feq(a.r, r) && feq(a.g, g) && feq(a.b, b) && feq(a.a, al);
 }
 
-TEST_CASE("mesh_builder_t3_test") {
+TEST_CASE("mesh builder t3") {
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0};
 
   // 1. Flat-normal correctness: no Normal node -> +Z geometric normal
-  {
+  SUBCASE("Flat-normal correctness: no Normal node -> +Z geometric normal") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2}); // CCW in z=0 plane.
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -70,7 +70,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 1b. Flat normal of a clockwise triangle points -Z
-  {
+  SUBCASE("Flat normal of a clockwise triangle points -Z") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P2, P1}); // reversed winding.
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -83,7 +83,7 @@ TEST_CASE("mesh_builder_t3_test") {
   // *Indexed*FaceSet family carries the separate normalIndex/colorIndex/
   // texCoordIndex fields (the IndexedTriangle*/Quad* family share the single
   // `index` for coords and attributes — proven in test 2b/3b below).
-  {
+  SUBCASE("normalIndex remaps per-vertex normals") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, -1}));
@@ -101,7 +101,7 @@ TEST_CASE("mesh_builder_t3_test") {
   // 2b. IndexedTriangleSet: no separate normalIndex -> `index` indexes
   // the Normal array per corner (the value from `index` doubles as the normal
   // index). The triangle's coords are P0,P1,P2; normals NA,NB,NC pick by coord.
-  {
+  SUBCASE("IndexedTriangleSet index also indexes the Normal array") {
     auto g = createX3DNode("IndexedTriangleSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{2, 0, 1})); // coord order remapped.
@@ -115,7 +115,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 3. colorIndex honoring (per-vertex, IndexedFaceSet)
-  {
+  SUBCASE("colorIndex honoring (per-vertex, IndexedFaceSet)") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, -1}));
@@ -131,7 +131,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 3b. colorIndex empty -> coordIndex doubles as the color index
-  {
+  SUBCASE("colorIndex empty -> coordIndex doubles as the color index") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "coordIndex", std::any(std::vector<int>{2, 0, 1, -1})); // remapped.
@@ -147,7 +147,7 @@ TEST_CASE("mesh_builder_t3_test") {
   // An IndexedFaceSet quad-face -> 2 triangles (6 corners); with
   // colorPerVertex=false the WHOLE face takes a single color (face 0). Both
   // triangles' six corners must carry that one color.
-  {
+  SUBCASE("colorPerVertex false expands a quad face color") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "coordIndex", std::any(std::vector<int>{0, 1, 2, 3, -1}));
@@ -160,7 +160,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 4b. Per-face with colorIndex selecting a face color
-  {
+  SUBCASE("Per-face with colorIndex selecting a face color") {
     auto g = createX3DNode("IndexedFaceSet");
     attachCoord(g, {P0, P1, P2, P3});
     // two triangular faces.
@@ -177,7 +177,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 5. ColorRGBA carried vs Color promoted
-  {
+  SUBCASE("ColorRGBA carried vs Color promoted") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     attachColorRGBA(g, {SFColorRGBA{1, 0, 0, 0.25f}, SFColorRGBA{0, 1, 0, 0.5f},
@@ -188,7 +188,7 @@ TEST_CASE("mesh_builder_t3_test") {
     CHECK((rgbaEq(m.colors[1], 0, 1, 0, 0.5f)));
     CHECK((rgbaEq(m.colors[2], 0, 0, 1, 0.75f)));
   }
-  {
+  SUBCASE("Color without alpha is promoted to alpha 1") {
     // Same geometry, Color (no alpha) -> alpha promoted to 1.
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
@@ -200,7 +200,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 6. TextureCoordinate resolution + authored Normal honored
-  {
+  SUBCASE("TextureCoordinate resolution + authored Normal honored") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     attachTexCoord(g, {SFVec2f{0, 0}, SFVec2f{1, 0}, SFVec2f{1, 1}});
@@ -215,7 +215,7 @@ TEST_CASE("mesh_builder_t3_test") {
   }
 
   // 7. ccw / solid carried from reflection
-  {
+  SUBCASE("ccw / solid carried from reflection") {
     auto g = createX3DNode("TriangleSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "ccw", std::any(false));
@@ -223,14 +223,12 @@ TEST_CASE("mesh_builder_t3_test") {
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.ccw == false && m.solid == false));
   }
-  {
+  SUBCASE("ccw and solid default to true") {
     auto g = createX3DNode("TriangleSet"); // defaults true.
     attachCoord(g, {P0, P1, P2});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.ccw == true && m.solid == true));
   }
-
-  return;
 }
 
 TEST_CASE("custom vertex attributes follow expanded coordinate vertices") {

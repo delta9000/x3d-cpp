@@ -34,7 +34,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 // fan-in (two ROUTEs into the same sink field) delivers ONCE per
 // timestamp. The per-ROUTE guard does not catch this — the two edges have
 // distinct sources — so without the per-field cap the sink is written twice.
-void test_rtc5_fanin_delivers_once() {
+TEST_CASE("cascade conformance: rtc5 fanin delivers once") {
   auto a = std::make_shared<xn::Transform>();
   auto b = std::make_shared<xn::Transform>();
   auto z = std::make_shared<xn::Transform>();
@@ -61,7 +61,7 @@ void test_rtc5_fanin_delivers_once() {
 }
 
 // Each field in a cyclic graph is produced at most once per timestamp.
-void test_rtc5_cyclic_redrive_broken() {
+TEST_CASE("cascade conformance: rtc5 cyclic redrive broken") {
   auto a = std::make_shared<xn::Transform>();
   auto b = std::make_shared<xn::Transform>();
 
@@ -134,7 +134,7 @@ private:
 // must resolve within one tick (not lag a frame). The re-eval loop re-runs the
 // systems pass after the cascade delivered into mid.translation, so the
 // earlier-ordered consumer sees the fresh value on the second pass.
-void test_rtc6_reeval_within_one_tick() {
+TEST_CASE("cascade conformance: rtc6 reeval within one tick") {
   auto src = std::make_shared<xn::Transform>();
   auto mid = std::make_shared<xn::Transform>();
 
@@ -157,7 +157,7 @@ void test_rtc6_reeval_within_one_tick() {
 // not loop forever — the per-field cap bounds the re-eval loop. (If the
 // loop did not terminate this test would hang rather than fail; reaching the
 // assertions at all proves termination.)
-void test_rtc6_terminates_under_per_field_cap() {
+TEST_CASE("cascade conformance: rtc6 terminates under per field cap") {
   auto src = std::make_shared<xn::Transform>();
   auto mid = std::make_shared<xn::Transform>();
 
@@ -186,11 +186,3 @@ void test_rtc6_terminates_under_per_field_cap() {
 
 } // namespace
 
-TEST_CASE("cascade_conformance_test") {
-  test_rtc5_fanin_delivers_once();
-  test_rtc5_cyclic_redrive_broken();
-  test_rtc6_reeval_within_one_tick();
-  test_rtc6_terminates_under_per_field_cap();
-
-  return;
-}

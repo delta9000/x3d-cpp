@@ -15,7 +15,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_roundtrip_test") {
+TEST_CASE("proto roundtrip") {
   const char *xml =
       "<X3D version='4.0'><Scene>"
       "<ProtoDeclare name='P'><ProtoBody><Box/></ProtoBody></ProtoDeclare>"
@@ -32,13 +32,11 @@ TEST_CASE("proto_roundtrip_test") {
   CHECK((out.find("name=\"P\"") != std::string::npos));
   CHECK((out.find("DEF=\"A\"") != std::string::npos));
   // Exactly one Box element: the declaration body's, not a second from expansion.
-  {
+  SUBCASE("the declaration body's Box is written once, not again from expansion") {
     std::size_t n = 0, p = 0;
     while ((p = out.find("<Box", p)) != std::string::npos) { ++n; p += 4; }
     CHECK((n == 1));
   }
-
-  return;
 }
 
 TEST_CASE("ProtoBody IMPORT aliases survive every encoding without leaking scope") {

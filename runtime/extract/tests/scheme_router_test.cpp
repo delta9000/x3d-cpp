@@ -25,7 +25,7 @@ static AssetResolver tagged(const std::string &tag, std::string *log) {
   };
 }
 
-TEST_CASE("scheme_router_test") {
+TEST_CASE("scheme router: makeSchemeRouter") {
   SUBCASE("dispatches by scheme, case-insensitively") {
     std::string log;
     AssetResolver router = makeSchemeRouter(

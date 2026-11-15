@@ -36,7 +36,7 @@ std::shared_ptr<KeyDeviceSensorSystem> wire(X3DExecutionContext &ctx, NodeT *n) 
 }
 
 // KeySensor character + isActive
-void test_keysensor_character() {
+TEST_CASE("key device sensor: keysensor character") {
   auto n = std::make_shared<KeySensor>();
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -53,7 +53,7 @@ void test_keysensor_character() {
 }
 
 // action keys (Table 21.2)
-void test_keysensor_action_key() {
+TEST_CASE("key device sensor: keysensor action key") {
   auto n = std::make_shared<KeySensor>();
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -67,7 +67,7 @@ void test_keysensor_action_key() {
 }
 
 // modifier keys
-void test_keysensor_modifiers() {
+TEST_CASE("key device sensor: keysensor modifiers") {
   auto n = std::make_shared<KeySensor>();
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -87,7 +87,7 @@ void test_keysensor_modifiers() {
 }
 
 // enabled gate
-void test_keysensor_disabled() {
+TEST_CASE("key device sensor: keysensor disabled") {
   auto n = std::make_shared<KeySensor>();
   n->setEnabled(SFBool{false});
   n->emitKeyPress(SFString{"sentinel"});
@@ -99,7 +99,7 @@ void test_keysensor_disabled() {
 }
 
 // StringSensor accumulate + isActive
-void test_stringsensor_accumulate() {
+TEST_CASE("key device sensor: stringsensor accumulate") {
   auto n = std::make_shared<StringSensor>();
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -114,7 +114,7 @@ void test_stringsensor_accumulate() {
 }
 
 // StringSensor terminator (finalText + reset + isActive `FALSE`)
-void test_stringsensor_terminate() {
+TEST_CASE("key device sensor: stringsensor terminate") {
   auto n = std::make_shared<StringSensor>();
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -133,7 +133,7 @@ void test_stringsensor_terminate() {
 }
 
 // StringSensor deletion (deletionAllowed)
-void test_stringsensor_deletion() {
+TEST_CASE("key device sensor: stringsensor deletion") {
   auto n = std::make_shared<StringSensor>(); // deletionAllowed defaults `TRUE`
   X3DExecutionContext ctx;
   wire(ctx, n.get());
@@ -158,7 +158,7 @@ void test_stringsensor_deletion() {
 // its ROUTE consumers must agree on the last value (§4.4.8.3 one-event-per-field-
 // per-timestamp). Verified through a ROUTE because the field itself is last-wins
 // either way — only the routed fan-out exposes the first-vs-last bug.
-void test_keysensor_batched_route_last_wins() {
+TEST_CASE("key device sensor: keysensor batched route last wins") {
   auto ks = std::make_shared<KeySensor>();
   auto sink = std::make_shared<TimeSensor>(); // enabled (SFBool inputOutput) default `TRUE`
   X3DExecutionContext ctx;
@@ -172,7 +172,7 @@ void test_keysensor_batched_route_last_wins() {
 }
 
 // production wiring: attachKeyDeviceSensors
-void test_attach_key_device_sensors() {
+TEST_CASE("key device sensor: attach key device sensors") {
   auto ks = createX3DNode("KeySensor");
   Scene scene;
   scene.addRootNode(ks);
@@ -189,19 +189,6 @@ void test_attach_key_device_sensors() {
 
 } // namespace
 
-TEST_CASE("key_device_sensor_test") {
-  test_keysensor_character();
-  test_keysensor_action_key();
-  test_keysensor_modifiers();
-  test_keysensor_disabled();
-  test_stringsensor_accumulate();
-  test_stringsensor_terminate();
-  test_stringsensor_deletion();
-  test_keysensor_batched_route_last_wins();
-  test_attach_key_device_sensors();
-
-  return;
-}
 
 TEST_CASE("StringSensor deletion removes one UTF-8 character") {
   auto sensor = std::make_shared<StringSensor>();

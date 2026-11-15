@@ -78,7 +78,7 @@ TEST_CASE("pick index follows live LOD level") {
   CHECK(ps.lastIndexVisits() == 0);
 }
 
-TEST_CASE("pick_system_test") {
+TEST_CASE("pick system") {
   // Transform(+5x) > Shape > Box(size 2). Ray from (5,0,10) toward -z hits z=1.
   auto T = createX3DNode("Transform"); setF(T, "translation", std::any(SFVec3f{5,0,0}));
   auto box = createX3DNode("Box"); setF(box, "size", std::any(SFVec3f{2,2,2}));
@@ -128,7 +128,7 @@ TEST_CASE("pick_system_test") {
   // Cone (default: bottomRadius=1, height=2): axis=Y, apex at (0,+1,0), base
   // circle radius 1 at y=-1. Ray along -z through x=0,y=0 hits the lateral
   // surface at z=0.5 (radius at y=0 is 0.5), t=9.5.
-  {
+  SUBCASE("analytic Cone narrow phase") {
     auto cone = createX3DNode("Cone");
     setF(cone, "bottomRadius", std::any(SFFloat(1.0f)));
     setF(cone, "height", std::any(SFFloat(2.0f)));
@@ -156,7 +156,7 @@ TEST_CASE("pick_system_test") {
 
   // Cylinder (default: radius=1, height=2): spans y in [-1,1]. Ray along -z
   // from (0,0,10) hits the lateral surface at z=1, t=9.
-  {
+  SUBCASE("analytic Cylinder narrow phase") {
     auto cyl = createX3DNode("Cylinder");
     setF(cyl, "radius", std::any(SFFloat(1.0f)));
     setF(cyl, "height", std::any(SFFloat(2.0f)));
@@ -183,7 +183,7 @@ TEST_CASE("pick_system_test") {
   // Produces 2 triangles. A ray hitting tri1 (P1,P3,P2 after winding flip) but
   // not tri0 should still get a hit; a ray through the AABB that lands in the
   // gap beyond the strip gets no hit.
-  {
+  SUBCASE("TriangleStripSet triangles") {
     // Strip in z=0 plane, a thin L-shape. Use the flat square strip:
     // P0=(0,0,0), P1=(1,0,0), P2=(0,1,0), P3=(1,1,0).
     // tri0 = P0,P1,P2 (even), tri1 = P1,P3,P2 (odd, winding flip).
@@ -202,7 +202,7 @@ TEST_CASE("pick_system_test") {
   // TriangleFanSet: a simple fan with 4 points producing 2 triangles.
   // P0=(0,0,0), P1=(1,0,0), P2=(1,1,0), P3=(0,1,0).
   // tri0=P0,P1,P2; tri1=P0,P2,P3. Covers the unit square in z=0.
-  {
+  SUBCASE("TriangleFanSet triangles") {
     auto fan = createX3DNode("TriangleFanSet");
     attachCoord(fan, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
     setF(fan, "fanCount", std::any(std::vector<int>{4}));
@@ -214,7 +214,7 @@ TEST_CASE("pick_system_test") {
   }
 
   // IndexedTriangleStripSet: same geometry, using index field.
-  {
+  SUBCASE("IndexedTriangleStripSet triangles") {
     auto iststrip = createX3DNode("IndexedTriangleStripSet");
     attachCoord(iststrip, {{0,0,0},{1,0,0},{0,1,0},{1,1,0}});
     setF(iststrip, "index", std::any(std::vector<int>{0,1,2,3}));
@@ -223,7 +223,7 @@ TEST_CASE("pick_system_test") {
   }
 
   // IndexedTriangleFanSet: same as fan above with explicit index.
-  {
+  SUBCASE("IndexedTriangleFanSet triangles") {
     auto itfan = createX3DNode("IndexedTriangleFanSet");
     attachCoord(itfan, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
     setF(itfan, "index", std::any(std::vector<int>{0,1,2,3}));
@@ -236,7 +236,7 @@ TEST_CASE("pick_system_test") {
   // (a) pickClosest returns the full root→hit path.
   // Transform > Group > Shape > Box. Path = [T, G, shape] (the geometry-bearing
   // node is the Shape; Box hangs off it as the geometry field, not a child).
-  {
+  SUBCASE("pickClosest returns the hit path") {
     auto T = createX3DNode("Transform"); setF(T, "translation", std::any(SFVec3f{0,0,0}));
     auto G = createX3DNode("Group");
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
@@ -254,7 +254,7 @@ TEST_CASE("pick_system_test") {
 
   // (b) Known normal on a Box face: ray -z onto the +Z (front) face → world
   // normal (0,0,1). And a Sphere +Z front face → normal (0,0,1).
-  {
+  SUBCASE("Box front face normal") {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{0,0,10},{0,0,-1}});
     CHECK((hr.hit));
@@ -271,7 +271,7 @@ TEST_CASE("pick_system_test") {
   }
 
   // (b2) Box +X (right) face: ray -x at x=10 → world normal (1,0,0).
-  {
+  SUBCASE("Box right face normal") {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{10,0,0},{-1,0,0}});
     CHECK((hr.hit));
@@ -282,7 +282,7 @@ TEST_CASE("pick_system_test") {
 
   // (b3) Normal under a rotation: Box rotated 90° about Y so its local +X face
   // points to world +Z. Ray from +Z hits that face → world normal (0,0,1).
-  {
+  SUBCASE("normal under a rotation") {
     auto T = createX3DNode("Transform");
     setF(T, "rotation", std::any(SFRotation{0,1,0, 1.5707963f})); // +90° about Y
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
@@ -300,7 +300,7 @@ TEST_CASE("pick_system_test") {
   // (c) Known texcoord on a mesh via barycentric interp. A single quad in z=0
   // with explicit texCoords (TextureCoordinate). Hit at the center (0.5,0.5,0)
   // → texcoord (0.5,0.5).
-  {
+  SUBCASE("mesh texcoord by barycentric interpolation") {
     auto ifs = createX3DNode("IndexedFaceSet");
     attachCoord(ifs, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
     setF(ifs, "coordIndex", std::any(std::vector<int>{0,1,2,3,-1}));
@@ -317,7 +317,7 @@ TEST_CASE("pick_system_test") {
   }
 
   // (c2) Mesh texcoord at a non-center point: hit at (0.25,0.75,0) → tex (0.25,0.75).
-  {
+  SUBCASE("mesh texcoord off centre") {
     auto ifs = createX3DNode("IndexedFaceSet");
     attachCoord(ifs, {{0,0,0},{1,0,0},{1,1,0},{0,1,0}});
     setF(ifs, "coordIndex", std::any(std::vector<int>{0,1,2,3,-1}));
@@ -333,7 +333,7 @@ TEST_CASE("pick_system_test") {
   // (d) Primitive face texcoord per §13: Box +X (right) face hit at a known
   // off-center local point. Ray -x hitting at local (1, 0.5, -0.5):
   // right: s = (-z/hz+1)/2 = (0.5+1)/2 = 0.75; t = (y/hy+1)/2 = (0.5+1)/2 = 0.75.
-  {
+  SUBCASE("Box face texcoord (§13)") {
     auto bx = createX3DNode("Box"); setF(bx, "size", std::any(SFVec3f{2,2,2}));
     auto hr = pickGeom(bx, Ray{{10,0.5f,-0.5f},{-1,0,0}});
     CHECK((hr.hit));
@@ -342,7 +342,7 @@ TEST_CASE("pick_system_test") {
 
   // (d2) Cylinder side seam check: ray -z hits the front (+Z) of the lateral
   // surface at local (0,0,1) → s=0.5 (front), t=0.5 (mid-height); normal (0,0,1).
-  {
+  SUBCASE("Cylinder side texcoord") {
     auto cyl = createX3DNode("Cylinder");
     setF(cyl, "radius", std::any(SFFloat(1.0f)));
     setF(cyl, "height", std::any(SFFloat(2.0f)));
@@ -351,8 +351,6 @@ TEST_CASE("pick_system_test") {
     CHECK((feq(hr.texCoord.x,0.5f) && feq(hr.texCoord.y,0.5f)));
     CHECK((feq(hr.normal.x,0) && feq(hr.normal.y,0) && feq(hr.normal.z,1)));
   }
-
-  return;
 }
 
 TEST_CASE("pick_system_skips_non_pickable_layer_and_hits_layer_behind") {

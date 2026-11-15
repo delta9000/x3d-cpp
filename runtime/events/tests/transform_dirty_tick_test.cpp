@@ -16,7 +16,7 @@ using namespace x3d::runtime;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("m2a_tick_test") {
+TEST_CASE("transform dirty tick: a delivered translation marks the Transform dirty until the next tick") {
   auto root = createX3DNode("Transform");
   auto T = createX3DNode("Transform");
   addChild(root, T);
@@ -44,5 +44,4 @@ TEST_CASE("m2a_tick_test") {
   // A second tick with no events clears the prior changed-set.
   ctx.tick(1.0);
   CHECK((ctx.dirtyTracker().changedNodes().empty()));
-  return;
 }

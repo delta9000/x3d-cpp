@@ -40,7 +40,7 @@ std::shared_ptr<T> findNode(const runtime::Scene &scene) {
 }
 // META + string fields with embedded quote/backslash survive
 // the XML -> ClassicVRML -> reparse hop.
-void testVrmlStringEscaping() {
+TEST_CASE("codec string hardening: VRML string escaping") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
   <head>
@@ -99,7 +99,7 @@ void testVrmlStringEscaping() {
 // an unknown escape keeps its backslash; the two defined
 // escapes (\" and \\) still unescape. Exercised through the XML attribute
 // MFString path (FieldValueIO::parseMFString).
-void testMfStringUnknownEscape() {
+TEST_CASE("codec string hardening: mf string unknown escape") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
   <WorldInfo info='"c:\new\tex" "a\"b" "a\\b"'/>
@@ -136,7 +136,7 @@ void testMfStringUnknownEscape() {
               wi2->getTitle() + "')"));
 }
 // an inline PixelTexture survives the ClassicVRML hop.
-void testVrmlSfImageRead() {
+TEST_CASE("codec string hardening: VRML sf image read") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
   <Shape>
@@ -205,7 +205,7 @@ void testVrmlSfImageRead() {
 // Script source containing a literal ]]> survives the XML
 // writer (split CDATA) and reparses intact (XmlLite concatenates consecutive
 // CDATA sections).
-void testCdataSplit() {
+TEST_CASE("codec string hardening: CDATA split") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene>
   <Script DEF="S"><![CDATA[ecmascript: function initialize() {}]]></Script>
@@ -234,7 +234,7 @@ void testCdataSplit() {
               script2->getSourceCode() + "')"));
 }
 // <unit> statements survive the JSON hop.
-void testJsonUnit() {
+TEST_CASE("codec string hardening: JSON unit") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0">
   <head>
@@ -266,7 +266,7 @@ void testJsonUnit() {
   }
 }
 // control characters are escaped per RFC 8259 and round-trip.
-void testJsonControlChars() {
+TEST_CASE("codec string hardening: JSON control chars") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene><WorldInfo title='t'/></Scene></X3D>
 )XML";
@@ -300,7 +300,7 @@ void testJsonControlChars() {
 }
 // 14N-attr: tab/newline/CR in attribute values are emitted as character
 // references so a conformant reader does not normalize them away.
-void testCanonAttrWhitespace() {
+TEST_CASE("codec string hardening: canon attr whitespace") {
   const char *kXml = R"XML(<?xml version="1.0" encoding="UTF-8"?>
 <X3D profile="Interchange" version="4.0"><Scene><WorldInfo title='t'/></Scene></X3D>
 )XML";
@@ -330,16 +330,6 @@ void testCanonAttrWhitespace() {
 
 } // namespace
 
-TEST_CASE("codec_string_hardening_test") {
-  testVrmlStringEscaping();
-  testMfStringUnknownEscape();
-  testVrmlSfImageRead();
-  testCdataSplit();
-  testJsonUnit();
-  testJsonControlChars();
-  testCanonAttrWhitespace();
-
-}
 
 TEST_CASE("XML literal attribute whitespace normalizes but references survive") {
   for (const std::string quote : {"'", "\""}) {

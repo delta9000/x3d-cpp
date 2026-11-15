@@ -3,13 +3,12 @@
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
 #include "doctest/doctest.h"
-#include <iostream>
 #include <thread>
 #include <vector>
 
 using namespace x3d::nodes;
 
-TEST_CASE("interface_registry_test") {
+TEST_CASE("interface registry: queries follow the interface closure") {
   // String-keyed queries.
   CHECK((X3DInterfaceRegistry::nodeImplements("TimeSensor",
                                               InterfaceId::X3DTimeDependentNode)));
@@ -32,7 +31,9 @@ TEST_CASE("interface_registry_test") {
   CHECK((n));
   CHECK((X3DInterfaceRegistry::nodeImplements(n.get(),
                                               InterfaceId::X3DSensorNode)));
+}
 
+TEST_CASE("interface registry: concurrent first builds agree") {
   // Concurrency: many threads racing the first build of the by-interface map
   // must not corrupt it. (The map is a function-local static, so C++11 makes
   // its initialization thread-safe; this exercises that path.)
@@ -52,7 +53,4 @@ TEST_CASE("interface_registry_test") {
     CHECK(counts[0] > 0);
     for (std::size_t c : counts) CHECK(c == counts[0]);
   }
-
-  std::cout << "interface_registry_test OK\n";
-  return;
 }

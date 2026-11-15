@@ -4,7 +4,7 @@
 using namespace x3d::runtime;
 static bool feq(float a, float b) { return std::fabs(a - b) < 1e-3f; }
 
-TEST_CASE("intersect_test") {
+TEST_CASE("intersect") {
   Aabb box = Aabb::fromCenterSize({0,0,0}, {2,2,2}); // [-1,1]^3
   // ray from +z toward -z hits front face z=1 at t=9 (origin z=10)
   auto a = rayAabb(Ray{{0,0,10},{0,0,-1}}, box);
@@ -30,7 +30,7 @@ TEST_CASE("intersect_test") {
 
   // rayCone (X3D §13.3.2)
   // At y=0 the default cone radius is 0.5, so the front hit from z=10 has t=9.5.
-  {
+  SUBCASE("rayCone (§13.3.2)") {
     auto hc = rayCone(Ray{{0,0,10},{0,0,-1}}, 1.0f, 2.0f);
     // lateral surface at y=0 has r=0.5 -> hit z=0.5, t = 10-0.5 = 9.5
     CHECK((hc && feq(*hc, 9.5f)));
@@ -64,7 +64,7 @@ TEST_CASE("intersect_test") {
   // rayCylinder (X3D §13.3.3)
   // Default cylinder: radius=1, height=2 -> spans y in [-1,1].
   // Ray from +z at (0,0,10) going -z hits lateral surface at z=1, t=9.
-  {
+  SUBCASE("rayCylinder (§13.3.3)") {
     auto hcyl = rayCylinder(Ray{{0,0,10},{0,0,-1}}, 1.0f, 2.0f);
     CHECK((hcyl && feq(*hcyl, 9.0f)));
 
@@ -92,6 +92,4 @@ TEST_CASE("intersect_test") {
     CHECK((!rayCylinder(Ray{{0,0,10},{0,0,-1}}, 0.0f, 2.0f)));
     CHECK((!rayCylinder(Ray{{0,0,10},{0,0,-1}}, 1.0f, 0.0f)));
   }
-
-  return;
 }

@@ -17,7 +17,7 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("bounds_system_test") {
+TEST_CASE("bounds system: local and world bounds grow incrementally") {
   // Transform(translate +10x) > Shape > Box(size 2) : local bounds of the Transform
   // is the box [-1,1] (children share T's frame; Shape has no transform). World
   // bounds = local * worldTransform(translate +10x) => [9,11]x[-1,1]x[-1,1].
@@ -36,26 +36,12 @@ TEST_CASE("bounds_system_test") {
   Aabb wb = bs.worldBounds(T.get(), ts);
   CHECK((feq(wb.min.x,9) && feq(wb.max.x,11)));
 
-  // Author override: a Group with explicit bboxSize ignores its (bigger) child.
-  auto G = createX3DNode("Group");
-  setF(G, "bboxCenter", std::any(SFVec3f{0,0,0}));
-  setF(G, "bboxSize", std::any(SFVec3f{2,2,2}));
-  auto bigShape = createX3DNode("Shape");
-  auto bigBox = createX3DNode("Box"); setF(bigBox, "size", std::any(SFVec3f{100,100,100}));
-  setF(bigShape, "geometry", std::any(std::shared_ptr<X3DNode>(bigBox)));
-  addChild(G, bigShape);
-  Scene s2; s2.addRootNode(G);
-  TransformSystem ts2; ts2.buildIndex(s2);
-  BoundsSystem bs2; bs2.buildBounds(s2, ts2);
-  CHECK((feq(bs2.localBounds(G.get()).size().x, 2))); // author bbox, not 100
-
   // Incremental: grow the box, mark dirty, propagate -> Transform bounds grow.
   setF(box, "size", std::any(SFVec3f{4,4,4})); // box bounds [-2,2]
   DirtyTracker dirty; dirty.markDirty(box.get(), DirtyBounds);
   bs.propagate(dirty, ts);
   CHECK((feq(bs.localBounds(T.get()).max.x, 2))); // grew from 1 to 2
   CHECK((dirty.flags(T.get()) & DirtyBounds));     // ancestor re-marked
-  return;
 }
 
 TEST_CASE("bounds_geometry_replacement_and_removal") {
@@ -202,4 +188,19 @@ TEST_CASE("bounds_removed_dirty_subtree_is_not_dereferenced") {
   CHECK(dead.expired());
   ts.propagate(dirty); bs.propagate(dirty, ts);
   CHECK(bs.localBounds(root.get()).empty);
+}
+
+TEST_CASE("bounds system: an explicit Group bboxSize overrides its children") {
+  // Author override: a Group with explicit bboxSize ignores its (bigger) child.
+  auto G = createX3DNode("Group");
+  setF(G, "bboxCenter", std::any(SFVec3f{0,0,0}));
+  setF(G, "bboxSize", std::any(SFVec3f{2,2,2}));
+  auto bigShape = createX3DNode("Shape");
+  auto bigBox = createX3DNode("Box"); setF(bigBox, "size", std::any(SFVec3f{100,100,100}));
+  setF(bigShape, "geometry", std::any(std::shared_ptr<X3DNode>(bigBox)));
+  addChild(G, bigShape);
+  Scene s2; s2.addRootNode(G);
+  TransformSystem ts2; ts2.buildIndex(s2);
+  BoundsSystem bs2; bs2.buildBounds(s2, ts2);
+  CHECK((feq(bs2.localBounds(G.get()).size().x, 2))); // author bbox, not 100
 }

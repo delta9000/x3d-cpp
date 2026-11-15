@@ -24,7 +24,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 }
 // 1. Empty context tick: no systems, no routes — must not crash and
 //    must leave the dirty tracker empty.
-void test_empty_context_tick() {
+TEST_CASE("tick audit: empty context tick") {
   X3DExecutionContext ctx;
   ctx.tick(0.0); // must not crash
   CHECK_MESSAGE((ctx.dirtyTracker().changedNodes().empty()), ("empty tick: dirty tracker is empty"));
@@ -34,7 +34,7 @@ void test_empty_context_tick() {
 //    tick share the same per-field cap.  A seed posted after the first
 //    drain still delivers (last-wins) but downstream routed events to
 //    an already-produced field are dropped.
-void test_timestamp_persistence() {
+TEST_CASE("tick audit: timestamp persistence") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -86,7 +86,7 @@ private:
   int depth_ = 0;
 };
 
-void test_recursive_tick_guard() {
+TEST_CASE("tick audit: recursive tick guard") {
   X3DExecutionContext ctx;
   ctx.addSystem(std::make_shared<RecursiveTickSystem>(1));
 
@@ -111,7 +111,7 @@ private:
   std::vector<char> &log_;
 };
 
-void test_system_ordering() {
+TEST_CASE("tick audit: system ordering") {
   std::vector<char> order;
   X3DExecutionContext ctx;
   ctx.addSystem(std::make_shared<OrderRecordingSystem>('A', order));
@@ -144,7 +144,7 @@ private:
   int &passCount_;
 };
 
-void test_seed_redrive_terminates() {
+TEST_CASE("tick audit: seed redrive terminates") {
   auto t = std::make_shared<Transform>();
   int passCount = 0;
 
@@ -159,7 +159,7 @@ void test_seed_redrive_terminates() {
 }
 // 6. Post-cascade hook ordering: hooks run after quiescence and may
 //    post events that dirty the tracker; those dirties are propagated.
-void test_post_cascade_hook_ordering() {
+TEST_CASE("tick audit: post cascade hook ordering") {
   auto t = std::make_shared<Transform>();
 
   X3DExecutionContext ctx;
@@ -222,7 +222,7 @@ private:
   bool posted_ = false;
 };
 
-void test_multi_pass_chain() {
+TEST_CASE("tick audit: multi pass chain") {
   auto src = std::make_shared<Transform>();
   auto mid = std::make_shared<Transform>();
   auto dst = std::make_shared<Transform>();
@@ -243,7 +243,7 @@ void test_multi_pass_chain() {
 }
 // 8. process() standalone (freshTimestamp=true) resets the cap, so
 //    two standalone process() calls do not share a timestamp.
-void test_standalone_process_resets_timestamp() {
+TEST_CASE("tick audit: standalone process resets timestamp") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -267,15 +267,3 @@ void test_standalone_process_resets_timestamp() {
 
 } // namespace
 
-TEST_CASE("tick_audit_test") {
-  test_empty_context_tick();
-  test_timestamp_persistence();
-  test_recursive_tick_guard();
-  test_system_ordering();
-  test_seed_redrive_terminates();
-  test_post_cascade_hook_ordering();
-  test_multi_pass_chain();
-  test_standalone_process_resets_timestamp();
-
-  return;
-}

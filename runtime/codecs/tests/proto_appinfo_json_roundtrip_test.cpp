@@ -19,7 +19,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_appinfo_json_roundtrip_test") {
+TEST_CASE("proto appinfo json roundtrip: appinfo and documentation survive") {
   // Ground-truth source: an XML ProtoDeclare and ExternProtoDeclare each
   // carrying appinfo + documentation metadata.
   const char *xml =
@@ -55,39 +55,41 @@ TEST_CASE("proto_appinfo_json_roundtrip_test") {
   CHECK((doc0.scene.externProtoDeclarations.front()->documentation ==
          "http://example.com/ext"));
 
-  const std::string xmlOut = codec::XmlWriter().writeDocument(doc0);
-  CHECK((xmlOut.find("appinfo=\"dimensions\"") != std::string::npos));
-  auto docX = codec::parseDocument(xmlOut);
-  CHECK((docX.scene.protoDeclarations.front()->interface.front().appinfo ==
-         "dimensions"));
-  CHECK((docX.scene.protoDeclarations.front()->interface.front().documentation ==
-         "size docs"));
-  std::string js = codec::JsonWriter().writeDocument(doc0);
-  // The metadata members must be emitted for both declaration kinds.
-  CHECK((js.find("\"@appinfo\": \"a reusable widget\"") != std::string::npos));
-  CHECK((js.find("\"@documentation\": \"http://example.com/widget\"") !=
-         std::string::npos));
-  CHECK((js.find("\"@appinfo\": \"extern widget\"") != std::string::npos));
-  CHECK((js.find("\"@documentation\": \"http://example.com/ext\"") !=
-         std::string::npos));
-  CHECK((js.find("\"@appinfo\": \"dimensions\"") != std::string::npos));
+  SUBCASE("XML round trip") {
+    const std::string xmlOut = codec::XmlWriter().writeDocument(doc0);
+    CHECK((xmlOut.find("appinfo=\"dimensions\"") != std::string::npos));
+    auto docX = codec::parseDocument(xmlOut);
+    CHECK((docX.scene.protoDeclarations.front()->interface.front().appinfo ==
+           "dimensions"));
+    CHECK((docX.scene.protoDeclarations.front()->interface.front().documentation ==
+           "size docs"));
+  }
+  SUBCASE("JSON round trip") {
+    std::string js = codec::JsonWriter().writeDocument(doc0);
+    // The metadata members must be emitted for both declaration kinds.
+    CHECK((js.find("\"@appinfo\": \"a reusable widget\"") != std::string::npos));
+    CHECK((js.find("\"@documentation\": \"http://example.com/widget\"") !=
+           std::string::npos));
+    CHECK((js.find("\"@appinfo\": \"extern widget\"") != std::string::npos));
+    CHECK((js.find("\"@documentation\": \"http://example.com/ext\"") !=
+           std::string::npos));
+    CHECK((js.find("\"@appinfo\": \"dimensions\"") != std::string::npos));
 
-  auto docJ = codec::parseDocument(js, codec::Encoding::JSON);
-  CHECK((!docJ.scene.protoDeclarations.empty()));
-  CHECK((!docJ.scene.externProtoDeclarations.empty()));
-  // The JSON reader must capture the metadata on re-read.
-  CHECK((docJ.scene.protoDeclarations.front()->appinfo == "a reusable widget"));
-  CHECK((docJ.scene.protoDeclarations.front()->documentation ==
-         "http://example.com/widget"));
-  CHECK((docJ.scene.protoDeclarations.front()->interface.front().appinfo ==
-         "dimensions"));
-  CHECK((docJ.scene.protoDeclarations.front()->interface.front().documentation ==
-         "size docs"));
-  CHECK((docJ.scene.externProtoDeclarations.front()->appinfo == "extern widget"));
-  CHECK((docJ.scene.externProtoDeclarations.front()->documentation ==
-         "http://example.com/ext"));
-
-  return;
+    auto docJ = codec::parseDocument(js, codec::Encoding::JSON);
+    CHECK((!docJ.scene.protoDeclarations.empty()));
+    CHECK((!docJ.scene.externProtoDeclarations.empty()));
+    // The JSON reader must capture the metadata on re-read.
+    CHECK((docJ.scene.protoDeclarations.front()->appinfo == "a reusable widget"));
+    CHECK((docJ.scene.protoDeclarations.front()->documentation ==
+           "http://example.com/widget"));
+    CHECK((docJ.scene.protoDeclarations.front()->interface.front().appinfo ==
+           "dimensions"));
+    CHECK((docJ.scene.protoDeclarations.front()->interface.front().documentation ==
+           "size docs"));
+    CHECK((docJ.scene.externProtoDeclarations.front()->appinfo == "extern widget"));
+    CHECK((docJ.scene.externProtoDeclarations.front()->documentation ==
+           "http://example.com/ext"));
+  }
 }
 
 TEST_CASE("PROTO field documentation survives canonical XML and JSON hops") {

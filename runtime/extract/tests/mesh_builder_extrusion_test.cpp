@@ -37,12 +37,12 @@ static SFVec3f triGeoNormal(const MeshData &m, std::size_t t) {
   return cross(sub(b, a), sub(c, a));
 }
 
-TEST_CASE("mesh_builder_b3_test") {
+TEST_CASE("mesh builder extrusion") {
   // The X3D default crossSection: unit square, closed (first==last) -> 5 verts.
   const MFVec2f unitSquare = {{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}};
 
   // 1. Box-like counts + lattice map + normals
-  {
+  SUBCASE("box-like counts, lattice map and normals") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -60,7 +60,7 @@ TEST_CASE("mesh_builder_b3_test") {
   }
 
   // 2. Cap winding: begin and end caps face opposite ways
-  {
+  SUBCASE("begin and end caps face opposite ways") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -78,7 +78,7 @@ TEST_CASE("mesh_builder_b3_test") {
   }
 
   // 3. ccw=false flips winding
-  {
+  SUBCASE("ccw=false flips winding") {
     auto g1 = createX3DNode("Extrusion");
     setF(g1, "crossSection", std::any(unitSquare));
     setF(g1, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -100,7 +100,7 @@ TEST_CASE("mesh_builder_b3_test") {
   }
 
   // 4. <2 spine points => empty
-  {
+  SUBCASE("fewer than two spine points give an empty mesh") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}}));
@@ -110,7 +110,7 @@ TEST_CASE("mesh_builder_b3_test") {
   }
 
   // 5. recognizedGeometryType
-  {
+  SUBCASE("Extrusion is a recognized geometry type") {
     bool recognized = false;
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
@@ -121,7 +121,7 @@ TEST_CASE("mesh_builder_b3_test") {
   }
 
   // 6. Per-section scale widens the cross-section
-  {
+  SUBCASE("per-section scale widens the cross-section") {
     auto g = createX3DNode("Extrusion");
     setF(g, "crossSection", std::any(unitSquare));
     setF(g, "spine", std::any(MFVec3f{{0, 0, 0}, {0, 1, 0}}));
@@ -139,8 +139,6 @@ TEST_CASE("mesh_builder_b3_test") {
     CHECK((r0 > 0.0f));
     CHECK((feq(r1, 2.0f * r0))); // doubled scale => doubled radius.
   }
-
-  return;
 }
 
 TEST_CASE("extrusion_concave_cap_does_not_cover_notch") {

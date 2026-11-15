@@ -22,7 +22,7 @@ using namespace x3d::runtime;
 using x3d::test::setF;
 using x3d::test::addChild;
 
-static void test_pointing_sets_flag() {
+TEST_CASE("pointer arbitration: a pointing sensor grab sets the flag") {
   auto group = std::make_shared<Group>();
   auto sensor = std::make_shared<TouchSensor>();
   auto shape = std::make_shared<Shape>();
@@ -63,7 +63,7 @@ struct Claimer : System {
   }
 };
 
-TEST_CASE("pointer_arbitration_test") {
+TEST_CASE("pointer arbitration: tick resets the flag and a claiming system sets it") {
   X3DExecutionContext ctx;
   CHECK_MESSAGE((ctx.pointerConsumedBySensor() == false), ("default is false"));
 
@@ -78,8 +78,4 @@ TEST_CASE("pointer_arbitration_test") {
   ctx.addSystem(std::make_shared<Claimer>());
   ctx.tick(2.0);
   CHECK_MESSAGE((ctx.pointerConsumedBySensor() == true), ("claiming system sets flag during tick"));
-
-  test_pointing_sets_flag();
-
-  return;
 }

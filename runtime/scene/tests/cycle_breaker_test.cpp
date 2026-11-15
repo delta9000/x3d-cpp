@@ -26,46 +26,41 @@ static void addChild(const std::shared_ptr<X3DNode>& p, const std::shared_ptr<X3
   }
 }
 
-TEST_CASE("cycle_breaker_test") {
-  // 1) 2-cycle A -> B -> A : one back-edge severed; A's legit child kept.
-  {
-    auto a = createX3DNode("Group");
-    auto b = createX3DNode("Group");
-    auto leaf = createX3DNode("Shape");
-    addChild(a, leaf);
-    addChild(a, b);
-    addChild(b, a);                       // back-edge
-    Scene s; s.addRootNode(a);
-    int n = breakContainmentCycles(s);
-    CHECK((n == 1));
-    CHECK((kids(b).empty()));              // back-edge to ancestor A removed
-    CHECK((kids(a).size() == 2));          // A's own children untouched
-    CHECK((breakContainmentCycles(s) == 0));  // idempotent
-  }
+TEST_CASE("cycle breaker: a 2-cycle loses one back edge and keeps the legitimate child") {
+  auto a = createX3DNode("Group");
+  auto b = createX3DNode("Group");
+  auto leaf = createX3DNode("Shape");
+  addChild(a, leaf);
+  addChild(a, b);
+  addChild(b, a);                       // back-edge
+  Scene s; s.addRootNode(a);
+  int n = breakContainmentCycles(s);
+  CHECK((n == 1));
+  CHECK((kids(b).empty()));              // back-edge to ancestor A removed
+  CHECK((kids(a).size() == 2));          // A's own children untouched
+  CHECK((breakContainmentCycles(s) == 0));  // idempotent
+}
 
-  // 2) Self-cycle (the exact DEF==USE shape): severed.
-  {
-    auto self = createX3DNode("Group");
-    addChild(self, self);
-    Scene s; s.addRootNode(self);
-    CHECK((breakContainmentCycles(s) == 1));
-    CHECK((kids(self).empty()));
-  }
+TEST_CASE("cycle breaker: a self-cycle is severed") {
+  auto self = createX3DNode("Group");
+  addChild(self, self);
+  Scene s; s.addRootNode(self);
+  CHECK((breakContainmentCycles(s) == 1));
+  CHECK((kids(self).empty()));
+}
 
-  // 3) Legitimate DAG: a shared node reached by two distinct non-ancestor paths
-  //    is not a cycle and must be preserved (USE-sharing).
-  {
-    auto root = createX3DNode("Group");
-    auto p1 = createX3DNode("Group");
-    auto p2 = createX3DNode("Group");
-    auto shared = createX3DNode("Shape");
-    addChild(root, p1);
-    addChild(root, p2);
-    addChild(p1, shared);
-    addChild(p2, shared);                 // shared, but neither path is an ancestor
-    Scene s; s.addRootNode(root);
-    CHECK((breakContainmentCycles(s) == 0));   // nothing severed
-    CHECK((kids(p1).size() == 1 && kids(p2).size() == 1));
-  }
-  return;
+// 3) Legitimate DAG: a shared node reached by two distinct non-ancestor paths
+// is not a cycle and must be preserved (USE-sharing).
+TEST_CASE("cycle breaker: a shared node on two paths is not a cycle") {
+  auto root = createX3DNode("Group");
+  auto p1 = createX3DNode("Group");
+  auto p2 = createX3DNode("Group");
+  auto shared = createX3DNode("Shape");
+  addChild(root, p1);
+  addChild(root, p2);
+  addChild(p1, shared);
+  addChild(p2, shared);                 // shared, but neither path is an ancestor
+  Scene s; s.addRootNode(root);
+  CHECK((breakContainmentCycles(s) == 0));   // nothing severed
+  CHECK((kids(p1).size() == 1 && kids(p2).size() == 1));
 }

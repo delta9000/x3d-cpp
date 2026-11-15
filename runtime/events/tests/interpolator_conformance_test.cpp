@@ -44,7 +44,7 @@ void post(X3DExecutionContext &ctx, X3DNode *n, float fraction) {
 }
 
 // empty key emits no event
-void test_empty_key_no_event() {
+TEST_CASE("interpolator conformance: empty key no event") {
   auto interp = std::make_shared<ScalarInterpolator>();
   interp->setKey(MFFloat{});                 // empty key
   interp->setKeyValue(MFFloat{1.0f, 2.0f});  // non-empty values
@@ -65,7 +65,7 @@ void test_empty_key_no_event() {
 }
 
 // SplineScalarInterpolator (Hermite)
-void test_spline_scalar() {
+TEST_CASE("interpolator conformance: spline scalar") {
   // 2 keys, no keyVelocity, not closed -> endpoint tangents zero.
   // seg0 mid (s=0.5): v = h01*10 = 0.5*10 = 5.  s=0.25: h01(0.25)*10 = 1.5625.
   auto sp = std::make_shared<SplineScalarInterpolator>();
@@ -103,7 +103,7 @@ void test_spline_scalar() {
 }
 
 // author keyVelocity (size==2 endpoint form)
-void test_spline_scalar_velocity() {
+TEST_CASE("interpolator conformance: spline scalar velocity") {
   // keyVelocity size 2 -> first = vel of first key, second = vel of last key.
   // Endpoints specified -> T0_0 = 2, T1_1 = 3 (raw, no F scaling).
   // seg0 mid: h01*10 + h10*2 + h11*3 = 5 + 0.125*2 + (-0.125)*3 = 4.875.
@@ -120,7 +120,7 @@ void test_spline_scalar_velocity() {
 }
 
 // SplinePositionInterpolator (per-component Hermite)
-void test_spline_position() {
+TEST_CASE("interpolator conformance: spline position") {
   // Each component interpolates independently with the same Hermite math as the
   // scalar 2-key zero-tangent case scaled by the component end value.
   auto sp = std::make_shared<SplinePositionInterpolator>();
@@ -139,7 +139,7 @@ void test_spline_position() {
 }
 
 // empty-key guard applies to spline systems too
-void test_spline_empty_key() {
+TEST_CASE("interpolator conformance: spline empty key") {
   auto sp = std::make_shared<SplineScalarInterpolator>();
   sp->setKey(MFFloat{});
   sp->setKeyValue(MFFloat{1.0f, 2.0f});
@@ -152,7 +152,7 @@ void test_spline_empty_key() {
 }
 
 // SquadOrientationInterpolator
-void test_squad() {
+TEST_CASE("interpolator conformance: squad") {
   // N=2 squad reduces to plain SLERP (a0=q0, a1=q1). Mid of 0->pi/2 about Z is
   // pi/4 about Z.
   auto sq = std::make_shared<SquadOrientationInterpolator>();
@@ -201,7 +201,7 @@ void test_squad() {
 }
 
 // EaseInEaseOut (§19.4.4 algorithm)
-void test_ease_in_ease_out() {
+TEST_CASE("interpolator conformance: ease in ease out") {
   // key=[0,1]; easeInEaseOut pairs are (easeIn, easeOut).
   // seg0: e_out = easeInEaseOut[0].y = 0.4; e_in = easeInEaseOut[1].x = 0.3.
   // S=0.7; t = 1/(2-0.4-0.3) = 0.7692308.
@@ -227,7 +227,7 @@ void test_ease_in_ease_out() {
   CHECK_MESSAGE((feq(ee->getModifiedFraction_changed(), 0.8974359f)), ("ease u=0.8 (easeIn region) -> 0.8974359"));
 }
 
-void test_ease_in_ease_out_scaled() {
+TEST_CASE("interpolator conformance: ease in ease out scaled") {
   // S>1 path: e_out=0.8, e_in=0.6 -> S=1.4 -> scale both by S:
   // e_out=0.5714286, e_in=0.4285714; t = 1/(2-1) = 1.0.
   // u=0.3 < e_out: (1/0.5714286)*0.09 = 1.75*0.09 = 0.1575.
@@ -243,7 +243,7 @@ void test_ease_in_ease_out_scaled() {
 }
 
 // attachInterpolators production wiring
-void test_attach_interpolators_production() {
+TEST_CASE("interpolator conformance: attach interpolators production") {
   // Build a scene with a core interpolator and a spline interpolator, wire only
   // through attachInterpolators (no manual per-node attach), and assert both emit.
   auto sca = createX3DNode("ScalarInterpolator");
@@ -279,7 +279,7 @@ void test_attach_interpolators_production() {
   CHECK_MESSAGE((feq(splOut.x, 8.0f)), ("PIV-1 attachInterpolators wires SplinePositionInterpolator (->x=8)"));
 }
 
-void test_nurbs_interpolators() {
+TEST_CASE("interpolator conformance: nurbs interpolators") {
   auto cp=std::make_shared<Coordinate>(); cp->setPoint({{1,0,0},{0.7071068f,0.7071068f,0},{0,1,0}});
   auto pos=std::make_shared<NurbsPositionInterpolator>(); pos->setControlPoint(cp); pos->setOrder(3); pos->setWeight({1.0,0.7071067811865476,1.0});
   auto ori=std::make_shared<NurbsOrientationInterpolator>(); ori->setControlPoint(cp); ori->setOrder(3); ori->setWeight({1.0,0.7071067811865476,1.0});
@@ -311,20 +311,6 @@ void test_nurbs_interpolators() {
 
 } // namespace
 
-TEST_CASE("interpolator_conformance_test") {
-  test_empty_key_no_event();
-  test_spline_scalar();
-  test_spline_scalar_velocity();
-  test_spline_position();
-  test_spline_empty_key();
-  test_squad();
-  test_ease_in_ease_out();
-  test_ease_in_ease_out_scaled();
-  test_attach_interpolators_production();
-  test_nurbs_interpolators();
-
-  return;
-}
 
 TEST_CASE("interpolator_initial_value_readback") {
   ScalarInterpolator scalar;

@@ -36,27 +36,23 @@ static const extract::RenderItem &soleItem(extract::SceneExtractor &ex) {
   return ex.item(snap.added[0]);
 }
 
-TEST_CASE("castshadow_extract_test") {
-  // Default: castShadow unauthored -> RenderItem.castShadow == true (X3D default).
-  {
-    auto shape = makeTriShape();
-    Scene scene;
-    scene.addRootNode(shape);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    CHECK((soleItem(ex).castShadow == true));
-  }
+TEST_CASE("castshadow extract: unauthored castShadow defaults to true") {
+  auto shape = makeTriShape();
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  CHECK((soleItem(ex).castShadow == true));
+}
 
-  // Authored castShadow=FALSE -> RenderItem.castShadow == false.
-  {
-    auto shape = makeTriShape();
-    setF(shape, "castShadow", std::any(SFBool{false}));
-    Scene scene;
-    scene.addRootNode(shape);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    CHECK((soleItem(ex).castShadow == false));
-  }
+TEST_CASE("castshadow extract: authored castShadow FALSE is carried") {
+  auto shape = makeTriShape();
+  setF(shape, "castShadow", std::any(SFBool{false}));
+  Scene scene;
+  scene.addRootNode(shape);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  CHECK((soleItem(ex).castShadow == false));
 }

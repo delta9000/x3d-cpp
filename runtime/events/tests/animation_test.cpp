@@ -33,7 +33,7 @@ SFVec3f tr(const std::shared_ptr<Transform> &t) { return t->getTranslation(); }
 // TimeSensor (cycle 1s) -> PositionInterpolator (key 0..1, value (0,0,0)..(10,0,0))
 // -> Transform.translation. A tick at fraction f should place the Transform at
 // (10*f, 0, 0).
-void test_animation_chain() {
+TEST_CASE("animation: animation chain") {
   auto ts = std::make_shared<TimeSensor>();
   ts->setCycleInterval(1.0);
   ts->setStartTime(0.0);
@@ -67,8 +67,3 @@ void test_animation_chain() {
 
 } // namespace
 
-TEST_CASE("animation_test") {
-  test_animation_chain();
-
-  return;
-}

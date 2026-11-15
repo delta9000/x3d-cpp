@@ -33,7 +33,7 @@ namespace {
 bool feq(float a, float b, float e = 1e-3f) { return std::fabs(a - b) < e; }
 
 // (1) offset moves the effective camera; authored fields stay pristine.
-void test_offset_moves_camera() {
+TEST_CASE("viewpoint offset: offset moves camera") {
   auto vp = std::make_shared<Viewpoint>();
   vp->setPosition(SFVec3f{0, 0, 10});
   Scene scene; scene.addRootNode(vp);
@@ -49,7 +49,7 @@ void test_offset_moves_camera() {
 }
 
 // (2) head-pose composes after the offset.
-void test_head_pose_composes() {
+TEST_CASE("viewpoint offset: head pose composes") {
   auto vp = std::make_shared<Viewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
   Scene scene; scene.addRootNode(vp);
   X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
@@ -59,7 +59,7 @@ void test_head_pose_composes() {
 }
 
 // (3) `EXAMINE` navigation leaves authored pose byte-unchanged.
-void test_navigation_preserves_authored() {
+TEST_CASE("viewpoint offset: navigation preserves authored") {
   auto box = createX3DNode("Box");
   auto vp = std::make_shared<Viewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
   auto nav = std::make_shared<NavigationInfo>();
@@ -88,7 +88,7 @@ void test_navigation_preserves_authored() {
 }
 
 // (4) an OrthoViewpoint navigates (not just Viewpoint).
-void test_ortho_navigates() {
+TEST_CASE("viewpoint offset: ortho navigates") {
   auto vp = std::make_shared<OrthoViewpoint>(); vp->setPosition(SFVec3f{0, 0, 10});
   auto nav = std::make_shared<NavigationInfo>();
   nav->setType(std::vector<std::string>{"EXAMINE"});
@@ -109,7 +109,7 @@ void test_ortho_navigates() {
 }
 
 // (5) rotationFromMatrix round-trips a rotation.
-void test_rotation_from_matrix() {
+TEST_CASE("viewpoint offset: rotation from matrix") {
   SFRotation r{0, 1, 0, 0.7f};
   Mat4 m = Mat4::rotation(r);
   SFRotation r2 = rotationFromMatrix(m);
@@ -121,12 +121,3 @@ void test_rotation_from_matrix() {
 
 } // namespace
 
-TEST_CASE("viewpoint_offset_test") {
-  test_offset_moves_camera();
-  test_head_pose_composes();
-  test_navigation_preserves_authored();
-  test_ortho_navigates();
-  test_rotation_from_matrix();
-
-  return;
-}

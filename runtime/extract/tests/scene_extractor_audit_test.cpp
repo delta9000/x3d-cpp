@@ -30,198 +30,189 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
-TEST_CASE("scene_extractor_audit_test") {
-  // 1) Null/empty node handling in extraction walk
-  {
-    auto group = createX3DNode("Group");
-    // Manually construct an MFNode children vector containing a nullptr.
-    // This can happen with malformed scene construction.
-    std::vector<std::shared_ptr<X3DNode>> kids;
-    kids.push_back(nullptr);
-    kids.push_back(makeTriShape());
-    kids.push_back(nullptr);
-    setF(group, "children", std::any(kids));
+TEST_CASE("scene extractor audit: null and empty nodes in the walk") {
+  auto group = createX3DNode("Group");
+  // Manually construct an MFNode children vector containing a nullptr.
+  // This can happen with malformed scene construction.
+  std::vector<std::shared_ptr<X3DNode>> kids;
+  kids.push_back(nullptr);
+  kids.push_back(makeTriShape());
+  kids.push_back(nullptr);
+  setF(group, "children", std::any(kids));
 
+  Scene scene;
+  scene.addRootNode(group);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+
+  // Null children must not crash; the valid Shape must still emit.
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+}
+
+TEST_CASE("scene extractor audit: unsupported node types are skipped") {
+  auto root = createX3DNode("Group");
+  addChild(root, makeTriShape()); // supported
+
+  auto unsupported = createX3DNode("NurbsTrimmedSurface");
+  auto badShape = createX3DNode("Shape");
+  setF(badShape, "geometry", std::any(std::shared_ptr<X3DNode>(unsupported)));
+  addChild(root, badShape);
+
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+
+  auto snap = ex.fullSnapshot();
+  // Only the TriangleSet emits; unsupported is skipped silently.
+  CHECK((snap.added.size() == 1));
+  const auto &counts = ex.skippedGeometryCounts();
+  CHECK((counts.find("NurbsTrimmedSurface") != counts.end()));
+  CHECK((counts.at("NurbsTrimmedSurface") == 1));
+}
+
+TEST_CASE("scene extractor audit: world transforms accumulate scale and rotation") {
+  // Build a transform chain: root -> T(scale) -> T(rotate 90° Z) -> shape.
+  // Expected world transform of a point: scale first, then rotate.
+  auto shape = makeTriShape();
+
+  auto scaleT = createX3DNode("Transform");
+  setF(scaleT, "scale", std::any(SFVec3f{2.0f, 2.0f, 2.0f}));
+  addChild(scaleT, shape);
+
+  auto rotT = createX3DNode("Transform");
+  // 90° rotation about Z axis.
+  setF(rotT, "rotation", std::any(SFRotation{0.0f, 0.0f, 1.0f, 1.5707963f}));
+  addChild(rotT, scaleT);
+
+  auto root = createX3DNode("Group");
+  addChild(root, rotT);
+
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 1));
+  const extract::RenderItem &it = ex.item(snap.added[0]);
+
+  // Transform a local point (1,0,0) through the accumulated world matrix.
+  //   scale(1,0,0) = (2,0,0)
+  //   rotateZ90(2,0,0) = (0,2,0)
+  SFVec3f worldP = it.worldTransform.transformPoint(SFVec3f{1.0f, 0.0f, 0.0f});
+  CHECK((feq(worldP.x, 0.0f)));
+  CHECK((feq(worldP.y, 2.0f)));
+  CHECK((feq(worldP.z, 0.0f)));
+}
+
+TEST_CASE("scene extractor audit: a shape missing material or geometry") {
+  // 4a) Shape with no geometry field set => nothing emits.
+  {
+    auto shape = createX3DNode("Shape");
+    // geometry left unset.
     Scene scene;
-    scene.addRootNode(group);
+    scene.addRootNode(shape);
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::SceneExtractor ex(ctx, scene);
-
-    // Null children must not crash; the valid Shape must still emit.
     auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 1));
+    CHECK((snap.added.empty()));
   }
 
-  //   2) Unsupported node type skip logic (graceful, no crash)
+  // 4b) Shape with geometry but no Appearance => Unlit white fallback.
   {
-    auto root = createX3DNode("Group");
-    addChild(root, makeTriShape()); // supported
-
-    auto unsupported = createX3DNode("NurbsTrimmedSurface");
-    auto badShape = createX3DNode("Shape");
-    setF(badShape, "geometry", std::any(std::shared_ptr<X3DNode>(unsupported)));
-    addChild(root, badShape);
-
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-
-    auto snap = ex.fullSnapshot();
-    // Only the TriangleSet emits; unsupported is skipped silently.
-    CHECK((snap.added.size() == 1));
-    const auto &counts = ex.skippedGeometryCounts();
-    CHECK((counts.find("NurbsTrimmedSurface") != counts.end()));
-    CHECK((counts.at("NurbsTrimmedSurface") == 1));
-  }
-
-  //   3) World transform accumulation under scaling + rotation
-  {
-    // Build a transform chain: root -> T(scale) -> T(rotate 90° Z) -> shape.
-    // Expected world transform of a point: scale first, then rotate.
     auto shape = makeTriShape();
-
-    auto scaleT = createX3DNode("Transform");
-    setF(scaleT, "scale", std::any(SFVec3f{2.0f, 2.0f, 2.0f}));
-    addChild(scaleT, shape);
-
-    auto rotT = createX3DNode("Transform");
-    // 90° rotation about Z axis.
-    setF(rotT, "rotation", std::any(SFRotation{0.0f, 0.0f, 1.0f, 1.5707963f}));
-    addChild(rotT, scaleT);
-
-    auto root = createX3DNode("Group");
-    addChild(root, rotT);
-
     Scene scene;
-    scene.addRootNode(root);
+    scene.addRootNode(shape);
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::SceneExtractor ex(ctx, scene);
-
     auto snap = ex.fullSnapshot();
     CHECK((snap.added.size() == 1));
     const extract::RenderItem &it = ex.item(snap.added[0]);
-
-    // Transform a local point (1,0,0) through the accumulated world matrix.
-    //   scale(1,0,0) = (2,0,0)
-    //   rotateZ90(2,0,0) = (0,2,0)
-    SFVec3f worldP = it.worldTransform.transformPoint(SFVec3f{1.0f, 0.0f, 0.0f});
-    CHECK((feq(worldP.x, 0.0f)));
-    CHECK((feq(worldP.y, 2.0f)));
-    CHECK((feq(worldP.z, 0.0f)));
+    CHECK((it.material.model == extract::MaterialModel::Unlit));
+    CHECK((feq(it.material.toRGBA().r, 1.0f)));
+    CHECK((feq(it.material.toRGBA().g, 1.0f)));
+    CHECK((feq(it.material.toRGBA().b, 1.0f)));
   }
 
-  //   4) Material/geometry pairing when one is missing
+  // 4c) Shape with Appearance present but material null => Unlit white.
   {
-    // 4a) Shape with no geometry field set => nothing emits.
-    {
-      auto shape = createX3DNode("Shape");
-      // geometry left unset.
-      Scene scene;
-      scene.addRootNode(shape);
-      X3DExecutionContext ctx;
-      ctx.buildSceneGraph(scene);
-      extract::SceneExtractor ex(ctx, scene);
-      auto snap = ex.fullSnapshot();
-      CHECK((snap.added.empty()));
-    }
-
-    // 4b) Shape with geometry but no Appearance => Unlit white fallback.
-    {
-      auto shape = makeTriShape();
-      Scene scene;
-      scene.addRootNode(shape);
-      X3DExecutionContext ctx;
-      ctx.buildSceneGraph(scene);
-      extract::SceneExtractor ex(ctx, scene);
-      auto snap = ex.fullSnapshot();
-      CHECK((snap.added.size() == 1));
-      const extract::RenderItem &it = ex.item(snap.added[0]);
-      CHECK((it.material.model == extract::MaterialModel::Unlit));
-      CHECK((feq(it.material.toRGBA().r, 1.0f)));
-      CHECK((feq(it.material.toRGBA().g, 1.0f)));
-      CHECK((feq(it.material.toRGBA().b, 1.0f)));
-    }
-
-    // 4c) Shape with Appearance present but material null => Unlit white.
-    {
-      auto coord = createX3DNode("Coordinate");
-      setF(coord, "point",
-           std::any(std::vector<SFVec3f>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
-      auto tri = createX3DNode("TriangleSet");
-      setF(tri, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
-
-      auto app = createX3DNode("Appearance");
-      // material left null.
-      auto shape = createX3DNode("Shape");
-      setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(tri)));
-      setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
-
-      Scene scene;
-      scene.addRootNode(shape);
-      X3DExecutionContext ctx;
-      ctx.buildSceneGraph(scene);
-      extract::SceneExtractor ex(ctx, scene);
-      auto snap = ex.fullSnapshot();
-      CHECK((snap.added.size() == 1));
-      const extract::RenderItem &it = ex.item(snap.added[0]);
-      CHECK((it.material.model == extract::MaterialModel::Unlit));
-      CHECK((feq(it.material.toRGBA().r, 1.0f)));
-      CHECK((feq(it.material.toRGBA().g, 1.0f)));
-      CHECK((feq(it.material.toRGBA().b, 1.0f)));
-    }
-  }
-
-  // 5) USE-node extraction (shared geometry extracted once)
-  {
-    auto sharedGeom = createX3DNode("TriangleSet");
     auto coord = createX3DNode("Coordinate");
     setF(coord, "point",
          std::any(std::vector<SFVec3f>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
-    setF(sharedGeom, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+    auto tri = createX3DNode("TriangleSet");
+    setF(tri, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
 
-    auto shapeA = createX3DNode("Shape");
-    setF(shapeA, "geometry", std::any(std::shared_ptr<X3DNode>(sharedGeom)));
-    auto shapeB = createX3DNode("Shape");
-    setF(shapeB, "geometry", std::any(std::shared_ptr<X3DNode>(sharedGeom)));
-
-    auto tA = createX3DNode("Transform");
-    setF(tA, "translation", std::any(SFVec3f{10, 0, 0}));
-    addChild(tA, shapeA);
-    auto tB = createX3DNode("Transform");
-    setF(tB, "translation", std::any(SFVec3f{-10, 0, 0}));
-    addChild(tB, shapeB);
-
-    auto root = createX3DNode("Group");
-    addChild(root, tA);
-    addChild(root, tB);
+    auto app = createX3DNode("Appearance");
+    // material left null.
+    auto shape = createX3DNode("Shape");
+    setF(shape, "geometry", std::any(std::shared_ptr<X3DNode>(tri)));
+    setF(shape, "appearance", std::any(std::shared_ptr<X3DNode>(app)));
 
     Scene scene;
-    scene.addRootNode(root);
+    scene.addRootNode(shape);
     X3DExecutionContext ctx;
     ctx.buildSceneGraph(scene);
     extract::SceneExtractor ex(ctx, scene);
-
     auto snap = ex.fullSnapshot();
-    CHECK((snap.added.size() == 2));
-
-    const extract::RenderItem &itA = ex.item(snap.added[0]);
-    const extract::RenderItem &itB = ex.item(snap.added[1]);
-
-    // Distinct PathKeys => distinct RenderItemIds.
-    CHECK((snap.added[0] != snap.added[1]));
-
-    // But both reference the same geometry node (shared, uploaded once).
-    CHECK((itA.geometry.node == itB.geometry.node));
-    CHECK((itA.geometry.node == sharedGeom.get()));
-
-    // Same contentVersion at first extraction.
-    CHECK((itA.geometry.contentVersion == itB.geometry.contentVersion));
-    CHECK((itA.geometry.contentVersion == 0));
+    CHECK((snap.added.size() == 1));
+    const extract::RenderItem &it = ex.item(snap.added[0]);
+    CHECK((it.material.model == extract::MaterialModel::Unlit));
+    CHECK((feq(it.material.toRGBA().r, 1.0f)));
+    CHECK((feq(it.material.toRGBA().g, 1.0f)));
+    CHECK((feq(it.material.toRGBA().b, 1.0f)));
   }
+}
 
-  return;
+TEST_CASE("scene extractor audit: USE'd geometry is built once") {
+  auto sharedGeom = createX3DNode("TriangleSet");
+  auto coord = createX3DNode("Coordinate");
+  setF(coord, "point",
+       std::any(std::vector<SFVec3f>{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
+  setF(sharedGeom, "coord", std::any(std::shared_ptr<X3DNode>(coord)));
+
+  auto shapeA = createX3DNode("Shape");
+  setF(shapeA, "geometry", std::any(std::shared_ptr<X3DNode>(sharedGeom)));
+  auto shapeB = createX3DNode("Shape");
+  setF(shapeB, "geometry", std::any(std::shared_ptr<X3DNode>(sharedGeom)));
+
+  auto tA = createX3DNode("Transform");
+  setF(tA, "translation", std::any(SFVec3f{10, 0, 0}));
+  addChild(tA, shapeA);
+  auto tB = createX3DNode("Transform");
+  setF(tB, "translation", std::any(SFVec3f{-10, 0, 0}));
+  addChild(tB, shapeB);
+
+  auto root = createX3DNode("Group");
+  addChild(root, tA);
+  addChild(root, tB);
+
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+
+  auto snap = ex.fullSnapshot();
+  CHECK((snap.added.size() == 2));
+
+  const extract::RenderItem &itA = ex.item(snap.added[0]);
+  const extract::RenderItem &itB = ex.item(snap.added[1]);
+
+  // Distinct PathKeys => distinct RenderItemIds.
+  CHECK((snap.added[0] != snap.added[1]));
+
+  // But both reference the same geometry node (shared, uploaded once).
+  CHECK((itA.geometry.node == itB.geometry.node));
+  CHECK((itA.geometry.node == sharedGeom.get()));
+
+  // Same contentVersion at first extraction.
+  CHECK((itA.geometry.contentVersion == itB.geometry.contentVersion));
+  CHECK((itA.geometry.contentVersion == 0));
 }

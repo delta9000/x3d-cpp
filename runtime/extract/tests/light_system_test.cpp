@@ -20,131 +20,124 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("light_system_test") {
-  // PROOF 1: PointLight location world-resolves under a Transform
-  // Group -> Transform(+10x) -> PointLight(location 1,2,3). The collected
-  // worldLocation must be (11,2,3): the transform translation applied to the
-  // authored location via the per-path accumulation.
-  {
-    auto pl = createX3DNode("PointLight");
-    setF(pl, "location", std::any(SFVec3f{1, 2, 3}));
+// PROOF 1: PointLight location world-resolves under a Transform
+// Group -> Transform(+10x) -> PointLight(location 1,2,3). The collected
+// worldLocation must be (11,2,3): the transform translation applied to the
+// authored location via the per-path accumulation.
+TEST_CASE("light system: PointLight location resolves through nested Transforms") {
+  auto pl = createX3DNode("PointLight");
+  setF(pl, "location", std::any(SFVec3f{1, 2, 3}));
 
-    auto T = createX3DNode("Transform");
-    setF(T, "translation", std::any(SFVec3f{10, 0, 0}));
-    addChild(T, pl);
+  auto T = createX3DNode("Transform");
+  setF(T, "translation", std::any(SFVec3f{10, 0, 0}));
+  addChild(T, pl);
 
-    auto group = createX3DNode("Group");
-    addChild(group, T);
+  auto group = createX3DNode("Group");
+  addChild(group, T);
 
-    Scene scene;
-    scene.addRootNode(group);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
+  Scene scene;
+  scene.addRootNode(group);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
 
-    extract::LightSystem ls;
-    auto lights = ls.collect(scene, ctx.geoProjection());
-    CHECK((lights.size() == 1));
-    const extract::LightDesc &L = lights[0];
-    CHECK((L.type == extract::LightDesc::Type::Point));
-    // World-resolved location: (1,2,3) + (10,0,0).
-    CHECK((feq(L.worldLocation.x, 11.0f)));
-    CHECK((feq(L.worldLocation.y, 2.0f)));
-    CHECK((feq(L.worldLocation.z, 3.0f)));
-    // PointLight spec default global=true, carried verbatim.
-    CHECK((L.global == true));
-    // scopeRoot is the enclosing grouping node the light was collected under.
-    CHECK((L.scopeRoot == T.get()));
-  }
+  extract::LightSystem ls;
+  auto lights = ls.collect(scene, ctx.geoProjection());
+  CHECK((lights.size() == 1));
+  const extract::LightDesc &L = lights[0];
+  CHECK((L.type == extract::LightDesc::Type::Point));
+  // World-resolved location: (1,2,3) + (10,0,0).
+  CHECK((feq(L.worldLocation.x, 11.0f)));
+  CHECK((feq(L.worldLocation.y, 2.0f)));
+  CHECK((feq(L.worldLocation.z, 3.0f)));
+  // PointLight spec default global=true, carried verbatim.
+  CHECK((L.global == true));
+  // scopeRoot is the enclosing grouping node the light was collected under.
+  CHECK((L.scopeRoot == T.get()));
+}
 
-  // PROOF 2: DirectionalLight 'global' reads false by default (no promote) -
-  {
-    auto dl = createX3DNode("DirectionalLight"); // no fields set => spec defaults
-    Scene scene;
-    scene.addRootNode(dl);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
+TEST_CASE("light system: DirectionalLight global defaults to false") {
+  auto dl = createX3DNode("DirectionalLight"); // no fields set => spec defaults
+  Scene scene;
+  scene.addRootNode(dl);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
 
-    extract::LightSystem ls;
-    auto lights = ls.collect(scene, ctx.geoProjection());
-    CHECK((lights.size() == 1));
-    const extract::LightDesc &L = lights[0];
-    CHECK((L.type == extract::LightDesc::Type::Directional));
-    // the fidelity assertion: DirectionalLight global default is false, carried
-    // verbatim — never silently promoted to scene-wide.
-    CHECK((L.global == false));
-    // Default direction (0,0,-1) world-resolves to itself under identity.
-    CHECK((feq(L.worldDirection.x, 0.0f)));
-    CHECK((feq(L.worldDirection.y, 0.0f)));
-    CHECK((feq(L.worldDirection.z, -1.0f)));
-    // No enclosing grouping node => scopeRoot null (light is a root itself).
-    CHECK((L.scopeRoot == nullptr));
-  }
+  extract::LightSystem ls;
+  auto lights = ls.collect(scene, ctx.geoProjection());
+  CHECK((lights.size() == 1));
+  const extract::LightDesc &L = lights[0];
+  CHECK((L.type == extract::LightDesc::Type::Directional));
+  // the fidelity assertion: DirectionalLight global default is false, carried
+  // verbatim — never silently promoted to scene-wide.
+  CHECK((L.global == false));
+  // Default direction (0,0,-1) world-resolves to itself under identity.
+  CHECK((feq(L.worldDirection.x, 0.0f)));
+  CHECK((feq(L.worldDirection.y, 0.0f)));
+  CHECK((feq(L.worldDirection.z, -1.0f)));
+  // No enclosing grouping node => scopeRoot null (light is a root itself).
+  CHECK((L.scopeRoot == nullptr));
+}
 
-  // on==false lights are skipped
-  {
-    auto pl = createX3DNode("PointLight");
-    setF(pl, "on", std::any(false));
-    Scene scene;
-    scene.addRootNode(pl);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::LightSystem ls;
-    CHECK((ls.collect(scene, ctx.geoProjection()).empty()));
-  }
+TEST_CASE("light system: on==false lights are skipped") {
+  auto pl = createX3DNode("PointLight");
+  setF(pl, "on", std::any(false));
+  Scene scene;
+  scene.addRootNode(pl);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::LightSystem ls;
+  CHECK((ls.collect(scene, ctx.geoProjection()).empty()));
+}
 
-  // generic field reads: color/intensity/radius/attenuation
-  {
-    auto pl = createX3DNode("PointLight");
-    setF(pl, "color", std::any(SFColor{0.2f, 0.4f, 0.6f}));
-    setF(pl, "intensity", std::any(0.5f));
-    setF(pl, "radius", std::any(42.0f));
-    setF(pl, "attenuation", std::any(SFVec3f{0, 1, 0}));
-    Scene scene;
-    scene.addRootNode(pl);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::LightSystem ls;
-    auto lights = ls.collect(scene, ctx.geoProjection());
-    CHECK((lights.size() == 1));
-    const extract::LightDesc &L = lights[0];
-    CHECK((feq(L.color.r, 0.2f) && feq(L.color.g, 0.4f) && feq(L.color.b, 0.6f)));
-    CHECK((feq(L.intensity, 0.5f)));
-    CHECK((feq(L.radius, 42.0f)));
-    CHECK((feq(L.attenuation.x, 0.0f) && feq(L.attenuation.y, 1.0f)));
-  }
+TEST_CASE("light system: generic field reads: color/intensity/radius/attenuation") {
+  auto pl = createX3DNode("PointLight");
+  setF(pl, "color", std::any(SFColor{0.2f, 0.4f, 0.6f}));
+  setF(pl, "intensity", std::any(0.5f));
+  setF(pl, "radius", std::any(42.0f));
+  setF(pl, "attenuation", std::any(SFVec3f{0, 1, 0}));
+  Scene scene;
+  scene.addRootNode(pl);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::LightSystem ls;
+  auto lights = ls.collect(scene, ctx.geoProjection());
+  CHECK((lights.size() == 1));
+  const extract::LightDesc &L = lights[0];
+  CHECK((feq(L.color.r, 0.2f) && feq(L.color.g, 0.4f) && feq(L.color.b, 0.6f)));
+  CHECK((feq(L.intensity, 0.5f)));
+  CHECK((feq(L.radius, 42.0f)));
+  CHECK((feq(L.attenuation.x, 0.0f) && feq(L.attenuation.y, 1.0f)));
+}
 
-  // X3D 4.0 §17.3.1 shadow controls: defaults + authored (all types)
-  {
-    // Default: shadows FALSE, shadowIntensity 1 (spec X3DLightNode defaults).
-    auto dl = createX3DNode("DirectionalLight");
-    Scene scene;
-    scene.addRootNode(dl);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::LightSystem ls;
-    auto lights = ls.collect(scene, ctx.geoProjection());
-    CHECK((lights.size() == 1));
-    CHECK((lights[0].shadows == false));
-    CHECK((feq(lights[0].shadowIntensity, 1.0f)));
-  }
-  {
-    // Authored: a SpotLight opts into shadows at reduced intensity.
-    auto sl = createX3DNode("SpotLight");
-    setF(sl, "shadows", std::any(true));
-    setF(sl, "shadowIntensity", std::any(0.6f));
-    Scene scene;
-    scene.addRootNode(sl);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::LightSystem ls;
-    auto lights = ls.collect(scene, ctx.geoProjection());
-    CHECK((lights.size() == 1));
-    CHECK((lights[0].type == extract::LightDesc::Type::Spot));
-    CHECK((lights[0].shadows == true));
-    CHECK((feq(lights[0].shadowIntensity, 0.6f)));
-  }
+TEST_CASE("light system: X3D 4.0 §17.3.1 shadow controls: defaults + authored (all types)") {
+  // Default: shadows FALSE, shadowIntensity 1 (spec X3DLightNode defaults).
+  auto dl = createX3DNode("DirectionalLight");
+  Scene scene;
+  scene.addRootNode(dl);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::LightSystem ls;
+  auto lights = ls.collect(scene, ctx.geoProjection());
+  CHECK((lights.size() == 1));
+  CHECK((lights[0].shadows == false));
+  CHECK((feq(lights[0].shadowIntensity, 1.0f)));
+}
 
-  return;
+TEST_CASE("light system: SpotLight authored shadows and shadowIntensity") {
+  // Authored: a SpotLight opts into shadows at reduced intensity.
+  auto sl = createX3DNode("SpotLight");
+  setF(sl, "shadows", std::any(true));
+  setF(sl, "shadowIntensity", std::any(0.6f));
+  Scene scene;
+  scene.addRootNode(sl);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::LightSystem ls;
+  auto lights = ls.collect(scene, ctx.geoProjection());
+  CHECK((lights.size() == 1));
+  CHECK((lights[0].type == extract::LightDesc::Type::Spot));
+  CHECK((lights[0].shadows == true));
+  CHECK((feq(lights[0].shadowIntensity, 0.6f)));
 }
 
 TEST_CASE("point_light_radius_scales_with_parent_transform") {

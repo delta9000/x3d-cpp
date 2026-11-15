@@ -47,7 +47,7 @@ static Mat4 dragAndView(X3DExecutionContext &ctx) {
   return ctx.viewMatrix();
 }
 
-static void test_examine_drag_rotates_without_flag() {
+TEST_CASE("nav arbitration: examine drag rotates without flag") {
   auto scene = sceneWithViewpoint();
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(*scene);
@@ -57,7 +57,7 @@ static void test_examine_drag_rotates_without_flag() {
   CHECK_MESSAGE((!sameMatrix(before, after)), ("examine drag rotates the view (control)"));
 }
 
-static void test_flag_suppresses_nav_drag() {
+TEST_CASE("nav arbitration: flag suppresses nav drag") {
   auto scene = sceneWithViewpoint();
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(*scene);
@@ -68,7 +68,7 @@ static void test_flag_suppresses_nav_drag() {
   CHECK_MESSAGE((sameMatrix(before, after)), ("consumed flag suppresses nav drag"));
 }
 
-static void test_forced_mode_fly_moves_on_key() {
+TEST_CASE("nav arbitration: forced mode fly moves on key") {
   auto scene = sceneWithViewpoint();
   X3DExecutionContext ctx;
   ctx.buildSceneGraph(*scene);
@@ -82,10 +82,3 @@ static void test_forced_mode_fly_moves_on_key() {
   CHECK_MESSAGE((!sameMatrix(before, ctx.viewMatrix())), ("forced FLY + forward key moves camera"));
 }
 
-TEST_CASE("nav_arbitration_test") {
-  test_examine_drag_rotates_without_flag();
-  test_flag_suppresses_nav_drag();
-  test_forced_mode_fly_moves_on_key();
-
-  return;
-}

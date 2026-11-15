@@ -5,7 +5,7 @@
 
 using namespace x3d;
 
-TEST_CASE("proto_author_field_is_roundtrip_test") {
+TEST_CASE("proto author field is roundtrip: an IS on a Script author field survives VRML") {
   const char *xml =
       "<X3D version='4.0'><Scene><ProtoDeclare name='P'>"
       "<ProtoInterface><field name='canopyOpen' type='SFBool' "

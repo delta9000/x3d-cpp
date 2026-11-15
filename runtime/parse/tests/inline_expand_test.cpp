@@ -7,7 +7,6 @@
 #include "x3d/core/X3DReflection.hpp"
 #include "X3DParse.hpp"
 #include "doctest/doctest.h"
-#include <iostream>
 #include <memory>
 
 using namespace x3d::runtime;
@@ -32,7 +31,7 @@ static X3DNode* firstChildOfType(const X3DNode& n, const std::string& type) {
   return nullptr;
 }
 
-TEST_CASE("inline_expand_test") {
+TEST_CASE("inline expand: expandInlines splices the child scene with DEF isolation") {
   // Parent scene: a Transform (DEF "Root") containing one Inline (url "child").
   Scene parent;
   auto root = X3DNodeFactory::create("Transform");
@@ -74,6 +73,9 @@ TEST_CASE("inline_expand_test") {
   CHECK((parent.expandedInlines.count(group) == 1 && "group must map to preserved Inline"));
   CHECK((parent.expandedInlines[group]->nodeTypeName() == "Inline"));
   CHECK((warnings.empty()));
+}
+
+TEST_CASE("inline expand: parseDocument threads a custom inlineResolver") {
   // Verify that the inlineResolver parameter threads through parseDocument
   // correctly: a custom resolver should be called and its returned Scene
   // spliced in, exactly as the lower-level expandInlines path above.
@@ -108,9 +110,6 @@ TEST_CASE("inline_expand_test") {
     CHECK((!doc.scene.expandedInlines.empty() &&
            "parseDocument must record expanded Inlines when a custom resolver fires"));
   }
-
-  std::cout << "inline_expand_test OK\n";
-  return;
 }
 
 // Chain `depth` nested Groups under `top`; returns the innermost Group.
@@ -139,7 +138,7 @@ static std::shared_ptr<X3DNode> makeInline() {
   return inl;
 }
 
-TEST_CASE("inline_expand: the graph walk stops at kMaxNestingDepth") {
+TEST_CASE("inline expand: the graph walk stops at kMaxNestingDepth") {
   // the walk recurses on the native stack, so it shares the depth cap
   // of the other graph walkers. An Inline within the cap expands; one nested
   // past it is left un-expanded rather than walked.
@@ -166,7 +165,7 @@ TEST_CASE("inline_expand: the graph walk stops at kMaxNestingDepth") {
   CHECK_FALSE(deepExpanded);
 }
 
-TEST_CASE("field_read: exception-free reads of reflected values") {
+TEST_CASE("inline expand: reflected field reads never throw") {
   // fieldValueAs: empty -> nullptr; matching type -> the value.
   CHECK(fieldValueAs<bool>(std::any{}) == nullptr);
   std::any urls = std::vector<std::string>{"a", "b"};

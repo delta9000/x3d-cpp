@@ -20,7 +20,7 @@ using x3d::test::setF;
 using x3d::test::addChild;
 using x3d::test::feq;
 
-TEST_CASE("scene_extractor_test") {
+TEST_CASE("scene extractor") {
   // The scene
   // Root group holds two Transforms (Tx at +10x, Ty at -10x). A single DEF'd
   // Shape (TriangleSet, one triangle) is USE'd under both — i.e. the same
@@ -103,7 +103,7 @@ TEST_CASE("scene_extractor_test") {
   CHECK((feq(cam.fieldOfView, 0.7854f)));
 
   // A Box yields one RenderItem with a 12-triangle mesh.
-  {
+  SUBCASE("a Box yields one RenderItem with 12 triangles") {
     auto box = createX3DNode("Box");
     auto bshape = createX3DNode("Shape");
     setF(bshape, "geometry", std::any(std::shared_ptr<X3DNode>(box)));
@@ -117,6 +117,4 @@ TEST_CASE("scene_extractor_test") {
     const extract::RenderItem &bi = ex2.item(d2.added[0]);
     CHECK((bi.mesh->indices.size() == 36)); // 6 faces * 2 tris * 3 corners.
   }
-
-  return;
 }

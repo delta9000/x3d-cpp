@@ -33,7 +33,7 @@ static void removeChild(const std::shared_ptr<X3DNode>& parent,
       return;
     }
 }
-TEST_CASE("transform_system_test") {
+TEST_CASE("transform system: world transforms build and propagate incrementally") {
   auto A = createX3DNode("Transform");
   auto B = createX3DNode("Transform");
   auto C = createX3DNode("Transform");
@@ -73,7 +73,6 @@ TEST_CASE("transform_system_test") {
   CHECK((dirty.flags(C.get()) & DirtyWorldTransform));
   CHECK((!(dirty.flags(D.get()) & DirtyWorldTransform)));
   CHECK((!(dirty.flags(A.get()) & DirtyWorldTransform)));
-  return;
 }
 
 // structural re-index — add a child Transform under a Group at runtime.
@@ -100,7 +99,6 @@ TEST_CASE("transform_system_structural_add") {
   CHECK((feq(cw.x,10) && feq(cw.y,5) && feq(cw.z,0)));
   CHECK((ts.revision() > rev0));
   CHECK((dirty.flags(C.get()) & DirtyWorldTransform));
-  return;
 }
 
 // remove a runtime-added child: the index drops its subtree.
@@ -130,7 +128,6 @@ TEST_CASE("transform_system_structural_remove") {
   CHECK((feq(ts.worldTransform(C.get()).transformPoint({5,5,5}).x, 5))); // identity
   CHECK((ts.worldTransformUnder(R.get(), C.get()).transformPoint({5,5,5}).x == 5));
   CHECK((ts.revision() > rev1));
-  return;
 }
 
 // a DEF/USE Transform under two parents has a world per parent.
@@ -153,7 +150,6 @@ TEST_CASE("transform_system_defuse_two_parents") {
   CHECK((feq(w2.x,10) && feq(w2.y,2)));
   // Canonical (first-path) world is unchanged.
   CHECK((feq(ts.worldTransform(T.get()).transformPoint({0,0,0}).x, 1)));
-  return;
 }
 
 // regression — a shared Transform moved from one parent Transform to
@@ -191,7 +187,6 @@ TEST_CASE("transform_system_move_between_parents_dirty_order") {
   };
   CHECK((feq(run(true), 10)));
   CHECK((feq(run(false), 10)));
-  return;
 }
 
 // regression — removing a shared Transform from its canonical parent while
@@ -220,7 +215,6 @@ TEST_CASE("transform_system_remove_canonical_parent_repoints") {
   CHECK((feq(w.x, 10) && feq(w.y, 2)));
   CHECK((ts.revision() > rev));
   CHECK((feq(ts.worldTransformUnder(P2.get(), T.get()).transformPoint({0,0,0}).x, 10)));
-  return;
 }
 
 // revision bumps on transform and structural changes, not on a no-op.
@@ -256,7 +250,6 @@ TEST_CASE("transform_system_revision") {
   DirtyTracker empty2;
   ts.propagate(empty2);
   CHECK((ts.revision() == rev1));
-  return;
 }
 
 TEST_CASE("transform_system_shared_subtree_survives_destroyed_ancestor") {

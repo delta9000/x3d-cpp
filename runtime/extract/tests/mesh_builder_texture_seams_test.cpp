@@ -81,7 +81,7 @@ static bool seamAtPosZ(const MeshData &m, float threshold = 0.05f) {
 }
 
 // 1. Sphere: seam at -Z, S=0; T=0 at -Y pole, T=1 at +Y pole
-static void testSphereSeam() {
+TEST_CASE("mesh builder texture seams: sphere seam") {
   auto g = createX3DNode("Sphere");
   setF(g, "radius", std::any(SFFloat(1.0f)));
   MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -141,7 +141,7 @@ static void testSphereSeam() {
 }
 
 // 2. Cone: seam at -Z; bottom cap -Z → T=1, +Z → T=0
-static void testConeSeam() {
+TEST_CASE("mesh builder texture seams: cone seam") {
   auto g = createX3DNode("Cone");
   setF(g, "bottomRadius", std::any(SFFloat(1.0f)));
   setF(g, "height", std::any(SFFloat(2.0f)));
@@ -193,7 +193,7 @@ static void testConeSeam() {
 }
 
 // 3. Cylinder: side seam at -Z; top +Z→T=1; bottom -Z→T=1
-static void testCylinderSeam() {
+TEST_CASE("mesh builder texture seams: cylinder seam") {
   auto g = createX3DNode("Cylinder");
   setF(g, "radius", std::any(SFFloat(1.0f)));
   setF(g, "height", std::any(SFFloat(2.0f)));
@@ -262,9 +262,3 @@ static void testCylinderSeam() {
   }
 }
 
-TEST_CASE("mesh_builder_txc1_test") {
-  testSphereSeam();
-  testConeSeam();
-  testCylinderSeam();
-  return;
-}

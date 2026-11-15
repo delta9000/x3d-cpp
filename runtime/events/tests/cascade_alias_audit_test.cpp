@@ -31,7 +31,7 @@ bool veq(const SFVec3f &a, float x, float y, float z) {
 }
 
 // input side alias `set_xxx` on an inputOutput field must route correctly.
-void test_set_alias_routes() {
+TEST_CASE("cascade alias audit: set alias routes") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -46,7 +46,7 @@ void test_set_alias_routes() {
 }
 
 // output side alias `xxx_changed` on an inputOutput field must route correctly.
-void test_changed_alias_routes() {
+TEST_CASE("cascade alias audit: changed alias routes") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -61,7 +61,7 @@ void test_changed_alias_routes() {
 }
 
 // When both route endpoints use aliases they should still resolve correctly.
-void test_both_aliases() {
+TEST_CASE("cascade alias audit: both aliases") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -78,7 +78,7 @@ void test_both_aliases() {
 // The per-field cap  must treat alias and canonical name as the same
 // field so a ROUTE to the canonical name does not re-deliver after a seed
 // posted via the alias.
-void test_alias_per_field_cap() {
+TEST_CASE("cascade alias audit: alias per field cap") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -99,7 +99,7 @@ void test_alias_per_field_cap() {
 }
 
 // removeRoute must accept aliases and remove the matching normalized route.
-void test_remove_alias_route() {
+TEST_CASE("cascade alias audit: remove alias route") {
   auto a = std::make_shared<Transform>();
   auto b = std::make_shared<Transform>();
 
@@ -116,7 +116,7 @@ void test_remove_alias_route() {
 }
 
 // Aliases on non-inputOutput fields must not be resolved (no false match).
-void test_alias_no_false_match() {
+TEST_CASE("cascade alias audit: alias no false match") {
   auto interp = std::make_shared<PositionInterpolator>();
 
   // PositionInterpolator has inputOnly "set_fraction" and outputOnly
@@ -140,16 +140,6 @@ void test_alias_no_false_match() {
 
 } // namespace
 
-TEST_CASE("cascade_alias_audit_test") {
-  test_set_alias_routes();
-  test_changed_alias_routes();
-  test_both_aliases();
-  test_alias_per_field_cap();
-  test_remove_alias_route();
-  test_alias_no_false_match();
-
-  return;
-}
 
 // X3D §10.2.1: addChildren appends (ignoring nodes already present),
 // removeChildren removes, and the new children value fans out to ROUTEs from

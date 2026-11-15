@@ -9,11 +9,11 @@
 
 #include <string>
 
-TEST_CASE("version_floor_test") {
+TEST_CASE("version floor") {
   using namespace x3d;
 
   // VRML97 .wrl header -> floored to 3.0.
-  {
+  SUBCASE("VRML97 .wrl header -> floored to 3.0") {
     auto doc = codec::parseDocument("#VRML V2.0 utf8\nGroup {}\n", codec::Encoding::VRML97);
     CHECK_MESSAGE((doc.version == "3.0"), "VRML97 #VRML V2.0 floors doc.version to 3.0");
     codec::VrmlWriter w;
@@ -23,25 +23,25 @@ TEST_CASE("version_floor_test") {
   }
 
   // ClassicVRML .x3dv carrying a stray sub-3.0 token -> clamped to 3.0.
-  {
+  SUBCASE("ClassicVRML .x3dv carrying a stray sub-3.0 token -> clamped to 3.0") {
     auto doc = codec::parseDocument("#X3D V2.0 utf8\nGroup {}\n", codec::Encoding::ClassicVRML);
     CHECK_MESSAGE((doc.version == "3.0"), "ClassicVRML sub-3.0 version clamps to 3.0");
   }
 
   // A real X3D version is preserved (no over-clamping).
-  {
+  SUBCASE("A real X3D version is preserved (no over-clamping)") {
     auto doc = codec::parseDocument("#X3D V4.0 utf8\nGroup {}\n", codec::Encoding::ClassicVRML);
     CHECK_MESSAGE((doc.version == "4.0"), "X3D V4.0 preserved");
   }
 
   // Forward-compat: a future >=3.0 version is not floored.
-  {
+  SUBCASE("Forward-compat: a future >=3.0 version is not floored") {
     auto doc = codec::parseDocument("#X3D V4.2 utf8\nGroup {}\n", codec::Encoding::ClassicVRML);
     CHECK_MESSAGE((doc.version == "4.2"), "future X3D V4.2 not clamped");
   }
 
   // Defensive: a hand-built doc with a sub-3.0 version still writes a valid header.
-  {
+  SUBCASE("hand-built sub-3.0 document still writes a valid header") {
     runtime::X3DDocument doc;
     doc.version = "2.0";
     codec::VrmlWriter w;
@@ -52,7 +52,7 @@ TEST_CASE("version_floor_test") {
 
   // Coverage: a ClassicVRML payload behind a `#VRML` magic floors at the reader
   // level too (pins parseHeaderLine's #VRML branch directly, not via Vrml97Reader).
-  {
+  SUBCASE("ClassicVRML #VRML magic floors at the reader") {
     auto doc = codec::parseDocument("#VRML V2.0 utf8\nGroup {}\n", codec::Encoding::ClassicVRML);
     CHECK_MESSAGE((doc.version == "3.0"), "ClassicVRML #VRML magic floors to 3.0 in parseHeaderLine");
   }
@@ -60,16 +60,16 @@ TEST_CASE("version_floor_test") {
   // Unversioned XML/JSON documents floor to 3.0 explicitly in the readers —
   // the §1 bare-floor rung must not lean on the X3DDocument member default,
   // which is the authoring default (4.0) below.
-  {
+  SUBCASE("unversioned X3D element floors to 3.0") {
     auto doc = codec::parseDocument("<X3D profile='Interchange'><Scene/></X3D>",
                                     codec::Encoding::XML);
     CHECK_MESSAGE((doc.version == "3.0"), "unversioned <X3D> floors to 3.0");
   }
-  {
+  SUBCASE("bare Scene root floors to 3.0") {
     auto doc = codec::parseDocument("<Scene><Group/></Scene>", codec::Encoding::XML);
     CHECK_MESSAGE((doc.version == "3.0"), "bare <Scene> root floors to 3.0");
   }
-  {
+  SUBCASE("unversioned JSON floors to 3.0") {
     auto doc = codec::parseDocument(R"({"X3D":{"Scene":{}}})", codec::Encoding::JSON);
     CHECK_MESSAGE((doc.version == "3.0"), "unversioned JSON floors to 3.0");
   }
@@ -77,13 +77,11 @@ TEST_CASE("version_floor_test") {
   // Authoring default: a default-constructed document targets the UOM the
   // bindings are generated from (4.0), not the parse floor — a hand-built
   // scene must not serialize as a 3.0-labeled file by default.
-  {
+  SUBCASE("default-constructed document targets 4.0") {
     runtime::X3DDocument doc;
     CHECK_MESSAGE((doc.version == "4.0"), "default-constructed X3DDocument is 4.0");
     codec::XmlWriter w;
     CHECK_MESSAGE((w.writeDocument(doc).find("version=\"4.0\"") != std::string::npos),
           "hand-built doc serializes as version 4.0");
   }
-
-  return;
 }

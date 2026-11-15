@@ -2,7 +2,7 @@
 #include "doctest/doctest.h"
 using namespace x3d::runtime;
 
-TEST_CASE("dirty_tracker_test") {
+TEST_CASE("dirty tracker: flags OR together and each node is listed once") {
   DirtyTracker d;
   int a = 0, b = 0; // stand-ins for node identities (only the pointer matters)
   const X3DNode* na = reinterpret_cast<const X3DNode*>(&a);
@@ -26,5 +26,4 @@ TEST_CASE("dirty_tracker_test") {
 
   d.clear();
   CHECK((d.flags(na) == DirtyNone && d.changedNodes().empty()));
-  return;
 }

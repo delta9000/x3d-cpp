@@ -19,7 +19,7 @@ using namespace x3d::nodes;
 namespace {
 // The reflection set thunk (used by every reader) is non-validating: it keeps an
 // out-of-range value instead of throwing.
-void test_reflection_set_is_lenient() {
+TEST_CASE("lenient read: reflection set is lenient") {
   auto m = std::make_shared<Material>();
   const FieldInfo *f = nullptr;
   for (const auto &fi : m->fields()) {
@@ -41,7 +41,7 @@ void test_reflection_set_is_lenient() {
 }
 
 // The typed public setter still enforces the range (binding contract unchanged).
-void test_typed_setter_still_strict() {
+TEST_CASE("lenient read: typed setter still strict") {
   Material m;
   bool threw = false;
   try {
@@ -53,7 +53,7 @@ void test_typed_setter_still_strict() {
 }
 
 // A whole document with an out-of-range field value parses (does not abort).
-void test_document_with_out_of_range_loads() {
+TEST_CASE("lenient read: document with out of range loads") {
   const std::string xml =
       "<X3D profile='Immersive' version='4.0'><Scene>"
       "<Shape><Appearance><Material diffuseColor='2 0 0'/></Appearance></Shape>"
@@ -71,10 +71,3 @@ void test_document_with_out_of_range_loads() {
 
 } // namespace
 
-TEST_CASE("lenient_read_test") {
-  test_reflection_set_is_lenient();
-  test_typed_setter_still_strict();
-  test_document_with_out_of_range_loads();
-
-  return;
-}

@@ -30,7 +30,7 @@ static std::shared_ptr<X3DNode> makeTriShape() {
   return shape;
 }
 
-TEST_CASE("scene_extractor_col2_test") {
+TEST_CASE("scene extractor collision proxy: a Collision proxy is not rendered") {
   // Collision with one rendered child Shape + a proxy Shape (collision-only).
   auto collision = createX3DNode("Collision");
   setF(collision, "children",
@@ -46,5 +46,4 @@ TEST_CASE("scene_extractor_col2_test") {
 
   // Only the child renders; the proxy is excluded (§23.4.2).
   CHECK((snap.added.size() == 1));
-  return;
 }

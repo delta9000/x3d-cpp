@@ -32,30 +32,26 @@ static std::shared_ptr<X3DNode> coord(int n) {
   return c;
 }
 
-TEST_CASE("mesh_builder_ext002_test") {
-  // TriangleFanSet: fanCount [3,4] -> fan0 = 1 tri (3 verts), fan1 = 2 tris (6 verts).
-  {
-    auto g = createX3DNode("TriangleFanSet");
-    setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord(7))));
-    setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
-    setF(g, "colorPerVertex", std::any(SFBool{false}));
-    setF(g, "fanCount", std::any(std::vector<int>{3, 4}));
-    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
-    CHECK((m.colors.size() == 9));
-    for (int i = 0; i < 3; ++i) CHECK((isRed(m.colors[i])));   // fan0 -> color[0]
-    for (int i = 3; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // fan1 -> color[1] (both tris)
-  }
-  // IndexedTriangleStripSet: index [0..3,-1,4..6] -> strip0 = 2 tris, strip1 = 1 tri.
-  {
-    auto g = createX3DNode("IndexedTriangleStripSet");
-    setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord(7))));
-    setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
-    setF(g, "colorPerVertex", std::any(SFBool{false}));
-    setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3, -1, 4, 5, 6}));
-    MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
-    CHECK((m.colors.size() == 9));
-    for (int i = 0; i < 6; ++i) CHECK((isRed(m.colors[i])));   // strip0 (2 tris) -> color[0]
-    for (int i = 6; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // strip1 (1 tri) -> color[1]
-  }
-  return;
+TEST_CASE("mesh builder fan strip colors: TriangleFanSet colours follow fanCount") {
+  auto g = createX3DNode("TriangleFanSet");
+  setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord(7))));
+  setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
+  setF(g, "colorPerVertex", std::any(SFBool{false}));
+  setF(g, "fanCount", std::any(std::vector<int>{3, 4}));
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+  CHECK((m.colors.size() == 9));
+  for (int i = 0; i < 3; ++i) CHECK((isRed(m.colors[i])));   // fan0 -> color[0]
+  for (int i = 3; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // fan1 -> color[1] (both tris)
+}
+
+TEST_CASE("mesh builder fan strip colors: IndexedTriangleStripSet colours follow the strips") {
+  auto g = createX3DNode("IndexedTriangleStripSet");
+  setF(g, "coord", std::any(std::shared_ptr<X3DNode>(coord(7))));
+  setF(g, "color", std::any(std::shared_ptr<X3DNode>(color2())));
+  setF(g, "colorPerVertex", std::any(SFBool{false}));
+  setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3, -1, 4, 5, 6}));
+  MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
+  CHECK((m.colors.size() == 9));
+  for (int i = 0; i < 6; ++i) CHECK((isRed(m.colors[i])));   // strip0 (2 tris) -> color[0]
+  for (int i = 6; i < 9; ++i) CHECK((isGreen(m.colors[i]))); // strip1 (1 tri) -> color[1]
 }

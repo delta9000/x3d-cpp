@@ -49,7 +49,7 @@ static SFVec3f triGeoNormal(const MeshData &m, std::size_t t) {
 
 static const float PI = 3.14159265358979323846f;
 
-TEST_CASE("mesh_builder_b6_test") {
+TEST_CASE("mesh builder crease normals") {
   // 8 unit-cube corners (centred at origin), CCW-outward faces.
   const std::vector<SFVec3f> cube = {
       {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}, // back  (z=-1)
@@ -66,7 +66,7 @@ TEST_CASE("mesh_builder_b6_test") {
   };
 
   // 1. non-regressive: creaseAngle absent (default 0) => flat
-  {
+  SUBCASE("no creaseAngle gives flat normals") {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g, "coordIndex", std::any(cubeIdx));
@@ -83,7 +83,7 @@ TEST_CASE("mesh_builder_b6_test") {
   }
 
   // 1b. creaseAngle=0 explicit is identical to the default
-  {
+  SUBCASE("creaseAngle=0 explicit is identical to the default") {
     auto g0 = createX3DNode("IndexedFaceSet");
     setF(g0, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g0, "coordIndex", std::any(cubeIdx));
@@ -104,7 +104,7 @@ TEST_CASE("mesh_builder_b6_test") {
   // triangle-count-weighted across the
   // three incident faces, so we assert only that the corner normal points
   // outward into the +++ octant and is not any single axis (i.e. it is smoothed).
-  {
+  SUBCASE("creaseAngle=PI fuses each shared cube corner") {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g, "coordIndex", std::any(cubeIdx));
@@ -127,7 +127,7 @@ TEST_CASE("mesh_builder_b6_test") {
   // 2. creaseAngle=PI octahedron => per-vertex radial (sphere-of-quads)
   // Octahedron: 6 verts on the axes, 8 triangular faces. At PI every face at a
   // shared coord vertex fuses; the averaged normal == the outward radial dir.
-  {
+  SUBCASE("creaseAngle=PI on an octahedron gives radial normals") {
     const std::vector<SFVec3f> oct = {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
     // 8 CCW-outward triangular faces (each pairs +/-X/Y/Z apex with an equator
@@ -158,7 +158,7 @@ TEST_CASE("mesh_builder_b6_test") {
   // 3. source-index adjacency: a hard seam (distinct coord entries) does
   // not fuse even at PI. Two coplanar-adjacent triangles whose shared edge is
   // authored with duplicate coordinate points keep their own face normals.
-  {
+  SUBCASE("a seam of distinct coordinates does not fuse even at PI") {
     // Two triangles forming a bent "tent": faces tilt opposite ways about the
     // shared edge along X. The shared edge is authored as distinct coord ids
     // (2,3 for face A; 4,5 for face B) — a deliberate hard seam.
@@ -183,7 +183,7 @@ TEST_CASE("mesh_builder_b6_test") {
   }
 
   // 4. ElevationGrid: creaseAngle=0 flat is byte-identical; PI smooths
-  {
+  SUBCASE("ElevationGrid creaseAngle 0 is flat and PI smooths") {
     auto flat = createX3DNode("ElevationGrid");
     setF(flat, "xDimension", std::any(3));
     setF(flat, "zDimension", std::any(3));
@@ -227,7 +227,7 @@ TEST_CASE("mesh_builder_b6_test") {
   }
 
   // 5. Authored Normal wins over creaseAngle
-  {
+  SUBCASE("an authored Normal wins over creaseAngle") {
     auto g = createX3DNode("IndexedFaceSet");
     setF(g, "coord", std::any(std::static_pointer_cast<X3DNode>(makeCoord(cube))));
     setF(g, "coordIndex", std::any(cubeIdx));
@@ -251,6 +251,4 @@ TEST_CASE("mesh_builder_b6_test") {
     const SFVec3f diag = normz(SFVec3f{1, 1, 1});
     for (const auto &n : m.normals) CHECK((!vecEq(n, diag)));
   }
-
-  return;
 }

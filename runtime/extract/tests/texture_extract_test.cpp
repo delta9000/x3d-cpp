@@ -52,7 +52,7 @@ static void setEnum(const std::shared_ptr<X3DNode> &n, const char *nm,
 }
 
 // 1. authored TextureCoordinate wins over default §13 coords
-static void testAuthoredTexCoord() {
+TEST_CASE("texture extract: authored tex coord") {
   // A single triangle TriangleSet with an authored TextureCoordinate. The
   // authored point[] must surface verbatim (positional order for non-indexed).
   auto coord = createX3DNode("Coordinate");
@@ -73,7 +73,7 @@ static void testAuthoredTexCoord() {
   CHECK((feq(m.texcoords[2].x, 0.4f) && feq(m.texcoords[2].y, 0.9f)));
 }
 
-static void testMultiTextureCoordinateFirstUsableChannel() {
+TEST_CASE("texture extract: multi texture coordinate first usable channel") {
   auto coord = createX3DNode("Coordinate");
   setF(coord, "point", std::any(std::vector<SFVec3f>{
                            {0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
@@ -101,7 +101,7 @@ static void testMultiTextureCoordinateFirstUsableChannel() {
          feq(m.texcoordSets[1][2].y, 0.7f)));
 }
 
-static void testTextureCoordinate3DAnd4DProjectToST() {
+TEST_CASE("texture extract: texture coordinate 3D and 4D project to ST") {
   auto coord = createX3DNode("Coordinate");
   setF(coord, "point", std::any(std::vector<SFVec3f>{
                            {0, 0, 0}, {1, 0, 0}, {0, 1, 0}}));
@@ -137,7 +137,7 @@ static void testTextureCoordinate3DAnd4DProjectToST() {
 }
 
 // 2. applyTextureTransformsToMesh bakes the transform into texcoords
-static void testApplyTransformToMesh() {
+TEST_CASE("texture extract: apply transform to mesh") {
   MeshData m;
   m.texcoords = {{0.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f}};
 
@@ -173,7 +173,7 @@ static void testApplyTransformToMesh() {
 // (rotate-then-scale vs scale-then-rotate) disagree. The
 // expected values below are the hand-expanded matrix result and differ from the
 // scale-then-rotate order's (-0.1, 0.2), so this test pins the order.
-static void testTextureTransformOrder() {
+TEST_CASE("texture extract: texture transform order") {
   TextureTransform2DParams p;
   p.centerS = 0.5f;
   p.centerT = 0.5f;
@@ -213,7 +213,7 @@ static void testTextureTransformOrder() {
 }
 
 // 3. textureTransformParamsListOf reads Appearance.textureTransform
-static void testTextureTransformParamsListOf() {
+TEST_CASE("texture extract: texture transform params list of") {
   // No appearance / no textureTransform => no authored transforms.
   CHECK((textureTransformParamsListOf(nullptr).empty()));
   {
@@ -292,7 +292,7 @@ static void testTextureTransformParamsListOf() {
 }
 
 // 4. ExtendedSampler / TextureProperties boundary+filter modes
-static void testExtendedSampler() {
+TEST_CASE("texture extract: extended sampler") {
   // No TextureProperties: repeatS/T derive BoundaryMode (Repeat / ClampToEdge).
   {
     auto tex = createX3DNode("ImageTexture");
@@ -346,7 +346,7 @@ static void testExtendedSampler() {
 }
 
 // 5. TextureCoordinateGenerator surfaces a TexCoordGenDesc
-static void testTexCoordGen() {
+TEST_CASE("texture extract: tex coord gen") {
   // Geometry whose texCoord is a TextureCoordinateGenerator (no point array).
   auto gen = createX3DNode("TextureCoordinateGenerator");
   setEnum(gen, "mode", "CAMERASPACEREFLECTIONVECTOR");
@@ -368,7 +368,7 @@ static void testTexCoordGen() {
 }
 
 // 6. resolveTextureRefs threads a resolver onto resolvedPixels
-static void testResolverRoundTrip() {
+TEST_CASE("texture extract: resolver round trip") {
   // A stub resolver that returns a 1x1 magenta pixel for any URL.
   TextureResolver resolver = [](const std::string &url) -> TexturePixelResult {
     if (url.empty()) return TexturePixelResult::makeFailed();
@@ -420,7 +420,7 @@ static void testResolverRoundTrip() {
 }
 
 // 3D textures: PixelTexture3D inline voxels; ComposedTexture3D stack
-static void test3DTextures() {
+TEST_CASE("texture extract: 3D textures") {
   // PixelTexture3D.image MFInt32: [numComponents, width, height, depth, packed
   // pixels]. 3 comps, 2x1x2 = 4 pixels.
   {
@@ -492,16 +492,3 @@ static void test3DTextures() {
   }
 }
 
-TEST_CASE("texture_extract_test") {
-  testAuthoredTexCoord();
-  testMultiTextureCoordinateFirstUsableChannel();
-  testTextureCoordinate3DAnd4DProjectToST();
-  testApplyTransformToMesh();
-  testTextureTransformOrder();
-  testTextureTransformParamsListOf();
-  testExtendedSampler();
-  testTexCoordGen();
-  testResolverRoundTrip();
-  test3DTextures();
-  return;
-}

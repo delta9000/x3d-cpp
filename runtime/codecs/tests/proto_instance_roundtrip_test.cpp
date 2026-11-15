@@ -22,7 +22,7 @@ static long protoCount(const sdk::X3DDocument &d) {
   return static_cast<long>(d.scene.protoInstances.size());
 }
 
-TEST_CASE("proto_instance_roundtrip_test") {
+TEST_CASE("proto instance roundtrip: an unresolved ProtoInstance survives every encoding") {
   sdk::X3DDocument orig = sdk::parseDocument(kScene, sdk::Encoding::XML);
   CHECK_MESSAGE((protoCount(orig) == 1), "original parses 1 (unexpanded) ProtoInstance");
 
@@ -39,5 +39,4 @@ TEST_CASE("proto_instance_roundtrip_test") {
     CHECK_MESSAGE((protoCount(rt) == 1),
           (std::string(w.name) + ": round-trip preserves the ProtoInstance"));
   }
-  return;
 }

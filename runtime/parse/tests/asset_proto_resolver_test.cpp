@@ -46,7 +46,7 @@ static AssetResolver inMemory(const std::map<std::string, std::string> &docs,
   };
 }
 
-TEST_CASE("asset_proto_resolver_test") {
+TEST_CASE("asset proto resolver: protoResolverFrom") {
   const std::map<std::string, std::string> docs = {
       {"http://mem/protos.x3d", kDoc}};
 

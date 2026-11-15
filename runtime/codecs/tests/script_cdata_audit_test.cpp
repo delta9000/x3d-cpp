@@ -42,7 +42,7 @@ function tick() {
 </X3D>
 )XML";
 
-void testParseStoresNoCdataWrapper() {
+TEST_CASE("script cdata audit: parse stores no CDATA wrapper") {
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   auto script = findScript(doc.scene);
@@ -71,7 +71,7 @@ void testParseStoresNoCdataWrapper() {
   }
 }
 
-void testXmlRoundTripWrapsCdata() {
+TEST_CASE("script cdata audit: XML round trip wraps CDATA") {
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   codec::XmlWriter writer;
@@ -98,7 +98,7 @@ void testXmlRoundTripWrapsCdata() {
         "xml-roundtrip: multi-line JS survived");
 }
 
-void testVrmlRoundTripNoCdataLeak() {
+TEST_CASE("script cdata audit: VRML round trip no CDATA leak") {
   codec::XmlReader reader;
   auto doc = reader.readDocument(kXmlWithCdata);
   codec::VrmlWriter writer;
@@ -141,7 +141,7 @@ DEF S Script {
 }
 )VRML";
 
-void testScriptSourceVerbatimVrmlToXml() {
+TEST_CASE("script cdata audit: script source verbatim VRML to XML") {
   // Decode the VRML; the inline javascript: body (with its significant leading
   // space and trailing-line indentation) is mirrored into sourceCode.
   codec::ClassicVrmlReader vrmlReader;
@@ -177,11 +177,3 @@ void testScriptSourceVerbatimVrmlToXml() {
 
 } // namespace
 
-TEST_CASE("script_cdata_audit_test") {
-  testParseStoresNoCdataWrapper();
-  testXmlRoundTripWrapsCdata();
-  testVrmlRoundTripNoCdataLeak();
-  testScriptSourceVerbatimVrmlToXml();
-
-  return;
-}

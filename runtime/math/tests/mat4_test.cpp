@@ -11,7 +11,7 @@ static bool veq(const SFVec3f& a, const SFVec3f& b) {
   return feq(a.x,b.x) && feq(a.y,b.y) && feq(a.z,b.z);
 }
 
-TEST_CASE("mat4_test") {
+TEST_CASE("mat4: identity, translation, scale, rotation and their product") {
   // identity transforms a point to itself
   CHECK((veq(Mat4::identity().transformPoint({1,2,3}), {1,2,3})));
 
@@ -30,7 +30,9 @@ TEST_CASE("mat4_test") {
   // multiply order: (T * S) applied to p scales then translates
   Mat4 ts = t * s;
   CHECK((veq(ts.transformPoint({1,1,1}), {12,23,34}))); // (2,3,4) then +(10,20,30)
+}
 
+TEST_CASE("mat4: transformMatrix composes translation, scale and centre") {
   // X3D Transform composition: translation + scale, no rotation/center.
   Mat4 m = transformMatrix(/*translation*/{5,0,0}, /*rotation*/{0,0,1,0},
                            /*scale*/{2,2,2}, /*center*/{0,0,0},
@@ -41,7 +43,6 @@ TEST_CASE("mat4_test") {
   Mat4 mc = transformMatrix({0,0,0}, {0,0,1,0}, {3,3,3}, {1,0,0}, {0,0,1,0});
   CHECK((veq(mc.transformPoint({1,0,0}), {1,0,0})));   // center fixed point
   CHECK((veq(mc.transformPoint({2,0,0}), {4,0,0})));   // (2-1)*3 + 1 = 4
-  return;
 }
 
 TEST_CASE("rotationFromMatrix preserves the transformed basis") {

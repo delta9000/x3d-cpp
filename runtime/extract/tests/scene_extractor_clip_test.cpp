@@ -54,135 +54,130 @@ static const extract::RenderItem *itemOf(extract::SceneExtractor &ex,
   return nullptr;
 }
 
-TEST_CASE("scene_extractor_clip_test") {
-  // 1) A plane affects the following sibling, not the preceding one
-  {
-    auto shapeBefore = makeTriShape();
-    auto clip = createX3DNode("ClipPlane");
-    setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
-    auto shapeAfter = makeTriShape();
+TEST_CASE("scene extractor clip: a plane affects later siblings, not earlier ones") {
+  auto shapeBefore = makeTriShape();
+  auto clip = createX3DNode("ClipPlane");
+  setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
+  auto shapeAfter = makeTriShape();
 
-    auto root = createX3DNode("Group");
-    addChild(root, shapeBefore);
-    addChild(root, clip);
-    addChild(root, shapeAfter);
+  auto root = createX3DNode("Group");
+  addChild(root, shapeBefore);
+  addChild(root, clip);
+  addChild(root, shapeAfter);
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    (void)ex.fullSnapshot();
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  (void)ex.fullSnapshot();
 
-    const extract::RenderItem *before = itemOf(ex, shapeBefore.get());
-    const extract::RenderItem *after = itemOf(ex, shapeAfter.get());
-    REQUIRE(before);
-    REQUIRE(after);
-    CHECK((before->clipPlanes.empty())); // plane comes AFTER this sibling.
-    REQUIRE((after->clipPlanes.size == 1));
-    const SFVec4f p = after->clipPlanes.items[0].planeWorld;
-    CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, 0.0f)));
-  }
+  const extract::RenderItem *before = itemOf(ex, shapeBefore.get());
+  const extract::RenderItem *after = itemOf(ex, shapeAfter.get());
+  REQUIRE(before);
+  REQUIRE(after);
+  CHECK((before->clipPlanes.empty())); // plane comes AFTER this sibling.
+  REQUIRE((after->clipPlanes.size == 1));
+  const SFVec4f p = after->clipPlanes.items[0].planeWorld;
+  CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, 0.0f)));
+}
 
-  // 2) enabled=false disables the plane
-  {
-    auto clip = createX3DNode("ClipPlane");
-    setF(clip, "enabled", std::any(false));
-    setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
-    auto shape = makeTriShape();
-    auto root = createX3DNode("Group");
-    addChild(root, clip);
-    addChild(root, shape);
+TEST_CASE("scene extractor clip: enabled=false disables the plane") {
+  auto clip = createX3DNode("ClipPlane");
+  setF(clip, "enabled", std::any(false));
+  setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
+  auto shape = makeTriShape();
+  auto root = createX3DNode("Group");
+  addChild(root, clip);
+  addChild(root, shape);
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    (void)ex.fullSnapshot();
-    const extract::RenderItem *it = itemOf(ex, shape.get());
-    REQUIRE(it);
-    CHECK((it->clipPlanes.empty()));
-  }
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  (void)ex.fullSnapshot();
+  const extract::RenderItem *it = itemOf(ex, shape.get());
+  REQUIRE(it);
+  CHECK((it->clipPlanes.empty()));
+}
 
-  // 3) the plane is transformed into world space (Transform translation) ==
-  // A ClipPlane under a Transform translated +5 in Y: the authored plane
-  // (0,1,0,0) (visible where y>=0) becomes (0,1,0,-5) in world (visible y>=5).
-  {
-    auto clip = createX3DNode("ClipPlane");
-    setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
-    auto shape = makeTriShape();
-    auto xform = createX3DNode("Transform");
-    setF(xform, "translation", std::any(SFVec3f{0, 5, 0}));
-    addChild(xform, clip);
-    addChild(xform, shape);
+// 3) the plane is transformed into world space (Transform translation) ==
+// A ClipPlane under a Transform translated +5 in Y: the authored plane
+// (0,1,0,0) (visible where y>=0) becomes (0,1,0,-5) in world (visible y>=5).
+TEST_CASE("scene extractor clip: the plane is transformed into world space") {
+  auto clip = createX3DNode("ClipPlane");
+  setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
+  auto shape = makeTriShape();
+  auto xform = createX3DNode("Transform");
+  setF(xform, "translation", std::any(SFVec3f{0, 5, 0}));
+  addChild(xform, clip);
+  addChild(xform, shape);
 
-    Scene scene;
-    scene.addRootNode(xform);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    (void)ex.fullSnapshot();
-    const extract::RenderItem *it = itemOf(ex, shape.get());
-    REQUIRE(it);
-    REQUIRE((it->clipPlanes.size == 1));
-    const SFVec4f p = it->clipPlanes.items[0].planeWorld;
-    CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, -5.0f)));
-  }
+  Scene scene;
+  scene.addRootNode(xform);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  (void)ex.fullSnapshot();
+  const extract::RenderItem *it = itemOf(ex, shape.get());
+  REQUIRE(it);
+  REQUIRE((it->clipPlanes.size == 1));
+  const SFVec4f p = it->clipPlanes.items[0].planeWorld;
+  CHECK((feq(p.x, 0.0f) && feq(p.y, 1.0f) && feq(p.z, 0.0f) && feq(p.w, -5.0f)));
+}
 
-  // 4) a plane scoped to a child group does not leak to its siblings
-  // root > { inner > { ClipPlane, shapeIn }, shapeOut }: shapeIn carries the
-  // plane, shapeOut (a following sibling of inner) does not.
-  {
-    auto clip = createX3DNode("ClipPlane");
-    setF(clip, "plane", std::any(SFVec4f{0, 0, 1, 0}));
-    auto shapeIn = makeTriShape();
-    auto inner = createX3DNode("Group");
-    addChild(inner, clip);
-    addChild(inner, shapeIn);
-    auto shapeOut = makeTriShape();
-    auto root = createX3DNode("Group");
-    addChild(root, inner);
-    addChild(root, shapeOut);
+// 4) a plane scoped to a child group does not leak to its siblings
+// root > { inner > { ClipPlane, shapeIn }, shapeOut }: shapeIn carries the
+// plane, shapeOut (a following sibling of inner) does not.
+TEST_CASE("scene extractor clip: a plane in a child group does not leak to its siblings") {
+  auto clip = createX3DNode("ClipPlane");
+  setF(clip, "plane", std::any(SFVec4f{0, 0, 1, 0}));
+  auto shapeIn = makeTriShape();
+  auto inner = createX3DNode("Group");
+  addChild(inner, clip);
+  addChild(inner, shapeIn);
+  auto shapeOut = makeTriShape();
+  auto root = createX3DNode("Group");
+  addChild(root, inner);
+  addChild(root, shapeOut);
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    (void)ex.fullSnapshot();
-    const extract::RenderItem *in = itemOf(ex, shapeIn.get());
-    const extract::RenderItem *out = itemOf(ex, shapeOut.get());
-    REQUIRE(in);
-    REQUIRE(out);
-    CHECK((in->clipPlanes.size == 1));
-    CHECK((out->clipPlanes.empty()));
-  }
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  (void)ex.fullSnapshot();
+  const extract::RenderItem *in = itemOf(ex, shapeIn.get());
+  const extract::RenderItem *out = itemOf(ex, shapeOut.get());
+  REQUIRE(in);
+  REQUIRE(out);
+  CHECK((in->clipPlanes.size == 1));
+  CHECK((out->clipPlanes.empty()));
+}
 
-  // 5) a live plane edit is reflected by a fresh snapshot
-  {
-    auto clip = createX3DNode("ClipPlane");
-    setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
-    auto shape = makeTriShape();
-    auto root = createX3DNode("Group");
-    addChild(root, clip);
-    addChild(root, shape);
+TEST_CASE("scene extractor clip: a live plane edit is reflected by a fresh snapshot") {
+  auto clip = createX3DNode("ClipPlane");
+  setF(clip, "plane", std::any(SFVec4f{0, 1, 0, 0}));
+  auto shape = makeTriShape();
+  auto root = createX3DNode("Group");
+  addChild(root, clip);
+  addChild(root, shape);
 
-    Scene scene;
-    scene.addRootNode(root);
-    X3DExecutionContext ctx;
-    ctx.buildSceneGraph(scene);
-    extract::SceneExtractor ex(ctx, scene);
-    (void)ex.fullSnapshot();
-    const extract::RenderItem *it = itemOf(ex, shape.get());
-    REQUIRE(it);
-    CHECK((feq(it->clipPlanes.items[0].planeWorld.w, 0.0f)));
+  Scene scene;
+  scene.addRootNode(root);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  extract::SceneExtractor ex(ctx, scene);
+  (void)ex.fullSnapshot();
+  const extract::RenderItem *it = itemOf(ex, shape.get());
+  REQUIRE(it);
+  CHECK((feq(it->clipPlanes.items[0].planeWorld.w, 0.0f)));
 
-    setF(clip, "plane", std::any(SFVec4f{0, 1, 0, -2}));
-    (void)ex.fullSnapshot();
-    it = itemOf(ex, shape.get());
-    REQUIRE(it);
-    REQUIRE((it->clipPlanes.size == 1));
-    CHECK((feq(it->clipPlanes.items[0].planeWorld.w, -2.0f)));
-  }
+  setF(clip, "plane", std::any(SFVec4f{0, 1, 0, -2}));
+  (void)ex.fullSnapshot();
+  it = itemOf(ex, shape.get());
+  REQUIRE(it);
+  REQUIRE((it->clipPlanes.size == 1));
+  CHECK((feq(it->clipPlanes.items[0].planeWorld.w, -2.0f)));
 }

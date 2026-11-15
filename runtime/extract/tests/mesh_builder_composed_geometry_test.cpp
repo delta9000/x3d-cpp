@@ -63,12 +63,12 @@ TEST_CASE("ElevationGrid infers an omitted dimension from its height count") {
   }
 }
 
-TEST_CASE("mesh_builder_t2_test") {
+TEST_CASE("mesh builder t2") {
   // Five distinct points; fans/strips index into these.
   const SFVec3f P0{0, 0, 0}, P1{1, 0, 0}, P2{1, 1, 0}, P3{0, 1, 0}, P4{-1, 1, 0};
 
   // 1. IndexedTriangleFanSet: one 5-vertex fan -> 3 triangles
-  {
+  SUBCASE("IndexedTriangleFanSet: one 5-vertex fan -> 3 triangles") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3, 4}));
@@ -81,7 +81,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 1b. IndexedTriangleFanSet: two fans separated by -1
-  {
+  SUBCASE("IndexedTriangleFanSet: two fans separated by -1") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, -1, 2, 3, 4}));
@@ -90,7 +90,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 1c. TriangleFanSet(fanCount): implicit coords partitioned
-  {
+  SUBCASE("TriangleFanSet(fanCount): implicit coords partitioned") {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "fanCount", std::any(std::vector<int>{3, 2}));
@@ -99,7 +99,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 3));
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
   }
-  {
+  SUBCASE("TriangleFanSet single fan from fanCount") {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "fanCount", std::any(std::vector<int>{5}));
@@ -112,7 +112,7 @@ TEST_CASE("mesh_builder_t2_test") {
   //   tri0 (even): v0,v1,v2
   //   tri1 (odd) : flipped so winding stays consistent => v1,v3,v2
   //                (i.e. swap the trailing pair of v1,v2,v3).
-  {
+  SUBCASE("IndexedTriangleStripSet flips winding on odd triangles") {
     auto g = createX3DNode("IndexedTriangleStripSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
@@ -125,7 +125,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 2b. TriangleStripSet(stripCount): two strips
-  {
+  SUBCASE("TriangleStripSet(stripCount): two strips") {
     auto g = createX3DNode("TriangleStripSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     setF(g, "stripCount", std::any(std::vector<int>{4, 1}));
@@ -137,7 +137,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 3. IndexedQuadSet: each quad -> 2 triangles
-  {
+  SUBCASE("IndexedQuadSet: each quad -> 2 triangles") {
     auto g = createX3DNode("IndexedQuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 3}));
@@ -149,7 +149,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 3b. QuadSet: implicit consecutive quads
-  {
+  SUBCASE("QuadSet: implicit consecutive quads") {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
@@ -160,7 +160,7 @@ TEST_CASE("mesh_builder_t2_test") {
 
   // 4. ElevationGrid: 2x2 grid -> 1 cell -> 2 triangles
   // No coord node; positions synthesized from height + spacing.
-  {
+  SUBCASE("ElevationGrid 2x2 synthesizes positions") {
     auto g = createX3DNode("ElevationGrid");
     setF(g, "xDimension", std::any(2));
     setF(g, "zDimension", std::any(2));
@@ -184,7 +184,7 @@ TEST_CASE("mesh_builder_t2_test") {
   }
 
   // 4b. ElevationGrid larger: 3x2 -> (3-1)*(2-1)=2 cells -> 4 tris
-  {
+  SUBCASE("ElevationGrid larger: 3x2 -> (3-1)*(2-1)=2 cells -> 4 tris") {
     auto g = createX3DNode("ElevationGrid");
     setF(g, "xDimension", std::any(3));
     setF(g, "zDimension", std::any(2));
@@ -197,7 +197,7 @@ TEST_CASE("mesh_builder_t2_test") {
 
   // 5. Malformed-index / count safety
   // 5a. Out-of-range fan index dropped, valid fan kept.
-  {
+  SUBCASE("Malformed-index / count safety 5a") {
     auto g = createX3DNode("IndexedTriangleFanSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 99, -1, 0, 1, 2}));
@@ -208,7 +208,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((posEq(m, 0, P0) && posEq(m, 1, P1) && posEq(m, 2, P2)));
   }
   // 5b. Strip OOB index never reads out of bounds.
-  {
+  SUBCASE("Strip OOB index never reads out of bounds") {
     auto g = createX3DNode("IndexedTriangleStripSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "index", std::any(std::vector<int>{0, 1, 2, 99}));
@@ -217,7 +217,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 3));
   }
   // 5c. fanCount overruns the coord array -> guarded, no OOB.
-  {
+  SUBCASE("fanCount overruns the coord array -> guarded, no OOB") {
     auto g = createX3DNode("TriangleFanSet");
     attachCoord(g, {P0, P1, P2});
     setF(g, "fanCount", std::any(std::vector<int>{10})); // claims 10, only 3 exist
@@ -226,14 +226,14 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.indices.size() == 3));
   }
   // 5d. QuadSet with a ragged tail (5 points) -> 1 quad, leftover ignored.
-  {
+  SUBCASE("QuadSet with a ragged tail (5 points) -> 1 quad, leftover ignored") {
     auto g = createX3DNode("QuadSet");
     attachCoord(g, {P0, P1, P2, P3, P4});
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.size() == 6)); // exactly one quad
   }
   // 5e. ElevationGrid with too-short height array -> guarded, empty mesh.
-  {
+  SUBCASE("ElevationGrid with too-short height array -> guarded, empty mesh") {
     auto g = createX3DNode("ElevationGrid");
     setF(g, "xDimension", std::any(2));
     setF(g, "zDimension", std::any(2));
@@ -242,7 +242,7 @@ TEST_CASE("mesh_builder_t2_test") {
     CHECK((m.positions.empty() && m.indices.empty()));
   }
   // 5f. Degenerate grid dims -> empty.
-  {
+  SUBCASE("Degenerate grid dims -> empty") {
     auto g = createX3DNode("ElevationGrid");
     setF(g, "xDimension", std::any(1));
     setF(g, "zDimension", std::any(1));
@@ -250,6 +250,4 @@ TEST_CASE("mesh_builder_t2_test") {
     MeshData m = buildLocalMesh(g.get(), geo::builtinProjection());
     CHECK((m.indices.empty()));
   }
-
-  return;
 }

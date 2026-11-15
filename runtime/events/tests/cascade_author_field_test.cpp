@@ -36,7 +36,7 @@ void addAuthorInput(const X3DNode &node, const std::string &name,
 }
 
 // A direct postEvent (seed) to an author field is delivered into the store.
-void test_seed_delivers_to_author_field() {
+TEST_CASE("cascade author field: seed delivers to author field") {
   auto store = std::make_shared<DynamicFieldStore>();
   auto host = std::make_shared<Transform>();
   addAuthorInput(*host, "set_value", *store);
@@ -50,7 +50,7 @@ void test_seed_delivers_to_author_field() {
 }
 
 // A ROUTE whose sink is an author field fans the source value out to the store.
-void test_route_delivers_to_author_field() {
+TEST_CASE("cascade author field: route delivers to author field") {
   auto store = std::make_shared<DynamicFieldStore>();
   auto src  = std::make_shared<Transform>(); // translation: built-in inputOutput source
   auto host = std::make_shared<Transform>();
@@ -68,8 +68,3 @@ void test_route_delivers_to_author_field() {
 
 } // namespace
 
-TEST_CASE("cascade_author_field_test") {
-  test_seed_delivers_to_author_field();
-  test_route_delivers_to_author_field();
-
-}
