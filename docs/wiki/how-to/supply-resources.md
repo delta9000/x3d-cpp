@@ -2,7 +2,7 @@
 title: Supply resources through the seams
 summary: Wire texture, asset, font and script backends into a session and control file access at parse time.
 tags: [how-to, seams, embedding]
-updated: 2026-11-14
+updated: 2026-11-15
 related:
   - ../reference/seam-matrix.md
   - ../explanation/seams.md
@@ -97,9 +97,52 @@ optionally, atlas UVs or outlines. See
 
 ## Run scripts
 
-Subclass or construct a `sdk::ScriptEngine`, wrap it in `sdk::ScriptSystem`,
-and register it with `ctx.addScriptSystem(system)` before the first tick. See
-[Script runtime](../reference/subsystems/system-script-sai.md).
+The bundled Duktape engine is the in-tree target `x3d_ecmascript_backend`; a
+consumer of the installed package implements `sdk::ScriptEngine` instead.
+
+1. Bind the context to the scene's author fields, build it, and attach the
+   standard runtime.
+2. Wrap the engine in a `sdk::ScriptSystem`. Pass an `AssetResolver` as the
+   fourth argument if scripts load external urls; set the scene factory, and
+   call `setResourceLimits` if you need other quotas, before enrolling any
+   script.
+3. Enroll every Script node with `attach`, then register the system with
+   `ctx.addScriptSystem`. It runs ahead of the other systems and delivers
+   routed events to script handlers itself.
+
+```cpp
+#include "x3d/sdk.hpp"
+#include "EcmaScriptBackend.hpp"  // in-tree target x3d_ecmascript_backend
+
+sdk::X3DExecutionContext ctx(doc.scene.authorFields);
+ctx.buildSceneGraph(doc.scene);
+ctx.buildFrom(doc.scene);
+x3d::runtime::attachStandardRuntime(doc.scene, ctx);
+
+auto engine = std::make_shared<x3d::runtime::EcmaScriptBackend>();
+auto scripts = std::make_shared<sdk::ScriptSystem>(engine, "my-host", "1.0");
+scripts->setSceneFactory(x3d::codec::makeStringSceneFactory());
+
+sdk::forEachNode(doc.scene, [&](sdk::X3DNode *node) {
+  if (node->nodeTypeName() == "Script") scripts->attach(node, ctx);
+});
+ctx.addScriptSystem(scripts);
+
+ctx.tick(0.0);
+```
+
+With a Script whose `initialize()` sets an `outputOnly` SFVec3f to `1 2 3` and
+a ROUTE to a Transform's `set_translation`, reading the translation after the
+first tick prints:
+
+```text
+translation: 1 2 3
+```
+
+`scripts->saiFor(script)->log()` returns what the script printed. Call budget,
+heap and quota defaults are in
+[Script and SAI runtime](../reference/subsystems/system-script-sai.md#limits);
+what script code can call is in the [Script ECMAScript API](../reference/script-api.md).
 
 ## Control file access at parse time
 
