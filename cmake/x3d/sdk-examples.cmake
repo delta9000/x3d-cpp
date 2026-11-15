@@ -49,12 +49,16 @@ if(X3D_CPP_BUILD_EXAMPLES)
     # Audit selftest: a clean scene yields zero findings
     # across all 3 encodings; a deliberately mismatched / unparseable case is
     # detected. Links the full node set so it can build a real scene graph.
-    add_executable(x3d_corpus_audit_selftest
-        "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/corpus_audit_selftest.cpp")
-    target_include_directories(x3d_corpus_audit_selftest
-        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tools")
-    target_link_libraries(x3d_corpus_audit_selftest PRIVATE x3d_cpp::sdk x3d_doctest_main)
-    add_test(NAME x3d_corpus_audit_selftest COMMAND x3d_corpus_audit_selftest)
+    # It is a doctest suite, so it needs the tests (x3d_doctest_main): the
+    # documented install build turns tests off and keeps the examples on.
+    if(X3D_CPP_BUILD_TESTS)
+        add_executable(x3d_corpus_audit_selftest
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/tests/corpus_audit_selftest.cpp")
+        target_include_directories(x3d_corpus_audit_selftest
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tools")
+        target_link_libraries(x3d_corpus_audit_selftest PRIVATE x3d_cpp::sdk x3d_doctest_main)
+        add_test(NAME x3d_corpus_audit_selftest COMMAND x3d_corpus_audit_selftest)
+    endif()
 
     # CLI-level regression test for the corpus tools (arg-parsing edge cases,
     # empty dirs, exit-code consistency, usage completeness).

@@ -164,7 +164,8 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_package_version_contract
         x3d_dev_tooling_isolation
         x3d_test_selection_examples_on
-        x3d_test_selection_examples_off)
+        x3d_test_selection_examples_off
+        x3d_no_tests_build_contract)
     if(X3D_CPP_PER_HEADER_CHECKS)
         list(APPEND _x3d_compile_contract_tests x3d_header_isolation)
     endif()
