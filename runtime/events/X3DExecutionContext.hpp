@@ -27,6 +27,8 @@
 #include "x3d/nodes/GeoViewpoint.hpp"
 #include "x3d/nodes/LayerSet.hpp"
 #include "x3d/nodes/Switch.hpp"
+#include "x3d/nodes/X3DGeometryNode.hpp"
+#include "x3d/nodes/X3DGeometricPropertyNode.hpp"
 
 #include <algorithm>
 #include <any>
@@ -202,6 +204,7 @@ public:
         [this](BindTransition k) { lastVpTransition_ = k; });
     bindings_.bindDefaults();
     pick_.build(scene);
+    vpWorldValid_ = false;
     cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
       onFieldWritten(a, std::move(retained));
     };
@@ -215,6 +218,7 @@ public:
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     pick_.build(scene);
+    vpWorldValid_ = false;
   }
 
   void attachNewSubtree(X3DNode *root) {
@@ -756,7 +760,18 @@ public:
       pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
              Mat4::rotation(ori);
     }
-    return pick_.worldOf(vp) * pose;
+    // worldOf walks the scene to find the viewpoint's first path; camera
+    // queries come many times per tick (every pick, every Switch/LOD/Billboard
+    // consumer). Hold the result until one of its transform ancestors is written,
+    // the binding changes, or the topology does.
+    const std::uint64_t topology = sceneTopologyRevision();
+    if (!vpWorldValid_ || vpWorldNode_ != vp || vpWorldTopology_ != topology) {
+      vpWorld_ = pick_.worldOf(vp, &vpWorldAncestors_);
+      vpWorldNode_ = vp;
+      vpWorldTopology_ = topology;
+      vpWorldValid_ = true;
+    }
+    return vpWorld_ * pose;
   }
 
   // Per-viewpoint user offset (process-local; §23.3.1 relative viewing transform).
@@ -914,6 +929,12 @@ private:
     if (retained.has_value() && (ticking_ || cascade_.processDepth_ != 0))
       retainedNodeValues_.push_back(std::move(retained));
     classifyDirty(a);
+    if (vpWorldValid_ && a.node && TransformSystem::isTransform(a.node) &&
+        std::find(vpWorldAncestors_.begin(), vpWorldAncestors_.end(), a.node) != vpWorldAncestors_.end())
+      vpWorldValid_ = false;
+    if (a.node && (dynamic_cast<const x3d::nodes::X3DGeometryNode *>(a.node) != nullptr ||
+                   dynamic_cast<const x3d::nodes::X3DGeometricPropertyNode *>(a.node) != nullptr))
+      pick_.invalidateMeshes();
     // Snapshots: a listener may add or remove listeners while it runs, and
     // the write is still offered to exactly the set registered before it.
     const auto listeners = fieldWriteListeners_;
@@ -1013,6 +1034,12 @@ private:
     const X3DNode *owner; // nullptr = context-lifetime listener
     FieldWriteListener fn;
   };
+  // boundViewpointWorldPose memo (see there).
+  mutable const X3DNode *vpWorldNode_ = nullptr;
+  mutable Mat4 vpWorld_ = Mat4::identity();
+  mutable std::uint64_t vpWorldTopology_ = 0;
+  mutable bool vpWorldValid_ = false;
+  mutable std::vector<const X3DNode *> vpWorldAncestors_;
   using FieldWriteListenerList = std::vector<FieldWriteListenerEntry>;
   using NodeFieldWriteListeners =
       std::unordered_map<const X3DNode *, std::vector<FieldWriteListener>>;

@@ -461,8 +461,14 @@ public:
     bool lightDirty = selectionChanged || (lightDeps_.viewDependent &&
         (lightDeps_.eye != eyeWorld() ||
          lightDeps_.up != upWorld()));
+    // Bounds-only dirtiness (BoundsSystem flags every ancestor of anything
+    // that moves) cannot move, enable or reselect a light; only field,
+    // transform, child and selection changes on a dependency can.
     for (const X3DNode *n : dirty.changedNodes())
-      if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
+      if ((dirty.flags(n) & ~unsigned(DirtyBounds)) && lightDeps_.nodes.count(n)) {
+        lightDirty = true;
+        break;
+      }
     for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
       const auto &sel = lightDeps_.lodSelections[i];
       lightDirty = traversedChild(*sel.path.back(), worldAlongPath(sel.path, localXf),
