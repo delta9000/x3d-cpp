@@ -180,10 +180,10 @@ private:
     Mat4 here = TransformSystem::isTransform(n)
         ? worldM * TransformSystem::localMatrix(n, projection) : worldM;
 
-    if (n->nodeTypeName() == "Billboard") {
+    const bool billboard = n->nodeTypeName() == "Billboard";
+    if (billboard) {
       here = worldM * billboardLocalMatrix(worldM, eyeWorld, upWorld,
           geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0}));
-      if (deps) deps->viewDependent = true;
     }
     const bool track = deps != nullptr;
     auto record = [&] {
@@ -191,7 +191,12 @@ private:
       deps->nodes.insert(n);
     };
     if (leaf(n, here, scopeRoot, *path)) {
-      if (track) record();
+      if (track) {
+        record();
+        // Only a light below a Billboard moves with the eye; a Billboard with
+        // no light under it must not re-collect lights on every head move.
+        if (billboardDepth_ > 0) deps->viewDependent = true;
+      }
       return;
     }
 
@@ -217,12 +222,16 @@ private:
       return;
     }
     path->push_back(n);
+    if (billboard) ++billboardDepth_;
     forEachChildNode(*n, [&](const FieldInfo &, const std::shared_ptr<X3DNode> &c) {
       walk(c.get(), here, childScope, leaf, budget, eyeWorld, projection, depth + 1,
            deps, path, upWorld);
     });
+    if (billboard) --billboardDepth_;
     path->pop_back();
   }
+
+  mutable int billboardDepth_ = 0; // Billboards enclosing the node being walked
 
   // Read every light field reflection-generic by spec name; world-resolve the
   // direction/location through the accumulated matrix. Unset fields fall back to

@@ -493,6 +493,10 @@ private:
                 const Aabb &worldAabb, const extract::PathKey &path,
                 const SFVec3f &cameraPos, const SFVec3f &cameraUp,
                 PickResult &best) const {
+    // The ray/AABB test is the cheap reject; the path checks walk the whole
+    // ancestor chain. Every test must pass, so their order changes nothing but
+    // cost (a CAVE pointer picks thousands of placements every frame).
+    if (!rayAabb(worldRay, worldAabb)) return;
     if (!pathActive(path, cameraPos, cameraUp)) return;
     // Layer.pickable is inputOutput: inspect the retained path on every pick so
     // toggling it takes effect without invalidating the geometry placement cache.
@@ -500,7 +504,6 @@ private:
       if (dynamic_cast<const x3d::nodes::Layer *>(n) != nullptr &&
           !geombounds::getField<bool>(*n, "pickable", true))
         return;
-    if (!rayAabb(worldRay, worldAabb)) return;
     auto geom = geombounds::getNode(*shape, "geometry");
     if (!geom) return;
     Mat4 inv = worldM.inverse();
