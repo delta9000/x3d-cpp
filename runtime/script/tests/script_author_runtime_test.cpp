@@ -189,6 +189,54 @@ TEST_CASE("author output drives route") {
   }
 }
 
+// An outputOnly field generates an event only when the script assigns it
+//     (§29.2.4). A handler that assigns once must not re-emit the stale value
+//     on later calls, though reading the field back still returns it.
+
+TEST_CASE("author output emits only when assigned") {
+  X3DExecutionContext ctx;
+  Script script;
+  script.setDirectOutputUnchecked(true);
+  script.setMustEvaluateUnchecked(true);
+  script.setLoad(true);
+  script.setSourceCode(
+      "var calls = 0;"
+      "function set_value(v, ts) {"
+      "  calls++;"
+      "  if (calls == 1) position_changed = { x: v, y: v, z: v };"
+      "  else Browser.print('read ' + position_changed.x);"
+      "}");
+  ctx.authorFields().addAuthorField(
+      script, decl("set_value", X3DFieldType::SFFloat, AccessType::InputOnly));
+  ctx.authorFields().addAuthorField(
+      script,
+      decl("position_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly));
+  Transform target;
+  auto backend = std::make_shared<EcmaScriptBackend>();
+  auto sys = std::make_shared<ScriptSystem>(backend, "x3d-cpp-gen", "4.0");
+  ctx.addScriptSystem(sys);
+  sys->attach(&script, ctx);
+  ctx.addRoute(FieldAddress{&script, "position_changed"},
+               FieldAddress{&target, "translation"});
+
+  sys->deliverInputEvent(&script, "set_value", std::any(SFFloat(4.0f)),
+                         X3DFieldType::SFFloat, 1.0);
+  ctx.process();
+  CHECK(veq(target.getTranslation(), 4, 4, 4));
+
+  // Reset the target behind the script's back: a re-emitted stale output
+  // would overwrite it again.
+  target.setTranslation(SFVec3f{0, 0, 0});
+  sys->deliverInputEvent(&script, "set_value", std::any(SFFloat(7.0f)),
+                         X3DFieldType::SFFloat, 2.0);
+  ctx.process();
+  CHECK_MESSAGE((veq(target.getTranslation(), 0, 0, 0)),
+                "an output assigned on the first call is not re-sent on the second");
+  SaiContext *sai = sys->saiFor(&script);
+  CHECK_MESSAGE((sai && sai->log().find("read 4") != std::string::npos),
+                "the script still reads back its last assigned output");
+}
+
 // an inputOutput author field round-trips — the handler reads its seeded
 //     value, mutates it, and the mutation is read back into the store + emitted.
 

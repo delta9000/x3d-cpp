@@ -1,7 +1,8 @@
 // Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
-#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
+#include "FieldTypesPrelude.hpp"
+#include <cctype> // SF*/MF* constructors and prototypes
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -1105,6 +1106,27 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       duk_insert(c, -2);
       duk_put_prop_string(c, -2, kStashProtosKey);
       duk_pop(c);
+      // outputOnly author fields become accessors that remember an assignment
+      // (§29.2.4: an event is generated when the script assigns the field). A
+      // plain global stays defined after its first assignment, so readback
+      // could not otherwise tell a fresh assignment from a stale value.
+      std::string names = "[";
+      for (const FieldInfo &info : sai.context().authorFields().authorFields(scriptNode)) {
+        if (info.access != AccessType::OutputOnly) continue;
+        if (names.size() > 1) names += ",";
+        names += "\"";
+        for (char ch : info.x3dName)
+          if (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_' || ch == '$') names += ch;
+        names += "\"";
+      }
+      names += "]";
+      const std::string install =
+          "(function(g, names) { var store = {}, dirty = {};"
+          " names.forEach(function(n) { Object.defineProperty(g, n, { configurable: true, enumerable: true,"
+          " get: function() { return store[n]; }, set: function(v) { store[n] = v; dirty[n] = true; } }); });"
+          " Object.defineProperty(g, '__x3dOutputAssigned', { value: function(n) {"
+          " var d = dirty[n] === true; dirty[n] = false; return d; } }); })(this, " + names + ");";
+      duk_eval_string_noresult(c, install.c_str());
     });
 
     // Evaluate the source to define global functions. The top-level source runs
@@ -1286,6 +1308,18 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e) {
     // Read the global and convert it under protection: the value may be an
     // accessor, carry a toJSON, or be a Proxy, and any of those can throw. A
     // throw drops this field's event for this callback (logged), nothing else.
+    if (info.access == AccessType::OutputOnly) {
+      // Emit only what this callback assigned (see the accessors in load()).
+      bool assigned = true;
+      protectedRun(ctx, "assignment check of '" + info.x3dName + "'", [&](duk_context *c) {
+        duk_get_global_string(c, "__x3dOutputAssigned");
+        if (!duk_is_function(c, -1)) return;
+        duk_push_string(c, info.x3dName.c_str());
+        duk_call(c, 1);
+        assigned = duk_to_boolean(c, -1) != 0;
+      });
+      if (!assigned) continue;
+    }
     std::any prev = e.sai->context().authorFields().getValue(*e.node, info.x3dName);
     std::any value;
     protectedRun(ctx, "readback of '" + info.x3dName + "'",
