@@ -155,6 +155,7 @@ public:
 private:
   // Selection-only walks keep path identities and immutable mesh payloads.
   RenderDelta snapshot(bool retainPaths) {
+    const ViewScope view(*this);
     syncSkinChanges();
     visibility_ = currentVisibilityInputs();
     if (!retainPaths) { items_.clear(); index_.clear(); }
@@ -201,14 +202,14 @@ private:
     // tag each RenderItem with the lights whose scope covers its PathKey.
     LightSystem ls;
     lights_ = ls.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                         ctx_.cameraWorldPosition(), &lightDeps_,
-                         ctx_.cameraWorldUp());
+                         eyeWorld(), &lightDeps_,
+                         upWorld());
 
     // §24.4.3: collect all enabled LocalFogs once per snapshot. emit() tags each
     // RenderItem with the nearest one whose scopePath prefixes its PathKey.
     LocalFogSystem lfs;
     localFogs_ = lfs.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                             ctx_.cameraWorldPosition(),
+                             eyeWorld(),
                              &scopedStateDeps_);
 
     const auto fogDeps = scopedStateDeps_;
@@ -269,6 +270,7 @@ public:
   //       replacement snapshot (bounded scene walk),
   //       before reading stale paths. All old live ids removed, current ids added.
   RenderDelta delta() {
+    const ViewScope view(*this);
     // No baseline yet — a full snapshot is the baseline (see contract above).
     if (!snapped_) return fullSnapshot();
 
@@ -295,7 +297,7 @@ public:
     LocalXfCache localXf;
     for (const auto &[path, previous] : selectionPlacements_) {
       auto selected = traversedChild(*path.back(), worldAlongPath(path, localXf),
-                                     ctx_.cameraWorldPosition());
+                                     eyeWorld());
       if (selected.get() != previous) selectionChanged = true;
     }
 
@@ -457,14 +459,14 @@ public:
     // the geometry walk skips (visible=FALSE, Collision.proxy, GeoLOD rootNode)
     // and viewer-driven LOD choices there are covered too.
     bool lightDirty = selectionChanged || (lightDeps_.viewDependent &&
-        (lightDeps_.eye != ctx_.cameraWorldPosition() ||
-         lightDeps_.up != ctx_.cameraWorldUp()));
+        (lightDeps_.eye != eyeWorld() ||
+         lightDeps_.up != upWorld()));
     for (const X3DNode *n : dirty.changedNodes())
       if (lightDeps_.nodes.count(n)) { lightDirty = true; break; }
     for (std::size_t i = 0; !lightDirty && i < lightDeps_.lodSelections.size(); ++i) {
       const auto &sel = lightDeps_.lodSelections[i];
       lightDirty = traversedChild(*sel.path.back(), worldAlongPath(sel.path, localXf),
-                                  ctx_.cameraWorldPosition()).get() != sel.selected;
+                                  eyeWorld()).get() != sel.selected;
     }
     if (lightDirty) {
       auto current = selectionChanged ? lights_ : collectTrackedLights();
@@ -476,7 +478,11 @@ public:
     delta.fogChanged = true;
     for (RenderItemId id : delta.removed) liveIds_.erase(id);
     liveIds_.insert(delta.added.begin(), delta.added.end());
-    bool refreshLights = !lights_.empty();
+    // Re-tag scopes only when the published light state changed (lightDirty
+    // above compared it against the light dependencies) or a light was
+    // written. Re-collecting every tick re-tagged every live item, which
+    // dominated idle ticks of any lit scene.
+    bool refreshLights = delta.lightsChanged;
     for (const X3DNode *node : dirty.changedNodes()) {
       const auto type = node->nodeTypeName();
       if (type == "DirectionalLight" || type == "PointLight" || type == "SpotLight") {
@@ -487,8 +493,8 @@ public:
     if (refreshLights) {
       LightSystem lightSystem;
       lights_ = lightSystem.collect(scene_, ctx_.geoProjection(), walkBudget_,
-                                    ctx_.cameraWorldPosition(), nullptr,
-                                    ctx_.cameraWorldUp());
+                                    eyeWorld(), nullptr,
+                                    upWorld());
       for (RenderItemId id : liveIds_) tagLights(items_[id], items_[id].path);
     }
     const std::unordered_set<RenderItemId> added(delta.added.begin(), delta.added.end());
@@ -624,8 +630,8 @@ public:
   // lightsOf() indices are positions in); this fresh collect is for standalone use.
   std::vector<LightDesc> lights() const {
     LightSystem ls;
-    return ls.collect(scene_, ctx_.geoProjection(), ctx_.cameraWorldPosition(),
-                      ctx_.cameraWorldUp());
+    return ls.collect(scene_, ctx_.geoProjection(), eyeWorld(),
+                      upWorld());
   }
 
   // projectors — the active §42 texture projectors, world-resolved like
@@ -637,8 +643,8 @@ public:
     LightSystem ls;
     WalkBudget budget(meshOptions_.maxWalkVisits);
     std::vector<ProjectorDesc> out = ls.collectProjectors(
-        scene_, ctx_.geoProjection(), budget, ctx_.cameraWorldPosition(),
-        ctx_.cameraWorldUp());
+        scene_, ctx_.geoProjection(), budget, eyeWorld(),
+        upWorld());
     for (ProjectorDesc &p : out) {
       std::vector<TextureRef> refs{std::move(p.texture)};
       resolveTextures(refs);
@@ -868,8 +874,8 @@ private:
     WalkBudget budget(kMaxGraphWalkVisits);
     lightDeps_.clear();
     auto out = ls.collect(scene_, ctx_.geoProjection(), budget,
-                          ctx_.cameraWorldPosition(), &lightDeps_,
-                         ctx_.cameraWorldUp());
+                          eyeWorld(), &lightDeps_,
+                         upWorld());
     dropCoveredLightSelections();
     return out;
   }
@@ -1010,6 +1016,35 @@ private:
   };
   using LocalXfCache = std::unordered_map<const X3DNode *, LocalXf>;
 
+  // The eye and up vectors are fixed for one extraction pass, but every
+  // context query recomputes the bound viewpoint's world pose with a scene
+  // walk. Hold them for the pass: per-Switch/LOD/Billboard queries otherwise
+  // make a static tick O(selections x scene nodes). Outside a pass (camera(),
+  // lights()) the context is read directly.
+  struct ViewScope {
+    const SceneExtractor &self;
+    explicit ViewScope(const SceneExtractor &s) : self(s) {
+      if (self.viewScopes_++ == 0) self.viewMemo_.reset();
+    }
+    ~ViewScope() {
+      if (--self.viewScopes_ == 0) self.viewMemo_.reset();
+    }
+    ViewScope(const ViewScope &) = delete;
+    ViewScope &operator=(const ViewScope &) = delete;
+  };
+  const std::pair<SFVec3f, SFVec3f> &passView() const {
+    if (!viewMemo_) viewMemo_.emplace(ctx_.cameraWorldPosition(), ctx_.cameraWorldUp());
+    return *viewMemo_;
+  }
+  SFVec3f eyeWorld() const {
+    return viewScopes_ ? passView().first : ctx_.cameraWorldPosition();
+  }
+  SFVec3f upWorld() const {
+    return viewScopes_ ? passView().second : ctx_.cameraWorldUp();
+  }
+  mutable int viewScopes_ = 0;
+  mutable std::optional<std::pair<SFVec3f, SFVec3f>> viewMemo_;
+
   struct VisibilityInputs {
     float limit = 0; // nonpositive => unlimited
     SFVec3f eye{}, up{};
@@ -1023,8 +1058,8 @@ private:
       if (const X3DNode *ni = ctx_.boundNavigationInfo())
         inputs.limit = geombounds::getField<float>(*ni, "visibilityLimit", 0.0f);
     if (!(inputs.limit > 0)) inputs.limit = 0;
-    inputs.eye = ctx_.cameraWorldPosition();
-    inputs.up = ctx_.cameraWorldUp();
+    inputs.eye = eyeWorld();
+    inputs.up = upWorld();
     return inputs;
   }
 
@@ -1098,7 +1133,7 @@ private:
       const LocalXf &local = localXfOf(node, cache);
       if (local.isXform) world = world * local.local;
       if (local.isBillboard) {
-        if (!view) view = std::make_pair(ctx_.cameraWorldPosition(), ctx_.cameraWorldUp());
+        if (!view) view = std::make_pair(eyeWorld(), upWorld());
         world = world * billboardLocalMatrix(world, view->first, view->second,
                                              local.billboardAxis);
       }
@@ -1317,8 +1352,8 @@ private:
         ? worldM * TransformSystem::localMatrix(n, ctx_.geoProjection()) : worldM;
     if (dynamic_cast<const x3d::nodes::Billboard *>(n) != nullptr) {
       const SFVec3f axis = geombounds::getField<SFVec3f>(*n, "axisOfRotation", {0, 1, 0});
-      here = worldM * billboardLocalMatrix(worldM, ctx_.cameraWorldPosition(),
-                                           ctx_.cameraWorldUp(), axis);
+      here = worldM * billboardLocalMatrix(worldM, eyeWorld(),
+                                           upWorld(), axis);
     }
     path.push_back(n);
 
@@ -1389,7 +1424,7 @@ private:
     // visibility special-cases by nodeTypeName, before the generic child loop.
     const std::string t = n->nodeTypeName();
     if (t == "Switch" || t == "LOD") {
-      auto child = traversedChild(*n, here, ctx_.cameraWorldPosition());
+      auto child = traversedChild(*n, here, eyeWorld());
       selectionPlacements_[path] = child.get();
       if (child) walk(child.get(), here, path, delta);
       path.pop_back();

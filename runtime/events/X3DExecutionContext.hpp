@@ -645,21 +645,47 @@ public:
    *        captures a raw pointer to. Use for per-node listeners.
    */
   void addFieldWriteListener(const X3DNode *owner, FieldWriteListener l) {
-    fieldWriteListeners_.push_back({owner, std::move(l)});
+    auto next = std::make_shared<FieldWriteListenerList>(*fieldWriteListeners_);
+    next->push_back({owner, std::move(l)});
+    fieldWriteListeners_ = std::move(next);
+    installFieldWriteObserver();
+  }
+  /// Like the owner-tagged variant, but called only for writes to `node`
+  /// itself, and removed with removeFieldWriteListeners(node). Dispatch looks
+  /// the node up instead of offering the write to every listener, so a System
+  /// that watches one field set per node (shaders per Appearance) costs
+  /// nothing on unrelated writes.
+  void addNodeFieldWriteListener(const X3DNode *node, FieldWriteListener l) {
+    auto next = std::make_shared<NodeFieldWriteListeners>(*nodeFieldWriteListeners_);
+    (*next)[node].push_back(std::move(l));
+    nodeFieldWriteListeners_ = std::move(next);
+    installFieldWriteObserver();
+  }
+
+private:
+  void installFieldWriteObserver() {
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
     cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
       onFieldWritten(a, std::move(retained));
     };
   }
+
+public:
   /// Remove every listener registered with this owner (no-op if none).
   void removeFieldWriteListeners(const X3DNode *owner) {
-    fieldWriteListeners_.erase(
-        std::remove_if(fieldWriteListeners_.begin(), fieldWriteListeners_.end(),
-                       [owner](const FieldWriteListenerEntry &e) {
-                         return e.owner == owner;
-                       }),
-        fieldWriteListeners_.end());
+    auto next = std::make_shared<FieldWriteListenerList>(*fieldWriteListeners_);
+    next->erase(std::remove_if(next->begin(), next->end(),
+                               [owner](const FieldWriteListenerEntry &e) {
+                                 return e.owner == owner;
+                               }),
+                next->end());
+    fieldWriteListeners_ = std::move(next);
+    if (nodeFieldWriteListeners_->count(owner)) {
+      auto nodes = std::make_shared<NodeFieldWriteListeners>(*nodeFieldWriteListeners_);
+      nodes->erase(owner);
+      nodeFieldWriteListeners_ = std::move(nodes);
+    }
   }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
@@ -888,9 +914,17 @@ private:
     if (retained.has_value() && (ticking_ || cascade_.processDepth_ != 0))
       retainedNodeValues_.push_back(std::move(retained));
     classifyDirty(a);
+    // Snapshots: a listener may add or remove listeners while it runs, and
+    // the write is still offered to exactly the set registered before it.
     const auto listeners = fieldWriteListeners_;
-    for (const auto &l : listeners)
+    for (const auto &l : *listeners)
       if (!l.owner || !cascade_.removed_.count(l.owner)) l.fn(a);
+    if (a.node && !nodeFieldWriteListeners_->empty()) {
+      const auto nodes = nodeFieldWriteListeners_;
+      auto found = nodes->find(a.node);
+      if (found != nodes->end() && !cascade_.removed_.count(a.node))
+        for (const auto &fn : found->second) fn(a);
+    }
   }
 
   void classifyDirty(const FieldAddress &a) {
@@ -979,7 +1013,15 @@ private:
     const X3DNode *owner; // nullptr = context-lifetime listener
     FieldWriteListener fn;
   };
-  std::vector<FieldWriteListenerEntry> fieldWriteListeners_;
+  using FieldWriteListenerList = std::vector<FieldWriteListenerEntry>;
+  using NodeFieldWriteListeners =
+      std::unordered_map<const X3DNode *, std::vector<FieldWriteListener>>;
+  // Copy-on-write: registration is rare, dispatch is per field write, and a
+  // dispatch must not deep-copy thousands of std::functions to snapshot them.
+  std::shared_ptr<const FieldWriteListenerList> fieldWriteListeners_ =
+      std::make_shared<FieldWriteListenerList>();
+  std::shared_ptr<const NodeFieldWriteListeners> nodeFieldWriteListeners_ =
+      std::make_shared<NodeFieldWriteListeners>();
 };
 
 } // namespace x3d::runtime
