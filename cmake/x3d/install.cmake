@@ -27,7 +27,8 @@ set(_x3d_install_excludes
 # Exclude reference backends nested inside public runtime subdirectories.
 set(_x3d_runtime_backend_excludes
     PATTERN "dsp" EXCLUDE                # reference built-in software DSP backend
-    PATTERN "RecordingBackend.hpp" EXCLUDE)  # op-recording test double (tests only)
+    PATTERN "RecordingBackend.hpp" EXCLUDE   # op-recording test double (tests only)
+    PATTERN "EcmaScriptBackend.hpp" EXCLUDE) # installed with its target, script-backend.cmake
 
 # The curated façade header (include/x3d/sdk.hpp) installs preserving its x3d/
 # subdir so installed consumers `#include "x3d/sdk.hpp"`.

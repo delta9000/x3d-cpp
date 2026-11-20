@@ -160,7 +160,12 @@ TEST_CASE("resolver base: recursive refs, movie descriptors and legacy callbacks
   CHECK(stages[2].source == TextureRef::Source::Movie);
   CHECK(stages[2].baseUrl == "/fallback");
   CHECK(stages[2].url == x3d::core::MFString{"movie.mpg"});
-  CHECK(session->extractor().background().front.baseUrl == "/panorama");
+  const auto backdrop = session->extractor().background();
+  CHECK(backdrop.front.baseUrl == "/panorama");
+  // Panorama faces go through the same resolver, with the Background's base.
+  CHECK(backdrop.front.resolvedPixels.ready());
+  CHECK(bases.count("/panorama") == 1);
+  CHECK_FALSE(backdrop.back.resolvedPixels.ready()); // no backUrl authored
 
   int calls = 0;
   sdk::SessionOptions legacy;

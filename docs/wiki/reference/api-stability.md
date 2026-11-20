@@ -2,7 +2,7 @@
 title: API stability
 summary: What x3d-cpp promises about API, ABI, interface status and CMake target names before 1.0.
 tags: [reference, stability, packaging]
-updated: 2026-11-15
+updated: 2026-11-20
 related:
   - seam-matrix.md
 ---
@@ -37,6 +37,8 @@ pre-1.0 release policy above.
 | Target | Status |
 |---|---|
 | `x3d_cpp::sdk`, `x3d_cpp::authoring`, `x3d_cpp::x3d_cpp` | Documented entry points |
+| `x3d_cpp::ecmascript` | Documented entry point when built with `X3D_CPP_BUILD_SCRIPT` (default ON) |
+| `x3d_cpp::duktape` | Exists so `x3d_cpp::ecmascript` resolves; may be restructured |
 | `x3d_cpp::headers`, `x3d_cpp::nodes`, `x3d_cpp::authoring_runtime`, `x3d_cpp::runtime` | Exist so the export set resolves; may be restructured |
 
 ## Other limits

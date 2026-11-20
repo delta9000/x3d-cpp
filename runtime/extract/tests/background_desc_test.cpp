@@ -159,3 +159,30 @@ TEST_CASE("Background reports decreasing sky and ground angles") {
   CHECK(warnings[1].fieldName == "groundAngle");
   CHECK(warnings[1].detail.find("BACKGROUND_ANGLE_ORDER") != std::string::npos);
 }
+
+TEST_CASE("BackgroundDesc: panorama faces resolve through the TextureResolver, memoized") {
+  auto bg = createX3DNode("Background");
+  setF(bg, "frontUrl", std::any(MFString{"missing.png", "sky.png"}));
+  setF(bg, "backUrl", std::any(MFString{"sky.png"}));
+  Scene scene;
+  scene.addRootNode(bg);
+  X3DExecutionContext ctx;
+  ctx.buildSceneGraph(scene);
+  ctx.tick(0.0); // bind
+  int calls = 0;
+  extract::TextureResolver resolver = [&](const std::string &url) {
+    ++calls;
+    if (url != "sky.png") return extract::TexturePixelResult::makeFailed();
+    return extract::TexturePixelResult::makeReady(extract::TexturePixels{1, 1, {9, 9, 9, 255}});
+  };
+  const extract::SceneExtractor ex(ctx, scene, {}, resolver); // const: background() stays const
+  const extract::BackgroundDesc d = ex.background();
+  REQUIRE(d.front.resolvedPixels.ready()); // fell back past missing.png
+  REQUIRE(d.back.resolvedPixels.ready());
+  CHECK(d.front.resolvedPixels.pixels == d.back.resolvedPixels.pixels); // one decode, shared
+  CHECK_FALSE(d.top.resolvedPixels.ready());
+  const int first = calls;
+  CHECK(first == 2); // missing.png failed (not memoized), sky.png once
+  (void)ex.background();
+  CHECK(calls == first + 1); // Ready memoized; the failed candidate is re-offered
+}

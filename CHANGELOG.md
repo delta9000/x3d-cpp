@@ -8,6 +8,27 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Installed ECMAScript backend.** The Duktape `ScriptEngine` installs and
+  exports as `x3d_cpp::ecmascript`, with `EcmaScriptBackend.hpp` and the two
+  Duktape headers it includes. Before, `EcmaScriptBackend.hpp` was installed
+  without the headers it includes, and a `find_package(x3d_cpp)` consumer
+  could not link a script engine.
+- **External geometry resolvers can say Unsupported or Failed.**
+  `MeshBuildOptions::externalGeometryResolver` returns an
+  `ExternalGeometryResult` (`Ready`, `Pending`, `Unsupported`, `Failed`).
+  Before, the only "no" was an empty `PackedMesh`, read as Pending: once a
+  resolver was installed, unsupported geometry was never counted in
+  `skippedGeometryCounts()` and was offered to the resolver again on every
+  `delta()`. Unsupported now counts there, Failed counts in the new
+  `failedGeometryCounts()`, and neither is retried until a field edit.
+  Resolvers returning `PackedMesh` still compile and keep their meaning.
+  `makeExternalGeometryResolver` answers Unsupported for other node types and
+  non-STL urls, and Failed for failed fetches and malformed STL.
+- **Background faces are resolved.** `SceneExtractor::background()` resolves
+  panorama face urls through the session's `TextureResolver`, as shape
+  textures and projectors are, sharing the same decode memo. Before, faces
+  arrived with `resolvedPixels` unset and every host decoded them itself.
+
 - **Engine-wide script memory cap.** `ScriptEngine::setTotalMemoryLimit()`
   (default 1 GiB) bounds the heaps of all of one engine's scripts together,
   on top of the 256 MiB per-script cap, in both Duktape and QuickJS. Before,

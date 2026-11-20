@@ -2,7 +2,7 @@
 title: Script and SAI runtime
 summary: Script node runtime contract — ScriptSystem lifecycle, the SaiContext surface, the ScriptEngine seam, its Duktape and QuickJS backends, and their limits.
 tags: [subsystem, script, sai, ecmascript, duktape, quickjs, dynamic-fields]
-updated: 2026-11-15
+updated: 2026-11-20
 related:
   - ../../explanation/architecture.md
   - ../script-api.md
@@ -57,11 +57,12 @@ is in [Supply resources through the seams](../../how-to/supply-resources.md#run-
 | Target | Option | Default | Installed |
 |---|---|---|---|
 | Seam, `ScriptSystem`, `SaiContext` | part of `x3d_cpp::sdk` | always | yes |
-| `x3d_ecmascript_backend` (Duktape) | `X3D_CPP_BUILD_SCRIPT` | ON | no; in-tree target only |
+| `x3d_cpp::ecmascript` (Duktape; in-tree also `x3d_ecmascript_backend`) | `X3D_CPP_BUILD_SCRIPT` | ON | yes, with `EcmaScriptBackend.hpp` and the two Duktape headers it includes |
 | `x3d_quickjs` (QuickJS) | `X3D_CPP_BUILD_QUICKJS` | OFF | no; in-tree target only |
 
-A consumer of the installed package supplies its own `ScriptEngine` or builds
-the SDK in-tree to link a bundled engine.
+An installed-package consumer links `x3d_cpp::ecmascript` for the bundled
+Duktape engine, or supplies its own `ScriptEngine`. `x3d_embed_script` in
+`examples/embed_minimal` is the installed-package check.
 
 ## Interfaces and seams
 
