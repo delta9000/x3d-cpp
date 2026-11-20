@@ -2,7 +2,7 @@
 title: Extraction pipeline
 summary: SceneExtractor → MeshBuilder → PackedMesh + RenderItem — the pull-based geometry extraction seam for renderers.
 tags: [subsystem, extract, scene-extractor, mesh-builder, packed-mesh, render-item, nurbs]
-updated: 2026-09-30
+updated: 2026-11-20
 related:
   - ../../explanation/architecture.md
   - extract-textures.md
@@ -86,6 +86,7 @@ std::size_t n        = ex.itemCount();
 CameraDesc    cam  = ex.camera();
 BackgroundDesc bg  = ex.background(); // sky/ground gradient + six panorama face TextureRefs
                                       // (Background *Url / TextureBackground *Texture) + transparency.
+                                      // Url faces arrive resolved through the TextureResolver.
 FogDesc       fog  = ex.fog(); // bound Fog (§24.4.2); visibilityRange world-scaled, 0 = off.
 int           lf   = it.localFog; // §24.4.3: nearest in-scope LocalFog index, or -1.
 const std::vector<LocalFogDesc>& localFogs = ex.snapshotLocalFogs(); // resolve lf here.
@@ -95,8 +96,10 @@ const std::vector<LightDesc>& snapLights = ex.snapshotLights(); // refreshed by 
 // World-bounds (per-path-correct, not first-path-only).
 Aabb bounds = ex.sceneWorldBounds();
 
-// Coverage signal: geometry types the builder could not tessellate.
-const std::map<std::string,int>& gaps = ex.skippedGeometryCounts();
+// Coverage signal: geometry types the builder could not tessellate, plus those
+// an externalGeometryResolver answered Unsupported. Failed answers count apart.
+const std::map<std::string,int>& gaps   = ex.skippedGeometryCounts();
+const std::map<std::string,int>& failed = ex.failedGeometryCounts();
 
 // DoS signal (#21): true if this walk hit MeshBuildOptions.maxWalkVisits and
 // stopped early — the RenderDelta is then a PARTIAL view of a pathologically
@@ -202,13 +205,21 @@ struct RenderDelta {
 - `externalGeometryResolver` / `PackedMesh` — Phase 1 binary geometry path.
   When `buildLocalMesh` returns `recognized=false` and an
   `externalGeometryResolver` is wired, the extractor calls it with the
-  unrecognized geometry node. A non-empty `PackedMesh` (glTF-accessor-compatible
-  byte slabs, `attrib_mask` bitmask, `VertexBufferView` per attribute) triggers
-  `emitPacked()`, producing a `RenderItem` with
-  `geometry_ext.kind == Geometry::Kind::Packed`. An empty `PackedMesh` omits the
-  placement as Pending. `delta()` retries Pending placements on later ticks and
-  refreshes packed payloads after geometry field edits; Ready payloads need no
-  readiness polling. See [Ext firewall](ext-firewall.md).
+  unrecognized geometry node and it returns an `ExternalGeometryResult`:
+
+  | Status | Placement | Counted in | Asked again |
+  |---|---|---|---|
+  | `Ready` | `emitPacked()`: a `RenderItem` with `geometry_ext.kind == Geometry::Kind::Packed` | — | after a geometry field edit |
+  | `Pending` | omitted | — | every `delta()` |
+  | `Unsupported` | omitted | `skippedGeometryCounts()` | after a geometry field edit |
+  | `Failed` | omitted | `failedGeometryCounts()` | after a geometry field edit |
+
+  The `PackedMesh` carries glTF-accessor-compatible byte slabs, an
+  `attrib_mask` bitmask and a `VertexBufferView` per attribute. A `PackedMesh`
+  converts to a result implicitly (non-empty is `Ready`, empty is `Pending`),
+  so a resolver returning `PackedMesh` still binds; a `Ready` result without
+  vertices is treated as `Pending`. Counts restart at each `fullSnapshot()`.
+  See [Ext firewall](ext-firewall.md).
 
 - `X3DExecutionContext` (runtime dependency) — provides `dirtyTracker()` (the `DirtyTracker` read by `delta()`), `tickGeneration()` (the monotonic advance count the one-delta-per-tick guard keys on — deliberately not `now()`, which an embedder may pause or replay), `boundViewpoint()`, `boundBackground()`, `boundNavigationInfo()`, `viewMatrix()`, and `cameraWorldPosition()`. See [Execution context](execution-context.md).
 

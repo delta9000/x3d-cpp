@@ -2,7 +2,7 @@
 title: Texture, material and light extraction
 summary: Texture descriptor extraction, material system, light extraction, and the asset-resolver seam used by rendering consumers.
 tags: [subsystem, extract, textures, materials, lights, asset-resolver]
-updated: 2026-11-05
+updated: 2026-11-20
 related:
   - ../../explanation/architecture.md
   - extract.md
@@ -131,9 +131,10 @@ void enrichTextureRefs(std::vector<TextureRef> &refs,
 - Each ref keeps weak source-node identity and receives that node's
   `Scene::nodeBaseUrls` entry in `TextureRef::baseUrl`, or the fallback base
   when the node has none.
-- This covers MultiTexture stages, cube faces, shader texture fields, and
-  projectors.
-- Movie and background refs also carry `baseUrl` for hosts that load them.
+- This covers MultiTexture stages, cube faces, shader texture fields,
+  projectors, and the six `background()` panorama faces (a Background's
+  `*Url` faces take the Background node's base).
+- Movie refs also carry `baseUrl` for hosts that load them.
 - Standalone callers pass the contextual callback as the fourth
   `resolveTextureRefs` argument and fill `TextureRef::baseUrl` themselves.
 - The Ready memo keys on `(baseUrl, url)` for the contextual path and on the

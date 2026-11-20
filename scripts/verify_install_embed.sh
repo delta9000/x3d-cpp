@@ -44,12 +44,16 @@ if [ ! -f "$prefix/include/x3d_cpp/x3d/sdk.hpp" ]; then
   exit 1
 fi
 
-# Leak gate — kept identical to _x3d_install_excludes in CMakeLists.txt: no
-# test/support/fixture/vendor artifact may reach the public include tree.
-leaked="$(find "$prefix/include/x3d_cpp" \( \
+# Leak gate — kept identical to _x3d_install_excludes in cmake/x3d/install.cmake:
+# no test/support/fixture/vendor artifact may reach the public include tree.
+# One exception: the ECMAScript backend's public header includes
+# script/vendor/duktape/duktape.h, so exactly that directory ships with
+# x3d_cpp::ecmascript (cmake/x3d/script-backend.cmake) and is checked below.
+duktape_dir="$prefix/include/x3d_cpp/script/vendor/duktape"
+leaked="$(find "$prefix/include/x3d_cpp" -path "$duktape_dir" -prune -o \( \
     -type d \( -name tests -o -name fixtures -o -name test_support -o -name vendor \) \
     -o -type f \( -name '*TestSupport.*' -o -name '*test_support*' \) \
-  \) -print)"
+  \) -print | grep -vxF "$prefix/include/x3d_cpp/script/vendor" || true)"
 if [ -n "$leaked" ]; then
   echo "installed include tree contains test/support/fixture/vendor artifacts:" >&2
   echo "$leaked" >&2
@@ -66,6 +70,20 @@ if [ -n "$backends" ]; then
   echo "installed include tree contains reference/IO backends (SDK must be IO-free):" >&2
   echo "$backends" >&2
   exit 1
+fi
+
+script_enabled=OFF
+if grep -q '^X3D_CPP_BUILD_SCRIPT:BOOL=ON$' "$build_dir/CMakeCache.txt"; then
+  script_enabled=ON
+  test -f "$prefix/include/x3d_cpp/script/EcmaScriptBackend.hpp"
+  # Only the two headers the backend includes; never duktape.c.
+  [ "$(ls "$prefix/include/x3d_cpp/script/vendor")" = duktape ] || {
+    echo "unexpected vendor content under include/x3d_cpp/script/vendor" >&2; exit 1; }
+  [ "$(ls "$duktape_dir")" = "$(printf 'duk_config.h\nduktape.h')" ] || {
+    echo "unexpected files in $duktape_dir: $(ls "$duktape_dir" | tr '\n' ' ')" >&2; exit 1; }
+else
+  test ! -e "$prefix/include/x3d_cpp/script/EcmaScriptBackend.hpp"
+  test ! -e "$prefix/include/x3d_cpp/script/vendor"
 fi
 
 ext_enabled=OFF
@@ -89,7 +107,7 @@ cmake -S "$targets_src" -B "$work_dir/installed-targets" -G "$generator" \
   -DCMAKE_PREFIX_PATH="$prefix" >/dev/null
 
 cmake -S "$product_src" -B "$product_build" -G "$generator" \
-  -DCMAKE_PREFIX_PATH="$prefix" -DX3D_EMBED_EXT="$ext_enabled"
+  -DCMAKE_PREFIX_PATH="$prefix" -DX3D_EMBED_EXT="$ext_enabled" -DX3D_EMBED_SCRIPT="$script_enabled"
 cmake --build "$product_build"
 # The two halves of the README quickstart, chained: the authoring hello world
 # writes hello.x3d into the scratch work dir, the consumer parses it back and
@@ -99,6 +117,7 @@ cmake --build "$product_build"
 (cd "$work_dir" && "$product_build/x3d_embed_minimal")
 "$product_build/x3d_embed_native_host"
 if [ "$ext_enabled" = ON ]; then "$product_build/x3d_embed_ext" "$prefix/share/x3d_cpp/ext"; fi
+if [ "$script_enabled" = ON ]; then "$product_build/x3d_embed_script"; fi
 
 # Static half: no absolute source- or build-tree path may be baked into any
 # installed CMake file (prefix-relative _IMPORT_PREFIX only). A hit here is a
@@ -123,12 +142,13 @@ cp -R "$prefix" "$moved"
 mv "$prefix" "$prefix.hidden"
 trap 'mv -f "$prefix.hidden" "$prefix" 2>/dev/null || true' EXIT
 cmake -S "$product_src" -B "$moved_build" -G "$generator" \
-  -DCMAKE_PREFIX_PATH="$moved" -DX3D_EMBED_EXT="$ext_enabled" >/dev/null
+  -DCMAKE_PREFIX_PATH="$moved" -DX3D_EMBED_EXT="$ext_enabled" -DX3D_EMBED_SCRIPT="$script_enabled" >/dev/null
 cmake --build "$moved_build" >/dev/null
 (cd "$work_dir" && "$moved_build/x3d_embed_authoring")
 (cd "$work_dir" && "$moved_build/x3d_embed_minimal")
 "$moved_build/x3d_embed_native_host"
 if [ "$ext_enabled" = ON ]; then "$moved_build/x3d_embed_ext" "$moved/share/x3d_cpp/ext"; fi
+if [ "$script_enabled" = ON ]; then "$moved_build/x3d_embed_script"; fi
 mv "$prefix.hidden" "$prefix"
 trap - EXIT
 echo "relocatable: embed consumers configured, built, and ran against a moved prefix with the original hidden"

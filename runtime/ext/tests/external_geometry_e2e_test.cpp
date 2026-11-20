@@ -167,5 +167,28 @@ TEST_CASE("ExternalGeometry through SceneExtractor") {
         SceneExtractor ex(ctx, scene, opts);
         auto snap = ex.fullSnapshot();
         REQUIRE((snap.added.empty() && "unresolvable url → Pending → no Packed item"));
+        CHECK(ex.skippedGeometryCounts().empty());
+        CHECK(ex.failedGeometryCounts().empty());
+    }
+
+    SUBCASE("a failed fetch and a non-STL url are counted, not silent") {
+        AssetResolver failing = [](const std::string&, AssetKind) {
+            return AssetResult::makeFailed();
+        };
+        MeshBuildOptions opts;
+        opts.externalGeometryResolver = makeExternalGeometryResolver(failing);
+        for (const char* url : {"gone.stl", "model.ply"}) {
+            CAPTURE(url);
+            auto root = makeExtGeomShapeScene(url);
+            Scene scene;
+            scene.addRootNode(root);
+            X3DExecutionContext ctx;
+            ctx.buildSceneGraph(scene);
+            SceneExtractor ex(ctx, scene, opts);
+            CHECK(ex.fullSnapshot().added.empty());
+            const bool stl = std::string(url).ends_with(".stl");
+            const auto& counts = stl ? ex.failedGeometryCounts() : ex.skippedGeometryCounts();
+            CHECK(counts.at("ExternalGeometry") == 1);
+        }
     }
 }

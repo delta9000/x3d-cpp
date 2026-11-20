@@ -192,3 +192,74 @@ TEST_CASE("delta oracle: pending packed completion retries without a field edit"
   REQUIRE(full.added.size() == 1);
   CHECK(payload == oracle.item(full.added[0]).geometry_ext.packed.attribute_data);
 }
+
+TEST_CASE("external geom seam: Unsupported and Failed are counted and not retried") {
+  using Status = ExternalGeometryResult::Status;
+  for (Status answer : {Status::Unsupported, Status::Failed}) {
+    CAPTURE(int(answer));
+    auto geom = createX3DNode("NurbsTrimmedSurface"), shape = createX3DNode("Shape");
+    setF(geom, "uTessellation", SFInt32{1}); setF(shape, "geometry", geom);
+    Scene scene; scene.rootNodes = {shape};
+    X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+    int calls = 0;
+    bool ready = false;
+    MeshBuildOptions options;
+    options.externalGeometryResolver = [&](const X3DNode *, AssetResolver) {
+      ++calls;
+      if (ready) return ExternalGeometryResult(makeTrianglePacked());
+      return answer == Status::Unsupported ? ExternalGeometryResult::unsupported()
+                                           : ExternalGeometryResult::failed();
+    };
+    SceneExtractor ex(ctx, scene, options);
+    CHECK(ex.fullSnapshot().added.empty());
+    CHECK(calls == 1);
+    const auto &counted = answer == Status::Unsupported ? ex.skippedGeometryCounts()
+                                                        : ex.failedGeometryCounts();
+    const auto &other = answer == Status::Unsupported ? ex.failedGeometryCounts()
+                                                      : ex.skippedGeometryCounts();
+    CHECK(counted.at("NurbsTrimmedSurface") == 1);
+    CHECK(other.empty());
+
+    // No retry without an edit, unlike Pending.
+    ctx.tick(1);
+    CHECK(ex.delta().added.empty());
+    CHECK(calls == 1);
+
+    // A field edit asks again, and a Ready answer then emits.
+    ready = true;
+    ctx.postEvent(geom.get(), "uTessellation", SFInt32{2}); ctx.tick(2);
+    auto d = ex.delta();
+    CHECK(calls == 2);
+    REQUIRE(d.added.size() == 1);
+    CHECK(ex.item(d.added[0]).geometry_ext.is_packed());
+
+    // A full walk recounts.
+    ex.fullSnapshot();
+    CHECK(ex.skippedGeometryCounts().empty());
+    CHECK(ex.failedGeometryCounts().empty());
+  }
+}
+
+TEST_CASE("external geom seam: a PackedMesh-returning resolver keeps its meaning") {
+  CHECK(ExternalGeometryResult(PackedMesh{}).status == ExternalGeometryResult::Status::Pending);
+  CHECK(ExternalGeometryResult(makeTrianglePacked()).ready());
+  // Ready with no vertices is Pending, not an empty item.
+  auto shape = createX3DNode("Shape");
+  setF(shape, "geometry", createX3DNode("NurbsTrimmedSurface"));
+  Scene scene; scene.rootNodes = {shape};
+  X3DExecutionContext ctx; ctx.buildSceneGraph(scene);
+  int calls = 0;
+  MeshBuildOptions options;
+  options.externalGeometryResolver = [&](const X3DNode *, AssetResolver) {
+    ++calls;
+    ExternalGeometryResult r;
+    r.status = ExternalGeometryResult::Status::Ready;
+    return r;
+  };
+  SceneExtractor ex(ctx, scene, options);
+  CHECK(ex.fullSnapshot().added.empty());
+  ctx.tick(1);
+  CHECK(ex.delta().added.empty());
+  CHECK(calls == 2); // retried as Pending
+  CHECK(ex.skippedGeometryCounts().empty());
+}

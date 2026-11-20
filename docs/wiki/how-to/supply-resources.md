@@ -2,7 +2,7 @@
 title: Supply resources through the seams
 summary: Wire texture, asset, font and script backends into a session and control file access at parse time.
 tags: [how-to, seams, embedding]
-updated: 2026-11-15
+updated: 2026-11-20
 related:
   - ../reference/seam-matrix.md
   - ../explanation/seams.md
@@ -93,8 +93,8 @@ can't be pending: they must answer `Ready` or `Failed`.
 ## Prepare the backend example
 
 The font and script recipes need a C++20 compiler, CMake 3.21 or later, Ninja,
-and an x3d-cpp checkout. The bundled stb font adapter and Duktape script engine
-are source-tree targets. Create an empty directory outside the checkout and
+and an x3d-cpp checkout, because the bundled stb font adapter is a source-tree
+target. Create an empty directory outside the checkout and
 save this as `CMakeLists.txt`:
 
 ```cmake
@@ -104,12 +104,13 @@ project(resource_host LANGUAGES CXX)
 add_subdirectory("${X3D_CPP_SOURCE_DIR}" x3d-cpp EXCLUDE_FROM_ALL)
 add_executable(resource_host main.cpp)
 target_link_libraries(resource_host PRIVATE
-  x3d_cpp::sdk x3d_stbtt x3d_ecmascript_backend)
+  x3d_cpp::sdk x3d_stbtt x3d_cpp::ecmascript)
 ```
 
-The installed package exports the callback interfaces; these two backend
-targets are available when building from source. An installed-package host can
-instead supply its own `FontMetrics` or `ScriptEngine` implementation.
+The installed package exports the callback interfaces and the Duktape engine
+(`x3d_cpp::ecmascript`); the stb font adapter is available only when building
+from source. An installed-package host can instead supply its own
+`FontMetrics` or `ScriptEngine` implementation.
 
 Choose [Use a real font](#use-a-real-font) or [Run scripts](#run-scripts), then
 save that recipe's `main.cpp` beside `CMakeLists.txt` before configuring or

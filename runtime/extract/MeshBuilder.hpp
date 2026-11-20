@@ -41,12 +41,14 @@ struct MeshBuildOptions {
   FontMetrics fontMetrics{makeMonospaceStub()};
 
   // Embedder external-geometry seam. When set, this is called for any
-  // geometry node that buildLocalMesh returns recognized==false. An empty
-  // PackedMesh (vertex_count==0) signals Pending (retry next tick); non-empty
-  // signals Ready and triggers emitPacked(). Null by default (no ext, firewall
+  // geometry node that buildLocalMesh returns recognized==false. The result
+  // is Ready (emitPacked()), Pending (retry next delta), Unsupported (counted
+  // in skippedGeometryCounts()) or Failed (counted in failedGeometryCounts());
+  // see ExternalGeometryResult. A resolver returning PackedMesh still binds:
+  // empty = Pending, non-empty = Ready. Null by default (no ext, firewall
   // intact). Core-typed only: PackedMesh + X3DNode* + AssetResolver, no ext
   // type.
-  std::function<PackedMesh(const X3DNode *, AssetResolver)>
+  std::function<ExternalGeometryResult(const X3DNode *, AssetResolver)>
       externalGeometryResolver{};
 
   // ceiling on node-visits per fullSnapshot() walk (extractor + light
