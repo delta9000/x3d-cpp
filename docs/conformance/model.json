@@ -13182,6 +13182,8 @@
       "WaveShaper",
       "X3DBackgroundNode",
       "X3DBindableNode",
+      "X3DGeometricPropertyNode",
+      "X3DGeometryNode",
       "X3DProgrammableShaderObject",
       "X3DRigidJointNode",
       "X3DSensorNode",
