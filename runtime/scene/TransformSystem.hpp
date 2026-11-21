@@ -47,6 +47,7 @@ public:
     parent_.clear(); children_.clear(); world_.clear(); local_.clear(); walked_.clear();
     nearestTransform_.clear(); directChildren_.clear(); refCount_.clear();
     roots_.clear(); lifetime_.clear();
+    ++structureRevision_;
     for (const auto &root : scene.rootNodes)
       if (root) {
         roots_.push_back(root.get());
@@ -117,6 +118,17 @@ public:
   /// structural re-walk). A no-op tick leaves it unchanged. Cheap const
   /// accessor for caches keyed on the transform state (e.g. a pick index).
   std::uint64_t revision() const { return revision_; }
+  /// Bumps only when the hierarchy index changes (buildIndex or a structural
+  /// re-walk), not when a world matrix is re-accumulated. Caches holding
+  /// paths (a pick index) stay valid across transform-only revisions.
+  std::uint64_t structureRevision() const { return structureRevision_; }
+
+  /// The local matrix propagate() last computed for an indexed transform-
+  /// bearing node, or nullptr. Cheaper than localMatrix(): no field reflection.
+  const Mat4 *cachedLocal(const X3DNode *n) const {
+    auto it = local_.find(n);
+    return it == local_.end() ? nullptr : &it->second;
+  }
 
   /// Raw scene root pointers captured by buildIndex — used by view-dependent
   /// reachability (a node is in the active hierarchy iff some active root->node
@@ -152,7 +164,10 @@ public:
     bool changed = !roots.empty();
     sharedEdgeRemoved_ = false;
     for (const X3DNode *g : structural)
-      if (reindexChildren(g, dirty)) changed = true;
+      if (reindexChildren(g, dirty)) {
+        changed = true;
+        ++structureRevision_;
+      }
     // Removing an edge to a shared subtree can change the serving Transform of
     // its non-Transform nodes as well as the canonical parent of descendants.
     // Rebuild once from live roots in that case; patching just the direct child's
@@ -426,6 +441,7 @@ private:
   // A shared subtree lost an edge; its descendants may need new ancestor frames.
   bool sharedEdgeRemoved_ = false;
   std::uint64_t revision_ = 0;
+  std::uint64_t structureRevision_ = 0;
 };
 
 } // namespace x3d::runtime
