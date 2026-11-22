@@ -21,6 +21,7 @@
 #include "x3d/nodes/Layer.hpp"
 #include "X3DScene.hpp"
 
+#include <unordered_map>
 #include <algorithm>
 #include <any>
 #include <array>
@@ -102,59 +103,90 @@ public:
                          std::size_t maxVisits = kMaxGraphWalkVisits,
                          const TransformSystem *ts = nullptr) const {
     const std::uint64_t trev = ts ? ts->revision() : 0;
+    const std::uint64_t srev = ts ? ts->structureRevision() : 0;
     lastIndexVisits_ = 0;
     lastCandidateTests_ = 0;
-    const bool needRebuild = !indexValid_ || !ts || trev != cachedTransformRev_ ||
+    // Only a hierarchy change needs a new walk. An animated transform keeps
+    // every cached path; refitting its matrices costs a fraction of a walk,
+    // which matters when something moves on every frame a pointer is present.
+    const bool needRebuild = !indexValid_ || !ts || srev != cachedStructureRev_ ||
                              maxVisits != cachedMaxVisits_;
     if (needRebuild) {
+      meshCache_.clear();
       rebuildIndex(bounds, maxVisits);
       cachedTransformRev_ = trev;
+      cachedStructureRev_ = srev;
       cachedBoundsRev_ = bounds.revision();
       cachedMaxVisits_ = maxVisits;
       indexValid_ = true;
+    } else if (trev != cachedTransformRev_) {
+      const bool boundsChanged = bounds.revision() != cachedBoundsRev_;
+      if (boundsChanged) meshCache_.clear();
+      refitWorld(bounds, boundsChanged, *ts);
+      cachedTransformRev_ = trev;
+      cachedBoundsRev_ = bounds.revision();
     } else if (bounds.revision() != cachedBoundsRev_) {
+      meshCache_.clear();
       refitAabbs(bounds);
       cachedBoundsRev_ = bounds.revision();
     }
 
     PickResult best;
-    // Merge the cached structural placements and the live billboard placements in
-    // their original DFS order so exact-distance ties break identically to the
-    // reflective walk (first visited wins).
-    std::size_t i = 0, j = 0;
-    while (i < statics_.size() || j < billboards_.size()) {
-      bool takeStatic;
-      if (i >= statics_.size()) takeStatic = false;
-      else if (j >= billboards_.size()) takeStatic = true;
-      else takeStatic = statics_[i].order < billboards_[j].order;
-      if (takeStatic) {
-        const Placement &p = statics_[i++];
-        ++lastCandidateTests_;
-        evaluate(worldRay, p.node, p.worldM, p.aabb, p.path,
-                 cameraPos, cameraUp, best);
-      } else {
-        const Placement &p = billboards_[j++];
-        ++lastCandidateTests_;
-        const Mat4 wm = liveWorldM(p.path, cameraPos, cameraUp);
-        const Aabb wb = bounds.localBounds(p.node).transformed(wm);
-        evaluate(worldRay, p.node, wm, wb, p.path, cameraPos, cameraUp, best);
-      }
+    std::size_t bestOrder = 0;
+    // Nearest first: gather the placements whose world AABB the ray enters,
+    // sort by entry distance, and stop once the next box starts beyond the
+    // best hit. Exact-distance ties still go to the earliest DFS placement
+    // (evaluate compares order), so the result equals the full scan's.
+    const float dirLen = std::sqrt(worldRay.direction.x * worldRay.direction.x +
+                                   worldRay.direction.y * worldRay.direction.y +
+                                   worldRay.direction.z * worldRay.direction.z);
+    struct Candidate { float entry; std::size_t order; const Placement *p; Mat4 wm; Aabb wb; };
+    std::vector<Candidate> candidates;
+    auto entryOf = [&](const Aabb &box) -> std::optional<float> {
+      auto t = rayAabb(worldRay, box);
+      if (!t) return std::nullopt;
+      const SFVec3f &o = worldRay.origin;
+      const bool inside = o.x >= box.min.x && o.x <= box.max.x && o.y >= box.min.y &&
+                          o.y <= box.max.y && o.z >= box.min.z && o.z <= box.max.z;
+      return inside ? 0.0f : *t * dirLen;
+    };
+    for (const Placement &p : statics_)
+      if (auto e = entryOf(p.aabb)) candidates.push_back({*e, p.order, &p, p.worldM, p.aabb});
+    for (const Placement &p : billboards_) {
+      const Mat4 wm = liveWorldM(p.path, cameraPos, cameraUp);
+      const Aabb wb = bounds.localBounds(p.node).transformed(wm);
+      if (auto e = entryOf(wb)) candidates.push_back({*e, p.order, &p, wm, wb});
+    }
+    std::sort(candidates.begin(), candidates.end(), [](const Candidate &a, const Candidate &b) {
+      return a.entry != b.entry ? a.entry < b.entry : a.order < b.order;
+    });
+    for (const Candidate &c : candidates) {
+      if (best.hit && c.entry > best.distance) break;
+      ++lastCandidateTests_;
+      evaluate(worldRay, c.p->node, c.wm, c.wb, c.p->path, cameraPos, cameraUp, best,
+               c.order, bestOrder);
     }
     best.budgetExceeded = budgetTripped_;
     return best;
   }
 
+  /// Forget tessellated pick meshes (a geometry or its Coordinate/Normal/...
+  /// was written). The context calls this from its field-write path.
+  void invalidateMeshes() const { meshCache_.clear(); }
+
   // Accumulated world transform at `target` (product of ancestor Transform local
   // matrices). Identity if not found. Used for camera pose in viewMatrix.
-  Mat4 worldOf(const X3DNode *target) const {
+  Mat4 worldOf(const X3DNode *target,
+               std::vector<const X3DNode *> *ancestors = nullptr) const {
     Mat4 out = Mat4::identity();
+    if (ancestors) ancestors->clear();
     // Memoize fully-explored subtrees so a wide (acyclic "doubling") DAG is
     // searched in O(nodes), not O(paths). worldOf returns the first-found
     // placement, so pruning already-explored subtrees never changes the result.
     std::unordered_set<const X3DNode *> visited;
     bool incomplete = false;
     for (X3DNode *r : roots_)
-      if (worldOfRec(r, Mat4::identity(), target, out, visited, incomplete)) break;
+      if (worldOfRec(r, Mat4::identity(), target, out, visited, incomplete, 0, ancestors)) break;
     return out;
   }
 
@@ -236,9 +268,12 @@ private:
     }
   }
 
+  using MeshCache = std::unordered_map<const X3DNode *, std::shared_ptr<const extract::MeshData>>;
+  // `cache`, when given, keeps tessellated meshes between picks: a pointer
+  // resting on a large IndexedFaceSet otherwise rebuilds it every frame.
   static std::optional<NarrowHit> narrowPhase(const X3DNode *geom,
                                              const geo::GeoProjection &projection,
-                                             const Ray &local) {
+                                             const Ray &local, MeshCache *cache = nullptr) {
     NarrowHit hit;
     const std::string t = geom->nodeTypeName();
     if (t == "Sphere") {
@@ -319,7 +354,15 @@ private:
       return std::nullopt;
     }
     if (isMeshType(t)) {
-      extract::MeshData mesh = extract::buildLocalMesh(geom, projection);
+      std::shared_ptr<const extract::MeshData> held;
+      if (cache) {
+        auto &slot = (*cache)[geom];
+        if (!slot) slot = std::make_shared<const extract::MeshData>(extract::buildLocalMesh(geom, projection));
+        held = slot;
+      } else {
+        held = std::make_shared<const extract::MeshData>(extract::buildLocalMesh(geom, projection));
+      }
+      const extract::MeshData &mesh = *held;
       // Use triangles when available; otherwise fall back to the geometry AABB.
       if (!mesh.indices.empty()) {
         bool found = false;
@@ -492,7 +535,11 @@ private:
   void evaluate(const Ray &worldRay, X3DNode *shape, const Mat4 &worldM,
                 const Aabb &worldAabb, const extract::PathKey &path,
                 const SFVec3f &cameraPos, const SFVec3f &cameraUp,
-                PickResult &best) const {
+                PickResult &best, std::size_t order, std::size_t &bestOrder) const {
+    // The ray/AABB test is the cheap reject; the path checks walk the whole
+    // ancestor chain. Every test must pass, so their order changes nothing but
+    // cost (a CAVE pointer picks thousands of placements every frame).
+    if (!rayAabb(worldRay, worldAabb)) return;
     if (!pathActive(path, cameraPos, cameraUp)) return;
     // Layer.pickable is inputOutput: inspect the retained path on every pick so
     // toggling it takes effect without invalidating the geometry placement cache.
@@ -500,18 +547,18 @@ private:
       if (dynamic_cast<const x3d::nodes::Layer *>(n) != nullptr &&
           !geombounds::getField<bool>(*n, "pickable", true))
         return;
-    if (!rayAabb(worldRay, worldAabb)) return;
     auto geom = geombounds::getNode(*shape, "geometry");
     if (!geom) return;
     Mat4 inv = worldM.inverse();
     Ray local{inv.transformPoint(worldRay.origin), inv.transformDirection(worldRay.direction)};
-    auto h = narrowPhase(geom.get(), geoProjection(), local);
+    auto h = narrowPhase(geom.get(), geoProjection(), local, &meshCache_);
     if (!h) return;
     SFVec3f wp = worldM.transformPoint(local.pointAt(h->t));
     float dx = wp.x - worldRay.origin.x, dy = wp.y - worldRay.origin.y,
           dz = wp.z - worldRay.origin.z;
     float d = std::sqrt(dx * dx + dy * dy + dz * dz);
-    if (!best.hit || d < best.distance) {
+    if (!best.hit || d < best.distance || (d == best.distance && order < bestOrder)) {
+      bestOrder = order;
       best.hit = true; best.node = shape; best.point = wp; best.distance = d;
       best.path = path; // root→this geometry-bearing node chain.
       // World-space normal = normalize(inverse-transpose(worldM) · n).
@@ -530,6 +577,31 @@ private:
     for (X3DNode *r : roots_)
       enumerate(r, Mat4::identity(), false, bounds, path, budget);
     budgetTripped_ = budget.tripped;
+  }
+
+  // Recompute each cached placement's world matrix along its stored path, the
+  // way enumerate() accumulated it (ancestors only, never the node's own TRS),
+  // then its world AABB. Each node's local matrix is read once per refit.
+  // Recompute each cached placement's world matrix along its stored path, the
+  // way enumerate() accumulated it (ancestors only, never the node's own TRS),
+  // from the TransformSystem's cached local matrices (refreshed by propagate,
+  // which is also when the transform revision moves). Only placements whose
+  // matrix changed, or all when bounds changed, get a new world AABB:
+  // localBounds can be costly for large meshes.
+  void refitWorld(const BoundsSystem &bounds, bool boundsChanged,
+                  const TransformSystem &ts) const {
+    for (Placement &p : statics_) {
+      Mat4 m = Mat4::identity();
+      for (std::size_t i = 0; i + 1 < p.path.size(); ++i) {
+        const X3DNode *n = p.path[i];
+        if (!TransformSystem::isTransform(n)) continue;
+        if (const Mat4 *cached = ts.cachedLocal(n)) m = m * *cached;
+        else m = m * TransformSystem::localMatrix(n, geoProjection());
+      }
+      if (!boundsChanged && m.m == p.worldM.m) continue;
+      p.worldM = m;
+      p.aabb = bounds.localBounds(p.node).transformed(m);
+    }
   }
 
   void refitAabbs(const BoundsSystem &bounds) const {
@@ -561,7 +633,8 @@ private:
   // within it via a shallower path that stays under the cap.
   bool worldOfRec(const X3DNode *n, const Mat4 &worldM, const X3DNode *target,
                   Mat4 &out, std::unordered_set<const X3DNode *> &visited,
-                  bool &incomplete, std::size_t depth = 0) const {
+                  bool &incomplete, std::size_t depth = 0,
+                  std::vector<const X3DNode *> *ancestors = nullptr) const {
     // a hard depth cap stops a USE-cyclic / pathologically deep graph from
     // overrunning the stack when `target` is absent (full traversal). The cap also
     // breaks containment cycles (a node re-reached before it completes recurses to
@@ -577,10 +650,13 @@ private:
     bool found = false;
     bool childIncomplete = false;
     forEachChild(n, [&](const X3DNode *c) {
-      if (!found && worldOfRec(c, here, target, out, visited, childIncomplete, depth + 1))
+      if (!found && worldOfRec(c, here, target, out, visited, childIncomplete, depth + 1, ancestors))
         found = true;
     });
-    if (found) return true;
+    if (found) {
+      if (ancestors) ancestors->push_back(n); // the found path, target's parent first
+      return true;
+    }
     if (childIncomplete) incomplete = true; // truncated -> do not memoize n
     else visited.insert(n);                 // fully explored, target absent -> memoize
     return false;
@@ -678,6 +754,8 @@ private:
   mutable std::vector<Placement> billboards_;
   mutable bool indexValid_ = false;
   mutable std::uint64_t cachedTransformRev_ = 0;
+  mutable std::uint64_t cachedStructureRev_ = 0;
+  mutable MeshCache meshCache_;   // see narrowPhase; cleared by invalidateMeshes()
   mutable std::uint64_t cachedBoundsRev_ = 0;
   mutable std::size_t cachedMaxVisits_ = 0;
   mutable bool budgetTripped_ = false;

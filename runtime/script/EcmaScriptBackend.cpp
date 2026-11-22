@@ -1,7 +1,8 @@
 // Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
-#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
+#include "FieldTypesPrelude.hpp"
+#include <string>
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -29,6 +30,49 @@ constexpr const char *kNodeIdKey = "\xff" "x3dNodeId";  // SFNode handle id
 constexpr const char *kStashSaiKey = "sai";  // global-stash slot: SaiContext*
 // global-stash slot: field-type name -> prototype (FieldTypesPrelude.hpp)
 constexpr const char *kStashProtosKey = "fieldProtos";
+constexpr const char *kOutputOnlyKey = "\xff" "x3dOutputOnly";
+
+std::string outputOnlyValueKey(const std::string &name) {
+  return "\xff" "x3dOutputOnly:" + name;
+}
+
+std::string outputOnlyAssignedKey(const std::string &name) {
+  return outputOnlyValueKey(name) + ":assigned";
+}
+
+duk_ret_t outputOnlyGet(duk_context *ctx) {
+  duk_push_current_function(ctx);
+  duk_get_prop_string(ctx, -1, kOutputOnlyKey);
+  const char *keyString = duk_get_string(ctx, -1);
+  std::string key = keyString ? keyString : "";
+  duk_pop_2(ctx);
+  duk_push_this(ctx);
+  if (!key.empty())
+    duk_get_prop_string(ctx, -1, key.c_str());
+  else
+    duk_push_undefined(ctx);
+  return 1;
+}
+
+duk_ret_t outputOnlySet(duk_context *ctx) {
+  duk_push_current_function(ctx);
+  duk_get_prop_string(ctx, -1, kOutputOnlyKey);
+  const char *keyString = duk_get_string(ctx, -1);
+  if (!keyString) {
+    duk_pop_2(ctx);
+    return 0;
+  }
+  std::string key = keyString;
+  std::string assignedKey = key + ":assigned";
+  duk_pop_2(ctx);
+
+  duk_push_this(ctx);
+  duk_dup(ctx, 0);
+  duk_put_prop_string(ctx, -2, key.c_str());
+  duk_push_true(ctx);
+  duk_put_prop_string(ctx, -2, assignedKey.c_str());
+  return 0;
+}
 
 // SFNode <-> JS opaque handle object.
 // A non-null node becomes a JS object carrying its NodeHandleTable id in a
@@ -1105,6 +1149,27 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       duk_insert(c, -2);
       duk_put_prop_string(c, -2, kStashProtosKey);
       duk_pop(c);
+      // outputOnly author fields become accessors that remember an assignment
+      // (§29.2.4: an event is generated when the script assigns the field). A
+      // plain global stays defined after its first assignment, so readback
+      // could not otherwise tell a fresh assignment from a stale value.
+      duk_push_global_object(c);
+      for (const FieldInfo &info : sai.context().authorFields().authorFields(scriptNode)) {
+        if (info.access != AccessType::OutputOnly) continue;
+        const std::string valueKey = outputOnlyValueKey(info.x3dName);
+        duk_push_string(c, info.x3dName.c_str());
+        duk_push_c_function(c, outputOnlyGet, 0);
+        duk_push_string(c, valueKey.c_str());
+        duk_put_prop_string(c, -2, kOutputOnlyKey);
+        duk_push_c_function(c, outputOnlySet, 1);
+        duk_push_string(c, valueKey.c_str());
+        duk_put_prop_string(c, -2, kOutputOnlyKey);
+        duk_def_prop(c, -4,
+                     DUK_DEFPROP_HAVE_GETTER | DUK_DEFPROP_HAVE_SETTER |
+                         DUK_DEFPROP_SET_ENUMERABLE |
+                         DUK_DEFPROP_SET_CONFIGURABLE);
+      }
+      duk_pop(c);
     });
 
     // Evaluate the source to define global functions. The top-level source runs
@@ -1290,6 +1355,23 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e) {
     std::any value;
     protectedRun(ctx, "readback of '" + info.x3dName + "'",
                  [&](duk_context *c) {
+      if (info.access == AccessType::OutputOnly) {
+        const std::string assignedKey =
+            outputOnlyAssignedKey(info.x3dName);
+        duk_push_global_object(c);
+        duk_get_prop_string(c, -1, assignedKey.c_str());
+        bool assigned = false;
+        if (duk_is_boolean(c, -1))
+          assigned = duk_get_boolean(c, -1) != 0;
+        duk_pop(c);
+        if (!assigned) {
+          duk_pop(c);
+          return;
+        }
+        duk_push_false(c);
+        duk_put_prop_string(c, -2, assignedKey.c_str());
+        duk_pop(c);
+      }
       duk_get_global_string(c, info.x3dName.c_str());
       if (duk_is_undefined(c, -1)) return;  // never defined / never assigned
       // Suppress a no-op re-emit only for inputOutput: there the JS global is an

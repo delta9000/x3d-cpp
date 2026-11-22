@@ -87,7 +87,8 @@ TEST_CASE("pick_index_refits_on_transform_revision") {
   CHECK((a.hit && feq(a.point.x, 5)));
 
   // A transform change routed through the dirty pipeline bumps the revision, so
-  // the cached index must rebuild/refit and pick up the new world frame.
+  // the cached index must refit and pick up the new world frame. Paths are
+  // unchanged, so the refit reuses them: no graph walk.
   setF(T, "translation", std::any(SFVec3f{10, 0, 0}));
   DirtyTracker dirty;
   dirty.markDirty(T.get(), DirtyLocalTransform);
@@ -96,5 +97,19 @@ TEST_CASE("pick_index_refits_on_transform_revision") {
   auto b = ps.pickClosest(Ray{{10, 0, 10}, {0, 0, -1}}, bs, {0, 0, 0}, {0, 1, 0},
                           x3d::kMaxGraphWalkVisits, &ts);
   CHECK((b.hit && feq(b.point.x, 10)));
-  CHECK(ps.lastIndexVisits() > 0); // the revision change forced a rebuild
+  CHECK(ps.lastIndexVisits() == 0); // refit along cached paths, not a re-walk
+
+  // A structural change (a new child) does need a new walk.
+  auto T2 = createX3DNode("Transform"); setF(T2, "translation", std::any(SFVec3f{20, 0, 0}));
+  auto box2 = createX3DNode("Box"); setF(box2, "size", std::any(SFVec3f{2, 2, 2}));
+  addChild(T2, shapeWith(box2));
+  addChild(root, T2);
+  DirtyTracker dirty2;
+  dirty2.markDirty(root.get(), DirtyChildren);
+  ts.propagate(dirty2);
+  bs.buildBounds(sc, ts);
+  auto c = ps.pickClosest(Ray{{20, 0, 10}, {0, 0, -1}}, bs, {0, 0, 0}, {0, 1, 0},
+                          x3d::kMaxGraphWalkVisits, &ts);
+  CHECK((c.hit && feq(c.point.x, 20)));
+  CHECK(ps.lastIndexVisits() > 0); // the hierarchy changed: rebuilt
 }
