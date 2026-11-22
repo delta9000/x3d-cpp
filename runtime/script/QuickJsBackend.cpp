@@ -165,6 +165,24 @@ void setNum(JSContext *ctx, JSValue obj, const char *name, double v) {
 // Defined read-only and non-configurable, so a script cannot swap the table.
 constexpr const char *kFieldProtosKey = "\x01x3dFieldProtos";
 
+// Global slot holding one {v, assigned} record per outputOnly author field,
+// read and written by that field's global accessor (installOutputOnlyFields).
+constexpr const char *kOutputSlotsKey = "\x01x3dOutputSlots";
+
+// outputOnly accessor halves. func_data[0] is the field's {v, assigned} record.
+JSValue outputOnlyGet(JSContext *ctx, JSValueConst, int, JSValueConst *, int,
+                      JSValueConst *data) {
+  return JS_GetPropertyStr(ctx, data[0], "v");
+}
+
+JSValue outputOnlySet(JSContext *ctx, JSValueConst, int argc, JSValueConst *argv,
+                      int, JSValueConst *data) {
+  JS_SetPropertyStr(ctx, data[0], "v",
+                    argc > 0 ? JS_DupValue(ctx, argv[0]) : JS_UNDEFINED);
+  JS_SetPropertyStr(ctx, data[0], "assigned", JS_TRUE);
+  return JS_UNDEFINED;
+}
+
 // Give `o` the prototype of field type `type` (methods and index accessors)
 // and return it. A no-op when the prelude is not installed.
 JSValue adopt(JSContext *c, JSValue o, const char *type) {
@@ -831,6 +849,18 @@ struct QuickJsBackend::Impl {
     return toStdString(ctx, str.get());
   }
 
+  // Read and clear an outputOnly field's assigned flag (installOutputOnlyFields).
+  bool takeAssigned(JSContext *ctx, const std::string &name) {
+    JsValue slots = getGlobal(ctx, kOutputSlotsKey);
+    if (!JS_IsObject(slots.get())) return false;
+    JsValue slot(ctx, JS_GetPropertyStr(ctx, slots.get(), name.c_str()));
+    if (!JS_IsObject(slot.get())) return false;
+    JsValue flag(ctx, JS_GetPropertyStr(ctx, slot.get(), "assigned"));
+    const bool assigned = JS_ToBool(ctx, flag.get()) > 0;
+    if (assigned) JS_SetPropertyStr(ctx, slot.get(), "assigned", JS_FALSE);
+    return assigned;
+  }
+
   // JS global -> store + cascade event, per readable author field
   // (outputOnly/inputOutput) the script wrote. Suppresses no-op re-emits.
   void readbackAuthorGlobals(Entry &e) {
@@ -848,14 +878,20 @@ struct QuickJsBackend::Impl {
         logException(ctx, what.c_str());
         continue;
       }
+      // outputOnly: an assignment since the last readback always emits, even
+      // with the same value (§29.2.4 / ISO 19777-1). Without one, the field
+      // emits only if the script changed it in place (`out.x = 1`,
+      // `out[0] = 1`), so a value assigned on an earlier call is not re-sent.
+      const bool assigned =
+          info.access == AccessType::OutputOnly && takeAssigned(ctx, info.x3dName);
       if (g.isUndefined()) continue;  // not defined / never assigned
-      // Suppress a no-op re-emit only for inputOutput: there the JS global is an
-      // echo of the value the field already holds. outputOnly is the script's own
-      // output channel — an explicit assignment generates an event regardless of
-      // value (§29.2.4 / ISO 19777-1), so it is never diffed away
-      //.
+      // Otherwise suppress a no-op re-emit: for inputOutput the JS global is
+      // an echo of the value the field already holds; for an unassigned
+      // outputOnly it is the value last emitted.
       std::any prev = e.sai->context().authorFields().getValue(*e.node, info.x3dName);
-      if (info.access == AccessType::InputOutput && prev.has_value()) {
+      if (!assigned && info.access == AccessType::OutputOnly && !prev.has_value())
+        continue;
+      if (!assigned && prev.has_value()) {
         JsValue prevJs(ctx, pushValue(ctx, prev, info.type));
         const bool same = jsonOf(ctx, g.get()) == jsonOf(ctx, prevJs.get());
         if (JS_HasException(ctx)) {
@@ -1171,12 +1207,37 @@ private:
 
 // Install the script's globals and evaluate its source in a fresh context.
 // False (after logging) on any failure; the caller frees the context.
-bool loadInto(JSContext *ctx, SaiContext &sai, const std::string &source) {
+// outputOnly author fields become global accessors that remember an
+// assignment (§29.2.4: an event is generated when the script assigns the
+// field). A plain global stays defined after its first assignment, so readback
+// could not otherwise tell a fresh assignment (always an event) from a value
+// left from an earlier call (an event only if changed in place).
+void installOutputOnlyFields(JSContext *ctx, X3DNode &scriptNode, SaiContext &sai) {
+  JsValue global(ctx, JS_GetGlobalObject(ctx));
+  JSValue slots = JS_NewObject(ctx);
+  for (const FieldInfo &info : sai.context().authorFields().authorFields(scriptNode)) {
+    if (info.access != AccessType::OutputOnly) continue;
+    JSValue slot = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, slot, "assigned", JS_FALSE);
+    JSValue getter = JS_NewCFunctionData(ctx, outputOnlyGet, 0, 0, 1, &slot);
+    JSValue setter = JS_NewCFunctionData(ctx, outputOnlySet, 1, 0, 1, &slot);
+    JSAtom name = JS_NewAtom(ctx, info.x3dName.c_str());
+    JS_DefinePropertyGetSet(ctx, global.get(), name, getter, setter,
+                            JS_PROP_ENUMERABLE | JS_PROP_CONFIGURABLE);
+    JS_FreeAtom(ctx, name);
+    JS_SetPropertyStr(ctx, slots, info.x3dName.c_str(), slot);  // consumes slot
+  }
+  JS_DefinePropertyValueStr(ctx, global.get(), kOutputSlotsKey, slots, 0);
+}
+
+bool loadInto(JSContext *ctx, X3DNode &scriptNode, SaiContext &sai,
+              const std::string &source) {
   // Thread the SaiContext to Browser callbacks (1 context : 1 script).
   JS_SetContextOpaque(ctx, &sai);
   installBrowser(ctx);
   installDeterministicDate(ctx);
   if (!installFieldTypes(ctx)) return false;
+  installOutputOnlyFields(ctx, scriptNode, sai);
   // Evaluate the source to define global functions (initialize/handlers/...).
   JsValue result(ctx, JS_Eval(ctx, source.c_str(), source.size(),
                               "<script>", JS_EVAL_TYPE_GLOBAL));
@@ -1212,7 +1273,7 @@ ScriptHandle QuickJsBackend::load(X3DNode &scriptNode,
   {
     ArmDeadline armed(entry.budget->armed, entry.budget->deadline,
                       callBudget());
-    ok = loadInto(ctx, sai, source);
+    ok = loadInto(ctx, scriptNode, sai, source);
   }
   if (!ok) {
     Impl::freeEntry(entry);

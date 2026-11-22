@@ -162,6 +162,18 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Changed
 
+- **Large scenes stay cheap while idle and under a pointer.** The extractor
+  reads the eye and up vectors once per pass, re-collects and re-tags lights
+  only when the published light list changed or a light was written, and
+  treats head motion as a light change only for lights under a Billboard. The
+  context memoizes the bound viewpoint's ancestor frame. The pick index refits
+  world matrices along its cached paths when a transform animates (it re-walks
+  only on a hierarchy change), caches tessellated pick meshes until a geometry
+  write, and tests candidates nearest first. New calls:
+  `X3DExecutionContext::addNodeFieldWriteListener()`,
+  `TransformSystem::structureRevision()` and `cachedLocal()`,
+  `PickSystem::invalidateMeshes()`.
+
 - **Remaining hand-rolled test mains are doctest.** The script backend shared
   cases (one `SUBCASE` each), the codec round-trip and PROTO expansion audits,
   the CAVE extension cases (one ctest per `--test-suite`) and the SAI provider
@@ -223,6 +235,15 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Fixed
 
+- **Script outputOnly values are not re-sent.** A value a Script assigned to
+  an outputOnly field on one call was emitted again after every later call,
+  re-driving its ROUTEs. Now an assignment emits (even the same value), and
+  otherwise the field emits only if the script changed it in place
+  (`out.x = 1`, `out[0] = 1`). Same in Duktape and QuickJS.
+- **Refused external geometry is counted on edits too.** An Unsupported or
+  Failed answer from the external geometry resolver after a field edit now
+  counts in `skippedGeometryCounts()` / `failedGeometryCounts()`, as it does
+  in a full walk.
 - **glTF export of 2D interpolators and textured morphs.** A
   `CoordinateInterpolator2D` or `PositionInterpolator2D` route was skipped
   silently (its type name ends in `2D`), so texture-coordinate animation by

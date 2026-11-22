@@ -27,6 +27,8 @@
 #include "x3d/nodes/GeoViewpoint.hpp"
 #include "x3d/nodes/LayerSet.hpp"
 #include "x3d/nodes/Switch.hpp"
+#include "x3d/nodes/X3DGeometryNode.hpp"
+#include "x3d/nodes/X3DGeometricPropertyNode.hpp"
 
 #include <algorithm>
 #include <any>
@@ -202,6 +204,7 @@ public:
         [this](BindTransition k) { lastVpTransition_ = k; });
     bindings_.bindDefaults();
     pick_.build(scene);
+    vpWorldValid_ = false;
     cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
       onFieldWritten(a, std::move(retained));
     };
@@ -215,6 +218,7 @@ public:
     transforms_.buildIndex(scene);
     bounds_.buildBounds(scene, transforms_);
     pick_.build(scene);
+    vpWorldValid_ = false;
   }
 
   void attachNewSubtree(X3DNode *root) {
@@ -645,21 +649,46 @@ public:
    *        captures a raw pointer to. Use for per-node listeners.
    */
   void addFieldWriteListener(const X3DNode *owner, FieldWriteListener l) {
-    fieldWriteListeners_.push_back({owner, std::move(l)});
+    writable(fieldWriteListeners_).push_back({owner, std::move(l)});
+    installFieldWriteObserver();
+  }
+  /// Like the owner-tagged variant, but called only for writes to `node`
+  /// itself, and removed with removeFieldWriteListeners(node). Dispatch looks
+  /// the node up instead of offering the write to every listener, so a System
+  /// that watches one field set per node (shaders per Appearance) costs
+  /// nothing on unrelated writes.
+  void addNodeFieldWriteListener(const X3DNode *node, FieldWriteListener l) {
+    writable(nodeFieldWriteListeners_)[node].push_back(std::move(l));
+    installFieldWriteObserver();
+  }
+
+private:
+  // Copy-on-write: a dispatch in progress holds a snapshot (a second
+  // reference), and only then does a registration copy the list. Otherwise
+  // it is changed in place, so registering n listeners costs O(n), not O(n^2).
+  template <class T> static T &writable(std::shared_ptr<T> &p) {
+    if (p.use_count() > 1) p = std::make_shared<T>(*p);
+    return *p;
+  }
+
+  void installFieldWriteObserver() {
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
     cascade_.observer_ = [this](const FieldAddress &a, std::any retained) {
       onFieldWritten(a, std::move(retained));
     };
   }
+
+public:
   /// Remove every listener registered with this owner (no-op if none).
   void removeFieldWriteListeners(const X3DNode *owner) {
-    fieldWriteListeners_.erase(
-        std::remove_if(fieldWriteListeners_.begin(), fieldWriteListeners_.end(),
-                       [owner](const FieldWriteListenerEntry &e) {
-                         return e.owner == owner;
-                       }),
-        fieldWriteListeners_.end());
+    auto owned = [owner](const FieldWriteListenerEntry &e) { return e.owner == owner; };
+    if (std::any_of(fieldWriteListeners_->begin(), fieldWriteListeners_->end(), owned)) {
+      auto &list = writable(fieldWriteListeners_);
+      list.erase(std::remove_if(list.begin(), list.end(), owned), list.end());
+    }
+    if (nodeFieldWriteListeners_->count(owner))
+      writable(nodeFieldWriteListeners_).erase(owner);
   }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
@@ -730,7 +759,18 @@ public:
       pose = Mat4::translation(geombounds::getVec3fLenient(*vp, "position", {0,0,0})) *
              Mat4::rotation(ori);
     }
-    return pick_.worldOf(vp) * pose;
+    // worldOf walks the scene to find the viewpoint's first path; camera
+    // queries come many times per tick (every pick, every Switch/LOD/Billboard
+    // consumer). Hold the result until one of its transform ancestors is written,
+    // the binding changes, or the topology does.
+    const std::uint64_t topology = sceneTopologyRevision();
+    if (!vpWorldValid_ || vpWorldNode_ != vp || vpWorldTopology_ != topology) {
+      vpWorld_ = pick_.worldOf(vp, &vpWorldAncestors_);
+      vpWorldNode_ = vp;
+      vpWorldTopology_ = topology;
+      vpWorldValid_ = true;
+    }
+    return vpWorld_ * pose;
   }
 
   // Per-viewpoint user offset (process-local; §23.3.1 relative viewing transform).
@@ -888,9 +928,23 @@ private:
     if (retained.has_value() && (ticking_ || cascade_.processDepth_ != 0))
       retainedNodeValues_.push_back(std::move(retained));
     classifyDirty(a);
+    if (vpWorldValid_ && a.node && TransformSystem::isTransform(a.node) &&
+        std::find(vpWorldAncestors_.begin(), vpWorldAncestors_.end(), a.node) != vpWorldAncestors_.end())
+      vpWorldValid_ = false;
+    if (a.node && (dynamic_cast<const x3d::nodes::X3DGeometryNode *>(a.node) != nullptr ||
+                   dynamic_cast<const x3d::nodes::X3DGeometricPropertyNode *>(a.node) != nullptr))
+      pick_.invalidateMeshes();
+    // Snapshots: a listener may add or remove listeners while it runs, and
+    // the write is still offered to exactly the set registered before it.
     const auto listeners = fieldWriteListeners_;
-    for (const auto &l : listeners)
+    for (const auto &l : *listeners)
       if (!l.owner || !cascade_.removed_.count(l.owner)) l.fn(a);
+    if (a.node && !nodeFieldWriteListeners_->empty()) {
+      const auto nodes = nodeFieldWriteListeners_;
+      auto found = nodes->find(a.node);
+      if (found != nodes->end() && !cascade_.removed_.count(a.node))
+        for (const auto &fn : found->second) fn(a);
+    }
   }
 
   void classifyDirty(const FieldAddress &a) {
@@ -979,7 +1033,21 @@ private:
     const X3DNode *owner; // nullptr = context-lifetime listener
     FieldWriteListener fn;
   };
-  std::vector<FieldWriteListenerEntry> fieldWriteListeners_;
+  // boundViewpointWorldPose memo (see there).
+  mutable const X3DNode *vpWorldNode_ = nullptr;
+  mutable Mat4 vpWorld_ = Mat4::identity();
+  mutable std::uint64_t vpWorldTopology_ = 0;
+  mutable bool vpWorldValid_ = false;
+  mutable std::vector<const X3DNode *> vpWorldAncestors_;
+  using FieldWriteListenerList = std::vector<FieldWriteListenerEntry>;
+  using NodeFieldWriteListeners =
+      std::unordered_map<const X3DNode *, std::vector<FieldWriteListener>>;
+  // Shared so a dispatch snapshots them by reference, not by deep-copying
+  // thousands of std::functions per field write (see writable()).
+  std::shared_ptr<FieldWriteListenerList> fieldWriteListeners_ =
+      std::make_shared<FieldWriteListenerList>();
+  std::shared_ptr<NodeFieldWriteListeners> nodeFieldWriteListeners_ =
+      std::make_shared<NodeFieldWriteListeners>();
 };
 
 } // namespace x3d::runtime

@@ -104,6 +104,8 @@ reproducible under `x3d sim`'s deterministic clock. `Date` with arguments,
 | Assignment | Event |
 |---|---|
 | To an `outputOnly` global, even with the same value | Always generated (§29.2.4, SCRIPT-OUTPUTONLY-REEMIT) |
+| To a component or element of an `outputOnly` value (`out.x = 1`, `out[0] = 1`) | Generated with the whole value, if it changed |
+| None: an `outputOnly` value assigned on an earlier call | None; the value is not re-sent (SCRIPT-OUTPUTONLY-STALE) |
 | To an `inputOutput` global with an unchanged value | None |
 | To an `inputOutput` global with a new value | Generated after the handler returns |
 

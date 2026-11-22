@@ -74,10 +74,10 @@ public:
 private:
   void listen(X3DNode *node, X3DExecutionContext &ctx,
               std::unordered_set<std::string> fields) {
-    ctx.addFieldWriteListener(
-        node, ctx.guardCallback(*this, [this, node, fields = std::move(fields)](
+    ctx.addNodeFieldWriteListener(
+        node, ctx.guardCallback(*this, [this, fields = std::move(fields)](
                                            const FieldAddress &a) {
-          if (a.node == node && fields.count(a.field)) dirty_ = true;
+          if (fields.count(a.field)) dirty_ = true;
         }));
   }
 

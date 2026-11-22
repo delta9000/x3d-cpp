@@ -5965,6 +5965,7 @@
         "SCRIPT-NODE-DEFAULT-CODECS",
         "SCRIPT-NODE-DEFAULT-CODECS-READ",
         "SCRIPT-OUTPUTONLY-REEMIT",
+        "SCRIPT-OUTPUTONLY-STALE",
         "SCRIPT-RUNAWAY-HANG",
         "SCRIPT-SAI-ADDROUTE-VALIDATE",
         "SCRIPT-SFNODE-FIELD-ACCESS",
@@ -6015,6 +6016,7 @@
             "SCRIPT-NODE-DEFAULT-CODECS",
             "SCRIPT-NODE-DEFAULT-CODECS-READ",
             "SCRIPT-OUTPUTONLY-REEMIT",
+            "SCRIPT-OUTPUTONLY-STALE",
             "SCRIPT-RUNAWAY-HANG",
             "SCRIPT-SAI-ADDROUTE-VALIDATE",
             "SCRIPT-SFNODE-FIELD-ACCESS",
@@ -11333,10 +11335,24 @@
       "nodes": [
         "Script"
       ],
-      "note": "EcmaScriptBackend.cpp readbackAuthorGlobals diffed the JS global against the stored value and skipped if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fired once). Closed 2026-09-26: the no-op diff suppression now applies to inputOutput only, in both backends (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment always emits. Tested in x3d_ecmascript_backend (T18).",
+      "note": "EcmaScriptBackend.cpp readbackAuthorGlobals diffed the JS global against the stored value and skipped if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fired once). Closed 2026-09-26: the no-op diff suppression now applies to inputOutput only, in both backends (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment always emits. Since 2026-11-22 both backends detect the assignment with a global accessor per outputOnly field rather than by re-reading the global (see SCRIPT-OUTPUTONLY-STALE). Tested in x3d_ecmascript_backend and x3d_quickjs_backend (T18).",
       "severity": "low",
       "status": "closed",
       "summary": "An explicit same-value assignment to a Script outputOnly field is suppressed \u2014 strict X3D semantics say an explicit eventOut assignment generates an event regardless of value."
+    },
+    {
+      "clause": "29.2.4 (ECMAScript binding 19777-1)",
+      "id": "SCRIPT-OUTPUTONLY-STALE",
+      "interfaces": [
+        "X3DScriptNode"
+      ],
+      "nodes": [
+        "Script"
+      ],
+      "note": "readbackAuthorGlobals read every outputOnly global after each call and emitted whatever it held, so a value assigned once kept re-driving its ROUTEs. Closed 2026-11-22 in both backends: each outputOnly author field is a global accessor that flags an assignment. An assignment emits (even the same value); without one the field emits only if the script changed it in place (`out.x = 1`, `out[0] = 1`), compared with the value last emitted. Tested in x3d_ecmascript_backend and x3d_quickjs_backend (T18b).",
+      "severity": "minor",
+      "status": "closed",
+      "summary": "A Script outputOnly value assigned on one call was re-sent after every later call that left it alone."
     },
     {
       "clause": "10.2.1",
@@ -13182,6 +13198,8 @@
       "WaveShaper",
       "X3DBackgroundNode",
       "X3DBindableNode",
+      "X3DGeometricPropertyNode",
+      "X3DGeometryNode",
       "X3DProgrammableShaderObject",
       "X3DRigidJointNode",
       "X3DSensorNode",
@@ -13193,10 +13211,10 @@
     ]
   },
   "summary": {
-    "closed_count": 322,
+    "closed_count": 323,
     "component_count": 36,
     "deferred_count": 22,
-    "finding_count": 355,
+    "finding_count": 356,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,

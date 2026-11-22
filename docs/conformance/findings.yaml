@@ -2053,7 +2053,23 @@
     if equal, for BOTH inputOutput (correct) and outputOnly (a re-assert on two ticks fired once). Closed
     2026-09-26: the no-op diff suppression now applies to inputOutput only, in both backends
     (runtime/script/EcmaScriptBackend.cpp, runtime/script/QuickJsBackend.cpp); an outputOnly re-assignment
-    always emits. Tested in x3d_ecmascript_backend (T18).
+    always emits. Since 2026-11-22 both backends detect the assignment with a global accessor per
+    outputOnly field rather than by re-reading the global (see SCRIPT-OUTPUTONLY-STALE). Tested in
+    x3d_ecmascript_backend and x3d_quickjs_backend (T18).
+
+- id: SCRIPT-OUTPUTONLY-STALE
+  nodes: [Script]
+  interfaces: [X3DScriptNode]
+  clause: "29.2.4 (ECMAScript binding 19777-1)"
+  severity: minor
+  status: closed
+  summary: A Script outputOnly value assigned on one call was re-sent after every later call that left it alone.
+  note: >-
+    readbackAuthorGlobals read every outputOnly global after each call and emitted whatever it held, so a
+    value assigned once kept re-driving its ROUTEs. Closed 2026-11-22 in both backends: each outputOnly
+    author field is a global accessor that flags an assignment. An assignment emits (even the same value);
+    without one the field emits only if the script changed it in place (`out.x = 1`, `out[0] = 1`), compared
+    with the value last emitted. Tested in x3d_ecmascript_backend and x3d_quickjs_backend (T18b).
 
 - id: GRP-ADDCHILDREN
   interfaces: [X3DGroupingNode]

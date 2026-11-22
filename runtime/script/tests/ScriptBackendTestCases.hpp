@@ -7,6 +7,7 @@
 #include "SaiContext.hpp"
 #include "X3DExecutionContext.hpp"
 #include "x3d/nodes/Script.hpp"
+#include "x3d/nodes/ScalarInterpolator.hpp"
 #include "x3d/nodes/Transform.hpp"
 
 #include "doctest/doctest.h"
@@ -691,6 +692,60 @@ void runSharedCases(ScriptEngine &backend, const char *dateCase) {
     backend.invoke(h, "emit_out", std::any(4.0), X3DFieldType::SFTime, 2.0);
     ctx.process();
     CHECK_MESSAGE((sink.getTranslation().x == 4.0f), "T18: a same-value outputOnly re-assignment still generates an event");
+
+    backend.shutdown(h);
+    ctx.authorFields().erase(script);
+  }
+
+  // an outputOnly value assigned on one call is not re-sent by later calls
+  //      that leave it alone, but writing a component or an element in place
+  //      is an event (§29.2.4 / ISO 19777-1). Each step resets the ROUTE
+  //      targets out-of-band, so a target that moves again proves an event.
+
+  SUBCASE("T18b: outputOnly emits on assignment and in-place writes only") {
+    X3DExecutionContext ctx;
+    Script script;
+    script.setDirectOutputUnchecked(true);
+    script.setMustEvaluateUnchecked(true);
+    SaiContext sai(ctx, script, "x3d-cpp-gen", "dev");
+    ctx.authorFields().addAuthorField(
+        script, AuthorFieldDecl{"out", X3DFieldType::SFVec3f,
+                                AccessType::OutputOnly, {}});
+    ctx.authorFields().addAuthorField(
+        script, AuthorFieldDecl{"keys", X3DFieldType::MFFloat,
+                                AccessType::OutputOnly, {}});
+    Transform sink;
+    ScalarInterpolator keysSink;
+    ScriptHandle h = backend.load(script,
+        "function step(v, t) {"
+        "  if (v == 1) { out = new SFVec3f(1, 2, 3); keys = new MFFloat(0, 1); }"
+        "  else if (v == 2) { Browser.print('read ' + out.x + ' ' + keys[1]); }"
+        "  else if (v == 3) { out.x = 9; keys[1] = 0.5; }"
+        "}", sai);
+    CHECK_MESSAGE((h != kInvalidScriptHandle), "T18b: load in-place script");
+    backend.initialize(h);
+    ctx.addRoute(FieldAddress{&script, "out"}, FieldAddress{&sink, "translation"});
+    ctx.addRoute(FieldAddress{&script, "keys"}, FieldAddress{&keysSink, "key"});
+    auto reset = [&] {
+      sink.setTranslation(SFVec3f{0, 0, 0});
+      keysSink.setKey(MFFloat{});
+    };
+
+    backend.invoke(h, "step", std::any(1.0), X3DFieldType::SFTime, 1.0);
+    ctx.process();
+    CHECK_MESSAGE((sink.getTranslation().z == 3.0f && keysSink.getKey().size() == 2), "T18b-pre: assignments emit");
+
+    reset();
+    backend.invoke(h, "step", std::any(2.0), X3DFieldType::SFTime, 2.0);
+    ctx.process();
+    CHECK_MESSAGE((sink.getTranslation().x == 0.0f && keysSink.getKey().empty()), "T18b: an untouched outputOnly value is not re-sent");
+    CHECK_MESSAGE((sai.log() == "read 1 1"), "T18b: the script still reads back its last value");
+
+    reset();
+    backend.invoke(h, "step", std::any(3.0), X3DFieldType::SFTime, 3.0);
+    ctx.process();
+    CHECK_MESSAGE((sink.getTranslation().x == 9.0f && sink.getTranslation().y == 2.0f), "T18b: a component write emits the whole value");
+    CHECK_MESSAGE((keysSink.getKey().size() == 2 && keysSink.getKey()[1] == 0.5f), "T18b: an element write emits the whole array");
 
     backend.shutdown(h);
     ctx.authorFields().erase(script);

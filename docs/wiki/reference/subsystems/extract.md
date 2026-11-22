@@ -39,9 +39,11 @@ The pipeline answers one question per frame: "given the current scene graph stat
 - Structural and scoped-descriptor changes take one bounded full-scene
   replacement walk per affected tick; correctness comes before preserving the
   old subtree optimization.
-- In scenes with lights, each advancing `delta()` re-collects the light list
-  that items index; `lightsChanged` is set only when the published list
-  differs.
+- An advancing `delta()` re-collects the light list that items index, and
+  re-tags live items, only when the published list changed or a light node
+  was written; `lightsChanged` is set only when the published list differs.
+- The eye position and up vector are read once per `fullSnapshot()` or
+  `delta()` pass, not once per Switch, LOD or Billboard.
 
 ## Key files
 
@@ -145,8 +147,11 @@ struct RenderDelta {
 - These cover the graph the light walk reads, which includes subtrees the
   geometry walk skips (`visible=FALSE`, `Collision.proxy`, a GeoLOD `rootNode`
   beside loaded children), so a light change there notifies too.
-- The `lightsChanged` comparison runs only when one of those dependencies is
-  dirty or a selection changed, so unrelated animation leaves it false.
+- The `lightsChanged` comparison runs only when one of those dependencies has
+  a field, transform, child or selection change (a bounds-only change cannot
+  move a light), a selection changed, or the eye moved while a light sits
+  under a Billboard. Unrelated animation, and head motion with no light under
+  a Billboard, leave it false.
 - Full snapshots initialize the consumer with `lightsChanged=true`; structural
   replacement deltas compare with the previous published list.
 - Camera, background, and fog bits are set on every delta.
