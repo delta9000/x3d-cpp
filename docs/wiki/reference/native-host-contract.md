@@ -110,8 +110,9 @@ and [ADR-0069](../explanation/decisions/0069-selection-deltas-and-cheap-ticks.md
 | `lightsChanged` | The complete world-resolved light list differs from the last published one, including scope, attenuation, radius and shadow controls. Covers lights the geometry walk does not reach (`visible=FALSE`, `Collision.proxy`). False on an idle tick or unrelated animation; true on a full snapshot |
 | Camera, background and fog flags | Set on every delta |
 
-`snapshotLights()` owns the indices that items reference. Advancing `delta()`
-calls in scenes with lights re-collect it and re-tag live items.
+`snapshotLights()` owns the indices that items reference. An advancing
+`delta()` re-collects it and re-tags live items when the published list
+changed or a light node was written.
 
 ## Delta consumption
 

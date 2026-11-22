@@ -1,8 +1,7 @@
 // Duktape ScriptEngine implementation. See ADR-0022.
 #include "EcmaScriptBackend.hpp"
 
-#include "FieldTypesPrelude.hpp"
-#include <string>
+#include "FieldTypesPrelude.hpp" // SF*/MF* constructors and prototypes
 #include "DynamicField.hpp" // author-field store (S1 un-tabling, design §3.5)
 #include "SaiContext.hpp"   // post author outputs into the cascade
 #include "x3d/nodes/X3DNode.hpp"      // SFNode wrapping (X3DNode*)
@@ -17,6 +16,7 @@
 #include <memory>
 #include <iostream>  // diagnostics
 #include <stdexcept>
+#include <string>
 
 using namespace x3d::core;
 
@@ -1152,7 +1152,8 @@ ScriptHandle EcmaScriptBackend::load(X3DNode &scriptNode,
       // outputOnly author fields become accessors that remember an assignment
       // (§29.2.4: an event is generated when the script assigns the field). A
       // plain global stays defined after its first assignment, so readback
-      // could not otherwise tell a fresh assignment from a stale value.
+      // could not otherwise tell a fresh assignment (always an event) from a
+      // value left from an earlier call (an event only if changed in place).
       duk_push_global_object(c);
       for (const FieldInfo &info : sai.context().authorFields().authorFields(scriptNode)) {
         if (info.access != AccessType::OutputOnly) continue;
@@ -1355,32 +1356,32 @@ void EcmaScriptBackend::readbackAuthorGlobals(Entry &e) {
     std::any value;
     protectedRun(ctx, "readback of '" + info.x3dName + "'",
                  [&](duk_context *c) {
+      // outputOnly: an assignment since the last readback always emits, even
+      // with the same value (§29.2.4 / ISO 19777-1). Without one, the field
+      // emits only if the script changed it in place (`out.x = 1`,
+      // `out[0] = 1`), so a value assigned on an earlier call is not re-sent.
+      bool assigned = false;
       if (info.access == AccessType::OutputOnly) {
         const std::string assignedKey =
             outputOnlyAssignedKey(info.x3dName);
         duk_push_global_object(c);
         duk_get_prop_string(c, -1, assignedKey.c_str());
-        bool assigned = false;
         if (duk_is_boolean(c, -1))
           assigned = duk_get_boolean(c, -1) != 0;
         duk_pop(c);
-        if (!assigned) {
-          duk_pop(c);
-          return;
+        if (assigned) {
+          duk_push_false(c);
+          duk_put_prop_string(c, -2, assignedKey.c_str());
         }
-        duk_push_false(c);
-        duk_put_prop_string(c, -2, assignedKey.c_str());
         duk_pop(c);
       }
       duk_get_global_string(c, info.x3dName.c_str());
       if (duk_is_undefined(c, -1)) return;  // never defined / never assigned
-      // Suppress a no-op re-emit only for inputOutput: there the JS global is an
-      // echo of the value the field already holds, so re-emitting it would be a
-      // spurious event. outputOnly is the script's own output channel — an
-      // explicit assignment generates an event regardless of value (§29.2.4 /
-      // ISO 19777-1), so it is never diffed away.
-      if (info.access == AccessType::InputOutput && prev.has_value() &&
-          jsonOfTop(c) == jsonOfAny(c, prev, info.type))
+      // Otherwise suppress a no-op re-emit: for inputOutput the JS global is
+      // an echo of the value the field already holds; for an unassigned
+      // outputOnly it is the value last emitted.
+      if (!assigned && (info.access == AccessType::OutputOnly || prev.has_value()) &&
+          (!prev.has_value() || jsonOfTop(c) == jsonOfAny(c, prev, info.type)))
         return;
       value = toValue(c, -1, info.type);
     });

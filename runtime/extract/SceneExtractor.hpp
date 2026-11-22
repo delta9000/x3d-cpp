@@ -1189,6 +1189,13 @@ private:
       }
       return external->mesh;
     };
+    // Count an Unsupported or Failed answer once per placement, as walk() does.
+    auto countRefused = [&] {
+      if (external->status == ExternalGeometryResult::Status::Unsupported)
+        ++skippedGeometry_[geom->nodeTypeName()];
+      else if (external->status == ExternalGeometryResult::Status::Failed)
+        ++failedGeometry_[geom->nodeTypeName()];
+    };
     // Keep the source's placement scope. A Coordinate affects every use, but
     // an HAnimSegment displacer only affects uses inside that Segment.
     for (RenderItemId id : change.items) {
@@ -1197,6 +1204,7 @@ private:
       if (rec.geometry_ext.is_packed()) {
         rec.geometry_ext.packed = packedMesh();
         if (rec.geometry_ext.packed.empty()) {
+          countRefused();
           if (liveIds_.count(id)) delta.removed.push_back(id);
         } else if (liveIds_.count(id)) {
           delta.updatedGeometry.push_back(id);
@@ -1239,7 +1247,10 @@ private:
       bool recognized = false;
       MeshRef mesh = cachedRawMesh(geom, &recognized, displacingSegment(geom, placement.path));
       const bool packed = !recognized && meshOptions_.externalGeometryResolver;
-      if (packed ? packedMesh().empty() : mesh->indices.empty()) return false;
+      if (packed ? packedMesh().empty() : mesh->indices.empty()) {
+        if (packed) countRefused();
+        return false;
+      }
       auto savedClips = std::move(activeClips_);
       const auto savedSkin = activeSkinHumanoid_;
       activeClips_ = placement.clips;

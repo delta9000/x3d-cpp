@@ -581,9 +581,6 @@ private:
 
   // Recompute each cached placement's world matrix along its stored path, the
   // way enumerate() accumulated it (ancestors only, never the node's own TRS),
-  // then its world AABB. Each node's local matrix is read once per refit.
-  // Recompute each cached placement's world matrix along its stored path, the
-  // way enumerate() accumulated it (ancestors only, never the node's own TRS),
   // from the TransformSystem's cached local matrices (refreshed by propagate,
   // which is also when the transform revision moves). Only placements whose
   // matrix changed, or all when bounds changed, get a new world AABB:

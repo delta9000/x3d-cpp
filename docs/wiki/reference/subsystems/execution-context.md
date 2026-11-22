@@ -228,7 +228,9 @@ PickResult pick(const Ray &worldRay) const;  // index-backed (see below)
 Mat4 worldOf(const X3DNode *node) const;   // parent-group frame of a sensor node
 ```
 
-`pick()` threads the live viewer pose and the context's `TransformSystem` into an index-backed `pickClosest`: the point index is rebuilt only when `transformRevision()` changes and its cached world AABBs refit only when the `BoundsSystem` revision changes, so a pick on an unchanged scene costs a broad phase over geometry-bearing placements instead of a whole-graph walk. Billboard placements are re-resolved per pick (view-dependent).
+`pick()` threads the live viewer pose and the context's `TransformSystem` into an index-backed `pickClosest`: the placement index is rebuilt only when the hierarchy changes, refit when a transform or the `BoundsSystem` revision changes, so a pick costs a broad phase over geometry-bearing placements instead of a whole-graph walk. Billboard placements are re-resolved per pick (view-dependent). See [Lazy pick index](system-pointing.md#lazy-pick-index).
+
+The bound viewpoint's ancestor frame (the first-path `worldOf` walk inside `boundViewpointWorldPose()`, and so `cameraWorldPosition()`/`cameraWorldUp()`) is memoized. It is recomputed when the bound viewpoint changes, the scene topology revision moves, or a transform-bearing ancestor on its path is written.
 
 ### Unbound viewer
 
@@ -279,6 +281,14 @@ The `tick(now)` implementation enforces two spec requirements:
 ### Field-write listeners
 
 `addFieldWriteListener(FieldWriteListener)` registers a callback run after every field write, whether a cascade delivery or `writeField`, after dirty classification. Systems use it for nodes that react to an inputOutput write themselves: IntegerTrigger re-emitting `triggerValue` (§30.4.6) and key-device focus arbitration (§21.2). A listener may post events; they join the current timestamp.
+
+| Call | Hears | Removed by |
+|---|---|---|
+| `addFieldWriteListener(l)` | Every write | Never (context lifetime) |
+| `addFieldWriteListener(owner, l)` | Every write | `removeFieldWriteListeners(owner)`, or detaching `owner` |
+| `addNodeFieldWriteListener(node, l)` | Writes to `node` only, found by lookup rather than offered to every listener (ShaderSystem, one per shader node) | `removeFieldWriteListeners(node)`, or detaching `node` |
+
+A write is offered to the listeners registered before it; one a listener adds or removes takes effect from the next write. Registration and removal are O(1) amortized outside a dispatch.
 ## Related
 
 - [Architecture](../../explanation/architecture.md)

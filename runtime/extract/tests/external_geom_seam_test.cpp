@@ -225,11 +225,18 @@ TEST_CASE("external geom seam: Unsupported and Failed are counted and not retrie
     CHECK(ex.delta().added.empty());
     CHECK(calls == 1);
 
-    // A field edit asks again, and a Ready answer then emits.
-    ready = true;
-    ctx.postEvent(geom.get(), "uTessellation", SFInt32{2}); ctx.tick(2);
-    auto d = ex.delta();
+    // A field edit asks again; a second refusal is counted as well.
+    ctx.postEvent(geom.get(), "uTessellation", SFInt32{3}); ctx.tick(2);
+    CHECK(ex.delta().added.empty());
     CHECK(calls == 2);
+    CHECK(counted.at("NurbsTrimmedSurface") == 2);
+    CHECK(other.empty());
+
+    // Another edit, and a Ready answer then emits.
+    ready = true;
+    ctx.postEvent(geom.get(), "uTessellation", SFInt32{2}); ctx.tick(3);
+    auto d = ex.delta();
+    CHECK(calls == 3);
     REQUIRE(d.added.size() == 1);
     CHECK(ex.item(d.added[0]).geometry_ext.is_packed());
 

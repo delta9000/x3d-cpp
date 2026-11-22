@@ -153,8 +153,10 @@ the geometry bound for both intersection and the proxy normal.
 
 `pickClosest` no longer walks the whole scene graph per pick. `PickSystem` owns an index of geometry-bearing placements — one per PATH, so a DEF/USE node keeps a distinct entry and world AABB for each placement — and tests them with the same `rayAabb` broad phase and existing `narrowPhase`. The index is built lazily on the first pick and thereafter:
 
-- re-enumerated only when `TransformSystem::revision()` changes (a structural re-index or a transform re-accumulation) or the caller passes a different `maxVisits` budget;
+- re-enumerated only when `TransformSystem::structureRevision()` changes (a hierarchy re-index) or the caller passes a different `maxVisits` budget;
+- refit along the cached paths when only `TransformSystem::revision()` changes (an animated transform): each placement's world matrix is rebuilt from `TransformSystem::cachedLocal()`, and its world AABB only if the matrix moved or bounds changed;
 - refit only when `BoundsSystem::revision()` changes (a geometry/bounds edit with no transform change);
+- tessellated meshes for the narrow phase are cached per geometry node and dropped on a write to any geometry or geometric-property node (`PickSystem::invalidateMeshes()`, called by the context), a bounds change, or a re-enumeration;
 - Billboard-affected placements are view-dependent and therefore never cached: they live in a separate list whose world frame is re-resolved from the stored path on every pick, so a new camera pose produces a new result.
 - Switch and LOD selection is live: each retained path is checked against `whichChoice` and the LOD level selected from the camera in that LOD's local frame. Selection changes take effect without rebuilding the placement index (ADR-0034).
 
@@ -165,8 +167,10 @@ the geometry bound for both intersection and the proxy normal.
 - The `WalkBudget`/`budgetExceeded` semantics and the depth/cycle guards are
   preserved: the enumeration spends one visit per node and stops on the same
   doubling-DAG fan-out, returning the same partial best-so-far.
-- Placement order follows the DFS order, so exact-distance ties break exactly
-  as before.
+- Candidates whose world AABB the ray enters are tested nearest entry first,
+  and the scan stops once the next box starts beyond the best hit. An
+  exact-distance tie still goes to the earliest placement in DFS order, so the
+  result equals a full scan's.
 
 ### System registration
 

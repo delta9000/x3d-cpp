@@ -649,9 +649,7 @@ public:
    *        captures a raw pointer to. Use for per-node listeners.
    */
   void addFieldWriteListener(const X3DNode *owner, FieldWriteListener l) {
-    auto next = std::make_shared<FieldWriteListenerList>(*fieldWriteListeners_);
-    next->push_back({owner, std::move(l)});
-    fieldWriteListeners_ = std::move(next);
+    writable(fieldWriteListeners_).push_back({owner, std::move(l)});
     installFieldWriteObserver();
   }
   /// Like the owner-tagged variant, but called only for writes to `node`
@@ -660,13 +658,19 @@ public:
   /// that watches one field set per node (shaders per Appearance) costs
   /// nothing on unrelated writes.
   void addNodeFieldWriteListener(const X3DNode *node, FieldWriteListener l) {
-    auto next = std::make_shared<NodeFieldWriteListeners>(*nodeFieldWriteListeners_);
-    (*next)[node].push_back(std::move(l));
-    nodeFieldWriteListeners_ = std::move(next);
+    writable(nodeFieldWriteListeners_)[node].push_back(std::move(l));
     installFieldWriteObserver();
   }
 
 private:
+  // Copy-on-write: a dispatch in progress holds a snapshot (a second
+  // reference), and only then does a registration copy the list. Otherwise
+  // it is changed in place, so registering n listeners costs O(n), not O(n^2).
+  template <class T> static T &writable(std::shared_ptr<T> &p) {
+    if (p.use_count() > 1) p = std::make_shared<T>(*p);
+    return *p;
+  }
+
   void installFieldWriteObserver() {
     // Listeners must hear cascade deliveries even before (or without)
     // buildSceneGraph, which otherwise installs this same observer.
@@ -678,18 +682,13 @@ private:
 public:
   /// Remove every listener registered with this owner (no-op if none).
   void removeFieldWriteListeners(const X3DNode *owner) {
-    auto next = std::make_shared<FieldWriteListenerList>(*fieldWriteListeners_);
-    next->erase(std::remove_if(next->begin(), next->end(),
-                               [owner](const FieldWriteListenerEntry &e) {
-                                 return e.owner == owner;
-                               }),
-                next->end());
-    fieldWriteListeners_ = std::move(next);
-    if (nodeFieldWriteListeners_->count(owner)) {
-      auto nodes = std::make_shared<NodeFieldWriteListeners>(*nodeFieldWriteListeners_);
-      nodes->erase(owner);
-      nodeFieldWriteListeners_ = std::move(nodes);
+    auto owned = [owner](const FieldWriteListenerEntry &e) { return e.owner == owner; };
+    if (std::any_of(fieldWriteListeners_->begin(), fieldWriteListeners_->end(), owned)) {
+      auto &list = writable(fieldWriteListeners_);
+      list.erase(std::remove_if(list.begin(), list.end(), owned), list.end());
     }
+    if (nodeFieldWriteListeners_->count(owner))
+      writable(nodeFieldWriteListeners_).erase(owner);
   }
   void setPointerConsumedBySensor(bool v) { pointerConsumedBySensor_ = v; }
 
@@ -1043,11 +1042,11 @@ private:
   using FieldWriteListenerList = std::vector<FieldWriteListenerEntry>;
   using NodeFieldWriteListeners =
       std::unordered_map<const X3DNode *, std::vector<FieldWriteListener>>;
-  // Copy-on-write: registration is rare, dispatch is per field write, and a
-  // dispatch must not deep-copy thousands of std::functions to snapshot them.
-  std::shared_ptr<const FieldWriteListenerList> fieldWriteListeners_ =
+  // Shared so a dispatch snapshots them by reference, not by deep-copying
+  // thousands of std::functions per field write (see writable()).
+  std::shared_ptr<FieldWriteListenerList> fieldWriteListeners_ =
       std::make_shared<FieldWriteListenerList>();
-  std::shared_ptr<const NodeFieldWriteListeners> nodeFieldWriteListeners_ =
+  std::shared_ptr<NodeFieldWriteListeners> nodeFieldWriteListeners_ =
       std::make_shared<NodeFieldWriteListeners>();
 };
 
