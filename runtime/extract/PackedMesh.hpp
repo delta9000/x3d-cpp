@@ -20,6 +20,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace x3d::runtime::extract {
@@ -122,6 +123,43 @@ struct PackedMesh {
     attribute_data.push_back(std::move(data));
     attribute_views[static_cast<uint8_t>(a)] = view;
     attrib_mask |= static_cast<uint8_t>(1u << static_cast<uint8_t>(a));
+  }
+};
+
+// ExternalGeometryResult — what MeshBuildOptions::externalGeometryResolver
+// says about one unrecognized geometry node.
+//   Ready       — `mesh` is emitted.
+//   Pending     — not available yet; the extractor asks again on every delta().
+//   Unsupported — the resolver does not handle this node; counted in
+//                 SceneExtractor::skippedGeometryCounts(), not retried.
+//   Failed      — the resolver handles it but could not produce a mesh (bad
+//                 asset, malformed bytes); counted in failedGeometryCounts(),
+//                 not retried.
+// Unsupported and Failed nodes are asked again when one of their fields
+// changes. A PackedMesh converts implicitly (non-empty = Ready, empty =
+// Pending), so resolvers written against the PackedMesh return type compile
+// unchanged.
+struct ExternalGeometryResult {
+  enum class Status : uint8_t { Ready, Pending, Unsupported, Failed };
+
+  Status status = Status::Pending;
+  PackedMesh mesh;
+
+  ExternalGeometryResult() = default;
+  ExternalGeometryResult(PackedMesh m) // NOLINT(google-explicit-constructor)
+      : status(m.empty() ? Status::Pending : Status::Ready), mesh(std::move(m)) {}
+
+  static ExternalGeometryResult pending() { return {}; }
+  static ExternalGeometryResult unsupported() { return withStatus(Status::Unsupported); }
+  static ExternalGeometryResult failed() { return withStatus(Status::Failed); }
+
+  bool ready() const { return status == Status::Ready; }
+
+private:
+  static ExternalGeometryResult withStatus(Status s) {
+    ExternalGeometryResult r;
+    r.status = s;
+    return r;
   }
 };
 

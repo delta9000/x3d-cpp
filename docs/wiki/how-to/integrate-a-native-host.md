@@ -2,7 +2,7 @@
 title: Integrate a native host
 summary: Wire a RuntimeSession into an application frame loop with input, a camera and scene acceptance checks.
 tags: [how-to, embedding]
-updated: 2026-11-15
+updated: 2026-11-20
 related:
   - ../reference/native-host-contract.md
   - supply-resources.md
@@ -46,7 +46,7 @@ show the scene, check:
 | Range, PROTO and Inline warnings | `session->document().rangeWarnings`, `.protoWarnings`, `.inlineWarnings` |
 | Rejected ROUTEs | `session->routes().rejected` |
 | Silently skipped ROUTE endpoints | Compare `session->routes().routesAdded` with the count you expect |
-| Geometry the extractor does not emit | `session->extractor().skippedGeometryCounts()` |
+| Geometry the extractor does not emit | `session->extractor().skippedGeometryCounts()`; with an external geometry resolver also `failedGeometryCounts()` |
 | A partial snapshot | `session->extractor().budgetExceeded()` after `fullSnapshot()`; reject the snapshot if true |
 
 ## 3. Upload the first snapshot

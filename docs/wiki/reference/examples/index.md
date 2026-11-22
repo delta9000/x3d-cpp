@@ -2,7 +2,7 @@
 title: Examples
 summary: Every example program in the repository, what it shows, how it is built and where its page is.
 tags: [reference, examples]
-updated: 2026-11-14
+updated: 2026-11-20
 related:
   - cpu-raster.md
   - poc-renderer.md
@@ -44,6 +44,7 @@ x3d-cpp through `CMAKE_PREFIX_PATH`.
 | `main.cpp` | `x3d_embed_minimal` | `RuntimeSession`, `fullSnapshot()`, then tick and `delta()` over that scene |
 | `native_host.cpp` | `x3d_embed_native_host` | The [native host contract](../native-host-contract.md) checks |
 | `ext.cpp` | `x3d_embed_ext` | The opt-in extension layer; built with `-DX3D_EMBED_EXT=ON` |
+| `script.cpp` | `x3d_embed_script` | An inline ECMAScript Script through `x3d_cpp::ecmascript`, its output ROUTEd to a Transform; built with `-DX3D_EMBED_SCRIPT=ON` |
 
 `scripts/verify_install_embed.sh` installs the package and chains these
 programs. See [Build and install the SDK](../../how-to/build-and-install.md#check-the-install).

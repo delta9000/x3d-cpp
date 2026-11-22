@@ -177,6 +177,7 @@ private:
     unplacedPaths_.clear();
     entryMatrix_.clear();
     skippedGeometry_.clear(); // Recount unsupported drops for this full walk.
+    failedGeometry_.clear();
     // ADR-0045: a full walk is authoritative — it must re-read current field
     // state, so no mesh survives from a previous snapshot. Within this walk the
     // caches then collapse N placements onto one build/one allocation.
@@ -655,7 +656,9 @@ public:
   }
 
   // background — the bound Background's sky/ground gradient, read reflection-
-  // generic. backgroundChanged is surfaced for a caching consumer.
+  // generic. Panorama faces are resolved through the TextureResolver (sharing
+  // the material texture memo), as projectors() are. backgroundChanged is
+  // surfaced for a caching consumer.
   BackgroundDesc background() const {
     BackgroundDesc bg;
     if (const X3DNode *b = ctx_.boundBackground()) {
@@ -682,6 +685,14 @@ public:
         setTextureBase(*faces[i]);
         if (!textured) faces[i]->baseUrl = backgroundBase;
       }
+      std::vector<TextureRef> refs;
+      refs.reserve(6);
+      for (TextureRef *face : faces) refs.push_back(std::move(*face));
+      // Faces already carry their base: a Background's own provenance, or a
+      // TextureBackground child's. Skip resolveTextures(), which would
+      // overwrite the Background base with its face nodes' (none).
+      resolveTextureRefs(refs, textureResolver_, &textureMemo_, textureResolverWithBase_);
+      for (int i = 0; i < 6; ++i) *faces[i] = std::move(refs[i]);
     }
     bg.backgroundChanged = true;
     return bg;
@@ -726,8 +737,15 @@ public:
 
   // Counts Shapes with unsupported geometry by node type, accumulating since
   // the last fullSnapshot(). Recognized geometry that emits no mesh is excluded.
+  // An externalGeometryResolver's Unsupported answers count here too.
   const std::map<std::string, int> &skippedGeometryCounts() const {
     return skippedGeometry_;
+  }
+
+  // Counts Shapes whose geometry an externalGeometryResolver answered Failed,
+  // by node type, accumulating since the last fullSnapshot().
+  const std::map<std::string, int> &failedGeometryCounts() const {
+    return failedGeometry_;
   }
 
   // true if the last fullSnapshot()/delta() walk (geometry OR light
@@ -1114,14 +1132,21 @@ private:
                        RenderDelta &delta, LocalXfCache &localXf) {
     evictMeshCache(geom);
     const auto version = advanceGeometryVersion(geom);
-    std::optional<PackedMesh> external;
+    std::optional<ExternalGeometryResult> external;
     auto packedMesh = [&]() -> const PackedMesh & {
       if (!external) {
         external = meshOptions_.externalGeometryResolver(geom, AssetResolver{});
-        if (external->empty()) pendingGeometry_.insert(geom);
-        else pendingGeometry_.erase(geom);
+        // Only Pending retries without an edit. A Ready with no vertices is
+        // Pending, as in walk().
+        if (external->ready() && external->mesh.empty())
+          external->status = ExternalGeometryResult::Status::Pending;
+        if (!external->ready()) external->mesh = PackedMesh{};
+        if (external->status == ExternalGeometryResult::Status::Pending)
+          pendingGeometry_.insert(geom);
+        else
+          pendingGeometry_.erase(geom);
       }
-      return *external;
+      return external->mesh;
     };
     // Keep the source's placement scope. A Coordinate affects every use, but
     // an HAnimSegment displacer only affects uses inside that Segment.
@@ -1364,19 +1389,23 @@ private:
           rememberUnplacedGeometry(geom.get(), path);
         } else {
           if (meshOptions_.externalGeometryResolver) {
-            // offer unrecognized geometry to the embedder resolver.
-            // An empty PackedMesh means Pending (the resolver is not ready yet);
-            // a non-empty PackedMesh means Ready and we emit it. The Pending path
-            // is silent (not counted as a skipped-geometry gap) — it will retry
-            // on the next fullSnapshot() or delta() that revisits this node.
-            PackedMesh packed =
+            // Offer unrecognized geometry to the embedder resolver. Ready
+            // emits. Pending retries on every delta(). Unsupported and Failed
+            // are counted and wait for a field edit (refreshGeometry asks
+            // again). See ExternalGeometryResult.
+            using Status = ExternalGeometryResult::Status;
+            ExternalGeometryResult result =
                 meshOptions_.externalGeometryResolver(geom.get(), AssetResolver{});
-            if (!packed.empty()) {
-              emitPacked(*n, path, here, geom.get(), std::move(packed), delta);
-            }
-            else {
+            if (result.ready() && !result.mesh.empty()) {
+              emitPacked(*n, path, here, geom.get(), std::move(result.mesh), delta);
+            } else {
               rememberUnplacedGeometry(geom.get(), path);
-              pendingGeometry_.insert(geom.get());
+              if (result.status == Status::Unsupported)
+                ++skippedGeometry_[geom->nodeTypeName()];
+              else if (result.status == Status::Failed)
+                ++failedGeometry_[geom->nodeTypeName()];
+              else
+                pendingGeometry_.insert(geom.get());
             }
           } else {
             // Count unsupported types, excluding recognized but empty geometry.
@@ -1778,7 +1807,8 @@ private:
   // callbacks). Pending/Failed are deliberately not memoized so a
   // not-yet-decoded texture keeps retrying (see
   // resolveTextureRefs). Cleared by fullSnapshot() alongside the mesh caches.
-  std::unordered_map<std::string, TexturePixelResult> textureMemo_;
+  // mutable: a decode cache, filled by the const background() as well.
+  mutable std::unordered_map<std::string, TexturePixelResult> textureMemo_;
   std::unordered_set<RenderItemId> pendingMaterials_;
   std::unordered_set<const X3DNode *> pendingGeometry_;
 
@@ -2052,6 +2082,7 @@ private:
   // geometry was an unrecognized type. Ordered map (std::map) so skippedGeometry
   // Counts() iterates deterministically (a coverage report is reproducible).
   std::map<std::string, int> skippedGeometry_;
+  std::map<std::string, int> failedGeometry_;
 
   // per-walk node-visit budget (set from meshOptions_.maxWalkVisits at the
   // start of fullSnapshot()/delta()). Latches `tripped` when exhausted; surfaced

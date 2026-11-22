@@ -197,13 +197,12 @@ int main(int argc, char **argv) {
 
   // Skybox: the bound Background's six panorama faces from the extraction
   // seam (BackgroundDesc: Background *Url lists or TextureBackground face
-  // nodes), url faces resolved through the same proc:/.ppm/.png resolver used
+  // nodes). The extractor resolves url faces through the resolver it was given
   // for ImageTexture. transparency 1 means the background does not draw.
   cr::render_detail::SkyboxTextures skybox;
   {
     const ex::BackgroundDesc bg = extractor.background();
-    std::vector<ex::TextureRef> faces{bg.front, bg.back, bg.right, bg.left, bg.top, bg.bottom};
-    ex::resolveTextureRefs(faces, cr::makeTextureResolver(dirOf(scenePath)));
+    const std::vector<ex::TextureRef> faces{bg.front, bg.back, bg.right, bg.left, bg.top, bg.bottom};
     auto faceTex = [](const ex::TextureRef &r) -> cr::Texture {
       // srgb=false: the skybox is written straight to the display framebuffer
       // (no lighting, no shader gamma re-encode), so sample the faces as

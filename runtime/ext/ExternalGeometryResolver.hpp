@@ -1,7 +1,9 @@
 // Lazy ExternalGeometry materialization. The extension depends on core.
 // The resolver closure owns extension types and a URL-keyed mesh cache, while
-// the extractor receives only core PackedMesh values. Failed, Pending, empty,
-// or unsupported inputs return an empty mesh; extraction retries on later ticks.
+// the extractor receives only core ExternalGeometryResult values. Nodes other
+// than ExternalGeometry and urls other than .stl are Unsupported; a missing
+// resolver or a Pending fetch is Pending; a failed fetch or malformed STL is
+// Failed. Only Pending retries on later ticks.
 #ifndef X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_RESOLVER_HPP
 #define X3D_RUNTIME_EXT_EXTERNAL_GEOMETRY_RESOLVER_HPP
 
@@ -22,24 +24,25 @@ namespace x3d::runtime::ext {
 // Successful meshes are cached across copies of the closure; Pending results
 // are not cached so extraction can retry.
 
-inline std::function<x3d::runtime::extract::PackedMesh(
+inline std::function<x3d::runtime::extract::ExternalGeometryResult(
     const X3DNode*, x3d::runtime::extract::AssetResolver)>
 makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver) {
     using x3d::runtime::extract::AssetKind;
     using x3d::runtime::extract::AssetResolver;
     using x3d::runtime::extract::AssetResult;
+    using x3d::runtime::extract::ExternalGeometryResult;
     using x3d::runtime::extract::PackedMesh;
 
     // Owned, closure-local cache — shared across copies of the std::function.
     auto cache = std::make_shared<std::unordered_map<std::string, PackedMesh>>();
 
     return [cache, bytesResolver](const X3DNode* node,
-                                  AssetResolver /*siteResolver*/) -> PackedMesh {
+                                  AssetResolver /*siteResolver*/) -> ExternalGeometryResult {
         // (1) Confirm the node is an ExternalGeometry. Anything else is unhandled.
-        if (!node) return PackedMesh{};
-        if (node->nodeTypeName() != "ExternalGeometry") return PackedMesh{};
+        if (!node) return ExternalGeometryResult::unsupported();
+        if (node->nodeTypeName() != "ExternalGeometry") return ExternalGeometryResult::unsupported();
         const auto* ext = dynamic_cast<const ExternalGeometry*>(node);
-        if (!ext) return PackedMesh{};
+        if (!ext) return ExternalGeometryResult::unsupported();
 
         // Read the url list (MFString = vector<string>). Use the first non-empty.
         const MFString urls = ext->getUrl();
@@ -47,7 +50,7 @@ makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver)
         for (const auto& u : urls) {
             if (!u.empty()) { url = u; break; }
         }
-        if (url.empty()) return PackedMesh{}; // nothing to resolve.
+        if (url.empty()) return ExternalGeometryResult::failed(); // nothing to resolve.
 
         // (5) Cache hit — reuse without re-fetch/re-parse.
         if (auto it = cache->find(url); it != cache->end()) {
@@ -59,25 +62,26 @@ makeExternalGeometryResolver(x3d::runtime::extract::AssetResolver bytesResolver)
             std::tolower(static_cast<unsigned char>(url[url.size() - 3])) != 's' ||
             std::tolower(static_cast<unsigned char>(url[url.size() - 2])) != 't' ||
             std::tolower(static_cast<unsigned char>(url[url.size() - 1])) != 'l') {
-            // Unsupported formats return an empty mesh without caching.
-            return PackedMesh{};
+            // Not cached: a url edit re-asks.
+            return ExternalGeometryResult::unsupported();
         }
 
         // (3) Fetch bytes via the embedder's byte-level resolver. No resolver
         // wired => cannot fetch => Pending.
-        if (!bytesResolver) return PackedMesh{};
+        if (!bytesResolver) return ExternalGeometryResult::pending();
         AssetResult res = bytesResolver(url, AssetKind::ExternalGeometry);
+        if (res.failed()) return ExternalGeometryResult::failed();
         if (!res.ready() || res.bytes.empty()) {
-            // Pending or Failed — return empty (skip this tick). Not cached so a
-            // later extract can retry once the asset becomes ready.
-            return PackedMesh{};
+            // Pending — not cached so a later extract can retry once the
+            // asset becomes ready.
+            return ExternalGeometryResult::pending();
         }
 
         // (4) Parse the bytes into a PackedMesh.
         PackedMesh mesh = parseStlBinary(res.bytes);
         if (mesh.empty()) {
-            // Malformed STL — empty mesh. Treat as unhandled/skip; do not cache.
-            return PackedMesh{};
+            // Malformed STL. Not cached: a url edit re-asks.
+            return ExternalGeometryResult::failed();
         }
 
         // (5) Cache and return.

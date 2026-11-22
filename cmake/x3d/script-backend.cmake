@@ -16,7 +16,9 @@ if(X3D_CPP_BUILD_SCRIPT)
         "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.c"
         PROPERTIES LANGUAGE CXX)
     target_include_directories(x3d_duktape PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script/vendor/duktape>")
+    set_target_properties(x3d_duktape PROPERTIES EXPORT_NAME duktape)
     # Keep Duktape warnings from polluting the main build.
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(x3d_duktape PRIVATE -w)
@@ -36,6 +38,29 @@ if(X3D_CPP_BUILD_SCRIPT)
         x3d_cpp::x3d_cpp
         x3d_duktape)
     target_include_directories(x3d_ecmascript_backend PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script"
-        "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape")
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/runtime/script>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script>")
+    set_target_properties(x3d_ecmascript_backend PROPERTIES EXPORT_NAME ecmascript)
+    add_library(x3d_cpp::ecmascript ALIAS x3d_ecmascript_backend)
+
+    # Installed as x3d_cpp::ecmascript so a find_package(x3d_cpp) embedder can
+    # run Script nodes. EcmaScriptBackend.hpp includes
+    # "vendor/duktape/duktape.h", so the two Duktape headers install at that
+    # path: the one vendor directory allowed in the include tree (see the leak
+    # gate in scripts/verify_install_embed.sh). install.cmake leaves
+    # EcmaScriptBackend.hpp out of the generic script/ install, so a build
+    # without the backend ships no header it cannot compile.
+    install(TARGETS x3d_duktape x3d_ecmascript_backend
+        EXPORT x3d_cppTargets
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/EcmaScriptBackend.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script")
+    install(FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duktape.h"
+            "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/duk_config.h"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp/script/vendor/duktape")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/script/vendor/duktape/DUKTAPE_LICENSE.txt"
+        DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/x3d_cpp")
 endif()

@@ -2,7 +2,7 @@
 title: Ext firewall
 summary: The ext firewall isolates binary-mesh, STL, ExternalGeometry, and physical room/device input code behind a quarantined directory, a one-way dependency, and an opt-in CMake flag, so core stays free of nonstandard nodes and transforms.
 tags: [subsystem, ext-firewall, binary, stl, external-geometry, externproto, cave]
-updated: 2026-11-05
+updated: 2026-11-20
 related:
   - ../../explanation/architecture.md
   - ../../explanation/decisions/0001-ext-firewall.md
@@ -40,7 +40,7 @@ The extension firewall isolates opt-in foreign geometry under `runtime/ext/`. Co
 | `runtime/ext/CaveProtos.hpp` | Sensor declarations and the composed `RoomGroup` declaration: Transform, auxiliary RoomFrameSensor, and three ROUTEs |
 | `runtime/ext/CaveInputSystem.hpp` | Owner-thread frame submission, sensor behavior, and RoomGroup placement and input warnings |
 | `runtime/ext/protos/cave-fallbacks.x3d` | Portable inactive sensor PROTOs and identity RoomGroup fallback; distribute this file with your scene |
-| `runtime/ext/ExternalGeometryResolver.hpp` | `makeExternalGeometryResolver(bytesResolver)` — the lazy materialization seam; produces a `std::function<PackedMesh(const X3DNode*, AssetResolver)>` for `MeshBuildOptions::externalGeometryResolver`; owns a url-keyed `PackedMesh` cache |
+| `runtime/ext/ExternalGeometryResolver.hpp` | `makeExternalGeometryResolver(bytesResolver)` — the lazy materialization seam; produces a `std::function<ExternalGeometryResult(const X3DNode*, AssetResolver)>` for `MeshBuildOptions::externalGeometryResolver`; owns a url-keyed `PackedMesh` cache |
 | `runtime/ext/codecs/StlReader.hpp` | Binary STL codec: `parseStlBinary(data, len)` and `parseStlBinary(vector)` — reads the 84 + N×50 byte layout, produces a non-indexed `PackedMesh` (Position + Normal, `Topology::Triangles`, `ccw=true`, `solid=true`) |
 | `include/x3d/ext.hpp` | Opt-in embedder façade; re-exports `x3d::ext::ExternalGeometry`, `x3d::ext::install`, `x3d::ext::kExternalGeometryUrn`, `x3d::ext::makeExternalGeometryProto`, `x3d::ext::makeExternalGeometryResolver`, and the CAVE surface (`TrackedDeviceSensor`, `RoomFrameSensor`, `RoomFrame`, `DevicePose`, `DeviceSample`, `RoomGroupWarning`, `CaveInputSystem`, `installCaveInput`, the three CAVE URN constants and declaration factories) |
 | `runtime/ext/tests/` | Ext-gated geometry and CAVE tests (see "How it is tested") |
@@ -64,7 +64,7 @@ inline constexpr const char* x3d::ext::kExternalGeometryUrn =
 
 // 3. Extract-time: build the lazy-materialization resolver.
 //    Pass the returned function to MeshBuildOptions::externalGeometryResolver.
-std::function<PackedMesh(const X3DNode*, AssetResolver)>
+std::function<ExternalGeometryResult(const X3DNode*, AssetResolver)>
 x3d::ext::makeExternalGeometryResolver(AssetResolver bytesResolver);
 
 // 4. The node type itself (advanced use: build scenes programmatically).
@@ -111,7 +111,7 @@ at the top level. It delegates unrecognized URLs to the same asset policy.
 
 - `ProtoDeclarationResolver` seam — `install(base)` wraps any existing `ProtoDeclarationResolver` (default: `x3d::codec::localFileProtoResolver`). The returned resolver intercepts `kExternalGeometryUrn` and returns its resolver-local `ProtoDeclaration` whose body is an `ExternalGeometry` node with four IS-wired fields (`url`, `bboxCenter`, `bboxSize`, `contentType`); it intercepts the three versioned CAVE URNs the same way. All other URL lists are forwarded to `base`. No new parameters on `parseDocument` — the existing resolver argument is the exact opt-in gap.
 
-- `MeshBuildOptions::externalGeometryResolver` seam — `makeExternalGeometryResolver(bytesResolver)` returns a `std::function<PackedMesh(const X3DNode*, AssetResolver)>`. The extractor calls this function when it encounters a geometry node that is not a known core type. The closure `dynamic_cast`s to `ExternalGeometry`, reads `url`, sniffs the extension (`.stl` → binary STL; else returns empty `PackedMesh`), fetches bytes via the embedder-supplied `AssetResolver` with `AssetKind::ExternalGeometry`, calls `parseStlBinary`, caches the result keyed by URL, and returns the `PackedMesh`. An empty `PackedMesh` (`vertex_count == 0`) signals Pending/skip to the extractor.
+- `MeshBuildOptions::externalGeometryResolver` seam — `makeExternalGeometryResolver(bytesResolver)` returns a `std::function<ExternalGeometryResult(const X3DNode*, AssetResolver)>`. The extractor calls this function when it encounters a geometry node that is not a known core type. The closure `dynamic_cast`s to `ExternalGeometry`, reads `url`, sniffs the extension (`.stl` → binary STL), fetches bytes via the embedder-supplied `AssetResolver` with `AssetKind::ExternalGeometry`, calls `parseStlBinary`, caches the result keyed by URL, and returns it `Ready`. Other node types and non-`.stl` urls are `Unsupported`; no bytes resolver or a `Pending` fetch is `Pending`; an empty url, a `Failed` fetch or malformed STL is `Failed`. Only `Pending` is retried without an edit; see [extract seam points](extract.md#seam-points).
 
 - Declaration-local clone factory — each native declaration supplies `ProtoDeclaration::createNode`, and expansion passes it through `CloneContext` so `deepClone` can instantiate the native node by type name. Opting one resolver into extensions never changes another world's cloning.
 
