@@ -156,7 +156,8 @@ TEST_CASE("PeriodicWave") {
     SoundSystem sys(dsp);
     X3DExecutionContext ctx;
     osc->setPeriodicWave(wave);
-    sys.attach(buildDest(osc).get(), ctx);
+    auto dest = buildDest(osc);
+    sys.attach(dest.get(), ctx);
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
 
@@ -180,7 +181,8 @@ TEST_CASE("PeriodicWave") {
     SoundSystem sys(dsp);
     X3DExecutionContext ctx;
     osc->setPeriodicWave(wave);
-    sys.attach(buildDest(osc).get(), ctx);
+    auto dest = buildDest(osc);
+    sys.attach(dest.get(), ctx);
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
 
@@ -202,7 +204,8 @@ TEST_CASE("PeriodicWave") {
     auto dsp = std::make_shared<BuiltinDspBackend>();
     SoundSystem sys(dsp);
     X3DExecutionContext ctx;
-    sys.attach(buildDest(osc).get(), ctx);
+    auto dest = buildDest(osc);
+    sys.attach(dest.get(), ctx);
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
 
@@ -260,7 +263,8 @@ TEST_CASE("PeriodicWave") {
     auto rec = std::make_shared<RecordingBackend>();
     SoundSystem sys(rec);
     X3DExecutionContext ctx;
-    sys.attach(buildDest(osc).get(), ctx);
+    auto dest = buildDest(osc); // the system holds raw pointers: keep the graph alive
+    sys.attach(dest.get(), ctx);
     sys.update(0, ctx);
     CHECK(rec->waveforms.empty()); // unchanged: nothing re-sent
 
