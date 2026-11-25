@@ -2,7 +2,7 @@
 
 A C++20 headless X3D runtime SDK. Parse XML, ClassicVRML, VRML97, or JSON,
 advance scene behavior, and extract meshes, materials, lights, and cameras for
-an application renderer. The node bindings are generated from the X3D 4.0
+an application renderer. The node bindings are generated from the X3D 4.1
 Unified Object Model. Behavioral conformance is tracked in the
 [findings register](docs/conformance/findings.yaml).
 
@@ -36,9 +36,9 @@ NPS/MOVES exhibit, fetched separately with attribution. See the
 The [CI workflow](.github/workflows/ci.yml) defines compiler and platform checks.
 The CMake package requires C++20 and CMake 3.21 or later.
 
-Readers accept X3D 3.0–4.1 version declarations; the generated node model is 4.0.
-Loading a newer version declaration does not add its node types. The XML reader
-keeps unknown elements as opaque content, so XML to XML conversion preserves them. See the
+Readers accept X3D 3.0–4.1; the generated node model is 4.1, with each node and
+field tagged by the version that introduced it, so content newer than a file's
+declared version is reported. See the
 [parse readers](docs/wiki/reference/subsystems/parse-readers.md) for version handling.
 
 ## Quick start

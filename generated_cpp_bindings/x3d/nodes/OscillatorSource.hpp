@@ -26,7 +26,7 @@ using namespace x3d::core;
  * @brief OscillatorSource node represents an audio source generating a periodic
  * waveform, providing a constant tone.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#OscillatorSource
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#OscillatorSource
  */
 class OscillatorSource : public virtual X3DSoundSourceNode {
 public:
@@ -37,6 +37,8 @@ public:
   static SFFloat getDefaultDetune() { return 0; }
 
   static SFFloat getDefaultFrequency() { return 440; }
+
+  static SFNode getDefaultPeriodicWave() { return nullptr; }
 
   static std::string getContainerFieldType() {
     return "containerFieldChoicesSoundSource";
@@ -50,17 +52,15 @@ public:
 
   /**
    * SFFloat; access: inputOutput. Borrows the stored value.
-   * @details The detune ffield is an a-rate AudioParam representing detuning of
-   * oscillation in cents (though the AudioParam returned is read-only, the
-   * value it represents is not).
+   * @details The detune field, measured in cents, modulates the speed at which
+   * the the audio stream is rendered.
    */
   const SFFloat &getDetune() const { return _detune; }
 
   /**
    * Access: inputOutput.
-   * @details The detune ffield is an a-rate AudioParam representing detuning of
-   * oscillation in cents (though the AudioParam returned is read-only, the
-   * value it represents is not).
+   * @details The detune field, measured in cents, modulates the speed at which
+   * the the audio stream is rendered.
    */
   void setDetune(const SFFloat &value) {
 
@@ -98,12 +98,41 @@ public:
    */
   void setFrequencyUnchecked(const SFFloat &value) { _frequency = value; }
 
+  /**
+   * SFNode; access: inputOutput. Borrows the stored value.
+   * @details The periodicWave field is an optional PeriodicWave node providing
+   * a regular or arbitrary periodic waveform.
+   */
+  const SFNode &getPeriodicWave() const { return _periodicWave; }
+
+  /**
+   * @details Permitted X3D node types: PeriodicWave
+   */
+  static const std::vector<std::string> &acceptablePeriodicWaveNodeTypes() {
+    static const std::vector<std::string> types = {"PeriodicWave"};
+    return types;
+  }
+
+  /**
+   * Access: inputOutput.
+   * @details The periodicWave field is an optional PeriodicWave node providing
+   * a regular or arbitrary periodic waveform.
+   */
+  void setPeriodicWave(const SFNode &value) { _periodicWave = value; }
+
+  void setPeriodicWave(SFNode &&value) { _periodicWave = std::move(value); }
+
   std::string nodeTypeName() const override;
 
   /**
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
@@ -149,6 +178,8 @@ private:
   SFFloat _detune{0};
 
   SFFloat _frequency{440};
+
+  SFNode _periodicWave{nullptr};
 };
 
 } // namespace x3d::nodes

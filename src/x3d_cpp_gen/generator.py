@@ -315,7 +315,7 @@ def write_interface_registry(output_dir: str, nodes: Dict[str, X3DNode],
 def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
                           output_dir: str, templates_dir=None,
                           clang_format: str = "clang-format",
-                          enum_defs=None) -> None:
+                          enum_defs=None, spec_version=None) -> None:
     """Thin orchestrator: delegate per-node header emission to the backend.
 
     Type decisions live in emit.descriptors and the backend renders the
@@ -325,7 +325,8 @@ def generate_cpp_bindings(nodes: Dict[str, X3DNode], dependency_graph,
     Node classes use the fixed x3d::nodes namespace.
     """
     backend = CppHeaderBackend(templates_dir=templates_dir,
-                               clang_format=clang_format, enum_defs=enum_defs)
+                               clang_format=clang_format, enum_defs=enum_defs,
+                               spec_version=spec_version)
     backend.emit(nodes, dependency_graph, output_dir)
 
 

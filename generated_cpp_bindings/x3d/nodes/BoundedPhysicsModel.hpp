@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief BoundedPhysicsModel provides user-defined geometrical boundaries for
  * particle motion.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/particleSystems.html#BoundedPhysicsModel
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/particleSystems.html#BoundedPhysicsModel
  */
 class BoundedPhysicsModel : public virtual X3DParticlePhysicsModelNode {
 public:
@@ -40,8 +40,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained geometry node provides the geometry used for each
-   * particle when the parent ParticleSystem node has geometryType=GEOMETRY.
+   * @details Optional single contained geometry node provides the geometry used
+   * for each particle when the parent ParticleSystem node has
+   * geometryType=GEOMETRY.
    */
   const SFNode &getGeometry() const { return _geometry; }
 
@@ -55,8 +56,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained geometry node provides the geometry used for each
-   * particle when the parent ParticleSystem node has geometryType=GEOMETRY.
+   * @details Optional single contained geometry node provides the geometry used
+   * for each particle when the parent ParticleSystem node has
+   * geometryType=GEOMETRY.
    */
   void setGeometry(const SFNode &value) { _geometry = value; }
 
@@ -68,6 +70,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

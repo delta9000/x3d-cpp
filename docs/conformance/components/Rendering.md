@@ -1,6 +1,6 @@
 # Rendering — conformance
 
-_Generated. Levels 1,2,3,5 · 15 nodes · profiles: Interchange, Interactive, Immersive, Full._
+_Generated. Levels 1,2,3,5 · 16 nodes · profiles: Interchange, Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
@@ -10,18 +10,20 @@ _Generated. Levels 1,2,3,5 · 15 nodes · profiles: Interchange, Interactive, Im
 | Coordinate | 1 | ✓ | — | — | CONTAINERFIELD-FALSEPOS, DELTA-SWEPT-TRAJECTORY, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, VALIDATE-VALUE-SYNTAX | X3DCoordinateNode, X3DGeometricPropertyNode |
 | CoordinateDouble | 1 | ✓ | — | — | GEO-2, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DCoordinateNode, X3DGeometricPropertyNode |
 | IndexedLineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-LINEPOINT | X3DGeometryNode |
-| IndexedTriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
-| IndexedTriangleSet | 3 | ✓ | ✓ | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
-| IndexedTriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| IndexedTriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
+| IndexedTriangleSet | 3 | ✓ | ✓ | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
+| IndexedTriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
 | LineSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DGeometryNode |
 | Normal | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DGeometricPropertyNode, X3DNormalNode |
 | PointSet | 1 | ✓ | ✓ | — | AUD-RND-1, AUD-RND-2, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-LINEPOINT | X3DGeometryNode |
-| TriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
-| TriangleSet | 3 | ✓ | ✓ | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
-| TriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DComposedGeometryNode, X3DGeometryNode |
+| Tangent | 5 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-BINDINGS, V41-TANGENT | X3DGeometricPropertyNode, X3DTangentNode |
+| TriangleFanSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
+| TriangleSet | 3 | ✓ | ✓ | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
+| TriangleStripSet | 3 | ✓ | ✓ | — | EXT-002, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-TANGENT | X3DComposedGeometryNode, X3DGeometryNode |
 
 ## Findings
 
+- **V41-TANGENT** [minor/OPEN] — §ISO/IEC 19775-1 v4.1 Rendering component: Authored Tangent vectors parse and round-trip but are not carried into extracted meshes or glTF TANGENT attributes.
 - **EXT-002** [major/CLOSED] — §11.3.2, 11.4.13, 11.4.15: With colorPerVertex/normalPerVertex=FALSE, fan/strip sets index color/normal per TRIANGLE (faceNo++ per triangle) instead of per fan/strip — wrong colors/normals when a fan/strip has >1 triangle.
   - Increment faceNo per fan/strip primitive (per fanCount/stripCount entry, per -1 run for indexed), not per emitted triangle.
 - **REQ-CLIP** [major/FIXED] — §11.4.1; F.5: ClipPlane equations and enabled state reached extraction and the CPU reference rasterizer, but the GL poc_renderer ignored planes.

@@ -30,7 +30,7 @@ from x3d_cpp_gen.generator import (
 SPEC_40 = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
 FIXTURES = Path(__file__).parent / "fixtures"
 SYNTHETIC_41 = FIXTURES / "X3dUnifiedObjectModel-4.1-synthetic.xml"
-REAL_41 = FIXTURES / "X3dUnifiedObjectModel-4.1.xml"
+REAL_41 = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml")
 
 
 # Auto-detection

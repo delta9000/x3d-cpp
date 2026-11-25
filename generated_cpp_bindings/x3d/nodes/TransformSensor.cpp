@@ -9,6 +9,8 @@ std::string TransformSensor::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TransformSensor::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &TransformSensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).getCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -57,9 +59,9 @@ const FieldTable &TransformSensor::fields() const {
           return {&dynamic_cast<const TransformSensor &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -82,9 +84,9 @@ const FieldTable &TransformSensor::fields() const {
           return {&dynamic_cast<const TransformSensor &>(n)
                        .X3DSensorNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "enterTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -106,9 +108,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).getEnterTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "exitTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -130,9 +132,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).getExitTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -154,9 +156,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -179,9 +181,9 @@ const FieldTable &TransformSensor::fields() const {
           return {&dynamic_cast<const TransformSensor &>(n)
                        .X3DSensorNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -204,9 +206,9 @@ const FieldTable &TransformSensor::fields() const {
           return {
               &dynamic_cast<const TransformSensor &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"orientation_changed", X3DFieldType::SFRotation,
@@ -230,9 +232,9 @@ const FieldTable &TransformSensor::fields() const {
                     return {&dynamic_cast<const TransformSensor &>(n)
                                  .getOrientation_changed(),
                             &typeid(SFRotation)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "position_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -255,9 +257,9 @@ const FieldTable &TransformSensor::fields() const {
           return {
               &dynamic_cast<const TransformSensor &>(n).getPosition_changed(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"size", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -281,9 +283,9 @@ const FieldTable &TransformSensor::fields() const {
                     return {&dynamic_cast<const TransformSensor &>(n)
                                  .X3DEnvironmentalSensorNode::getSize(),
                             &typeid(SFVec3f)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "targetObject", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -306,9 +308,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).getTargetObject(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -330,9 +332,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -354,9 +356,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -379,9 +381,9 @@ const FieldTable &TransformSensor::fields() const {
           return {
               &dynamic_cast<const TransformSensor &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -403,9 +405,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -427,9 +429,9 @@ const FieldTable &TransformSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransformSensor &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

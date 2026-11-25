@@ -210,14 +210,18 @@ inline void collectDiagnostics(const sdk::X3DDocument &doc, std::vector<Diag> &d
     }
 
     // 3b. Reader-recovery diagnostics (unknown node element, coerced profile,
-    // coerced value, dropped cyclic USE).
+    // coerced value, dropped cyclic USE), and content newer than the declared
+    // version. The last is an error, like a profile exceedance: the document
+    // is not valid X3D at the version it declares.
     for (const auto &w : doc.readerWarnings) {
         using Kind = x3d::runtime::ReaderWarning::Kind;
         const char *cat = w.kind == Kind::UnknownNode ? "node"
                           : w.kind == Kind::Value     ? "value"
                           : w.kind == Kind::CyclicUse ? "use"
+                          : w.kind == Kind::Version   ? "version"
                                                       : "profile";
-        diags.push_back({cat, "warning", w.detail});
+        diags.push_back({cat, w.kind == Kind::Version ? "error" : "warning",
+                         w.detail});
     }
 
     checkDuplicateMeta(doc, diags);

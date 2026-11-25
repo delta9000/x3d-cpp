@@ -11,6 +11,10 @@ std::string X3DTimeDependentNode::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion X3DTimeDependentNode::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &X3DTimeDependentNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).getDescription(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -61,9 +65,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).getElapsedTime(),
               &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -86,9 +90,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).X3DNode::getIS(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -110,9 +114,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n).getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isPaused", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -134,9 +138,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n).getIsPaused(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -159,9 +163,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "pauseTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -183,9 +187,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n).getPauseTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "resumeTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -208,9 +212,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).getResumeTime(),
               &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "startTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -232,9 +236,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n).getStartTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "stopTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -256,9 +260,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n).getStopTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -281,9 +285,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -306,9 +310,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -331,9 +335,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -356,9 +360,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {
               &dynamic_cast<const X3DTimeDependentNode &>(n).X3DNode::getId(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -381,9 +385,9 @@ const FieldTable &X3DTimeDependentNode::fields() const {
           return {&dynamic_cast<const X3DTimeDependentNode &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

@@ -632,6 +632,17 @@ void BuiltinDspBackend::setParam(NodeHandle node, Param param, float value) {
   }
 }
 
+void BuiltinDspBackend::setWaveform(NodeHandle node, const NodeParams &params) {
+  auto it = impl_->nodes.find(node);
+  if (it == impl_->nodes.end() || it->second.kind != NodeKind::Oscillator) return;
+  Node &n = it->second;
+  n.params.waveform = params.waveform;
+  n.params.optionsReal = params.optionsReal;
+  n.params.optionsImag = params.optionsImag;
+  n.customGain =
+      params.waveform == Waveform::Custom ? periodicWaveGain(n.params) : 0.0;
+}
+
 void BuiltinDspBackend::render(NodeHandle destination, int frames,
                                float sampleRate, std::vector<float> &out) {
   if (frames < 0) frames = 0;

@@ -9,6 +9,8 @@ std::string Script::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion Script::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &Script::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &Script::fields() const {
           return {
               &dynamic_cast<const Script &>(n).X3DScriptNode::getAutoRefresh(),
               &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
@@ -61,9 +63,9 @@ const FieldTable &Script::fields() const {
           return {&dynamic_cast<const Script &>(n)
                        .X3DScriptNode::getAutoRefreshTimeLimit(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -86,9 +88,9 @@ const FieldTable &Script::fields() const {
           return {
               &dynamic_cast<const Script &>(n).X3DScriptNode::getDescription(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "directOutput", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -109,9 +111,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).getDirectOutput(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "field", X3DFieldType::MFNode, AccessType::InputOutput, "field",
@@ -130,9 +132,9 @@ const FieldTable &Script::fields() const {
 
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).getField(), &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -154,9 +156,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DScriptNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "load", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -178,9 +180,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DScriptNode::getLoad(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -202,9 +204,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DScriptNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "mustEvaluate", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -225,9 +227,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).getMustEvaluate(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "sourceCode", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -247,9 +249,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).getSourceCode(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "url", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -271,9 +273,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DScriptNode::getUrl(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -293,9 +295,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -315,9 +317,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -338,9 +340,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -360,9 +362,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -383,9 +385,9 @@ const FieldTable &Script::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Script &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

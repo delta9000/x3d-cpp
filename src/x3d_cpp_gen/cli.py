@@ -26,7 +26,7 @@ from x3d_cpp_gen.model.version import SpecVersion
 from x3d_cpp_gen.conformance.errata import apply_field_additions_model
 
 # Packaged default spec, resolved relative to the installed package (never CWD).
-DEFAULT_SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
+DEFAULT_SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml")
 
 
 def compile_and_run_test(test_file_path: str, output_dir: str,
@@ -97,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-s", "--spec", default=str(DEFAULT_SPEC),
-        help="Path to the X3D UOM XML spec (default: packaged 4.0 model).",
+        help="Path to the X3D UOM XML spec (default: packaged 4.1 model).",
     )
     parser.add_argument(
         "--spec-version", default=None,
@@ -195,7 +195,8 @@ def main(argv=None) -> int:
     generate_cpp_bindings(nodes, dependency_graph, str(out_dir),
                           templates_dir=templates_dir,
                           clang_format=args.clang_format,
-                          enum_defs=enum_defs)
+                          enum_defs=enum_defs,
+                          spec_version=spec_version.version)
     write_node_factory(str(out_dir), nodes)
     write_interface_registry(str(out_dir), nodes, dependency_graph)
 

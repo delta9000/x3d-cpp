@@ -11,6 +11,10 @@ std::string {{ class_name }}::defaultContainerField() const {
     return getDefaultContainerField();
 }
 
+X3DVersion {{ class_name }}::introducedIn() const {
+    return X3DVersion{ {{ since[0] }}, {{ since[1] }} };
+}
+
 const FieldTable& {{ class_name }}::fields() const {
     static const FieldTable table = [] {
         FieldTable t;
@@ -86,10 +90,11 @@ const FieldTable& {{ class_name }}::fields() const {
             [](const X3DNode& n) -> FieldView {
                 return {&dynamic_cast<const {{ class_name }}&>(n).{{ field.getter_call }}(),
                         &typeid({{ field.cpp_type }})};
-            }
+            },
             {% else %}
-            nullptr
+            nullptr,
             {% endif %}
+            X3DVersion{ {{ field.since[0] }}, {{ field.since[1] }} }
         });
         {% endfor %}
         return t;

@@ -22,7 +22,7 @@ resource, and identity rules.
 | Capability | Current surface | Reference |
 |---|---|---|
 | Parsing | XML, ClassicVRML, VRML97, JSON, and gzip input. | [Parsing](subsystems/parse-readers.md) |
-| Document model and bindings | Typed X3D 4.0 nodes, fields, and reflection. | [Document model and bindings](subsystems/generated-bindings.md) |
+| Document model and bindings | Typed X3D 4.1 nodes, fields, and reflection; each node type and field reports the version that introduced it, and readers and `x3d validate` report content newer than the declared version. 4.1-only nodes are typed and round-trip; their runtime behaviour is tracked as `V41-*` findings. | [Document model and bindings](subsystems/generated-bindings.md) |
 | Node inspection | `sdk::forEachNode` visits each reachable node once; `sdk::readField<T>` returns an owned copy of a named field. | [SDK facade](subsystems/sdk-facade.md) |
 | Scene authoring | `SceneBuilder` creates nodes by C++ type or X3D type name, attaches children by containerField, sets fields from text or typed values, and adds ROUTEs, rejecting unknown fields, malformed values, and ROUTEs with the wrong direction or type. Child node types and value ranges are not checked by the builder. | [Asset conversion](subsystems/asset-import.md#scenebuilder) |
 | Serialization | XML, canonical XML, JSON, and ClassicVRML writers. | [Serialization](subsystems/codecs-writers.md) |

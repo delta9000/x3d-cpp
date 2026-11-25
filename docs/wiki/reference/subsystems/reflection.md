@@ -73,9 +73,14 @@ struct FieldInfo {
     std::function<std::string(const X3DNode&)>       getEnumString;   // SFEnum/MFEnum only
     std::function<void(X3DNode&, const std::string&)> setEnumString;  // SFEnum/MFEnum only
     FieldView (*view)(const X3DNode&) = nullptr;  // zero-copy read (ADR-0049)
+    X3DVersion since{};  // earliest X3D version defining this field on this node type (ADR-0077)
     bool isNode() const;   bool isEnum() const;
     bool isReadable() const; bool isWritable() const; bool isViewable() const;
 };
+
+// An X3D version; ordered, str() gives "4.1". Also returned by
+// X3DNode::introducedIn() for the node type itself.
+struct X3DVersion { int major = 3; int minor = 0; };
 
 // Borrowed pointer to a field's stored member plus its C++ type (ADR-0049).
 struct FieldView { const void* data; const std::type_info* type; };

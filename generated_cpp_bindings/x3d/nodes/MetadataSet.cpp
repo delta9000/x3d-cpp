@@ -9,6 +9,8 @@ std::string MetadataSet::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion MetadataSet::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &MetadataSet::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -31,9 +33,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -53,9 +55,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"name", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -78,9 +80,9 @@ const FieldTable &MetadataSet::fields() const {
                     return {&dynamic_cast<const MetadataSet &>(n)
                                  .X3DMetadataObject::getName(),
                             &typeid(SFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "reference", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -103,9 +105,9 @@ const FieldTable &MetadataSet::fields() const {
           return {&dynamic_cast<const MetadataSet &>(n)
                        .X3DMetadataObject::getReference(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "value", X3DFieldType::MFNode, AccessType::InputOutput, "value",
@@ -125,9 +127,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).getValue(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -149,9 +151,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -173,9 +175,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -197,9 +199,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -221,9 +223,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -245,9 +247,9 @@ const FieldTable &MetadataSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MetadataSet &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

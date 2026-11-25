@@ -11,6 +11,8 @@ std::string X3DSequencerNode::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion X3DSequencerNode::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &X3DSequencerNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -35,9 +37,9 @@ const FieldTable &X3DSequencerNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "key", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -57,9 +59,9 @@ const FieldTable &X3DSequencerNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DSequencerNode &>(n).getKey(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -82,9 +84,9 @@ const FieldTable &X3DSequencerNode::fields() const {
           return {
               &dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "next", X3DFieldType::SFBool, AccessType::InputOnly, "",
@@ -99,9 +101,9 @@ const FieldTable &X3DSequencerNode::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"previous", X3DFieldType::SFBool,
                           AccessType::InputOnly, "",
@@ -117,9 +119,9 @@ const FieldTable &X3DSequencerNode::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"set_fraction", X3DFieldType::SFFloat,
                           AccessType::InputOnly, "",
@@ -135,9 +137,9 @@ const FieldTable &X3DSequencerNode::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -159,9 +161,9 @@ const FieldTable &X3DSequencerNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -183,9 +185,9 @@ const FieldTable &X3DSequencerNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -208,9 +210,9 @@ const FieldTable &X3DSequencerNode::fields() const {
           return {
               &dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -232,9 +234,9 @@ const FieldTable &X3DSequencerNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -257,9 +259,9 @@ const FieldTable &X3DSequencerNode::fields() const {
           return {
               &dynamic_cast<const X3DSequencerNode &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

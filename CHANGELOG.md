@@ -8,6 +8,24 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **X3D 4.1 typed bindings (ADR-0077).** The bindings are generated from the
+  X3D 4.1 UOM. `EnvironmentLight`, `FontLibrary`, `HAnimPose`, `InlineGeometry`,
+  `RenderedTexture`, `Tangent` and the 4.1 fields (`IndexedFaceSet.tangent`,
+  `OscillatorSource.periodicWave`, `ImageTexture.width`, …) read and write
+  typed in XML, ClassicVRML and JSON; before, XML kept them opaque and the
+  other readers dropped them. Each node type reports `introducedIn()` and each
+  `FieldInfo` carries `since`. Readers add a `ReaderWarning::Kind::Version` for
+  authored content newer than the declared version, and `x3d validate` reports
+  it as a `version` error and prints `version fit`. A new `X3DDocument`
+  defaults to version 4.1.
+- **`OscillatorSource.periodicWave` drives the oscillator.** `SoundSystem`
+  reads the field at attach and re-sends the waveform through the new
+  `AudioBackend::setWaveform` when the field or the wave changes. Custom
+  `AudioBackend` implementations must add `setWaveform`.
+  `SoundSystem::setPeriodicWave` is removed.
+- **`TextureProjectorParallel.upVector`** (X3D 4.1) orients the parallel
+  projection volume.
+
 - **Installed ECMAScript backend.** The Duktape `ScriptEngine` installs and
   exports as `x3d_cpp::ecmascript`, with `EcmaScriptBackend.hpp` and the two
   Duktape headers it includes. Before, `EcmaScriptBackend.hpp` was installed

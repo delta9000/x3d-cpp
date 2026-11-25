@@ -9,6 +9,8 @@ std::string PlaneSensor::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion PlaneSensor::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &PlaneSensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {&dynamic_cast<const PlaneSensor &>(n)
                        .X3DDragSensorNode::getAutoOffset(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "axisRotation", X3DFieldType::SFRotation, AccessType::InputOutput, "",
@@ -58,9 +60,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).getAxisRotation(),
                   &typeid(SFRotation)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -83,9 +85,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {&dynamic_cast<const PlaneSensor &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -108,9 +110,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {
               &dynamic_cast<const PlaneSensor &>(n).X3DSensorNode::getEnabled(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -132,9 +134,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -157,9 +159,9 @@ const FieldTable &PlaneSensor::fields() const {
                     return {&dynamic_cast<const PlaneSensor &>(n)
                                  .X3DSensorNode::getIsActive(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isOver", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -183,9 +185,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {&dynamic_cast<const PlaneSensor &>(n)
                        .X3DPointingDeviceSensorNode::getIsOver(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "maxPosition", X3DFieldType::SFVec2f, AccessType::InputOutput, "",
@@ -207,9 +209,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).getMaxPosition(),
                   &typeid(SFVec2f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -231,9 +233,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "minPosition", X3DFieldType::SFVec2f, AccessType::InputOutput, "",
@@ -255,9 +257,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).getMinPosition(),
                   &typeid(SFVec2f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "offset", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -277,9 +279,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).getOffset(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "trackPoint_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -303,9 +305,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {&dynamic_cast<const PlaneSensor &>(n)
                        .X3DDragSensorNode::getTrackPoint_changed(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "translation_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly,
@@ -329,9 +331,9 @@ const FieldTable &PlaneSensor::fields() const {
           return {
               &dynamic_cast<const PlaneSensor &>(n).getTranslation_changed(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -353,9 +355,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -377,9 +379,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -401,9 +403,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -425,9 +427,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -449,9 +451,9 @@ const FieldTable &PlaneSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PlaneSensor &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

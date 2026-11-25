@@ -11,6 +11,10 @@ std::string X3DTextureProjectorNode::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion X3DTextureProjectorNode::introducedIn() const {
+  return X3DVersion{4, 0};
+}
+
 const FieldTable &X3DTextureProjectorNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -37,9 +41,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getAmbientIntensity(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "aspectRatio", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -62,9 +66,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .getAspectRatio(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -87,9 +91,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -112,9 +116,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "direction", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -137,9 +141,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {
               &dynamic_cast<const X3DTextureProjectorNode &>(n).getDirection(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "farDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -162,9 +166,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .getFarDistance(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "global", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -186,9 +190,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n).getGlobal(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "intensity", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -211,9 +215,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getIntensity(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -236,9 +240,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "location", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -261,9 +265,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {
               &dynamic_cast<const X3DTextureProjectorNode &>(n).getLocation(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -286,9 +290,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "nearDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -311,9 +315,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .getNearDistance(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "on", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -336,9 +340,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getOn(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "shadowIntensity", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -362,9 +366,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getShadowIntensity(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "shadows", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -387,9 +391,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DLightNode::getShadows(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "texture", X3DFieldType::SFNode, AccessType::InputOutput, "texture",
@@ -412,9 +416,34 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {
               &dynamic_cast<const X3DTextureProjectorNode &>(n).getTexture(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
+
+    t.push_back(FieldInfo{
+        "upVector", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const X3DTextureProjectorNode &>(n).getUpVector());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<X3DTextureProjectorNode &>(n).setUpVector(
+              std::any_cast<SFVec3f>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {
+              &dynamic_cast<const X3DTextureProjectorNode &>(n).getUpVector(),
+              &typeid(SFVec3f)};
+        },
+
+        X3DVersion{4, 1}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -437,9 +466,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -462,9 +491,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -487,9 +516,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -512,9 +541,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -537,9 +566,9 @@ const FieldTable &X3DTextureProjectorNode::fields() const {
           return {&dynamic_cast<const X3DTextureProjectorNode &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

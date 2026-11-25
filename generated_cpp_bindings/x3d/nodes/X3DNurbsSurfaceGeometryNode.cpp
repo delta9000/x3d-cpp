@@ -11,6 +11,10 @@ std::string X3DNurbsSurfaceGeometryNode::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion X3DNurbsSurfaceGeometryNode::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -37,9 +41,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getControlPoint(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -62,9 +66,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -87,9 +91,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -112,9 +116,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getSolid(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InputOutput, "texCoord",
@@ -137,9 +141,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uClosed", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -162,9 +166,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getUClosed(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -187,9 +191,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getUDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uKnot", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -212,9 +216,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getUKnot(),
               &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uOrder", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -237,9 +241,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getUOrder(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uTessellation", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -262,9 +266,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getUTessellation(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vClosed", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -287,9 +291,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getVClosed(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -312,9 +316,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getVDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vKnot", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -337,9 +341,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getVKnot(),
               &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vOrder", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -362,9 +366,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getVOrder(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vTessellation", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -387,9 +391,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .getVTessellation(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "weight", X3DFieldType::MFDouble, AccessType::InputOutput, "",
@@ -412,9 +416,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {
               &dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n).getWeight(),
               &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -437,9 +441,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -462,9 +466,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -487,9 +491,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -512,9 +516,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -537,9 +541,9 @@ const FieldTable &X3DNurbsSurfaceGeometryNode::fields() const {
           return {&dynamic_cast<const X3DNurbsSurfaceGeometryNode &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief Base type for all node types that specify texture projector nodes,
  * which provide a form of lighting.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjector.html#X3DTextureProjectorNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/textureProjector.html#X3DTextureProjectorNode
  */
 class X3DTextureProjectorNode : public virtual X3DLightNode {
 public:
@@ -41,6 +41,8 @@ public:
   static SFFloat getDefaultNearDistance() { return -1; }
 
   static SFNode getDefaultTexture() { return nullptr; }
+
+  static SFVec3f getDefaultUpVector() { return SFVec3f{0, 1, 0}; }
 
   /// Missing containerField defaults to "children".
   static std::string getDefaultContainerField() { return "children"; }
@@ -183,12 +185,31 @@ public:
 
   void setTexture(SFNode &&value) { _texture = std::move(value); }
 
+  /**
+   * SFVec3f; access: inputOutput. Borrows the stored value.
+   * @details
+   */
+  const SFVec3f &getUpVector() const { return _upVector; }
+
+  /**
+   * Access: inputOutput.
+   * @details
+   */
+  void setUpVector(const SFVec3f &value) { _upVector = value; }
+
+  void setUpVector(SFVec3f &&value) { _upVector = std::move(value); }
+
   std::string nodeTypeName() const override;
 
   /**
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
@@ -246,6 +267,8 @@ private:
   SFFloat _nearDistance{-1};
 
   SFNode _texture{nullptr};
+
+  SFVec3f _upVector{SFVec3f{0, 1, 0}};
 };
 
 } // namespace x3d::nodes

@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief If a non-uniform scale is applied to the pick sensor, correct results
  * may require level 3 support.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html#PrimitivePickSensor
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/picking.html#PrimitivePickSensor
  */
 class PrimitivePickSensor : public virtual X3DPickSensorNode {
 public:
@@ -46,6 +46,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

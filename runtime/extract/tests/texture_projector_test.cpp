@@ -84,6 +84,24 @@ TEST_CASE("TextureProjectorParallel: extents scale with the local frame") {
   CHECK_FALSE(p.project({0, 0, 1}, u, v)); // behind
 }
 
+TEST_CASE("TextureProjectorParallel: the X3D 4.1 upVector turns the volume") {
+  // upVector +X: the projector's v axis runs along world +X, its u axis along -Y.
+  auto s = session(std::string("<TextureProjectorParallel direction='0 0 -1' "
+                               "upVector='1 0 0' fieldOfView='-1 -0.5 1 0.5'>") +
+                   kTexture + "</TextureProjectorParallel>");
+  const auto projectors = s->extractor().projectors();
+  REQUIRE(projectors.size() == 1);
+  const ProjectorDesc &p = projectors[0];
+  CHECK(p.worldUp.x == doctest::Approx(1));
+  float u = 0, v = 0;
+  REQUIRE(p.project({0.4f, 0, -1}, u, v)); // inside the 1-wide v extent
+  CHECK(u == doctest::Approx(0.5f));
+  CHECK(v == doctest::Approx(0.9f));
+  REQUIRE(p.project({0, 0.9f, -1}, u, v)); // inside the 2-wide u extent
+  CHECK(u == doctest::Approx(0.05f));
+  CHECK_FALSE(p.project({0.6f, 0, -1}, u, v)); // beyond the v extent
+}
+
 TEST_CASE("Texture projectors: on, scope and the default up vector") {
   auto s = session(std::string("<TextureProjector on='false'/>"
                                "<Group DEF='A'><TextureProjector global='false'/>"
@@ -94,7 +112,8 @@ TEST_CASE("Texture projectors: on, scope and the default up vector") {
   REQUIRE(projectors.size() == 2); // on FALSE is skipped
   const ProjectorDesc &scoped = projectors[0], &global = projectors[1];
   CHECK_FALSE(scoped.global);
-  // Default direction 0 0 1 and upVector 0 0 1 are parallel: up falls back to +Y.
+  // The default upVector is +Y (X3D 4.1; the 4.0 default 0 0 1 was parallel to
+  // the default direction and fell back to +Y, so both versions agree).
   CHECK(global.worldUp.y == doctest::Approx(1));
   auto &ex = s->extractor();
   REQUIRE(ex.itemCount() == 2);

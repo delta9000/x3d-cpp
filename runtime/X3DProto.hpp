@@ -119,7 +119,9 @@ struct ReaderWarning {
   // token, wrong tuple arity, trailing partial MF tuple); see checkValueSyntax.
   // CyclicUse: a USE inside the body of the node it names, dropped because
   // attaching it would make the node contain itself.
-  enum class Kind { UnknownNode, ProfileCoerced, Value, CyclicUse };
+  // Version: a node type or field newer than the version the document declares
+  // (kept and typed; see X3DVersionFit.hpp).
+  enum class Kind { UnknownNode, ProfileCoerced, Value, CyclicUse, Version };
   Kind kind;
   std::string detail;
   // Unknown XML content is retained for XML writing only. Other recovery may
@@ -389,8 +391,8 @@ public:
   }
 };
 
-// A node element whose type is not in the generated node model (an X3D 4.1
-// node read by the 4.0 bindings, a vendor extension, a misspelling). The XML
+// A node element whose type is not in the generated node model (a vendor
+// extension, a node from a spec newer than the bindings, a misspelling). The XML
 // reader keeps it as an opaque record instead of discarding it, so the XML
 // writers can re-emit it unchanged. It has no reflected fields: the runtime,
 // the extractor and the PROTO cloner do not see its attributes or children.

@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief IndexedFaceSet defines polygons using index lists corresponding to
  * vertex coordinates.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#IndexedFaceSet
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/geometry3D.html#IndexedFaceSet
  */
 class IndexedFaceSet : public virtual X3DComposedGeometryNode {
 public:
@@ -45,7 +45,8 @@ public:
   /**
    * MFInt32; access: initializeOnly. Borrows the stored value.
    * @details colorIndex values define the order in which Color|ColorRGBA values
-   * are applied to polygons (or vertices).
+   * are applied to polygons (or vertices), interspersed by -1 if
+   * colorlPerVertex=true.
    */
   const MFInt32 &getColorIndex() const { return _colorIndex; }
   /**
@@ -93,7 +94,8 @@ public:
   /**
    * MFInt32; access: initializeOnly. Borrows the stored value.
    * @details normalIndex values define the order in which normal vectors are
-   * applied to polygons (or vertices).
+   * applied to polygons (or vertices), interspersed by -1 if
+   * normalPerVertex=true.
    */
   const MFInt32 &getNormalIndex() const { return _normalIndex; }
   /**
@@ -105,8 +107,9 @@ public:
   /**
    * MFInt32; access: inputOnly.
    * @details colorIndex values define the order in which Color|ColorRGBA values
-   * are applied to polygons (or vertices). Dispatches to the handler registered
-   * via setOnSet_colorIndexHandler(); a no-op if none is set.
+   * are applied to polygons (or vertices), interspersed by -1 if
+   * colorlPerVertex=true. Dispatches to the handler registered via
+   * setOnSet_colorIndexHandler(); a no-op if none is set.
    */
   void onSet_colorIndex(const MFInt32 &value) {
     if (_onSet_colorIndexHandler)
@@ -143,7 +146,8 @@ public:
   /**
    * MFInt32; access: inputOnly.
    * @details normalIndex values define the order in which normal vectors are
-   * applied to polygons (or vertices). Dispatches to the handler registered via
+   * applied to polygons (or vertices), interspersed by -1 if
+   * normalPerVertex=true. Dispatches to the handler registered via
    * setOnSet_normalIndexHandler(); a no-op if none is set.
    */
   void onSet_normalIndex(const MFInt32 &value) {
@@ -198,6 +202,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

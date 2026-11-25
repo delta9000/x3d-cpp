@@ -3,6 +3,7 @@
 #pragma once
 
 #include <any>
+#include <compare>
 #include <functional>
 #include <string>
 #include <typeinfo>
@@ -79,6 +80,25 @@ enum class AccessType {
 };
 
 /**
+ * @brief An X3D specification version, e.g. {4, 1}.
+ * @details The bindings are generated from the newest UOM, so they hold
+ *          every node and field of every version up to it. Each node
+ *          type and field carries the earliest version that defines it
+ *          (X3DNode::introducedIn(), FieldInfo::since) so readers and
+ *          validators can tell when a document needs a newer version
+ *          than it declares (ADR-0077).
+ */
+struct X3DVersion {
+    int major = 3;
+    int minor = 0;
+    friend constexpr auto operator<=>(const X3DVersion&,
+                                      const X3DVersion&) = default;
+    std::string str() const {
+        return std::to_string(major) + "." + std::to_string(minor);
+    }
+};
+
+/**
  * @brief A borrowed, type-tagged pointer to a field's stored value.
  * @details `data` points at the node's member; `type` is the member's
  *          C++ type (the same type `get` boxes). The pointer stays valid
@@ -124,6 +144,8 @@ struct FieldInfo {
     // Zero-copy read of the stored value (null if there is none to borrow).
     // A plain function pointer: no std::function call overhead.
     FieldView (*view)(const X3DNode&) = nullptr;
+    // Earliest X3D version that defines this field on this node type.
+    X3DVersion since{};
 
     bool isNode() const {
         return type == X3DFieldType::SFNode || type == X3DFieldType::MFNode;

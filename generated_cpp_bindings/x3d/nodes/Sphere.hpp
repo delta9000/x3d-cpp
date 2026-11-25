@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief Sphere is a geometry node, representing a perfectly round geometrical
  * object that is the surface of a completely round ball.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#Sphere
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/geometry3D.html#Sphere
  */
 class Sphere : public virtual X3DGeometryNode {
 public:
@@ -70,6 +70,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

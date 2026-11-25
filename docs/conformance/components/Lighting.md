@@ -1,15 +1,17 @@
 # Lighting — conformance
 
-_Generated. Levels 1,2 · 3 nodes · profiles: Interchange, Interactive, Immersive, Full._
+_Generated. Levels 1,2 · 4 nodes · profiles: Interchange, Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | DirectionalLight | 1 | ✓ | — | — | AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
+| EnvironmentLight | 1 | ✓ | — | — | DELTA-LIGHT-CACHE, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-BINDINGS, V41-ENVIRONMENT-LIGHT | X3DChildNode, X3DLightNode |
 | PointLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
 | SpotLight | 2 | ✓ | — | — | AUD-LGT-1, AUD-LGT-2, DELTA-LIGHT-CACHE, LGT-1, LGT-2, LGT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-SHADOW, ROUTE-IO-ALIAS | X3DChildNode, X3DLightNode |
 
 ## Findings
 
+- **V41-ENVIRONMENT-LIGHT** [major/OPEN] — §ISO/IEC 19775-1 v4.1 Lighting component: EnvironmentLight parses and round-trips but is not extracted into a light descriptor, so a renderer gets no image-based lighting inputs.
 - **LGT-2** [major/FIXED] — §17.2.2.4: Per-light ambientIntensity (LightSystem.hpp extracts it) was read by NO consumer.
   - light_ambient_test.cpp: The CPU reference shader accumulates attenuated ambient contributions per light.
 - **LGT-3** [major/FIXED] — §23.4.4: NavigationInfo.headlight TRUE (default) must turn on a headlight regardless of scene lights; both consumers only added it when the scene had no lights.

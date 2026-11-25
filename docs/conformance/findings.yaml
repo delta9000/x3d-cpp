@@ -420,9 +420,9 @@
   component: Sound
   clause: "16.4.15, 16.4.18"
   severity: minor
-  status: deferred
-  summary: periodicWave stays unread from parsed scenes (the 4.0 bindings predate the 4.1 field) — a registered PeriodicWave is realized on BuiltinDspBackend.
-  note: "Wired: the seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms (cross once at createNode, like Buffer PCM, ADR-0050 precedent); BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; X3D 4.0's PeriodicWave has no disableNormalization toggle); SoundSystem::setPeriodicWave(osc, wave) registers a PeriodicWave node before attach — standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. Ignored: the authored OscillatorSource.periodicWave field. The generated bindings model X3D 4.0, where OscillatorSource has no periodicWave field (added in 4.1); PeriodicWave itself exists in 4.0 (type/optionsReal/optionsImag). A parsed <PeriodicWave containerField='periodicWave'/> child parks in the parser's IS fallback slot and findField(osc, 'periodicWave') is null — pinned by x3d_sound_periodicwave (parse tier). Becomes readable when the bindings move to 4.1; until then the embedder registers the wave."
+  status: fixed
+  summary: periodicWave was unread from parsed scenes (the 4.0 bindings predated the 4.1 field), so an embedder had to register each PeriodicWave by hand.
+  note: "Fixed with the 4.1 bindings (ADR-0077). SoundSystem reads OscillatorSource.periodicWave when it creates the oscillator and re-sends the waveform through AudioBackend::setWaveform whenever the field or the wave's type/optionsReal/optionsImag changes; the oscillator keeps its phase. The seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms; BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; PeriodicWave has no disableNormalization toggle); standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. The SoundSystem::setPeriodicWave registration seam is removed. Test: x3d_sound_periodicwave (system, dsp and parse tiers)."
 - id: UOM-SND-1
   nodes: [WaveShaper, Sound, StreamAudioSource, Delay, StreamAudioDestination, ChannelSplitter, ListenerPointSource]
   component: Sound
@@ -430,7 +430,7 @@
   severity: minor
   status: open
   summary: The vendored X3D 4.0 UOM disagrees with the published ISO/IEC 19775-1 Sound field tables on several nodes; only WaveShaper.curve is corrected so far.
-  note: 'Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the UOM (StreamAudioSource, StreamAudioDestination); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.'
+  note: 'Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the 4.0 UOM (StreamAudioSource, StreamAudioDestination; the 4.1 UOM the bindings now use has MFString); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.'
 # (CONF-FOLLOWER + CONF-SEQ-TRIG placeholders superseded by the audited
 #  TRIG-*/SEQ-*/EUF-*/FOL-* findings in the wave-3 block below.)
 - id: CONF-PICKSENSOR
@@ -3196,19 +3196,104 @@
   nodes: [WorldInfo]
   component: Core
   clause: "ISO/IEC 19776-1 4.3"
+  severity: minor
+  status: open
+  summary: "A node type the bindings do not know (a vendor extension or misspelling) survives only XML to XML: the ClassicVRML, VRML97 and JSON readers discard it, and the ClassicVRML and JSON writers keep only its type name and DEF."
+  note: >-
+    X3D 4.1 nodes are no longer unknown: the bindings are generated from the 4.1 UOM
+    (ADR-0077, V41-BINDINGS), so EnvironmentLight, Tangent and the other 4.1 nodes
+    read and write typed in every encoding. For other unknown types, XmlReader keeps
+    the element as runtime::UnknownNode (raw attributes, character data, child
+    nodes; Scene::opaqueChildren when the parent has no field for it) and
+    XmlGraphBuilder re-emits it, so XML to XML and canonical XML are lossless and
+    stable. Still open: ClassicVRML/VRML97/JSON readers discard unknown nodes; the
+    ClassicVRML and JSON writers emit only the type name and DEF; PROTO expansion
+    drops an unknown node in a body; `<field>`, `<IS>` and PROTO statements inside
+    an unknown element are discarded. `x3d convert` refuses these losses unless
+    `--allow-lossy`. Test: x3d_parse_tests unknown_node_passthrough_test.
+
+- id: V41-BINDINGS
+  nodes: [EnvironmentLight, FontLibrary, HAnimPose, InlineGeometry, RenderedTexture, Tangent]
+  component: Core
+  clause: "ISO/IEC 19775-1 v4.1"
+  severity: major
+  status: fixed
+  summary: "The bindings were generated from the X3D 4.0 UOM, so 4.1 nodes and fields had no type: XML kept them opaque, ClassicVRML and JSON dropped them, and a 4.0 file using them passed silently."
+  note: >-
+    Fixed by ADR-0077. The generator reads the packaged 4.1 UOM; every node type
+    reports introducedIn() and every FieldInfo carries since, both from the committed
+    3.0 to 4.1 manifests. collectVersionWarnings (runtime/X3DVersionFit.hpp) reports
+    authored node types and fields newer than the declared version as
+    ReaderWarning::Kind::Version; `x3d validate` makes them `version` errors and
+    prints `version fit` (requiredVersion). 4.1 content round-trips XML, ClassicVRML
+    and JSON (x3d_parse_tests version_fit_test, x3d_cli_test). Runtime behaviour
+    of the new nodes and fields is tracked per node: V41-TANGENT,
+    V41-TEXTURE-OUTPUTS, V41-ENVIRONMENT-LIGHT, V41-RENDERED-TEXTURE,
+    V41-HANIM-POSE, V41-HANIM-CHILDREN, V41-FONT-LIBRARY, V41-INLINE-GEOMETRY.
+
+- id: V41-TANGENT
+  nodes: [Tangent, IndexedFaceSet, IndexedTriangleSet, IndexedTriangleFanSet, IndexedTriangleStripSet, IndexedQuadSet, TriangleSet, TriangleFanSet, TriangleStripSet, QuadSet]
+  component: Rendering
+  clause: "ISO/IEC 19775-1 v4.1 Rendering component"
+  severity: minor
+  status: open
+  summary: "Authored Tangent vectors parse and round-trip but are not carried into extracted meshes or glTF TANGENT attributes."
+
+- id: V41-TEXTURE-OUTPUTS
+  nodes: [ImageTexture, ImageTexture3D, MovieTexture]
+  component: Texturing
+  clause: "ISO/IEC 19775-1 v4.1 Texturing component"
+  severity: minor
+  status: open
+  summary: "The 4.1 outputOnly fields width, height, colorDepth (and depth on ImageTexture3D, hasSound on MovieTexture) are typed but never emitted after a texture loads."
+
+- id: V41-ENVIRONMENT-LIGHT
+  nodes: [EnvironmentLight]
+  component: Lighting
+  clause: "ISO/IEC 19775-1 v4.1 Lighting component"
   severity: major
   status: open
-  summary: "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
-  note: >-
-    Fixed for XML only. XmlReader keeps the element as runtime::UnknownNode (raw attributes,
-    character data, child nodes; Scene::opaqueChildren when the parent has no
-    field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical
-    XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers
-    discard unknown nodes; the ClassicVRML and JSON writers emit only the type
-    name and DEF; PROTO expansion drops an unknown node in a body; `<field>`,
-    `<IS>` and PROTO statements inside an unknown element are discarded. The
-    node is never interpreted: no runtime behaviour, no extraction. Test:
-    x3d_parse_tests unknown_node_passthrough_test.
+  summary: "EnvironmentLight parses and round-trips but is not extracted into a light descriptor, so a renderer gets no image-based lighting inputs."
+
+- id: V41-RENDERED-TEXTURE
+  nodes: [RenderedTexture]
+  component: Texturing
+  clause: "ISO/IEC 19775-1 v4.1 Texturing component"
+  severity: major
+  status: open
+  summary: "RenderedTexture parses and round-trips but the render feed has no render-to-texture descriptor for it."
+
+- id: V41-HANIM-POSE
+  nodes: [HAnimPose]
+  component: HAnim
+  clause: "ISO/IEC 19775-1 v4.1 HAnim component"
+  severity: major
+  status: open
+  summary: "HAnimPose parses and round-trips but no system applies its joint poses to a humanoid."
+
+- id: V41-HANIM-CHILDREN
+  nodes: [HAnimHumanoid]
+  component: HAnim
+  clause: "ISO/IEC 19775-1 v4.1 HAnim component"
+  severity: minor
+  status: open
+  summary: "HAnimHumanoid.children (4.1) parses but the extractor walks only skeleton and skin, so children placed in the humanoid are not rendered."
+
+- id: V41-FONT-LIBRARY
+  nodes: [FontLibrary]
+  component: Text
+  clause: "ISO/IEC 19775-1 v4.1 Text component"
+  severity: minor
+  status: open
+  summary: "FontLibrary parses and round-trips but its url is not used to resolve FontStyle families."
+
+- id: V41-INLINE-GEOMETRY
+  nodes: [InlineGeometry]
+  component: Networking
+  clause: "ISO/IEC 19775-1 v4.1 Networking component"
+  severity: major
+  status: open
+  summary: "InlineGeometry parses and round-trips but its url is not loaded into geometry; it needs the SDK mesh importer."
 
 - id: SCRIPT-FIELD-TYPE-OBJECTS
   nodes: [Script]

@@ -11,6 +11,10 @@ std::string GeoPositionInterpolator::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion GeoPositionInterpolator::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &GeoPositionInterpolator::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -37,9 +41,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {
               &dynamic_cast<const GeoPositionInterpolator &>(n).getGeoOrigin(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -62,9 +66,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {
               &dynamic_cast<const GeoPositionInterpolator &>(n).getGeoSystem(),
               &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geovalue_changed", X3DFieldType::SFVec3d, AccessType::OutputOnly, "",
@@ -87,9 +91,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .getGeovalue_changed(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -112,9 +116,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "key", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -137,9 +141,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DInterpolatorNode::getKey(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "keyValue", X3DFieldType::MFVec3d, AccessType::InputOutput, "",
@@ -162,9 +166,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {
               &dynamic_cast<const GeoPositionInterpolator &>(n).getKeyValue(),
               &typeid(MFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -187,9 +191,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "set_fraction", X3DFieldType::SFFloat, AccessType::InputOnly, "",
@@ -205,9 +209,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "value_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -230,9 +234,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .getValue_changed(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -255,9 +259,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -280,9 +284,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -305,9 +309,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -330,9 +334,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -355,9 +359,9 @@ const FieldTable &GeoPositionInterpolator::fields() const {
           return {&dynamic_cast<const GeoPositionInterpolator &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

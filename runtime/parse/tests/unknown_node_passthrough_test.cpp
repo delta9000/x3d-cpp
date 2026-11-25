@@ -20,13 +20,13 @@ const char *const kScene =
     "<Transform DEF='T'>"
     "<Shape><IndexedFaceSet coordIndex='0 1 2 -1'>"
     "<Coordinate point='0 0 0 1 0 0 0 1 0'/>"
-    "<Tangent vector='1 0 0 1'/>"
+    "<VendorVertexData vector='1 0 0 1'/>"
     "</IndexedFaceSet></Shape>"
-    "<EnvironmentLight DEF='E' intensity='0.5' zzz='a &lt; b'>"
+    "<VendorLight DEF='E' intensity='0.5' zzz='a &lt; b'>"
     "<ImageCubeMapTexture DEF='I' containerField='diffuseTexture' url='\"a.png\"'/>"
-    "</EnvironmentLight>"
+    "</VendorLight>"
     "</Transform>"
-    "<EnvironmentLight USE='E'/>"
+    "<VendorLight USE='E'/>"
     "<InstancedShape translations='0 0 0 1 1 1'><Box DEF='B'/></InstancedShape>"
     "<Shape><Box USE='B'/></Shape>"
     "</Scene></X3D>";
@@ -54,7 +54,7 @@ TEST_CASE("XML reader keeps unknown elements as opaque nodes") {
   REQUIRE(t->getChildren().size() == 2);
   auto env = std::dynamic_pointer_cast<UnknownNode>(t->getChildren()[1]);
   REQUIRE(env);
-  CHECK(env->nodeTypeName() == "EnvironmentLight");
+  CHECK(env->nodeTypeName() == "VendorLight");
   CHECK(env->getDEF() == "E");
   REQUIRE(env->attributes.size() == 2);
   CHECK(env->attributes[0].first == "intensity");
@@ -82,7 +82,7 @@ TEST_CASE("XML reader keeps unknown elements as opaque nodes") {
     if (w.kind == Kind::UnknownNode &&
         w.detail.find("kept as opaque") != std::string::npos)
       ++kept;
-  CHECK(kept == 3); // EnvironmentLight, Tangent, InstancedShape
+  CHECK(kept == 3); // VendorLight, VendorVertexData, InstancedShape
 }
 
 TEST_CASE("an unknown child with no field on its parent does not displace a real child") {
@@ -97,15 +97,15 @@ TEST_CASE("an unknown child with no field on its parent does not displace a real
   auto parked = doc.scene.opaqueChildren.find(ifs.get());
   REQUIRE(parked != doc.scene.opaqueChildren.end());
   REQUIRE(parked->second.size() == 1);
-  CHECK(parked->second[0]->nodeTypeName() == "Tangent");
+  CHECK(parked->second[0]->nodeTypeName() == "VendorVertexData");
 }
 
 TEST_CASE("XML writers re-emit unknown nodes and the output is stable") {
   auto doc = read(kScene);
   const std::string once = x3d::codec::XmlWriter().writeDocument(doc);
-  CHECK(count(once, "<EnvironmentLight DEF=\"E\" intensity=\"0.5\" zzz=\"a &lt; b\">") == 1);
-  CHECK(count(once, "<EnvironmentLight USE=\"E\"/>") == 1);
-  CHECK(count(once, "<Tangent vector=\"1 0 0 1\"/>") == 1);
+  CHECK(count(once, "<VendorLight DEF=\"E\" intensity=\"0.5\" zzz=\"a &lt; b\">") == 1);
+  CHECK(count(once, "<VendorLight USE=\"E\"/>") == 1);
+  CHECK(count(once, "<VendorVertexData vector=\"1 0 0 1\"/>") == 1);
   CHECK(count(once, "<InstancedShape translations=\"0 0 0 1 1 1\">") == 1);
   CHECK(count(once, "<Box DEF=\"B\"/>") == 1);
   CHECK(count(once, "containerField=\"diffuseTexture\"") == 1);
@@ -114,16 +114,16 @@ TEST_CASE("XML writers re-emit unknown nodes and the output is stable") {
   CHECK(x3d::codec::XmlWriter().writeDocument(again) == once);
 
   const std::string canon = x3d::codec::CanonicalXmlWriter().writeDocument(doc);
-  CHECK(count(canon, "<EnvironmentLight DEF='E'") == 1);
-  CHECK(count(canon, "<Tangent vector='1 0 0 1'/>") == 1);
+  CHECK(count(canon, "<VendorLight DEF='E'") == 1);
+  CHECK(count(canon, "<VendorVertexData vector='1 0 0 1'/>") == 1);
 }
 
 TEST_CASE("ClassicVRML and JSON writers keep only the type and DEF of an unknown node") {
   auto doc = read(kScene);
   const std::string vrml = x3d::codec::VrmlWriter().writeDocument(doc);
-  CHECK(vrml.find("DEF E EnvironmentLight {") != std::string::npos);
+  CHECK(vrml.find("DEF E VendorLight {") != std::string::npos);
   CHECK(vrml.find("intensity") == std::string::npos);
   const std::string json = x3d::codec::JsonWriter().writeDocument(doc);
-  CHECK(json.find("\"EnvironmentLight\"") != std::string::npos);
+  CHECK(json.find("\"VendorLight\"") != std::string::npos);
   CHECK(json.find("@intensity") == std::string::npos);
 }

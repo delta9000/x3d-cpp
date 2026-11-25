@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief PointProperties allows precise fine-grained control over the rendering
  * style of PointSet node points inside the same Shape.
  * @details
- * https://github.com/Web3DConsortium/X3D/blob/master/ISO-IEC19775/ISO-IEC19775-1/ISO-IEC19775-1v4.0/ISO-IEC19775-1v4-WD1/Part01/components/shape.html
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/shape.html#PointProperties
  */
 class PointProperties : public virtual X3DAppearanceChildNode {
 public:
@@ -151,6 +151,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

@@ -9,6 +9,8 @@ std::string X3DChaserNode::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion X3DChaserNode::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &X3DChaserNode::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).getDuration(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -56,9 +58,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -81,9 +83,9 @@ const FieldTable &X3DChaserNode::fields() const {
           return {&dynamic_cast<const X3DChaserNode &>(n)
                        .X3DFollowerNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -106,9 +108,9 @@ const FieldTable &X3DChaserNode::fields() const {
           return {
               &dynamic_cast<const X3DChaserNode &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -130,9 +132,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -154,9 +156,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -178,9 +180,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -202,9 +204,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -226,9 +228,9 @@ const FieldTable &X3DChaserNode::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const X3DChaserNode &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

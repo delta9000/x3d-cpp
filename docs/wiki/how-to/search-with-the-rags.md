@@ -50,8 +50,8 @@ uv run python scripts/spec_rag.py query "event cascade timing model" -k 6
 ```
 
 Structured metadata comes from the selected UOM manifest. `--version` defaults
-to 4.1 and accepts manifests from 3.0 through 4.1; that lookup default does not
-change the runtime's generated 4.0 node set. Prose anchors read the external
+to 4.1 and accepts manifests from 3.0 through 4.1; it matches the version the
+runtime's node set is generated from. Prose anchors read the external
 mirror at `X3D_SPEC_PROSE_DIR`. Field lookup can fall back to semantic search
 when the local prose has no matching line. `node --rag N` adds semantic hits.
 

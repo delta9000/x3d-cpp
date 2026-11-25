@@ -1,15 +1,17 @@
 # Networking — conformance
 
-_Generated. Levels 2,3 · 3 nodes · profiles: Interactive, Immersive, Full._
+_Generated. Levels 2,3,4 · 4 nodes · profiles: Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | Anchor | 2 | ✓ | — | — | AUD-NET-3, GRP-ADDCHILDREN, IACC-4, META-EXTENDED-ATTRIBUTES-WRITE, NSN-11, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode, X3DUrlObject |
 | Inline | 2 | ✓ | — | — | ASSET-LOADER-TRANSITIVE-POLICY, AUD-NET-1, AUD-NET-2, IMPORT-EXPORT-WIRE, JSON-STATEMENT-PLACEMENT, META-EXTENDED-ATTRIBUTES-WRITE, NATIVE-AUTHOR-FIELD-OWNERSHIP, NSN-12, PROTO-BODY-IMPORT-MODEL, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, VRML-IMPORT-EXPORT-WRITE | X3DBoundedObject, X3DChildNode, X3DUrlObject |
+| InlineGeometry | 4 | ✓ | ✗ | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, V41-BINDINGS, V41-INLINE-GEOMETRY | X3DGeometryNode, X3DUrlObject |
 | LoadSensor | 3 | ✓ | — | ? | AUD-NET-3, META-EXTENDED-ATTRIBUTES-WRITE, NSN-1, NSN-11, NSN-12, NSN-2, NSN-3, NSN-4, NSN-5, NSN-6, NSN-7, NSN-9, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode, X3DNetworkSensorNode, X3DSensorNode |
 
 ## Findings
 
+- **V41-INLINE-GEOMETRY** [major/OPEN] — §ISO/IEC 19775-1 v4.1 Networking component: InlineGeometry parses and round-trips but its url is not loaded into geometry; it needs the SDK mesh importer.
 - **NSN-2** [critical/CLOSED `9bb71c2`] — §9.4.3: isActive (TRUE on load start; FALSE on all-done/timeout) not emitted.
 - **NSN-3** [critical/CLOSED `9bb71c2`] — §9.4.3: isLoaded (TRUE when all children load; FALSE on any failure/timeout) not emitted.
 - **NSN-4** [critical/CLOSED `9bb71c2`] — §9.4.3: loadTime (now, on successful completion only) not emitted.

@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief NurbsSurfaceInterpolator describes a 3D NURBS curve and outputs
  * interpolated position and normal values.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/nurbs.html#NurbsSurfaceInterpolator
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/nurbs.html#NurbsSurfaceInterpolator
  */
 class NurbsSurfaceInterpolator : public virtual X3DChildNode {
 public:
@@ -48,8 +48,8 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained Coordinate or CoordinateDouble node that can
-   * specify control points for NURBS geometry definitions.
+   * @details Optional single contained Coordinate or CoordinateDouble node that
+   * can specify control points for NURBS geometry definitions.
    */
   const SFNode &getControlPoint() const { return _controlPoint; }
 
@@ -64,8 +64,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained Coordinate or CoordinateDouble node that can
-   * specify control points for NURBS geometry definitions.
+   * @details Optional single contained Coordinate or CoordinateDouble node that
+   * can specify control points for NURBS geometry definitions.
    */
   void setControlPoint(const SFNode &value) { _controlPoint = value; }
 
@@ -208,6 +208,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

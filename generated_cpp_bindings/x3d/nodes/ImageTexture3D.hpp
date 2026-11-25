@@ -26,7 +26,7 @@ using namespace x3d::core;
  * @brief ImageTexture3D defines a 3D image-based texture map by specifying a
  * single image file that contains complete 3D data.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html#ImageTexture3D
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/texture3D.html#ImageTexture3D
  */
 class ImageTexture3D : public virtual X3DTexture3DNode,
                        public virtual X3DUrlObject {
@@ -45,12 +45,65 @@ public:
 
   static int componentLevel() { return 2; }
 
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getColorDepth() const { return _colorDepth; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitColorDepth(const SFInt32 &value) { _colorDepth = value; }
+
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getDepth() const { return _depth; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitDepth(const SFInt32 &value) { _depth = value; }
+
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getHeight() const { return _height; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitHeight(const SFInt32 &value) { _height = value; }
+
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getWidth() const { return _width; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitWidth(const SFInt32 &value) { _width = value; }
+
   std::string nodeTypeName() const override;
 
   /**
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
@@ -62,6 +115,13 @@ public:
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
+  SFInt32 _colorDepth{};
+
+  SFInt32 _depth{};
+
+  SFInt32 _height{};
+
+  SFInt32 _width{};
 };
 
 } // namespace x3d::nodes

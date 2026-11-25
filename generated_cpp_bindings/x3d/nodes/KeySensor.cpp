@@ -9,6 +9,8 @@ std::string KeySensor::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion KeySensor::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &KeySensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -33,9 +35,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getActionKeyPress(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "actionKeyRelease", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -57,9 +59,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getActionKeyRelease(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "altKey", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -79,9 +81,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getAltKey(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "controlKey", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -101,9 +103,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getControlKey(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -126,9 +128,9 @@ const FieldTable &KeySensor::fields() const {
           return {&dynamic_cast<const KeySensor &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -151,9 +153,9 @@ const FieldTable &KeySensor::fields() const {
           return {
               &dynamic_cast<const KeySensor &>(n).X3DSensorNode::getEnabled(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -173,9 +175,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -198,9 +200,9 @@ const FieldTable &KeySensor::fields() const {
           return {
               &dynamic_cast<const KeySensor &>(n).X3DSensorNode::getIsActive(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "keyPress", X3DFieldType::SFString, AccessType::OutputOnly, "",
@@ -220,9 +222,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getKeyPress(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "keyRelease", X3DFieldType::SFString, AccessType::OutputOnly, "",
@@ -243,9 +245,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getKeyRelease(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -267,9 +269,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "shiftKey", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -289,9 +291,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).getShiftKey(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -312,9 +314,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -335,9 +337,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -359,9 +361,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -382,9 +384,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -406,9 +408,9 @@ const FieldTable &KeySensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const KeySensor &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

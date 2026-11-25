@@ -11,6 +11,10 @@ std::string SegmentedVolumeData::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion SegmentedVolumeData::introducedIn() const {
+  return X3DVersion{3, 3};
+}
+
 const FieldTable &SegmentedVolumeData::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -37,9 +41,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DVolumeDataNode::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -62,9 +66,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DVolumeDataNode::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -88,9 +92,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DVolumeDataNode::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "dimensions", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -113,9 +117,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DVolumeDataNode::getDimensions(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -138,9 +142,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getIS(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -163,9 +167,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "renderStyle", X3DFieldType::MFNode, AccessType::InputOutput,
@@ -189,9 +193,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).getRenderStyle(),
               &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "segmentEnabled", X3DFieldType::MFBool, AccessType::InputOutput, "",
@@ -214,9 +218,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).getSegmentEnabled(),
               &typeid(MFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "segmentIdentifiers", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -240,9 +244,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .getSegmentIdentifiers(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -265,9 +269,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {&dynamic_cast<const SegmentedVolumeData &>(n)
                        .X3DVolumeDataNode::getVisible(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "voxels", X3DFieldType::SFNode, AccessType::InputOutput, "voxels",
@@ -289,9 +293,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SegmentedVolumeData &>(n).getVoxels(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -314,9 +318,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -339,9 +343,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(
         FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -364,9 +368,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
                     return {&dynamic_cast<const SegmentedVolumeData &>(n)
                                  .X3DNode::getClass_(),
                             &typeid(SFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -389,9 +393,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getId(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -414,9 +418,9 @@ const FieldTable &SegmentedVolumeData::fields() const {
           return {
               &dynamic_cast<const SegmentedVolumeData &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

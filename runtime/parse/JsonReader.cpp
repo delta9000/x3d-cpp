@@ -21,8 +21,9 @@ runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   auto root = json::parseComplete(text);
   runtime::X3DDocument doc;
   // An unversioned document reads as 3.0. Set here, not
-  // via the X3DDocument member default (that is the 4.0 authoring default).
+  // via the X3DDocument member default (that is the 4.1 authoring default).
   doc.version = "3.0";
+  doc.versionDeclared = false;
   if (!root || !root->isObject())
     return doc;
 
@@ -32,8 +33,10 @@ runtime::X3DDocument JsonReader::readDocument(const std::string &text) {
   if (x3d && x3d->isObject()) {
     if (const json::Value *p = x3d->member("@profile"); p && p->isString())
       doc.setProfileToken(p->str);
-    if (const json::Value *v = x3d->member("@version"); v && v->isString())
+    if (const json::Value *v = x3d->member("@version"); v && v->isString()) {
       doc.version = v->str;
+      doc.versionDeclared = true;
+    }
     if (const json::Value *h = x3d->member("head"); h && h->isObject())
       readHead(*h, doc.head);
     sceneObj = x3d->member("Scene");

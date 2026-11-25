@@ -9,6 +9,8 @@ std::string ChannelMerger::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ChannelMerger::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &ChannelMerger::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {&dynamic_cast<const ChannelMerger &>(n)
                        .X3DSoundChannelNode::getChannelCount(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelCountMode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -70,9 +72,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {&dynamic_cast<const ChannelMerger &>(n)
                        .X3DSoundChannelNode::getChannelCountMode(),
                   &typeid(ChannelCountModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelInterpretation", X3DFieldType::SFEnum, AccessType::InputOutput,
@@ -108,9 +110,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {&dynamic_cast<const ChannelMerger &>(n)
                        .X3DSoundChannelNode::getChannelInterpretation(),
                   &typeid(ChannelInterpretationChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "children", X3DFieldType::MFNode, AccessType::InputOutput, "children",
@@ -131,9 +133,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -156,9 +158,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {&dynamic_cast<const ChannelMerger &>(n)
                        .X3DSoundNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -181,9 +183,9 @@ const FieldTable &ChannelMerger::fields() const {
                     return {&dynamic_cast<const ChannelMerger &>(n)
                                  .X3DSoundNode::getEnabled(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -206,9 +208,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {&dynamic_cast<const ChannelMerger &>(n)
                        .X3DSoundChannelNode::getGain(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -230,9 +232,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -255,9 +257,9 @@ const FieldTable &ChannelMerger::fields() const {
           return {
               &dynamic_cast<const ChannelMerger &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -279,9 +281,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -303,9 +305,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -327,9 +329,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -351,9 +353,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -375,9 +377,9 @@ const FieldTable &ChannelMerger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ChannelMerger &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

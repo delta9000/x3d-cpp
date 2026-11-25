@@ -9,6 +9,8 @@ std::string GeoLOD::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion GeoLOD::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &GeoLOD::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &GeoLOD::fields() const {
           return {&dynamic_cast<const GeoLOD &>(n)
                        .X3DBoundedObject::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -59,9 +61,9 @@ const FieldTable &GeoLOD::fields() const {
           return {&dynamic_cast<const GeoLOD &>(n)
                        .X3DBoundedObject::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -84,9 +86,9 @@ const FieldTable &GeoLOD::fields() const {
           return {
               &dynamic_cast<const GeoLOD &>(n).X3DBoundedObject::getBboxSize(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "center", X3DFieldType::SFVec3d, AccessType::InitializeOnly, "",
@@ -107,9 +109,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getCenter(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "child1Url", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -130,9 +132,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getChild1Url(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "child2Url", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -153,9 +155,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getChild2Url(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "child3Url", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -176,9 +178,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getChild3Url(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "child4Url", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -199,9 +201,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getChild4Url(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "children", X3DFieldType::MFNode, AccessType::OutputOnly, "children",
@@ -221,9 +223,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -245,9 +247,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getGeoOrigin(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -268,9 +270,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getGeoSystem(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -290,9 +292,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "level_changed", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -313,9 +315,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getLevel_changed(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -337,9 +339,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "range", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -360,9 +362,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getRange(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "rootNode", X3DFieldType::MFNode, AccessType::InitializeOnly,
@@ -384,9 +386,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getRootNode(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "rootUrl", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -407,9 +409,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).getRootUrl(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -432,9 +434,9 @@ const FieldTable &GeoLOD::fields() const {
           return {
               &dynamic_cast<const GeoLOD &>(n).X3DBoundedObject::getVisible(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -454,9 +456,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -476,9 +478,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -499,9 +501,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -521,9 +523,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -544,9 +546,9 @@ const FieldTable &GeoLOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoLOD &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

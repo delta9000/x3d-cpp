@@ -23,7 +23,7 @@ using namespace x3d::core;
  * navigation-interaction modalities, and also dimensional characteristics of
  * the user's (typically invisible) avatar.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html#NavigationInfo
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/navigation.html#NavigationInfo
  */
 class NavigationInfo : public virtual X3DBindableNode {
 public:
@@ -51,7 +51,9 @@ public:
 
   static SFFloat getDefaultVisibilityLimit() { return 0; }
 
-  static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
+  static std::string getContainerFieldType() {
+    return "containerFieldChoicesNavigationInfo";
+  }
 
   static std::string getDefaultContainerField() { return "children"; }
 
@@ -242,6 +244,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

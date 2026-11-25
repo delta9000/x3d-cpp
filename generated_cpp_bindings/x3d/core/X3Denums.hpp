@@ -185,6 +185,7 @@ enum class GeneratedCubeMapTextureUpdateChoices {
 // HanimVersionChoices: hanimVersionChoices enumeration constants are used to identify the allowed versions for an HAnimHumanoid node. Note that default HAnimHumanoid version is 2.0 for X3D version 4, and default is 1.0 for X3D version 3. This list is bounded, no additional values are allowed.
 enum class HanimVersionChoices {
     _2_0,  // "2.0"
+    _2_1,  // "2.1"
 };
 
 // JustifyChoices: justifyChoices are strictly allowed enumeration values for justify field in FontStyle and ScreenFontStyle nodes determining major and minor axis alignment (typically horizontal and vertical) of text layout. Note that intermediate commas and extraneous whitespace are disallowed by these strictly defined enumeration values. This list is bounded, no additional values are allowed.
@@ -383,6 +384,7 @@ enum class X3dVersionChoices {
     _3_2,  // "3.2"
     _3_3,  // "3.3"
     _4_0,  // "4.0"
+    _4_1,  // "4.1"
 };
 
 // X3D-token <-> enum-value conversions for the bounded enums above.
@@ -765,12 +767,14 @@ inline bool from_string(const std::string& token, GeneratedCubeMapTextureUpdateC
 inline std::string to_string(HanimVersionChoices value) {
     switch (value) {
     case HanimVersionChoices::_2_0: return "2.0";
+    case HanimVersionChoices::_2_1: return "2.1";
     }
     return "";
 }
 
 inline bool from_string(const std::string& token, HanimVersionChoices& out) {
     if (token == "2.0") { out = HanimVersionChoices::_2_0; return true; }
+    if (token == "2.1") { out = HanimVersionChoices::_2_1; return true; }
     return false;
 }
 
@@ -1193,6 +1197,7 @@ inline std::string to_string(X3dVersionChoices value) {
     case X3dVersionChoices::_3_2: return "3.2";
     case X3dVersionChoices::_3_3: return "3.3";
     case X3dVersionChoices::_4_0: return "4.0";
+    case X3dVersionChoices::_4_1: return "4.1";
     }
     return "";
 }
@@ -1203,6 +1208,7 @@ inline bool from_string(const std::string& token, X3dVersionChoices& out) {
     if (token == "3.2") { out = X3dVersionChoices::_3_2; return true; }
     if (token == "3.3") { out = X3dVersionChoices::_3_3; return true; }
     if (token == "4.0") { out = X3dVersionChoices::_4_0; return true; }
+    if (token == "4.1") { out = X3dVersionChoices::_4_1; return true; }
     return false;
 }
 

@@ -155,8 +155,8 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
   reader kept it: authored attributes in order, its own `containerField`,
   character data and children, plus any entries in `Scene::opaqueChildren` for
   the parent.
-- XML to XML conversion of a file with X3D 4.1 or extension nodes is therefore
-  lossless and stable.
+- XML to XML conversion of a file with extension nodes is therefore lossless and
+  stable. X3D 4.1 nodes are typed (ADR-0077), so every writer handles them.
 - The ClassicVRML and JSON writers have no schema for those attributes; they
   write only the type name and DEF (READ-UNKNOWN-NODE-PASSTHROUGH).
 

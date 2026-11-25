@@ -13,7 +13,7 @@ from x3d_cpp_gen.generator import (
     generate_cpp_bindings,
 )
 
-SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
+SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = REPO_ROOT / "generated_cpp_bindings"
 

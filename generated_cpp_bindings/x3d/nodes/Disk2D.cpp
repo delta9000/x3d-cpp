@@ -9,6 +9,8 @@ std::string Disk2D::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion Disk2D::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &Disk2D::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).getInnerRadius(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -54,9 +56,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -78,9 +80,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "outerRadius", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -101,9 +103,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).getOuterRadius(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -122,9 +124,9 @@ const FieldTable &Disk2D::fields() const {
 
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).getSolid(), &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -144,9 +146,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -166,9 +168,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -189,9 +191,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -211,9 +213,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -234,9 +236,9 @@ const FieldTable &Disk2D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Disk2D &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

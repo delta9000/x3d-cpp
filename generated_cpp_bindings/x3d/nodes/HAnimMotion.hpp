@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief An HAnimMotion node supports discrete frame-by-frame playback for
  * HAnim motion data animation.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html#HAnimMotion
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/hanim.html#HAnimMotion
  */
 class HAnimMotion : public virtual X3DChildNode {
 public:
@@ -391,6 +391,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
@@ -452,8 +457,8 @@ private:
 
     if (value < -1)
       throw std::out_of_range("loa below minimum of -1");
-    if (value > 4)
-      throw std::out_of_range("loa above maximum of 4");
+    if (value > 5)
+      throw std::out_of_range("loa above maximum of 5");
   }
 
   static void validateStartFrame(const SFInt32 &value) {

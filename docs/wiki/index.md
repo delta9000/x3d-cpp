@@ -10,7 +10,7 @@ related: []
 
 x3d-cpp is a headless C++20 X3D runtime SDK. It parses a scene, advances its
 behavior, and hands meshes, materials, lights and cameras to your renderer. The
-node bindings are generated from the X3D 4.0 Unified Object Model.
+node bindings are generated from the X3D 4.1 Unified Object Model.
 
 Choose a starting point for your work:
 

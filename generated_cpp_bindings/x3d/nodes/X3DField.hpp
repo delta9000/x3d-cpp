@@ -18,7 +18,7 @@ using namespace x3d::core;
  * beginning with SF (single-valued field). SF fields may only contain a single
  * value of the type indicated by the name of the field type.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html#X3DField
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/fieldTypes.html#X3DField
  */
 class X3DField {
 public:

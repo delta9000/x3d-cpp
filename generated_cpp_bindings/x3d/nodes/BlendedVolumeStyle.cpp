@@ -11,6 +11,8 @@ std::string BlendedVolumeStyle::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion BlendedVolumeStyle::introducedIn() const { return X3DVersion{3, 3}; }
+
 const FieldTable &BlendedVolumeStyle::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +38,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n)
                        .X3DVolumeRenderStyleNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -60,9 +62,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -85,9 +87,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "renderStyle", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -110,9 +112,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n).getRenderStyle(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "voxels", X3DFieldType::SFNode, AccessType::InputOutput, "voxels",
@@ -134,9 +136,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n).getVoxels(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightConstant1", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -159,9 +161,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightConstant1(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightConstant2", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -184,9 +186,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightConstant2(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightFunction1", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -209,9 +211,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightFunction1(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightFunction2", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -234,9 +236,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).getWeightFunction2(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightTransferFunction1", X3DFieldType::SFNode,
@@ -260,9 +262,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n)
                        .getWeightTransferFunction1(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "weightTransferFunction2", X3DFieldType::SFNode,
@@ -286,9 +288,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n)
                        .getWeightTransferFunction2(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -311,9 +313,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -336,9 +338,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -361,9 +363,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -385,9 +387,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -410,9 +412,9 @@ const FieldTable &BlendedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const BlendedVolumeStyle &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

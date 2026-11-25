@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief The SpatialSound node controls the 3D spatialization of sound playback
  * by a child AudioClip or MovieTexture node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#Sound
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#Sound
  */
 class SpatialSound : public virtual X3DSoundNode {
 public:
@@ -148,16 +148,16 @@ public:
   /**
    * SFFloat; access: inputOutput. Borrows the stored value.
    * @details coneOuterAngle is centered along direction and defines an outer
-   * conical volume, within which the sound gain decreases linearly from full
-   * gain to coneOuterGain.
+   * conical volume, within which the sound gain decreases from full gain to
+   * coneOuterGain.
    */
   const SFFloat &getConeOuterAngle() const { return _coneOuterAngle; }
 
   /**
    * Access: inputOutput.
    * @details coneOuterAngle is centered along direction and defines an outer
-   * conical volume, within which the sound gain decreases linearly from full
-   * gain to coneOuterGain.
+   * conical volume, within which the sound gain decreases from full gain to
+   * coneOuterGain.
    */
   void setConeOuterAngle(const SFFloat &value) {
 
@@ -202,9 +202,9 @@ public:
 
   /**
    * DistanceModelChoices; access: inputOutput. Borrows the stored value.
-   * @details distanceModel determines how field specifies which algorithm to
-   * use for sound attenuation, corresponding to distance between an audio
-   * source and a listener, as it moves away from the listener.
+   * @details distanceModel determines which algorithm to use for sound
+   * attenuation, corresponding to distance between an audio source and a
+   * listener, as it moves away from the listener.
    */
   const DistanceModelChoices &getDistanceModel() const {
     return _distanceModel;
@@ -212,9 +212,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details distanceModel determines how field specifies which algorithm to
-   * use for sound attenuation, corresponding to distance between an audio
-   * source and a listener, as it moves away from the listener.
+   * @details distanceModel determines which algorithm to use for sound
+   * attenuation, corresponding to distance between an audio source and a
+   * listener, as it moves away from the listener.
    */
   void setDistanceModel(const DistanceModelChoices &value) {
 
@@ -427,6 +427,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

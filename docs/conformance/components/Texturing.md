@@ -1,22 +1,25 @@
 # Texturing — conformance
 
-_Generated. Levels 1,2,3 · 10 nodes · profiles: Interchange, Interactive, Immersive, Full._
+_Generated. Levels 1,2,3,4 · 11 nodes · profiles: Interchange, Interactive, Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
-| ImageTexture | 1 | ✓ | — | — | AUD-TEX-1, DELTA-PENDING-RESOURCES, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
-| MovieTexture | 3 | ✓ | — | ? | AUD-MEDIA-1, AUD-MEDIA-3, AUD-MEDIA-4, AUD-TEX-1, AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, MULTI-INHERIT, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, TDN-5, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
+| ImageTexture | 1 | ✓ | — | — | AUD-TEX-1, DELTA-PENDING-RESOURCES, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, TXF-4, V41-TEXTURE-OUTPUTS | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlObject |
+| MovieTexture | 3 | ✓ | — | ◑ | AUD-MEDIA-1, AUD-MEDIA-3, AUD-MEDIA-4, AUD-TEX-1, AUD-TIME-3, META-EXTENDED-ATTRIBUTES-WRITE, MULTI-INHERIT, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, TDN-5, V41-TEXTURE-OUTPUTS, VIS-MOVIE-DECODE | X3DAppearanceChildNode, X3DChildNode, X3DSingleTextureNode, X3DSoundNode, X3DSoundSourceNode, X3DTexture2DNode, X3DTextureNode, X3DTimeDependentNode, X3DUrlObject |
 | MultiTexture | 2 | ✓ | — | — | AUD-BG-2, AUD-TEX-2, DELTA-PENDING-RESOURCES, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-MULTITEXTURE, REQ-MULTITEXTURE-2, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureNode |
 | MultiTextureCoordinate | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-MULTITEXTURE, REQ-MULTITEXTURE-2, ROUTE-IO-ALIAS, TXT-6 | X3DGeometricPropertyNode, X3DTextureCoordinateNode |
 | MultiTextureTransform | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-MULTITEXTURE, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureTransformNode |
 | PixelTexture | 1 | ✓ | — | — | CLASSIC-SFIMAGE-LEADING-ZERO, ENC-VRML-SFIMAGE, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TXF-4 | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode |
+| RenderedTexture | 4 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-BINDINGS, V41-RENDERED-TEXTURE | X3DAppearanceChildNode, X3DSingleTextureNode, X3DTexture2DNode, X3DTextureNode, X3DUrlOutputObject |
 | TextureCoordinate | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureCoordinateGenerator | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TXF-2, TXF-EYE-COORDINATES | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureProperties | 2 | ✓ | — | — | AUD-TEX-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TXF-4 |  |
-| TextureTransform | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TXF-1, TXF-3 | X3DAppearanceChildNode, X3DTextureTransformNode |
+| TextureTransform | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, TXF-1, TXF-3 | X3DAppearanceChildNode, X3DSingleTextureTransformNode, X3DTextureTransformNode |
 
 ## Findings
 
+- **V41-RENDERED-TEXTURE** [major/OPEN] — §ISO/IEC 19775-1 v4.1 Texturing component: RenderedTexture parses and round-trips but the render feed has no render-to-texture descriptor for it.
+- **V41-TEXTURE-OUTPUTS** [minor/OPEN] — §ISO/IEC 19775-1 v4.1 Texturing component: The 4.1 outputOnly fields width, height, colorDepth (and depth on ImageTexture3D, hasSound on MovieTexture) are typed but never emitted after a texture loads.
 - **TDN-5** [major/CLOSED] — §8.2.4.1, 16.4.2, 18.4.2: AudioClip/MovieTexture have no time-lifecycle System — startTime/loop/isActive inert.
   - MediaTimeSystem (attached by attachStandardRuntime) runs the shared X3DTimeDependentSystem lifecycle for AudioClip, MovieTexture and BufferAudioSource: enabled, loop, and a cycle of duration_changed / pitch (AudioClip), / speed (MovieTexture), or buffer seconds over playbackRate x detune (BufferAudioSource); an unknown duration plays until stopTime (media_time_test, sound_immersive_test). Decoding and playback remain separate (SND-4).
 - **TXF-2** [major/FIXED] — §18.4.8: Both reference hosts implement all eleven TextureCoordinateGenerator modes and transform the generated coordinates.

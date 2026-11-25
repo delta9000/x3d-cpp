@@ -1,14 +1,16 @@
 # Text — conformance
 
-_Generated. Levels 1 · 2 nodes · profiles: Immersive, Full._
+_Generated. Levels 1,2 · 3 nodes · profiles: Immersive, Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
+| FontLibrary | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, V41-BINDINGS, V41-FONT-LIBRARY | X3DChildNode, X3DUrlObject |
 | FontStyle | 1 | ✓ | — | — | DELTA-TEXT-OUTPUTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DFontStyleNode |
 | Text | 1 | ✓ | ✓ | — | DELTA-PENDING-RESOURCES, DELTA-TEXT-OUTPUTS, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, SEAM-TEXT-METRICS, TXT-1, TXT-2, TXT-4, TXT-5, TXT-ATLAS-LATIN1 | X3DGeometryNode |
 
 ## Findings
 
+- **V41-FONT-LIBRARY** [minor/OPEN] — §ISO/IEC 19775-1 v4.1 Text component: FontLibrary parses and round-trips but its url is not used to resolve FontStyle families.
 - **TXT-1** [major/FIXED] — §15.2.2.3: justify MIDDLE (minor axis) now centres the glyph BLOCK about the origin on both axes (was centring the baselines, lifting the block by ~one ascender).
   - TextLayout MIDDLE used firstBaselineMinor = totalBlockExtent/2, which centres baselines not the ascender/descender-bounded block. Fixed for horizontal (Y, both topToBottom) and vertical (X, both leftToRight); text_layout_test Test 11 updated to the spec-correct baselines (0.2 / -0.8).
 - **TXT-2** [major/CLOSED] — §15.2.2.3: justify END (minor axis, horizontal, topToBottom=FALSE) mis-places the block (top edge of last line should be Y=0).

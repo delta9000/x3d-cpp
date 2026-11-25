@@ -21,7 +21,7 @@ using namespace x3d::core;
  * Implementing nodes must include a global field with type SFBool and
  * accessType inputOutput.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/lighting.html#X3DLightNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/lighting.html#X3DLightNode
  */
 class X3DLightNode : public virtual X3DChildNode {
 public:
@@ -181,6 +181,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

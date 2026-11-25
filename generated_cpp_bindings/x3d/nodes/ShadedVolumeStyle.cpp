@@ -11,6 +11,8 @@ std::string ShadedVolumeStyle::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ShadedVolumeStyle::introducedIn() const { return X3DVersion{3, 3}; }
+
 const FieldTable &ShadedVolumeStyle::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +38,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n)
                        .X3DVolumeRenderStyleNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -60,9 +62,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "lighting", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -84,9 +86,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).getLighting(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "material", X3DFieldType::SFNode, AccessType::InputOutput, "material",
@@ -108,9 +110,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).getMaterial(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -133,9 +135,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "phaseFunction", X3DFieldType::SFString, AccessType::InitializeOnly, "",
@@ -158,9 +160,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const ShadedVolumeStyle &>(n).getPhaseFunction(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "shadows", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -182,9 +184,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).getShadows(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "surfaceNormals", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -208,9 +210,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const ShadedVolumeStyle &>(n).getSurfaceNormals(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -232,9 +234,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -256,9 +258,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -281,9 +283,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 3}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -305,9 +307,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -330,9 +332,9 @@ const FieldTable &ShadedVolumeStyle::fields() const {
           return {
               &dynamic_cast<const ShadedVolumeStyle &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

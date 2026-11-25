@@ -57,6 +57,9 @@ class FieldDescriptor:
     # Set by the SAI SDK's semantic projection (sai/); the runtime emitters
     # ignore it.
     unique_non_null_nodes: bool = False
+    # Earliest X3D version (major, minor) that defines this field on the node
+    # whose reflection table holds it (emit/versions.py, ADR-0077).
+    since: tuple = (3, 0)
 
     @property
     def getter_call(self) -> str:

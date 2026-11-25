@@ -37,18 +37,18 @@ uv tool install .        # or: pip install .
 x3d-cpp-gen --out generated_cpp_bindings
 ```
 
-The X3D 4.0 UOM ships inside the package, so no input file is required. Point it
+The X3D 4.1 UOM ships inside the package, so no input file is required. Point it
 at another UOM revision with `--spec`:
 
 ```bash
-x3d-cpp-gen --spec X3dUnifiedObjectModel-4.1.xml --out out/
+x3d-cpp-gen --spec X3dUnifiedObjectModel-4.0.xml --out out/
 ```
 
 ## Supported UOM inputs
 
 Any `X3dUnifiedObjectModel-*.xml` revision. The spec version is auto-detected
 from the root element's `version` attribute; override it with `--spec-version`.
-The packaged default is 4.0.
+The packaged default is 4.1.
 
 If the UOM contains a field whose type the generator doesn't support, generation
 **fails closed** rather than silently emitting a node with fields missing. Pass

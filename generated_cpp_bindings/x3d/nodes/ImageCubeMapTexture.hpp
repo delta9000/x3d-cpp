@@ -27,7 +27,7 @@ using namespace x3d::core;
  * map source as a single file format that contains multiple images, one for
  * each side.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html#ImageCubeMapTexture
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/environmentalTexturing.html#ImageCubeMapTexture
  */
 class ImageCubeMapTexture : public virtual X3DEnvironmentTextureNode,
                             public virtual X3DUrlObject {
@@ -50,7 +50,7 @@ public:
 
   /**
    * SFNode; access: initializeOnly. Borrows the stored value.
-   * @details Single contained TextureProperties node that can specify
+   * @details Optional single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
    */
   const SFNode &getTextureProperties() const { return _textureProperties; }
@@ -77,6 +77,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

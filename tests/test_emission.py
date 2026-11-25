@@ -13,7 +13,7 @@ from x3d_cpp_gen.generator import (
 )
 
 
-SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
+SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml")
 
 
 @pytest.fixture(scope="module")

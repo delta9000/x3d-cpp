@@ -9,6 +9,8 @@ std::string HAnimMotion::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion HAnimMotion::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &HAnimMotion::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getChannels(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelsEnabled", X3DFieldType::MFBool, AccessType::InputOutput, "",
@@ -56,9 +58,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getChannelsEnabled(),
                   &typeid(MFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "cycleTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -79,9 +81,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getCycleTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -103,9 +105,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -127,9 +129,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getElapsedTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -149,9 +151,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "endFrame", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -172,9 +174,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getEndFrame(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "frameCount", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -195,9 +197,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getFrameCount(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "frameDuration", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -219,9 +221,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getFrameDuration(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "frameIncrement", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -243,9 +245,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getFrameIncrement(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "frameIndex", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -266,9 +268,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getFrameIndex(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -290,9 +292,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "joints", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -312,9 +314,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getJoints(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loa", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -335,9 +337,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getLoa(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loop", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -357,9 +359,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getLoop(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -381,9 +383,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "name", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -403,9 +405,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getName(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "next", X3DFieldType::SFBool, AccessType::InputOnly, "",
@@ -420,9 +422,9 @@ const FieldTable &HAnimMotion::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "previous", X3DFieldType::SFBool, AccessType::InputOnly, "",
@@ -437,9 +439,9 @@ const FieldTable &HAnimMotion::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "startFrame", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -460,9 +462,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getStartFrame(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "values", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -482,9 +484,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).getValues(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -506,9 +508,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -530,9 +532,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -554,9 +556,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -578,9 +580,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -602,9 +604,9 @@ const FieldTable &HAnimMotion::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimMotion &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();
@@ -654,9 +656,9 @@ void HAnimMotion::checkRangesLoa(const SFInt32 &value,
   if (value < -1)
     out.push_back(
         RangeDiagnostic{nodeType, defName, "loa", "loa below minimum of -1"});
-  if (value > 4)
+  if (value > 5)
     out.push_back(
-        RangeDiagnostic{nodeType, defName, "loa", "loa above maximum of 4"});
+        RangeDiagnostic{nodeType, defName, "loa", "loa above maximum of 5"});
 }
 
 void HAnimMotion::checkRangesStartFrame(const SFInt32 &value,

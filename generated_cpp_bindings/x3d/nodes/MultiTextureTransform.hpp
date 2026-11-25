@@ -23,7 +23,7 @@ using namespace x3d::core;
  * provided for use by corresponding ImageTexture MovieTexture or PixelTexture
  * nodes within a sibling MultiTexture node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html#MultiTextureTransform
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/texturing.html#MultiTextureTransform
  */
 class MultiTextureTransform : public virtual X3DTextureTransformNode {
 public:
@@ -75,6 +75,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

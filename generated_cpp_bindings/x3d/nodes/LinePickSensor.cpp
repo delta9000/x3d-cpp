@@ -9,6 +9,8 @@ std::string LinePickSensor::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion LinePickSensor::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &LinePickSensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -59,9 +61,9 @@ const FieldTable &LinePickSensor::fields() const {
                     return {&dynamic_cast<const LinePickSensor &>(n)
                                  .X3DSensorNode::getEnabled(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "intersectionType", X3DFieldType::SFString, AccessType::InitializeOnly,
@@ -86,9 +88,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getIntersectionType(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -110,9 +112,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -135,9 +137,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DSensorNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "matchCriterion", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -171,9 +173,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getMatchCriterion(),
                   &typeid(PickSensorMatchCriterionChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -196,9 +198,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {
               &dynamic_cast<const LinePickSensor &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "objectType", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -221,9 +223,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getObjectType(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickedGeometry", X3DFieldType::MFNode, AccessType::OutputOnly,
@@ -247,9 +249,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getPickedGeometry(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickedNormal", X3DFieldType::MFVec3f, AccessType::OutputOnly, "",
@@ -271,9 +273,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).getPickedNormal(),
                   &typeid(MFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickedPoint", X3DFieldType::MFVec3f, AccessType::OutputOnly, "",
@@ -295,9 +297,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).getPickedPoint(),
                   &typeid(MFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickedTextureCoordinate", X3DFieldType::MFVec3f,
@@ -321,9 +323,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .getPickedTextureCoordinate(),
                   &typeid(MFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickingGeometry", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -347,9 +349,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getPickingGeometry(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pickTarget", X3DFieldType::MFNode, AccessType::InputOutput,
@@ -373,9 +375,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getPickTarget(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "sortOrder", X3DFieldType::SFString, AccessType::InitializeOnly, "",
@@ -399,9 +401,9 @@ const FieldTable &LinePickSensor::fields() const {
           return {&dynamic_cast<const LinePickSensor &>(n)
                        .X3DPickSensorNode::getSortOrder(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -423,9 +425,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -447,9 +449,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -471,9 +473,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -495,9 +497,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -519,9 +521,9 @@ const FieldTable &LinePickSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LinePickSensor &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

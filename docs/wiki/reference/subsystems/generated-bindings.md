@@ -18,7 +18,7 @@ related:
 
 ## Purpose
 
-`generated_cpp_bindings/` is the committed C++ output of the generator pipeline. It provides a typed C++ class for every X3D-4.0 node, a full runtime reflection layer (type-erased `FieldInfo` tables with get/set thunks), a node factory, an interface registry, and the shared field-type and enumeration headers.
+`generated_cpp_bindings/` is the committed C++ output of the generator pipeline. It provides a typed C++ class for every X3D 4.1 node (a superset of 3.0 to 4.0, each type and field tagged with the version that introduced it; ADR-0077), a full runtime reflection layer (type-erased `FieldInfo` tables with get/set thunks), a node factory, an interface registry, and the shared field-type and enumeration headers.
 
 ## Behavior
 
@@ -58,7 +58,7 @@ The generated types live in two namespaces, mirrored by two header subdirectorie
 |---|---|
 | `x3d/core/X3Dtypes.hpp` | (`namespace x3d::core`) All X3D SF*/MF* C++ type aliases and struct definitions (`SFVec3f`, `SFColor`, `SFNode = std::shared_ptr<x3d::nodes::X3DNode>`, `MFNode`, etc.). The value structs carry C++20 defaulted `operator==`/`!=` (exact member-wise comparison — vocabulary, not math; arithmetic stays out per ADR-0012) |
 | `x3d/core/X3Denums.hpp` | (`namespace x3d::core`) All bounded X3D enumeration vocabularies as `enum class` (e.g. `AlphaModeChoices`, `AccessTypeChoices`), with `to_string`/`from_string` support |
-| `x3d/core/X3DReflection.hpp` | (`namespace x3d::core`) Shared reflection infrastructure: `X3DFieldType`, `AccessType`, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor` |
+| `x3d/core/X3DReflection.hpp` | (`namespace x3d::core`) Shared reflection infrastructure: `X3DFieldType`, `AccessType`, `X3DVersion`, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor` |
 | `x3d/nodes/X3DNode.hpp` / `.cpp` | (`namespace x3d::nodes`) Base class for all instantiable nodes: `metadata`, `DEF`/`USE`/`class`/`id`/`style` fields; virtual `nodeTypeName()`, `defaultContainerField()`, `fields()`, `accept()`, `validateRanges()` |
 | `x3d/nodes/<NodeName>.hpp` / `.cpp` | (`namespace x3d::nodes`) One pair per concrete X3D node (e.g. `Appearance.hpp`/`.cpp`, `Box.hpp`/`.cpp`). 260 concrete node pairs. Each `.hpp` holds the class declaration with typed getters/setters and range-throwing validators (every getter returns `const T&` to its member, so reading an MF field or a string never copies it; ADR-0049); each `.cpp` holds the out-of-line `fields()` FieldTable (with thunks), `accept()`, `validateRanges()`, and `checkRanges*` statics. |
 | `x3d/nodes/X3D<AbstractName>.hpp` / `.cpp` | (`namespace x3d::nodes`) 77 abstract-node and mixin-interface pairs (e.g. `X3DGeometryNode`, `X3DBoundedObject`, `X3DGroupingNode`) using `public virtual` inheritance. The 3 shared-infrastructure vocabulary headers (`X3Dtypes`, `X3Denums`, `X3DReflection`) live under `x3d/core/`; the factory + interface registry live under `x3d/nodes/` |
@@ -79,6 +79,7 @@ class X3DNode {
 public:
     virtual std::string nodeTypeName() const;
     virtual std::string defaultContainerField() const;
+    virtual X3DVersion introducedIn() const;       // e.g. {4, 1} for EnvironmentLight
     virtual const FieldTable& fields() const;      // FieldTable = std::vector<FieldInfo>
     virtual void accept(NodeVisitor& visitor) const;
     virtual void validateRanges(std::vector<RangeDiagnostic>& out) const;
@@ -100,6 +101,8 @@ struct FieldInfo {
     // enum-only string-round-trip thunks:
     std::function<std::string(const X3DNode&)> getEnumString;
     std::function<void(X3DNode&, const std::string&)> setEnumString;
+    FieldView (*view)(const X3DNode&);  // zero-copy read
+    X3DVersion since;                   // earliest version defining this field here
     bool isNode() const; bool isEnum() const;
     bool isReadable() const; bool isWritable() const;
 };

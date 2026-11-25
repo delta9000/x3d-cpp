@@ -9,6 +9,8 @@ std::string PointSet::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion PointSet::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &PointSet::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -31,9 +33,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).getAttrib(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFNode, AccessType::InputOutput, "color",
@@ -53,9 +55,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).getColor(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "coord", X3DFieldType::SFNode, AccessType::InputOutput, "coord",
@@ -75,9 +77,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).getCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "fogCoord", X3DFieldType::SFNode, AccessType::InputOutput, "fogCoord",
@@ -97,9 +99,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).getFogCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -119,9 +121,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -143,9 +145,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normal", X3DFieldType::SFNode, AccessType::InputOutput, "normal",
@@ -165,9 +167,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).getNormal(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -188,9 +190,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -211,9 +213,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -235,9 +237,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -258,9 +260,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -282,9 +284,9 @@ const FieldTable &PointSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PointSet &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

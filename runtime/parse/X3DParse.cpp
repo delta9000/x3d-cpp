@@ -9,6 +9,7 @@
 #include "Vrml97Reader.hpp"
 #include "X3DProtoExpand.hpp"
 #include "X3DRangeValidate.hpp"
+#include "X3DVersionFit.hpp"
 #include "XmlReaderAdapter.hpp"
 #include "x3d/nodes/X3DNodeFactory.hpp"
 
@@ -339,6 +340,9 @@ parseDocumentImpl(const std::string &text, Encoding hint,
   // ADR-0033: drop any PROTO/EXTERNPROTO that reuses a built-in node name (the
   // built-in keeps precedence) before instances are expanded against it.
   quarantineBuiltinShadowingProtos(doc);
+  // Authored nodes and fields newer than the declared version (ADR-0077). Run
+  // before expansion so only authored content counts, not PROTO/Inline output.
+  runtime::collectVersionWarnings(doc);
   // Surface out-of-range values the lenient readers kept (structured channel;
   // parseFile flows through here, so this is the single collection site).
   for (const auto &root : doc.scene.rootNodes)
@@ -522,13 +526,13 @@ makeStringSceneFactory() {
     if (source[first] == '<') {
       encoding = Encoding::XML;
       if (source.find("<X3D") == std::string::npos)
-        source = "<X3D profile='Full' version='4.0'><Scene>" + source +
+        source = "<X3D profile='Full' version='4.1'><Scene>" + source +
                  "</Scene></X3D>";
     } else if (source[first] == '{') {
       encoding = Encoding::JSON;
     } else if (source[first] != '#') {
       encoding = Encoding::ClassicVRML;
-      source = "#X3D V4.0 utf8\nPROFILE Full\n" + source;
+      source = "#X3D V4.1 utf8\nPROFILE Full\n" + source;
     }
     // No file access from script-supplied text: both resolvers decline.
     const ProtoDeclarationResolver noProtos =

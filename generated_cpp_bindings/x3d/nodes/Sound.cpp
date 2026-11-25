@@ -9,6 +9,8 @@ std::string Sound::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion Sound::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &Sound::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &Sound::fields() const {
           return {
               &dynamic_cast<const Sound &>(n).X3DSoundNode::getDescription(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "direction", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -56,9 +58,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getDirection(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -80,9 +82,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DSoundNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "intensity", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -103,9 +105,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getIntensity(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -125,9 +127,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "location", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -147,9 +149,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getLocation(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "maxBack", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -170,9 +172,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getMaxBack(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "maxFront", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -193,9 +195,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getMaxFront(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -217,9 +219,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "minBack", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -240,9 +242,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getMinBack(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "minFront", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -263,9 +265,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getMinFront(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "priority", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -286,9 +288,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getPriority(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "source", X3DFieldType::SFNode, AccessType::InputOutput, "source",
@@ -307,9 +309,9 @@ const FieldTable &Sound::fields() const {
 
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getSource(), &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "spatialize", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -330,9 +332,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).getSpatialize(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -352,9 +354,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -374,9 +376,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -397,9 +399,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -419,9 +421,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -442,9 +444,9 @@ const FieldTable &Sound::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Sound &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

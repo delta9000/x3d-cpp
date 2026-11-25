@@ -11,6 +11,8 @@ std::string PhysicalMaterial::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion PhysicalMaterial::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &PhysicalMaterial::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -35,9 +37,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getBaseColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "baseTexture", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -60,9 +62,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getBaseTexture(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"baseTextureMapping", X3DFieldType::SFString,
@@ -86,9 +88,9 @@ const FieldTable &PhysicalMaterial::fields() const {
                     return {&dynamic_cast<const PhysicalMaterial &>(n)
                                  .getBaseTextureMapping(),
                             &typeid(SFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "emissiveColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -110,9 +112,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getEmissiveColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "emissiveTexture", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -136,9 +138,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).getEmissiveTexture(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "emissiveTextureMapping", X3DFieldType::SFString,
@@ -164,9 +166,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .X3DOneSidedMaterialNode::getEmissiveTextureMapping(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -188,9 +190,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -213,9 +215,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metallic", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -237,9 +239,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getMetallic(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metallicRoughnessTexture", X3DFieldType::SFNode,
@@ -263,9 +265,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .getMetallicRoughnessTexture(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metallicRoughnessTextureMapping", X3DFieldType::SFString,
@@ -289,9 +291,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .getMetallicRoughnessTextureMapping(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "normalScale", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -315,9 +317,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .X3DOneSidedMaterialNode::getNormalScale(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "normalTexture", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -340,9 +342,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getNormalTexture(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "normalTextureMapping", X3DFieldType::SFString, AccessType::InputOutput,
@@ -368,9 +370,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .X3DOneSidedMaterialNode::getNormalTextureMapping(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "occlusionStrength", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -393,9 +395,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).getOcclusionStrength(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "occlusionTexture", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -419,9 +421,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).getOcclusionTexture(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "occlusionTextureMapping", X3DFieldType::SFString,
@@ -445,9 +447,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {&dynamic_cast<const PhysicalMaterial &>(n)
                        .getOcclusionTextureMapping(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "roughness", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -469,9 +471,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getRoughness(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "transparency", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -493,9 +495,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).getTransparency(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -517,9 +519,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -541,9 +543,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -566,9 +568,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -590,9 +592,9 @@ const FieldTable &PhysicalMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -615,9 +617,9 @@ const FieldTable &PhysicalMaterial::fields() const {
           return {
               &dynamic_cast<const PhysicalMaterial &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

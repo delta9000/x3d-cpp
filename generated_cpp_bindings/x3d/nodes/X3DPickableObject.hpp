@@ -16,7 +16,7 @@ using namespace x3d::core;
  * @brief The X3DPickableObject abstract interface marks a node as being capable
  * of having customized picking performed on its contents or children.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/picking.html#X3DPickableObject
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/picking.html#X3DPickableObject
  */
 class X3DPickableObject {
 public:

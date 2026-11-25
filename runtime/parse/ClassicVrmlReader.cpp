@@ -37,9 +37,10 @@ runtime::X3DDocument ClassicVrmlReader::readDocument(const std::string &text) {
   runtime::X3DDocument doc;
   readerWarnings_.clear();
   // Readers own the 3.0 floor explicitly (the X3DDocument
-  // member default is the 4.0 authoring default). The header parse below
+  // member default is the 4.1 authoring default). The header parse below
   // overwrites this on every well-formed path; this covers malformed ones.
   doc.version = "3.0";
+  doc.versionDeclared = false;
   std::string_view src(text);
   // VrmlTokenizer skips comment lines, including the header, so we read the
   // version off the raw first line here and let the tokenizer skip it.
@@ -121,6 +122,7 @@ void ClassicVrmlReader::parseHeaderLine(const std::vector<std::string> &parts,
       int major = 3; // no leading integer major: treat as the 3.0 floor
       std::from_chars(ver.data(), ver.data() + ver.size(), major);
       doc.version = (major < 3) ? std::string("3.0") : ver;
+      doc.versionDeclared = major >= 3;
     }
   }
 }

@@ -11,6 +11,10 @@ std::string GeneratedCubeMapTexture::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion GeneratedCubeMapTexture::introducedIn() const {
+  return X3DVersion{3, 1};
+}
+
 const FieldTable &GeneratedCubeMapTexture::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DTextureNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -61,9 +65,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -86,9 +90,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "size", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -110,9 +114,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n).getSize(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "textureProperties", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -136,9 +140,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .getTextureProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "update", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -169,9 +173,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n).getUpdate(),
                   &typeid(GeneratedCubeMapTextureUpdateChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -194,9 +198,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -219,9 +223,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -244,9 +248,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -269,9 +273,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -294,9 +298,9 @@ const FieldTable &GeneratedCubeMapTexture::fields() const {
           return {&dynamic_cast<const GeneratedCubeMapTexture &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

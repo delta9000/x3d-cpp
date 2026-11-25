@@ -9,6 +9,8 @@ std::string LoadSensor::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion LoadSensor::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &LoadSensor::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -31,9 +33,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -56,9 +58,9 @@ const FieldTable &LoadSensor::fields() const {
           return {&dynamic_cast<const LoadSensor &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -81,9 +83,9 @@ const FieldTable &LoadSensor::fields() const {
           return {
               &dynamic_cast<const LoadSensor &>(n).X3DSensorNode::getEnabled(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -104,9 +106,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -129,9 +131,9 @@ const FieldTable &LoadSensor::fields() const {
           return {
               &dynamic_cast<const LoadSensor &>(n).X3DSensorNode::getIsActive(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isLoaded", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -151,9 +153,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).getIsLoaded(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "loadTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -173,9 +175,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).getLoadTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -197,9 +199,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "progress", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -219,9 +221,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).getProgress(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "timeOut", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -242,9 +244,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).getTimeOut(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -266,9 +268,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -290,9 +292,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -314,9 +316,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -337,9 +339,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -361,9 +363,9 @@ const FieldTable &LoadSensor::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LoadSensor &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

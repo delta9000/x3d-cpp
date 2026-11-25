@@ -25,7 +25,7 @@ using namespace x3d::core;
  * the humanoid through its environment, and (d) store human-readable metadata
  * such as name, version, author, copyright, age, gender and other information.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/hanim.html#HAnimHumanoid
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/hanim.html#HAnimHumanoid
  */
 class HAnimHumanoid : public virtual X3DChildNode,
                       public virtual X3DBoundedObject {
@@ -83,6 +83,30 @@ public:
   void setCenter(const SFVec3f &value) { _center = value; }
 
   void setCenter(SFVec3f &&value) { _center = std::move(value); }
+
+  /**
+   * MFNode; access: inputOutput. Borrows the stored value.
+   * @details Contains zero or more HAnimPose nodes that can animate the
+   * HAnimHumanoid.
+   */
+  const MFNode &getChildren() const { return _children; }
+
+  /**
+   * @details Permitted X3D node types: HAnimPose
+   */
+  static const std::vector<std::string> &acceptableChildrenNodeTypes() {
+    static const std::vector<std::string> types = {"HAnimPose"};
+    return types;
+  }
+
+  /**
+   * Access: inputOutput.
+   * @details Contains zero or more HAnimPose nodes that can animate the
+   * HAnimHumanoid.
+   */
+  void setChildren(const MFNode &value) { _children = value; }
+
+  void setChildren(MFNode &&value) { _children = std::move(value); }
 
   /**
    * SFString; access: inputOutput. Borrows the stored value.
@@ -625,6 +649,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
@@ -647,11 +676,13 @@ private:
 
     if (value < -1)
       throw std::out_of_range("loa below minimum of -1");
-    if (value > 4)
-      throw std::out_of_range("loa above maximum of 4");
+    if (value > 5)
+      throw std::out_of_range("loa above maximum of 5");
   }
 
   SFVec3f _center{SFVec3f{0, 0, 0}};
+
+  MFNode _children{};
 
   SFString _description{};
 

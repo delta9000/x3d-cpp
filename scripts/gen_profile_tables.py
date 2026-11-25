@@ -29,7 +29,7 @@ from importlib.resources import files
 import yaml
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UOM = str(files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml"))
+UOM = str(files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml"))
 
 # Profiles modelled by `x3d validate` (must match sdk::Profile, smallest -> largest).
 PROFILE_ORDER = ["Core", "Interchange", "CADInterchange", "Interactive",

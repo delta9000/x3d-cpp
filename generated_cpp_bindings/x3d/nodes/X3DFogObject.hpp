@@ -16,7 +16,7 @@ using namespace x3d::core;
  * @brief Abstract type describing a node that influences the lighting equation
  * through the use of fog semantics.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalEffects.html#X3DFogOjbect
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/environmentalEffects.html#X3DFogOjbect
  */
 class X3DFogObject {
 public:

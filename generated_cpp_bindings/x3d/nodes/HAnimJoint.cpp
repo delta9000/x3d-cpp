@@ -9,6 +9,8 @@ std::string HAnimJoint::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion HAnimJoint::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &HAnimJoint::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -27,9 +29,9 @@ const FieldTable &HAnimJoint::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxCenter", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -53,9 +55,9 @@ const FieldTable &HAnimJoint::fields() const {
           return {&dynamic_cast<const HAnimJoint &>(n)
                        .X3DBoundedObject::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -78,9 +80,9 @@ const FieldTable &HAnimJoint::fields() const {
           return {&dynamic_cast<const HAnimJoint &>(n)
                        .X3DBoundedObject::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -103,9 +105,9 @@ const FieldTable &HAnimJoint::fields() const {
           return {&dynamic_cast<const HAnimJoint &>(n)
                        .X3DBoundedObject::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "center", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -125,9 +127,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "children", X3DFieldType::MFNode, AccessType::InputOutput, "children",
@@ -147,9 +149,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -170,9 +172,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "displacers", X3DFieldType::MFNode, AccessType::InputOutput,
@@ -193,9 +195,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getDisplacers(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -216,9 +218,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "limitOrientation", X3DFieldType::SFRotation, AccessType::InputOutput,
@@ -241,9 +243,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getLimitOrientation(),
                   &typeid(SFRotation)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "llimit", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -263,9 +265,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getLlimit(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -287,9 +289,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "name", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -309,9 +311,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getName(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"removeChildren", X3DFieldType::MFNode,
                           AccessType::InputOnly, "removeChildren",
@@ -327,9 +329,9 @@ const FieldTable &HAnimJoint::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "rotation", X3DFieldType::SFRotation, AccessType::InputOutput, "",
@@ -350,9 +352,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getRotation(),
                   &typeid(SFRotation)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "scale", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -372,9 +374,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getScale(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "scaleOrientation", X3DFieldType::SFRotation, AccessType::InputOutput,
@@ -397,9 +399,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getScaleOrientation(),
                   &typeid(SFRotation)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "skinCoordIndex", X3DFieldType::MFInt32, AccessType::InputOutput, "",
@@ -421,9 +423,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getSkinCoordIndex(),
                   &typeid(MFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "skinCoordWeight", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -445,9 +447,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getSkinCoordWeight(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "stiffness", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -468,9 +470,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getStiffness(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "translation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -491,9 +493,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getTranslation(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "ulimit", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -513,9 +515,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).getUlimit(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -538,9 +540,9 @@ const FieldTable &HAnimJoint::fields() const {
                     return {&dynamic_cast<const HAnimJoint &>(n)
                                  .X3DBoundedObject::getVisible(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -562,9 +564,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -586,9 +588,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -610,9 +612,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -633,9 +635,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -657,9 +659,9 @@ const FieldTable &HAnimJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const HAnimJoint &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

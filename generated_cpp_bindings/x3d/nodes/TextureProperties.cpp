@@ -11,6 +11,8 @@ std::string TextureProperties::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TextureProperties::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &TextureProperties::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +38,9 @@ const FieldTable &TextureProperties::fields() const {
           return {&dynamic_cast<const TextureProperties &>(n)
                        .getAnisotropicDegree(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "borderColor", X3DFieldType::SFColorRGBA, AccessType::InputOutput, "",
@@ -60,9 +62,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).getBorderColor(),
                   &typeid(SFColorRGBA)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "borderWidth", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -84,9 +86,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).getBorderWidth(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "boundaryModeR", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -118,9 +120,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).getBoundaryModeR(),
               &typeid(TextureBoundaryModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "boundaryModeS", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -152,9 +154,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).getBoundaryModeS(),
               &typeid(TextureBoundaryModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "boundaryModeT", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -186,9 +188,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).getBoundaryModeT(),
               &typeid(TextureBoundaryModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "generateMipMaps", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -211,9 +213,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).getGenerateMipMaps(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -235,9 +237,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "magnificationFilter", X3DFieldType::SFEnum, AccessType::InputOutput,
@@ -270,9 +272,9 @@ const FieldTable &TextureProperties::fields() const {
           return {&dynamic_cast<const TextureProperties &>(n)
                        .getMagnificationFilter(),
                   &typeid(TextureMagnificationModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -295,9 +297,9 @@ const FieldTable &TextureProperties::fields() const {
           return {&dynamic_cast<const TextureProperties &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "minificationFilter", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -329,9 +331,9 @@ const FieldTable &TextureProperties::fields() const {
           return {&dynamic_cast<const TextureProperties &>(n)
                        .getMinificationFilter(),
                   &typeid(TextureMinificationModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "textureCompression", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -363,9 +365,9 @@ const FieldTable &TextureProperties::fields() const {
           return {&dynamic_cast<const TextureProperties &>(n)
                        .getTextureCompression(),
                   &typeid(TextureCompressionModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "texturePriority", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -388,9 +390,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).getTexturePriority(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -412,9 +414,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -436,9 +438,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -461,9 +463,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -485,9 +487,9 @@ const FieldTable &TextureProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TextureProperties &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -510,9 +512,9 @@ const FieldTable &TextureProperties::fields() const {
           return {
               &dynamic_cast<const TextureProperties &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

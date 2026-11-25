@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief StaticGroup is similar to Group node but does not allow access to
  * children after creation time.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html#StaticGroup
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/grouping.html#StaticGroup
  */
 class StaticGroup : public virtual X3DChildNode,
                     public virtual X3DBoundedObject {
@@ -64,6 +64,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

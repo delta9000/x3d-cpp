@@ -83,7 +83,7 @@ FIELD_ADDITIONS: List[Dict[str, Any]] = [
             "the standard's field table for the same node (the UOM's own "
             "specificationUrl) lists it as MFFloat [in,out]."
         ),
-        "corrected_in": None,  # not fixed in the vendored 4.0 UOM; guard makes this self-disabling
+        "corrected_in": "4.1",  # the 4.1 UOM declares it; the guard keeps 4.1 a no-op
     },
 ]
 

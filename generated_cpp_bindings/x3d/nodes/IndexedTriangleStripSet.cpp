@@ -11,6 +11,10 @@ std::string IndexedTriangleStripSet::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion IndexedTriangleStripSet::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &IndexedTriangleStripSet::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getAttrib(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "ccw", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -62,9 +66,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getCcw(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFNode, AccessType::InputOutput, "color",
@@ -87,9 +91,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getColor(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "colorPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -113,9 +117,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getColorPerVertex(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "coord", X3DFieldType::SFNode, AccessType::InputOutput, "coord",
@@ -138,9 +142,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "fogCoord", X3DFieldType::SFNode, AccessType::InputOutput, "fogCoord",
@@ -163,9 +167,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getFogCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "index", X3DFieldType::MFInt32, AccessType::InitializeOnly, "",
@@ -187,9 +191,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n).getIndex(),
                   &typeid(MFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -212,9 +216,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -237,9 +241,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normal", X3DFieldType::SFNode, AccessType::InputOutput, "normal",
@@ -262,9 +266,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getNormal(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normalPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -288,9 +292,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getNormalPerVertex(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"set_index", X3DFieldType::MFInt32, AccessType::InputOnly, "",
@@ -306,9 +310,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
 
                   ,
 
-                  nullptr
+                  nullptr,
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -332,9 +336,34 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getSolid(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
+
+    t.push_back(FieldInfo{
+        "tangent", X3DFieldType::SFNode, AccessType::InputOutput, "tangent",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const IndexedTriangleStripSet &>(n)
+                              .X3DComposedGeometryNode::getTangent());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<IndexedTriangleStripSet &>(n)
+              .X3DComposedGeometryNode::setTangent(std::any_cast<SFNode>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
+                       .X3DComposedGeometryNode::getTangent(),
+                  &typeid(SFNode)};
+        },
+
+        X3DVersion{4, 1}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InputOutput, "texCoord",
@@ -357,9 +386,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DComposedGeometryNode::getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -382,9 +411,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -407,9 +436,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -432,9 +461,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -457,9 +486,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -482,9 +511,9 @@ const FieldTable &IndexedTriangleStripSet::fields() const {
           return {&dynamic_cast<const IndexedTriangleStripSet &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

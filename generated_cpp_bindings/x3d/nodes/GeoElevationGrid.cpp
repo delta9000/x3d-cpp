@@ -11,6 +11,8 @@ std::string GeoElevationGrid::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion GeoElevationGrid::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &GeoElevationGrid::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getCcw(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFNode, AccessType::InputOutput, "color",
@@ -57,9 +59,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getColor(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "colorPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -82,9 +84,9 @@ const FieldTable &GeoElevationGrid::fields() const {
           return {
               &dynamic_cast<const GeoElevationGrid &>(n).getColorPerVertex(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "creaseAngle", X3DFieldType::SFDouble, AccessType::InitializeOnly, "",
@@ -106,9 +108,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getCreaseAngle(),
                   &typeid(SFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoGridOrigin", X3DFieldType::SFVec3d, AccessType::InitializeOnly, "",
@@ -130,9 +132,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoGridOrigin(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -155,9 +157,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoOrigin(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -179,9 +181,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getGeoSystem(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "height", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -203,9 +205,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getHeight(),
                   &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -227,9 +229,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -252,9 +254,9 @@ const FieldTable &GeoElevationGrid::fields() const {
           return {
               &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normal", X3DFieldType::SFNode, AccessType::InputOutput, "normal",
@@ -276,9 +278,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getNormal(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normalPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -301,9 +303,9 @@ const FieldTable &GeoElevationGrid::fields() const {
           return {
               &dynamic_cast<const GeoElevationGrid &>(n).getNormalPerVertex(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"set_height", X3DFieldType::MFDouble,
                           AccessType::InputOnly, "",
@@ -319,9 +321,9 @@ const FieldTable &GeoElevationGrid::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -342,9 +344,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getSolid(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InputOutput, "texCoord",
@@ -366,9 +368,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "xDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -390,9 +392,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getXDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "xSpacing", X3DFieldType::SFDouble, AccessType::InitializeOnly, "",
@@ -414,9 +416,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getXSpacing(),
                   &typeid(SFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "yScale", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -438,9 +440,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getYScale(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "zDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -462,9 +464,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getZDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "zSpacing", X3DFieldType::SFDouble, AccessType::InitializeOnly, "",
@@ -486,9 +488,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).getZSpacing(),
                   &typeid(SFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -510,9 +512,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -534,9 +536,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -559,9 +561,9 @@ const FieldTable &GeoElevationGrid::fields() const {
           return {
               &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -583,9 +585,9 @@ const FieldTable &GeoElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -608,9 +610,9 @@ const FieldTable &GeoElevationGrid::fields() const {
           return {
               &dynamic_cast<const GeoElevationGrid &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

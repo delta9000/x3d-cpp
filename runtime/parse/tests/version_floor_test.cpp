@@ -75,13 +75,13 @@ TEST_CASE("version floor: sub-3.0 versions read as X3D 3.0") {
   }
 
   // Authoring default: a default-constructed document targets the UOM the
-  // bindings are generated from (4.0), not the parse floor — a hand-built
+  // bindings are generated from (4.1), not the parse floor — a hand-built
   // scene must not serialize as a 3.0-labeled file by default.
-  SUBCASE("default-constructed document targets 4.0") {
+  SUBCASE("default-constructed document targets 4.1") {
     runtime::X3DDocument doc;
-    CHECK_MESSAGE((doc.version == "4.0"), "default-constructed X3DDocument is 4.0");
+    CHECK_MESSAGE((doc.version == "4.1"), "default-constructed X3DDocument is 4.1");
     codec::XmlWriter w;
-    CHECK_MESSAGE((w.writeDocument(doc).find("version=\"4.0\"") != std::string::npos),
-          "hand-built doc serializes as version 4.0");
+    CHECK_MESSAGE((w.writeDocument(doc).find("version=\"4.1\"") != std::string::npos),
+          "hand-built doc serializes as version 4.1");
   }
 }

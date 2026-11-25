@@ -64,6 +64,10 @@ public:
                      NodeKind::Oscillator, param, value});
   }
 
+  void setWaveform(NodeHandle node, const NodeParams &params) override {
+    waveforms.push_back(CreateOp{node, NodeKind::Oscillator, params});
+  }
+
   void render(NodeHandle destination, int frames, float sampleRate,
               std::vector<float> &out) override {
     (void)destination;
@@ -82,6 +86,7 @@ public:
   std::vector<CreateOp> creates;
   std::vector<ConnectOp> connects;
   std::vector<SetParamOp> setParams;
+  std::vector<CreateOp> waveforms;  ///< setWaveform calls (handle + new params)
   std::vector<Op> ops;  ///< all ops in receive order (op-sequence determinism)
 
 private:

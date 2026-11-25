@@ -28,7 +28,7 @@ using namespace x3d::core;
  * @brief BufferAudioSource node represents a memory-resident audio asset that
  * can contain one or more channels.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#BufferAudioSource
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#BufferAudioSource
  */
 class BufferAudioSource : public virtual X3DSoundSourceNode,
                           public virtual X3DUrlObject {
@@ -200,15 +200,15 @@ public:
 
   /**
    * SFFloat; access: inputOutput. Borrows the stored value.
-   * @details The detune field forms a compound field together with playbackRate
-   * that together determine a computedPlaybackRate value.
+   * @details The detune field, measured in cents, modulates the speed at which
+   * the the audio stream is rendered.
    */
   const SFFloat &getDetune() const { return _detune; }
 
   /**
    * Access: inputOutput.
-   * @details The detune field forms a compound field together with playbackRate
-   * that together determine a computedPlaybackRate value.
+   * @details The detune field, measured in cents, modulates the speed at which
+   * the the audio stream is rendered.
    */
   void setDetune(const SFFloat &value) {
 
@@ -371,6 +371,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

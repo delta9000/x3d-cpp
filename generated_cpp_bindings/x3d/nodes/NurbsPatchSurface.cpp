@@ -11,6 +11,8 @@ std::string NurbsPatchSurface::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion NurbsPatchSurface::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &NurbsPatchSurface::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -38,9 +40,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getControlPoint(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -62,9 +64,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -87,9 +89,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -113,9 +115,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getSolid(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InputOutput, "texCoord",
@@ -139,9 +141,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uClosed", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -165,9 +167,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getUClosed(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -191,9 +193,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getUDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uKnot", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -217,9 +219,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getUKnot(),
                   &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uOrder", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -243,9 +245,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getUOrder(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "uTessellation", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -269,9 +271,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getUTessellation(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vClosed", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -295,9 +297,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getVClosed(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -321,9 +323,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getVDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vKnot", X3DFieldType::MFDouble, AccessType::InitializeOnly, "",
@@ -347,9 +349,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getVKnot(),
                   &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vOrder", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -373,9 +375,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getVOrder(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "vTessellation", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -399,9 +401,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getVTessellation(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "weight", X3DFieldType::MFDouble, AccessType::InputOutput, "",
@@ -425,9 +427,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {&dynamic_cast<const NurbsPatchSurface &>(n)
                        .X3DNurbsSurfaceGeometryNode::getWeight(),
                   &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -449,9 +451,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -473,9 +475,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -498,9 +500,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {
               &dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -522,9 +524,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -547,9 +549,9 @@ const FieldTable &NurbsPatchSurface::fields() const {
           return {
               &dynamic_cast<const NurbsPatchSurface &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

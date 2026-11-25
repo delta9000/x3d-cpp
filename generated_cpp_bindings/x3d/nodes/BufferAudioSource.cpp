@@ -11,6 +11,8 @@ std::string BufferAudioSource::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion BufferAudioSource::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &BufferAudioSource::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +38,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DUrlObject::getAutoRefresh(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
@@ -63,9 +65,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DUrlObject::getAutoRefreshTimeLimit(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "buffer", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -87,9 +89,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getBuffer(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bufferDuration", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -112,9 +114,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {
               &dynamic_cast<const BufferAudioSource &>(n).getBufferDuration(),
               &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bufferlength", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -136,9 +138,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getBufferlength(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelCount", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -160,9 +162,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getChannelCount(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelCountMode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -194,9 +196,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {
               &dynamic_cast<const BufferAudioSource &>(n).getChannelCountMode(),
               &typeid(ChannelCountModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelInterpretation", X3DFieldType::SFEnum, AccessType::InputOutput,
@@ -229,9 +231,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .getChannelInterpretation(),
                   &typeid(ChannelInterpretationChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -254,9 +256,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DUrlObject::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "detune", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -278,9 +280,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getDetune(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -303,9 +305,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getElapsedTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -328,9 +330,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DSoundSourceNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -353,9 +355,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DSoundSourceNode::getGain(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -377,9 +379,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -402,9 +404,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "isPaused", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -427,9 +429,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getIsPaused(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "length", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -451,9 +453,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getLength(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"load", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -476,9 +478,9 @@ const FieldTable &BufferAudioSource::fields() const {
                     return {&dynamic_cast<const BufferAudioSource &>(n)
                                  .X3DUrlObject::getLoad(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loop", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -499,9 +501,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getLoop(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loopEnd", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -523,9 +525,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getLoopEnd(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loopStart", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -547,9 +549,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getLoopStart(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -572,9 +574,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "numberOfChannels", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -597,9 +599,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {
               &dynamic_cast<const BufferAudioSource &>(n).getNumberOfChannels(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "pauseTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -622,9 +624,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getPauseTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "playbackRate", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -646,9 +648,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getPlaybackRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "resumeTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -671,9 +673,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getResumeTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "sampleRate", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -695,9 +697,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).getSampleRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "startTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -720,9 +722,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getStartTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "stopTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -745,9 +747,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {&dynamic_cast<const BufferAudioSource &>(n)
                        .X3DTimeDependentNode::getStopTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"url", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -770,9 +772,9 @@ const FieldTable &BufferAudioSource::fields() const {
                     return {&dynamic_cast<const BufferAudioSource &>(n)
                                  .X3DUrlObject::getUrl(),
                             &typeid(MFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -794,9 +796,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -818,9 +820,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -843,9 +845,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {
               &dynamic_cast<const BufferAudioSource &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -867,9 +869,9 @@ const FieldTable &BufferAudioSource::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BufferAudioSource &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -892,9 +894,9 @@ const FieldTable &BufferAudioSource::fields() const {
           return {
               &dynamic_cast<const BufferAudioSource &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

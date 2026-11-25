@@ -9,6 +9,8 @@ std::string ColorDamper::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ColorDamper::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &ColorDamper::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).getInitialDestination(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "initialValue", X3DFieldType::SFColor, AccessType::InitializeOnly, "",
@@ -58,9 +60,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).getInitialValue(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -82,9 +84,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -107,9 +109,9 @@ const FieldTable &ColorDamper::fields() const {
           return {&dynamic_cast<const ColorDamper &>(n)
                        .X3DFollowerNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -131,9 +133,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "order", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -156,9 +158,9 @@ const FieldTable &ColorDamper::fields() const {
           return {
               &dynamic_cast<const ColorDamper &>(n).X3DDamperNode::getOrder(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{"set_destination", X3DFieldType::SFColor,
                           AccessType::InputOnly, "",
@@ -174,9 +176,9 @@ const FieldTable &ColorDamper::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "set_value", X3DFieldType::SFColor, AccessType::InputOnly, "",
@@ -191,9 +193,9 @@ const FieldTable &ColorDamper::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "tau", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -215,9 +217,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DDamperNode::getTau(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "tolerance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -240,9 +242,9 @@ const FieldTable &ColorDamper::fields() const {
           return {&dynamic_cast<const ColorDamper &>(n)
                        .X3DDamperNode::getTolerance(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "value_changed", X3DFieldType::SFColor, AccessType::OutputOnly, "",
@@ -264,9 +266,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).getValue_changed(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -288,9 +290,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -312,9 +314,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -336,9 +338,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -360,9 +362,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -384,9 +386,9 @@ const FieldTable &ColorDamper::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorDamper &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

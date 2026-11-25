@@ -24,9 +24,10 @@ using namespace x3d::core;
 /**
  * @class Analyser
  * @brief Analyser provides real-time frequency and time-domain analysis
- * information, without any change to the input.
+ * information, without any signal-processing change to the audio stream which
+ * is passed unprocessed from input to output.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#Analyser
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#Analyser
  */
 class Analyser : public virtual X3DSoundProcessingNode {
 public:
@@ -217,6 +218,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

@@ -18,7 +18,7 @@ using namespace x3d::core;
  * have containerField='children' to indicate their relationship to the parent
  * LoadSensor node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/networking.html#X3DUrlObject
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/networking.html#X3DUrlObject
  */
 class X3DUrlObject {
 public:

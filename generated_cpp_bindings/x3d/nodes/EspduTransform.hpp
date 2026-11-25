@@ -28,7 +28,7 @@ using namespace x3d::core;
  * @brief EspduTransform is a networked Transform node that can contain most
  * nodes.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/dis.html#EspduTransform
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/dis.html#EspduTransform
  */
 class EspduTransform : public virtual X3DGroupingNode,
                        public virtual X3DNetworkSensorNode {
@@ -1562,6 +1562,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
