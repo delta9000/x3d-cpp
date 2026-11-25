@@ -18,7 +18,7 @@ using namespace x3d::core;
  * other node type since it is not an explicit part of the X3D node interface
  * hierarchy, and DEF/USE is not appropriate for such statements.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/concepts.html#scenegraph
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/concepts.html#scenegraph
  */
 class X3DStatement {
 public:

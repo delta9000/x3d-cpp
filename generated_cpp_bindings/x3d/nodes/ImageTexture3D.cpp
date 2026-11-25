@@ -9,6 +9,8 @@ std::string ImageTexture3D::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ImageTexture3D::introducedIn() const { return X3DVersion{3, 1}; }
+
 const FieldTable &ImageTexture3D::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DUrlObject::getAutoRefresh(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
@@ -61,9 +63,56 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DUrlObject::getAutoRefreshTimeLimit(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
+
+    t.push_back(FieldInfo{
+        "colorDepth", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(
+              dynamic_cast<const ImageTexture3D &>(n).getColorDepth());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ImageTexture3D &>(n).emitColorDepth(
+              std::any_cast<SFInt32>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).getColorDepth(),
+                  &typeid(SFInt32)};
+        },
+
+        X3DVersion{4, 1}});
+
+    t.push_back(FieldInfo{
+        "depth", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const ImageTexture3D &>(n).getDepth());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ImageTexture3D &>(n).emitDepth(
+              std::any_cast<SFInt32>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).getDepth(),
+                  &typeid(SFInt32)};
+        },
+
+        X3DVersion{4, 1}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -86,9 +135,32 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DUrlObject::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
+
+    t.push_back(FieldInfo{
+        "height", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const ImageTexture3D &>(n).getHeight());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ImageTexture3D &>(n).emitHeight(
+              std::any_cast<SFInt32>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).getHeight(),
+                  &typeid(SFInt32)};
+        },
+
+        X3DVersion{4, 1}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -110,9 +182,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "load", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -135,9 +207,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {
               &dynamic_cast<const ImageTexture3D &>(n).X3DUrlObject::getLoad(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -160,9 +232,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {
               &dynamic_cast<const ImageTexture3D &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "repeatR", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -185,9 +257,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DTexture3DNode::getRepeatR(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "repeatS", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -210,9 +282,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DTexture3DNode::getRepeatS(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "repeatT", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -235,9 +307,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DTexture3DNode::getRepeatT(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "textureProperties", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -262,9 +334,9 @@ const FieldTable &ImageTexture3D::fields() const {
           return {&dynamic_cast<const ImageTexture3D &>(n)
                        .X3DTexture3DNode::getTextureProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "url", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -287,9 +359,32 @@ const FieldTable &ImageTexture3D::fields() const {
           return {
               &dynamic_cast<const ImageTexture3D &>(n).X3DUrlObject::getUrl(),
               &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
+
+    t.push_back(FieldInfo{
+        "width", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
+
+        [](const X3DNode &n) -> std::any {
+          return std::any(dynamic_cast<const ImageTexture3D &>(n).getWidth());
+        },
+
+        [](X3DNode &n, const std::any &v) {
+          dynamic_cast<ImageTexture3D &>(n).emitWidth(
+              std::any_cast<SFInt32>(v));
+        },
+
+        nullptr, nullptr
+
+        ,
+
+        [](const X3DNode &n) -> FieldView {
+          return {&dynamic_cast<const ImageTexture3D &>(n).getWidth(),
+                  &typeid(SFInt32)};
+        },
+
+        X3DVersion{4, 1}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -311,9 +406,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -335,9 +430,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -359,9 +454,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -383,9 +478,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -407,9 +502,9 @@ const FieldTable &ImageTexture3D::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ImageTexture3D &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

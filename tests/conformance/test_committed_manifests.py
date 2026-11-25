@@ -7,14 +7,14 @@ from x3d_cpp_gen.conformance.meta_validator import (
 
 MANIFEST_DIR = Path("src/x3d_cpp_gen/conformance/manifests")
 # All six genuine ISO/Web3D UOMs (offline-pinned). 3.x sourced from web3d.org
-# (provenance headers preserved); 4.0 ships with the package; 4.1 is a fixture.
+# (provenance headers preserved); 4.0 and 4.1 ship with the package.
 UOM = {
     "3.0": "tests/fixtures/uom/X3dUnifiedObjectModel-3.0.xml",
     "3.1": "tests/fixtures/uom/X3dUnifiedObjectModel-3.1.xml",
     "3.2": "tests/fixtures/uom/X3dUnifiedObjectModel-3.2.xml",
     "3.3": "tests/fixtures/uom/X3dUnifiedObjectModel-3.3.xml",
     "4.0": "src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml",
-    "4.1": "tests/fixtures/X3dUnifiedObjectModel-4.1.xml",
+    "4.1": "src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.1.xml",
 }
 
 def test_committed_manifests_match_fresh_extraction():

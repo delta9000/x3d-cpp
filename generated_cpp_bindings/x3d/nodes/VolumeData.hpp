@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief VolumeData displays a simple non-segmented voxel dataset with a single
  * RenderStyle node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html#VolumeData
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/volume.html#VolumeData
  */
 class VolumeData : public virtual X3DVolumeDataNode {
 public:
@@ -46,8 +46,8 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained X3DVolumeRenderStyleNode node that defines
-   * specific rendering technique for this volumetric object.
+   * @details Optional single contained X3DVolumeRenderStyleNode node that
+   * defines specific rendering technique for this volumetric object.
    */
   const SFNode &getRenderStyle() const { return _renderStyle; }
 
@@ -61,8 +61,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained X3DVolumeRenderStyleNode node that defines
-   * specific rendering technique for this volumetric object.
+   * @details Optional single contained X3DVolumeRenderStyleNode node that
+   * defines specific rendering technique for this volumetric object.
    */
   void setRenderStyle(const SFNode &value) { _renderStyle = value; }
 
@@ -70,7 +70,7 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
    */
@@ -86,7 +86,7 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
    */
@@ -100,6 +100,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

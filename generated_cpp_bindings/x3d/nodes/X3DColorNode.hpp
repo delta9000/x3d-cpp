@@ -19,7 +19,7 @@ using namespace x3d::core;
  * @class X3DColorNode
  * @brief Base type for color specifications in X3D.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html#X3DColorNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/rendering.html#X3DColorNode
  */
 class X3DColorNode : public virtual X3DGeometricPropertyNode {
 public:
@@ -40,6 +40,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

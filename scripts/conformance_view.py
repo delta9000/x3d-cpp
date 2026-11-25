@@ -225,7 +225,7 @@ def _read(p: pathlib.Path) -> str:
 def build_model(repo: pathlib.Path) -> dict:
     bindings = repo / "generated_cpp_bindings"
     conf_dir = repo / "docs" / "conformance"
-    uom = repo / "src" / "x3d_cpp_gen" / "data" / "X3dUnifiedObjectModel-4.0.xml"
+    uom = repo / "src" / "x3d_cpp_gen" / "data" / "X3dUnifiedObjectModel-4.1.xml"
     concrete_names = {
         element.attrib["name"]
         for element in ET.parse(uom).findall(".//ConcreteNodes/ConcreteNode")

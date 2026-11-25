@@ -149,8 +149,7 @@ public:
         [node](const PendingMovie &e) { return e.movie == node; }), pendingMovies_.end());
     fallbackPitch_.erase(dynamic_cast<x3d::nodes::AudioClip *>(node));
     fallbackSpeed_.erase(dynamic_cast<x3d::nodes::MovieTexture *>(node));
-    if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node))
-      waves_.erase(osc);
+    if (auto m = map_.find(node); m != map_.end()) waveforms_.erase(m->second);
     fallbackRate_.erase(dynamic_cast<x3d::nodes::BufferAudioSource *>(node));
     if (listener_ == node) listener_ = nullptr;
     map_.erase(node);
@@ -164,26 +163,6 @@ public:
    *          exceed the SoundSystem's.
    */
   void setListener(x3d::nodes::ListenerPointSource *listener) { listener_ = listener; }
-
-  /**
-   * @brief Register the PeriodicWave (§16.4.18) that shapes one
-   *        OscillatorSource; call again with null to unregister.
-   * @details The X3D 4.0 object model gives OscillatorSource no periodicWave
-   *          field (added in 4.1), so a parsed scene's authored link cannot be
-   *          read back at runtime — an embedder bridges that gap by passing
-   *          the wave node here before attach(). The four standard types map
-   *          onto the seam's Waveform enum; CUSTOM carries the
-   *          optionsReal/optionsImag harmonic terms in the node's params.
-   *          SoundSystem does no waveform math (seam purity — the backend
-   *          synthesizes).
-   */
-  void setPeriodicWave(const x3d::nodes::OscillatorSource *osc,
-                       const x3d::nodes::PeriodicWave *wave) {
-    if (wave)
-      waves_[osc] = wave;
-    else
-      waves_.erase(osc);
-  }
 
   /** @brief Byte oracle for AudioClip urls (null -> no clip loads). */
   void setAssetResolver(extract::AssetResolver r) { resolver_ = std::move(r); }
@@ -260,11 +239,10 @@ private:
       p.gain = osc->getGain();
       p.enabled = osc->getEnabled();
       p.waveform = Waveform::Sine;  // §16 default: no periodicWave -> sine
-      // §16.4.18: a registered PeriodicWave shapes the oscillator. The X3D 4.0
-      // bindings have no periodicWave field to read (added in 4.1 — see
-      // SND-9), so the wave arrives via setPeriodicWave().
+      // §16.4.18: the authored periodicWave (X3D 4.1) shapes the oscillator.
       if (const auto *w = periodicWaveFor(osc)) applyPeriodicWave(p, *w);
       handle = backend_->createNode(NodeKind::Oscillator, p);
+      waveforms_[handle] = WaveState{p.waveform, p.optionsReal, p.optionsImag};
     } else if (auto *biq = dynamic_cast<x3d::nodes::BiquadFilter *>(node)) {
       NodeParams p;
       p.frequency = biq->getFrequency();
@@ -345,11 +323,34 @@ private:
     return handle;
   }
 
-  /** @brief The registered PeriodicWave for `osc`, or null. */
-  const x3d::nodes::PeriodicWave *periodicWaveFor(
-      const x3d::nodes::OscillatorSource *osc) const {
-    const auto it = waves_.find(osc);
-    return it == waves_.end() ? nullptr : it->second;
+  /**
+   * @brief The PeriodicWave in `osc`'s periodicWave field, or null.
+   * @details Read when the oscillator's backend node is created (attach()):
+   *          the seam takes the waveform as a creation parameter, not a
+   *          per-tick one. The four standard types map onto the seam's
+   *          Waveform enum; CUSTOM carries the optionsReal/optionsImag
+   *          harmonic terms. SoundSystem does no waveform math (the backend
+   *          synthesizes).
+   */
+  static const x3d::nodes::PeriodicWave *periodicWaveFor(
+      const x3d::nodes::OscillatorSource *osc) {
+    return dynamic_cast<const x3d::nodes::PeriodicWave *>(
+        osc->getPeriodicWave().get());
+  }
+
+  /**
+   * @brief Re-send `osc`'s waveform when its periodicWave field, or the wave
+   *        node's type/options, changed since it was last sent.
+   */
+  void pushWaveform(const x3d::nodes::OscillatorSource *osc, NodeHandle handle) {
+    NodeParams p;
+    p.waveform = Waveform::Sine;
+    if (const auto *w = periodicWaveFor(osc)) applyPeriodicWave(p, *w);
+    WaveState now{p.waveform, p.optionsReal, p.optionsImag};
+    auto &sent = waveforms_[handle];
+    if (sent == now) return;
+    sent = std::move(now);
+    backend_->setWaveform(handle, p);
   }
 
   /** @brief Map a §16.4.18 PeriodicWave onto oscillator NodeParams. */
@@ -385,6 +386,7 @@ private:
   /** @brief Push a node's current animatable fields to the backend (per tick). */
   void pushParams(X3DNode *node, NodeHandle handle) {
     if (auto *osc = dynamic_cast<x3d::nodes::OscillatorSource *>(node)) {
+      pushWaveform(osc, handle);
       backend_->setParam(handle, Param::Frequency, osc->getFrequency());
       backend_->setParam(handle, Param::Detune, osc->getDetune());
       backend_->setParam(handle, Param::Gain, osc->getGain());
@@ -751,12 +753,14 @@ private:
   std::vector<PendingMovie> pendingMovies_;
   std::unordered_map<x3d::nodes::AudioClip *, float> fallbackPitch_;
   std::unordered_map<x3d::nodes::MovieTexture *, float> fallbackSpeed_;
-  // OscillatorSource -> its registered §16.4.18 PeriodicWave (borrowed; the
-  // wave node must outlive the System). Read at attach() time only.
-  std::unordered_map<const x3d::nodes::OscillatorSource *,
-                     const x3d::nodes::PeriodicWave *>
-      waves_;
   std::unordered_map<x3d::nodes::BufferAudioSource *, float> fallbackRate_;
+  // Oscillator handle -> the waveform last sent to the backend.
+  struct WaveState {
+    Waveform waveform = Waveform::Sine;
+    std::vector<float> real, imag;
+    bool operator==(const WaveState &) const = default;
+  };
+  std::unordered_map<NodeHandle, WaveState> waveforms_;
   extract::AssetResolver resolver_;
   AudioDecoder decoder_ = makeNullAudioDecoder();
   AudioDecoder movieAudioDecoder_;

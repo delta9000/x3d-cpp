@@ -11,6 +11,10 @@ std::string RigidBodyCollection::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion RigidBodyCollection::introducedIn() const {
+  return X3DVersion{3, 2};
+}
+
 const FieldTable &RigidBodyCollection::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).getAutoDisable(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "bboxCenter", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -62,9 +66,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .X3DBoundedObject::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -87,9 +91,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .X3DBoundedObject::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -113,9 +117,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .X3DBoundedObject::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bodies", X3DFieldType::MFNode, AccessType::InputOutput, "bodies",
@@ -137,9 +141,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getBodies(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "collider", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -162,9 +166,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getCollider(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "constantForceMix", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -187,9 +191,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getConstantForceMix(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "contactSurfaceThickness", X3DFieldType::SFFloat,
@@ -213,9 +217,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getContactSurfaceThickness(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "disableAngularSpeed", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -239,9 +243,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getDisableAngularSpeed(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "disableLinearSpeed", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -265,9 +269,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getDisableLinearSpeed(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "disableTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -290,9 +294,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).getDisableTime(),
               &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -314,9 +318,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "errorCorrection", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -339,9 +343,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getErrorCorrection(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "gravity", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -363,9 +367,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getGravity(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -388,9 +392,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getIS(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "iterations", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -412,9 +416,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getIterations(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "joints", X3DFieldType::MFNode, AccessType::InputOutput, "joints",
@@ -436,9 +440,9 @@ const FieldTable &RigidBodyCollection::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const RigidBodyCollection &>(n).getJoints(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "maxCorrectionSpeed", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -462,9 +466,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .getMaxCorrectionSpeed(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -487,9 +491,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "preferAccuracy", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -512,9 +516,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).getPreferAccuracy(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"set_contacts", X3DFieldType::MFNode, AccessType::InputOnly,
@@ -531,9 +535,9 @@ const FieldTable &RigidBodyCollection::fields() const {
 
                   ,
 
-                  nullptr
+                  nullptr,
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -556,9 +560,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {&dynamic_cast<const RigidBodyCollection &>(n)
                        .X3DBoundedObject::getVisible(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -581,9 +585,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -606,9 +610,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -631,9 +635,9 @@ const FieldTable &RigidBodyCollection::fields() const {
                     return {&dynamic_cast<const RigidBodyCollection &>(n)
                                  .X3DNode::getClass_(),
                             &typeid(SFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -656,9 +660,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getId(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -681,9 +685,9 @@ const FieldTable &RigidBodyCollection::fields() const {
           return {
               &dynamic_cast<const RigidBodyCollection &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

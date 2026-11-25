@@ -9,6 +9,8 @@ std::string AudioClip::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion AudioClip::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &AudioClip::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DUrlObject::getAutoRefresh(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "autoRefreshTimeLimit", X3DFieldType::SFTime, AccessType::InputOutput,
@@ -61,9 +63,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DUrlObject::getAutoRefreshTimeLimit(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -86,9 +88,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DUrlObject::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "duration_changed", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -110,9 +112,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).getDuration_changed(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -135,9 +137,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getElapsedTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -160,9 +162,9 @@ const FieldTable &AudioClip::fields() const {
                     return {&dynamic_cast<const AudioClip &>(n)
                                  .X3DSoundSourceNode::getEnabled(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -185,9 +187,9 @@ const FieldTable &AudioClip::fields() const {
           return {
               &dynamic_cast<const AudioClip &>(n).X3DSoundSourceNode::getGain(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -207,9 +209,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -232,9 +234,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isPaused", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -257,9 +259,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getIsPaused(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "load", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -281,9 +283,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DUrlObject::getLoad(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "loop", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -303,9 +305,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).getLoop(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -327,9 +329,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "pauseTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -352,9 +354,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getPauseTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "pitch", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -374,9 +376,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).getPitch(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "resumeTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -399,9 +401,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getResumeTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "startTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -424,9 +426,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getStartTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "stopTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -449,9 +451,9 @@ const FieldTable &AudioClip::fields() const {
           return {&dynamic_cast<const AudioClip &>(n)
                        .X3DTimeDependentNode::getStopTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "url", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -473,9 +475,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DUrlObject::getUrl(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -496,9 +498,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -519,9 +521,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -543,9 +545,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -566,9 +568,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -590,9 +592,9 @@ const FieldTable &AudioClip::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AudioClip &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

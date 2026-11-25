@@ -11,6 +11,10 @@ std::string SingleAxisHingeJoint::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion SingleAxisHingeJoint::introducedIn() const {
+  return X3DVersion{3, 2};
+}
+
 const FieldTable &SingleAxisHingeJoint::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).getAnchorPoint(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "angle", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -60,9 +64,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n).getAngle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "angleRate", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -84,9 +88,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n).getAngleRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -108,9 +112,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n).getAxis(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body1", X3DFieldType::SFNode, AccessType::InputOutput, "body1",
@@ -133,9 +137,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DRigidJointNode::getBody1(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body1AnchorPoint", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -158,9 +162,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .getBody1AnchorPoint(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body2", X3DFieldType::SFNode, AccessType::InputOutput, "body2",
@@ -183,9 +187,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DRigidJointNode::getBody2(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body2AnchorPoint", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -208,9 +212,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .getBody2AnchorPoint(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "forceOutput", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -233,9 +237,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DRigidJointNode::getForceOutput(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -258,9 +262,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).X3DNode::getIS(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "maxAngle", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -282,9 +286,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n).getMaxAngle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -307,9 +311,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "minAngle", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -331,9 +335,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n).getMinAngle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stopBounce", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -356,9 +360,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).getStopBounce(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stopErrorCorrection", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -382,9 +386,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .getStopErrorCorrection(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -407,9 +411,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -432,9 +436,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -457,9 +461,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -482,9 +486,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {
               &dynamic_cast<const SingleAxisHingeJoint &>(n).X3DNode::getId(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -507,9 +511,9 @@ const FieldTable &SingleAxisHingeJoint::fields() const {
           return {&dynamic_cast<const SingleAxisHingeJoint &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

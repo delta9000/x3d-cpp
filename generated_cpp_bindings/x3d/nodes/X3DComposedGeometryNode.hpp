@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief Composed geometry nodes produce renderable geometry, can contain Color
  * Coordinate Normal TextureCoordinate, and are contained by a Shape node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/rendering.html#X3DComposedGeometryNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/rendering.html#X3DComposedGeometryNode
  */
 class X3DComposedGeometryNode : public virtual X3DGeometryNode {
 public:
@@ -43,6 +43,8 @@ public:
   static SFBool getDefaultNormalPerVertex() { return true; }
 
   static SFBool getDefaultSolid() { return true; }
+
+  static SFNode getDefaultTangent() { return nullptr; }
 
   static SFNode getDefaultTexCoord() { return nullptr; }
 
@@ -215,6 +217,28 @@ public:
    * SFNode; access: inputOutput. Borrows the stored value.
    * @details
    */
+  const SFNode &getTangent() const { return _tangent; }
+
+  /**
+   * @details Permitted X3D node types: X3DTangentNode
+   */
+  static const std::vector<std::string> &acceptableTangentNodeTypes() {
+    static const std::vector<std::string> types = {"X3DTangentNode"};
+    return types;
+  }
+
+  /**
+   * Access: inputOutput.
+   * @details
+   */
+  void setTangent(const SFNode &value) { _tangent = value; }
+
+  void setTangent(SFNode &&value) { _tangent = std::move(value); }
+
+  /**
+   * SFNode; access: inputOutput. Borrows the stored value.
+   * @details
+   */
   const SFNode &getTexCoord() const { return _texCoord; }
 
   /**
@@ -243,6 +267,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
@@ -267,6 +296,8 @@ private:
   SFBool _normalPerVertex{true};
 
   SFBool _solid{true};
+
+  SFNode _tangent{nullptr};
 
   SFNode _texCoord{nullptr};
 };

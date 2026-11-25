@@ -186,7 +186,7 @@ The PoC consumer in `examples/poc_renderer/main.cpp` demonstrates the four-progr
 | `model == Physical` | PBR | `lit.vert` / `pbr.frag` |
 | `model == Phong` | Phong | `lit.vert` / `lit.frag` |
 
-`pbr.frag` implements a metallic-roughness analytic BRDF (Cook-Torrance NDF + Schlick Fresnel + Smith geometry, sRGB output).  IBL (image-based lighting) is not implemented — `EnvironmentLight` is an X3D 4.1 node and the generated binding layer is locked to X3D 4.0; IBL is deferred (see deferred note below).
+`pbr.frag` implements a metallic-roughness analytic BRDF (Cook-Torrance NDF + Schlick Fresnel + Smith geometry, sRGB output).  IBL (image-based lighting) is not implemented: `EnvironmentLight` (X3D 4.1) is typed and parsed but not yet extracted (V41-ENVIRONMENT-LIGHT); see the deferred note below.
 
 ## Lighting model (reference evaluator)
 
@@ -198,7 +198,7 @@ The Phong/PBR programs (GLSL and their cpu_raster CPU ports, `cpuraster/Material
 
 ## IBL / EnvironmentLight — DEFERRED
 
-The vocabulary reserves `EnvDiffuse`, `EnvSpecular`, `EnvSH`, `BrdfLUT`, `EnvIntensity`, `EnvRotation` entries so author shaders can declare them today without a vocab change when IBL ships.  However `EnvironmentLight` itself is an X3D 4.1 node and the generated binding layer (`generated_cpp_bindings/`) is code-generated from the X3D 4.0 UOM and committed as byte-identical golden files.  Hand-authoring a 4.1 binding would invalidate the golden invariant.  The IBL work is tracked as a follow-on that requires a defined strategy for 4.1 extension nodes.
+The vocabulary reserves `EnvDiffuse`, `EnvSpecular`, `EnvSH`, `BrdfLUT`, `EnvIntensity`, `EnvRotation` entries so author shaders can declare them today without a vocab change when IBL ships.  `EnvironmentLight` is in the generated bindings since they moved to the X3D 4.1 UOM (ADR-0077); extracting it into a light descriptor and binding these slots is tracked as V41-ENVIRONMENT-LIGHT.
 
 ## Two-channel split
 

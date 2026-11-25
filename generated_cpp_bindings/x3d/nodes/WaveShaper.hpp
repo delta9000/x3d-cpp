@@ -26,7 +26,7 @@ using namespace x3d::core;
  * @brief WaveShaper node represents a nonlinear distorter that applies a
  * wave-shaping distortion curve to the signal.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#WaveShaper
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#WaveShaper
  */
 class WaveShaper : public virtual X3DSoundProcessingNode {
 public:
@@ -137,6 +137,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

@@ -9,6 +9,8 @@ std::string GeoViewpoint::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion GeoViewpoint::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &GeoViewpoint::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DBindableNode::getBindTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "centerOfRotation", X3DFieldType::SFVec3d, AccessType::InputOutput, "",
@@ -58,9 +60,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getCenterOfRotation(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -83,9 +85,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "farDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -108,9 +110,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getFarDistance(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "fieldOfView", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -132,9 +134,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getFieldOfView(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoOrigin", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -156,9 +158,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getGeoOrigin(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -179,9 +181,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getGeoSystem(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -203,9 +205,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isBound", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -228,9 +230,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DBindableNode::getIsBound(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"jump", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -253,9 +255,9 @@ const FieldTable &GeoViewpoint::fields() const {
                     return {&dynamic_cast<const GeoViewpoint &>(n)
                                  .X3DViewpointNode::getJump(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -277,9 +279,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "navigationInfo", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -303,9 +305,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getNavigationInfo(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "nearDistance", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -328,9 +330,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getNearDistance(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "orientation", X3DFieldType::SFRotation, AccessType::InputOutput, "",
@@ -353,9 +355,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getOrientation(),
                   &typeid(SFRotation)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "position", X3DFieldType::SFVec3d, AccessType::InputOutput, "",
@@ -376,9 +378,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getPosition(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "retainUserOffsets", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -401,9 +403,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getRetainUserOffsets(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(
         FieldInfo{"set_bind", X3DFieldType::SFBool, AccessType::InputOnly, "",
@@ -419,9 +421,9 @@ const FieldTable &GeoViewpoint::fields() const {
 
                   ,
 
-                  nullptr
+                  nullptr,
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "speedFactor", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -443,9 +445,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).getSpeedFactor(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "viewAll", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -468,9 +470,9 @@ const FieldTable &GeoViewpoint::fields() const {
           return {&dynamic_cast<const GeoViewpoint &>(n)
                        .X3DViewpointNode::getViewAll(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -492,9 +494,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -516,9 +518,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -540,9 +542,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -564,9 +566,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -588,9 +590,9 @@ const FieldTable &GeoViewpoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const GeoViewpoint &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

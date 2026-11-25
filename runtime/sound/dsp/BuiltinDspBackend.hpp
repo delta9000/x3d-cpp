@@ -26,6 +26,7 @@ public:
   NodeHandle createNode(NodeKind kind, const NodeParams &params) override;
   void connect(NodeHandle dst, NodeHandle src) override;
   void setParam(NodeHandle node, Param param, float value) override;
+  void setWaveform(NodeHandle node, const NodeParams &params) override;
   void render(NodeHandle destination, int frames, float sampleRate,
               std::vector<float> &out) override;
   void renderStereo(NodeHandle destination, int frames, float sampleRate,

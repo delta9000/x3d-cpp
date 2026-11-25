@@ -12,7 +12,7 @@ from x3d_cpp_gen.emit.registry import (
     gen_interface_registry_header, gen_interface_registry_source,
 )
 
-SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.0.xml")
+SPEC = files("x3d_cpp_gen").joinpath("data", "X3dUnifiedObjectModel-4.1.xml")
 
 
 @pytest.fixture(scope="module")

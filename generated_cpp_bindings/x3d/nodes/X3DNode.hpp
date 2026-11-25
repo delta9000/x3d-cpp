@@ -16,7 +16,7 @@ using namespace x3d::core;
  * @brief All instantiable nodes implement X3DNode, which corresponds to SFNode
  * type in the X3D specification.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html#X3DNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/core.html#X3DNode
  */
 class X3DNode {
 public:
@@ -183,6 +183,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   virtual std::string defaultContainerField() const;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  virtual X3DVersion introducedIn() const;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

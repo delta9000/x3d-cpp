@@ -9,6 +9,8 @@ std::string NavigationInfo::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion NavigationInfo::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &NavigationInfo::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -33,9 +35,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getAvatarSize(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bindTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -58,9 +60,9 @@ const FieldTable &NavigationInfo::fields() const {
           return {&dynamic_cast<const NavigationInfo &>(n)
                        .X3DBindableNode::getBindTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "headlight", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -82,9 +84,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getHeadlight(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -106,9 +108,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isBound", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -131,9 +133,9 @@ const FieldTable &NavigationInfo::fields() const {
           return {&dynamic_cast<const NavigationInfo &>(n)
                        .X3DBindableNode::getIsBound(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -156,9 +158,9 @@ const FieldTable &NavigationInfo::fields() const {
           return {
               &dynamic_cast<const NavigationInfo &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "set_bind", X3DFieldType::SFBool, AccessType::InputOnly, "",
@@ -174,9 +176,9 @@ const FieldTable &NavigationInfo::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "speed", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -197,9 +199,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getSpeed(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "transitionComplete", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -222,9 +224,9 @@ const FieldTable &NavigationInfo::fields() const {
           return {
               &dynamic_cast<const NavigationInfo &>(n).getTransitionComplete(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "transitionTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -246,9 +248,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getTransitionTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "transitionType", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -270,9 +272,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getTransitionType(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "type", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -292,9 +294,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getType(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "visibilityLimit", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -316,9 +318,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).getVisibilityLimit(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -340,9 +342,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -364,9 +366,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -388,9 +390,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -412,9 +414,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -436,9 +438,9 @@ const FieldTable &NavigationInfo::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NavigationInfo &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

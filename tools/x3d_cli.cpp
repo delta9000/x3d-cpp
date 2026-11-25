@@ -315,12 +315,14 @@ using x3d::cli_detail::Diag;
 
 std::string buildReport(const std::string &file, bool valid,
                         const std::string &profileFit,
+                        const std::string &versionFit,
                         const std::vector<Diag> &diags) {
     std::string s;
     s += "{\n";
     s += "  \"file\": "       + escapeString(file) + ",\n";
     s += std::string("  \"valid\": ") + (valid ? "true" : "false") + ",\n";
     s += "  \"profileFit\": " + escapeString(profileFit) + ",\n";
+    s += "  \"versionFit\": " + escapeString(versionFit) + ",\n";
     s += "  \"diagnostics\": [\n";
     for (size_t i = 0; i < diags.size(); ++i) {
         const auto &d = diags[i];
@@ -358,6 +360,9 @@ int cmdValidate(const std::vector<std::string> &args) {
         "    3. Reader-recovery warnings — an unknown/misspelled node element (kept\n"
         "       as opaque content by the XML reader, discarded by the others), or an\n"
         "       unknown `profile=` token coerced to Interchange.\n"
+        "    3b. Version fit — the lowest X3D version whose nodes and fields cover\n"
+        "       the scene; a node or field newer than the declared version is an\n"
+        "       error.\n"
         "    4. Profile-fit — the minimal X3D profile the scene requires; flags nodes\n"
         "       that exceed a declared profile.\n"
         "    5. Duplicate <meta> — same (name, content) pair appears more than once.\n"
@@ -462,17 +467,22 @@ int cmdValidate(const std::vector<std::string> &args) {
         }
     }
 
+    const std::string versionFitName =
+        x3d::runtime::requiredVersion(doc.scene).str();
+
     const bool valid = diags.empty();
     const int exitCode = valid ? 0 : 3;
 
     // Output
     if (jsonMode) {
-        std::cout << json_out::buildReport(inPath, valid, profileFitName, diags);
+        std::cout << json_out::buildReport(inPath, valid, profileFitName,
+                                           versionFitName, diags);
     } else {
         // Human-readable.
         std::cout << "file:          " << inPath << "\n";
         std::cout << "declared:      " << declaredProfile << " " << doc.version << "\n";
         std::cout << "profile fit:   " << profileFitName << "\n";
+        std::cout << "version fit:   " << versionFitName << "\n";
         std::cout << "valid:         " << (valid ? "yes" : "no") << "\n";
         std::cout << "\n";
 

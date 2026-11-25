@@ -9,6 +9,8 @@ std::string ElevationGrid::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ElevationGrid::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &ElevationGrid::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -31,9 +33,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getAttrib(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "ccw", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -54,9 +56,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getCcw(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFNode, AccessType::InputOutput, "color",
@@ -76,9 +78,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getColor(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "colorPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -100,9 +102,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getColorPerVertex(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "creaseAngle", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -124,9 +126,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getCreaseAngle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "fogCoord", X3DFieldType::SFNode, AccessType::InputOutput, "fogCoord",
@@ -147,9 +149,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getFogCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "height", X3DFieldType::MFFloat, AccessType::InitializeOnly, "",
@@ -170,9 +172,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getHeight(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -194,9 +196,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -219,9 +221,9 @@ const FieldTable &ElevationGrid::fields() const {
           return {
               &dynamic_cast<const ElevationGrid &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normal", X3DFieldType::SFNode, AccessType::InputOutput, "normal",
@@ -241,9 +243,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getNormal(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "normalPerVertex", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -265,9 +267,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getNormalPerVertex(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"set_height", X3DFieldType::MFFloat,
                           AccessType::InputOnly, "",
@@ -283,9 +285,9 @@ const FieldTable &ElevationGrid::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -306,9 +308,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getSolid(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InputOutput, "texCoord",
@@ -329,9 +331,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "xDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -353,9 +355,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getXDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "xSpacing", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -376,9 +378,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getXSpacing(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "zDimension", X3DFieldType::SFInt32, AccessType::InitializeOnly, "",
@@ -400,9 +402,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getZDimension(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "zSpacing", X3DFieldType::SFFloat, AccessType::InitializeOnly, "",
@@ -423,9 +425,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).getZSpacing(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -447,9 +449,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -471,9 +473,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -495,9 +497,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -519,9 +521,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -543,9 +545,9 @@ const FieldTable &ElevationGrid::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ElevationGrid &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

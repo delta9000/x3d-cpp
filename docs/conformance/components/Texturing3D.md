@@ -5,12 +5,12 @@ _Generated. Levels 1,2 · 7 nodes · profiles: Full._
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | ComposedTexture3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, T3D-1, T3D-2 | X3DAppearanceChildNode, X3DTexture3DNode, X3DTextureNode |
-| ImageTexture3D | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, T3D-1, T3D-2 | X3DAppearanceChildNode, X3DTexture3DNode, X3DTextureNode, X3DUrlObject |
+| ImageTexture3D | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, REQ-FTP, ROUTE-IO-ALIAS, T3D-1, T3D-2, V41-TEXTURE-OUTPUTS | X3DAppearanceChildNode, X3DTexture3DNode, X3DTextureNode, X3DUrlObject |
 | PixelTexture3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PIXELTEXTURE3D-HEADER-ALLOC, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, T3D-1, T3D-2 | X3DAppearanceChildNode, X3DTexture3DNode, X3DTextureNode |
 | TextureCoordinate3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, T3D-3 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
 | TextureCoordinate4D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, T3D-3 | X3DGeometricPropertyNode, X3DSingleTextureCoordinateNode, X3DTextureCoordinateNode |
-| TextureTransform3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureTransformNode |
-| TextureTransformMatrix3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DTextureTransformNode |
+| TextureTransform3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DSingleTextureTransformNode, X3DTextureTransformNode |
+| TextureTransformMatrix3D | 1 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DAppearanceChildNode, X3DSingleTextureTransformNode, X3DTextureTransformNode |
 
 ## Findings
 

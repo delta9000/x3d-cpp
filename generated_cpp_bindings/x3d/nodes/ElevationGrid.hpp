@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief ElevationGrid is a geometry node defining a rectangular height field,
  * with default values for a 1m by 1m square at height 0.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry3D.html#ElevationGrid
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/geometry3D.html#ElevationGrid
  */
 class ElevationGrid : public virtual X3DGeometryNode {
 public:
@@ -64,8 +64,8 @@ public:
 
   /**
    * MFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained FloatVertexAttribute node that can specify list
-   * of per-vertex attribute information for programmable shaders.
+   * @details Optional single contained FloatVertexAttribute node that can
+   * specify list of per-vertex attribute information for programmable shaders.
    */
   const MFNode &getAttrib() const { return _attrib; }
 
@@ -79,8 +79,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained FloatVertexAttribute node that can specify list
-   * of per-vertex attribute information for programmable shaders.
+   * @details Optional single contained FloatVertexAttribute node that can
+   * specify list of per-vertex attribute information for programmable shaders.
    */
   void setAttrib(const MFNode &value) { _attrib = value; }
 
@@ -101,8 +101,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained Color or ColorRGBA node that can specify color
-   * values applied to corresponding vertices according to colorPerVertex field.
+   * @details Optional single contained Color or ColorRGBA node that can specify
+   * color values applied to corresponding vertices according to colorPerVertex
+   * field.
    */
   const SFNode &getColor() const { return _color; }
 
@@ -116,8 +117,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained Color or ColorRGBA node that can specify color
-   * values applied to corresponding vertices according to colorPerVertex field.
+   * @details Optional single contained Color or ColorRGBA node that can specify
+   * color values applied to corresponding vertices according to colorPerVertex
+   * field.
    */
   void setColor(const SFNode &value) { _color = value; }
 
@@ -151,8 +153,8 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained FogCoordinate node that can specify depth
-   * parameters for fog in corresponding geometry.
+   * @details Optional single contained FogCoordinate node that can specify
+   * depth parameters for fog in corresponding geometry.
    */
   const SFNode &getFogCoord() const { return _fogCoord; }
 
@@ -166,8 +168,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained FogCoordinate node that can specify depth
-   * parameters for fog in corresponding geometry.
+   * @details Optional single contained FogCoordinate node that can specify
+   * depth parameters for fog in corresponding geometry.
    */
   void setFogCoord(const SFNode &value) { _fogCoord = value; }
 
@@ -187,9 +189,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained Normal node that can specify perpendicular
-   * vectors for corresponding vertices to support rendering computations,
-   * applied according to the normalPerVertex field.
+   * @details Optional single contained Normal node that can specify
+   * perpendicular vectors for corresponding vertices to support rendering
+   * computations, applied according to the normalPerVertex field.
    */
   const SFNode &getNormal() const { return _normal; }
 
@@ -203,9 +205,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained Normal node that can specify perpendicular
-   * vectors for corresponding vertices to support rendering computations,
-   * applied according to the normalPerVertex field.
+   * @details Optional single contained Normal node that can specify
+   * perpendicular vectors for corresponding vertices to support rendering
+   * computations, applied according to the normalPerVertex field.
    */
   void setNormal(const SFNode &value) { _normal = value; }
 
@@ -258,9 +260,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained TextureCoordinate, TextureCoordinateGenerator or
-   * MultiTextureCoordinate node that can specify coordinates for texture
-   * mapping onto corresponding geometry.
+   * @details Optional single contained TextureCoordinate,
+   * TextureCoordinateGenerator or MultiTextureCoordinate node that can specify
+   * coordinates for texture mapping onto corresponding geometry.
    */
   const SFNode &getTexCoord() const { return _texCoord; }
 
@@ -275,9 +277,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained TextureCoordinate, TextureCoordinateGenerator or
-   * MultiTextureCoordinate node that can specify coordinates for texture
-   * mapping onto corresponding geometry.
+   * @details Optional single contained TextureCoordinate,
+   * TextureCoordinateGenerator or MultiTextureCoordinate node that can specify
+   * coordinates for texture mapping onto corresponding geometry.
    */
   void setTexCoord(const SFNode &value) { _texCoord = value; }
 
@@ -333,6 +335,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

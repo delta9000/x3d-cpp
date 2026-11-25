@@ -9,6 +9,8 @@ std::string ParticleSystem::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ParticleSystem::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &ParticleSystem::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -35,9 +37,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {&dynamic_cast<const ParticleSystem &>(n)
                        .X3DShapeNode::getAppearance(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "bboxCenter", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -60,9 +62,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {&dynamic_cast<const ParticleSystem &>(n)
                        .X3DShapeNode::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -85,9 +87,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {&dynamic_cast<const ParticleSystem &>(n)
                        .X3DShapeNode::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -110,9 +112,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {&dynamic_cast<const ParticleSystem &>(n)
                        .X3DShapeNode::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "castShadow", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -135,9 +137,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {&dynamic_cast<const ParticleSystem &>(n)
                        .X3DShapeNode::getCastShadow(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFNode, AccessType::InitializeOnly, "color",
@@ -158,9 +160,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getColor(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "colorKey", X3DFieldType::MFFloat, AccessType::InitializeOnly, "",
@@ -182,9 +184,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getColorKey(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "createParticles", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -206,9 +208,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getCreateParticles(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "emitter", X3DFieldType::SFNode, AccessType::InitializeOnly, "emitter",
@@ -229,9 +231,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getEmitter(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -252,9 +254,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "geometry", X3DFieldType::SFNode, AccessType::InputOutput, "geometry",
@@ -276,9 +278,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getGeometry(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "geometryType", X3DFieldType::SFString, AccessType::InitializeOnly, "",
@@ -300,9 +302,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getGeometryType(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -324,9 +326,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -348,9 +350,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "lifetimeVariation", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -373,9 +375,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {
               &dynamic_cast<const ParticleSystem &>(n).getLifetimeVariation(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "maxParticles", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -397,9 +399,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getMaxParticles(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -422,9 +424,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {
               &dynamic_cast<const ParticleSystem &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "particleLifetime", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -447,9 +449,9 @@ const FieldTable &ParticleSystem::fields() const {
           return {
               &dynamic_cast<const ParticleSystem &>(n).getParticleLifetime(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "particleSize", X3DFieldType::SFVec2f, AccessType::InputOutput, "",
@@ -471,9 +473,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getParticleSize(),
                   &typeid(SFVec2f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "physics", X3DFieldType::MFNode, AccessType::InitializeOnly, "physics",
@@ -494,9 +496,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getPhysics(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "texCoord", X3DFieldType::SFNode, AccessType::InitializeOnly,
@@ -519,9 +521,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getTexCoord(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "texCoordKey", X3DFieldType::MFFloat, AccessType::InitializeOnly, "",
@@ -543,9 +545,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).getTexCoordKey(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -568,9 +570,9 @@ const FieldTable &ParticleSystem::fields() const {
                     return {&dynamic_cast<const ParticleSystem &>(n)
                                  .X3DShapeNode::getVisible(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -592,9 +594,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -616,9 +618,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -640,9 +642,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -664,9 +666,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -688,9 +690,9 @@ const FieldTable &ParticleSystem::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ParticleSystem &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

@@ -9,6 +9,8 @@ std::string PositionChaser::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion PositionChaser::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &PositionChaser::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &PositionChaser::fields() const {
           return {&dynamic_cast<const PositionChaser &>(n)
                        .X3DChaserNode::getDuration(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "initialDestination", X3DFieldType::SFVec3f, AccessType::InitializeOnly,
@@ -60,9 +62,9 @@ const FieldTable &PositionChaser::fields() const {
           return {
               &dynamic_cast<const PositionChaser &>(n).getInitialDestination(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "initialValue", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -84,9 +86,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).getInitialValue(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -108,9 +110,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -133,9 +135,9 @@ const FieldTable &PositionChaser::fields() const {
           return {&dynamic_cast<const PositionChaser &>(n)
                        .X3DFollowerNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -158,9 +160,9 @@ const FieldTable &PositionChaser::fields() const {
           return {
               &dynamic_cast<const PositionChaser &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{"set_destination", X3DFieldType::SFVec3f,
                           AccessType::InputOnly, "",
@@ -176,9 +178,9 @@ const FieldTable &PositionChaser::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{"set_value", X3DFieldType::SFVec3f,
                           AccessType::InputOnly, "",
@@ -194,9 +196,9 @@ const FieldTable &PositionChaser::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "value_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -218,9 +220,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).getValue_changed(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -242,9 +244,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -266,9 +268,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -290,9 +292,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -314,9 +316,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -338,9 +340,9 @@ const FieldTable &PositionChaser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const PositionChaser &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

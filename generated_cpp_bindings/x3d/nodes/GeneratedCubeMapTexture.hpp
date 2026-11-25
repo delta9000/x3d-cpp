@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief GeneratedCubeMapTexture is a texture node that defines a cubic
  * environment map that sources its data from internally generated images.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/environmentalTexturing.html#GeneratedCubeMapTexture
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/environmentalTexturing.html#GeneratedCubeMapTexture
  */
 class GeneratedCubeMapTexture : public virtual X3DEnvironmentTextureNode {
 public:
@@ -62,7 +62,7 @@ public:
 
   /**
    * SFNode; access: initializeOnly. Borrows the stored value.
-   * @details Single contained TextureProperties node that can specify
+   * @details Optional single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
    */
   const SFNode &getTextureProperties() const { return _textureProperties; }
@@ -107,6 +107,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

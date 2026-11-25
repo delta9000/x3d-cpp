@@ -2,7 +2,7 @@ from x3d_cpp_gen.conformance.manifest import extract_manifest
 from x3d_cpp_gen.conformance.fidelity import check_defaults_materialize, count_defaulted_fields
 
 UOM_40 = "src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml"
-UOM_41 = "tests/fixtures/X3dUnifiedObjectModel-4.1.xml"
+UOM_41 = "src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.1.xml"
 
 
 def test_all_40_defaults_materialize():

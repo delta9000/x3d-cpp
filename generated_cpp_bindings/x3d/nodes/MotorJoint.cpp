@@ -9,6 +9,8 @@ std::string MotorJoint::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion MotorJoint::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &MotorJoint::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAutoCalc(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis1Angle", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -55,9 +57,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis1Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis1Torque", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -78,9 +80,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis1Torque(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis2Angle", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -101,9 +103,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis2Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis2Torque", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -124,9 +126,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis2Torque(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis3Angle", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -147,9 +149,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis3Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "axis3Torque", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -170,9 +172,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getAxis3Torque(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body1", X3DFieldType::SFNode, AccessType::InputOutput, "body1",
@@ -195,9 +197,9 @@ const FieldTable &MotorJoint::fields() const {
           return {&dynamic_cast<const MotorJoint &>(n)
                        .X3DRigidJointNode::getBody1(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body2", X3DFieldType::SFNode, AccessType::InputOutput, "body2",
@@ -220,9 +222,9 @@ const FieldTable &MotorJoint::fields() const {
           return {&dynamic_cast<const MotorJoint &>(n)
                        .X3DRigidJointNode::getBody2(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "enabledAxes", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -243,9 +245,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getEnabledAxes(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "forceOutput", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -268,9 +270,9 @@ const FieldTable &MotorJoint::fields() const {
           return {&dynamic_cast<const MotorJoint &>(n)
                        .X3DRigidJointNode::getForceOutput(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -291,9 +293,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -315,9 +317,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor1Angle", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -338,9 +340,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor1Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor1AngleRate", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -362,9 +364,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor1AngleRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor1Axis", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -385,9 +387,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor1Axis(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor2Angle", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -408,9 +410,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor2Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor2AngleRate", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -432,9 +434,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor2AngleRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor2Axis", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -455,9 +457,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor2Axis(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor3Angle", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -478,9 +480,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor3Angle(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor3AngleRate", X3DFieldType::SFFloat, AccessType::OutputOnly, "",
@@ -502,9 +504,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor3AngleRate(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "motor3Axis", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -525,9 +527,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getMotor3Axis(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop1Bounce", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -548,9 +550,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getStop1Bounce(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop1ErrorCorrection", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -574,9 +576,9 @@ const FieldTable &MotorJoint::fields() const {
           return {
               &dynamic_cast<const MotorJoint &>(n).getStop1ErrorCorrection(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop2Bounce", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -597,9 +599,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getStop2Bounce(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop2ErrorCorrection", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -623,9 +625,9 @@ const FieldTable &MotorJoint::fields() const {
           return {
               &dynamic_cast<const MotorJoint &>(n).getStop2ErrorCorrection(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop3Bounce", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -646,9 +648,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).getStop3Bounce(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "stop3ErrorCorrection", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -672,9 +674,9 @@ const FieldTable &MotorJoint::fields() const {
           return {
               &dynamic_cast<const MotorJoint &>(n).getStop3ErrorCorrection(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -696,9 +698,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -720,9 +722,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -744,9 +746,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -767,9 +769,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -791,9 +793,9 @@ const FieldTable &MotorJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MotorJoint &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

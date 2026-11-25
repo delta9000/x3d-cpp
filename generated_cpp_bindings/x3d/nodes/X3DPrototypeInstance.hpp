@@ -20,7 +20,7 @@ using namespace x3d::core;
  * Current practice is that, if desired, prototype authors must explicitly add
  * the metadata SFNode field in the ProtoInterface.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html#X3DPrototypeInstance
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/core.html#X3DPrototypeInstance
  */
 class X3DPrototypeInstance : public virtual X3DNode {
 public:
@@ -89,6 +89,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

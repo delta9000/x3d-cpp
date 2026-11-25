@@ -9,6 +9,8 @@ std::string BooleanFilter::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion BooleanFilter::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &BooleanFilter::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -33,9 +35,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).getInputFalse(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "inputNegate", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -57,9 +59,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).getInputNegate(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "inputTrue", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -81,9 +83,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).getInputTrue(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -105,9 +107,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -130,9 +132,9 @@ const FieldTable &BooleanFilter::fields() const {
           return {
               &dynamic_cast<const BooleanFilter &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"set_boolean", X3DFieldType::SFBool,
                           AccessType::InputOnly, "",
@@ -148,9 +150,9 @@ const FieldTable &BooleanFilter::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -172,9 +174,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -196,9 +198,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -220,9 +222,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -244,9 +246,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -268,9 +270,9 @@ const FieldTable &BooleanFilter::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BooleanFilter &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

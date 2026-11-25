@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief Disk2D is a geometry node that defines a filled (or partially filled)
  * planar circle with center (0,0).
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geometry2D.html#Disk2D
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/geometry2D.html#Disk2D
  */
 class Disk2D : public virtual X3DGeometryNode {
 public:
@@ -83,6 +83,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

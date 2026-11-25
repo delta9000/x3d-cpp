@@ -36,7 +36,7 @@ using namespace x3d::core;
  * @brief MovieTexture applies a 2D movie image to surface geometry, or provides
  * audio for a Sound node.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html#MovieTexture
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/texturing.html#MovieTexture
  */
 class MovieTexture : public virtual X3DSoundSourceNode,
                      public virtual X3DTexture2DNode,
@@ -65,6 +65,18 @@ public:
   static int componentLevel() { return 3; }
 
   /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getColorDepth() const { return _colorDepth; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitColorDepth(const SFInt32 &value) { _colorDepth = value; }
+
+  /**
    * SFTime; access: outputOnly. Borrows the stored value.
    * @details or -1.
    */
@@ -75,6 +87,30 @@ public:
    * @details or -1.
    */
   void emitDuration_changed(const SFTime &value) { _duration_changed = value; }
+
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getHasSound() const { return _hasSound; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitHasSound(const SFInt32 &value) { _hasSound = value; }
+
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getHeight() const { return _height; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitHeight(const SFInt32 &value) { _height = value; }
 
   /**
    * SFBool; access: inputOutput. Borrows the stored value.
@@ -116,7 +152,7 @@ public:
 
   /**
    * SFNode; access: initializeOnly. Borrows the stored value.
-   * @details Single contained TextureProperties node that can specify
+   * @details Optional single contained TextureProperties node that can specify
    * additional visual attributes applied to corresponding texture images.
    */
   const SFNode &getTextureProperties() const { return _textureProperties; }
@@ -137,12 +173,29 @@ public:
     _textureProperties = value;
   }
 
+  /**
+   * SFInt32; access: outputOnly. Borrows the stored value.
+   * @details
+   */
+  const SFInt32 &getWidth() const { return _width; }
+
+  /**
+   * Access: outputOnly. Runtime output write path.
+   * @details
+   */
+  void emitWidth(const SFInt32 &value) { _width = value; }
+
   std::string nodeTypeName() const override;
 
   /**
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
@@ -154,7 +207,13 @@ public:
   void validateRanges(std::vector<RangeDiagnostic> &out) const override;
 
 private:
+  SFInt32 _colorDepth{};
+
   SFTime _duration_changed{};
+
+  SFInt32 _hasSound{};
+
+  SFInt32 _height{};
 
   SFBool _loop{false};
 
@@ -163,6 +222,8 @@ private:
   SFFloat _speed{1.0};
 
   SFNode _textureProperties{nullptr};
+
+  SFInt32 _width{};
 };
 
 } // namespace x3d::nodes

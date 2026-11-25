@@ -21,7 +21,7 @@ The top-level CMake build produces `build/x3d`.
 | Command | Behavior |
 |---|---|
 | `x3d convert input -o output -f xml\|vrml\|json` | Parse a document and serialize it in the selected encoding |
-| `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, and profile-fit diagnostics |
+| `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, version-fit and profile-fit diagnostics |
 | `x3d extract input -o output.stl` | Export extracted triangle geometry as binary STL |
 | `x3d extract input -o output.glb` (or `-f glb`) | Export the extracted scene as binary glTF 2.0: nodes with world matrices, shared meshes, materials, textures (local PNG/JPEG files and PixelTextures embedded), lights, viewpoints as cameras, and animation of Transforms, viewpoints, lights, material properties, coordinates and texture transforms, and H-Anim skins. See [glTF export](gltf-export.md) for what is left out |
 | `x3d canonicalize input -o output.x3d` | Write canonical XML |
@@ -50,7 +50,11 @@ categories:
 | `range` | warning | An out-of-range value (`collectRangeWarnings`). |
 | `proto`, `inline`, `node`, `profile` | warning or error | Expansion, reader-recovery and profile-fit diagnostics. |
 | `use` | warning | A USE inside the body of the node it names, which the reader dropped because the node would contain itself. |
+| `version` | error | An authored node type or field newer than the declared X3D version, e.g. `EnvironmentLight` in a 4.0 file (`collectVersionWarnings`, ADR-0077). |
 | `dup-meta`, `unused-proto`, `ifs-coord-index`, `ils-coord-index` | warning | Checks shared with the X3DJSAIL differential gate. |
+
+The report also prints `version fit` (JSON `versionFit`): the lowest X3D version whose
+nodes and fields cover the scene (`requiredVersion`).
 
 A `node` warning for an unknown element means the XML reader kept it as opaque
 content: `convert` and `canonicalize` to XML re-emit it unchanged, while

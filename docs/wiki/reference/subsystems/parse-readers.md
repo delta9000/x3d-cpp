@@ -105,14 +105,25 @@ accepted; trailing garbage or another JSON value throws. The regression case
 - Node factory — all readers instantiate nodes via `X3DNodeFactory::create(typeName)`, which is the same factory used everywhere else in the runtime.
     - Unknown type names return null, and the reader records a `ReaderWarning{Kind::UnknownNode}` in `X3DDocument.readerWarnings` so `x3d validate` reports it (DIAG-UNKNOWN-NODE).
     - The XML reader then keeps the element as an opaque `runtime::UnknownNode` (`runtime/X3DProto.hpp`): type name, DEF, authored attributes as wire text in source order, character data, and child nodes, which are read normally so their DEFs resolve.
-    - It sits in the parent's named slot or `children` field; when the parent has neither (a 4.1 `<Tangent>` under a 4.0 `IndexedFaceSet`) it is parked in `Scene::opaqueChildren`.
+    - Unknown means a vendor extension, a misspelling, or a node from a spec newer than the bindings (4.1). Every 4.1 node is typed (ADR-0077).
+    - It sits in the parent's named slot or `children` field; when the parent has neither (an extension element under an `IndexedFaceSet`) it is parked in `Scene::opaqueChildren`.
     - An `UnknownNode` has an empty field table, so the runtime, the extractor and PROTO cloning ignore it, and a PROTO instance loses it on expansion.
     - `<field>`, `<IS>` and PROTO statements inside an unknown element are discarded with a warning.
     - The ClassicVRML, VRML97 and JSON readers still skip an unknown node (READ-UNKNOWN-NODE-PASSTHROUGH).
     - In XML, a `<ROUTE>` nested among a node's children is not a node: it is added to the enclosing scene's (or PROTO body's) routes, and a nested `<IS>` is skipped there because the IS pass reads it.
 
 - Reader-recovery diagnostics — `X3DDocument.readerWarnings` (`runtime/X3DProto.hpp`) is the structured channel for lenient-read recoveries that are not legal X3D: an unknown/misspelled node element (`UnknownNode`) and an unknown `profile=` token coerced to `Interchange` (`ProfileCoerced`, DIAG-PROFILE-COERCE).
-    - Every reader (`XmlReader`, `ClassicVrmlReader`/`Vrml97Reader`, `JsonReader`) fills it; `cmdValidate` and the cli-gate validate path surface each as a `node`/`profile`/`value`/`use` diagnostic.
+    - Every reader (`XmlReader`, `ClassicVrmlReader`/`Vrml97Reader`, `JsonReader`) fills it; `cmdValidate` and the cli-gate validate path surface each as a `node`/`profile`/`value`/`use`/`version` diagnostic.
+
+- Version fit (ADR-0077, `runtime/X3DVersionFit.hpp`) — the front door runs `collectVersionWarnings(doc)` after the read and before PROTO and Inline expansion, so only authored content counts.
+
+    | Piece | Behaviour |
+    |---|---|
+    | `X3DNode::introducedIn()`, `FieldInfo::since` | Earliest X3D version (3.0 to 4.1) that defines the node type, or the field on that node type. Generated. |
+    | `X3DDocument::versionDeclared` | False when a reader found no version and read the document as 3.0. A `#VRML V2.0` file declares no X3D version. |
+    | `versionUsesAbove(scene, v)` | Authored node types and fields newer than `v`, one per distinct name, sorted. Walks the scene graph and every PROTO declaration body. A field counts when the reader recorded it (`authoredScalarFields`, `childFieldOrder`); a generated default never counts. |
+    | `requiredVersion(scene)` | The lowest version covering the authored content; `x3d validate` prints it as `version fit`. |
+    | `collectVersionWarnings(doc)` | One `ReaderWarning{Kind::Version}` per entry of `versionUsesAbove(scene, declared)`, e.g. `IndexedFaceSet.tangent needs X3D 4.1 but the document declares 4.0`. Silent for an undeclared or non-`MAJOR.MINOR` version. The node is still read and typed. |
     - It parallels `rangeWarnings`/`protoWarnings`/`inlineWarnings`.
     - A third kind, `Value`, records an authored value that `parseValue` coerced: an unparsable number token (read as 0), a short SF tuple (padded with 0), or a trailing partial MF tuple (dropped).
     - Readers call `noteValueSyntax` for node fields and ProtoInstance fieldValues; `parseDocument` collects them through a thread-local `ValueDiagnosticScope` (`runtime/codecs/FieldValueIO.hpp`) and appends them after the read (VALIDATE-VALUE-SYNTAX).

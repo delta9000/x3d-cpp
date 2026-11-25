@@ -187,6 +187,11 @@ public:
     {{ "virtual " if is_root else "" }}std::string defaultContainerField() const{{ " override" if not is_root else "" }};
 
     /**
+     * Earliest X3D version that defines this node type (ADR-0077).
+     */
+    {{ "virtual " if is_root else "" }}X3DVersion introducedIn() const{{ " override" if not is_root else "" }};
+
+    /**
      * Own and inherited fields; the table lives for the lifetime of the program.
      */
     {{ "virtual " if is_root else "" }}const FieldTable& fields() const{{ " override" if not is_root else "" }};

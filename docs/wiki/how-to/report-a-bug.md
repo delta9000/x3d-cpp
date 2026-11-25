@@ -25,9 +25,10 @@ and Inlines unless they are the bug.
 
 ## 3. Check the version axes
 
-The node layer is generated from the X3D 4.0 model, while the readers accept
-3.0 to 4.1 files. A 4.1 scene parses, but nodes that exist only in 4.1 are not
-in the generated node layer. That is expected behavior, not a bug; see
+The node layer is generated from the X3D 4.1 model and the readers accept 3.0 to
+4.1 files. A node or field newer than the file's declared version still loads,
+with a `version` warning (`x3d validate` reports it as an error and prints the
+version the content needs). That is expected behavior, not a bug; see
 [Parse readers](../reference/subsystems/parse-readers.md).
 
 ## 4. Decide whether it is a security issue

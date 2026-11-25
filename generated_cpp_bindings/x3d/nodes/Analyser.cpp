@@ -9,6 +9,8 @@ std::string Analyser::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion Analyser::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &Analyser::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DSoundProcessingNode::getChannelCount(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelCountMode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -70,9 +72,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DSoundProcessingNode::getChannelCountMode(),
                   &typeid(ChannelCountModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "channelInterpretation", X3DFieldType::SFEnum, AccessType::InputOutput,
@@ -109,9 +111,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DSoundProcessingNode::getChannelInterpretation(),
                   &typeid(ChannelInterpretationChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "children", X3DFieldType::MFNode, AccessType::InputOutput, "children",
@@ -131,9 +133,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -156,9 +158,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "elapsedTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -181,9 +183,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getElapsedTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -206,9 +208,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DSoundProcessingNode::getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "fftSize", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -229,9 +231,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getFftSize(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "frequencyBinCount", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -253,9 +255,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getFrequencyBinCount(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"gain", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -278,9 +280,9 @@ const FieldTable &Analyser::fields() const {
                     return {&dynamic_cast<const Analyser &>(n)
                                  .X3DSoundProcessingNode::getGain(),
                             &typeid(SFFloat)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -300,9 +302,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -325,9 +327,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "isPaused", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -350,9 +352,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getIsPaused(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "maxDecibels", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -372,9 +374,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getMaxDecibels(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -396,9 +398,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "minDecibels", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -418,9 +420,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getMinDecibels(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "pauseTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -443,9 +445,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getPauseTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "resumeTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -468,9 +470,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getResumeTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "smoothingTimeConstant", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -493,9 +495,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).getSmoothingTimeConstant(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "startTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -518,9 +520,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getStartTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "stopTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -543,9 +545,9 @@ const FieldTable &Analyser::fields() const {
           return {&dynamic_cast<const Analyser &>(n)
                        .X3DTimeDependentNode::getStopTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"tailTime", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -569,9 +571,9 @@ const FieldTable &Analyser::fields() const {
                     return {&dynamic_cast<const Analyser &>(n)
                                  .X3DSoundProcessingNode::getTailTime(),
                             &typeid(SFTime)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -592,9 +594,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -615,9 +617,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -639,9 +641,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -662,9 +664,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -686,9 +688,9 @@ const FieldTable &Analyser::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Analyser &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

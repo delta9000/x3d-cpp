@@ -9,6 +9,8 @@ std::string TransmitterPdu::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TransmitterPdu::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &TransmitterPdu::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getAddress(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "antennaLocation", X3DFieldType::SFVec3f, AccessType::InputOutput, "",
@@ -56,9 +58,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getAntennaLocation(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"antennaPatternLength", X3DFieldType::SFInt32,
@@ -82,9 +84,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .getAntennaPatternLength(),
                             &typeid(SFInt32)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "antennaPatternType", X3DFieldType::SFInt32, AccessType::InputOutput,
@@ -108,9 +110,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getAntennaPatternType(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "applicationID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -132,9 +134,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getApplicationID(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxCenter", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -158,9 +160,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DBoundedObject::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -183,9 +185,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DBoundedObject::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -209,9 +211,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DBoundedObject::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "cryptoKeyID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -233,9 +235,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getCryptoKeyID(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "cryptoSystem", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -257,9 +259,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getCryptoSystem(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -282,9 +284,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DSensorNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -307,9 +309,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .X3DSensorNode::getEnabled(),
                             &typeid(SFBool)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "entityID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -331,9 +333,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getEntityID(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "frequency", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -355,9 +357,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getFrequency(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoCoords", X3DFieldType::SFVec3d, AccessType::InputOutput, "",
@@ -379,9 +381,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getGeoCoords(),
                   &typeid(SFVec3d)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "geoSystem", X3DFieldType::MFString, AccessType::InitializeOnly, "",
@@ -403,9 +405,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getGeoSystem(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "inputSource", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -427,9 +429,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getInputSource(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -451,9 +453,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isActive", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -476,9 +478,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DSensorNode::getIsActive(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isNetworkReader", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -500,9 +502,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getIsNetworkReader(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isNetworkWriter", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -524,9 +526,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getIsNetworkWriter(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isRtpHeaderHeard", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -549,9 +551,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getIsRtpHeaderHeard(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "isStandAlone", X3DFieldType::SFBool, AccessType::OutputOnly, "",
@@ -573,9 +575,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getIsStandAlone(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "lengthOfModulationParameters", X3DFieldType::SFInt32,
@@ -599,9 +601,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getLengthOfModulationParameters(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -624,9 +626,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"modulationTypeDetail", X3DFieldType::SFInt32,
@@ -650,9 +652,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .getModulationTypeDetail(),
                             &typeid(SFInt32)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "modulationTypeMajor", X3DFieldType::SFInt32, AccessType::InputOutput,
@@ -676,9 +678,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getModulationTypeMajor(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "modulationTypeSpreadSpectrum", X3DFieldType::SFInt32,
@@ -702,9 +704,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getModulationTypeSpreadSpectrum(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"modulationTypeSystem", X3DFieldType::SFInt32,
@@ -728,9 +730,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .getModulationTypeSystem(),
                             &typeid(SFInt32)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "multicastRelayHost", X3DFieldType::SFString, AccessType::InputOutput,
@@ -754,9 +756,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getMulticastRelayHost(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "multicastRelayPort", X3DFieldType::SFInt32, AccessType::InputOutput,
@@ -780,9 +782,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getMulticastRelayPort(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "networkMode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -813,9 +815,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getNetworkMode(),
                   &typeid(NetworkModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "port", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -835,9 +837,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getPort(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "power", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -857,9 +859,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getPower(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "radioEntityTypeCategory", X3DFieldType::SFInt32,
@@ -883,9 +885,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getRadioEntityTypeCategory(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"radioEntityTypeCountry", X3DFieldType::SFInt32,
@@ -909,9 +911,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .getRadioEntityTypeCountry(),
                             &typeid(SFInt32)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"radioEntityTypeDomain", X3DFieldType::SFInt32,
@@ -935,9 +937,9 @@ const FieldTable &TransmitterPdu::fields() const {
                     return {&dynamic_cast<const TransmitterPdu &>(n)
                                  .getRadioEntityTypeDomain(),
                             &typeid(SFInt32)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "radioEntityTypeKind", X3DFieldType::SFInt32, AccessType::InputOutput,
@@ -961,9 +963,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getRadioEntityTypeKind(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "radioEntityTypeNomenclature", X3DFieldType::SFInt32,
@@ -987,9 +989,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getRadioEntityTypeNomenclature(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "radioEntityTypeNomenclatureVersion", X3DFieldType::SFInt32,
@@ -1013,9 +1015,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getRadioEntityTypeNomenclatureVersion(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "radioID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -1036,9 +1038,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getRadioID(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "readInterval", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -1060,9 +1062,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getReadInterval(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "relativeAntennaLocation", X3DFieldType::SFVec3f,
@@ -1086,9 +1088,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getRelativeAntennaLocation(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "rtpHeaderExpected", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -1111,9 +1113,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {
               &dynamic_cast<const TransmitterPdu &>(n).getRtpHeaderExpected(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "siteID", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -1134,9 +1136,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getSiteID(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "timestamp", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -1158,9 +1160,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getTimestamp(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "transmitFrequencyBandwidth", X3DFieldType::SFFloat,
@@ -1184,9 +1186,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .getTransmitFrequencyBandwidth(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "transmitState", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -1208,9 +1210,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getTransmitState(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -1233,9 +1235,9 @@ const FieldTable &TransmitterPdu::fields() const {
           return {&dynamic_cast<const TransmitterPdu &>(n)
                        .X3DBoundedObject::getVisible(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "whichGeometry", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -1257,9 +1259,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getWhichGeometry(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "writeInterval", X3DFieldType::SFTime, AccessType::InputOutput, "",
@@ -1281,9 +1283,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).getWriteInterval(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -1305,9 +1307,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -1329,9 +1331,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -1353,9 +1355,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -1377,9 +1379,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -1401,9 +1403,9 @@ const FieldTable &TransmitterPdu::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TransmitterPdu &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

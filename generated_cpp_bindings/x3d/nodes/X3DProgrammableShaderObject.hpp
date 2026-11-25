@@ -16,7 +16,7 @@ using namespace x3d::core;
  * @brief Base type for all nodes that specify arbitrary fields for interfacing
  * with per-object attribute values.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html#X3DProgrammableShaderObject
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/shaders.html#X3DProgrammableShaderObject
  */
 class X3DProgrammableShaderObject {
 public:

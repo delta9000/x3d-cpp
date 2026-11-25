@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief GeoPositionInterpolator animates objects within a geographic
  * coordinate system.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/geospatial.html#GeoPositionInterpolator
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/geospatial.html#GeoPositionInterpolator
  */
 class GeoPositionInterpolator : public virtual X3DInterpolatorNode {
 public:
@@ -46,7 +46,7 @@ public:
 
   /**
    * SFNode; access: initializeOnly. Borrows the stored value.
-   * @details Single contained GeoOrigin node that can specify a local
+   * @details Optional single contained GeoOrigin node that can specify a local
    * coordinate frame for extended precision.
    */
   const SFNode &getGeoOrigin() const { return _geoOrigin; }
@@ -128,6 +128,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

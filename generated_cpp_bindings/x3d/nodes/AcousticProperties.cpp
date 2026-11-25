@@ -11,6 +11,8 @@ std::string AcousticProperties::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion AcousticProperties::introducedIn() const { return X3DVersion{4, 0}; }
+
 const FieldTable &AcousticProperties::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -35,9 +37,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getAbsorption(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -59,9 +61,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "diffuse", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -83,9 +85,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getDiffuse(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "enabled", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -107,9 +109,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getEnabled(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -131,9 +133,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -156,9 +158,9 @@ const FieldTable &AcousticProperties::fields() const {
           return {&dynamic_cast<const AcousticProperties &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "refraction", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -180,9 +182,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getRefraction(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "specular", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -204,9 +206,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).getSpecular(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -229,9 +231,9 @@ const FieldTable &AcousticProperties::fields() const {
           return {
               &dynamic_cast<const AcousticProperties &>(n).X3DNode::getDEF(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -254,9 +256,9 @@ const FieldTable &AcousticProperties::fields() const {
           return {
               &dynamic_cast<const AcousticProperties &>(n).X3DNode::getUSE(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -279,9 +281,9 @@ const FieldTable &AcousticProperties::fields() const {
           return {
               &dynamic_cast<const AcousticProperties &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -303,9 +305,9 @@ const FieldTable &AcousticProperties::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const AcousticProperties &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -328,9 +330,9 @@ const FieldTable &AcousticProperties::fields() const {
           return {
               &dynamic_cast<const AcousticProperties &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

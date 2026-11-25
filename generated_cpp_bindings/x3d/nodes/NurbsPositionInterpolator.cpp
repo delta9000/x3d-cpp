@@ -11,6 +11,10 @@ std::string NurbsPositionInterpolator::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion NurbsPositionInterpolator::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &NurbsPositionInterpolator::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -37,9 +41,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .getControlPoint(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -62,9 +66,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "knot", X3DFieldType::MFDouble, AccessType::InputOutput, "",
@@ -86,9 +90,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n).getKnot(),
                   &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -111,9 +115,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "order", X3DFieldType::SFInt32, AccessType::InputOutput, "",
@@ -136,9 +140,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {
               &dynamic_cast<const NurbsPositionInterpolator &>(n).getOrder(),
               &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "set_fraction", X3DFieldType::SFFloat, AccessType::InputOnly, "",
@@ -154,9 +158,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "value_changed", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -179,9 +183,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .getValue_changed(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "weight", X3DFieldType::MFDouble, AccessType::InputOutput, "",
@@ -204,9 +208,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {
               &dynamic_cast<const NurbsPositionInterpolator &>(n).getWeight(),
               &typeid(MFDouble)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -229,9 +233,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -254,9 +258,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -279,9 +283,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -304,9 +308,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -329,9 +333,9 @@ const FieldTable &NurbsPositionInterpolator::fields() const {
           return {&dynamic_cast<const NurbsPositionInterpolator &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

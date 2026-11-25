@@ -22,7 +22,7 @@ using namespace x3d::core;
  * LineProperties, programmable shader nodes (ComposedShader, PackagedShader,
  * ProgramShader) and TextureTransform nodes.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shape.html#Appearance
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/shape.html#Appearance
  */
 class Appearance : public virtual X3DAppearanceNode {
 public:
@@ -62,7 +62,7 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained acousticProperties node that can specify
+   * @details Optional single contained acousticProperties node that can specify
    * additional acoustic attributes applied to associated surface geometry.
    */
   const SFNode &getAcousticProperties() const { return _acousticProperties; }
@@ -78,7 +78,7 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained acousticProperties node that can specify
+   * @details Optional single contained acousticProperties node that can specify
    * additional acoustic attributes applied to associated surface geometry.
    */
   void setAcousticProperties(const SFNode &value) {
@@ -132,7 +132,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details
+   * @details Optional single contained Material, PhysicalMaterial or
+   * UnlitMaterial node that can specify visual attributes for lighting response
+   * (color types, transparency, etc.
    */
   const SFNode &getBackMaterial() const { return _backMaterial; }
 
@@ -146,7 +148,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details
+   * @details Optional single contained Material, PhysicalMaterial or
+   * UnlitMaterial node that can specify visual attributes for lighting response
+   * (color types, transparency, etc.
    */
   void setBackMaterial(const SFNode &value) { _backMaterial = value; }
 
@@ -154,9 +158,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained FillProperties node that can specify additional
-   * visual attributes applied to polygonal areas of corresponding geometry, on
-   * top of whatever other appearance is already defined.
+   * @details Optional single contained FillProperties node that can specify
+   * additional visual attributes applied to polygonal areas of corresponding
+   * geometry, on top of whatever other appearance is already defined.
    */
   const SFNode &getFillProperties() const { return _fillProperties; }
 
@@ -170,9 +174,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained FillProperties node that can specify additional
-   * visual attributes applied to polygonal areas of corresponding geometry, on
-   * top of whatever other appearance is already defined.
+   * @details Optional single contained FillProperties node that can specify
+   * additional visual attributes applied to polygonal areas of corresponding
+   * geometry, on top of whatever other appearance is already defined.
    */
   void setFillProperties(const SFNode &value) { _fillProperties = value; }
 
@@ -180,8 +184,8 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained LineProperties node that can specify additional
-   * visual attributes applied to corresponding line geometry.
+   * @details Optional single contained LineProperties node that can specify
+   * additional visual attributes applied to corresponding line geometry.
    */
   const SFNode &getLineProperties() const { return _lineProperties; }
 
@@ -195,8 +199,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained LineProperties node that can specify additional
-   * visual attributes applied to corresponding line geometry.
+   * @details Optional single contained LineProperties node that can specify
+   * additional visual attributes applied to corresponding line geometry.
    */
   void setLineProperties(const SFNode &value) { _lineProperties = value; }
 
@@ -204,8 +208,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained Material node that can specify visual attributes
-   * for lighting response (color types, transparency, etc.
+   * @details Optional single contained Material, PhysicalMaterial,
+   * TwoSidedMaterial (deprecated), or UnlitMaterial node that can specify
+   * visual attributes for lighting response (color types, transparency, etc.
    */
   const SFNode &getMaterial() const { return _material; }
 
@@ -219,8 +224,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained Material node that can specify visual attributes
-   * for lighting response (color types, transparency, etc.
+   * @details Optional single contained Material, PhysicalMaterial,
+   * TwoSidedMaterial (deprecated), or UnlitMaterial node that can specify
+   * visual attributes for lighting response (color types, transparency, etc.
    */
   void setMaterial(const SFNode &value) { _material = value; }
 
@@ -228,8 +234,8 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained PointProperties node that can specify additional
-   * visual attributes applied to corresponding point geometry.
+   * @details Optional single contained PointProperties node that can specify
+   * additional visual attributes applied to corresponding point geometry.
    */
   const SFNode &getPointProperties() const { return _pointProperties; }
 
@@ -243,8 +249,8 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained PointProperties node that can specify additional
-   * visual attributes applied to corresponding point geometry.
+   * @details Optional single contained PointProperties node that can specify
+   * additional visual attributes applied to corresponding point geometry.
    */
   void setPointProperties(const SFNode &value) { _pointProperties = value; }
 
@@ -281,8 +287,9 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained texture node (ImageTexture, MovieTexture,
-   * PixelTexture, MultiTexture) that maps image(s) to surface geometry.
+   * @details Optional single contained texture node (ImageTexture,
+   * MovieTexture, PixelTexture, MultiTexture) that maps image(s) to surface
+   * geometry.
    */
   const SFNode &getTexture() const { return _texture; }
 
@@ -296,8 +303,9 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained texture node (ImageTexture, MovieTexture,
-   * PixelTexture, MultiTexture) that maps image(s) to surface geometry.
+   * @details Optional single contained texture node (ImageTexture,
+   * MovieTexture, PixelTexture, MultiTexture) that maps image(s) to surface
+   * geometry.
    */
   void setTexture(const SFNode &value) { _texture = value; }
 
@@ -305,7 +313,7 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained TextureTransform node that defines 2D
+   * @details Optional single contained TextureTransform node that defines 2D
    * transformation applied to texture coordinates.
    */
   const SFNode &getTextureTransform() const { return _textureTransform; }
@@ -320,7 +328,7 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained TextureTransform node that defines 2D
+   * @details Optional single contained TextureTransform node that defines 2D
    * transformation applied to texture coordinates.
    */
   void setTextureTransform(const SFNode &value) { _textureTransform = value; }
@@ -336,6 +344,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

@@ -46,6 +46,7 @@ public:
     // An unversioned document reads as 3.0. Set here, not
     // via the X3DDocument member default (that is the 4.0 authoring default).
     doc.version = "3.0";
+    doc.versionDeclared = false;
     if (!root)
       return doc;
 
@@ -54,8 +55,10 @@ public:
     if (x3d->name == "X3D") {
       if (const std::string *p = x3d->attr("profile"))
         doc.setProfileToken(*p);
-      if (const std::string *v = x3d->attr("version"))
+      if (const std::string *v = x3d->attr("version")) {
         doc.version = *v;
+        doc.versionDeclared = true;
+      }
       for (const auto &child : x3d->children) {
         if (child->name == "head") {
           readHead(*child, doc.head);

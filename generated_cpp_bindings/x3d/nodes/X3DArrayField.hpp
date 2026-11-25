@@ -20,7 +20,7 @@ using namespace x3d::core;
  * shall be of the type indicated by the corresponding SF field type. It is
  * illegal for any MF field to mix values of different SF field types.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/fieldTypes.html#X3DArrayField
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/fieldTypes.html#X3DArrayField
  */
 class X3DArrayField {
 public:

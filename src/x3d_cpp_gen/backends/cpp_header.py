@@ -41,7 +41,11 @@ class CppHeaderBackend:
     """Renders one ``<Node>.hpp`` per node using precomputed descriptors."""
 
     def __init__(self, templates_dir=None, clang_format: str = "clang-format",
-                 enum_defs=None):
+                 enum_defs=None, spec_version: Optional[str] = None):
+        from x3d_cpp_gen.conformance.node_floor import X3D_VERSIONS
+        from x3d_cpp_gen.emit.versions import VersionFloors
+        # Version tags (ADR-0077): earliest X3D version defining each node/field.
+        self.floors = VersionFloors(spec_version or X3D_VERSIONS[-1])
         self.templates_dir = str(templates_dir) if templates_dir else str(TEMPLATES_DIR)
         self.clang_format = clang_format
         self.enum_defs = enum_defs or {}
@@ -122,6 +126,9 @@ class CppHeaderBackend:
                 node, own_field_names=own_field_names, ancestors=ancestors,
                 enum_defs=self.enum_defs,
             )
+            for d in reflection_descriptors:
+                d.since = self.floors.field(node.name, d.x3d_name)
+            since = self.floors.node(node.name)
             # Every base (primary + additional) is emitted 'public virtual' so a
             # base reachable via multiple paths (e.g. X3DNode in LayoutGroup)
             # collapses to a single shared subobject — no -Winaccessible-base.
@@ -167,6 +174,7 @@ class CppHeaderBackend:
                 is_root=is_root,
                 emit_reflection=emit_reflection,
                 is_abstract=node.is_abstract,
+                since=since,
             )
             source_file = os.path.join(nodes_dir, f"{node.name}.cpp")
             with open(source_file, 'w') as f:

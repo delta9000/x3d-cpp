@@ -86,6 +86,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;

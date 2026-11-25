@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief PixelTexture3D defines a 3D image-based texture map as an explicit
  * array of pixel values (image field).
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texture3D.html#PixelTexture3D
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/texture3D.html#PixelTexture3D
  */
 class PixelTexture3D : public virtual X3DTexture3DNode {
 public:
@@ -68,6 +68,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

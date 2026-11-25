@@ -286,10 +286,12 @@ private:
 
 
   // §42.4: the projector frame is location/direction/upVector in the node's
-  // local frame (ADR-0061). upVector (perspective only; parallel has none)
-  // falls back to +Y, then +Z, when it is parallel to the direction, as the
-  // defaults (direction 0 0 1, upVector 0 0 1) are. Distances and the parallel
-  // extents scale with the local frame along their own axes.
+  // local frame (ADR-0061). Both projector types have upVector (X3D 4.1 added
+  // it to TextureProjectorParallel and moved the default to 0 1 0). It falls
+  // back to +Y, then +Z, when it is parallel to the direction, as the 4.0
+  // perspective default (upVector 0 0 1 along direction 0 0 1) was, so a 4.0
+  // file without upVector gets the same +Y frame either way. Distances and the
+  // parallel extents scale with the local frame along their own axes.
   static ProjectorDesc makeProjector(const X3DNode &n, bool parallel,
                                      const Mat4 &worldM, const X3DNode *scopeRoot) {
     ProjectorDesc P;
@@ -304,8 +306,7 @@ private:
 
     SFVec3f dir = vec3::normalize(geombounds::getField<SFVec3f>(n, "direction", SFVec3f{0, 0, 1}));
     if (vec3::length(dir) <= 1e-6f) dir = {0, 0, 1};
-    SFVec3f up = parallel ? SFVec3f{0, 1, 0}
-                          : geombounds::getField<SFVec3f>(n, "upVector", SFVec3f{0, 0, 1});
+    SFVec3f up = geombounds::getField<SFVec3f>(n, "upVector", SFVec3f{0, 1, 0});
     for (const SFVec3f &candidate : {up, SFVec3f{0, 1, 0}, SFVec3f{0, 0, 1}}) {
       up = candidate;
       if (vec3::length(vec3::cross(dir, up)) > 1e-4f * std::max(vec3::length(up), 1e-6f)) break;

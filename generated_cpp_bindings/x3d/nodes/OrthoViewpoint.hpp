@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief OrthoViewpoint provides an orthographic perspective-free view of a
  * scene from a specific location and direction.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/navigation.html#OrthoViewpoint
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/navigation.html#OrthoViewpoint
  */
 class OrthoViewpoint : public virtual X3DViewpointNode {
 public:
@@ -103,6 +103,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

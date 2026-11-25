@@ -75,6 +75,7 @@ std::shared_ptr<X3DNode> createDynamicsCompressor();
 std::shared_ptr<X3DNode> createEaseInEaseOut();
 std::shared_ptr<X3DNode> createEdgeEnhancementVolumeStyle();
 std::shared_ptr<X3DNode> createElevationGrid();
+std::shared_ptr<X3DNode> createEnvironmentLight();
 std::shared_ptr<X3DNode> createEspduTransform();
 std::shared_ptr<X3DNode> createExplosionEmitter();
 std::shared_ptr<X3DNode> createExtrusion();
@@ -82,6 +83,7 @@ std::shared_ptr<X3DNode> createFillProperties();
 std::shared_ptr<X3DNode> createFloatVertexAttribute();
 std::shared_ptr<X3DNode> createFog();
 std::shared_ptr<X3DNode> createFogCoordinate();
+std::shared_ptr<X3DNode> createFontLibrary();
 std::shared_ptr<X3DNode> createFontStyle();
 std::shared_ptr<X3DNode> createForcePhysicsModel();
 std::shared_ptr<X3DNode> createGain();
@@ -102,6 +104,7 @@ std::shared_ptr<X3DNode> createHAnimDisplacer();
 std::shared_ptr<X3DNode> createHAnimHumanoid();
 std::shared_ptr<X3DNode> createHAnimJoint();
 std::shared_ptr<X3DNode> createHAnimMotion();
+std::shared_ptr<X3DNode> createHAnimPose();
 std::shared_ptr<X3DNode> createHAnimSegment();
 std::shared_ptr<X3DNode> createHAnimSite();
 std::shared_ptr<X3DNode> createImageCubeMapTexture();
@@ -114,6 +117,7 @@ std::shared_ptr<X3DNode> createIndexedTriangleFanSet();
 std::shared_ptr<X3DNode> createIndexedTriangleSet();
 std::shared_ptr<X3DNode> createIndexedTriangleStripSet();
 std::shared_ptr<X3DNode> createInline();
+std::shared_ptr<X3DNode> createInlineGeometry();
 std::shared_ptr<X3DNode> createIntegerSequencer();
 std::shared_ptr<X3DNode> createIntegerTrigger();
 std::shared_ptr<X3DNode> createIsoSurfaceVolumeData();
@@ -195,6 +199,7 @@ std::shared_ptr<X3DNode> createProximitySensor();
 std::shared_ptr<X3DNode> createQuadSet();
 std::shared_ptr<X3DNode> createReceiverPdu();
 std::shared_ptr<X3DNode> createRectangle2D();
+std::shared_ptr<X3DNode> createRenderedTexture();
 std::shared_ptr<X3DNode> createRigidBody();
 std::shared_ptr<X3DNode> createRigidBodyCollection();
 std::shared_ptr<X3DNode> createScalarChaser();
@@ -227,6 +232,7 @@ std::shared_ptr<X3DNode> createStreamAudioSource();
 std::shared_ptr<X3DNode> createStringSensor();
 std::shared_ptr<X3DNode> createSurfaceEmitter();
 std::shared_ptr<X3DNode> createSwitch();
+std::shared_ptr<X3DNode> createTangent();
 std::shared_ptr<X3DNode> createTexCoordChaser2D();
 std::shared_ptr<X3DNode> createTexCoordDamper2D();
 std::shared_ptr<X3DNode> createText();
@@ -340,6 +346,7 @@ X3DNodeFactory::registry() {
         {"EaseInEaseOut", &factory_detail::createEaseInEaseOut},
         {"EdgeEnhancementVolumeStyle", &factory_detail::createEdgeEnhancementVolumeStyle},
         {"ElevationGrid", &factory_detail::createElevationGrid},
+        {"EnvironmentLight", &factory_detail::createEnvironmentLight},
         {"EspduTransform", &factory_detail::createEspduTransform},
         {"ExplosionEmitter", &factory_detail::createExplosionEmitter},
         {"Extrusion", &factory_detail::createExtrusion},
@@ -347,6 +354,7 @@ X3DNodeFactory::registry() {
         {"FloatVertexAttribute", &factory_detail::createFloatVertexAttribute},
         {"Fog", &factory_detail::createFog},
         {"FogCoordinate", &factory_detail::createFogCoordinate},
+        {"FontLibrary", &factory_detail::createFontLibrary},
         {"FontStyle", &factory_detail::createFontStyle},
         {"ForcePhysicsModel", &factory_detail::createForcePhysicsModel},
         {"Gain", &factory_detail::createGain},
@@ -367,6 +375,7 @@ X3DNodeFactory::registry() {
         {"HAnimHumanoid", &factory_detail::createHAnimHumanoid},
         {"HAnimJoint", &factory_detail::createHAnimJoint},
         {"HAnimMotion", &factory_detail::createHAnimMotion},
+        {"HAnimPose", &factory_detail::createHAnimPose},
         {"HAnimSegment", &factory_detail::createHAnimSegment},
         {"HAnimSite", &factory_detail::createHAnimSite},
         {"ImageCubeMapTexture", &factory_detail::createImageCubeMapTexture},
@@ -379,6 +388,7 @@ X3DNodeFactory::registry() {
         {"IndexedTriangleSet", &factory_detail::createIndexedTriangleSet},
         {"IndexedTriangleStripSet", &factory_detail::createIndexedTriangleStripSet},
         {"Inline", &factory_detail::createInline},
+        {"InlineGeometry", &factory_detail::createInlineGeometry},
         {"IntegerSequencer", &factory_detail::createIntegerSequencer},
         {"IntegerTrigger", &factory_detail::createIntegerTrigger},
         {"IsoSurfaceVolumeData", &factory_detail::createIsoSurfaceVolumeData},
@@ -460,6 +470,7 @@ X3DNodeFactory::registry() {
         {"QuadSet", &factory_detail::createQuadSet},
         {"ReceiverPdu", &factory_detail::createReceiverPdu},
         {"Rectangle2D", &factory_detail::createRectangle2D},
+        {"RenderedTexture", &factory_detail::createRenderedTexture},
         {"RigidBody", &factory_detail::createRigidBody},
         {"RigidBodyCollection", &factory_detail::createRigidBodyCollection},
         {"ScalarChaser", &factory_detail::createScalarChaser},
@@ -492,6 +503,7 @@ X3DNodeFactory::registry() {
         {"StringSensor", &factory_detail::createStringSensor},
         {"SurfaceEmitter", &factory_detail::createSurfaceEmitter},
         {"Switch", &factory_detail::createSwitch},
+        {"Tangent", &factory_detail::createTangent},
         {"TexCoordChaser2D", &factory_detail::createTexCoordChaser2D},
         {"TexCoordDamper2D", &factory_detail::createTexCoordDamper2D},
         {"Text", &factory_detail::createText},

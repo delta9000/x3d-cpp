@@ -9,6 +9,8 @@ std::string Appearance::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion Appearance::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &Appearance::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getAcousticProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "alphaCutoff", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -57,9 +59,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getAlphaCutoff(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "alphaMode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -88,9 +90,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getAlphaMode(),
                   &typeid(AlphaModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "backMaterial", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -113,9 +115,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getBackMaterial(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "fillProperties", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -138,9 +140,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getFillProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -161,9 +163,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "lineProperties", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -186,9 +188,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getLineProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "material", X3DFieldType::SFNode, AccessType::InputOutput, "material",
@@ -208,9 +210,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getMaterial(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -232,9 +234,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "pointProperties", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -257,9 +259,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getPointProperties(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "shaders", X3DFieldType::MFNode, AccessType::InputOutput, "shaders",
@@ -279,9 +281,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getShaders(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "texture", X3DFieldType::SFNode, AccessType::InputOutput, "texture",
@@ -301,9 +303,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getTexture(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "textureTransform", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -326,9 +328,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).getTextureTransform(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -350,9 +352,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -374,9 +376,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -398,9 +400,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -421,9 +423,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -445,9 +447,9 @@ const FieldTable &Appearance::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const Appearance &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

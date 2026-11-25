@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief SegmentedVolumeData displays a segmented voxel dataset with different
  * RenderStyle nodes.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/volume.html#SegmentedVolumeData
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/volume.html#SegmentedVolumeData
  */
 class SegmentedVolumeData : public virtual X3DVolumeDataNode {
 public:
@@ -88,7 +88,7 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) holds component texture that provides
    * corresponding segment identifier.
    */
@@ -105,7 +105,7 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) holds component texture that provides
    * corresponding segment identifier.
    */
@@ -121,7 +121,7 @@ public:
 
   /**
    * SFNode; access: inputOutput. Borrows the stored value.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
    */
@@ -137,7 +137,7 @@ public:
 
   /**
    * Access: inputOutput.
-   * @details Single contained X3DTexture3DNode (ComposedTexture3D,
+   * @details Optional single contained X3DTexture3DNode (ComposedTexture3D,
    * ImageTexture3D, PixelTexture3D) that provides raw voxel information
    * utilized by corresponding rendering styles.
    */
@@ -151,6 +151,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

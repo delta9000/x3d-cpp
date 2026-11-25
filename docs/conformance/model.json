@@ -121,14 +121,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -145,14 +146,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -203,6 +205,7 @@
         "READ-UNKNOWN-NODE-PASSTHROUGH",
         "REQ-UNIT",
         "ROUTE-IO-ALIAS",
+        "V41-BINDINGS",
         "VALIDATE-ROUTES",
         "VALIDATE-VALUE-SYNTAX",
         "XML-ATTRIBUTE-WHITESPACE",
@@ -2138,7 +2141,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.8; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "18.4.8; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -2146,7 +2149,8 @@
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
             "ROUTE-IO-ALIAS",
-            "TXF-2"
+            "TXF-2",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -2743,7 +2747,9 @@
         "HANIM-DISP",
         "NATIVE-CALLBACK-RETIREMENT",
         "PROTO-EMPTY-OVERRIDE-WRITE",
-        "PROTO-INSTANCE-IS-WRITE"
+        "PROTO-INSTANCE-IS-WRITE",
+        "V41-HANIM-CHILDREN",
+        "V41-HANIM-POSE"
       ],
       "levels": [
         1,
@@ -2781,7 +2787,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "26.3.2, 26.3.3; 26.3.2; ISO/IEC 19774-1 6.2; 26.3.2; ISO/IEC 19774-2 6.4; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 26.3.2; ISO/IEC 19775-1 26.3.1, 26.3.2, 26.3.3; ISO/IEC 19775-1 26.3.2, 26.3.3, 26.3.6",
+          "clause": "26.3.2, 26.3.3; 26.3.2; ISO/IEC 19774-1 6.2; 26.3.2; ISO/IEC 19774-2 6.4; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 26.3.2; ISO/IEC 19775-1 26.3.1, 26.3.2, 26.3.3; ISO/IEC 19775-1 26.3.2, 26.3.3, 26.3.6; ISO/IEC 19775-1 v4.1 HAnim component",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -2794,7 +2800,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-HANIM-CHILDREN"
           ],
           "geometry": false,
           "interfaces": [
@@ -2858,6 +2865,31 @@
           ],
           "level": 2,
           "name": "HAnimMotion",
+          "profiles": [
+            "Full"
+          ]
+        },
+        {
+          "behaves": "n/a",
+          "behavioral": false,
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 HAnim component",
+          "exists": true,
+          "extracts": "n/a",
+          "findings": [
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-HANIM-POSE"
+          ],
+          "geometry": false,
+          "interfaces": [
+            "X3DChildNode",
+            "X3DNode"
+          ],
+          "level": 2,
+          "name": "HAnimPose",
           "profiles": [
             "Full"
           ]
@@ -3677,7 +3709,8 @@
         "LGT-3",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
-        "REQ-SHADOW"
+        "REQ-SHADOW",
+        "V41-ENVIRONMENT-LIGHT"
       ],
       "levels": [
         1,
@@ -3711,6 +3744,36 @@
           ],
           "level": 1,
           "name": "DirectionalLight",
+          "profiles": [
+            "Interchange",
+            "Interactive",
+            "Immersive",
+            "Full"
+          ]
+        },
+        {
+          "behaves": "n/a",
+          "behavioral": false,
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 17.3.1; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 Lighting component",
+          "exists": true,
+          "extracts": "n/a",
+          "findings": [
+            "DELTA-LIGHT-CACHE",
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-ENVIRONMENT-LIGHT"
+          ],
+          "geometry": false,
+          "interfaces": [
+            "X3DChildNode",
+            "X3DLightNode",
+            "X3DNode"
+          ],
+          "level": 1,
+          "name": "EnvironmentLight",
           "profiles": [
             "Interchange",
             "Interactive",
@@ -4436,11 +4499,13 @@
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
         "REQ-FTP",
+        "V41-INLINE-GEOMETRY",
         "VRML-IMPORT-EXPORT-WRITE"
       ],
       "levels": [
         2,
-        3
+        3,
+        4
       ],
       "name": "Networking",
       "nodes": [
@@ -4511,6 +4576,33 @@
           "profiles": [
             "Interactive",
             "Immersive",
+            "Full"
+          ]
+        },
+        {
+          "behaves": "n/a",
+          "behavioral": false,
+          "clause": "4.4.2.2, 4.4.8.2; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 Networking component",
+          "exists": true,
+          "extracts": "no",
+          "findings": [
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "REQ-FTP",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-INLINE-GEOMETRY"
+          ],
+          "geometry": true,
+          "interfaces": [
+            "X3DGeometryNode",
+            "X3DNode",
+            "X3DUrlObject"
+          ],
+          "level": 4,
+          "name": "InlineGeometry",
+          "profiles": [
             "Full"
           ]
         },
@@ -5120,7 +5212,8 @@
         "EXT-002",
         "PROTO-EMPTY-OVERRIDE-WRITE",
         "PROTO-INSTANCE-IS-WRITE",
-        "REQ-CLIP"
+        "REQ-CLIP",
+        "V41-TANGENT"
       ],
       "levels": [
         1,
@@ -5298,7 +5391,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -5306,7 +5399,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -5326,14 +5420,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -5353,7 +5448,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -5361,7 +5456,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -5465,7 +5561,33 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 Rendering component",
+          "exists": true,
+          "extracts": "n/a",
+          "findings": [
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-TANGENT"
+          ],
+          "geometry": false,
+          "interfaces": [
+            "X3DGeometricPropertyNode",
+            "X3DNode",
+            "X3DTangentNode"
+          ],
+          "level": 5,
+          "name": "Tangent",
+          "profiles": [
+            "Full"
+          ]
+        },
+        {
+          "behaves": "n/a",
+          "behavioral": false,
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -5473,7 +5595,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -5493,14 +5616,15 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -5520,7 +5644,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "11.3.2, 11.4.13, 11.4.15; 4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Rendering component",
           "exists": true,
           "extracts": "yes",
           "findings": [
@@ -5528,7 +5652,8 @@
             "META-EXTENDED-ATTRIBUTES-WRITE",
             "PROTO-EMPTY-OVERRIDE-WRITE",
             "PROTO-INSTANCE-IS-WRITE",
-            "ROUTE-IO-ALIAS"
+            "ROUTE-IO-ALIAS",
+            "V41-TANGENT"
           ],
           "geometry": true,
           "interfaces": [
@@ -7026,7 +7151,7 @@
           ]
         },
         {
-          "behaves": "partial",
+          "behaves": "unverified",
           "behavioral": true,
           "clause": "16.4.12, 16.4.15, 16.4.4; 8.2.4.1, 16.4.15; 16.4.15, 16.4.18; 4.4.2.2, 4.4.8.2; 8.2.4.3; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
           "exists": true,
@@ -7232,13 +7357,42 @@
         "TXT-2",
         "TXT-4",
         "TXT-5",
-        "TXT-ATLAS-LATIN1"
+        "TXT-ATLAS-LATIN1",
+        "V41-FONT-LIBRARY"
       ],
       "levels": [
-        1
+        1,
+        2
       ],
       "name": "Text",
       "nodes": [
+        {
+          "behaves": "n/a",
+          "behavioral": false,
+          "clause": "4.4.2.2, 4.4.8.2; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 Text component",
+          "exists": true,
+          "extracts": "n/a",
+          "findings": [
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "REQ-FTP",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-FONT-LIBRARY"
+          ],
+          "geometry": false,
+          "interfaces": [
+            "X3DChildNode",
+            "X3DNode",
+            "X3DUrlObject"
+          ],
+          "level": 2,
+          "name": "FontLibrary",
+          "profiles": [
+            "Full"
+          ]
+        },
         {
           "behaves": "n/a",
           "behavioral": false,
@@ -7408,20 +7562,23 @@
         "TXF-4",
         "TXF-EYE-COORDINATES",
         "TXT-6",
+        "V41-RENDERED-TEXTURE",
+        "V41-TEXTURE-OUTPUTS",
         "VIS-MOVIE-DECODE",
         "VIS-SPHERE-NOUV"
       ],
       "levels": [
         1,
         2,
-        3
+        3,
+        4
       ],
       "name": "Texturing",
       "nodes": [
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "18.4.9; 4.4.2.2, 4.4.8.2; 9.3.2, 18.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 15.4.2, 18.4.6",
+          "clause": "18.4.9; 4.4.2.2, 4.4.8.2; 9.3.2, 18.4.1; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 15.4.2, 18.4.6; ISO/IEC 19775-1 v4.1 Texturing component",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -7432,7 +7589,8 @@
             "PROTO-INSTANCE-IS-WRITE",
             "REQ-FTP",
             "ROUTE-IO-ALIAS",
-            "TXF-4"
+            "TXF-4",
+            "V41-TEXTURE-OUTPUTS"
           ],
           "geometry": false,
           "interfaces": [
@@ -7453,9 +7611,9 @@
           ]
         },
         {
-          "behaves": "unverified",
+          "behaves": "partial",
           "behavioral": true,
-          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "8.2.4.1, 16.4.2, 18.4.2; 16.4.2, 18.4.2; 4.4.2.2, 4.4.8.2; 23.4.1; 8.2.4.3; 9.3.2, 18.4.1; 18.4.2; 16.4.17; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Texturing component",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -7471,6 +7629,7 @@
             "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "TDN-5",
+            "V41-TEXTURE-OUTPUTS",
             "VIS-MOVIE-DECODE"
           ],
           "geometry": false,
@@ -7618,6 +7777,35 @@
         {
           "behaves": "n/a",
           "behavioral": false,
+          "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1; ISO/IEC 19775-1 v4.1 Texturing component",
+          "exists": true,
+          "extracts": "n/a",
+          "findings": [
+            "META-EXTENDED-ATTRIBUTES-WRITE",
+            "PROTO-EMPTY-OVERRIDE-WRITE",
+            "PROTO-INSTANCE-IS-WRITE",
+            "ROUTE-IO-ALIAS",
+            "V41-BINDINGS",
+            "V41-RENDERED-TEXTURE"
+          ],
+          "geometry": false,
+          "interfaces": [
+            "X3DAppearanceChildNode",
+            "X3DNode",
+            "X3DSingleTextureNode",
+            "X3DTexture2DNode",
+            "X3DTextureNode",
+            "X3DUrlOutputObject"
+          ],
+          "level": 4,
+          "name": "RenderedTexture",
+          "profiles": [
+            "Full"
+          ]
+        },
+        {
+          "behaves": "n/a",
+          "behavioral": false,
           "clause": "4.4.2.2, 4.4.8.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
           "exists": true,
           "extracts": "n/a",
@@ -7718,6 +7906,7 @@
           "interfaces": [
             "X3DAppearanceChildNode",
             "X3DNode",
+            "X3DSingleTextureTransformNode",
             "X3DTextureTransformNode"
           ],
           "level": 1,
@@ -7782,7 +7971,7 @@
         {
           "behaves": "n/a",
           "behavioral": false,
-          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10",
+          "clause": "33.4.1, 33.4.2, 33.4.3; 33.4.1; 4.4.2.2, 4.4.8.2; B.6 Table B.4; F.6 Table F.4; 9.2.1; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.8; ISO/IEC 19776-1, 4.3.2; ISO/IEC 19776-2, A.2; ISO/IEC 19775-1, 4.8; ISO/IEC 19776-1, 4.3.10; ISO/IEC 19775-1 v4.1 Texturing component",
           "exists": true,
           "extracts": "n/a",
           "findings": [
@@ -7792,7 +7981,8 @@
             "REQ-FTP",
             "ROUTE-IO-ALIAS",
             "T3D-1",
-            "T3D-2"
+            "T3D-2",
+            "V41-TEXTURE-OUTPUTS"
           ],
           "geometry": false,
           "interfaces": [
@@ -7904,6 +8094,7 @@
           "interfaces": [
             "X3DAppearanceChildNode",
             "X3DNode",
+            "X3DSingleTextureTransformNode",
             "X3DTextureTransformNode"
           ],
           "level": 1,
@@ -7928,6 +8119,7 @@
           "interfaces": [
             "X3DAppearanceChildNode",
             "X3DNode",
+            "X3DSingleTextureTransformNode",
             "X3DTextureTransformNode"
           ],
           "level": 1,
@@ -8987,10 +9179,10 @@
         "OscillatorSource",
         "PeriodicWave"
       ],
-      "note": "Wired: the seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms (cross once at createNode, like Buffer PCM, ADR-0050 precedent); BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; X3D 4.0's PeriodicWave has no disableNormalization toggle); SoundSystem::setPeriodicWave(osc, wave) registers a PeriodicWave node before attach \u2014 standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. Ignored: the authored OscillatorSource.periodicWave field. The generated bindings model X3D 4.0, where OscillatorSource has no periodicWave field (added in 4.1); PeriodicWave itself exists in 4.0 (type/optionsReal/optionsImag). A parsed <PeriodicWave containerField='periodicWave'/> child parks in the parser's IS fallback slot and findField(osc, 'periodicWave') is null \u2014 pinned by x3d_sound_periodicwave (parse tier). Becomes readable when the bindings move to 4.1; until then the embedder registers the wave.",
+      "note": "Fixed with the 4.1 bindings (ADR-0077). SoundSystem reads OscillatorSource.periodicWave when it creates the oscillator and re-sends the waveform through AudioBackend::setWaveform whenever the field or the wave's type/optionsReal/optionsImag changes; the oscillator keeps its phase. The seam carries Waveform::Custom + optionsReal/optionsImag harmonic terms; BuiltinDspBackend sums harmonics k=1..N-1 (index 0 = DC, ignored) normalized to peak absolute value 1 (Web Audio default; PeriodicWave has no disableNormalization toggle); standard types map onto the Waveform enum, CUSTOM with no terms falls back to sine. The SoundSystem::setPeriodicWave registration seam is removed. Test: x3d_sound_periodicwave (system, dsp and parse tiers).",
       "severity": "minor",
-      "status": "deferred",
-      "summary": "periodicWave stays unread from parsed scenes (the 4.0 bindings predate the 4.1 field) \u2014 a registered PeriodicWave is realized on BuiltinDspBackend."
+      "status": "fixed",
+      "summary": "periodicWave was unread from parsed scenes (the 4.0 bindings predated the 4.1 field), so an embedder had to register each PeriodicWave by hand."
     },
     {
       "clause": "16.4",
@@ -9005,7 +9197,7 @@
         "ChannelSplitter",
         "ListenerPointSource"
       ],
-      "note": "Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the UOM (StreamAudioSource, StreamAudioDestination); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.",
+      "note": "Compared field-by-field against the ISO/IEC 19775-1 v4.0 sound.html field tables (2026-09-29; a quick parser that could not read Analyser, AudioClip, BufferAudioSource, OscillatorSource or SpatialSound, so those five are UNCHECKED). WaveShaper.curve (MFFloat inputOutput) is defined by the standard (16.4.21) but absent from the UOM; it is added by the cited FIELD_ADDITIONS overlay in src/x3d_cpp_gen/conformance/errata.py (in-memory, guarded, self-disabling; the vendored XML and committed manifests are untouched) and is what gives the generated WaveShaper getCurve/setCurve. Still open and not yet judged (direction unknown: the ISO text or the UOM may be the erroneous side): Sound has `children` in the standard and `spatialize` in the UOM only; StreamAudioSource lacks `channelCount`; Delay and StreamAudioDestination carry UOM-only `tailTime` / `isActive`; streamIdentifier is MFString in the standard but SFString in the 4.0 UOM (StreamAudioSource, StreamAudioDestination; the 4.1 UOM the bindings now use has MFString); ChannelSplitter.children is SFNode in the standard but MFNode in the UOM; ListenerPointSource.gain is SFInt32 in the standard (almost certainly an editorial typo) but SFFloat in the UOM. Next: finish the comparison for the five unchecked nodes and the other components, then add each proven omission to FIELD_ADDITIONS with a citation and report it to Web3D.",
       "severity": "minor",
       "status": "open",
       "summary": "The vendored X3D 4.0 UOM disagrees with the published ISO/IEC 19775-1 Sound field tables on several nodes; only WaveShaper.curve is corrected so far."
@@ -12975,10 +13167,126 @@
       "nodes": [
         "WorldInfo"
       ],
-      "note": "Fixed for XML only. XmlReader keeps the element as runtime::UnknownNode (raw attributes, character data, child nodes; Scene::opaqueChildren when the parent has no field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers discard unknown nodes; the ClassicVRML and JSON writers emit only the type name and DEF; PROTO expansion drops an unknown node in a body; `<field>`, `<IS>` and PROTO statements inside an unknown element are discarded. The node is never interpreted: no runtime behaviour, no extraction. Test: x3d_parse_tests unknown_node_passthrough_test.",
+      "note": "X3D 4.1 nodes are no longer unknown: the bindings are generated from the 4.1 UOM (ADR-0077, V41-BINDINGS), so EnvironmentLight, Tangent and the other 4.1 nodes read and write typed in every encoding. For other unknown types, XmlReader keeps the element as runtime::UnknownNode (raw attributes, character data, child nodes; Scene::opaqueChildren when the parent has no field for it) and XmlGraphBuilder re-emits it, so XML to XML and canonical XML are lossless and stable. Still open: ClassicVRML/VRML97/JSON readers discard unknown nodes; the ClassicVRML and JSON writers emit only the type name and DEF; PROTO expansion drops an unknown node in a body; `<field>`, `<IS>` and PROTO statements inside an unknown element are discarded. `x3d convert` refuses these losses unless `--allow-lossy`. Test: x3d_parse_tests unknown_node_passthrough_test.",
+      "severity": "minor",
+      "status": "open",
+      "summary": "A node type the bindings do not know (a vendor extension or misspelling) survives only XML to XML: the ClassicVRML, VRML97 and JSON readers discard it, and the ClassicVRML and JSON writers keep only its type name and DEF."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1",
+      "component": "Core",
+      "id": "V41-BINDINGS",
+      "nodes": [
+        "EnvironmentLight",
+        "FontLibrary",
+        "HAnimPose",
+        "InlineGeometry",
+        "RenderedTexture",
+        "Tangent"
+      ],
+      "note": "Fixed by ADR-0077. The generator reads the packaged 4.1 UOM; every node type reports introducedIn() and every FieldInfo carries since, both from the committed 3.0 to 4.1 manifests. collectVersionWarnings (runtime/X3DVersionFit.hpp) reports authored node types and fields newer than the declared version as ReaderWarning::Kind::Version; `x3d validate` makes them `version` errors and prints `version fit` (requiredVersion). 4.1 content round-trips XML, ClassicVRML and JSON (x3d_parse_tests version_fit_test, x3d_cli_test). Runtime behaviour of the new nodes and fields is tracked per node: V41-TANGENT, V41-TEXTURE-OUTPUTS, V41-ENVIRONMENT-LIGHT, V41-RENDERED-TEXTURE, V41-HANIM-POSE, V41-HANIM-CHILDREN, V41-FONT-LIBRARY, V41-INLINE-GEOMETRY.",
+      "severity": "major",
+      "status": "fixed",
+      "summary": "The bindings were generated from the X3D 4.0 UOM, so 4.1 nodes and fields had no type: XML kept them opaque, ClassicVRML and JSON dropped them, and a 4.0 file using them passed silently."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Rendering component",
+      "component": "Rendering",
+      "id": "V41-TANGENT",
+      "nodes": [
+        "Tangent",
+        "IndexedFaceSet",
+        "IndexedTriangleSet",
+        "IndexedTriangleFanSet",
+        "IndexedTriangleStripSet",
+        "IndexedQuadSet",
+        "TriangleSet",
+        "TriangleFanSet",
+        "TriangleStripSet",
+        "QuadSet"
+      ],
+      "severity": "minor",
+      "status": "open",
+      "summary": "Authored Tangent vectors parse and round-trip but are not carried into extracted meshes or glTF TANGENT attributes."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Texturing component",
+      "component": "Texturing",
+      "id": "V41-TEXTURE-OUTPUTS",
+      "nodes": [
+        "ImageTexture",
+        "ImageTexture3D",
+        "MovieTexture"
+      ],
+      "severity": "minor",
+      "status": "open",
+      "summary": "The 4.1 outputOnly fields width, height, colorDepth (and depth on ImageTexture3D, hasSound on MovieTexture) are typed but never emitted after a texture loads."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Lighting component",
+      "component": "Lighting",
+      "id": "V41-ENVIRONMENT-LIGHT",
+      "nodes": [
+        "EnvironmentLight"
+      ],
       "severity": "major",
       "status": "open",
-      "summary": "A node the 4.0 bindings do not know (X3D 4.1 EnvironmentLight, Tangent, InstancedShape, or an extension) was discarded on read, so `x3d convert` deleted authored content while still declaring the source version."
+      "summary": "EnvironmentLight parses and round-trips but is not extracted into a light descriptor, so a renderer gets no image-based lighting inputs."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Texturing component",
+      "component": "Texturing",
+      "id": "V41-RENDERED-TEXTURE",
+      "nodes": [
+        "RenderedTexture"
+      ],
+      "severity": "major",
+      "status": "open",
+      "summary": "RenderedTexture parses and round-trips but the render feed has no render-to-texture descriptor for it."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 HAnim component",
+      "component": "HAnim",
+      "id": "V41-HANIM-POSE",
+      "nodes": [
+        "HAnimPose"
+      ],
+      "severity": "major",
+      "status": "open",
+      "summary": "HAnimPose parses and round-trips but no system applies its joint poses to a humanoid."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 HAnim component",
+      "component": "HAnim",
+      "id": "V41-HANIM-CHILDREN",
+      "nodes": [
+        "HAnimHumanoid"
+      ],
+      "severity": "minor",
+      "status": "open",
+      "summary": "HAnimHumanoid.children (4.1) parses but the extractor walks only skeleton and skin, so children placed in the humanoid are not rendered."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Text component",
+      "component": "Text",
+      "id": "V41-FONT-LIBRARY",
+      "nodes": [
+        "FontLibrary"
+      ],
+      "severity": "minor",
+      "status": "open",
+      "summary": "FontLibrary parses and round-trips but its url is not used to resolve FontStyle families."
+    },
+    {
+      "clause": "ISO/IEC 19775-1 v4.1 Networking component",
+      "component": "Networking",
+      "id": "V41-INLINE-GEOMETRY",
+      "nodes": [
+        "InlineGeometry"
+      ],
+      "severity": "major",
+      "status": "open",
+      "summary": "InlineGeometry parses and round-trips but its url is not loaded into geometry; it needs the SDK mesh importer."
     },
     {
       "clause": "29.2.4; ISO/IEC 19777-1 clause 7 (field objects)",
@@ -13060,7 +13368,7 @@
     ],
     "finding_schema_errors": {},
     "generator": "scripts/conformance_view.py",
-    "node_count": 260,
+    "node_count": 266,
     "wired_detected": [
       "Anchor",
       "Appearance",
@@ -13147,6 +13455,7 @@
       "OrientationInterpolator",
       "OrthoViewpoint",
       "OscillatorSource",
+      "PeriodicWave",
       "PlaneSensor",
       "PointSet",
       "Polyline2D",
@@ -13211,15 +13520,15 @@
     ]
   },
   "summary": {
-    "closed_count": 323,
+    "closed_count": 325,
     "component_count": 36,
-    "deferred_count": 22,
-    "finding_count": 356,
+    "deferred_count": 21,
+    "finding_count": 365,
     "inert_behavioral_nodes": [],
     "open_by_severity": {
       "low": 2,
-      "major": 16,
-      "minor": 15
+      "major": 19,
+      "minor": 19
     }
   },
   "unresolved_findings": []

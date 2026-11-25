@@ -9,6 +9,8 @@ std::string MultiTexture::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion MultiTexture::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &MultiTexture::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getAlpha(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "color", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -55,9 +57,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "description", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -80,9 +82,9 @@ const FieldTable &MultiTexture::fields() const {
           return {&dynamic_cast<const MultiTexture &>(n)
                        .X3DTextureNode::getDescription(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "function", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -103,9 +105,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getFunction(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -127,9 +129,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -151,9 +153,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "mode", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -173,9 +175,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getMode(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "source", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -195,9 +197,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getSource(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "texture", X3DFieldType::MFNode, AccessType::InputOutput, "texture",
@@ -217,9 +219,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).getTexture(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -241,9 +243,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -265,9 +267,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -289,9 +291,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -313,9 +315,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -337,9 +339,9 @@ const FieldTable &MultiTexture::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const MultiTexture &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

@@ -37,14 +37,16 @@ The pipeline owns everything from the spec XML to the `.hpp`/`.cpp` files in `ge
 | `src/x3d_cpp_gen/emit/descriptors.py` | `FieldDescriptor` + `build_descriptor(s)`: computes every per-field C++ decision (type, accessor names, default literal, constraint body, range-collect body, move-overload eligibility) |
 | `src/x3d_cpp_gen/emit/naming.py` | `pascal()`, `sanitize_field_name()`: single naming canonicalizer shared by parser and emitter |
 | `src/x3d_cpp_gen/emit/defaults.py` | `default_expr_for()`, `enum_default_expr()`, `tokenize_mfstring()`, `cpp_string_literal()`: default C++ initializer expression computation |
-| `src/x3d_cpp_gen/emit/reflection.py` | `gen_reflection_header()`: emits `X3DReflection.hpp` (the `X3DFieldType` enum, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor`) data-driven from `X3DType` |
+| `src/x3d_cpp_gen/emit/reflection.py` | `gen_reflection_header()`: emits `X3DReflection.hpp` (the `X3DFieldType` enum, `X3DVersion`, `FieldInfo`, `FieldTable`, `RangeDiagnostic`, `NodeVisitor`) data-driven from `X3DType` |
+| `src/x3d_cpp_gen/emit/versions.py` | `VersionFloors`: the earliest X3D version (3.0 to 4.1) defining each node and each (node, field), read from the committed conformance manifests; feeds `introducedIn()` and `FieldInfo::since` (ADR-0077). A name no manifest defines gets the version being generated |
 | `src/x3d_cpp_gen/emit/factory.py` | `gen_node_factory_header/source()`: emits `X3DNodeFactory.hpp/.cpp` |
 | `src/x3d_cpp_gen/emit/registry.py` | `gen_interface_registry_header/source()`: emits `X3DInterfaceRegistry.hpp/.cpp` |
 | `src/x3d_cpp_gen/model/types.py` | `X3DType` enum, `TypeRegistry`: canonical C++ type mapping, component layout, move-overload eligibility, runtime tag for every X3D field type |
 | `src/x3d_cpp_gen/model/enums.py` | `EnumDef`, `EnumMember`, `parse_enum_defs()`: parse bounded `<SimpleType>` enumerations from the UOM into named C++ `enum class` definitions |
 | `src/x3d_cpp_gen/model/version.py` | `SpecVersion`: auto-detect spec version from the UOM root attribute or fallback comment; threaded through parse → emit |
 | `src/x3d_cpp_gen/templates/` | Jinja2 templates — `class_template.hpp.jinja`, `class_template.cpp.jinja`, `test_template.cpp.jinja` — see [Templates](templates.md) |
-| `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml` | Packaged default UOM spec; resolved via `importlib.resources`, never relative to CWD |
+| `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.1.xml` | Packaged default UOM spec (ADR-0077); resolved via `importlib.resources`, never relative to CWD |
+| `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml` | The 4.0 UOM. Pinned by the SAI SDK's generator (`sai/`) and used by 4.0 conformance tests |
 | `src/x3d_cpp_gen/cli.py` | `x3d-cpp-gen` CLI entry point: wires parser → generator → `write_*` calls; `--out`, `--spec`, `--no-test` flags |
 
 ## Interfaces and seams
@@ -82,7 +84,7 @@ The `CppHeaderBackend.emit(nodes, graph, out_dir)` method is the render loop: fo
 
 ### Seam points
 
-- UOM XML path — callers supply the spec file; the packaged default is `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml`. A newer spec version is ingested without code changes: `SpecVersion.detect()` reads the `version` attribute from the XML root automatically.
+- UOM XML path — callers supply the spec file; the packaged default is `src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.1.xml`. A newer spec version is ingested without code changes: `SpecVersion.detect()` reads the `version` attribute from the XML root automatically.
 
 - Jinja2 templates — `CppHeaderBackend` loads templates from `src/x3d_cpp_gen/templates/` (resolved via `TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"`). Test and CLI callers can override `templates_dir` to substitute custom templates.
 

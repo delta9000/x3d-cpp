@@ -24,7 +24,7 @@ using namespace x3d::core;
  * @brief StreamAudioDestination node represents the final audio destination via
  * a media stream.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/sound.html#StreamAudioDestination
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/sound.html#StreamAudioDestination
  */
 class StreamAudioDestination : public virtual X3DSoundDestinationNode {
 public:
@@ -91,20 +91,20 @@ public:
   void setChildren(MFNode &&value) { _children = std::move(value); }
 
   /**
-   * SFString; access: inputOutput. Borrows the stored value.
+   * MFString; access: inputOutput. Borrows the stored value.
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
    */
-  const SFString &getStreamIdentifier() const { return _streamIdentifier; }
+  const MFString &getStreamIdentifier() const { return _streamIdentifier; }
 
   /**
    * Access: inputOutput.
    * @details Stream identification TBD Hint: W3C Media Capture and Streams
    * https://www.
    */
-  void setStreamIdentifier(const SFString &value) { _streamIdentifier = value; }
+  void setStreamIdentifier(const MFString &value) { _streamIdentifier = value; }
 
-  void setStreamIdentifier(SFString &&value) {
+  void setStreamIdentifier(MFString &&value) {
 
     _streamIdentifier = std::move(value);
   }
@@ -117,6 +117,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
@@ -126,7 +131,7 @@ public:
 private:
   MFNode _children{};
 
-  SFString _streamIdentifier{};
+  MFString _streamIdentifier{};
 };
 
 } // namespace x3d::nodes

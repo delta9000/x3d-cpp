@@ -9,6 +9,8 @@ std::string BallJoint::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion BallJoint::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &BallJoint::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -32,9 +34,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).getAnchorPoint(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body1", X3DFieldType::SFNode, AccessType::InputOutput, "body1",
@@ -57,9 +59,9 @@ const FieldTable &BallJoint::fields() const {
           return {
               &dynamic_cast<const BallJoint &>(n).X3DRigidJointNode::getBody1(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body1AnchorPoint", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -81,9 +83,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).getBody1AnchorPoint(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body2", X3DFieldType::SFNode, AccessType::InputOutput, "body2",
@@ -106,9 +108,9 @@ const FieldTable &BallJoint::fields() const {
           return {
               &dynamic_cast<const BallJoint &>(n).X3DRigidJointNode::getBody2(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "body2AnchorPoint", X3DFieldType::SFVec3f, AccessType::OutputOnly, "",
@@ -130,9 +132,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).getBody2AnchorPoint(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "forceOutput", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -155,9 +157,9 @@ const FieldTable &BallJoint::fields() const {
           return {&dynamic_cast<const BallJoint &>(n)
                        .X3DRigidJointNode::getForceOutput(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -177,9 +179,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -201,9 +203,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -224,9 +226,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -247,9 +249,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -271,9 +273,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -294,9 +296,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -318,9 +320,9 @@ const FieldTable &BallJoint::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const BallJoint &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

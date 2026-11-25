@@ -11,6 +11,8 @@ std::string NurbsSweptSurface::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion NurbsSweptSurface::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &NurbsSweptSurface::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).getCcw(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"crossSectionCurve", X3DFieldType::SFNode,
@@ -60,9 +62,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
                     return {&dynamic_cast<const NurbsSweptSurface &>(n)
                                  .getCrossSectionCurve(),
                             &typeid(SFNode)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -84,9 +86,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -109,9 +111,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
           return {&dynamic_cast<const NurbsSweptSurface &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "solid", X3DFieldType::SFBool, AccessType::InitializeOnly, "",
@@ -133,9 +135,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).getSolid(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "trajectoryCurve", X3DFieldType::SFNode, AccessType::InputOutput,
@@ -159,9 +161,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
           return {
               &dynamic_cast<const NurbsSweptSurface &>(n).getTrajectoryCurve(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -183,9 +185,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -207,9 +209,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -232,9 +234,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
           return {
               &dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -256,9 +258,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -281,9 +283,9 @@ const FieldTable &NurbsSweptSurface::fields() const {
           return {
               &dynamic_cast<const NurbsSweptSurface &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

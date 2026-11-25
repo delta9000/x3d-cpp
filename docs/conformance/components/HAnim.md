@@ -1,18 +1,21 @@
 # HAnim — conformance
 
-_Generated. Levels 1,2 · 6 nodes · profiles: Full._
+_Generated. Levels 1,2 · 7 nodes · profiles: Full._
 
 | Node | Lvl | Exists | Extract | Behaves | Findings | Interfaces |
 |------|-----|--------|---------|---------|----------|------------|
 | HAnimDisplacer | 1 | ✓ | — | — | DELTA-SKIN-BINDING, HAN-2, HAN-AUDIT-2, HANIM-DISP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DGeometricPropertyNode |
-| HAnimHumanoid | 1 | ✓ | — | — | DELTA-SHARED-HUMANOID, DELTA-SITE-POSE, DELTA-SKIN-BINDING, HAN-1, HAN-AUDIT-1, HAN-AUDIT-4, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
+| HAnimHumanoid | 1 | ✓ | — | — | DELTA-SHARED-HUMANOID, DELTA-SITE-POSE, DELTA-SKIN-BINDING, HAN-1, HAN-AUDIT-1, HAN-AUDIT-4, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-HANIM-CHILDREN | X3DBoundedObject, X3DChildNode |
 | HAnimJoint | 1 | ✓ | — | — | DELTA-SITE-POSE, DELTA-SKIN-BINDING, HAN-1, HAN-AUDIT-1, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode |
 | HAnimMotion | 2 | ✓ | — | — | HAN-3, HAN-AUDIT-4, META-EXTENDED-ATTRIBUTES-WRITE, NATIVE-CALLBACK-RETIREMENT, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DChildNode |
+| HAnimPose | 2 | ✓ | — | — | META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS, V41-BINDINGS, V41-HANIM-POSE | X3DChildNode |
 | HAnimSegment | 1 | ✓ | — | — | GRP-ADDCHILDREN, HAN-AUDIT-2, HANIM-DISP, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 | HAnimSite | 1 | ✓ | — | — | DELTA-SITE-POSE, GRP-ADDCHILDREN, HAN-AUDIT-3, META-EXTENDED-ATTRIBUTES-WRITE, PROTO-EMPTY-OVERRIDE-WRITE, PROTO-INSTANCE-IS-WRITE, ROUTE-IO-ALIAS | X3DBoundedObject, X3DChildNode, X3DGroupingNode |
 
 ## Findings
 
+- **V41-HANIM-POSE** [major/OPEN] — §ISO/IEC 19775-1 v4.1 HAnim component: HAnimPose parses and round-trips but no system applies its joint poses to a humanoid.
+- **V41-HANIM-CHILDREN** [minor/OPEN] — §ISO/IEC 19775-1 v4.1 HAnim component: HAnimHumanoid.children (4.1) parses but the extractor walks only skeleton and skin, so children placed in the humanoid are not rendered.
 - **NATIVE-CALLBACK-RETIREMENT** [critical/FIXED] — §4.4.3 (execution-context integration lifetime): Native runtime callbacks retained by nodes are revoked before their activation or behavior state is destroyed.
   - runtime_callback_retirement_test.cpp: Native callback leases retire before owner state and reject retained callbacks after retirement.
 - **HAN-1** [major/FIXED] — §26.3.2, 26.3.3: HAnim skins deform with the skeleton (ADR-0055).

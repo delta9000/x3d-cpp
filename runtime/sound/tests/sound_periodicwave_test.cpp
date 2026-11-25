@@ -1,11 +1,9 @@
-// §16.4.18 harmonic synthesis, wave registration, and normalization.
+// §16.4.18 harmonic synthesis, wave selection, and normalization.
 // sin(t) + 0.5*cos(2*t) has peak magnitude 1.5 at t=3*pi/2; normalized samples
 // at 0, T/4, T/2 are 1/3, and at 3*T/4 are -1.
-// SND-9: X3D 4.0 bindings lack OscillatorSource.periodicWave; the parse test
-// documents the deferred authored-wave gap.
+// SND-9: the wave is OscillatorSource.periodicWave (X3D 4.1), read at attach().
 #include "doctest/doctest.h"
 #include "AudioBackend.hpp"
-#include "InlineExpand.hpp"  // x3d::runtime::findField (generic-by-name reads)
 #include "RecordingBackend.hpp"
 #include "SoundSystem.hpp"
 #include "dsp/BuiltinDspBackend.hpp"
@@ -49,10 +47,8 @@ TEST_CASE("PeriodicWave") {
     return std::fabs(a - b) <= tol;
   };
 
-  // (b) system: SoundSystem::setPeriodicWave registered waves
-  // A §16 chain AudioDestination <- OscillatorSource. The 4.0 bindings cannot
-  // read the authored periodicWave field (tier (c)), so the test registers the
-  // PeriodicWave node the way an embedder bridges the gap.
+  // (b) system: the oscillator's periodicWave field shapes its waveform.
+  // A §16 chain AudioDestination <- OscillatorSource.
   auto buildDest = [](const std::shared_ptr<OscillatorSource> &osc) {
     auto dest = std::make_shared<AudioDestination>();
     dest->setChildren(MFNode{std::static_pointer_cast<X3DNode>(osc)});
@@ -150,8 +146,8 @@ TEST_CASE("PeriodicWave") {
     CHECK_MESSAGE((g > 0.6), "strong fundamental present");
   }
 
-  SUBCASE("system: a registered CUSTOM wave renders the harmonic sum") {
-    // P4: a registered CUSTOM wave renders the harmonic sum (P2's values).
+  SUBCASE("system: an authored CUSTOM wave renders the harmonic sum") {
+    // P4: an authored CUSTOM wave renders the harmonic sum (P2's values).
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
     auto wave = customWave();
@@ -159,7 +155,7 @@ TEST_CASE("PeriodicWave") {
     auto dsp = std::make_shared<BuiltinDspBackend>();
     SoundSystem sys(dsp);
     X3DExecutionContext ctx;
-    sys.setPeriodicWave(osc.get(), wave.get());
+    osc->setPeriodicWave(wave);
     sys.attach(buildDest(osc).get(), ctx);
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
@@ -168,8 +164,8 @@ TEST_CASE("PeriodicWave") {
     std::fprintf(stderr,
                  "[P4 system custom] x[0]=%.6f x[3T/4]=%.6f (expect 1/3, -1)\n",
                  buf[0], buf[3 * q]);
-    CHECK_MESSAGE((near(buf[0], 1.0 / 3.0, 1e-6)), "registered CUSTOM wave: x(0) = 1/3");
-    CHECK_MESSAGE((near(buf[3 * q], -1.0, 1e-6)), "registered CUSTOM wave: x(3T/4) = -1");
+    CHECK_MESSAGE((near(buf[0], 1.0 / 3.0, 1e-6)), "authored CUSTOM wave: x(0) = 1/3");
+    CHECK_MESSAGE((near(buf[3 * q], -1.0, 1e-6)), "authored CUSTOM wave: x(3T/4) = -1");
   }
 
   SUBCASE("system: SAWTOOTH maps onto the seam sawtooth") {
@@ -183,7 +179,7 @@ TEST_CASE("PeriodicWave") {
     auto dsp = std::make_shared<BuiltinDspBackend>();
     SoundSystem sys(dsp);
     X3DExecutionContext ctx;
-    sys.setPeriodicWave(osc.get(), wave.get());
+    osc->setPeriodicWave(wave);
     sys.attach(buildDest(osc).get(), ctx);
     std::vector<float> buf;
     sys.render(kFrames, kSR, buf);
@@ -198,8 +194,8 @@ TEST_CASE("PeriodicWave") {
     CHECK_MESSAGE((d < 1e-6), "type=SAWTOOTH maps onto the seam's sawtooth");
   }
 
-  SUBCASE("system: no registered wave renders sine") {
-    // P6: no registered wave -> sine (the §16 default, unchanged).
+  SUBCASE("system: no authored wave renders sine") {
+    // P6: no authored wave -> sine (the §16 default, unchanged).
     auto osc = std::make_shared<OscillatorSource>();
     osc->setFrequency(kFreq);
 
@@ -215,7 +211,7 @@ TEST_CASE("PeriodicWave") {
     direct.waveform = Waveform::Sine;
     const double d = maxAbsDiff(buf, renderOsc(direct));
     std::fprintf(stderr, "[P6 unset] max|system - sine| = %.3g (expect ~0)\n", d);
-    CHECK_MESSAGE((d < 1e-6), "oscillator with NO registered wave stays sine");
+    CHECK_MESSAGE((d < 1e-6), "oscillator with NO authored wave stays sine");
   }
 
   SUBCASE("system: the wave rides the seam, and an empty CUSTOM falls back to sine") {
@@ -236,8 +232,8 @@ TEST_CASE("PeriodicWave") {
     auto rec = std::make_shared<RecordingBackend>();
     SoundSystem sys(rec);
     X3DExecutionContext ctx;
-    sys.setPeriodicWave(osc.get(), wave.get());
-    sys.setPeriodicWave(emptyOsc.get(), emptyWave.get());
+    osc->setPeriodicWave(wave);
+    emptyOsc->setPeriodicWave(emptyWave);
     sys.attach(dest.get(), ctx);
 
     // Creates follow the children recursion: osc first, then emptyOsc.
@@ -258,37 +254,88 @@ TEST_CASE("PeriodicWave") {
                   "CUSTOM wave with no harmonic terms falls back to sine");
   }
 
-  SUBCASE("parse: the 4.1 field is unreadable on the 4.0 bindings") {
-    // (c) parse path: the 4.1 field is unreadable on the 4.0 bindings
+  SUBCASE("system: changing periodicWave after attach re-sends the waveform") {
+    auto osc = std::make_shared<OscillatorSource>();
+    osc->setFrequency(kFreq);
+    auto rec = std::make_shared<RecordingBackend>();
+    SoundSystem sys(rec);
+    X3DExecutionContext ctx;
+    sys.attach(buildDest(osc).get(), ctx);
+    sys.update(0, ctx);
+    CHECK(rec->waveforms.empty()); // unchanged: nothing re-sent
+
+    auto wave = std::make_shared<PeriodicWave>();
+    wave->setType(PeriodicWaveTypeChoices::SQUARE);
+    osc->setPeriodicWave(wave);
+    sys.update(0.1, ctx);
+    REQUIRE(rec->waveforms.size() == 1);
+    CHECK(rec->waveforms[0].params.waveform == Waveform::Square);
+
+    wave->setType(PeriodicWaveTypeChoices::CUSTOM);
+    wave->setOptionsReal({0, 0});
+    wave->setOptionsImag({0, 1});
+    sys.update(0.2, ctx);
+    REQUIRE(rec->waveforms.size() == 2);
+    CHECK(rec->waveforms[1].params.waveform == Waveform::Custom);
+    CHECK(rec->waveforms[1].params.optionsImag.size() == 2);
+
+    osc->setPeriodicWave(nullptr);
+    sys.update(0.3, ctx);
+    REQUIRE(rec->waveforms.size() == 3);
+    CHECK(rec->waveforms[2].params.waveform == Waveform::Sine);
+    sys.update(0.4, ctx);
+    CHECK(rec->waveforms.size() == 3);
+  }
+
+  SUBCASE("dsp: setWaveform switches a running oscillator") {
+    BuiltinDspBackend dsp;
+    NodeHandle dest = dsp.createNode(NodeKind::Destination, NodeParams{});
+    NodeParams p;
+    p.frequency = kFreq;
+    NodeHandle osc = dsp.createNode(NodeKind::Oscillator, p);
+    dsp.connect(dest, osc);
+    NodeParams saw;
+    saw.waveform = Waveform::Sawtooth;
+    dsp.setWaveform(osc, saw);
+    std::vector<float> out;
+    dsp.render(dest, kFrames, kSR, out);
+    NodeParams direct;
+    direct.frequency = kFreq;
+    direct.waveform = Waveform::Sawtooth;
+    CHECK(maxAbsDiff(out, renderOsc(direct)) < 1e-6);
+  }
+
+  SUBCASE("parse: an authored periodicWave shapes the parsed oscillator") {
+    // (c) parse path: the 4.1 field reads and drives the oscillator.
     const char *xml =
         "<?xml version='1.0' encoding='UTF-8'?>"
-        "<X3D profile='Immersive' version='4.0'>"
+        "<X3D profile='Immersive' version='4.1'>"
         "<Scene>"
+        "<AudioDestination>"
         "<OscillatorSource DEF='TONE' frequency='220'>"
         "<PeriodicWave containerField='periodicWave' type='CUSTOM' "
         "optionsReal='0 0' optionsImag='0 1'/>"
         "</OscillatorSource>"
+        "</AudioDestination>"
         "</Scene></X3D>";
     X3DDocument doc = x3d::codec::parseDocument(xml);
+    CHECK(doc.readerWarnings.empty());
+    auto *osc = dynamic_cast<OscillatorSource *>(doc.scene.resolve("TONE").get());
+    REQUIRE(osc != nullptr);
+    auto *wave = dynamic_cast<PeriodicWave *>(osc->getPeriodicWave().get());
+    REQUIRE(wave != nullptr);
+    CHECK(wave->getOptionsImag().size() == 2);
+    CHECK_FALSE(osc->getIS());
 
-    OscillatorSource *osc = nullptr;
-    for (const auto &root : doc.scene.rootNodes)
-      if ((osc = dynamic_cast<OscillatorSource *>(root.get()))) break;
-    CHECK_MESSAGE((osc != nullptr), "OscillatorSource parsed from the scene");
-    if (osc) {
-      // SND-9: generic-by-name field reads cannot reach the authored wave —
-      // the 4.0 field table has no periodicWave entry.
-      CHECK_MESSAGE((findField(*osc, "periodicWave") == nullptr),
-                    "OscillatorSource has NO periodicWave field (X3D 4.0 object model)");
-      // The parser's best-effort fallback parks the child in the IS field,
-      // where Proto field connections live — unreadable as periodicWave.
-      auto *wave = dynamic_cast<PeriodicWave *>(osc->getIS().get());
-      std::fprintf(stderr,
-                   "[parse] periodicWave field=%s; fallback parked node: %s\n",
-                   findField(*osc, "periodicWave") ? "present" : "absent",
-                   wave ? "PeriodicWave (in IS)" : "none");
-      CHECK_MESSAGE((wave != nullptr && wave->getOptionsImag().size() == 2), "authored PeriodicWave lands in IS (parser fallback), not a "
-            "readable periodicWave field");
-    }
+    auto rec = std::make_shared<RecordingBackend>();
+    SoundSystem sys(rec);
+    X3DExecutionContext ctx;
+    sys.attach(doc.scene.rootNodes[0].get(), ctx);
+    const NodeParams *params = nullptr;
+    for (const auto &cr : rec->creates)
+      if (cr.kind == NodeKind::Oscillator) params = &cr.params;
+    REQUIRE(params != nullptr);
+    CHECK(params->waveform == Waveform::Custom);
+    CHECK(params->optionsImag.size() == 2);
   }
 }

@@ -9,6 +9,8 @@ std::string LOD::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion LOD::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &LOD::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -28,9 +30,9 @@ const FieldTable &LOD::fields() const {
 
                   ,
 
-                  nullptr
+                  nullptr,
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxCenter", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -53,9 +55,9 @@ const FieldTable &LOD::fields() const {
           return {
               &dynamic_cast<const LOD &>(n).X3DGroupingNode::getBboxCenter(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -78,9 +80,9 @@ const FieldTable &LOD::fields() const {
           return {
               &dynamic_cast<const LOD &>(n).X3DGroupingNode::getBboxDisplay(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -102,9 +104,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DGroupingNode::getBboxSize(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "center", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -123,9 +125,9 @@ const FieldTable &LOD::fields() const {
 
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).getCenter(), &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "children", X3DFieldType::MFNode, AccessType::InputOutput, "children",
@@ -147,9 +149,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DGroupingNode::getChildren(),
                   &typeid(MFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "forceTransitions", X3DFieldType::SFBool, AccessType::InitializeOnly,
@@ -171,9 +173,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).getForceTransitions(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -193,9 +195,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "level_changed", X3DFieldType::SFInt32, AccessType::OutputOnly, "",
@@ -215,9 +217,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).getLevel_changed(),
                   &typeid(SFInt32)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -237,9 +239,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "range", X3DFieldType::MFFloat, AccessType::InitializeOnly, "",
@@ -258,9 +260,9 @@ const FieldTable &LOD::fields() const {
 
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).getRange(), &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(
         FieldInfo{"removeChildren", X3DFieldType::MFNode, AccessType::InputOnly,
@@ -277,9 +279,9 @@ const FieldTable &LOD::fields() const {
 
                   ,
 
-                  nullptr
+                  nullptr,
 
-        });
+                  X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -301,9 +303,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DGroupingNode::getVisible(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -323,9 +325,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -345,9 +347,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -367,9 +369,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -389,9 +391,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -411,9 +413,9 @@ const FieldTable &LOD::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const LOD &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

@@ -20,7 +20,7 @@ using namespace x3d::core;
  * @brief The X3DLayerNode abstract node type is the base node type for layer
  * nodes.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/layering.html#X3DLayerNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/layering.html#X3DLayerNode
  */
 class X3DLayerNode : public virtual X3DNode, public virtual X3DPickableObject {
 public:
@@ -111,6 +111,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

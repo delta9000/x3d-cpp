@@ -25,7 +25,7 @@ using namespace x3d::core;
  * the scene, illuminating geometry that intersects the perspective projection
  * volume.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/textureProjector.html#TextureProjector
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/textureProjector.html#TextureProjector
  */
 class TextureProjector : public virtual X3DTextureProjectorNode {
 public:
@@ -34,8 +34,6 @@ public:
   ~TextureProjector() = default;
 
   static SFFloat getDefaultFieldOfView() { return 0.7854; }
-
-  static SFVec3f getDefaultUpVector() { return SFVec3f{0, 0, 1}; }
 
   static std::string getContainerFieldType() { return "xs:NMTOKEN"; }
 
@@ -70,28 +68,17 @@ public:
    */
   void setFieldOfViewUnchecked(const SFFloat &value) { _fieldOfView = value; }
 
-  /**
-   * SFVec3f; access: inputOutput. Borrows the stored value.
-   * @details upVector describes the roll of the camera by saying which
-   * direction is up for the camera's orientation.
-   */
-  const SFVec3f &getUpVector() const { return _upVector; }
-
-  /**
-   * Access: inputOutput.
-   * @details upVector describes the roll of the camera by saying which
-   * direction is up for the camera's orientation.
-   */
-  void setUpVector(const SFVec3f &value) { _upVector = value; }
-
-  void setUpVector(SFVec3f &&value) { _upVector = std::move(value); }
-
   std::string nodeTypeName() const override;
 
   /**
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.
@@ -122,8 +109,6 @@ private:
   }
 
   SFFloat _fieldOfView{0.7854};
-
-  SFVec3f _upVector{SFVec3f{0, 0, 1}};
 };
 
 } // namespace x3d::nodes

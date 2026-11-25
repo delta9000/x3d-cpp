@@ -80,11 +80,14 @@ inline bool isKnownProfileToken(const std::string &s) {
 class X3DDocument {
 public:
   // <X3D> attributes. The default is the authoring default: a hand-built
-  // document targets the UOM the node bindings are generated from (4.0), so
+  // document targets the UOM the node bindings are generated from (4.1), so
   // it never serializes as a mislabeled 3.0 file. The  §1 bare-floor rung
   // (unversioned parsed input → 3.0) is owned by the readers, which set
   // doc.version explicitly on every path — version_floor_test pins both.
-  std::string version = "4.0";          // authoring default; readers overwrite
+  std::string version = "4.1";          // authoring default; readers overwrite
+  // False when a reader found no version and fell back to 3.0. Version-fit
+  // warnings (X3DVersionFit.hpp) only compare against a declared version.
+  bool versionDeclared = true;
   Profile profile = Profile::Interchange;
 
   // The authored `profile=` token, verbatim (empty when absent). Preserved so a

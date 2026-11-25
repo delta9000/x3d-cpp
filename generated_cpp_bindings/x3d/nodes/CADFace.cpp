@@ -9,6 +9,8 @@ std::string CADFace::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion CADFace::introducedIn() const { return X3DVersion{3, 1}; }
+
 const FieldTable &CADFace::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &CADFace::fields() const {
           return {&dynamic_cast<const CADFace &>(n)
                        .X3DBoundedObject::getBboxCenter(),
                   &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "bboxDisplay", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -59,9 +61,9 @@ const FieldTable &CADFace::fields() const {
           return {&dynamic_cast<const CADFace &>(n)
                        .X3DBoundedObject::getBboxDisplay(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "bboxSize", X3DFieldType::SFVec3f, AccessType::InitializeOnly, "",
@@ -84,9 +86,9 @@ const FieldTable &CADFace::fields() const {
           return {
               &dynamic_cast<const CADFace &>(n).X3DBoundedObject::getBboxSize(),
               &typeid(SFVec3f)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -106,9 +108,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -130,9 +132,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "name", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -155,9 +157,9 @@ const FieldTable &CADFace::fields() const {
           return {&dynamic_cast<const CADFace &>(n)
                        .X3DProductStructureChildNode::getName(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "shape", X3DFieldType::SFNode, AccessType::InputOutput, "shape",
@@ -177,9 +179,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).getShape(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "visible", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -202,9 +204,9 @@ const FieldTable &CADFace::fields() const {
           return {
               &dynamic_cast<const CADFace &>(n).X3DBoundedObject::getVisible(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -225,9 +227,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -248,9 +250,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -272,9 +274,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 1}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -294,9 +296,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -317,9 +319,9 @@ const FieldTable &CADFace::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const CADFace &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

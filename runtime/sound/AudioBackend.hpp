@@ -248,6 +248,14 @@ public:
   virtual void setParam(NodeHandle node, Param param, float value) = 0;
 
   /**
+   * @brief Replace an Oscillator node's waveform: `params.waveform` and, for
+   *        Waveform::Custom, `params.optionsReal`/`optionsImag` (the other
+   *        fields are ignored). Called when the authored periodicWave changes
+   *        after creation; the oscillator keeps its phase.
+   */
+  virtual void setWaveform(NodeHandle node, const NodeParams &params) = 0;
+
+  /**
    * @brief Render `frames` mono samples pulled through the graph from
    *        `destination`, at `sampleRate` Hz, into `out` (resized to `frames`).
    * @details A fixed graph + fixed params + fixed sampleRate must be

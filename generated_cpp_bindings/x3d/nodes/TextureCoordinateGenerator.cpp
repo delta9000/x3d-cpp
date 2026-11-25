@@ -11,6 +11,10 @@ std::string TextureCoordinateGenerator::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TextureCoordinateGenerator::introducedIn() const {
+  return X3DVersion{3, 0};
+}
+
 const FieldTable &TextureCoordinateGenerator::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +40,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "mapping", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -62,9 +66,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DSingleTextureCoordinateNode::getMapping(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -87,9 +91,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "mode", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -121,9 +125,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {
               &dynamic_cast<const TextureCoordinateGenerator &>(n).getMode(),
               &typeid(TextureCoordinateGeneratorModeChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "parameter", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -146,9 +150,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .getParameter(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -171,9 +175,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -196,9 +200,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -221,9 +225,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -246,9 +250,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -271,9 +275,9 @@ const FieldTable &TextureCoordinateGenerator::fields() const {
           return {&dynamic_cast<const TextureCoordinateGenerator &>(n)
                        .X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

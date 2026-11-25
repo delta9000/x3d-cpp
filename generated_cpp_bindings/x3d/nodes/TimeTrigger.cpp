@@ -9,6 +9,8 @@ std::string TimeTrigger::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TimeTrigger::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &TimeTrigger::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -33,9 +35,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -57,9 +59,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{"set_boolean", X3DFieldType::SFBool,
                           AccessType::InputOnly, "",
@@ -75,9 +77,9 @@ const FieldTable &TimeTrigger::fields() const {
 
                           ,
 
-                          nullptr
+                          nullptr,
 
-    });
+                          X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "triggerTime", X3DFieldType::SFTime, AccessType::OutputOnly, "",
@@ -99,9 +101,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).getTriggerTime(),
                   &typeid(SFTime)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -123,9 +125,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -147,9 +149,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -171,9 +173,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -195,9 +197,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -219,9 +221,9 @@ const FieldTable &TimeTrigger::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TimeTrigger &>(n).X3DNode::getStyle(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

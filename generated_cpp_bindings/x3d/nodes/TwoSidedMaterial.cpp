@@ -11,6 +11,8 @@ std::string TwoSidedMaterial::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion TwoSidedMaterial::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &TwoSidedMaterial::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -36,9 +38,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getAmbientIntensity(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backAmbientIntensity", X3DFieldType::SFFloat, AccessType::InputOutput,
@@ -62,9 +64,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {&dynamic_cast<const TwoSidedMaterial &>(n)
                        .getBackAmbientIntensity(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backDiffuseColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -87,9 +89,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getBackDiffuseColor(),
               &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backEmissiveColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -112,9 +114,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getBackEmissiveColor(),
               &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backShininess", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -136,9 +138,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getBackShininess(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backSpecularColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -161,9 +163,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getBackSpecularColor(),
               &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "backTransparency", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -186,9 +188,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getBackTransparency(),
               &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "diffuseColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -210,9 +212,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getDiffuseColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "emissiveColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -234,9 +236,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getEmissiveColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -258,9 +260,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -283,9 +285,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getMetadata(),
               &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "separateBackColor", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -308,9 +310,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).getSeparateBackColor(),
               &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "shininess", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -332,9 +334,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getShininess(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "specularColor", X3DFieldType::SFColor, AccessType::InputOutput, "",
@@ -356,9 +358,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getSpecularColor(),
                   &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "transparency", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -380,9 +382,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).getTransparency(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -404,9 +406,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -428,9 +430,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -453,9 +455,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -477,9 +479,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -502,9 +504,9 @@ const FieldTable &TwoSidedMaterial::fields() const {
           return {
               &dynamic_cast<const TwoSidedMaterial &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

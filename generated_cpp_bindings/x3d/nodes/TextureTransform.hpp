@@ -14,6 +14,8 @@
 
 #include "x3d/nodes/X3DTextureTransformNode.hpp"
 
+#include "x3d/nodes/X3DSingleTextureTransformNode.hpp"
+
 namespace x3d::nodes {
 using namespace x3d::core;
 
@@ -22,9 +24,9 @@ using namespace x3d::core;
  * @brief TextureTransform shifts 2D texture coordinates for positioning,
  * orienting and scaling image textures on geometry.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/texturing.html#TextureTransform
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/texturing.html#TextureTransform
  */
-class TextureTransform : public virtual X3DTextureTransformNode {
+class TextureTransform : public virtual X3DSingleTextureTransformNode {
 public:
   TextureTransform() = default;
 
@@ -63,33 +65,15 @@ public:
   void setCenter(SFVec2f &&value) { _center = std::move(value); }
 
   /**
-   * SFString; access: inputOutput. Borrows the stored value.
-   * @details The mapping label identifies which texture coordinates and
-   * transformations are used to compute texture effects from corresponding
-   * geometry on a given material.
-   */
-  const SFString &getMapping() const { return _mapping; }
-
-  /**
-   * Access: inputOutput.
-   * @details The mapping label identifies which texture coordinates and
-   * transformations are used to compute texture effects from corresponding
-   * geometry on a given material.
-   */
-  void setMapping(const SFString &value) { _mapping = value; }
-
-  void setMapping(SFString &&value) { _mapping = std::move(value); }
-
-  /**
    * SFFloat; access: inputOutput. Borrows the stored value.
-   * @details single rotation angle of texture about center (opposite effect
+   * @details Single rotation angle of texture about center (opposite effect
    * appears on geometry).
    */
   const SFFloat &getRotation() const { return _rotation; }
 
   /**
    * Access: inputOutput.
-   * @details single rotation angle of texture about center (opposite effect
+   * @details Single rotation angle of texture about center (opposite effect
    * appears on geometry).
    */
   void setRotation(const SFFloat &value) { _rotation = value; }
@@ -134,6 +118,11 @@ public:
   std::string defaultContainerField() const override;
 
   /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
+
+  /**
    * Own and inherited fields; the table lives for the lifetime of the program.
    */
   const FieldTable &fields() const override;
@@ -142,8 +131,6 @@ public:
 
 private:
   SFVec2f _center{SFVec2f{0, 0}};
-
-  SFString _mapping{};
 
   SFFloat _rotation{0};
 

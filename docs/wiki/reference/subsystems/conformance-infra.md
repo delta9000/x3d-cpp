@@ -139,7 +139,8 @@ Errata are applied on `load_manifest`; the committed JSON files remain byte-fait
   byte-faithful.
 - An addition is a no-op once the UOM carries the field.
 - The only current addition is `WaveShaper.curve` (X3D 4.0, ISO/IEC 19775-1
-  §16.4.21); other Sound differences are tracked in `UOM-`.
+  §16.4.21). The 4.1 UOM declares it, so the generator, which reads 4.1, no longer
+  needs it; the 4.0 manifest still does. Other Sound differences are tracked in `UOM-`.
 - Never edit `src/x3d_cpp_gen/data/` to fix a UOM gap.
 
 ### Fidelity check (generator moat)

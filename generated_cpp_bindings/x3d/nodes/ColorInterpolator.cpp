@@ -11,6 +11,8 @@ std::string ColorInterpolator::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ColorInterpolator::introducedIn() const { return X3DVersion{3, 0}; }
+
 const FieldTable &ColorInterpolator::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -35,9 +37,9 @@ const FieldTable &ColorInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorInterpolator &>(n).X3DNode::getIS(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "key", X3DFieldType::MFFloat, AccessType::InputOutput, "",
@@ -60,9 +62,9 @@ const FieldTable &ColorInterpolator::fields() const {
           return {&dynamic_cast<const ColorInterpolator &>(n)
                        .X3DInterpolatorNode::getKey(),
                   &typeid(MFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "keyValue", X3DFieldType::MFColor, AccessType::InputOutput, "",
@@ -84,9 +86,9 @@ const FieldTable &ColorInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorInterpolator &>(n).getKeyValue(),
                   &typeid(MFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -109,9 +111,9 @@ const FieldTable &ColorInterpolator::fields() const {
           return {&dynamic_cast<const ColorInterpolator &>(n)
                        .X3DNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "set_fraction", X3DFieldType::SFFloat, AccessType::InputOnly, "",
@@ -127,9 +129,9 @@ const FieldTable &ColorInterpolator::fields() const {
 
         ,
 
-        nullptr
+        nullptr,
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "value_changed", X3DFieldType::SFColor, AccessType::OutputOnly, "",
@@ -152,9 +154,9 @@ const FieldTable &ColorInterpolator::fields() const {
           return {
               &dynamic_cast<const ColorInterpolator &>(n).getValue_changed(),
               &typeid(SFColor)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -176,9 +178,9 @@ const FieldTable &ColorInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorInterpolator &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -200,9 +202,9 @@ const FieldTable &ColorInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorInterpolator &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "class", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -225,9 +227,9 @@ const FieldTable &ColorInterpolator::fields() const {
           return {
               &dynamic_cast<const ColorInterpolator &>(n).X3DNode::getClass_(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 0}});
 
     t.push_back(FieldInfo{
         "id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -249,9 +251,9 @@ const FieldTable &ColorInterpolator::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ColorInterpolator &>(n).X3DNode::getId(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -274,9 +276,9 @@ const FieldTable &ColorInterpolator::fields() const {
           return {
               &dynamic_cast<const ColorInterpolator &>(n).X3DNode::getStyle(),
               &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{4, 0}});
 
     return t;
   }();

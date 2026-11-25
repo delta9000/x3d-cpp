@@ -17,7 +17,7 @@ using namespace x3d::core;
  * array of strictly typed values: MFBool, MFInt32, MFFloat, MFDouble, MFString,
  * or MFNode, the latter having children that are all Metadata nodes.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/core.html#X3DMetadataObject
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/core.html#X3DMetadataObject
  */
 class X3DMetadataObject {
 public:

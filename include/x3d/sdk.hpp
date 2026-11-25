@@ -29,6 +29,7 @@
 #include "X3DParse.hpp"
 #include "X3DCodecs.hpp"
 #include "SceneBuilder.hpp"
+#include "X3DVersionFit.hpp"
 #include "X3DRuntime.hpp"
 #include "X3DExecutionContext.hpp"
 #include "X3DSceneBridge.hpp"
@@ -70,6 +71,10 @@ using x3d::runtime::Route; ///< endpoints use DEF-name strings
 using x3d::nodes::X3DNode;
 using x3d::core::RangeDiagnostic; ///< out-of-range value retained by lenient reads
 using x3d::runtime::ProtoWarning;
+using x3d::core::X3DVersion;          ///< X3DNode::introducedIn(), FieldInfo::since
+using x3d::runtime::parseX3DVersion;  ///< "4.1" -> X3DVersion{4, 1}
+using x3d::runtime::requiredVersion;  ///< lowest version covering a Scene
+using x3d::runtime::versionUsesAbove; ///< authored content newer than a version
 
 // ── Node inspection ─────────────────────────────────────────────── [EXPERIMENTAL]
 /// Visit each reachable node once, before its children, in reflected field

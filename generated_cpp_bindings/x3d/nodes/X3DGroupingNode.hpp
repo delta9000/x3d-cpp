@@ -22,7 +22,7 @@ using namespace x3d::core;
  * @brief Grouping nodes can contain other nodes as children, thus making up the
  * backbone of a scene graph.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/grouping.html#X3DGroupingNode
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/grouping.html#X3DGroupingNode
  */
 class X3DGroupingNode : public virtual X3DChildNode,
                         public virtual X3DBoundedObject {
@@ -172,6 +172,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

@@ -17,7 +17,7 @@ the default Inline/EXTERNPROTO resolvers.
 
 ```mermaid
 flowchart TB
-    UOM["X3D 4.0 UOM"] --> GEN["Python generator and templates"]
+    UOM["X3D 4.1 UOM"] --> GEN["Python generator and templates"]
     GEN --> NODES["Generated nodes, reflection, factory"]
     NODES --> PARSE["Readers and document model"]
     PARSE --> CTX["Execution context, Systems, event cascade"]

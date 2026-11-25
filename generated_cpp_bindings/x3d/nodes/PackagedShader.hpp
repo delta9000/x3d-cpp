@@ -26,7 +26,7 @@ using namespace x3d::core;
  * @brief PackagedShader can contain field declarations, but no CDATA section of
  * plain-text source code.
  * @details
- * https://www.web3d.org/specifications/X3Dv4/ISO-IEC19775-1v4-IS/Part01/components/shaders.html#PackagedShader
+ * https://www.web3d.org/specifications/X3Dv4Draft/ISO-IEC19775-1v4.1-CD/Part01/components/shaders.html#PackagedShader
  */
 class PackagedShader : public virtual X3DShaderNode,
                        public virtual X3DUrlObject,
@@ -128,6 +128,11 @@ public:
    * Parent field used when an X3D-XML element omits containerField.
    */
   std::string defaultContainerField() const override;
+
+  /**
+   * Earliest X3D version that defines this node type (ADR-0077).
+   */
+  X3DVersion introducedIn() const override;
 
   /**
    * Own and inherited fields; the table lives for the lifetime of the program.

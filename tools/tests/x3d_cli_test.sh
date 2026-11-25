@@ -945,7 +945,7 @@ check "Interchange still excludes MovieTexture" "$ec" "3"
 
 # Conversions must not silently drop opaque/unsupported nodes or clobber output.
 cat > "$TD/unknown.x3d" <<'XML'
-<X3D version="4.1"><Scene><EnvironmentLight intensity="0.5"/></Scene></X3D>
+<X3D version="4.1"><Scene><VendorLight intensity="0.5"/></Scene></X3D>
 XML
 printf 'keep me' > "$TD/unknown.json"
 ec=$("$CLI" convert "$TD/unknown.x3d" -o "$TD/unknown.json" >/dev/null 2>&1; echo $?)
@@ -962,13 +962,13 @@ check "explicit lossy opt-in accepted" "$ec" "0"
 ec=$("$CLI" convert "$TD/unknown.json" -f xml >/dev/null 2>&1; echo $?)
 check "discarded JSON unknown node rejected even for XML output" "$ec" "2"
 cat > "$TD/unknown-statements.x3d" <<'XML'
-<X3D version="4.1"><Scene><EnvironmentLight><field name="foo" type="SFFloat" value="1"/></EnvironmentLight></Scene></X3D>
+<X3D version="4.1"><Scene><VendorLight><field name="foo" type="SFFloat" value="1"/></VendorLight></Scene></X3D>
 XML
 ec=$("$CLI" convert "$TD/unknown-statements.x3d" -f xml >/dev/null 2>&1; echo $?)
 check "discarded XML statement rejected" "$ec" "2"
 
 cat > "$TD/unknown-proto-child.x3d" <<'XML'
-<X3D version="4.1"><Scene><ProtoDeclare name="P"><ProtoBody><Shape><EnvironmentLight intensity="0.5"/></Shape></ProtoBody></ProtoDeclare></Scene></X3D>
+<X3D version="4.1"><Scene><ProtoDeclare name="P"><ProtoBody><Shape><VendorLight intensity="0.5"/></Shape></ProtoBody></ProtoDeclare></Scene></X3D>
 XML
 printf 'keep proto output' > "$TD/unknown-proto-copy.x3d"
 ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -o "$TD/unknown-proto-copy.x3d" >/dev/null 2>&1; echo $?)
@@ -976,6 +976,25 @@ check "discarded PROTO opaque child rejected even for XML output" "$ec" "2"
 check "rejected PROTO conversion leaves output untouched" "$(cat "$TD/unknown-proto-copy.x3d")" "keep proto output"
 ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -f xml --allow-lossy >/dev/null 2>&1; echo $?)
 check "discarded PROTO opaque child permits explicit lossy opt-in" "$ec" "0"
+
+# X3D 4.1 nodes are typed (ADR-0077): every encoding keeps them, and a 4.0
+# label on 4.1 content is a validate error that names the needed version.
+cat > "$TD/v41.x3d" <<'XML'
+<X3D version="4.1"><Scene><EnvironmentLight intensity="0.5"/></Scene></X3D>
+XML
+ec=$("$CLI" convert "$TD/v41.x3d" -o "$TD/v41.json" >/dev/null 2>&1; echo $?)
+check "4.1 node converts to JSON" "$ec" "0"
+grep -q '"@intensity": 0.5' "$TD/v41.json"
+check "4.1 node fields kept in JSON" "$?" "0"
+ec=$("$CLI" validate "$TD/v41.x3d" >/dev/null 2>&1; echo $?)
+check "4.1 node in a 4.1 file validates" "$ec" "0"
+sed 's/version="4.1"/version="4.0"/' "$TD/v41.x3d" > "$TD/v40.x3d"
+out=$("$CLI" validate "$TD/v40.x3d" 2>&1); ec=$?
+check "4.1 node in a 4.0 file fails validation" "$ec" "3"
+echo "$out" | grep -q "error: EnvironmentLight needs X3D 4.1 but the document declares 4.0"
+check "validate names the node and version" "$?" "0"
+echo "$out" | grep -q "^version fit:   4.1"
+check "validate prints the version fit" "$?" "0"
 
 echo ""
 if [[ "$failures" -gt 0 ]]; then

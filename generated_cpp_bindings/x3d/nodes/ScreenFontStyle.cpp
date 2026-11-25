@@ -9,6 +9,8 @@ std::string ScreenFontStyle::defaultContainerField() const {
   return getDefaultContainerField();
 }
 
+X3DVersion ScreenFontStyle::introducedIn() const { return X3DVersion{3, 2}; }
+
 const FieldTable &ScreenFontStyle::fields() const {
   static const FieldTable table = [] {
     FieldTable t;
@@ -34,9 +36,9 @@ const FieldTable &ScreenFontStyle::fields() const {
           return {&dynamic_cast<const ScreenFontStyle &>(n)
                        .X3DFontStyleNode::getClass_(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "family", X3DFieldType::MFString, AccessType::InputOutput, "",
@@ -57,9 +59,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getFamily(),
                   &typeid(MFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "horizontal", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -81,9 +83,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getHorizontal(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(
         FieldInfo{"id", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -106,9 +108,9 @@ const FieldTable &ScreenFontStyle::fields() const {
                     return {&dynamic_cast<const ScreenFontStyle &>(n)
                                  .X3DFontStyleNode::getId(),
                             &typeid(SFString)};
-                  }
+                  },
 
-        });
+                  X3DVersion{4, 0}});
 
     t.push_back(
         FieldInfo{"IS", X3DFieldType::SFNode, AccessType::InputOutput, "IS",
@@ -131,9 +133,9 @@ const FieldTable &ScreenFontStyle::fields() const {
                     return {&dynamic_cast<const ScreenFontStyle &>(n)
                                  .X3DFontStyleNode::getIS(),
                             &typeid(SFNode)};
-                  }
+                  },
 
-        });
+                  X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "justify", X3DFieldType::MFEnum, AccessType::InputOutput, "",
@@ -175,9 +177,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getJustify(),
                   &typeid(std::vector<JustifyChoices>)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "language", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -199,9 +201,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getLanguage(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "leftToRight", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -223,9 +225,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getLeftToRight(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "metadata", X3DFieldType::SFNode, AccessType::InputOutput, "metadata",
@@ -248,9 +250,9 @@ const FieldTable &ScreenFontStyle::fields() const {
           return {&dynamic_cast<const ScreenFontStyle &>(n)
                        .X3DFontStyleNode::getMetadata(),
                   &typeid(SFNode)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "pointSize", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -272,9 +274,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getPointSize(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "spacing", X3DFieldType::SFFloat, AccessType::InputOutput, "",
@@ -296,9 +298,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getSpacing(),
                   &typeid(SFFloat)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "style", X3DFieldType::SFEnum, AccessType::InputOutput, "",
@@ -327,9 +329,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getStyle(),
                   &typeid(FontStyleChoices)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "topToBottom", X3DFieldType::SFBool, AccessType::InputOutput, "",
@@ -351,9 +353,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).getTopToBottom(),
                   &typeid(SFBool)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "DEF", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -375,9 +377,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).X3DNode::getDEF(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     t.push_back(FieldInfo{
         "USE", X3DFieldType::SFString, AccessType::InputOutput, "",
@@ -399,9 +401,9 @@ const FieldTable &ScreenFontStyle::fields() const {
         [](const X3DNode &n) -> FieldView {
           return {&dynamic_cast<const ScreenFontStyle &>(n).X3DNode::getUSE(),
                   &typeid(SFString)};
-        }
+        },
 
-    });
+        X3DVersion{3, 2}});
 
     return t;
   }();

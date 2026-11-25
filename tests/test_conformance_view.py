@@ -228,7 +228,7 @@ def test_unresolved_findings_flagged():
 # real-repo smoke
 def test_real_repo_generates_clean():
     model = cv.build_model(REPO)
-    assert model["meta"]["node_count"] == 260
+    assert model["meta"]["node_count"] == 266
     node_names = {n["name"] for c in model["components"] for n in c["nodes"]}
     assert "X3DSingleTextureTransformNode" not in node_names
     assert "X3DStatement" not in node_names
