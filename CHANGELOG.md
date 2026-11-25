@@ -8,6 +8,23 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
 
 ### Added
 
+- **Mesh import in the SDK, and `x3d import`.** `x3d_cpp::import`
+  (`runtime/import/`, re-exported as `sdk::importFile`) reads glTF into an
+  X3D 4.0 document: the node hierarchy, triangle, line and point meshes with
+  every UV set and vertex colours, Physical, Phong and Unlit materials with
+  their textures (written once each to `assets/`), viewpoints, lights, skins
+  as `HAnimHumanoid`, morph targets, and TRS, weight, material, light and
+  camera animation as interpolators and ROUTEs. The Assimp (OBJ, FBX,
+  Collada, ...) and USD (USDA, USDC, USDZ) backends are rewritten to the same
+  intermediate scene and build as the source-tree libraries
+  `x3d_import_assimp` (`X3D_CPP_BUILD_ASSIMP`) and `x3d_import_usd`
+  (`X3D_CPP_BUILD_USD`). `x3d import model.glb -o out.x3d` is the CLI. With
+  `x3d extract -o model.glb`, static, animated, morphing and skinned scenes
+  round-trip through glTF; a frame-by-frame round-trip oracle checks that in
+  the behavior suite, and a new `import` CI job and preset gate the Assimp and
+  USD backends. The tinyusdz patch now also reads colour, intensity and
+  exposure on every UsdLux light type, and SkelAnimation blend-shape weights
+  that have only time samples. ADR-0078.
 - **Installed ECMAScript backend.** The Duktape `ScriptEngine` installs and
   exports as `x3d_cpp::ecmascript`, with `EcmaScriptBackend.hpp` and the two
   Duktape headers it includes. Before, `EcmaScriptBackend.hpp` was installed
@@ -159,6 +176,14 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   `SFRotation`, the matrix types, `SFImage`, …) — C++20 defaulted, exact
   member-wise comparison. Equality is vocabulary, not math: no epsilon, and
   arithmetic stays out of `x3d::core` per ADR-0012.
+
+### Removed
+
+- **`examples/asset_import` and `x3d_asset_import`.** Replaced by
+  `x3d_cpp::import` and `x3d import`. The `fixture:` backend,
+  `X3D_CPP_BUILD_ASSET_IMPORT`, `X3D_CPP_BUILD_CGLTF` (glTF is always built)
+  and `mise run asset-import` (now `mise run build-import`) are gone, and so is
+  the procedural torus-knot showcase.
 
 ### Changed
 

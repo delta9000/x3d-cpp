@@ -38,6 +38,11 @@ def contract_headers() -> list[tuple[str, Path, Path]]:
             REPO_ROOT / "runtime" / "hanim",
             REPO_ROOT / "runtime" / "hanim",
         ),
+        (
+            "import",
+            REPO_ROOT / "runtime" / "import",
+            REPO_ROOT / "runtime" / "import",
+        ),
     ]
     headers: list[tuple[str, Path, Path]] = []
     for group, include_root, search_root in groups:

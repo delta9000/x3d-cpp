@@ -67,7 +67,8 @@ foreach(t IN LISTS CPURASTER_TESTS)
     target_compile_definitions(x3d_cpuraster_${t} PRIVATE
         "X3D_CPURASTER_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
         "X3D_CPURASTER_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
-        "X3D_CPURASTER_TEST_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests\"")
+        "X3D_CPURASTER_TEST_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests\""
+        "X3D_IMPORT_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/import/shaders\"")
     add_dependencies(x3d_cpuraster_tests x3d_cpuraster_${t})
     add_test(NAME x3d_cpuraster_${t} COMMAND x3d_cpuraster_${t})
 endforeach()

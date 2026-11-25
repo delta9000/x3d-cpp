@@ -15,7 +15,7 @@ target_link_libraries(x3d_cpp INTERFACE x3d_cpp_headers)
 # Public headers include each other by bare name. This list drives both build
 # and install include paths and the installed header set. Backend dependencies
 # stay private and are excluded from the installed surface.
-set(X3D_CPP_RUNTIME_PUBLIC_SUBDIRS codecs events math scene parse extract script sound hanim)
+set(X3D_CPP_RUNTIME_PUBLIC_SUBDIRS codecs events math scene parse extract script sound hanim import)
 
 set(_x3d_cpp_interface_includes
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/generated_cpp_bindings>"

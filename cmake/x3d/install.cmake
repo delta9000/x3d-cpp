@@ -7,6 +7,7 @@ install(TARGETS
         x3d_cpp_nodes
         x3d_cpp_authoring_runtime
         x3d_cpp_runtime
+        x3d_cpp_import
         x3d_cpp_sdk
     EXPORT x3d_cppTargets
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -28,7 +29,11 @@ set(_x3d_install_excludes
 set(_x3d_runtime_backend_excludes
     PATTERN "dsp" EXCLUDE                # reference built-in software DSP backend
     PATTERN "RecordingBackend.hpp" EXCLUDE   # op-recording test double (tests only)
-    PATTERN "EcmaScriptBackend.hpp" EXCLUDE) # installed with its target, script-backend.cmake
+    PATTERN "EcmaScriptBackend.hpp" EXCLUDE  # installed with its target, script-backend.cmake
+    PATTERN "gltf" EXCLUDE                   # import backends: private sources
+    PATTERN "assimp" EXCLUDE
+    PATTERN "usd" EXCLUDE
+    PATTERN "shaders" EXCLUDE)
 
 # The curated façade header (include/x3d/sdk.hpp) installs preserving its x3d/
 # subdir so installed consumers `#include "x3d/sdk.hpp"`.

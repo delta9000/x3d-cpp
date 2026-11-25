@@ -156,7 +156,7 @@ int main() {
   // the canonical mapping (Opaque=0, Mask=1, Blend=2) must land on it. Guards the
   // historical transposition where the shader discarded on == 2 (old "Mask").
   {
-    std::ifstream in(std::string(X3D_CPURASTER_SHADER_DIR) +
+    std::ifstream in(std::string(X3D_IMPORT_SHADER_DIR) +
                          "/usd_preview_surface.frag",
                      std::ios::binary);
     std::ostringstream ss; ss << in.rdbuf();

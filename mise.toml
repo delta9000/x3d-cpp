@@ -160,12 +160,12 @@ cmake --build build-x3d2svg
 ctest --test-dir build-x3d2svg -R x3d_x3d2svg --output-on-failure
 """
 
-[tasks.asset-import]
-description = "Configure + build + ctest the out-of-SDK asset-import consumer (no assimp; fixture backend). Add -DX3D_CPP_BUILD_ASSIMP=ON locally for real formats."
+[tasks.build-import]
+description = "Configure, build, and ctest the mesh-import backends (glTF, Assimp, USD) and the `x3d import` CLI with the `import` preset in build-import/. Needs a system Assimp (libassimp-dev). Mirrors the GitHub `import` job."
 run = """
-cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON
-cmake --build build-asset-import
-ctest --test-dir build-asset-import -R x3d_assetimport --output-on-failure
+cmake --preset import
+cmake --build --preset import --target x3d_import_tests x3d_import_assimp_test x3d_import_usd_test x3d_cli
+ctest --preset import -j "$(nproc)"
 """
 
 [tasks.authoring-footprint]
@@ -243,7 +243,7 @@ depends = ["test", "conformance-gate", "doc-ctest-gate", "build", "build-ci", "b
 
 [tasks.ci-all]
 description = "Run ci plus the sanitizer suite, CPU/OpenGL example gates, and the native SAI provider proof."
-depends = ["ci", "build-san", "validate-examples", "sai-provider"]
+depends = ["ci", "build-san", "build-import", "validate-examples", "sai-provider"]
 
 [tasks.doc-ctest-gate]
 description = "Doc ctest-command gate: every `ctest -R x3d_*` in docs/wiki must match a real add_test(NAME …) target (doctest case names are not ctest targets)."

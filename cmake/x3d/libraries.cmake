@@ -70,6 +70,30 @@ set_target_properties(x3d_cpp_runtime PROPERTIES EXPORT_NAME runtime)
 target_link_libraries(x3d_cpp_runtime PUBLIC x3d_cpp::authoring_runtime)
 target_compile_features(x3d_cpp_runtime PUBLIC cxx_std_20)
 
+# Mesh import: the ImportScene IR, emit, texture plan, material GLSL and the
+# vendored cgltf glTF backend. Optional Assimp / USD backends are separate
+# source-tree libraries (cmake/x3d/import.cmake).
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/shaders/usd_preview_surface.frag"
+    X3D_USD_PREVIEW_SURFACE_FRAG_CONTENT)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/shaders/usd_preview_surface_embed.hpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/import/usd_preview_surface_embed.hpp"
+    @ONLY)
+add_library(x3d_cpp_import ${_x3d_node_library_type}
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/AssetImport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/ImportEmit.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/TexturePlan.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/MaterialGlsl.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import/gltf/CgltfSource.cpp")
+add_library(x3d_cpp::import ALIAS x3d_cpp_import)
+set_target_properties(x3d_cpp_import PROPERTIES EXPORT_NAME import)
+target_link_libraries(x3d_cpp_import PUBLIC x3d_cpp::authoring_runtime)
+target_include_directories(x3d_cpp_import PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/import")
+target_compile_features(x3d_cpp_import PUBLIC cxx_std_20)
+
 if(X3D_CPP_SHARED_NODES)
     if(APPLE)
         set(_x3d_runtime_install_rpath "@loader_path")
@@ -78,7 +102,8 @@ if(X3D_CPP_SHARED_NODES)
     endif()
     foreach(_runtime_target IN ITEMS
             x3d_cpp_authoring_runtime
-            x3d_cpp_runtime)
+            x3d_cpp_runtime
+            x3d_cpp_import)
         set_target_properties(${_runtime_target} PROPERTIES
             VERSION "${PROJECT_VERSION}"
             SOVERSION "${X3D_CPP_SOVERSION}"
@@ -121,4 +146,4 @@ set_target_properties(x3d_cpp_sdk PROPERTIES EXPORT_NAME sdk)
 target_include_directories(x3d_cpp_sdk INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/x3d_cpp>")
-target_link_libraries(x3d_cpp_sdk INTERFACE x3d_cpp::x3d_cpp)
+target_link_libraries(x3d_cpp_sdk INTERFACE x3d_cpp::x3d_cpp x3d_cpp::import)

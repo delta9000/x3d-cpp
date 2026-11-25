@@ -53,7 +53,13 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_parse_tests
         x3d_extract_tests
         x3d_events_tests
-        x3d_fileresolver_test)
+        x3d_fileresolver_test
+        x3d_import_tests)
+    foreach(_t IN ITEMS x3d_import_assimp_test x3d_import_usd_test)
+        if(TARGET ${_t})
+            list(APPEND _x3d_behavior_targets ${_t})
+        endif()
+    endforeach()
     if(X3D_CPP_BUILD_EXAMPLES)
         list(APPEND _x3d_behavior_targets
             x3d_example_01_load_validate_convert
@@ -136,7 +142,13 @@ if(X3D_CPP_BUILD_TESTS)
         x3d_extract_tests
         x3d_events_tests
         x3d_hanim_skin_tests
-        x3d_fileresolver_test)
+        x3d_fileresolver_test
+        x3d_import)
+    foreach(_t IN ITEMS x3d_import_assimp x3d_import_usd)
+        if(TEST ${_t})
+            list(APPEND _x3d_behavior_tests ${_t})
+        endif()
+    endforeach()
     if(X3D_CPP_BUILD_EXAMPLES)
         list(APPEND _x3d_behavior_tests
             x3d_example_01_load_validate_convert

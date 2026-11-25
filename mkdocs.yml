@@ -60,6 +60,7 @@ nav:
           - Add a behavior System: how-to/add-a-behavior-system.md
           - Drive the context and extractor directly: how-to/use-the-low-level-api.md
           - Build a scene in code: how-to/build-a-scene-in-code.md
+          - Import a model: how-to/import-a-model.md
           - Measure tick phases: how-to/measure-tick-phases.md
       - Work on x3d-cpp:
           - Verify a change: how-to/verify-a-change.md
@@ -81,7 +82,6 @@ nav:
           - Headless CPU rasterizer: reference/examples/cpu-raster.md
           - PoC OpenGL renderer: reference/examples/poc-renderer.md
           - Headless SVG projector: reference/examples/x3d2svg.md
-          - Asset import converter: reference/examples/asset-import.md
       - Subsystems:
           - Generator and bindings:
               - Generator pipeline: reference/subsystems/generator.md
@@ -139,7 +139,8 @@ nav:
               - Font metrics: reference/subsystems/system-font-metrics.md
               - SDK facade: reference/subsystems/sdk-facade.md
               - CLI suite: reference/subsystems/cli-suite.md
-              - Asset import: reference/subsystems/asset-import.md
+              - Mesh import: reference/subsystems/asset-import.md
+              - Authoring and SceneBuilder: reference/subsystems/authoring.md
               - Conformance infrastructure: reference/subsystems/conformance-infra.md
       - Working on x3d-cpp:
           - Build and mise tasks: reference/build-and-tasks.md
@@ -230,6 +231,7 @@ nav:
           - "ADR-0074: Adopt a native session into the SAI provider": explanation/decisions/0074-sai-adopt-session.md
           - "ADR-0075: Queued live SAI ROUTE addition": explanation/decisions/0075-sai-live-route-addition.md
           - "ADR-0076: Fold the SAI SDK back into x3d-cpp": explanation/decisions/0076-fold-sai-into-x3d-cpp.md
+          - "ADR-0078: Mesh import is an SDK component": explanation/decisions/0078-mesh-import-in-the-sdk.md
   - SAI SDK:
       - Overview: sai/index.md
       - Tutorials:

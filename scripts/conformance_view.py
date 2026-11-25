@@ -257,7 +257,9 @@ def build_model(repo: pathlib.Path) -> dict:
         # The "behaves" axis is about behavioral event Systems (events/scene/script).
         # runtime/extract/ is the "extracts" axis — its *System files (MaterialSystem,
         # SceneExtractor) wire rendering, not behavior, so they don't count here.
-        if "/tests/" in path or "/extract/" in path:
+        # runtime/import/ builds documents from foreign models; its casts are
+        # authoring, not wiring.
+        if "/tests/" in path or "/extract/" in path or "/import/" in path:
             continue
         is_sys = "system" in hpp.name.lower()
         targets |= detect_system_targets(_read(hpp), is_system_file=is_sys)

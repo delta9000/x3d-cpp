@@ -2,7 +2,7 @@
 title: Seam matrix
 summary: Interfaces, available implementations, and contract tests.
 tags: [seam, reference]
-updated: 2026-11-05
+updated: 2026-11-25
 related: []
 ---
 
@@ -23,6 +23,7 @@ cover their fixtures, not every X3D obligation. Conformance status belongs in
 | TextureResolver | Stable callback | Optional stb_image and Wuffs | `x3d_texture_tests` |
 | GeoProjection | Frozen mathematical interface; context-owned | Built-in ellipsoid conversion; optional PROJ | `x3d_geometry_scene` (`geo_projection_test.cpp`), `x3d_proj_geo_swap` |
 | MovieDecoder | Stable callback | Optional pl_mpeg MPEG-1 | `x3d_movie_tests` |
+| ImportSource | Experimental abstract backend; registry by priority | Built-in cgltf glTF; optional Assimp and tinyusdz USD | `x3d_import` (glTF round-trip oracle), `x3d_import_assimp` (agreement with glTF on `twobox.glb`, round trips), `x3d_import_usd` |
 | RenderDelta | Experimental in-process feed | CPU, OpenGL, SVG, and native-host examples | `x3d_native_host_contract` and example suites |
 | Portable SAI provider | Experimental source-level contract | Native provider; SAI SDK reference backend (`sai/`) | `sai_provider_reference`, `sai_provider_native_runtime`, `sai_provider_presentation`, `sai_provider_adopt_session` |
 

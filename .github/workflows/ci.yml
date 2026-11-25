@@ -133,6 +133,34 @@ jobs:
       - name: Test ext suite
         run: ctest --preset ext -j "$(nproc)"
 
+  # The mesh-import backends that need a third-party library (Assimp from apt,
+  # tinyusdz fetched and patched) build in build-import/; mirrors
+  # `mise run build-import`. The glTF backend is in the behavior suite.
+  import:
+    name: Mesh import backends (Assimp + USD) build + ctest
+    needs: changes
+    if: needs.changes.outputs.cpp == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Install compiler + cmake + ninja + ccache + Assimp
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build ccache g++ mold libassimp-dev
+      - name: ccache cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-import-${{ github.sha }}
+          restore-keys: ccache-import-
+      - name: Bound ccache storage
+        run: ccache --max-size=500M
+      - name: Configure (`import` preset)
+        run: cmake --preset import
+      - name: Build import tests + CLI
+        run: cmake --build --preset import --target x3d_import_tests x3d_import_assimp_test x3d_import_usd_test x3d_cli
+      - name: Test import suite
+        run: ctest --preset import -j "$(nproc)"
+
   # The SAI SDK in sai/ is its own CMake project and uv package; mirrors
   # `mise run sai-ci` (UOM pin, generator determinism, SAI registers, generator
   # pytest, C++ build + ctest).

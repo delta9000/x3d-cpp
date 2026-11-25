@@ -977,6 +977,54 @@ check "rejected PROTO conversion leaves output untouched" "$(cat "$TD/unknown-pr
 ec=$("$CLI" convert "$TD/unknown-proto-child.x3d" -f xml --allow-lossy >/dev/null 2>&1; echo $?)
 check "discarded PROTO opaque child permits explicit lossy opt-in" "$ec" "0"
 
+# ---------------------------------------------------------------------------
+# import: model -> X3D, and the extract -> import round trip.
+# ---------------------------------------------------------------------------
+ec=$("$CLI" import --help >/dev/null 2>&1; echo $?)
+check "import --help exits 0" "$ec" "0"
+ec=$("$CLI" import >/dev/null 2>&1; echo $?)
+check "import with no args is a usage error" "$ec" "1"
+backends=$("$CLI" import --list-backends 2>/dev/null || true)
+if [[ "$backends" == *"gltf"* ]]; then
+    echo "ok:   import --list-backends lists gltf"
+else
+    echo "FAIL: import --list-backends does not list gltf"
+    failures=$(( failures + 1 ))
+fi
+printf 'not a model' > "$TD/model.nope"
+ec=$("$CLI" import "$TD/model.nope" -o "$TD/nope.x3d" >/dev/null 2>&1; echo $?)
+check "import of an unknown extension fails" "$ec" "2"
+ec=$("$CLI" import "$TD/missing.glb" -o "$TD/missing.x3d" >/dev/null 2>&1; echo $?)
+check "import of a missing file fails" "$ec" "2"
+ec=$("$CLI" import "$FIXTURE_XML" --backend nope -o "$TD/x.x3d" >/dev/null 2>&1; echo $?)
+check "import with an unknown backend fails" "$ec" "2"
+
+# Round trip: extract the fixture to glb, import it back, and check it.
+ec=$("$CLI" extract "$FIXTURE_XML" -o "$TD/rt.glb" >/dev/null 2>&1; echo $?)
+check "extract fixture to glb" "$ec" "0"
+ec=$("$CLI" import "$TD/rt.glb" -o "$TD/rt/out.x3d" --verify >/dev/null 2>&1; echo $?)
+check "import glb with --verify (creates the output directory)" "$ec" "0"
+ec=$("$CLI" validate "$TD/rt/out.x3d" >/dev/null 2>&1; echo $?)
+check "imported X3D validates" "$ec" "0"
+grep -q '<Shape' "$TD/rt/out.x3d"
+check "imported X3D has a Shape" "$?" "0"
+ec=$("$CLI" import "$TD/rt.glb" -f json --profile full >"$TD/rt.json" 2>/dev/null; echo $?)
+check "import glb to JSON on stdout" "$ec" "0"
+ec=$("$CLI" convert "$TD/rt.json" -f xml >/dev/null 2>&1; echo $?)
+check "imported JSON reparses" "$ec" "0"
+if [[ -n "$REPO_ROOT" && -f "$REPO_ROOT/runtime/import/tests/fixtures/twobox.glb" ]]; then
+    ec=$("$CLI" import "$REPO_ROOT/runtime/import/tests/fixtures/twobox.glb" -o "$TD/twobox/twobox.x3d" --verify >/dev/null 2>&1; echo $?)
+    check "import textured glb with --verify" "$ec" "0"
+    ls "$TD"/twobox/assets/*.png >/dev/null 2>&1
+    check "textured import writes its image to assets/" "$?" "0"
+    grep -q 'url="&quot;assets/' "$TD/twobox/twobox.x3d"
+    check "textured import references assets/ relatively" "$?" "0"
+    ec=$("$CLI" import "$REPO_ROOT/runtime/import/tests/fixtures/twobox.glb" -o "$TD/twobox-nt.x3d" --no-textures >/dev/null 2>&1; echo $?)
+    check "import --no-textures" "$ec" "0"
+    ! grep -q 'ImageTexture' "$TD/twobox-nt.x3d"
+    check "--no-textures writes no ImageTexture" "$?" "0"
+fi
+
 echo ""
 if [[ "$failures" -gt 0 ]]; then
     echo "x3d_cli_test: $failures failure(s)"

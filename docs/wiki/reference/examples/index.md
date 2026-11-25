@@ -2,12 +2,11 @@
 title: Examples
 summary: Every example program in the repository, what it shows, how it is built and where its page is.
 tags: [reference, examples]
-updated: 2026-11-20
+updated: 2026-11-25
 related:
   - cpu-raster.md
   - poc-renderer.md
   - x3d2svg.md
-  - asset-import.md
 ---
 
 # Examples
@@ -58,5 +57,4 @@ Each is off by default and builds into its own directory.
 | CPU rasterizer and GLSL emulation | `X3D_CPP_BUILD_CPURASTER` | `mise run cpuraster` | [Headless CPU rasterizer](cpu-raster.md) |
 | OpenGL renderer | `X3D_CPP_BUILD_POC` | `mise run poc` | [PoC OpenGL renderer](poc-renderer.md) |
 | SVG projector (façade only, no dependencies) | `X3D_CPP_BUILD_X3D2SVG` | `mise run x3d2svg` | [Headless SVG projector](x3d2svg.md) |
-| Foreign asset converter | `X3D_CPP_BUILD_ASSET_IMPORT` | `mise run asset-import` | [Asset import converter](asset-import.md) |
 | Headless SAI host | Built from `examples/sai_host/` | `mise run sai-provider` | [Headless host example](../../sai/reference/host-example.md) |

@@ -20,8 +20,6 @@ option(X3D_CPP_PER_HEADER_CHECKS "Compile each header in isolation as a ctest" O
 # Opt-in OpenGL consumer; enabling it can fetch GLFW.
 option(X3D_CPP_BUILD_POC "Build the PoC OpenGL renderer" OFF)
 
-option(X3D_CPP_BUILD_ASSET_IMPORT "Build the asset-import consumer" OFF)
-
 option(X3D_CPP_BUILD_CPURASTER "Build the headless CPU rasterizer + GLSL emulation" OFF)
 
 option(X3D_CPP_BUILD_X3D2SVG "Build the headless X3D->SVG projector example" OFF)

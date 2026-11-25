@@ -1023,7 +1023,7 @@ seedUniforms(const x3d::runtime::extract::MaterialDesc &m,
   // these, so the direct render path seeds the spec-default fallbacks (metallic
   // workflow, ior 1.5, no clearcoat, opacityMode transparent). At these values the
   // portable shader is bit-parity with the native fixed-function PBR; only the
-  // asset-import --emit-glsl path (which bakes constants) exercises the extras.
+  // `x3d import --emit-glsl` path (which bakes constants) exercises the extras.
   u["uUseSpecularWorkflow"] = Value::integer(0);
   u["uSpecularColor"] = Value::v3(glsl::vec3(m.phong.specular));
   u["uIor"] = Value::flt(1.5f);

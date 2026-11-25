@@ -60,10 +60,11 @@ if [ -n "$leaked" ]; then
   exit 1
 fi
 
-# IO-free gate — kept in sync with _x3d_runtime_backend_excludes in CMakeLists.txt:
+# IO-free gate — kept in sync with _x3d_runtime_backend_excludes in cmake/x3d/install.cmake:
 # the SDK ships seam interfaces + core, never a concrete/reference backend.
 backends="$(find "$prefix/include/x3d_cpp" \( \
-    -type d \( -name miniaudio -o -name dsp -o -name io -o -name physics \) \
+    -type d \( -name miniaudio -o -name dsp -o -name io -o -name physics \
+                -o -name gltf -o -name assimp -o -name usd -o -name shaders \) \
     -o -type f -name 'RecordingBackend.hpp' \
   \) -print)"
 if [ -n "$backends" ]; then

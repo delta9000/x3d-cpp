@@ -19,6 +19,7 @@ find_package(x3d_cpp CONFIG REQUIRED)
 set(_public
     x3d_cpp::sdk
     x3d_cpp::authoring
+    x3d_cpp::import
     x3d_cpp::x3d_cpp)
 
 # Required for the export set to resolve. Restructurable; not promised.
@@ -59,4 +60,4 @@ if(_missing_impl)
     "find_package() cannot resolve the public entry points that depend on them.")
 endif()
 
-message(STATUS "installed target contract OK: 3 public + 4 implementation targets present")
+message(STATUS "installed target contract OK: 4 public + 4 implementation targets present")
