@@ -24,7 +24,7 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   the behavior suite, and a new `import` CI job and preset gate the Assimp and
   USD backends. The tinyusdz patch now also reads colour, intensity and
   exposure on every UsdLux light type, and SkelAnimation blend-shape weights
-  that have only time samples. ADR-0077.
+  that have only time samples. ADR-0078.
 - **Installed ECMAScript backend.** The Duktape `ScriptEngine` installs and
   exports as `x3d_cpp::ecmascript`, with `EcmaScriptBackend.hpp` and the two
   Duktape headers it includes. Before, `EcmaScriptBackend.hpp` was installed

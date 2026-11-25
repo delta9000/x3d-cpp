@@ -9,7 +9,7 @@ related:
   - ../../reference/subsystems/shaders.md
   - 0042-authoring-target.md
   - 0021-material-shader-design.md
-  - 0077-mesh-import-in-the-sdk.md
+  - 0078-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam
@@ -133,7 +133,7 @@ a swap-test — see the seam-status matrix):
 
 ## Amendment (2026-11-25)
 
-[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the importer into the SDK. The
+[ADR-0078](0078-mesh-import-in-the-sdk.md) moves the importer into the SDK. The
 canonical shader is now `runtime/import/shaders/usd_preview_surface.frag`, embedded
 in `x3d_cpp::import` for `materialGlsl()` (`runtime/import/MaterialGlsl.cpp`), and
 `--emit-glsl` is an `x3d import` option. The cpu_raster interpreter test and the PoC

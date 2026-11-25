@@ -4,7 +4,7 @@ summary: x3d_cpp::import reads glTF (and, with optional backends, OBJ, FBX, Coll
 tags: [subsystem, import, gltf, usd, assimp, texture-pipeline, cli]
 updated: 2026-11-25
 related:
-  - ../../explanation/decisions/0077-mesh-import-in-the-sdk.md
+  - ../../explanation/decisions/0078-mesh-import-in-the-sdk.md
   - ../../explanation/decisions/0044-asset-import-backend-selection.md
   - ../../explanation/decisions/0043-usd-material-portable-glsl-seam.md
   - gltf-export.md
@@ -21,7 +21,7 @@ scene's images, and `emitDocument()` builds an X3D 4.0 document from it.
 authoring runtime and no parser, execution context or extractor. `x3d/sdk.hpp`
 re-exports it as `sdk::importer`, `sdk::importFile`, `sdk::ImportOptions` and
 `sdk::ImportResult`. The decision is
-[ADR-0077](../../explanation/decisions/0077-mesh-import-in-the-sdk.md).
+[ADR-0078](../../explanation/decisions/0078-mesh-import-in-the-sdk.md).
 
 `x3d import` is the command-line front end (see [CLI](#cli)). Together with
 `x3d extract -o model.glb` ([glTF export](gltf-export.md)) it gives glTF round

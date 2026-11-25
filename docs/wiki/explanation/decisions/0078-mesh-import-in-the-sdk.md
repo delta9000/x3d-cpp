@@ -1,5 +1,5 @@
 ---
-title: "ADR-0077: Mesh import is an SDK component"
+title: "ADR-0078: Mesh import is an SDK component"
 summary: The glTF/OBJ/FBX/USD importer moves from examples/asset_import into runtime/import as x3d_cpp::import, with glTF built in, Assimp and USD as source-tree backends, and `x3d import` as its CLI.
 tags: [adr, import, gltf, usd, assimp, cli, build]
 updated: 2026-11-25
@@ -10,7 +10,7 @@ related:
   - ../../reference/subsystems/asset-import.md
 ---
 
-# ADR-0077: Mesh import is an SDK component
+# ADR-0078: Mesh import is an SDK component
 
 - Status: Accepted
 - Date: 2026-11-25

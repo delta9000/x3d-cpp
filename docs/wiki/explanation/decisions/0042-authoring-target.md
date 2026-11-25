@@ -6,7 +6,7 @@ updated: 2026-11-25
 related:
   - ../architecture.md
   - ../../reference/subsystems/authoring.md
-  - 0077-mesh-import-in-the-sdk.md
+  - 0078-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0042: Slim Authoring Target & Ingestion Pipeline
@@ -77,7 +77,7 @@ and authoring linkage contract remain. There is no absolute size budget or
 
 ## Amendment (2026-11-25)
 
-[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the importer into the SDK as
+[ADR-0078](0078-mesh-import-in-the-sdk.md) moves the importer into the SDK as
 `x3d_cpp::import` and replaces `x3d_asset_import` with `x3d import`; the
 `--verify` re-parse stays in the CLI, so the import library links no parser.
 `examples/asset_import/` and its `x3d_authoring_smoke` are removed: the

@@ -231,7 +231,7 @@ nav:
           - "ADR-0074: Adopt a native session into the SAI provider": explanation/decisions/0074-sai-adopt-session.md
           - "ADR-0075: Queued live SAI ROUTE addition": explanation/decisions/0075-sai-live-route-addition.md
           - "ADR-0076: Fold the SAI SDK back into x3d-cpp": explanation/decisions/0076-fold-sai-into-x3d-cpp.md
-          - "ADR-0077: Mesh import is an SDK component": explanation/decisions/0077-mesh-import-in-the-sdk.md
+          - "ADR-0078: Mesh import is an SDK component": explanation/decisions/0078-mesh-import-in-the-sdk.md
   - SAI SDK:
       - Overview: sai/index.md
       - Tutorials:

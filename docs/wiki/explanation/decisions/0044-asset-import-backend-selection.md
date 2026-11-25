@@ -8,14 +8,14 @@ related:
   - 0042-authoring-target.md
   - 0043-usd-material-portable-glsl-seam.md
   - 0022-scriptengine-second-backend-swap-test.md
-  - 0077-mesh-import-in-the-sdk.md
+  - 0078-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0044: Asset-Import Backend Selection — Priority Registry + cgltf glTF Path
 
 ## Status
 
-Accepted; amended by [ADR-0077](0077-mesh-import-in-the-sdk.md) (2026-11-25). The registry
+Accepted; amended by [ADR-0078](0078-mesh-import-in-the-sdk.md) (2026-11-25). The registry
 and priorities below hold; where they live, the fixture backend and the cgltf flag changed.
 
 ## Context
@@ -95,7 +95,7 @@ two independent backends satisfying one frozen interface, checked by CI.
 
 ## Amendment (2026-11-25)
 
-[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the registry into the SDK
+[ADR-0078](0078-mesh-import-in-the-sdk.md) moves the registry into the SDK
 (`runtime/import/ImportSource.hpp`). `builtinBackends()` registers glTF, and
 `addAssimpBackend()` / `addUsdBackend()` add the source-tree backends, so there is no
 `registerBuiltinBackends` or `HAVE_*` macro. The `fixture:` backend is removed; the
@@ -108,6 +108,6 @@ the KHR extensions listed on the subsystem page.
 ## Related
 
 - [Mesh import](../../reference/subsystems/asset-import.md)
-- [ADR-0077: Mesh import is an SDK component](0077-mesh-import-in-the-sdk.md)
+- [ADR-0078: Mesh import is an SDK component](0078-mesh-import-in-the-sdk.md)
 - [ADR-0042: Slim Authoring Target & Ingestion Pipeline](0042-authoring-target.md)
 - [ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam](0043-usd-material-portable-glsl-seam.md)
