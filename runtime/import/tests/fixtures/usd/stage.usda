@@ -1,0 +1,103 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    upAxis = "Z"
+    metersPerUnit = 0.01
+    timeCodesPerSecond = 24
+    startTimeCode = 0
+    endTimeCode = 48
+)
+
+# The stage features the USD backend reads beyond Tydra: up axis and units,
+# a camera, lights (a cone-shaped sphere light), time-sampled xformOps,
+# GeomSubset materials and displayColor. Used by usd_source_test.
+def Xform "World"
+{
+    def Camera "Cam"
+    {
+        float focalLength = 50
+        float horizontalAperture = 36
+        float verticalAperture = 24
+        float2 clippingRange = (0.5, 500)
+        double3 xformOp:translate = (0, -10, 2)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def DistantLight "Sun"
+    {
+        float inputs:intensity = 0.375
+        float inputs:exposure = 1
+        color3f inputs:color = (1, 0.5, 0.25)
+    }
+
+    def SphereLight "Lamp"
+    {
+        float inputs:intensity = 0.8
+        float inputs:shaping:cone:angle = 30
+        float inputs:shaping:cone:softness = 0.5
+        double3 xformOp:translate = (0, 0, 5)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+
+    def Xform "Spinner"
+    {
+        double3 xformOp:translate.timeSamples = {
+            0: (0, 0, 0),
+            24: (100, 0, 0),
+            48: (0, 0, 0),
+        }
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Mesh "Quad" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            int[] faceVertexCounts = [3, 3]
+            int[] faceVertexIndices = [0, 1, 2, 0, 2, 3]
+            point3f[] points = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)]
+            rel material:binding = </World/Red>
+
+            def GeomSubset "second" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token elementType = "face"
+                uniform token familyName = "materialBind"
+                int[] indices = [1]
+                rel material:binding = </World/Blue>
+            }
+        }
+    }
+
+    def Mesh "Plain"
+    {
+        int[] faceVertexCounts = [3]
+        int[] faceVertexIndices = [0, 1, 2]
+        point3f[] points = [(0, 0, 1), (1, 0, 1), (0, 1, 1)]
+        color3f[] primvars:displayColor = [(0.1, 0.9, 0.2)]
+        uniform bool doubleSided = 1
+    }
+
+    def Material "Red"
+    {
+        token outputs:surface.connect = </World/Red/S.outputs:surface>
+        def Shader "S"
+        {
+            uniform token info:id = "UsdPreviewSurface"
+            color3f inputs:diffuseColor = (1, 0, 0)
+            token outputs:surface
+        }
+    }
+
+    def Material "Blue"
+    {
+        token outputs:surface.connect = </World/Blue/S.outputs:surface>
+        def Shader "S"
+        {
+            uniform token info:id = "UsdPreviewSurface"
+            color3f inputs:diffuseColor = (0, 0, 1)
+            float inputs:metallic = 0.5
+            token outputs:surface
+        }
+    }
+}

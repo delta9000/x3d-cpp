@@ -50,7 +50,7 @@ DOC_ROOTS = ("docs/wiki", "docs/conformance")
 # Changed-code roots that have docs worth checking. generated bindings are
 # machine-emitted (their "doc" is the generator), so they are excluded; so is
 # vendored third-party code (not ours to document). examples/ is included so the
-# out-of-SDK consumers (cpu_raster, poc_renderer, asset_import) are drift-checked
+# out-of-SDK consumers (cpu_raster, poc_renderer, x3d2svg) are drift-checked
 # against their subsystem pages — they ship documented behavior too. The SAI
 # SDK and native adapter have their own pages in the same living-doc tree;
 # generated bindings and vendored dependencies remain excluded by _is_code.

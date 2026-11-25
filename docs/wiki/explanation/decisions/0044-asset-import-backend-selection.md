@@ -2,19 +2,21 @@
 title: "ADR-0044: Asset-Import Backend Selection — Priority Registry + cgltf glTF Path"
 summary: Replace the extension if/else backend dispatch with a priority-based BackendRegistry (plus a --backend override) so that multiple backends can claim the same file, and add a default-ON, header-only cgltf glTF backend that outranks assimp for glTF; the ImportSource seam's genericity is proven by a tolerant cgltf-vs-assimp differential swap-test.
 tags: [adr, asset-import, backends, gltf, cgltf, seam]
-updated: 2026-07-09
+updated: 2026-11-25
 related:
   - ../../reference/subsystems/asset-import.md
   - 0042-authoring-target.md
   - 0043-usd-material-portable-glsl-seam.md
   - 0022-scriptengine-second-backend-swap-test.md
+  - 0077-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0044: Asset-Import Backend Selection — Priority Registry + cgltf glTF Path
 
 ## Status
 
-Accepted
+Accepted; amended by [ADR-0077](0077-mesh-import-in-the-sdk.md) (2026-11-25). The registry
+and priorities below hold; where they live, the fixture backend and the cgltf flag changed.
 
 ## Context
 
@@ -91,8 +93,21 @@ two independent backends satisfying one frozen interface, checked by CI.
 - Morph targets, skins/animation, and KHR extensions beyond `lights_punctual` are
   out of scope for this cut, as the IR carries none of them.
 
+## Amendment (2026-11-25)
+
+[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the registry into the SDK
+(`runtime/import/ImportSource.hpp`). `builtinBackends()` registers glTF, and
+`addAssimpBackend()` / `addUsdBackend()` add the source-tree backends, so there is no
+`registerBuiltinBackends` or `HAVE_*` macro. The `fixture:` backend is removed; the
+tests build `ImportScene`s directly. The cgltf backend is always built, so
+`X3D_CPP_BUILD_CGLTF` is gone. The swap test is the case "assimp: agrees with the
+built-in glTF backend on twobox.glb" in `runtime/import/tests/assimp_source_test.cpp`,
+run by the GitHub `import` job. The IR now carries morph targets, skins, animation and
+the KHR extensions listed on the subsystem page.
+
 ## Related
 
-- [Asset import](../../reference/subsystems/asset-import.md)
+- [Mesh import](../../reference/subsystems/asset-import.md)
+- [ADR-0077: Mesh import is an SDK component](0077-mesh-import-in-the-sdk.md)
 - [ADR-0042: Slim Authoring Target & Ingestion Pipeline](0042-authoring-target.md)
 - [ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam](0043-usd-material-portable-glsl-seam.md)

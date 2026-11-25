@@ -67,6 +67,11 @@ if(X3D_CPP_BUILD_TESTS)
     set(X3D_CPP_HANIM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime/hanim")
     file(GLOB X3D_CPP_HANIM_HEADERS CONFIGURE_DEPENDS "${X3D_CPP_HANIM_DIR}/*.hpp")
 
+    # Mesh import (x3d_cpp::import): only the public top-level headers; the
+    # backend subdirectories include third-party headers.
+    set(X3D_CPP_IMPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime/import")
+    file(GLOB X3D_CPP_IMPORT_HEADERS CONFIGURE_DEPENDS "${X3D_CPP_IMPORT_DIR}/*.hpp")
+
     # (1) Aggregate target: one .cpp that #includes all generated headers plus
     #     the runtime umbrella and builds it. This proves the whole set is
     #     mutually consistent in one TU.
@@ -141,6 +146,10 @@ if(X3D_CPP_BUILD_TESTS)
         foreach(_hdr IN LISTS X3D_CPP_HANIM_HEADERS)
             _x3d_add_header_isolation_source(
                 hanim "${X3D_CPP_HANIM_DIR}" "${_hdr}")
+        endforeach()
+        foreach(_hdr IN LISTS X3D_CPP_IMPORT_HEADERS)
+            _x3d_add_header_isolation_source(
+                import "${X3D_CPP_IMPORT_DIR}" "${_hdr}")
         endforeach()
 
         add_library(x3d_header_isolation OBJECT EXCLUDE_FROM_ALL

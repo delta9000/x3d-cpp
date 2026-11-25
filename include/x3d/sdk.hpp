@@ -43,6 +43,7 @@
 #include "RenderItem.hpp"
 #include "MeshBuilder.hpp"
 #include "GltfWriter.hpp"
+#include "AssetImport.hpp"
 #include "AssetResolver.hpp"
 #include "TextureResolver.hpp"
 #include "FontMetrics.hpp"
@@ -151,6 +152,11 @@ using x3d::runtime::extract::GltfWriteOptions;
 using x3d::runtime::extract::GltfWriteReport;
 using x3d::runtime::extract::GltfSceneExtras; ///< lights, cameras, animations
 using x3d::runtime::extract::gltfExtrasFrom;
+/// Mesh import (glTF built in; Assimp and USD as optional backends).
+namespace importer = x3d::runtime::importer;
+using x3d::runtime::importer::importFile; ///< glTF / OBJ / FBX / USD -> X3D 4.0
+using x3d::runtime::importer::ImportOptions;
+using x3d::runtime::importer::ImportResult;
 using x3d::runtime::extract::Topology;
 using x3d::runtime::extract::MaterialDesc;
 using x3d::runtime::extract::MaterialModel;

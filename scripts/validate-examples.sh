@@ -139,55 +139,16 @@ echo "== registered PoC regressions (including software GL) =="
 # race for the same display number.
 ctest --test-dir build-poc -R '^x3d_poc_' --output-on-failure --no-tests=error -j1
 
-echo "== build asset_import (cgltf default, no assimp) =="
-cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=OFF >/dev/null
-cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_cgltf
-
-TMP_DIR="$(mktemp -d)"
-AI=build-asset-import/examples/asset_import/x3d_asset_import
-
-echo "== run asset_import (fixture) =="
-"$AI" fixture:cube -o "$TMP_DIR/cube.x3d" --verify --stats
-
-if [ ! -s "$TMP_DIR/cube.x3d" ]; then
-  echo "FAIL: cube.x3d missing or empty" >&2
-  exit 1
-fi
-
-echo "== run asset_import (cgltf glTF, default lightweight path) =="
-ctest --test-dir build-asset-import -R x3d_assetimport_cgltf --output-on-failure
-"$AI" examples/asset_import/assets/fixtures/twobox.glb -o "$TMP_DIR/twobox.x3d" --assets-dir "$TMP_DIR" --verify --stats
-if [ ! -s "$TMP_DIR/twobox.x3d" ]; then
-  echo "FAIL: twobox.x3d missing or empty" >&2
-  exit 1
-fi
+echo "== x3d import -> cpu_raster render (SDK importer feeding a renderer) =="
+# The importer's own tests (x3d_import, the `import` CI job) cover the
+# mapping; this checks an imported model renders to a non-blank frame.
+cmake --build build-cpuraster --target x3d_cli
+IMPORT_DIR="$(mktemp -d)"
+build-cpuraster/x3d import runtime/import/tests/fixtures/twobox.glb -o "$IMPORT_DIR/twobox.x3d" --verify
+"$CPU" "$IMPORT_DIR/twobox.x3d" -o "$IMPORT_DIR/twobox.ppm" -w 160 -H 120
+python3 tools/tests/check_scene_nonblank.py "$IMPORT_DIR/twobox.ppm" --label imported-twobox
 
 echo "== run authoring footprint gate =="
 bash scripts/authoring-footprint.sh
 
-# Guard the assimp path
-echo "== probe assimp availability =="
-HAS_ASSIMP=0
-if pkg-config --exists assimp; then
-  HAS_ASSIMP=1
-fi
-
-if [ "$HAS_ASSIMP" -eq 1 ]; then
-  echo "assimp available, building with cgltf + assimp..."
-  cmake -S . -B build-asset-import -G Ninja -DX3D_CPP_BUILD_ASSET_IMPORT=ON -DX3D_CPP_BUILD_STB=ON -DX3D_CPP_BUILD_CGLTF=ON -DX3D_CPP_BUILD_ASSIMP=ON >/dev/null
-  cmake --build build-asset-import --target x3d_asset_import x3d_assetimport_backend_swap
-
-  echo "== run asset_import (assimp) =="
-  "$AI" examples/asset_import/assets/fixtures/tri.obj -o "$TMP_DIR/tri.x3d" --verify --stats
-  if [ ! -s "$TMP_DIR/tri.x3d" ]; then
-    echo "FAIL: tri.x3d missing or empty" >&2
-    exit 1
-  fi
-
-  echo "== run backend swap-test (cgltf vs assimp — ImportSource seam genericity) =="
-  ctest --test-dir build-asset-import -R x3d_assetimport_backend_swap --output-on-failure
-else
-  echo "assimp not available; skipping assimp job"
-fi
-
-echo "== examples validated: cpu_raster + x3d2svg + poc_renderer + asset_import compile and run headless =="
+echo "== examples validated: cpu_raster + x3d2svg + poc_renderer compile and run headless; an imported model renders =="

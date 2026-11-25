@@ -107,8 +107,10 @@ target_compile_definitions(x3d_poc_renderer PRIVATE
     GLFW_INCLUDE_NONE
     "X3D_POC_ASSET_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/assets\""
     "X3D_POC_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/shaders\""
-    # Portable shaders are shared with the CPU interpreter.
+    # Portable shaders are shared with the CPU interpreter; the SDK owns the
+    # canonical usd_preview_surface.frag (runtime/import/shaders).
     "X3D_POC_PORTABLE_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../cpu_raster/shaders\""
+    "X3D_POC_IMPORT_SHADER_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/import/shaders\""
     # Bundled Liberation faces (shared with the SDK text tests; SIL OFL).
     "X3D_POC_FONT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/fonts\"")
 

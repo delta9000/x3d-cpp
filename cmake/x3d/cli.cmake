@@ -6,6 +6,20 @@ set_target_properties(x3d_cli PROPERTIES OUTPUT_NAME "x3d")
 target_include_directories(x3d_cli PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/x3d-cli")
 target_link_libraries(x3d_cli PRIVATE x3d_cpp::sdk)
+# `x3d import` reads glTF through the SDK; the optional Assimp and USD
+# backends and the stb decoder (non-PNG/JPEG textures) join when built.
+if(TARGET x3d_import_assimp)
+    target_link_libraries(x3d_cli PRIVATE x3d_import_assimp)
+    target_compile_definitions(x3d_cli PRIVATE X3D_IMPORT_HAVE_ASSIMP=1)
+endif()
+if(TARGET x3d_import_usd)
+    target_link_libraries(x3d_cli PRIVATE x3d_import_usd)
+    target_compile_definitions(x3d_cli PRIVATE X3D_IMPORT_HAVE_USD=1)
+endif()
+if(TARGET x3d_stb)
+    target_link_libraries(x3d_cli PRIVATE x3d_stb)
+    target_compile_definitions(x3d_cli PRIVATE X3D_IMPORT_HAVE_STB=1)
+endif()
 # `x3d sim` drives the behavior runtime; link the ECMAScript backend so Script
 # nodes actually run when it is available (it lives behind X3D_CPP_BUILD_SCRIPT,
 # ON by default, independent of X3D_CPP_BUILD_TESTS). When absent (explicitly

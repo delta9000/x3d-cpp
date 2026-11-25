@@ -52,13 +52,15 @@ Each case covers one scenario and is named `<file stem>: <scenario>` (for exampl
 | `x3d_cpp::authoring_runtime` | Field formatting and codec writers |
 | `x3d_cpp::runtime` | Parsers and mesh construction, linked to the authoring layer |
 | `x3d_cpp::authoring` | Interface target for authoring consumers |
+| `x3d_cpp::import` | Mesh import with the built-in glTF backend ([Mesh import](subsystems/asset-import.md)) |
 | `x3d_cpp::sdk` | Interface target for the full SDK |
 
 The implementation libraries are shared by default. Configure with
-`-DX3D_CPP_SHARED_NODES=OFF` to build all three as static libraries.
+`-DX3D_CPP_SHARED_NODES=OFF` to build all four as static libraries.
 The runtime combines compiled sources and headers; it is not header-only.
-Optional backend libraries are configured in `cmake/x3d/backends.cmake` and
-`script-backend.cmake`. See the [seam matrix](seam-matrix.md).
+Optional backend libraries are configured in `cmake/x3d/backends.cmake`,
+`script-backend.cmake` and `import.cmake` (the Assimp and USD import backends,
+built and tested by the `import` preset). See the [seam matrix](seam-matrix.md).
 
 ## Developer tooling
 

@@ -56,8 +56,12 @@ backend factories have their own headers and build options.
 
 `x3d_cpp::authoring` and `x3d/authoring.hpp` provide nodes, the document model,
 `SceneBuilder`, and writers without simulation or extraction. See
-[Asset import](asset-import.md#scenebuilder). `sdk.hpp` re-exports the builder as
+[Authoring and SceneBuilder](authoring.md#scenebuilder). `sdk.hpp` re-exports the builder as
 `sdk::SceneBuilder`.
+
+`x3d_cpp::import` is the mesh importer (glTF built in). `sdk.hpp` re-exports it as
+`sdk::importer`, `sdk::importFile`, `sdk::ImportOptions` and `sdk::ImportResult`; the
+Assimp and USD backends are source-tree libraries. See [Mesh import](asset-import.md).
 
 Extensions use `x3d/ext.hpp` and the separate opt-in extension target.
 See [the extension firewall](ext-firewall.md).

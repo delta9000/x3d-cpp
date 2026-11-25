@@ -19,7 +19,7 @@ you already have the name.
 SOURCE TIERS: query searches `runtime` code only by default (the clause-walk's "find the
 implementation" case — test bodies are prose-rich and otherwise out-rank dense impl). Add
 `--source example` for the out-of-SDK consumers under examples/ (cpu_raster, poc_renderer,
-asset_import), `--source test` to include tests as corroboration, repeat `--source` to
+x3d2svg), `--source test` to include tests as corroboration, repeat `--source` to
 combine tiers, or `--all` for every tier (runtime + example + test + generated).
 
 PLUGGABLE BACKENDS (configure via environment variables — bring your own

@@ -2,7 +2,7 @@
 title: SDK capabilities
 summary: Index of the current SDK surface, one row per capability, with the page that states its contract.
 tags: [reference, sdk, capabilities]
-updated: 2026-11-14
+updated: 2026-11-25
 related:
   - native-host-contract.md
   - seam-matrix.md
@@ -24,7 +24,7 @@ resource, and identity rules.
 | Parsing | XML, ClassicVRML, VRML97, JSON, and gzip input. | [Parsing](subsystems/parse-readers.md) |
 | Document model and bindings | Typed X3D 4.0 nodes, fields, and reflection. | [Document model and bindings](subsystems/generated-bindings.md) |
 | Node inspection | `sdk::forEachNode` visits each reachable node once; `sdk::readField<T>` returns an owned copy of a named field. | [SDK facade](subsystems/sdk-facade.md) |
-| Scene authoring | `SceneBuilder` creates nodes by C++ type or X3D type name, attaches children by containerField, sets fields from text or typed values, and adds ROUTEs, rejecting unknown fields, malformed values, and ROUTEs with the wrong direction or type. Child node types and value ranges are not checked by the builder. | [Asset conversion](subsystems/asset-import.md#scenebuilder) |
+| Scene authoring | `SceneBuilder` creates nodes by C++ type or X3D type name, attaches children by containerField, sets fields from text or typed values, and adds ROUTEs, rejecting unknown fields, malformed values, and ROUTEs with the wrong direction or type. Child node types and value ranges are not checked by the builder. | [Authoring and SceneBuilder](subsystems/authoring.md#scenebuilder) |
 | Serialization | XML, canonical XML, JSON, and ClassicVRML writers. | [Serialization](subsystems/codecs-writers.md) |
 | Prototype expansion | Local and resolved external declarations, instance fields, IS connections, and nested routes. | [Prototype expansion](subsystems/proto-expand.md) |
 | Inline composition | Parse-time expansion, IMPORT/EXPORT, and resolver-driven runtime replacement. Asset-loaded deferred Inlines keep source ancestry to bound self and mutual cycles, and fetched documents forward their reader, range, and expansion warnings with source context. | [Inline composition](subsystems/inline-expand.md) |
@@ -37,6 +37,7 @@ resource, and identity rules.
 | Input and sensors | Pointer, drag, key-device, environmental, and load-state systems. Pointing-device sensors can be installed without navigation for hosts that own navigation. | [Input and sensors](subsystems/sensors.md) |
 | Extraction | Per-path render items, shared meshes, packed output, and incremental deltas. Switch and LOD selection changes keep unaffected placement IDs and GeomIds. | [Extraction pipeline](subsystems/extract.md) |
 | glTF export | `sdk::writeGlb` and `x3d extract -o out.glb` write extracted items as binary glTF 2.0: world-matrix nodes, shared meshes, lines and points, PBR/unlit materials, textures (PNG/JPEG files embedded through a host read callback or referenced by url, PixelTextures and host-decoded images embedded as PNG), lights as `KHR_lights_punctual`, viewpoints as cameras, and interpolator animation of Transforms, viewpoint and light poses, and (through `KHR_animation_pointer`) material, light and camera properties, coordinate, normal, texture-coordinate and TextureTransform animation as morph targets, and H-Anim humanoids as glTF skins with joint, HAnimMotion and displacer animation; movie, multi, cube and 3D textures are dropped. | [glTF export](subsystems/gltf-export.md) |
+| Mesh import | `sdk::importFile` and `x3d import` read glTF (built in) and, with the optional source-tree backends, OBJ, FBX, Collada and other Assimp formats and USD/USDA/USDC/USDZ into X3D 4.0: Transform hierarchy, IndexedTriangleSet/LineSet/PointSet with every UV set and vertex colours, Physical/Phong/Unlit materials with textures written once each, viewpoints, lights, skins as HAnimHumanoid, morph targets and TRS, weight, material, light and camera animation as interpolators and ROUTEs. Values X3D cannot hold are clamped or approximated and reported; ior, clearcoat and the specular workflow reach a renderer only through per-material GLSL. | [Mesh import](subsystems/asset-import.md) |
 | Materials and lights | Phong, Physical, and Unlit descriptors with scoped lights and render state. | [Materials and lights](subsystems/materials.md) |
 | Textures | Texture descriptors, multi-UV data, cube-map images, host decoding, and base-URL-aware resolver callbacks. | [Textures](subsystems/extract-textures.md) |
 | Text | Font metrics callback, layout, glyph meshes, and optional stb atlas. | [Text](subsystems/extract-text.md) |
@@ -50,7 +51,6 @@ resource, and identity rules.
 | Script execution | ScriptEngine interface, Duktape implementation, optional QuickJS comparison engine, bounded script heaps, and length-preserving string fields and scene creation. | [Script execution](subsystems/system-script-sai.md) |
 | SAI SDK | Portable C++20 SAI provider contract (`sai/`) with a reference backend, reference-only kernel extensions and its own UOM-driven generator; builds and installs separately from the runtime. | [SAI SDK](../sai/index.md) |
 | Native SAI provider | Opt-in portable service over a bounded native node subset, with named-node discovery, presentation materials and deltas, session adoption, and queued live ROUTE addition. | [Native SAI provider](../sai/reference/native-provider.md) |
-| Asset conversion | ImportSource backends, X3D emission, and consumer texture processing. | [Asset conversion](subsystems/asset-import.md) |
 | Extensions | Opt-in foreign geometry support and nonstandard physical-room and tracked-device sensors behind a separate header and target. | [Extensions](subsystems/ext-firewall.md) |
 
 ## Related

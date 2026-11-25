@@ -1140,7 +1140,8 @@ int main(int argc, char **argv) {
   // reference views, so screenshots line up apples-to-apples for the visual sweep.
   bool frontView = false;
   // --pbr-shader or X3D_POC_PBR_SHADER selects a PBR fragment source.
-  // pbr.frag loads from this example; other names load from cpu_raster/shaders.
+  // pbr.frag loads from this example; other names load from the SDK's
+  // runtime/import/shaders (usd_preview_surface.frag) or cpu_raster/shaders.
   std::string pbrShaderName;
   if (const char *e = std::getenv("X3D_POC_PBR_SHADER"); e && *e) pbrShaderName = e;
   for (int i = 1; i < argc; ++i) {
@@ -1501,13 +1502,16 @@ int main(int argc, char **argv) {
 
   // PBR program (lit.vert / pbr.frag)
   // Swap-test seam: --pbr-shader / X3D_POC_PBR_SHADER selects an alternate
-  // fragment source (e.g. the portable usd_preview_surface.frag) from the
-  // sibling cpu_raster shaders dir; empty/"pbr.frag" resolves to the native
-  // path below, unchanged.
+  // fragment source: the SDK's portable usd_preview_surface.frag
+  // (runtime/import/shaders) or one from the sibling cpu_raster shaders dir;
+  // empty/"pbr.frag" resolves to the native path below, unchanged.
   const bool usePortablePbrShader = !pbrShaderName.empty() && pbrShaderName != "pbr.frag";
-  const std::string pbrFragPath = usePortablePbrShader
-      ? std::string(X3D_POC_PORTABLE_SHADER_DIR) + "/" + pbrShaderName
-      : shaderDir + "/pbr.frag";
+  std::string pbrFragPath = shaderDir + "/pbr.frag";
+  if (usePortablePbrShader) {
+    pbrFragPath = std::string(X3D_POC_IMPORT_SHADER_DIR) + "/" + pbrShaderName;
+    if (!std::ifstream(pbrFragPath))
+      pbrFragPath = std::string(X3D_POC_PORTABLE_SHADER_DIR) + "/" + pbrShaderName;
+  }
   if (usePortablePbrShader)
     std::fprintf(stderr, "[poc] PBR fragment shader override: %s\n", pbrFragPath.c_str());
   GLuint pvs = compileShader(GL_VERTEX_SHADER,

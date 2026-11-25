@@ -4,7 +4,7 @@ summary: Construct an X3D document with SceneBuilder and write it in any encodin
 tags: [how-to, authoring]
 updated: 2026-11-14
 related:
-  - ../reference/subsystems/asset-import.md
+  - ../reference/subsystems/authoring.md
   - ../reference/subsystems/codecs-writers.md
 ---
 
@@ -69,5 +69,5 @@ std::cout << x3d::authoring::XmlWriter{}.writeDocument(scene.document());
 
 Whether a child's node type is legal in its slot, and value ranges. Every call
 and what makes it throw is in the
-[SceneBuilder reference](../reference/subsystems/asset-import.md#scenebuilder).
+[SceneBuilder reference](../reference/subsystems/authoring.md#scenebuilder).
 A complete program is `examples/embed_minimal/authoring.cpp`.

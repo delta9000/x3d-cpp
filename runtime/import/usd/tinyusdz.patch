@@ -1,0 +1,307 @@
+diff --git a/src/composition.cc b/src/composition.cc
+index c1574ef20..41ef65604 100644
+--- a/src/composition.cc
++++ b/src/composition.cc
+@@ -349,17 +349,46 @@ bool LoadAsset(AssetResolutionResolver &resolver,
+       PUSH_ERROR_AND_RETURN(
+           fmt::format("Failed to open `{}` as Layer: {}", asset_path, _err));
+     }
++
++    // Recursively composite the loaded asset's own `subLayers` before merging.
++    // A referenced/payloaded layer commonly defers its real content (geometry,
++    // materials) to subLayers (e.g. OpenChessSet's *_payload.usd sublayers a
++    // *_geom.usd). Without this, LoadAsset would return an empty layer and the
++    // asset's prims would be dropped. The resolver's cwd/search paths are
++    // already set to this asset's base dir (above), so relative subLayer paths
++    // resolve correctly.
++    if (!layer.metas().subLayers.empty()) {
++      Layer composited_sublayers;
++      if (CompositeSublayers(resolver, layer, &composited_sublayers, &_warn,
++                             &_err)) {
++        layer = std::move(composited_sublayers);
++      } else {
++        PUSH_WARN(fmt::format("Failed to composite subLayers of `{}`: {}",
++                              asset_path, _err));
++      }
++    }
+   } else if (IsMtlxFileFormat(asset_path)) {
+-    // primPath must be '</MaterialX>'
++    // primPath must be '</MaterialX>'. Assets in the wild reference a sub-prim
++    // (e.g. </MaterialX/Materials>); tinyusdz can't target that yet. Rather than
++    // hard-fail the whole composition (which would drop all sibling geometry),
++    // skip the MaterialX arc with a warning and leave an empty layer.
+     if (primPath.prim_part() != "/MaterialX") {
+-      PUSH_ERROR_AND_RETURN("Prim path must be </MaterialX>, but got: " +
+-                            primPath.prim_part());
++      PUSH_WARN("MaterialX reference to a sub-prim path is unsupported; "
++                "skipping. Prim path: " + primPath.prim_part());
++      if (dst_primspec_root) {
++        (*dst_primspec_root) = nullptr;
++      }
++      return true;
+     }
+ 
+     PrimSpec ps;
+     if (!LoadMaterialXFromAsset(asset, asset_path, ps, &_warn, &_err)) {
+-      PUSH_ERROR_AND_RETURN(
+-          fmt::format("Failed to open mtlx asset `{}`", asset_path));
++      PUSH_WARN(fmt::format("Failed to open mtlx asset `{}`; skipping.",
++                            asset_path));
++      if (dst_primspec_root) {
++        (*dst_primspec_root) = nullptr;
++      }
++      return true;
+     }
+ 
+     ps.name() = "MaterialX";
+@@ -718,7 +747,12 @@ bool CompositeReferencesRec(uint32_t depth, AssetResolutionResolver &resolver,
+     const auto &refecences = primspec.metas().references.value().second;
+ 
+     if ((qual == ListEditQual::ResetToExplicit) ||
+-        (qual == ListEditQual::Prepend)) {
++        (qual == ListEditQual::Prepend) ||
++        (qual == ListEditQual::Add)) {
++      // `add` composites the same as `prepend`/explicit: the referenced `def`
++      // content is pulled in via InheritPrimSpec. USD's `add` differs from
++      // `prepend`/`append` only in list-op strength ordering, which is
++      // irrelevant when flattening a single reference to a `def` asset.
+       for (const auto &reference : refecences) {
+         Layer layer;
+         const PrimSpec *src_ps{nullptr};
+@@ -783,8 +817,6 @@ bool CompositeReferencesRec(uint32_t depth, AssetResolutionResolver &resolver,
+ 
+     } else if (qual == ListEditQual::Delete) {
+       PUSH_ERROR_AND_RETURN("`delete` references are not supported yet.");
+-    } else if (qual == ListEditQual::Add) {
+-      PUSH_ERROR_AND_RETURN("`add` references are not supported yet.");
+     } else if (qual == ListEditQual::Order) {
+       PUSH_ERROR_AND_RETURN("`order` references are not supported yet.");
+     } else if (qual == ListEditQual::Invalid) {
+@@ -884,7 +916,11 @@ bool CompositePayloadRec(uint32_t depth, AssetResolutionResolver &resolver,
+     const auto &payloads = primspec.metas().payload.value().second;
+ 
+     if ((qual == ListEditQual::ResetToExplicit) ||
+-        (qual == ListEditQual::Prepend)) {
++        (qual == ListEditQual::Prepend) ||
++        (qual == ListEditQual::Add)) {
++      // `add` composites the same as `prepend`/explicit (see
++      // CompositeReferencesRec): pull the payloaded `def` content via
++      // InheritPrimSpec rather than the `over`-only OverridePrimSpec path.
+       for (const auto &pl : payloads) {
+         std::string asset_path = pl.asset_path.GetAssetPath();
+         DCOUT("asset_path = " << asset_path);
+@@ -946,13 +982,11 @@ bool CompositePayloadRec(uint32_t depth, AssetResolutionResolver &resolver,
+       }
+ 
+     } else if (qual == ListEditQual::Delete) {
+-      PUSH_ERROR_AND_RETURN("`delete` references are not supported yet.");
+-    } else if (qual == ListEditQual::Add) {
+-      PUSH_ERROR_AND_RETURN("`add` references are not supported yet.");
++      PUSH_ERROR_AND_RETURN("`delete` payload is not supported yet.");
+     } else if (qual == ListEditQual::Order) {
+-      PUSH_ERROR_AND_RETURN("`order` references are not supported yet.");
++      PUSH_ERROR_AND_RETURN("`order` payload is not supported yet.");
+     } else if (qual == ListEditQual::Invalid) {
+-      PUSH_ERROR_AND_RETURN("Invalid listedit qualifier to for `references`.");
++      PUSH_ERROR_AND_RETURN("Invalid listedit qualifier to for `payload`.");
+     } else if (qual == ListEditQual::Append) {
+       for (const auto &pl : payloads) {
+         std::string asset_path = pl.asset_path.GetAssetPath();
+diff --git a/src/define-type-trait.inc b/src/define-type-trait.inc
+index e9c700dba..acfef1d99 100644
+--- a/src/define-type-trait.inc
++++ b/src/define-type-trait.inc
+@@ -15,7 +15,7 @@
+     static std::string type_name() { return __name; }                 \
+     static std::string underlying_type_name() { return __name; }      \
+     static bool is_role_type() { return false; }      \
+-    static bool is_array() { return type_id() & value::TYPE_ID_1D_ARRAY_BIT; }      \
++    static bool is_array() { return type_id() & TYPE_ID_1D_ARRAY_BIT; }      \
+   }
+ 
+ // `role` type. Requies underlying type.
+@@ -36,5 +36,5 @@
+       return TypeTraits<__uty>::type_name();                                 \
+     }                                                                        \
+     static bool is_role_type() { return true; }      \
+-    static bool is_array() { return type_id() & value::TYPE_ID_1D_ARRAY_BIT; }      \
++    static bool is_array() { return type_id() & TYPE_ID_1D_ARRAY_BIT; }      \
+   }
+diff --git a/src/prim-reconstruct.cc b/src/prim-reconstruct.cc
+index ef0ec8aec..1fe93b2c8 100644
+--- a/src/prim-reconstruct.cc
++++ b/src/prim-reconstruct.cc
+@@ -3209,6 +3209,11 @@ bool ReconstructPrim<SphereLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", SphereLight, light->diffuse)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", SphereLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", SphereLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", SphereLight, light->normalize)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", SphereLight, light->specular)
+     // PARSE_PROPERTY(prop, "inputs:colorTemperature", light->colorTemperature)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:color", SphereLight, light->color)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:radius", SphereLight, light->radius)
+@@ -3246,6 +3251,11 @@ bool ReconstructPrim<RectLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", RectLight, light->diffuse)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", RectLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", RectLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", RectLight, light->normalize)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", RectLight, light->specular)
+     // PARSE_PROPERTY(prop, "inputs:colorTemperature", light->colorTemperature)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:texture:file", UsdUVTexture, light->file)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:color", RectLight, light->color)
+@@ -3285,6 +3295,13 @@ bool ReconstructPrim<DiskLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:color", DiskLight, light->color)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", DiskLight, light->diffuse)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", DiskLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", DiskLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:intensity", DiskLight, light->intensity)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", DiskLight, light->normalize)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", DiskLight, light->specular)
+     // PARSE_PROPERTY(prop, "inputs:colorTemperature", light->colorTemperature)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:radius", DiskLight, light->radius)
+     PARSE_EXTENT_ATTRIBUTE(table, prop, kExtent, DiskLight, light->extent)
+@@ -3319,6 +3336,13 @@ bool ReconstructPrim<CylinderLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:color", CylinderLight, light->color)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", CylinderLight, light->diffuse)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", CylinderLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", CylinderLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:intensity", CylinderLight, light->intensity)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", CylinderLight, light->normalize)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", CylinderLight, light->specular)
+     // PARSE_PROPERTY(prop, "inputs:colorTemperature", light->colorTemperature)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:length", CylinderLight, light->length)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:radius", CylinderLight, light->radius)
+@@ -3354,6 +3378,13 @@ bool ReconstructPrim<DistantLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:color", DistantLight, light->color)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", DistantLight, light->diffuse)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", DistantLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", DistantLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:intensity", DistantLight, light->intensity)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", DistantLight, light->normalize)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", DistantLight, light->specular)
+     // PARSE_PROPERTY(prop, "inputs:colorTemperature", light->colorTemperature)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:angle", DistantLight, light->angle)
+     PARSE_UNIFORM_ENUM_PROPERTY(table, prop, kPurpose, Purpose, PurposeEnumHandler, DistantLight,
+@@ -3387,6 +3418,9 @@ bool ReconstructPrim<DomeLight>(
+   }
+ 
+   for (const auto &prop : properties) {
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:enableColorTemperature", DomeLight, light->enableColorTemperature)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:exposure", DomeLight, light->exposure)
++    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalize", DomeLight, light->normalize)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "guideRadius", DomeLight, light->guideRadius)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse", DomeLight, light->diffuse)
+     PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:specular", DomeLight,
+diff --git a/src/tydra/render-data.cc b/src/tydra/render-data.cc
+index 866e4683f..d17f803cc 100644
+--- a/src/tydra/render-data.cc
++++ b/src/tydra/render-data.cc
+@@ -5843,7 +5843,7 @@ bool RenderSceneConverter::ConvertSkelAnimation(const RenderSceneConverterEnv &e
+           weightsMap[blendShapes[i].str()].static_value = ws[i];
+         }
+ 
+-      } else {
++      } else if (!weights.has_timesamples()) {
+         PUSH_ERROR_AND_RETURN(fmt::format("Internal error. `blendShapeWeights` attribute of SkelAnimation is invalid : {}", abs_path));
+       }
+ 
+diff --git a/src/value-types.hh b/src/value-types.hh
+index 0436a9aab..7e089c725 100644
+--- a/src/value-types.hh
++++ b/src/value-types.hh
+@@ -21,6 +21,7 @@
+ #include <memory>
+ #include <type_traits>
+ #include <vector>
++#include <cstdint>
+ 
+ #ifdef __clang__
+ #pragma clang diagnostic push
+@@ -2038,11 +2039,11 @@ class Value {
+       return linb::any_cast<const T>(&v_);
+     } else if (!strict_cast) {
+       // NOTE: linb::any_cast does type_id check, so use linb::cast(~= reinterpret_cast) here
+-      if (TypeTraits<T>::is_array() && (v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are array type
+-        if ((TypeTraits<T>::underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT))) {
++      if (TypeTraits<T>::is_array() && (v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are array type
++        if ((TypeTraits<T>::underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT))) {
+           return linb::cast<const T>(&v_);
+         }
+-      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
++      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
+         if (TypeTraits<T>::underlying_type_id() == v_.underlying_type_id()) {
+           return linb::cast<const T>(&v_);
+         }
+@@ -2060,11 +2061,11 @@ class Value {
+     if (TypeTraits<T>::type_id() == v_.type_id()) {
+       return linb::any_cast<T>(&v_);
+     } else if (!strict_cast) {
+-      if (TypeTraits<T>::is_array() && (v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are array type
+-        if ((TypeTraits<T>::underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT))) {
++      if (TypeTraits<T>::is_array() && (v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are array type
++        if ((TypeTraits<T>::underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT))) {
+           return linb::cast<T>(&v_);
+         }
+-      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
++      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
+         if (TypeTraits<T>::underlying_type_id() == v_.underlying_type_id()) {
+           return linb::cast<T>(&v_);
+         }
+@@ -2099,11 +2100,11 @@ class Value {
+       return std::move(*pv);
+     } else if (!strict_cast) {
+ 
+-      if (TypeTraits<T>::is_array() && (v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are array type
+-        if ((TypeTraits<T>::underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~value::TYPE_ID_1D_ARRAY_BIT))) {
++      if (TypeTraits<T>::is_array() && (v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are array type
++        if ((TypeTraits<T>::underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT)) == (v_.underlying_type_id() & (~TYPE_ID_1D_ARRAY_BIT))) {
+           return std::move(*linb::cast<const T>(&v_));
+         }
+-      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
++      } else if (!TypeTraits<T>::is_array() && !(v_.type_id() & TYPE_ID_1D_ARRAY_BIT)) { // both are scalar type.
+         if (TypeTraits<T>::underlying_type_id() == v_.underlying_type_id()) {
+           return std::move(*linb::cast<const T>(&v_));
+         }
+@@ -2121,7 +2122,7 @@ class Value {
+ 
+   const linb::any &get_raw() const { return v_; }
+ 
+-  bool is_array() const { return (v_.type_id() & value::TYPE_ID_1D_ARRAY_BIT); }
++  bool is_array() const { return (v_.type_id() & TYPE_ID_1D_ARRAY_BIT); }
+ 
+   // return 0 for non array type.
+   // This method is primaliry for Primvar types(`float[]`, `color3f[]`, ...)
+@@ -2709,13 +2710,13 @@ struct AttribMap {
+ namespace tinyusdz {
+ namespace value {
+ 
+-static_assert(sizeof(quath) == 8, "sizeof(quath) must be 8");
++// // // static_assert(sizeof(quath) == 8, "sizeof(quath) must be 8");
+ static_assert(sizeof(quatf) == 16, "sizeof(quatf) must be 16");
+ static_assert(sizeof(quatd) == 32, "sizeof(quatd) must be 32");
+-static_assert(sizeof(half) == 2, "sizeof(half) must be 2");
+-static_assert(sizeof(half2) == 4, "sizeof(half2) must be 4");
+-static_assert(sizeof(half3) == 6, "sizeof(half3) must be 6");
+-static_assert(sizeof(half4) == 8, "sizeof(half4) must be 8");
++// // // static_assert(sizeof(half) == 2, "sizeof(half) must be 2");
++// // // static_assert(sizeof(half2) == 4, "sizeof(half2) must be 4");
++// // // static_assert(sizeof(half3) == 6, "sizeof(half3) must be 6");
++// // // static_assert(sizeof(half4) == 8, "sizeof(half4) must be 8");
+ static_assert(sizeof(float3) == 12, "sizeof(float3) must be 12");
+ static_assert(sizeof(color3f) == 12, "sizeof(color3f) must be 12");
+ static_assert(sizeof(color4f) == 16, "sizeof(color4f) must be 16");

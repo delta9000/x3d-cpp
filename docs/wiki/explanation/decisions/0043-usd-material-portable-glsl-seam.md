@@ -2,13 +2,14 @@
 title: "ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam"
 summary: Port USD/USDZ materials to realtime by treating UsdPreviewSurface as the input ceiling and a single portable GLSL fragment shader (run by both the CPU interpreter and desktop GL) as the frozen seam contract, with a specialized --emit-glsl codegen path carrying the fidelity the X3D PhysicalMaterial node cannot model.
 tags: [adr, asset-import, materials, shaders, usd, glsl, seam]
-updated: 2026-07-02
+updated: 2026-11-25
 related:
   - ../../reference/subsystems/asset-import.md
   - ../../reference/subsystems/materials.md
   - ../../reference/subsystems/shaders.md
   - 0042-authoring-target.md
   - 0021-material-shader-design.md
+  - 0077-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0043: USD Material Port — UsdPreviewSurface Ceiling & Portable-GLSL Seam
@@ -130,9 +131,18 @@ a swap-test — see the seam-status matrix):
 
 ## Related
 
-- [Asset-Import subsystem](../../reference/subsystems/asset-import.md) · [Materials](../../reference/subsystems/materials.md) · [Shaders](../../reference/subsystems/shaders.md)
+## Amendment (2026-11-25)
+
+[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the importer into the SDK. The
+canonical shader is now `runtime/import/shaders/usd_preview_surface.frag`, embedded
+in `x3d_cpp::import` for `materialGlsl()` (`runtime/import/MaterialGlsl.cpp`), and
+`--emit-glsl` is an `x3d import` option. The cpu_raster interpreter test and the PoC
+renderer read the shader from its new place, which removes the cross-example
+coupling listed above.
+
+- [Mesh import subsystem](../../reference/subsystems/asset-import.md) · [Materials](../../reference/subsystems/materials.md) · [Shaders](../../reference/subsystems/shaders.md)
 - [ADR-0042: Slim Authoring Target](0042-authoring-target.md) — the import/emit pipeline this extends
 - [ADR-0021: Material & Shader Model](0021-material-shader-design.md) — the `MaterialDesc` / reference-shader model reused here
-- `examples/cpu_raster/shaders/usd_preview_surface.frag` — the frozen seam contract
+- `runtime/import/shaders/usd_preview_surface.frag` — the frozen seam contract
 - `examples/cpu_raster/cpuraster/GlslInterpreter.hpp` — `seedUniforms` slot/fidelity binding
-- `examples/asset_import/glsl_emit.{hpp,cpp}` — `--emit-glsl` specialized codegen
+- `runtime/import/MaterialGlsl.{hpp,cpp}` — `--emit-glsl` specialized codegen

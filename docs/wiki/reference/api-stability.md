@@ -38,6 +38,7 @@ pre-1.0 release policy above.
 |---|---|
 | `x3d_cpp::sdk`, `x3d_cpp::authoring`, `x3d_cpp::x3d_cpp` | Documented entry points |
 | `x3d_cpp::ecmascript` | Documented entry point when built with `X3D_CPP_BUILD_SCRIPT` (default ON) |
+| `x3d_cpp::import` | Documented entry point (mesh import); the `ImportScene` IR is experimental and may change |
 | `x3d_cpp::duktape` | Exists so `x3d_cpp::ecmascript` resolves; may be restructured |
 | `x3d_cpp::headers`, `x3d_cpp::nodes`, `x3d_cpp::authoring_runtime`, `x3d_cpp::runtime` | Exist so the export set resolves; may be restructured |
 

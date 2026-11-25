@@ -2,10 +2,11 @@
 title: "ADR-0042: Slim Authoring Target & Ingestion Pipeline"
 summary: Introduce x3d_cpp::authoring as a slim serialization/authoring library that excludes parse/runtime subsystems, backed by a footprint gate to prevent code bloat.
 tags: [adr, authoring, footprint, assets, cmake, CLI]
-updated: 2026-07-01
+updated: 2026-11-25
 related:
   - ../architecture.md
-  - ../../reference/subsystems/asset-import.md
+  - ../../reference/subsystems/authoring.md
+  - 0077-mesh-import-in-the-sdk.md
 ---
 
 # ADR-0042: Slim Authoring Target & Ingestion Pipeline
@@ -62,10 +63,8 @@ We decided to partition the codebase to expose a slim, header-only target for au
 
 - [Architecture](../../reference/subsystems/generated-bindings.md)
 - Ingestion roadmap: [`docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md`](https://github.com/delta9000/x3d-cpp/blob/db23737f43f9ec16d983583834c40c70c810bf63/docs/superpowers/specs/2026-07-01-asset-import-authoring-target-design.md)
-- Subsystem documentation: `docs/wiki/reference/subsystems/asset-import.md`
-- `scripts/authoring-footprint.sh` — symbol scan and size gate script
-- `examples/asset_import/footprint/baseline.tsv` — committed size baseline
-- `examples/asset_import/CMakeLists.txt` — compile/link option flags for `x3d_authoring_smoke`
+- Subsystem documentation: [Authoring and SceneBuilder](../../reference/subsystems/authoring.md)
+- `scripts/authoring-footprint.sh` — symbol scan gate script
 
 ## Amendment (2026-11-05)
 
@@ -76,5 +75,16 @@ the script fixed neither compiler nor optimization settings. The symbol scan
 and authoring linkage contract remain. There is no absolute size budget or
 `--write-baseline` workflow.
 
+## Amendment (2026-11-25)
+
+[ADR-0077](0077-mesh-import-in-the-sdk.md) moves the importer into the SDK as
+`x3d_cpp::import` and replaces `x3d_asset_import` with `x3d import`; the
+`--verify` re-parse stays in the CLI, so the import library links no parser.
+`examples/asset_import/` and its `x3d_authoring_smoke` are removed: the
+footprint gate scans `x3d_authoring_link_contract`
+(`examples/embed_minimal/authoring.cpp`), which links only
+`x3d_cpp::authoring`.
+
 - [Architecture](../architecture.md)
-- [Asset import](../../reference/subsystems/asset-import.md)
+- [Authoring and SceneBuilder](../../reference/subsystems/authoring.md)
+- [Mesh import](../../reference/subsystems/asset-import.md)

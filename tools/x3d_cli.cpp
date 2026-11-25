@@ -6,6 +6,7 @@
 //   x3d <cmd> --help                subcommand help
 //   x3d convert <in> [-o <out>] [-f xml|vrml|json]
 //   x3d validate <in> [--json]
+//   x3d import <model> -o <out.x3d>
 //
 // Subcommands are registered in a dispatch table (see SubCmd); adding a new
 // command requires only a new entry in kCmds + a Cmd* impl.
@@ -31,6 +32,16 @@
 // reusable header so other tools/consumers can compute the narrowest profile.
 #include "x3d-cli/profile_fit.hpp"
 #include "x3d-cli/validate.hpp"
+
+#ifdef X3D_IMPORT_HAVE_ASSIMP
+#include "AssimpSource.hpp"
+#endif
+#ifdef X3D_IMPORT_HAVE_USD
+#include "UsdSource.hpp"
+#endif
+#ifdef X3D_IMPORT_HAVE_STB
+#include "StbTextureResolver.hpp"
+#endif
 
 #include <algorithm>
 #include <cassert>
@@ -1126,12 +1137,300 @@ int cmdSim(const std::vector<std::string> &args) {
     return 0;
 }
 
+// import
+
+int cmdImport(const std::vector<std::string> &args) {
+    namespace imp = x3d::runtime::importer;
+    static const char *kUsage =
+        "usage: x3d import <model> -o <output> [options]\n"
+        "       x3d import --list-backends\n"
+        "\n"
+        "  Import a mesh model (glTF .gltf/.glb; OBJ, FBX, Collada, PLY, STL, 3DS, ...\n"
+        "  with the Assimp backend; USD .usda/.usdc/.usdz with the USD backend) as an\n"
+        "  X3D 4.0 document. Textures are written once each, named by content hash,\n"
+        "  to <assets-dir>/assets/ and referenced relative to the output.\n"
+        "\n"
+        "  -o <output>         output file; the encoding follows its extension\n"
+        "                      (.x3d XML, .x3dv ClassicVRML, .json JSON)\n"
+        "  -f xml|vrml|json    output encoding (needed when writing to stdout)\n"
+        "  --assets-dir <dir>  where assets/ goes (default: the output's directory)\n"
+        "  --no-textures       write no images and no ImageTexture nodes\n"
+        "  --recompress        re-encode PNG and JPEG images as PNG too\n"
+        "  --profile <p>       auto (default: the smallest profile that fits),\n"
+        "                      interchange, interactive, immersive or full\n"
+        "  --backend <name>    force a backend (see --list-backends)\n"
+        "  --autoplay <which>  first (default), all or none: which animations start\n"
+        "                      enabled\n"
+        "  --samples <n>       samples per key interval for CUBICSPLINE curves (8)\n"
+        "  --emit-glsl <dir>   also write one UsdPreviewSurface fragment shader per\n"
+        "                      material to <dir>\n"
+        "  --verify            re-read the written document and check it\n"
+        "  --stats             print what was imported to stderr\n"
+        "\n"
+        "  Exit codes: 0 ok, 1 usage error, 2 import/IO failure, 3 --verify found issues.\n";
+
+    imp::BackendRegistry registry = imp::builtinBackends();
+#ifdef X3D_IMPORT_HAVE_ASSIMP
+    imp::addAssimpBackend(registry);
+#endif
+#ifdef X3D_IMPORT_HAVE_USD
+    imp::addUsdBackend(registry);
+#endif
+
+    if (args.empty()) {
+        std::cerr << kUsage;
+        return 1;
+    }
+    if (args[0] == "--help" || args[0] == "-h") {
+        std::cout << kUsage;
+        return 0;
+    }
+    if (args[0] == "--list-backends") {
+        for (const auto &b : registry.backends()) {
+            std::cout << b.name << ":";
+            for (const auto &e : b.extensions) std::cout << " " << e;
+            std::cout << "\n";
+        }
+        return 0;
+    }
+
+    std::string inPath, outPath, fmtFlag, assetsDir, profileFlag = "auto", glslDir;
+    imp::ImportOptions opts;
+    bool verify = false, stats = false;
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const std::string &a = args[i];
+        auto value = [&](std::string &dst) {
+            if (i + 1 >= args.size()) {
+                std::cerr << "error: " << a << " requires an argument\n" << kUsage;
+                return false;
+            }
+            dst = args[++i];
+            return true;
+        };
+        std::string v;
+        if (a == "-o") {
+            if (!value(outPath)) return 1;
+        } else if (a == "-f") {
+            if (!value(fmtFlag)) return 1;
+        } else if (a == "--assets-dir") {
+            if (!value(assetsDir)) return 1;
+        } else if (a == "--no-textures") {
+            opts.textures = false;
+        } else if (a == "--recompress") {
+            opts.recompress = true;
+        } else if (a == "--profile") {
+            if (!value(profileFlag)) return 1;
+            profileFlag = toLower(profileFlag);
+        } else if (a == "--backend") {
+            if (!value(opts.backend)) return 1;
+        } else if (a == "--autoplay") {
+            if (!value(v)) return 1;
+            v = toLower(v);
+            if (v == "first") opts.autoplay = imp::Autoplay::First;
+            else if (v == "all") opts.autoplay = imp::Autoplay::All;
+            else if (v == "none") opts.autoplay = imp::Autoplay::None;
+            else {
+                std::cerr << "error: --autoplay takes first, all or none\n";
+                return 1;
+            }
+        } else if (a == "--samples") {
+            if (!value(v)) return 1;
+            try {
+                opts.samplesPerInterval = std::stoi(v);
+            } catch (const std::exception &) {
+                opts.samplesPerInterval = 0;
+            }
+            if (opts.samplesPerInterval < 1) {
+                std::cerr << "error: --samples takes a positive integer\n";
+                return 1;
+            }
+        } else if (a == "--emit-glsl") {
+            if (!value(glslDir)) return 1;
+        } else if (a == "--verify") {
+            verify = true;
+        } else if (a == "--stats") {
+            stats = true;
+        } else if (!a.empty() && a[0] == '-') {
+            std::cerr << "error: unknown option: " << a << "\n" << kUsage;
+            return 1;
+        } else if (inPath.empty()) {
+            inPath = a;
+        } else {
+            std::cerr << "error: unexpected argument: " << a << "\n" << kUsage;
+            return 1;
+        }
+    }
+    if (inPath.empty()) {
+        std::cerr << "error: missing input model\n" << kUsage;
+        return 1;
+    }
+
+    OutFmt fmt = OutFmt::Unknown;
+    if (!fmtFlag.empty()) {
+        fmt = fmtFromFlag(fmtFlag);
+        if (fmt == OutFmt::Unknown) {
+            std::cerr << "error: unknown format '" << fmtFlag << "'; use xml, vrml, or json\n";
+            return 1;
+        }
+    } else if (!outPath.empty()) {
+        fmt = fmtFromExt(ext(outPath));
+        if (fmt == OutFmt::Unknown) {
+            std::cerr << "error: cannot infer output format from extension '" << ext(outPath)
+                      << "'; use -f xml|vrml|json\n";
+            return 1;
+        }
+    } else {
+        std::cerr << "error: cannot infer output format; use -o <file> or -f xml|vrml|json\n";
+        return 1;
+    }
+
+    std::optional<sdk::Profile> forced;
+    if (profileFlag == "interchange") forced = sdk::Profile::Interchange;
+    else if (profileFlag == "interactive") forced = sdk::Profile::Interactive;
+    else if (profileFlag == "immersive") forced = sdk::Profile::Immersive;
+    else if (profileFlag == "full") forced = sdk::Profile::Full;
+    else if (profileFlag != "auto") {
+        std::cerr << "error: --profile takes auto, interchange, interactive, immersive or full\n";
+        return 1;
+    }
+
+    opts.outputPath = outPath;
+    opts.assetsRoot = assetsDir;
+#ifdef X3D_IMPORT_HAVE_STB
+    opts.decoder = x3d::runtime::io::stb::makeStbTextureResolver();
+#endif
+
+    imp::ImportResult r;
+    try {
+        if (!outPath.empty()) {
+            const fs::path parent = fs::path(outPath).parent_path();
+            if (!parent.empty()) fs::create_directories(parent);
+        }
+        r = imp::importFile(inPath, opts, registry);
+    } catch (const std::exception &e) {
+        std::cerr << "error: import of '" << inPath << "' failed: " << e.what() << "\n";
+        return 2;
+    }
+    for (const auto &w : r.report.warnings) std::cerr << "warning: " << r.report.backend << ": " << w << "\n";
+    for (const auto &w : r.report.emit.warnings) std::cerr << "warning: emit: " << w << "\n";
+    for (const auto &k : r.report.textures.missing) std::cerr << "warning: texture not found: " << k << "\n";
+    for (const auto &k : r.report.textures.failed) std::cerr << "warning: texture not written: " << k << "\n";
+    for (const auto &k : r.report.textures.notWebSafe)
+        std::cerr << "warning: texture copied without conversion (no decoder): " << k << "\n";
+
+    // The narrowest general-purpose profile (Interchange, Interactive,
+    // Immersive, Full) that holds every node, unless one was forced.
+    if (forced) {
+        r.document.profile = *forced;
+    } else {
+        const auto usage = profile_fit::sceneComponentUsage(r.document.scene);
+        r.document.profile = sdk::Profile::Full;
+        for (sdk::Profile p : {sdk::Profile::Interchange, sdk::Profile::Interactive,
+                               sdk::Profile::Immersive}) {
+            bool fits = false;
+            for (const auto &pd : profile_fit::profileDefs()) {
+                if (pd.profile != p) continue;
+                fits = std::all_of(usage.begin(), usage.end(), [&](const auto &u) {
+                    return profile_fit::allowedInProfile(pd, u.first, u.second, &r.document.scene);
+                });
+            }
+            if (fits) {
+                r.document.profile = p;
+                break;
+            }
+        }
+    }
+    r.document.profileRaw.clear();
+    {
+        const auto usage = profile_fit::sceneComponentUsage(r.document.scene);
+        for (const auto &pd : profile_fit::profileDefs()) {
+            if (pd.profile != r.document.profile) continue;
+            for (const auto &[comp, lvl] : usage)
+                if (!profile_fit::allowedInProfile(pd, comp, lvl, &r.document.scene))
+                    std::cerr << "warning: profile " << pd.name << " does not include " << comp
+                              << " level " << lvl << "\n";
+        }
+    }
+
+    std::string output;
+    try {
+        switch (fmt) {
+            case OutFmt::XML: output = sdk::XmlWriter{}.writeDocument(r.document); break;
+            case OutFmt::ClassicVRML: output = sdk::VrmlWriter{}.writeDocument(r.document); break;
+            case OutFmt::JSON: output = sdk::JsonWriter{}.writeDocument(r.document); break;
+            default: return 2;
+        }
+        writeOutput(outPath, output);
+    } catch (const std::exception &e) {
+        std::cerr << "error: " << e.what() << "\n";
+        return 2;
+    }
+
+    if (!glslDir.empty()) {
+        try {
+            fs::create_directories(glslDir);
+            std::set<std::string> used;
+            for (std::size_t i = 0; i < r.scene.materials.size(); ++i) {
+                std::string name = r.scene.materials[i].name;
+                for (char &c : name)
+                    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_' && c != '-') c = '_';
+                if (name.empty()) name = "material";
+                std::string file = name;
+                for (int k = 1; used.count(file); ++k) file = name + "_" + std::to_string(k);
+                used.insert(file);
+                writeOutput((fs::path(glslDir) / (file + ".frag")).string(),
+                            imp::materialGlsl(r.scene.materials[i]));
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "error: --emit-glsl: " << e.what() << "\n";
+            return 2;
+        }
+    }
+
+    if (stats) {
+        const auto &e = r.report.emit;
+        const auto &t = r.report.textures;
+        std::cerr << "backend: " << r.report.backend << "\n"
+                  << "profile: " << x3d::runtime::toString(r.document.profile) << "\n"
+                  << "transforms: " << e.transforms << "\n"
+                  << "shapes: " << e.shapes << "\n"
+                  << "materials: " << e.materials << "\n"
+                  << "textures: " << e.textures << " nodes, " << t.written << " files ("
+                  << t.deduplicated << " reused, " << t.reencoded << " re-encoded)\n"
+                  << "viewpoints: " << e.viewpoints << "\n"
+                  << "lights: " << e.lights << "\n"
+                  << "humanoids: " << e.humanoids << " (" << e.joints << " joints)\n"
+                  << "animations: " << e.timeSensors << " (" << e.interpolators << " interpolators, "
+                  << e.routes << " routes)\n";
+    }
+
+    if (verify) {
+        std::vector<x3d::cli_detail::Diag> diags;
+        try {
+            const sdk::Encoding enc = fmt == OutFmt::XML           ? sdk::Encoding::XML
+                                      : fmt == OutFmt::ClassicVRML ? sdk::Encoding::ClassicVRML
+                                                                   : sdk::Encoding::JSON;
+            sdk::X3DDocument back = sdk::parseDocument(output, enc);
+            x3d::cli_detail::collectDiagnostics(back, diags);
+            x3d::cli_detail::checkRoutes(back, diags);
+        } catch (const std::exception &e) {
+            std::cerr << "verify: the written document does not parse: " << e.what() << "\n";
+            return 3;
+        }
+        for (const auto &d : diags)
+            std::cerr << "verify: " << d.severity << ": " << d.category << ": " << d.message << "\n";
+        if (!diags.empty()) return 3;
+    }
+    return 0;
+}
+
 // top-level dispatch
 
 static const SubCmd kCmds[] = {
     {"convert",     "Convert an X3D scene between encodings",       cmdConvert},
     {"validate",    "Validate an X3D scene and report diagnostics", cmdValidate},
     {"extract",     "Export X3D geometry to binary STL or glTF (.glb)", cmdExtract},
+    {"import",      "Import a glTF/OBJ/FBX/USD model as X3D",        cmdImport},
     {"canonicalize","Emit the X3D Canonical Form (X3DC14N)",        cmdCanonicalize},
     // sim: headless behavior simulation / field-change trace
     {"sim",         "Headless behavior simulation + field-change trace", cmdSim},
@@ -1148,6 +1447,7 @@ static const char *kTopUsage =
     "  convert      Convert an X3D scene between encodings\n"
     "  validate     Validate an X3D scene and report diagnostics\n"
     "  extract      Export X3D geometry to binary STL or glTF (.glb)\n"
+    "  import       Import a glTF/OBJ/FBX/USD model as X3D\n"
     "  canonicalize Emit the X3D Canonical Form (X3DC14N)\n"
     "  sim          Headless behavior simulation + field-change trace\n"
     "\n"

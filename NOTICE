@@ -53,14 +53,11 @@ example; no part of it is committed here.
                     (PoC renderer; also TextureResolver decode Backend A,
                      -DX3D_CPP_BUILD_STB=ON)
   stb_image_write.h third_party/                          MIT OR Public Domain
-                    (PNG/JPEG encode; cpu_raster export + asset_import
+                    (PNG/JPEG encode; cpu_raster export + mesh-import
                      texture re-encode)
-  assimp (v6.0)    NOT bundled (github.com/assimp/assimp)  BSD-3-Clause
-                    (asset_import ImportSource backend;
-                     -DX3D_CPP_BUILD_ASSIMP=ON)
-  cgltf.h (v1.14)   examples/asset_import/third_party/       MIT
-                    (© Johannes Kuhlmann; asset_import glTF ImportSource
-                     backend; -DX3D_CPP_BUILD_CGLTF=ON, default ON)
+  cgltf.h (v1.14)   runtime/import/gltf/vendor/              MIT
+                    (© Johannes Kuhlmann; the built-in glTF mesh-import
+                     backend of x3d_cpp::import; always built)
   tinfl.h (miniz)   runtime/parse/tinfl.h                   Public Domain (Unlicense)
   glad              third_party/glad/                       Apache-2.0 AND (WTFPL OR CC0-1.0)
   doctest           runtime/test_support/doctest/           MIT  (test-only; v2.4.11)
@@ -98,11 +95,16 @@ binaries you distribute that link it.
   libcurl           curl.se (via vcpkg)                      curl/MIT-X   (-DX3D_CPP_BUILD_CURL=ON)
   PROJ              proj.org (system package)                MIT         (-DX3D_CPP_BUILD_PROJ=ON)
                     (see PROJ COPYING; GeoProjection backend and optional geoid grids)
+  Assimp            github.com/assimp/assimp (system package) BSD-3-Clause (-DX3D_CPP_BUILD_ASSIMP=ON)
+                    (mesh-import backend for OBJ, FBX, Collada, ...;
+                     runtime/import/assimp/. Flag-gated OFF; not installed with
+                     the SDK.)
   tinyusdz          github.com/lighttransport/tinyusdz       Apache-2.0   (-DX3D_CPP_BUILD_USD=ON)
-                    (asset_import USD/USDZ ImportSource backend; fetched via
-                     FetchContent and patched at configure time — see
-                     examples/asset_import/patches/. Flag-gated OFF; the default
-                     build does not link it.)
+                    (USD/USDZ mesh-import backend, runtime/import/usd/; fetched
+                     via FetchContent and patched at configure time with
+                     runtime/import/usd/tinyusdz.patch. Flag-gated OFF; the
+                     default build does not link it, and it is not installed
+                     with the SDK.)
 
 The optional libcurl backend can link these transitive dependencies, depending
 on the installed libcurl build:

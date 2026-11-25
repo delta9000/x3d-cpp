@@ -1,8 +1,8 @@
 ---
 title: CLI suite
-summary: The x3d CLI — convert, validate, extract, canonicalize, and sim commands; the first SDK consumer.
-tags: [subsystem, cli, convert, validate, extract, canonicalize, sim]
-updated: 2026-11-11
+summary: The x3d CLI — convert, validate, extract, import, canonicalize, and sim commands; the first SDK consumer.
+tags: [subsystem, cli, convert, validate, extract, import, canonicalize, sim]
+updated: 2026-11-25
 related:
   - ../../explanation/architecture.md
   - ../gates.md
@@ -24,6 +24,7 @@ The top-level CMake build produces `build/x3d`.
 | `x3d validate input --json` | Report value, ROUTE, range, expansion, reader, and profile-fit diagnostics |
 | `x3d extract input -o output.stl` | Export extracted triangle geometry as binary STL |
 | `x3d extract input -o output.glb` (or `-f glb`) | Export the extracted scene as binary glTF 2.0: nodes with world matrices, shared meshes, materials, textures (local PNG/JPEG files and PixelTextures embedded), lights, viewpoints as cameras, and animation of Transforms, viewpoints, lights, material properties, coordinates and texture transforms, and H-Anim skins. See [glTF export](gltf-export.md) for what is left out |
+| `x3d import model.glb -o output.x3d` | Import a glTF model (and, when their backends are built, OBJ, FBX, USD and other formats) as X3D 4.0, writing its textures to `assets/`. Options, exit codes and the mapping are in [Mesh import](asset-import.md#cli) |
 | `x3d canonicalize input -o output.x3d` | Write canonical XML |
 | `x3d sim input --ticks 120` | Tick the behavior runtime and trace changed fields |
 

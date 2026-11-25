@@ -80,4 +80,5 @@ scripts. The old dated specs and plans are at
 | [sound](subsystems/sound.md) | `runtime/sound/` |
 | [materials](subsystems/materials.md) | `runtime/extract/MaterialSystem.hpp`, `runtime/extract/RenderItem.hpp` |
 | [shaders](subsystems/shaders.md) | `runtime/extract/ShaderExtract.hpp`, `runtime/events/ShaderSystem.hpp`, `runtime/extract/ShaderUniformVocabulary.hpp`, `runtime/extract/ShaderBindingPlan.hpp`, `runtime/extract/RenderItem.hpp` |
-| [asset-import](subsystems/asset-import.md) | `examples/asset_import/`, `include/x3d/authoring.hpp`, `scripts/authoring-footprint.sh` |
+| [asset-import](subsystems/asset-import.md) | `runtime/import/`, `cmake/x3d/import.cmake` |
+| [authoring](subsystems/authoring.md) | `include/x3d/authoring.hpp`, `runtime/SceneBuilder.hpp`, `scripts/authoring-footprint.sh` |
