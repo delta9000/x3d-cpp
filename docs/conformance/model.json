@@ -13493,6 +13493,7 @@
       "TexCoordChaser2D",
       "TexCoordDamper2D",
       "TextureBackground",
+      "TextureProjector",
       "TextureProjectorParallel",
       "TimeSensor",
       "TimeTrigger",

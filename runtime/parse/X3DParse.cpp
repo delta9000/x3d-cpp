@@ -343,6 +343,9 @@ parseDocumentImpl(const std::string &text, Encoding hint,
   // Authored nodes and fields newer than the declared version (ADR-0077). Run
   // before expansion so only authored content counts, not PROTO/Inline output.
   runtime::collectVersionWarnings(doc);
+  // Defaults that changed between versions take the declared version's value
+  // (TextureProjector.upVector before 4.1).
+  runtime::applyVersionDefaults(doc);
   // Surface out-of-range values the lenient readers kept (structured channel;
   // parseFile flows through here, so this is the single collection site).
   for (const auto &root : doc.scene.rootNodes)

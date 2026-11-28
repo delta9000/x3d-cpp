@@ -19,9 +19,10 @@ using extract::ProjectorDesc;
 
 namespace {
 std::unique_ptr<RuntimeSession> session(const std::string &body,
-                                        SessionOptions options = {}) {
+                                        SessionOptions options = {},
+                                        const std::string &version = "4.1") {
   auto s = RuntimeSession::create(
-      x3d::codec::parseDocument("<X3D profile='Full' version='4.0'><Scene>" + body +
+      x3d::codec::parseDocument("<X3D profile='Full' version='" + version + "'><Scene>" + body +
                                 "</Scene></X3D>"),
       std::move(options));
   s->fullSnapshot();
@@ -102,6 +103,20 @@ TEST_CASE("TextureProjectorParallel: the X3D 4.1 upVector turns the volume") {
   CHECK_FALSE(p.project({0.6f, 0, -1}, u, v)); // beyond the v extent
 }
 
+TEST_CASE("TextureProjector: a 4.0 file keeps the 4.0 default upVector") {
+  // direction +X: the 4.0 default upVector 0 0 1 is a valid up, so the frame
+  // differs from the 4.1 default 0 1 0. The reader fills in the declared
+  // version's default (applyVersionDefaults).
+  const std::string body =
+      std::string("<TextureProjector direction='1 0 0'>") + kTexture + "</TextureProjector>";
+  auto v40 = session(body, {}, "4.0");
+  REQUIRE(v40->extractor().projectors().size() == 1);
+  CHECK(v40->extractor().projectors()[0].worldUp.z == doctest::Approx(1));
+  auto v41 = session(body);
+  REQUIRE(v41->extractor().projectors().size() == 1);
+  CHECK(v41->extractor().projectors()[0].worldUp.y == doctest::Approx(1));
+}
+
 TEST_CASE("Texture projectors: on, scope and the default up vector") {
   auto s = session(std::string("<TextureProjector on='false'/>"
                                "<Group DEF='A'><TextureProjector global='false'/>"
@@ -112,8 +127,9 @@ TEST_CASE("Texture projectors: on, scope and the default up vector") {
   REQUIRE(projectors.size() == 2); // on FALSE is skipped
   const ProjectorDesc &scoped = projectors[0], &global = projectors[1];
   CHECK_FALSE(scoped.global);
-  // The default upVector is +Y (X3D 4.1; the 4.0 default 0 0 1 was parallel to
-  // the default direction and fell back to +Y, so both versions agree).
+  // The default upVector is +Y (X3D 4.1). The 4.0 default 0 0 1 is parallel
+  // to the default direction and falls back to +Y, so both versions agree here;
+  // the next case covers a direction where they differ.
   CHECK(global.worldUp.y == doctest::Approx(1));
   auto &ex = s->extractor();
   REQUIRE(ex.itemCount() == 2);

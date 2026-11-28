@@ -50,7 +50,7 @@ categories:
 | `range` | warning | An out-of-range value (`collectRangeWarnings`). |
 | `proto`, `inline`, `node`, `profile` | warning or error | Expansion, reader-recovery and profile-fit diagnostics. |
 | `use` | warning | A USE inside the body of the node it names, which the reader dropped because the node would contain itself. |
-| `version` | error | An authored node type or field newer than the declared X3D version, e.g. `EnvironmentLight` in a 4.0 file (`collectVersionWarnings`, ADR-0077). |
+| `version` | error | An authored node type, field or ROUTE/IS endpoint newer than the declared X3D version, e.g. `EnvironmentLight` in a 4.0 file, or a ROUTE from `ImageTexture.width` (`collectVersionWarnings`, ADR-0077). |
 | `dup-meta`, `unused-proto`, `ifs-coord-index`, `ils-coord-index` | warning | Checks shared with the X3DJSAIL differential gate. |
 
 The report also prints `version fit` (JSON `versionFit`): the lowest X3D version whose

@@ -157,6 +157,10 @@ Every writer applies the same three-phase strategy, driven entirely by reflectio
   the parent.
 - XML to XML conversion of a file with extension nodes is therefore lossless and
   stable. X3D 4.1 nodes are typed (ADR-0077), so every writer handles them.
+- Writers do not down-convert to the declared version. A document declared 4.0 is
+  written with the 4.1 field types, so `streamIdentifier` (MFString since 4.1, SFString
+  in the 4.0 UOM, MFString in the 4.0 ISO text) is written quoted, `streamIdentifier='"mic"'`.
+  A reader that follows the 4.0 UOM keeps the quotes as part of the name.
 - The ClassicVRML and JSON writers have no schema for those attributes; they
   write only the type name and DEF (READ-UNKNOWN-NODE-PASSTHROUGH).
 

@@ -15,9 +15,11 @@ versioning is [SemVer](https://semver.org) with the 0.x caveats in
   typed in XML, ClassicVRML and JSON; before, XML kept them opaque and the
   other readers dropped them. Each node type reports `introducedIn()` and each
   `FieldInfo` carries `since`. Readers add a `ReaderWarning::Kind::Version` for
-  authored content newer than the declared version, and `x3d validate` reports
-  it as a `version` error and prints `version fit`. A new `X3DDocument`
-  defaults to version 4.1.
+  authored content newer than the declared version (node types, fields, ROUTE
+  and IS endpoints, HAnim `loa` 5), and `x3d validate` reports it as a
+  `version` error and prints `version fit`. A new `X3DDocument` defaults to
+  version 4.1. A `TextureProjector` without `upVector` in a file declaring an
+  older version keeps the 4.0 default `0 0 1` (`applyVersionDefaults`).
 - **`OscillatorSource.periodicWave` drives the oscillator.** `SoundSystem`
   reads the field at attach and re-sends the waveform through the new
   `AudioBackend::setWaveform` when the field or the wave changes. Custom

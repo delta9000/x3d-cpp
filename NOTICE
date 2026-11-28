@@ -14,7 +14,7 @@ The X3D Unified Object Model (X3DUOM) XML files used to drive code generation
 and conformance tests:
 
     src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.0.xml
-    tests/fixtures/X3dUnifiedObjectModel-4.1.xml
+    src/x3d_cpp_gen/data/X3dUnifiedObjectModel-4.1.xml
     tests/fixtures/uom/X3dUnifiedObjectModel-3.0.xml .. 3.3.xml
 
 are artifacts of the X3D Architecture International Standard (ISO/IEC 19775),

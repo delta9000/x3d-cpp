@@ -2,7 +2,7 @@
 title: "ADR-0077: Generate the bindings from X3D 4.1 as a version-tagged superset"
 summary: "One binding tree generated from the 4.1 UOM; each node type and field carries the version that introduced it, and readers and validate compare it with the declared version."
 tags: [adr, generator, bindings, versions]
-updated: 2026-11-25
+updated: 2026-11-28
 related:
   - 0007-version-inference-ladder.md
   - ../../reference/subsystems/generator.md
@@ -43,14 +43,17 @@ We chose option B.
 - The generator's default spec is the packaged 4.1 UOM. 4.1 removes no 4.0 node or
   field. It changes one field type, `StreamAudioSource`/`StreamAudioDestination.streamIdentifier`
   (SFString to MFString, which the ISO 4.0 text already specified), and one default,
-  `TextureProjector.upVector` (0 0 1 to 0 1 0; the 4.0 default was parallel to the default
-  direction, and the runtime already fell back to +Y, so 4.0 files keep their frame).
+  `TextureProjector.upVector` (0 0 1 to 0 1 0). The two agree only for the default
+  direction, so the parse front door gives a projector without `upVector` in a document
+  declaring a version below 4.1 the old default (`applyVersionDefaults`); 4.0 files keep
+  their frame for every direction. It also widens HAnim `loa` to 5.
 - Each generated node type implements `X3DVersion introducedIn() const`, and each
   `FieldInfo` carries `X3DVersion since`. Both come from the earliest committed manifest
   that defines the node, or the field on that node (`emit/versions.py`).
-- After a read, `collectVersionWarnings` reports each authored node type and field newer
-  than the declared version as a `ReaderWarning::Kind::Version`. Generated defaults never
-  count; only fields a reader recorded do. An undeclared version is not compared.
+- After a read, `collectVersionWarnings` reports each authored node type, field and ROUTE
+  or IS endpoint newer than the declared version, and an HAnim `loa` of 5, as a
+  `ReaderWarning::Kind::Version`. Generated defaults never count; only fields a reader
+  recorded or a route names do. An undeclared version is not compared.
 - `x3d validate` reports these as errors (category `version`) and prints the version the
   content needs (`requiredVersion`).
 - The authoring default for a new `X3DDocument` is 4.1.

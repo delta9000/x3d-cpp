@@ -287,11 +287,11 @@ private:
 
   // §42.4: the projector frame is location/direction/upVector in the node's
   // local frame (ADR-0061). Both projector types have upVector (X3D 4.1 added
-  // it to TextureProjectorParallel and moved the default to 0 1 0). It falls
-  // back to +Y, then +Z, when it is parallel to the direction, as the 4.0
-  // perspective default (upVector 0 0 1 along direction 0 0 1) was, so a 4.0
-  // file without upVector gets the same +Y frame either way. Distances and the
-  // parallel extents scale with the local frame along their own axes.
+  // it to TextureProjectorParallel and moved the default from 0 0 1 to 0 1 0;
+  // the parse front door gives a pre-4.1 projector without upVector the old
+  // default, see applyVersionDefaults). It falls back to +Y, then +Z, when it
+  // is parallel to the direction. Distances and the parallel extents scale
+  // with the local frame along their own axes.
   static ProjectorDesc makeProjector(const X3DNode &n, bool parallel,
                                      const Mat4 &worldM, const X3DNode *scopeRoot) {
     ProjectorDesc P;
