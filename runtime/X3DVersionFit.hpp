@@ -12,6 +12,9 @@
 #include "FieldRead.hpp"
 #include "X3DDocument.hpp"
 #include "x3d/core/X3DReflection.hpp"
+#include "x3d/nodes/HAnimHumanoid.hpp"
+#include "x3d/nodes/HAnimMotion.hpp"
+#include "x3d/nodes/TextureProjector.hpp"
 #include "x3d/nodes/X3DNode.hpp"
 
 #include <algorithm>
@@ -55,42 +58,143 @@ struct VersionUse {
   }
 };
 
-/// Authored node types and fields newer than `floor`, one entry per distinct
-/// type or field, sorted by name. A field is listed only when it is newer than
-/// its node type too (IndexedFaceSet.tangent, not EnvironmentLight.intensity). Walks the scene graph and every PROTO
-/// declaration body. A field counts as authored when a reader recorded it
-/// (Scene::authoredScalarFields, Scene::childFieldOrder); generated defaults
-/// never count.
-inline std::vector<VersionUse> versionUsesAbove(const Scene &scene,
-                                                X3DVersion floor) {
+namespace version_fit_detail {
+
+/// The reflected field a ROUTE or IS endpoint names, with the set_ / _changed
+/// aliases of an inputOutput field resolved. Null when the node has no such field.
+inline const core::FieldInfo *endpointField(const nodes::X3DNode &node,
+                                            const std::string &name) {
+  const auto &fields = node.fields();
+  for (const auto &f : fields)
+    if (f.x3dName == name) return &f;
+  std::string base;
+  if (name.rfind("set_", 0) == 0)
+    base = name.substr(4);
+  else if (name.size() > 8 && name.compare(name.size() - 8, 8, "_changed") == 0)
+    base = name.substr(0, name.size() - 8);
+  if (base.empty()) return nullptr;
+  for (const auto &f : fields)
+    if (f.x3dName == base) return &f;
+  return nullptr;
+}
+
+struct Collector {
+  X3DVersion floor;
   std::set<VersionUse> uses;
   std::unordered_set<const nodes::X3DNode *> seen;
-  auto visit = [&](auto &&self,
-                   const std::shared_ptr<nodes::X3DNode> &node) -> void {
-    if (!node || !seen.insert(node.get()).second) return;
-    const std::string type = node->nodeTypeName();
-    if (floor < node->introducedIn())
-      uses.insert({type, {}, node->introducedIn()});
-    const auto order = scene.childFieldOrder.find(node.get());
-    for (const auto &f : node->fields()) {
-      // A field as old as its node type is covered by the node's own entry.
-      if (!(floor < f.since) || !(node->introducedIn() < f.since)) continue;
-      bool authored = scene.authoredScalarFields.contains(node, f.x3dName);
-      if (!authored && order != scene.childFieldOrder.end())
-        authored = std::find(order->second.begin(), order->second.end(),
-                             f.x3dName) != order->second.end();
-      if (authored) uses.insert({type, f.x3dName, f.since});
+
+  /// A field use, listed only when it is newer than both the floor and the
+  /// node type (the node's own entry covers fields as old as the type).
+  void field(const nodes::X3DNode &node, const core::FieldInfo &f) {
+    if (floor < f.since && node.introducedIn() < f.since)
+      uses.insert({node.nodeTypeName(), f.x3dName, f.since});
+  }
+
+  void endpoint(const std::shared_ptr<nodes::X3DNode> &node,
+                const std::string &name) {
+    if (!node) return;
+    if (const auto *f = endpointField(*node, name)) field(*node, *f);
+  }
+
+  void node(const std::shared_ptr<nodes::X3DNode> &n,
+            const AuthoredScalarFields &authored) {
+    if (!n || !seen.insert(n.get()).second) return;
+    if (floor < n->introducedIn())
+      uses.insert({n->nodeTypeName(), {}, n->introducedIn()});
+    for (const auto &f : n->fields())
+      if (!f.isNode() && authored.contains(n, f.x3dName)) field(*n, f);
+    // Values whose allowed range grew in a later version.
+    if (floor < X3DVersion{4, 1}) {
+      int loa = -1;
+      if (const auto *h = dynamic_cast<const nodes::HAnimHumanoid *>(n.get()))
+        loa = h->getLoa();
+      else if (const auto *m = dynamic_cast<const nodes::HAnimMotion *>(n.get()))
+        loa = m->getLoa();
+      if (loa > 4) uses.insert({n->nodeTypeName(), "loa " + std::to_string(loa),
+                                X3DVersion{4, 1}});
     }
-    forEachChildNode(*node, [&](const core::FieldInfo &,
-                                const std::shared_ptr<nodes::X3DNode> &child) {
-      self(self, child);
+    forEachChildNode(*n, [&](const core::FieldInfo &f,
+                             const std::shared_ptr<nodes::X3DNode> &child) {
+      if (child) field(*n, f); // a node-valued field counts once it holds a node
+      node(child, authored);
+    });
+  }
+};
+
+/// The node a DEF name labels among `roots` and their descendants (PROTO
+/// bodies have their own DEF scope, with no table of their own).
+inline std::shared_ptr<nodes::X3DNode>
+findDef(const std::vector<std::shared_ptr<nodes::X3DNode>> &roots,
+        const std::string &def) {
+  std::shared_ptr<nodes::X3DNode> found;
+  std::unordered_set<const nodes::X3DNode *> seen;
+  auto visit = [&](auto &&self, const std::shared_ptr<nodes::X3DNode> &n) -> void {
+    if (!n || found || !seen.insert(n.get()).second) return;
+    if (n->getDEF() == def) { found = n; return; }
+    forEachChildNode(*n, [&](const core::FieldInfo &,
+                             const std::shared_ptr<nodes::X3DNode> &c) { self(self, c); });
+  };
+  for (const auto &r : roots) visit(visit, r);
+  return found;
+}
+
+} // namespace version_fit_detail
+
+/// Authored node types, fields and values newer than `floor`, one entry per
+/// distinct use, sorted by name. A field is listed only when it is newer than
+/// its node type too (IndexedFaceSet.tangent, not EnvironmentLight.intensity).
+/// Walks the scene graph and every PROTO declaration body. A field counts when
+/// a reader recorded it (Scene::authoredScalarFields, or the declaration's own
+/// set for a PROTO body), when a node-valued field holds a node, or when a
+/// ROUTE or IS connection names it; generated defaults never count.
+inline std::vector<VersionUse> versionUsesAbove(const Scene &scene,
+                                                X3DVersion floor) {
+  version_fit_detail::Collector c{floor, {}, {}};
+  for (const auto &root : scene.rootNodes) c.node(root, scene.authoredScalarFields);
+  for (const auto &r : scene.routes) {
+    auto from = r.from.lock(), to = r.to.lock();
+    if (!from) from = scene.resolve(r.fromNode);
+    if (!to) to = scene.resolve(r.toNode);
+    c.endpoint(from, r.fromField);
+    c.endpoint(to, r.toField);
+  }
+  for (const auto &decl : scene.protoDeclarations) {
+    if (!decl) continue;
+    for (const auto &n : decl->body.nodes) c.node(n, decl->authoredScalarFields);
+    for (const auto &r : decl->body.routes) {
+      c.endpoint(version_fit_detail::findDef(decl->body.nodes, r.fromNode), r.fromField);
+      c.endpoint(version_fit_detail::findDef(decl->body.nodes, r.toNode), r.toField);
+    }
+    for (const auto &is : decl->body.isConnections) c.endpoint(is.node, is.nodeField);
+  }
+  return {c.uses.begin(), c.uses.end()};
+}
+
+/// Give fields whose default changed between versions the default of the
+/// version a document declares, when the document leaves them out. Run by
+/// the parse front door before PROTO expansion. Today one field qualifies:
+/// TextureProjector.upVector was 0 0 1 before X3D 4.1 and is 0 1 0 since,
+/// so a 4.0 projector whose direction is not along Z keeps its 4.0 frame.
+/// An undeclared version reads as the 3.0 floor, like the rest of the read.
+inline void applyVersionDefaults(X3DDocument &doc) {
+  const auto declared = parseX3DVersion(doc.version);
+  if (!declared || !(*declared < X3DVersion{4, 1})) return;
+  std::unordered_set<const nodes::X3DNode *> seen;
+  auto visit = [&](auto &&self, const std::shared_ptr<nodes::X3DNode> &n,
+                   const AuthoredScalarFields &authored) -> void {
+    if (!n || !seen.insert(n.get()).second) return;
+    if (auto *p = dynamic_cast<nodes::TextureProjector *>(n.get()))
+      if (!authored.contains(n, "upVector")) p->setUpVector(core::SFVec3f{0, 0, 1});
+    forEachChildNode(*n, [&](const core::FieldInfo &,
+                             const std::shared_ptr<nodes::X3DNode> &c) {
+      self(self, c, authored);
     });
   };
-  for (const auto &root : scene.rootNodes) visit(visit, root);
-  for (const auto &decl : scene.protoDeclarations)
+  for (const auto &root : doc.scene.rootNodes)
+    visit(visit, root, doc.scene.authoredScalarFields);
+  for (const auto &decl : doc.scene.protoDeclarations)
     if (decl)
-      for (const auto &n : decl->body.nodes) visit(visit, n);
-  return {uses.begin(), uses.end()};
+      for (const auto &n : decl->body.nodes) visit(visit, n, decl->authoredScalarFields);
 }
 
 /// The lowest X3D version whose node and field set covers the authored content
